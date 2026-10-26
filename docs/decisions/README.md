@@ -27,3 +27,7 @@ Every record lists its **decision drivers**, rates each option against them in a
 | [0015](0015-ef-core-data-access.md) | EF Core 10 with code-first migrations for data access | accepted |
 | [0016](0016-local-database-provisioning.md) | Docker Compose for local databases and Testcontainers for tests; adopt .NET Aspire later | accepted |
 | [0017](0017-dotnet-file-based-apps-for-repo-tooling.md) | .NET 10 file-based apps for all repo tooling scripts, in their skill folder or `tools/<name>/` | accepted |
+| [0018](0018-time-representation-and-bcl-date-time-types.md) | UTC instants plus an IANA zone id and floating dates, using BCL time types instead of NodaTime | accepted |
+| [0019](0019-single-user-mode-with-authentication-deferred.md) | Single-user mode with authentication deferred: no auth and no owner column yet | accepted |
+| [0020](0020-aggregate-day-agenda-endpoint-as-read-model.md) | A dedicated day-agenda endpoint as the read model, beside resource endpoints for writes | accepted |
+| [0021](0021-client-supplied-date-and-time-zone-define-the-day.md) | The client's IANA time zone and local date define "today", with the server computing the day window | accepted |

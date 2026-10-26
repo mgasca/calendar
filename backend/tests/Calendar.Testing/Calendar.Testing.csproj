@@ -1,0 +1,30 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- Shared test support (not a test project): a real PostgreSQL via Testcontainers (ADR-0016). -->
+  <PropertyGroup>
+    <OutputType>Library</OutputType>
+    <IsTestProject>false</IsTestProject>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- Inherited from tests/Directory.Build.props, but this library has no tests. -->
+    <PackageReference Remove="xunit.v3.mtp-v2" />
+    <PackageReference Remove="Shouldly" />
+    <PackageReference Remove="NSubstitute" />
+    <PackageReference Remove="NSubstitute.Analyzers.CSharp" />
+    <PackageReference Remove="Microsoft.Testing.Extensions.CodeCoverage" />
+    <Using Remove="Xunit" />
+    <Using Remove="Shouldly" />
+    <Content Remove="xunit.runner.json" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Testcontainers.PostgreSql" />
+    <PackageReference Include="Respawn" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\Calendar.Infrastructure\Calendar.Infrastructure.csproj" />
+  </ItemGroup>
+
+</Project>

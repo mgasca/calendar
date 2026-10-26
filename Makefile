@@ -11,7 +11,11 @@ ADR_CHECK := dotnet run $(ADR_SKILL)/scripts/check-adr/check-adr.cs --
 TOOL_DIRS := $(ADR_SKILL) tools
 SHELL_TOOLS := tools/doctor/doctor.sh
 
-.PHONY: help doctor setup build test lint tooling tool-versions adr-check format check contracts dev-api dev-web clean
+# Local database (ADR-0016). Credentials come from the untracked .env (created from .env.example).
+COMPOSE := docker compose
+DB_ENV  := set -a && . ./.env && set +a
+
+.PHONY: db-up db-down db-reset db-migrate db-seed db-psql help doctor setup build test lint tooling tool-versions adr-check format check contracts dev-api dev-web clean
 
 help: ## List targets
 	@grep -hE '^[a-zA-Z_-]+:.*?## ' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "  %-12s %s\n", $$1, $$2}'
@@ -34,6 +38,8 @@ test: ## Run all tests
 lint: ## Static analysis (analyzers run as part of the .NET build)
 	$(DOTNET) build --no-restore
 	$(DOTNET) format --verify-no-changes --no-restore
+	$(DOTNET) tool restore
+	$(DOTNET) ef migrations has-pending-model-changes --project src/Calendar.Infrastructure --no-build
 	$(PNPM) lint
 	$(PNPM) typecheck
 	$(MAKE) --no-print-directory tooling tool-versions adr-check
@@ -50,6 +56,28 @@ tool-versions: ## Check tooling package pins match backend/Directory.Packages.pr
 
 adr-check: ## Validate ADRs in docs/decisions (pass flags via ARGS=, e.g. ARGS=--fix-links)
 	$(ADR_CHECK) $(ARGS)
+
+db-up: ## Start the local PostgreSQL (creates .env from .env.example on first run)
+	@test -f .env || { cp .env.example .env && echo "Created .env from .env.example"; }
+	$(COMPOSE) up -d --wait postgres
+
+db-down: ## Stop the local PostgreSQL (keeps data)
+	$(COMPOSE) down
+
+db-reset: ## Delete the local database volume and start a fresh PostgreSQL (migrate afterwards)
+	$(COMPOSE) down --volumes
+	$(MAKE) --no-print-directory db-up
+
+db-migrate: ## Apply EF Core migrations to the local database as calendar_migrator
+	@$(DB_ENV) && cd $(BACKEND) && dotnet tool restore >/dev/null && \
+	CALENDAR_MIGRATOR_CONNECTION="Host=127.0.0.1;Port=5432;Database=$$POSTGRES_DB;Username=calendar_migrator;Password=$$CALENDAR_MIGRATOR_PASSWORD" \
+	dotnet ef database update --project src/Calendar.Infrastructure
+
+db-seed: ## Seed a running API with a sample day (ARGS="--date YYYY-MM-DD --time-zone ID --api-url URL"; additive)
+	dotnet run tools/seed-dev/seed-dev.cs -- $(ARGS)
+
+db-psql: ## Open psql on the local database as calendar_migrator
+	@$(DB_ENV) && $(COMPOSE) exec -e PGPASSWORD="$$CALENDAR_MIGRATOR_PASSWORD" postgres psql -U calendar_migrator -d "$$POSTGRES_DB"
 
 format: ## Auto-format all code
 	$(DOTNET) format

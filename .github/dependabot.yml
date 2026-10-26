@@ -11,6 +11,26 @@ updates:
       dotnet-minor-patch:
         update-types: [minor, patch]
 
+  # dotnet-ef lives in the repo-root .config/dotnet-tools.json, outside /backend.
+  - package-ecosystem: nuget
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+    labels: [dependencies, backend]
+
+  # The postgres image pinned in compose.yaml (also the version Testcontainers runs).
+  - package-ecosystem: docker
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+    labels: [dependencies, backend]
+    ignore:
+      # Stay on PostgreSQL 18 (ADR-0014); a major upgrade is a deliberate decision.
+      - dependency-name: postgres
+        update-types: [version-update:semver-major]
+
   # Repo tooling (.claude/skills/*, tools/) is not listed: Dependabot doesn't read .NET file-based
   # app #:package directives or folder-local Directory.Build.props, so those are bumped manually (ADR-0017).
 

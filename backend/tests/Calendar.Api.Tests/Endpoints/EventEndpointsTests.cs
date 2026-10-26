@@ -130,6 +130,43 @@ public sealed class EventEndpointsTests(PostgresFixture postgres) : ApiTestBase(
         db.Events.Count().ShouldBe(0);
     }
 
+    [Theory]
+    [InlineData("2026-10-26T10:00:00", "start")] // no offset: would be read in the server's local offset
+    [InlineData("2026-10-26", "start")]
+    [InlineData("2026-10-26T10:00:00+0400", "start")]
+    [InlineData("not a time", "start")]
+    public async Task CreateEvent_InstantWithoutExplicitOffset_Returns400NamingTheField(string value, string field)
+    {
+        using var response = await Client.PostAsJsonAsync(Events, new { title = "E", start = value, end = "2026-10-26T12:00:00Z", timeZone = "UTC" }, Ct);
+
+        response.StatusCode.ShouldBe(HttpStatusCode.BadRequest);
+        response.Content.Headers.ContentType!.MediaType.ShouldBe("application/problem+json");
+        JsonNode.Parse(await response.Content.ReadAsStringAsync(Ct))!["errors"]!.AsObject().ContainsKey(field).ShouldBeTrue();
+        await using var db = Postgres.Database.CreateMigratorContext();
+        db.Events.Count().ShouldBe(0);
+    }
+
+    [Fact]
+    public async Task CreateEvent_EndWithoutOffset_NamesTheEndField()
+    {
+        using var response = await Client.PostAsJsonAsync(Events, new { title = "E", start = "2026-10-26T10:00:00Z", end = "2026-10-26T12:00:00", timeZone = "UTC" }, Ct);
+
+        response.StatusCode.ShouldBe(HttpStatusCode.BadRequest);
+        JsonNode.Parse(await response.Content.ReadAsStringAsync(Ct))!["errors"]!.AsObject().ContainsKey("end").ShouldBeTrue();
+    }
+
+    [Theory]
+    [InlineData("2026-10-26T10:00:00Z")]
+    [InlineData("2026-10-26T10:00:00.5+05:30")]
+    [InlineData("2026-10-26T10:00-04:00")]
+    [InlineData("2026-10-26T10:00:00z")]
+    public async Task CreateEvent_InstantWithExplicitOffset_IsAccepted(string value)
+    {
+        using var response = await Client.PostAsJsonAsync(Events, new { title = "E", start = value, end = "2026-10-27T10:00:00Z", timeZone = "UTC" }, Ct);
+
+        response.StatusCode.ShouldBe(HttpStatusCode.Created);
+    }
+
     [Fact]
     public async Task CreateEvent_WithMalformedBody_Returns400()
     {

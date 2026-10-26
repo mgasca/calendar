@@ -61,6 +61,7 @@ public sealed class TaskEndpointsTests(PostgresFixture postgres) : ApiTestBase(p
         { "blank title", "title", new { title = " " } },
         { "title too long", "title", new { title = new string('a', 201) } },
         { "both due values", "dueAt", new { title = "T", dueDate = "2026-10-26", dueAt = "2026-10-26T10:00:00Z" } },
+        { "dueAt without offset", "dueAt", new { title = "T", dueAt = "2026-10-26T10:00:00" } },
         { "due date out of range", "dueDate", new { title = "T", dueDate = "0001-01-01" } },
     };
 

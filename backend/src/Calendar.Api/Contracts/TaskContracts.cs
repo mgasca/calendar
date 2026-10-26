@@ -1,5 +1,6 @@
 using System.ComponentModel;
 using System.Linq.Expressions;
+using System.Text.Json.Serialization;
 using Calendar.Domain.Tasks;
 
 namespace Calendar.Api.Contracts;
@@ -14,6 +15,7 @@ public sealed record CreateTaskRequest
     public DateOnly? DueDate { get; init; }
 
     [Description("Due instant, RFC 3339 with an explicit offset; mutually exclusive with dueDate.")]
+    [JsonConverter(typeof(ExplicitOffsetConverter))]
     public DateTimeOffset? DueAt { get; init; }
 }
 

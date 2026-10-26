@@ -1,4 +1,5 @@
 using System.ComponentModel;
+using System.Text.Json.Serialization;
 
 namespace Calendar.Api.Contracts;
 
@@ -15,9 +16,11 @@ public sealed record CreateEventRequest
     public bool AllDay { get; init; }
 
     [Description("Timed events: inclusive start instant, RFC 3339 with an explicit offset (e.g. 2026-10-26T14:00:00Z).")]
+    [JsonConverter(typeof(ExplicitOffsetConverter))]
     public DateTimeOffset? Start { get; init; }
 
     [Description("Timed events: exclusive end instant, after start.")]
+    [JsonConverter(typeof(ExplicitOffsetConverter))]
     public DateTimeOffset? End { get; init; }
 
     [Description("Timed events: IANA time zone the event was created in, e.g. America/New_York.")]

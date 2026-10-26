@@ -15,7 +15,7 @@ SHELL_TOOLS := tools/doctor/doctor.sh
 COMPOSE := docker compose
 DB_ENV  := set -a && . ./.env && set +a
 
-.PHONY: db-up db-down db-reset db-migrate db-psql help doctor setup build test lint tooling tool-versions adr-check format check contracts dev-api dev-web clean
+.PHONY: db-up db-down db-reset db-migrate db-seed db-psql help doctor setup build test lint tooling tool-versions adr-check format check contracts dev-api dev-web clean
 
 help: ## List targets
 	@grep -hE '^[a-zA-Z_-]+:.*?## ' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "  %-12s %s\n", $$1, $$2}'
@@ -72,6 +72,9 @@ db-migrate: ## Apply EF Core migrations to the local database as calendar_migrat
 	@$(DB_ENV) && cd $(BACKEND) && dotnet tool restore >/dev/null && \
 	CALENDAR_MIGRATOR_CONNECTION="Host=127.0.0.1;Port=5432;Database=$$POSTGRES_DB;Username=calendar_migrator;Password=$$CALENDAR_MIGRATOR_PASSWORD" \
 	dotnet ef database update --project src/Calendar.Infrastructure
+
+db-seed: ## Seed a running API with a sample day (ARGS="--date YYYY-MM-DD --time-zone ID --api-url URL"; additive)
+	dotnet run tools/seed-dev/seed-dev.cs -- $(ARGS)
 
 db-psql: ## Open psql on the local database as calendar_migrator
 	@$(DB_ENV) && $(COMPOSE) exec -e PGPASSWORD="$$CALENDAR_MIGRATOR_PASSWORD" postgres psql -U calendar_migrator -d "$$POSTGRES_DB"

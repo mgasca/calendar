@@ -60,6 +60,7 @@ make doctor                    # everything should be ✓
 | Start / stop local PostgreSQL | `make db-up` / `make db-down` |
 | Apply migrations locally (as `calendar_migrator`) | `make db-migrate` |
 | Wipe the local database | `make db-reset` (then `make db-migrate`) |
+| Seed a sample day into the running API (additive; `ARGS="--date … --time-zone …"`) | `make db-seed` |
 | psql shell | `make db-psql` |
 | Run web UI (proxies `/api` to the API) | `make dev-web` |
 | Tests | `make test` |

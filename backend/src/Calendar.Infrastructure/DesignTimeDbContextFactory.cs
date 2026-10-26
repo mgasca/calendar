@@ -9,13 +9,13 @@ namespace Calendar.Infrastructure;
 /// </summary>
 internal sealed class DesignTimeDbContextFactory : IDesignTimeDbContextFactory<CalendarDbContext>
 {
-    public const string ConnectionVariable = "CALENDAR_MIGRATOR_CONNECTION";
+  public const string ConnectionVariable = "CALENDAR_MIGRATOR_CONNECTION";
 
-    private const string Placeholder = "Host=localhost;Database=calendar;Username=calendar_migrator";
+  private const string Placeholder = "Host=localhost;Database=calendar;Username=calendar_migrator";
 
-    public CalendarDbContext CreateDbContext(string[] args)
-    {
-        var connectionString = Environment.GetEnvironmentVariable(ConnectionVariable) ?? Placeholder;
-        return new CalendarDbContext(CalendarDbContextOptions.Create(connectionString).Options);
-    }
+  public CalendarDbContext CreateDbContext(string[] args)
+  {
+    var connectionString = Environment.GetEnvironmentVariable(ConnectionVariable) ?? Placeholder;
+    return new CalendarDbContext(CalendarDbContextOptions.Create(connectionString).Options);
+  }
 }

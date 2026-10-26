@@ -13,11 +13,11 @@ namespace ToolVersions.Tests;
 
 public sealed class VersionCheckerTests : IDisposable
 {
-    private readonly string _root = Directory.CreateTempSubdirectory("tool-versions-").FullName;
+  private readonly string _root = Directory.CreateTempSubdirectory("tool-versions-").FullName;
 
-    public VersionCheckerTests()
-    {
-        Write("backend/Directory.Packages.props", """
+  public VersionCheckerTests()
+  {
+    Write("backend/Directory.Packages.props", """
             <Project>
               <ItemGroup>
                 <PackageVersion Include="SonarAnalyzer.CSharp" Version="2.0.0" />
@@ -25,89 +25,89 @@ public sealed class VersionCheckerTests : IDisposable
               </ItemGroup>
             </Project>
             """);
-        Write(".claude/skills/demo/Directory.Build.props", """
+    Write(".claude/skills/demo/Directory.Build.props", """
             <Project>
               <ItemGroup>
                 <PackageReference Include="SonarAnalyzer.CSharp" Version="1.0.0" PrivateAssets="all" />
               </ItemGroup>
             </Project>
             """);
-        Write(".claude/skills/demo/tests/demo.tests.cs", """
+    Write(".claude/skills/demo/tests/demo.tests.cs", """
             #!/usr/bin/env -S dotnet run
             #:package Shouldly@4.3.0
             #:package Untracked.Package@9.9.9
             """);
-        Write("tools/demo/tests/fixtures/fake.cs", "#:package Shouldly@0.0.1\n");
-    }
+    Write("tools/demo/tests/fixtures/fake.cs", "#:package Shouldly@0.0.1\n");
+  }
 
-    public void Dispose() => Directory.Delete(_root, recursive: true);
+  public void Dispose() => Directory.Delete(_root, recursive: true);
 
-    [Fact]
-    public void ReadCentralVersions_ReadsPackageVersions()
-    {
-        var central = VersionChecker.ReadCentralVersions(Path.Combine(_root, "backend/Directory.Packages.props"));
+  [Fact]
+  public void ReadCentralVersions_ReadsPackageVersions()
+  {
+    var central = VersionChecker.ReadCentralVersions(Path.Combine(_root, "backend/Directory.Packages.props"));
 
-        central["SonarAnalyzer.CSharp"].ShouldBe("2.0.0");
-        central["shouldly"].ShouldBe("4.3.0", "lookups are case-insensitive, like NuGet ids");
-    }
+    central["SonarAnalyzer.CSharp"].ShouldBe("2.0.0");
+    central["shouldly"].ShouldBe("4.3.0", "lookups are case-insensitive, like NuGet ids");
+  }
 
-    [Fact]
-    public void FindPins_ReadsDirectivesAndProps_AndSkipsFixtures()
-    {
-        var pins = VersionChecker.FindPins(_root);
+  [Fact]
+  public void FindPins_ReadsDirectivesAndProps_AndSkipsFixtures()
+  {
+    var pins = VersionChecker.FindPins(_root);
 
-        pins.ShouldBe(
-        [
-            new PinnedPackage("SonarAnalyzer.CSharp", "1.0.0", ".claude/skills/demo/Directory.Build.props"),
+    pins.ShouldBe(
+    [
+        new PinnedPackage("SonarAnalyzer.CSharp", "1.0.0", ".claude/skills/demo/Directory.Build.props"),
             new PinnedPackage("Shouldly", "4.3.0", ".claude/skills/demo/tests/demo.tests.cs"),
             new PinnedPackage("Untracked.Package", "9.9.9", ".claude/skills/demo/tests/demo.tests.cs"),
         ], ignoreOrder: true);
-    }
+  }
 
-    [Fact]
-    public void FindDrift_ReportsOnlyTrackedPackagesWithDifferentVersions()
-    {
-        var drifts = Drifts();
+  [Fact]
+  public void FindDrift_ReportsOnlyTrackedPackagesWithDifferentVersions()
+  {
+    var drifts = Drifts();
 
-        var drift = drifts.ShouldHaveSingleItem();
-        drift.Pin.Package.ShouldBe("SonarAnalyzer.CSharp");
-        drift.BackendVersion.ShouldBe("2.0.0");
-    }
+    var drift = drifts.ShouldHaveSingleItem();
+    drift.Pin.Package.ShouldBe("SonarAnalyzer.CSharp");
+    drift.BackendVersion.ShouldBe("2.0.0");
+  }
 
-    [Fact]
-    public void Fix_UpdatesPropsAndDirectives_ThenNoDriftRemains()
-    {
-        Write(".claude/skills/demo/tests/demo.tests.cs", "#:package Shouldly@4.0.0\n");
+  [Fact]
+  public void Fix_UpdatesPropsAndDirectives_ThenNoDriftRemains()
+  {
+    Write(".claude/skills/demo/tests/demo.tests.cs", "#:package Shouldly@4.0.0\n");
 
-        var changed = VersionChecker.Fix(_root, Drifts());
+    var changed = VersionChecker.Fix(_root, Drifts());
 
-        changed.ShouldBe(2);
-        Read(".claude/skills/demo/Directory.Build.props").ShouldContain("""Include="SonarAnalyzer.CSharp" Version="2.0.0" """.TrimEnd());
-        Read(".claude/skills/demo/tests/demo.tests.cs").ShouldBe("#:package Shouldly@4.3.0\n");
-        Drifts().ShouldBeEmpty();
-    }
+    changed.ShouldBe(2);
+    Read(".claude/skills/demo/Directory.Build.props").ShouldContain("""Include="SonarAnalyzer.CSharp" Version="2.0.0" """.TrimEnd());
+    Read(".claude/skills/demo/tests/demo.tests.cs").ShouldBe("#:package Shouldly@4.3.0\n");
+    Drifts().ShouldBeEmpty();
+  }
 
-    [Fact]
-    public void Fix_LeavesOtherContentUntouched()
-    {
-        var before = Read(".claude/skills/demo/Directory.Build.props");
+  [Fact]
+  public void Fix_LeavesOtherContentUntouched()
+  {
+    var before = Read(".claude/skills/demo/Directory.Build.props");
 
-        VersionChecker.Fix(_root, Drifts());
+    VersionChecker.Fix(_root, Drifts());
 
-        Read(".claude/skills/demo/Directory.Build.props").ShouldBe(before.Replace("Version=\"1.0.0\"", "Version=\"2.0.0\"", StringComparison.Ordinal));
-    }
+    Read(".claude/skills/demo/Directory.Build.props").ShouldBe(before.Replace("Version=\"1.0.0\"", "Version=\"2.0.0\"", StringComparison.Ordinal));
+  }
 
-    private IReadOnlyList<VersionDrift> Drifts() =>
-        VersionChecker.FindDrift(
-            VersionChecker.FindPins(_root),
-            VersionChecker.ReadCentralVersions(Path.Combine(_root, "backend/Directory.Packages.props")));
+  private IReadOnlyList<VersionDrift> Drifts() =>
+      VersionChecker.FindDrift(
+          VersionChecker.FindPins(_root),
+          VersionChecker.ReadCentralVersions(Path.Combine(_root, "backend/Directory.Packages.props")));
 
-    private void Write(string relative, string content)
-    {
-        var path = Path.Combine(_root, relative);
-        Directory.CreateDirectory(Path.GetDirectoryName(path)!);
-        File.WriteAllText(path, content);
-    }
+  private void Write(string relative, string content)
+  {
+    var path = Path.Combine(_root, relative);
+    Directory.CreateDirectory(Path.GetDirectoryName(path)!);
+    File.WriteAllText(path, content);
+  }
 
-    private string Read(string relative) => File.ReadAllText(Path.Combine(_root, relative));
+  private string Read(string relative) => File.ReadAllText(Path.Combine(_root, relative));
 }

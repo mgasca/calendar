@@ -14,12 +14,12 @@ namespace Calendar.Api.Tests;
 public sealed class CalendarApiFactory(Calendar.Testing.PostgresTestDatabase database, TimeProvider? timeProvider = null)
     : WebApplicationFactory<Program>
 {
-    protected override void ConfigureWebHost(IWebHostBuilder builder)
+  protected override void ConfigureWebHost(IWebHostBuilder builder)
+  {
+    builder.UseSetting("ConnectionStrings:Calendar", database.AppConnectionString);
+    if (timeProvider is not null)
     {
-        builder.UseSetting("ConnectionStrings:Calendar", database.AppConnectionString);
-        if (timeProvider is not null)
-        {
-            builder.ConfigureTestServices(services => services.AddSingleton(timeProvider));
-        }
+      builder.ConfigureTestServices(services => services.AddSingleton(timeProvider));
     }
+  }
 }

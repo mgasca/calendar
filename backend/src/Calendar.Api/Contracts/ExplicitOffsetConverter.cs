@@ -11,21 +11,21 @@ namespace Calendar.Api.Contracts;
 /// </summary>
 internal sealed partial class ExplicitOffsetConverter : JsonConverter<DateTimeOffset>
 {
-    [GeneratedRegex(@"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(:\d{2}(\.\d+)?)?(Z|[+-]\d{2}:\d{2})$", RegexOptions.CultureInvariant | RegexOptions.IgnoreCase)]
-    private static partial Regex WithOffset();
+  [GeneratedRegex(@"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(:\d{2}(\.\d+)?)?(Z|[+-]\d{2}:\d{2})$", RegexOptions.CultureInvariant | RegexOptions.IgnoreCase)]
+  private static partial Regex WithOffset();
 
-    public override DateTimeOffset Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
+  public override DateTimeOffset Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
+  {
+    var text = reader.TokenType == JsonTokenType.String ? reader.GetString() : null;
+    if (text is null || !WithOffset().IsMatch(text)
+        || !DateTimeOffset.TryParse(text, CultureInfo.InvariantCulture, DateTimeStyles.None, out var value))
     {
-        var text = reader.TokenType == JsonTokenType.String ? reader.GetString() : null;
-        if (text is null || !WithOffset().IsMatch(text)
-            || !DateTimeOffset.TryParse(text, CultureInfo.InvariantCulture, DateTimeStyles.None, out var value))
-        {
-            throw new JsonException("Expected an instant with an explicit offset, e.g. 2026-10-26T14:00:00Z or 2026-10-26T10:00:00-04:00.");
-        }
-
-        return value;
+      throw new JsonException("Expected an instant with an explicit offset, e.g. 2026-10-26T14:00:00Z or 2026-10-26T10:00:00-04:00.");
     }
 
-    public override void Write(Utf8JsonWriter writer, DateTimeOffset value, JsonSerializerOptions options) =>
-        writer.WriteStringValue(value);
+    return value;
+  }
+
+  public override void Write(Utf8JsonWriter writer, DateTimeOffset value, JsonSerializerOptions options) =>
+      writer.WriteStringValue(value);
 }

@@ -10,12 +10,12 @@ namespace Calendar.Infrastructure;
 /// </summary>
 public sealed class CalendarDbContext(DbContextOptions<CalendarDbContext> options) : DbContext(options)
 {
-    public DbSet<CalendarEvent> Events => Set<CalendarEvent>();
+  public DbSet<CalendarEvent> Events => Set<CalendarEvent>();
 
-    public DbSet<TodoTask> Tasks => Set<TodoTask>();
+  public DbSet<TodoTask> Tasks => Set<TodoTask>();
 
-    protected override void OnModelCreating(ModelBuilder modelBuilder)
-    {
-        modelBuilder.ApplyConfigurationsFromAssembly(typeof(CalendarDbContext).Assembly);
-    }
+  protected override void OnModelCreating(ModelBuilder modelBuilder)
+  {
+    modelBuilder.ApplyConfigurationsFromAssembly(typeof(CalendarDbContext).Assembly);
+  }
 }

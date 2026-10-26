@@ -7,13 +7,13 @@ var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddOpenApi(options => options.AddSchemaTransformer((schema, _, _) =>
 {
-    // Properties read by ExplicitOffsetConverter lose their type in the generated schema; they are optional instants.
-    if (schema.Type is null && schema.Format == "date-time")
-    {
-        schema.Type = JsonSchemaType.String | JsonSchemaType.Null;
-    }
+  // Properties read by ExplicitOffsetConverter lose their type in the generated schema; they are optional instants.
+  if (schema.Type is null && schema.Format == "date-time")
+  {
+    schema.Type = JsonSchemaType.String | JsonSchemaType.Null;
+  }
 
-    return Task.CompletedTask;
+  return Task.CompletedTask;
 }));
 builder.Services.AddProblemDetails();
 builder.Services.AddSingleton(TimeProvider.System);
@@ -29,7 +29,7 @@ app.UseStatusCodePages();
 
 if (app.Environment.IsDevelopment())
 {
-    app.MapOpenApi();
+  app.MapOpenApi();
 }
 
 app.MapHealthEndpoints();

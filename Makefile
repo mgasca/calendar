@@ -11,7 +11,7 @@ ADR_CHECK := dotnet run $(ADR_SKILL)/scripts/check-adr/check-adr.cs --
 TOOL_DIRS := $(ADR_SKILL) tools
 SHELL_TOOLS := tools/doctor/doctor.sh
 
-.PHONY: help doctor setup build test lint tooling adr-check format check contracts dev-api dev-web clean
+.PHONY: help doctor setup build test lint tooling tool-versions adr-check format check contracts dev-api dev-web clean
 
 help: ## List targets
 	@grep -hE '^[a-zA-Z_-]+:.*?## ' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "  %-12s %s\n", $$1, $$2}'
@@ -36,14 +36,17 @@ lint: ## Static analysis (analyzers run as part of the .NET build)
 	$(DOTNET) format --verify-no-changes --no-restore
 	$(PNPM) lint
 	$(PNPM) typecheck
-	$(MAKE) --no-print-directory tooling adr-check
+	$(MAKE) --no-print-directory tooling tool-versions adr-check
 
 tooling: ## Test and lint repo tooling (skill scripts, tools/)
-	dotnet run $(ADR_SKILL)/tests/check-adr.tests.cs
+	@for t in $$(find $(TOOL_DIRS) -name '*.tests.cs' -not -path '*/fixtures/*' | sort); do echo "dotnet run $$t"; dotnet run $$t || exit 1; done
 	@for d in $(TOOL_DIRS); do echo "dotnet format whitespace $$d"; dotnet format whitespace --folder --verify-no-changes $$d || exit 1; done
 	@if command -v shellcheck >/dev/null 2>&1; then echo "shellcheck $(SHELL_TOOLS)"; shellcheck $(SHELL_TOOLS); \
 	elif [ -n "$$CI" ]; then echo "shellcheck is required in CI" >&2; exit 1; \
 	else echo "shellcheck not installed: skipped locally (CI runs it)"; fi
+
+tool-versions: ## Check tooling package pins match backend/Directory.Packages.props (ARGS=--fix to update)
+	dotnet run tools/tool-versions/tool-versions.cs -- $(ARGS)
 
 adr-check: ## Validate ADRs in docs/decisions (pass flags via ARGS=, e.g. ARGS=--fix-links)
 	$(ADR_CHECK) $(ARGS)

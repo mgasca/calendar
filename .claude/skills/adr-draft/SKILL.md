@@ -187,4 +187,4 @@ tests/fixtures/valid/                                 # minimal valid ADR set th
 
 - **Requirement:** the .NET 10 SDK. The first run on a machine compiles for about 30 s; after that, runs take under a second.
 - **Changing a rule:** edit `AdrValidator.cs`, add or adjust an `[InlineData]` case in the tests, then run `make tooling` (tests and whitespace check) and `make adr-check`.
-- **Package versions** in `Directory.Build.props` and the `#:package` directives are pinned exactly. Dependabot can't see them (verified, ADR-0017), so bump them by hand alongside `backend/Directory.Packages.props`.
+- **Package versions** in `Directory.Build.props` and the `#:package` directives are pinned exactly. Dependabot can't see them (verified, ADR-0017). In this repo, `make tool-versions` fails when they drift from `backend/Directory.Packages.props`, and `make tool-versions ARGS=--fix` updates them. In other repos, bump them by hand.

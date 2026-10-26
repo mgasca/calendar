@@ -58,6 +58,7 @@ make doctor                    # everything should be ✓
 | Tests | `make test` |
 | Lint / static analysis | `make lint` |
 | Test and lint repo tooling | `make tooling` |
+| Check tooling package pins vs backend | `make tool-versions` |
 | Validate ADRs | `make adr-check` |
 | Format | `make format` |
 | Regenerate contract + TS client | `make contracts` |

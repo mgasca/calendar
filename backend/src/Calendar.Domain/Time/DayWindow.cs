@@ -33,8 +33,10 @@ public readonly record struct DayWindow
   /// <summary>Exclusive end, UTC (offset zero).</summary>
   public DateTimeOffset End { get; }
 
+  /// <summary>Duration of the window: 24h on ordinary days, shorter or longer across offset changes.</summary>
   public TimeSpan Length => End - Start;
 
+  /// <summary>Builds the window covered by local <paramref name="date"/> in <paramref name="zone"/>.</summary>
   public static DayWindow Create(DateOnly date, TimeZoneInfo zone)
   {
     ArgumentNullException.ThrowIfNull(zone);

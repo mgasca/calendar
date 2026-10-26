@@ -17,14 +17,19 @@ public sealed class CalendarEvent
     Title = string.Empty;
   }
 
+  /// <summary>Unique id, generated on creation.</summary>
   public Guid Id { get; private set; }
 
+  /// <summary>Normalized, non-empty title.</summary>
   public string Title { get; private set; }
 
+  /// <summary>Optional location; <c>null</c> when not set.</summary>
   public string? Location { get; private set; }
 
+  /// <summary>Optional free-form notes; <c>null</c> when not set.</summary>
   public string? Notes { get; private set; }
 
+  /// <summary>True for an all-day event (floating dates), false for a timed event.</summary>
   public bool IsAllDay { get; private set; }
 
   /// <summary>Timed events only: inclusive start, UTC (offset zero).</summary>

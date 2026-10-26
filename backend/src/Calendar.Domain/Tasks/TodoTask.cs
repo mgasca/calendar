@@ -11,8 +11,10 @@ public sealed class TodoTask
     Title = string.Empty;
   }
 
+  /// <summary>Unique id, generated on creation.</summary>
   public Guid Id { get; private set; }
 
+  /// <summary>Normalized, non-empty title.</summary>
   public string Title { get; private set; }
 
   /// <summary>Floating due date (no zone); mutually exclusive with <see cref="DueAt"/>.</summary>
@@ -24,8 +26,13 @@ public sealed class TodoTask
   /// <summary>When the task was first completed (UTC); <c>null</c> while open.</summary>
   public DateTimeOffset? CompletedAt { get; private set; }
 
+  /// <summary>True once the task has been completed.</summary>
   public bool IsCompleted => CompletedAt is not null;
 
+  /// <summary>Creates an open task with an optional due date or due instant, but not both.</summary>
+  /// <param name="title">The task title.</param>
+  /// <param name="dueDate">Floating due date, or <c>null</c>.</param>
+  /// <param name="dueAt">Due instant (normalized to UTC), or <c>null</c>.</param>
   public static TodoTask Create(string title, DateOnly? dueDate = null, DateTimeOffset? dueAt = null)
   {
     var normalizedTitle = Validation.NormalizeTitle(title, nameof(title));
@@ -44,14 +51,8 @@ public sealed class TodoTask
   }
 
   /// <summary>Marks the task complete. Idempotent: an already completed task keeps its first completion time.</summary>
-  public void Complete(DateTimeOffset now)
-  {
-    CompletedAt ??= now.ToUniversalTime();
-  }
+  public void Complete(DateTimeOffset now) => CompletedAt ??= now.ToUniversalTime();
 
   /// <summary>Marks the task open again. Idempotent.</summary>
-  public void Reopen()
-  {
-    CompletedAt = null;
-  }
+  public void Reopen() => CompletedAt = null;
 }

@@ -14,8 +14,7 @@
     <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
-    <!-- CS1591: missing XML doc comments; docs are encouraged, not mandatory. -->
-    <NoWarn>$(NoWarn);CS1591</NoWarn>
+    <!-- CS1591 (missing XML doc comments) stays on: public members must be documented. Tests opt out. -->
 
     <!-- Versions are pinned here and in #:package directives, not by a host repo's Central Package Management. -->
     <ManagePackageVersionsCentrally>false</ManagePackageVersionsCentrally>

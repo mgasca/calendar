@@ -24,40 +24,22 @@ public sealed class DayInclusionTests
   // ---- events ----
 
   [Fact]
-  public void Event_Timed_InsideWindow_Included()
-  {
-    DayInclusion.EventOccursOn(Timed(At(0, 14), At(0, 15)), Window).ShouldBeTrue();
-  }
+  public void Event_Timed_InsideWindow_Included() => DayInclusion.EventOccursOn(Timed(At(0, 14), At(0, 15)), Window).ShouldBeTrue();
 
   [Fact]
-  public void Event_Timed_OvernightFromYesterday_Included()
-  {
-    DayInclusion.EventOccursOn(Timed(At(-1, 23), At(0, 6)), Window).ShouldBeTrue();
-  }
+  public void Event_Timed_OvernightFromYesterday_Included() => DayInclusion.EventOccursOn(Timed(At(-1, 23), At(0, 6)), Window).ShouldBeTrue();
 
   [Fact]
-  public void Event_Timed_ContinuingIntoTomorrow_Included()
-  {
-    DayInclusion.EventOccursOn(Timed(At(0, 22), At(1, 6)), Window).ShouldBeTrue();
-  }
+  public void Event_Timed_ContinuingIntoTomorrow_Included() => DayInclusion.EventOccursOn(Timed(At(0, 22), At(1, 6)), Window).ShouldBeTrue();
 
   [Fact]
-  public void Event_Timed_SpanningWholeDay_Included()
-  {
-    DayInclusion.EventOccursOn(Timed(At(-2, 0), At(3, 0)), Window).ShouldBeTrue();
-  }
+  public void Event_Timed_SpanningWholeDay_Included() => DayInclusion.EventOccursOn(Timed(At(-2, 0), At(3, 0)), Window).ShouldBeTrue();
 
   [Fact]
-  public void Event_Timed_EndingExactlyAtWindowStart_Excluded()
-  {
-    DayInclusion.EventOccursOn(Timed(At(0, 2), Window.Start), Window).ShouldBeFalse();
-  }
+  public void Event_Timed_EndingExactlyAtWindowStart_Excluded() => DayInclusion.EventOccursOn(Timed(At(0, 2), Window.Start), Window).ShouldBeFalse();
 
   [Fact]
-  public void Event_Timed_StartingExactlyAtWindowEnd_Excluded()
-  {
-    DayInclusion.EventOccursOn(Timed(Window.End, Window.End.AddHours(1)), Window).ShouldBeFalse();
-  }
+  public void Event_Timed_StartingExactlyAtWindowEnd_Excluded() => DayInclusion.EventOccursOn(Timed(Window.End, Window.End.AddHours(1)), Window).ShouldBeFalse();
 
   [Fact]
   public void Event_Timed_OneTickInsideEdges_Included()
@@ -83,10 +65,7 @@ public sealed class DayInclusionTests
   [InlineData(-3, 0, false)] // ends (exclusive) on today
   [InlineData(1, 2, false)]
   [InlineData(-1, 0, false)]
-  public void Event_AllDay_UsesDatesWithExclusiveEnd(int startOffset, int endOffset, bool expected)
-  {
-    DayInclusion.EventOccursOn(AllDay(startOffset, endOffset), Window).ShouldBe(expected);
-  }
+  public void Event_AllDay_UsesDatesWithExclusiveEnd(int startOffset, int endOffset, bool expected) => DayInclusion.EventOccursOn(AllDay(startOffset, endOffset), Window).ShouldBe(expected);
 
   [Fact]
   public void Event_AllDay_IsFloating_IgnoresWindowInstants()
@@ -99,10 +78,7 @@ public sealed class DayInclusionTests
   }
 
   [Fact]
-  public void Event_Null_Throws()
-  {
-    Should.Throw<ArgumentNullException>(() => DayInclusion.EventOccursOn(null!, Window));
-  }
+  public void Event_Null_Throws() => Should.Throw<ArgumentNullException>(() => DayInclusion.EventOccursOn(null!, Window));
 
   // ---- tasks: due today ----
 
@@ -118,10 +94,7 @@ public sealed class DayInclusionTests
   [Theory]
   [InlineData(-1, false)]
   [InlineData(1, false)]
-  public void Task_DueDateOtherDay_IsNotDueToday(int offset, bool expected)
-  {
-    DayInclusion.IsDueToday(TodoTask.Create("T", dueDate: Today.AddDays(offset)), Window).ShouldBe(expected);
-  }
+  public void Task_DueDateOtherDay_IsNotDueToday(int offset, bool expected) => DayInclusion.IsDueToday(TodoTask.Create("T", dueDate: Today.AddDays(offset)), Window).ShouldBe(expected);
 
   [Fact]
   public void Task_DueAt_InWindow_IsDueToday_EvenIfAlreadyPastLocalTime()
@@ -153,10 +126,7 @@ public sealed class DayInclusionTests
   }
 
   [Fact]
-  public void Task_DueAtBeforeWindowStart_IsOverdue()
-  {
-    DayInclusion.IsOverdue(TodoTask.Create("T", dueAt: Window.Start.AddTicks(-1)), Window).ShouldBeTrue();
-  }
+  public void Task_DueAtBeforeWindowStart_IsOverdue() => DayInclusion.IsOverdue(TodoTask.Create("T", dueAt: Window.Start.AddTicks(-1)), Window).ShouldBeTrue();
 
   [Fact]
   public void Task_DueInFuture_IsNeitherDueTodayNorOverdue()

@@ -61,6 +61,14 @@ make doctor                    # everything should be ✓
 | Regenerate contract + TS client | `make contracts` |
 | Everything CI runs | `make check` |
 
+## Backing services
+
+| Service | Dev / test provisioning | Production | ADR |
+| --- | --- | --- | --- |
+| PostgreSQL 18 | Docker Compose (localhost only) / Testcontainers | Managed PostgreSQL (fallback: SQLite on a persistent volume with Litestream) | [0014](docs/decisions/0014-postgresql-database-engine.md), [0016](docs/decisions/0016-local-database-provisioning.md) |
+
+> **Adding a backing service?** Re-evaluate .NET Aspire for local orchestration before wiring it into Docker Compose by hand, and add a row here. See [ADR-0016](docs/decisions/0016-local-database-provisioning.md).
+
 ## Tooling
 
 | Concern | Backend | Frontend |

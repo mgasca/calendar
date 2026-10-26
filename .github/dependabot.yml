@@ -11,17 +11,8 @@ updates:
       dotnet-minor-patch:
         update-types: [minor, patch]
 
-  # Repo tooling (ADR-0017): versions live in folder-local Directory.Build.props and #:package
-  # directives. Whether Dependabot reads these is being verified; until then they are bumped manually.
-  - package-ecosystem: nuget
-    directories: [/.claude/skills/adr-draft, /tools]
-    schedule:
-      interval: weekly
-      day: monday
-    labels: [dependencies, tooling]
-    groups:
-      tooling:
-        patterns: ['*']
+  # Repo tooling (.claude/skills/*, tools/) is not listed: Dependabot doesn't read .NET file-based
+  # app #:package directives or folder-local Directory.Build.props, so those are bumped manually (ADR-0017).
 
   - package-ecosystem: npm
     directory: /frontend

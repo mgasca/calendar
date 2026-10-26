@@ -78,7 +78,7 @@ Measured on 2026-10-26 with .NET SDK 10.0.403, Node 24.22.1 and Python 3.12.3 on
 | Run time, console project `dotnet run` | 2.2 s with `--no-build`, 4.2 s with the up-to-date check |
 | Run time, current Python validator | 0.16 s |
 | Node 24 running `.ts` directly, plus `node --test` | Works (0.37 s), but types are stripped, not checked; `tsc` is needed for type checking |
-| Dependabot updating `#:package` versions | **Not confirmed.** No documentation found; handled below |
+| Dependabot updating `#:package` versions | **Not supported** (verified 2026-10-26). The NuGet updater only discovers project files. For both tool folders it logged "No project files found" and reported no dependencies |
 
 ### Layout and conventions
 
@@ -107,7 +107,7 @@ tools/                             # repo-wide tools
   * `ManagePackageVersionsCentrally=false`, so a host repo's Central Package Management doesn't interfere
   * a versioned `SonarAnalyzer.CSharp` reference
 * **Package versions:** `#:package` directives pin exact versions. Each file-based app sits in its own directory, because restore writes `packages.lock.json` next to it.
-* **Dependency updates, for now:** whether Dependabot updates `#:package` and folder-local `Directory.Build.props` versions is unconfirmed. Until it is, these versions are **bumped manually**, matched to `backend/Directory.Packages.props` whenever Dependabot updates the backend. The implementation PR tests Dependabot's behaviour. If Dependabot handles them, the manual step is dropped and this ADR is updated.
+* **Dependency updates:** Dependabot does **not** read `#:package` directives or folder-local `Directory.Build.props` files (verified, see Evidence). Versions are therefore **bumped manually**, matched to `backend/Directory.Packages.props` whenever Dependabot updates the backend. There is deliberately no Dependabot entry for tool folders: it would run weekly and find nothing. Revisit if Dependabot adds support for file-based apps.
 * **Minimum SDK:** .NET **10**. A host repo whose `global.json` pins an older SDK can't run a skill's tools; each `SKILL.md` that bundles tools states this.
 * **Invocation:**
   * `dotnet run <path>/<tool>.cs -- <args>`, or `./<tool>.cs` thanks to the `#!` line.
@@ -119,7 +119,7 @@ tools/                             # repo-wide tools
 
 ### Implementation plan (separate PR after acceptance)
 
-Steps 1–4 are implemented. Step 5's result will be recorded here once Dependabot has run against the new `nuget` entry for the tool folders.
+All steps are implemented. Step 5 showed that Dependabot doesn't support file-based apps (see Evidence and Dependency updates), so its trial `nuget` entry for the tool folders was removed.
 
 1. Port `check_adr.py` to `.claude/skills/adr-draft/scripts/check-adr/check-adr.cs` and `AdrValidator.cs`, keeping its behaviour and CLI flags (`--fix-links`, `--next-number`, `--dir`).
 2. Turn the manual negative test from #5 into `tests/check-adr.tests.cs`, with fixtures: one valid ADR and one ADR per rule violation.
@@ -134,7 +134,7 @@ Steps 1–4 are implemented. Step 5's result will be recorded here once Dependab
 * Good, because tests can unit-test tool logic (`#:include`), not just run tools as black boxes.
 * Bad, because the first run on a fresh machine takes ~36 s and runs after an edit ~5 s, against 0.16 s for Python. Cached runs (0.7 s) are fine for `make lint` and agent loops.
 * Bad, because the quality settings are duplicated: one `Directory.Build.props` per skill plus one for `tools/`. This is the price of portability.
-* Bad, because pinned tool versions need manual bumps until Dependabot support is confirmed.
+* Bad, because pinned tool versions need manual bumps: Dependabot can't see them (verified).
 * Bad, because the CI tooling job gets slower once it has to install .NET; it still runs in parallel with the backend job.
 * Neutral: regex-heavy parsing is wordier in C# than in Python, but the logic is small and the analyzers catch agent mistakes.
 
@@ -202,7 +202,7 @@ Steps 1–4 are implemented. Step 5's result will be recorded here once Dependab
 * Sources: [.NET file-based apps documentation](https://learn.microsoft.com/dotnet/core/sdk/file-based-apps) (`#:package`, `#:property`, `#:include`, `#:project`, `#:sdk`), [Announcing `dotnet run app.cs`](https://devblogs.microsoft.com/dotnet/announcing-dotnet-run-app/).
 * Versions at the time of writing: .NET SDK 10.0.403, `SonarAnalyzer.CSharp` 10.35.0.4138, `xunit.v3.mtp-v2` 4.0.2.
 * Review decisions:
-  * Manual version bumps are acceptable for now, until Dependabot support is confirmed.
+  * Manual version bumps are acceptable. Dependabot was later verified not to support file-based apps, so this is the ongoing approach.
   * The ADR covers all tooling scripts, with non-skill tools in `tools/<name>/`.
   * Sharing skills with non-.NET repos is deferred.
 * **Deferred:** if a skill must be shared with non-.NET repos, reconsider the language for that skill only, in a new ADR.

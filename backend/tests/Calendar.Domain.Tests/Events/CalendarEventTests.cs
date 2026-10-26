@@ -66,6 +66,23 @@ public sealed class CalendarEventTests
         Should.Throw<ArgumentException>(() => CalendarEvent.Create(new string('a', 201), Nine, Nine.AddHours(1), NewYork));
     }
 
+    [Fact]
+    public void Create_LocationAndNotes_AreCappedAtTheirMaxLengths()
+    {
+        var ok = CalendarEvent.Create("E", Nine, Nine.AddHours(1), NewYork, new string('l', 200), new string('n', 4000));
+        ok.Location.ShouldNotBeNull().Length.ShouldBe(200);
+        ok.Notes.ShouldNotBeNull().Length.ShouldBe(4000);
+
+        Should.Throw<ArgumentException>(() => CalendarEvent.Create("E", Nine, Nine.AddHours(1), NewYork, new string('l', 201)));
+        Should.Throw<ArgumentException>(() => CalendarEvent.Create("E", Nine, Nine.AddHours(1), NewYork, notes: new string('n', 4001)));
+    }
+
+    [Fact]
+    public void Create_StoresTheCanonicalZoneId()
+    {
+        CalendarEvent.Create("E", Nine, Nine.AddHours(1), "utc").TimeZoneId.ShouldBe("UTC");
+    }
+
     [Theory]
     [InlineData("")]
     [InlineData("Nowhere/Land")]

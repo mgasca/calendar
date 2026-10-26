@@ -12,7 +12,8 @@ namespace Calendar.Domain.Agenda;
 public static class DayInclusion
 {
     /// <summary>
-    /// Timed: <c>Start &lt; window.End &amp;&amp; End &gt; window.Start</c>.
+    /// Timed: <c>Start &lt; window.End &amp;&amp; End &gt; window.Start</c>, never for an empty window (a date that a
+    /// clock change skipped entirely has no time on it).
     /// All-day: <c>StartDate &lt;= window.Date &amp;&amp; EndDate &gt; window.Date</c> (end exclusive).
     /// </summary>
     public static bool EventOccursOn(CalendarEvent evt, DayWindow window)
@@ -20,7 +21,7 @@ public static class DayInclusion
         ArgumentNullException.ThrowIfNull(evt);
         return evt.IsAllDay
             ? evt.StartDate <= window.Date && evt.EndDate > window.Date
-            : evt.Start < window.End && evt.End > window.Start;
+            : window.Length > TimeSpan.Zero && evt.Start < window.End && evt.End > window.Start;
     }
 
     /// <summary>Due today: <c>DueDate == window.Date</c> or <c>DueAt</c> within <c>[window.Start, window.End)</c>.</summary>

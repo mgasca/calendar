@@ -163,4 +163,63 @@ public sealed class DayWindowTests
     {
         Should.Throw<ArgumentNullException>(() => DayWindow.Create(new DateOnly(2026, 10, 26), null!));
     }
+
+    [Theory]
+    [InlineData("America/Asuncion", 2024, 10, 6, 4)]
+    [InlineData("America/Coyhaique", 2024, 9, 8, 4)]
+    public void Create_GapStartingAtMidnightNotReportedInvalid_StartsAtTransition(string id, int y, int mo, int d, int expectedUtcHour)
+    {
+        // The BCL does not flag 00:00 as invalid here although the clock jumps 00:00 -> 01:00; the previous
+        // local date must not leak into the window.
+        var zone = TimeZones.FindIana(id);
+
+        var w = DayWindow.Create(new DateOnly(y, mo, d), zone);
+
+        w.Start.ShouldBe(Utc(y, mo, d, expectedUtcHour));
+        DateOnly.FromDateTime(TimeZoneInfo.ConvertTime(w.Start, zone).DateTime).ShouldBe(new DateOnly(y, mo, d));
+        DateOnly.FromDateTime(TimeZoneInfo.ConvertTime(w.Start.AddTicks(-1), zone).DateTime).ShouldBe(new DateOnly(y, mo, d).AddDays(-1));
+    }
+
+    [Fact]
+    public void Create_DateSkippedEntirely_IsEmptyAtTheTransition()
+    {
+        // Pacific/Apia jumped from 2011-12-29 23:59:59 (-10) to 2011-12-31 00:00 (+14).
+        var zone = TimeZones.FindIana("Pacific/Apia");
+        var skipped = DayWindow.Create(new DateOnly(2011, 12, 30), zone);
+        var before = DayWindow.Create(new DateOnly(2011, 12, 29), zone);
+        var after = DayWindow.Create(new DateOnly(2011, 12, 31), zone);
+
+        skipped.Length.ShouldBe(TimeSpan.Zero);
+        skipped.Start.ShouldBe(Utc(2011, 12, 30, 10));
+        before.End.ShouldBe(skipped.Start);
+        after.Start.ShouldBe(skipped.End);
+        skipped.Contains(skipped.Start).ShouldBeFalse();
+    }
+
+    [Fact]
+    public void Create_ConsecutiveDays_TileInEverySystemZoneAcrossYears()
+    {
+        var failures = new List<string>();
+        foreach (var zone in TimeZoneInfo.GetSystemTimeZones())
+        {
+            var date = new DateOnly(2023, 12, 25);
+            var previous = DayWindow.Create(date, zone);
+            for (var i = 1; i <= 800; i++)
+            {
+                var current = DayWindow.Create(date.AddDays(i), zone);
+                var firstLocal = DateOnly.FromDateTime(TimeZoneInfo.ConvertTime(current.Start, zone).DateTime);
+                var lastBefore = DateOnly.FromDateTime(TimeZoneInfo.ConvertTime(current.Start.AddTicks(-1), zone).DateTime);
+                if (previous.End != current.Start
+                    || current.Length < TimeSpan.Zero
+                    || (current.Length > TimeSpan.Zero && (firstLocal < current.Date || lastBefore >= current.Date)))
+                {
+                    failures.Add($"{zone.Id} {current.Date}");
+                }
+
+                previous = current;
+            }
+        }
+
+        failures.ShouldBeEmpty();
+    }
 }

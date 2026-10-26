@@ -262,4 +262,52 @@ public sealed class DayInclusionTests
 
         DayInclusion.IsDueToday(lateEvening, longDay).ShouldBeTrue();
     }
+
+    [Fact]
+    public void Task_OverdueCompletedExactlyAtWindowEnd_Excluded()
+    {
+        var task = TodoTask.Create("T", Today.AddDays(-2));
+        task.Complete(Window.End);
+
+        DayInclusion.IsIncludedInDay(task, Window).ShouldBeFalse();
+    }
+
+    [Fact]
+    public void Task_OverdueCompletedOneTickBeforeWindowEnd_Included()
+    {
+        var task = TodoTask.Create("T", Today.AddDays(-2));
+        task.Complete(Window.End.AddTicks(-1));
+
+        DayInclusion.IsIncludedInDay(task, Window).ShouldBeTrue();
+    }
+
+    [Fact]
+    public void Task_DueAtExactlyWindowEnd_IsTomorrow_NotIncluded()
+    {
+        var task = TodoTask.Create("T", dueAt: Window.End);
+
+        DayInclusion.IsDueToday(task, Window).ShouldBeFalse();
+        DayInclusion.IsOverdue(task, Window).ShouldBeFalse();
+        DayInclusion.IsIncludedInDay(task, Window).ShouldBeFalse();
+    }
+
+    [Fact]
+    public void Task_DueAtExactlyWindowStart_IsDueTodayNotOverdue()
+    {
+        var task = TodoTask.Create("T", dueAt: Window.Start);
+
+        DayInclusion.IsDueToday(task, Window).ShouldBeTrue();
+        DayInclusion.IsOverdue(task, Window).ShouldBeFalse();
+    }
+
+    [Fact]
+    public void Event_Timed_OnDateSkippedByClockChange_NeverOccurs()
+    {
+        var apia = TimeZones.FindIana("Pacific/Apia");
+        var skipped = DayWindow.Create(new DateOnly(2011, 12, 30), apia);
+        var spanning = CalendarEvent.Create("E", skipped.Start.AddDays(-1), skipped.Start.AddDays(1), "Pacific/Apia");
+
+        skipped.Length.ShouldBe(TimeSpan.Zero);
+        DayInclusion.EventOccursOn(spanning, skipped).ShouldBeFalse();
+    }
 }

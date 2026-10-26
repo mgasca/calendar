@@ -23,9 +23,38 @@ public sealed class TimeZonesTests
     [InlineData("W. Europe Standard Time")]
     [InlineData(" America/New_York")]
     [InlineData("../etc/passwd")]
+    [InlineData("America")]
+    [InlineData("Etc")]
+    [InlineData("America/Indiana")]
+    [InlineData("localtime")]
+    [InlineData("posixrules")]
+    [InlineData("Factory")]
+    [InlineData("posix/America/New_York")]
+    [InlineData("America//New_York")]
+    [InlineData("/America/New_York")]
+    [InlineData("America/New_York/")]
+    [InlineData("America/../America/New_York")]
+    [InlineData("zone.tab")]
     public void IsValidIanaId_RejectsBlankUnknownAndWindowsIds(string? id)
     {
         TimeZones.IsValidIanaId(id).ShouldBeFalse();
+    }
+
+    [Theory]
+    [InlineData("utc", "UTC")]
+    [InlineData("America/New_York", "America/New_York")]
+    public void TryFindIana_ReturnsCanonicalId(string input, string canonical)
+    {
+        TimeZones.TryFindIana(input, out var zone).ShouldBeTrue();
+        zone.Id.ShouldBe(canonical);
+    }
+
+    [Fact]
+    public void TryFindIana_WithVeryLongOrOddInput_ReturnsFalseWithoutThrowing()
+    {
+        TimeZones.IsValidIanaId(new string('a', 5000)).ShouldBeFalse();
+        TimeZones.IsValidIanaId("America/New_York\0").ShouldBeFalse();
+        TimeZones.IsValidIanaId("\u00c5/\u00d6").ShouldBeFalse();
     }
 
     [Fact]

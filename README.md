@@ -98,6 +98,8 @@ or set the environment variable `ConnectionStrings__Calendar`. In Development th
 
 > **Adding a backing service?** Re-evaluate .NET Aspire for local orchestration before wiring it into Docker Compose by hand, and add a row here. See [ADR-0016](docs/decisions/0016-local-database-provisioning.md).
 
+> **No authentication yet.** The API is single-user and unauthenticated, so it is unsafe to expose: run it only on your own machine or a network you alone control, with no permissive CORS and no personal data ([ADR-0019](docs/decisions/0019-single-user-mode-with-authentication-deferred.md)). Write an auth ADR and implement it **before the first of**: a deployment reachable from outside the owner's machine or trusted network; a second user; or a non-browser client (mobile, desktop, CLI, integration) that has to call the API.
+
 ## Tooling
 
 | Concern | Backend | Frontend |

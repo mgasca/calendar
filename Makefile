@@ -6,7 +6,7 @@ PNPM     := pnpm --dir $(FRONTEND)
 # Run dotnet inside backend/ so backend/global.json (SDK pin, test runner) applies.
 DOTNET   := cd $(BACKEND) && dotnet
 
-.PHONY: help doctor setup build test lint format check contracts dev-api dev-web clean
+.PHONY: help doctor setup build test lint adr-check format check contracts dev-api dev-web clean
 
 help: ## List targets
 	@grep -hE '^[a-zA-Z_-]+:.*?## ' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "  %-12s %s\n", $$1, $$2}'
@@ -31,6 +31,10 @@ lint: ## Static analysis (analyzers run as part of the .NET build)
 	$(DOTNET) format --verify-no-changes --no-restore
 	$(PNPM) lint
 	$(PNPM) typecheck
+	python3 -I .claude/skills/adr-draft/scripts/check_adr.py
+
+adr-check: ## Validate ADRs in docs/decisions against the repo conventions
+	python3 -I .claude/skills/adr-draft/scripts/check_adr.py
 
 format: ## Auto-format all code
 	$(DOTNET) format

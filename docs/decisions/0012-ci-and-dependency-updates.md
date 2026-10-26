@@ -68,7 +68,7 @@ The repository is hosted on GitHub (`mgasca/calendar`). Every change should be v
 
 Implementation:
 
-* `.github/workflows/ci.yml` runs parallel `backend` and `frontend` jobs: locked/frozen restore, build, format check, lint, tests with coverage (uploaded as artifacts), and a check that `contracts/` is up to date. An aggregate **`CI result`** job is the single required status check. It also runs on `merge_group` for a future merge queue.
+* `.github/workflows/ci.yml` runs parallel `backend` and `frontend` jobs: locked/frozen restore, build, format check, lint, tests with coverage (uploaded as artifacts), and a check that `contracts/` is up to date. A `docs` job validates ADRs with `check_adr.py` ([ADR-0000](0000-use-markdown-architectural-decision-records.md)). An aggregate **`CI result`** job is the single required status check. It also runs on `merge_group` for a future merge queue.
 * `.github/workflows/codeql.yml` runs CodeQL (`security-extended`) for `csharp` (manual build), `javascript-typescript` and `actions` on pushes, PRs and weekly.
 * `.github/workflows/dependency-review.yml` fails PRs that introduce dependencies with known vulnerabilities of moderate severity or higher.
 * `.github/dependabot.yml` covers `nuget` (/backend), `npm` (/frontend) and `github-actions`, with minor/patch updates grouped and labelled by area. Majors arrive as individual PRs.

@@ -80,11 +80,20 @@ jobs:
           path: frontend/**/coverage
           if-no-files-found: ignore
 
+  docs:
+    name: Docs
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v7
+      - name: ADRs follow conventions
+        run: python3 -I .claude/skills/adr-draft/scripts/check_adr.py
+
   # Single stable check for branch protection, so adding/renaming jobs doesn't require ruleset changes.
   result:
     name: CI result
     if: ${{ always() }}
-    needs: [backend, frontend]
+    needs: [backend, frontend, docs]
     runs-on: ubuntu-latest
     steps:
       - name: All jobs succeeded

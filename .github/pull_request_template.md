@@ -11,4 +11,4 @@
 - [ ] `make check` passes locally
 - [ ] Tests added or updated for behavior changes
 - [ ] `contracts/openapi.json` regenerated (`make contracts`) if the API changed
-- [ ] ADR added in `docs/decisions/` for significant architectural/tooling decisions
+- [ ] ADR added in `docs/decisions/` for significant architectural/tooling decisions (drivers, driver × option rating table, pros/cons per option)

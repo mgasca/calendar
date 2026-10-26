@@ -20,3 +20,4 @@ Every record lists its **decision drivers**, rates each option against them in a
 | [0011](0011-make-as-top-level-task-runner.md) | GNU Make as a thin top-level task runner | accepted |
 | [0012](0012-ci-and-dependency-updates.md) | GitHub Actions CI, security scanning and Dependabot | accepted |
 | [0013](0013-public-repository-for-github-security-features.md) | Public GitHub repository to enable branch rules and security scanning | accepted |
+| [0014](0014-postgresql-with-ef-core-data-store.md) | PostgreSQL with EF Core as the backend data store | proposed |

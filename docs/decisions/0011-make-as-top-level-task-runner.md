@@ -38,7 +38,7 @@ Chosen option: "GNU Make", because on the supported platform (D1) it needs no in
 | D4 Discoverability | ★★★ | ★★★ | ★★☆ | ★☆☆ | ★☆☆ |
 | D5 Expressiveness | ★★☆ | ★★★ | ★☆☆ | ★★★ | ☆☆☆ |
 
-Targets are `doctor` (verifies dotnet, Node and pnpm against the repo pins; `setup` runs it first), `setup`, `build`, `test`, `lint`, `format`, `contracts`, `check`, `dev-api`, `dev-web` and `clean`. The `dotnet` commands run inside `backend/` so `global.json` applies.
+Targets are `doctor` (verifies dotnet, Node and pnpm against the repo pins; `setup` runs it first), `setup`, `build`, `test`, `lint`, `adr-check`, `format`, `contracts`, `check`, `dev-api`, `dev-web` and `clean`. The `dotnet` commands run inside `backend/` so `global.json` applies.
 
 ### Consequences
 

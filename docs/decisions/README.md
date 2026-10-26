@@ -20,3 +20,6 @@ Every record lists its **decision drivers**, rates each option against them in a
 | [0011](0011-make-as-top-level-task-runner.md) | GNU Make as a thin top-level task runner | accepted |
 | [0012](0012-ci-and-dependency-updates.md) | GitHub Actions CI, security scanning and Dependabot | accepted |
 | [0013](0013-public-repository-for-github-security-features.md) | Public GitHub repository to enable branch rules and security scanning | accepted |
+| [0014](0014-postgresql-database-engine.md) | PostgreSQL as the database engine, with SQLite on a volume as a budget fallback | proposed |
+| [0015](0015-ef-core-data-access.md) | EF Core 10 with code-first migrations for data access | proposed |
+| [0016](0016-local-database-provisioning.md) | Docker Compose for local databases and Testcontainers for tests; adopt .NET Aspire later | proposed |

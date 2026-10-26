@@ -20,7 +20,7 @@ The sources of truth are in the repo. Read them at the start of every run, becau
 - Read the three files above.
 - `grep -ril <topic> docs/decisions` to find related ADRs; read them. A new ADR must not silently contradict an accepted one. If it changes an earlier decision, it **supersedes** it (see "After review").
 - Look at the code and config the decision touches, so the context and implementation notes are accurate.
-- Get the next number: `python3 -I .claude/skills/adr-draft/scripts/check_adr.py --next-number`.
+- Get the next number: `make adr-check ARGS=--next-number` or `dotnet run .claude/skills/adr-draft/scripts/check-adr/check-adr.cs -- --next-number`.
 
 ### 2. Scope: one decision per ADR
 
@@ -118,7 +118,7 @@ Add a row to `docs/decisions/README.md`. Its title must equal the H1 and its sta
 ### 8. Validate
 
 ```sh
-python3 -I .claude/skills/adr-draft/scripts/check_adr.py --fix-links
+dotnet run .claude/skills/adr-draft/scripts/check-adr/check-adr.cs -- --fix-links
 ```
 
 It checks every ADR plus repo-level rules:
@@ -172,3 +172,19 @@ Then tell the user, in plain language:
 - **The user approves:** set `status: accepted` in the front matter **and** the index, in the same PR, *before* it merges. ADRs 0014–0016 were merged still marked `proposed`; don't repeat that.
 - **Superseding an ADR:** the new ADR explains what changed. The old one becomes `status: superseded by [ADR-NNNN](NNNN-….md)`, and the index row is updated. Don't edit the old decision's substance.
 - **Implementation:** goes in a separate PR after the ADR is accepted. Its description links the ADR.
+
+## Bundled tooling
+
+The validator is a .NET 10 file-based app, and the skill folder carries everything it needs ([ADR-0017](../../../docs/decisions/0017-dotnet-file-based-apps-for-repo-tooling.md)):
+
+```text
+Directory.Build.props, .editorconfig, NuGet.config   # analyzers, warnings as errors, style, package sources
+scripts/check-adr/check-adr.cs                        # CLI entry point (#! line, so ./check-adr.cs also works)
+scripts/check-adr/AdrValidator.cs                     # all rules; pure logic, unit-tested
+tests/check-adr.tests.cs                              # xUnit v3 tests; #:include the validator logic
+tests/fixtures/valid/                                 # minimal valid ADR set that the tests mutate
+```
+
+- **Requirement:** the .NET 10 SDK. The first run on a machine compiles for about 30 s; after that, runs take under a second.
+- **Changing a rule:** edit `AdrValidator.cs`, add or adjust an `[InlineData]` case in the tests, then run `make tooling` (tests and whitespace check) and `make adr-check`.
+- **Package versions** in `Directory.Build.props` and the `#:package` directives are pinned exactly. Bump them by hand alongside `backend/Directory.Packages.props` until Dependabot support is confirmed (ADR-0017).

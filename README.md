@@ -57,6 +57,8 @@ make doctor                    # everything should be ✓
 | Run web UI (proxies `/api` to the API) | `make dev-web` |
 | Tests | `make test` |
 | Lint / static analysis | `make lint` |
+| Test and lint repo tooling | `make tooling` |
+| Validate ADRs | `make adr-check` |
 | Format | `make format` |
 | Regenerate contract + TS client | `make contracts` |
 | Everything CI runs | `make check` |
@@ -80,3 +82,5 @@ make doctor                    # everything should be ✓
 | Integration tests | `WebApplicationFactory` | MSW-mocked API |
 | Coverage | Microsoft.Testing.Extensions.CodeCoverage | `@vitest/coverage-v8` |
 | Dependency updates | Dependabot (`nuget`) | Dependabot (`npm`) |
+
+**Repo tooling** (skill scripts in `.claude/skills/<skill>/`, other tools in `tools/<name>/`) uses .NET 10 file-based apps with folder-local analyzers and xUnit tests ([ADR-0017](docs/decisions/0017-dotnet-file-based-apps-for-repo-tooling.md)). The only exception is the bootstrap check `tools/doctor/doctor.sh`, which is shell linted with shellcheck.

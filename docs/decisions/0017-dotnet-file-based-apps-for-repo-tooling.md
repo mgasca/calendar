@@ -119,6 +119,8 @@ tools/                             # repo-wide tools
 
 ### Implementation plan (separate PR after acceptance)
 
+Steps 1–4 are implemented. Step 5's result will be recorded here once Dependabot has run against the new `nuget` entry for the tool folders.
+
 1. Port `check_adr.py` to `.claude/skills/adr-draft/scripts/check-adr/check-adr.cs` and `AdrValidator.cs`, keeping its behaviour and CLI flags (`--fix-links`, `--next-number`, `--dir`).
 2. Turn the manual negative test from #5 into `tests/check-adr.tests.cs`, with fixtures: one valid ADR and one ADR per rule violation.
 3. Add the `Directory.Build.props` and `.editorconfig` files for the skill and for `tools/`. Move `scripts/doctor.sh` to `tools/doctor/doctor.sh`.

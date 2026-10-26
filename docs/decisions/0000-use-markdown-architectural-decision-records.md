@@ -51,7 +51,7 @@ Project conventions on top of MADR:
 
 ### Confirmation
 
-New significant decisions arrive in PRs as `docs/decisions/NNNN-title-with-dashes.md`, copied from the template (or drafted with the `adr-draft` agent skill in `.claude/skills/adr-draft/`). The skill's validator, `check_adr.py`, runs in `make lint` and in the CI `Docs` job. It enforces front matter, section order, driver format, rating-table shape and star values, one pros/cons section per option, driver coverage, linked cross-references and the index. Reviewers still judge whether the ratings are fair. The PR template includes an ADR checklist item.
+New significant decisions arrive in PRs as `docs/decisions/NNNN-title-with-dashes.md`, copied from the template (or drafted with the `adr-draft` agent skill in `.claude/skills/adr-draft/`). The skill's validator, `scripts/check-adr/check-adr.cs` (a .NET file-based app with its own tests, per [ADR-0017](0017-dotnet-file-based-apps-for-repo-tooling.md)), runs as `make adr-check`, in `make lint` and in the CI `Tooling` job. It enforces front matter, section order, driver format, rating-table shape and star values, one pros/cons section per option, driver coverage, linked cross-references and the index. Reviewers still judge whether the ratings are fair. The PR template includes an ADR checklist item.
 
 ## Pros and Cons of the Options
 

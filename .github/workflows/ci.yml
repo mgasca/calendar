@@ -80,20 +80,28 @@ jobs:
           path: frontend/**/coverage
           if-no-files-found: ignore
 
-  docs:
-    name: Docs
+  tooling:
+    name: Tooling
     runs-on: ubuntu-latest
-    timeout-minutes: 5
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v7
+      # No repo-root global.json: tools target the latest .NET 10 SDK (ADR-0017).
+      - uses: actions/setup-dotnet@v6
+        with:
+          dotnet-version: 10.0.x
+      - name: Ensure shellcheck
+        run: command -v shellcheck || (sudo apt-get update -q && sudo apt-get install -yq shellcheck)
+      - name: Test and lint tooling
+        run: make tooling
       - name: ADRs follow conventions
-        run: python3 -I .claude/skills/adr-draft/scripts/check_adr.py
+        run: make adr-check
 
   # Single stable check for branch protection, so adding/renaming jobs doesn't require ruleset changes.
   result:
     name: CI result
     if: ${{ always() }}
-    needs: [backend, frontend, docs]
+    needs: [backend, frontend, tooling]
     runs-on: ubuntu-latest
     steps:
       - name: All jobs succeeded

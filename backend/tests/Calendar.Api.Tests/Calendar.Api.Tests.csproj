@@ -6,6 +6,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\src\Calendar.Api\Calendar.Api.csproj" />
+    <ProjectReference Include="..\Calendar.Testing\Calendar.Testing.csproj" />
   </ItemGroup>
 
 </Project>

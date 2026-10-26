@@ -10,6 +10,16 @@
     <PackageVersion Include="Microsoft.Extensions.ApiDescription.Server" Version="10.0.14" />
   </ItemGroup>
 
+  <ItemGroup Label="Data access">
+    <PackageVersion Include="Microsoft.EntityFrameworkCore.Design" Version="10.0.14" />
+    <!-- Transitive pins: keep the EF Core runtime in step with Design / dotnet-ef (Npgsql 10.0.x floors it lower). -->
+    <PackageVersion Include="Microsoft.EntityFrameworkCore" Version="10.0.14" />
+    <PackageVersion Include="Microsoft.EntityFrameworkCore.Relational" Version="10.0.14" />
+    <PackageVersion Include="Microsoft.EntityFrameworkCore.Abstractions" Version="10.0.14" />
+    <PackageVersion Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="10.0.3" />
+    <PackageVersion Include="EFCore.NamingConventions" Version="10.0.1" />
+  </ItemGroup>
+
   <ItemGroup Label="Analyzers">
     <PackageVersion Include="SonarAnalyzer.CSharp" Version="10.35.0.4138" />
     <PackageVersion Include="NSubstitute.Analyzers.CSharp" Version="1.0.17" />
@@ -20,6 +30,8 @@
     <PackageVersion Include="Microsoft.Testing.Extensions.CodeCoverage" Version="18.12.0" />
     <PackageVersion Include="NSubstitute" Version="6.2.0" />
     <PackageVersion Include="Shouldly" Version="4.3.0" />
+    <PackageVersion Include="Respawn" Version="7.0.0" />
+    <PackageVersion Include="Testcontainers.PostgreSql" Version="4.16.0" />
     <PackageVersion Include="xunit.v3.mtp-v2" Version="4.0.2" />
   </ItemGroup>
 </Project>

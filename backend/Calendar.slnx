@@ -2,9 +2,12 @@
   <Folder Name="/src/">
     <Project Path="src/Calendar.Api/Calendar.Api.csproj" />
     <Project Path="src/Calendar.Domain/Calendar.Domain.csproj" />
+    <Project Path="src/Calendar.Infrastructure/Calendar.Infrastructure.csproj" />
   </Folder>
   <Folder Name="/tests/">
+    <Project Path="tests/Calendar.Testing/Calendar.Testing.csproj" />
     <Project Path="tests/Calendar.Api.Tests/Calendar.Api.Tests.csproj" />
     <Project Path="tests/Calendar.Domain.Tests/Calendar.Domain.Tests.csproj" />
+    <Project Path="tests/Calendar.Infrastructure.Tests/Calendar.Infrastructure.Tests.csproj" />
   </Folder>
 </Solution>

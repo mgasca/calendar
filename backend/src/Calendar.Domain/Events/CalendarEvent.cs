@@ -12,110 +12,110 @@ namespace Calendar.Domain.Events;
 /// </remarks>
 public sealed class CalendarEvent
 {
-    private CalendarEvent()
+  private CalendarEvent()
+  {
+    Title = string.Empty;
+  }
+
+  public Guid Id { get; private set; }
+
+  public string Title { get; private set; }
+
+  public string? Location { get; private set; }
+
+  public string? Notes { get; private set; }
+
+  public bool IsAllDay { get; private set; }
+
+  /// <summary>Timed events only: inclusive start, UTC (offset zero).</summary>
+  public DateTimeOffset? Start { get; private set; }
+
+  /// <summary>Timed events only: exclusive end, UTC (offset zero), after <see cref="Start"/>.</summary>
+  public DateTimeOffset? End { get; private set; }
+
+  /// <summary>Timed events only: IANA zone id the event was created in.</summary>
+  public string? TimeZoneId { get; private set; }
+
+  /// <summary>All-day events only: first date (floating).</summary>
+  public DateOnly? StartDate { get; private set; }
+
+  /// <summary>All-day events only: exclusive end date, after <see cref="StartDate"/>.</summary>
+  public DateOnly? EndDate { get; private set; }
+
+  /// <summary>Length of a timed event; <c>null</c> for all-day events.</summary>
+  public TimeSpan? Duration => End - Start;
+
+  /// <summary>Creates a timed event. Instants are normalized to UTC; <paramref name="timeZoneId"/> must be IANA.</summary>
+  public static CalendarEvent Create(
+      string title,
+      DateTimeOffset start,
+      DateTimeOffset end,
+      string timeZoneId,
+      string? location = null,
+      string? notes = null)
+  {
+    var normalizedTitle = Validation.NormalizeTitle(title, nameof(title));
+    if (end <= start)
     {
-        Title = string.Empty;
+      throw new ArgumentException("Event end must be after its start.", nameof(end));
     }
 
-    public Guid Id { get; private set; }
+    var zone = TimeZones.FindIana(timeZoneId);
 
-    public string Title { get; private set; }
-
-    public string? Location { get; private set; }
-
-    public string? Notes { get; private set; }
-
-    public bool IsAllDay { get; private set; }
-
-    /// <summary>Timed events only: inclusive start, UTC (offset zero).</summary>
-    public DateTimeOffset? Start { get; private set; }
-
-    /// <summary>Timed events only: exclusive end, UTC (offset zero), after <see cref="Start"/>.</summary>
-    public DateTimeOffset? End { get; private set; }
-
-    /// <summary>Timed events only: IANA zone id the event was created in.</summary>
-    public string? TimeZoneId { get; private set; }
-
-    /// <summary>All-day events only: first date (floating).</summary>
-    public DateOnly? StartDate { get; private set; }
-
-    /// <summary>All-day events only: exclusive end date, after <see cref="StartDate"/>.</summary>
-    public DateOnly? EndDate { get; private set; }
-
-    /// <summary>Length of a timed event; <c>null</c> for all-day events.</summary>
-    public TimeSpan? Duration => End - Start;
-
-    /// <summary>Creates a timed event. Instants are normalized to UTC; <paramref name="timeZoneId"/> must be IANA.</summary>
-    public static CalendarEvent Create(
-        string title,
-        DateTimeOffset start,
-        DateTimeOffset end,
-        string timeZoneId,
-        string? location = null,
-        string? notes = null)
+    return new CalendarEvent
     {
-        var normalizedTitle = Validation.NormalizeTitle(title, nameof(title));
-        if (end <= start)
-        {
-            throw new ArgumentException("Event end must be after its start.", nameof(end));
-        }
+      Id = Guid.NewGuid(),
+      Title = normalizedTitle,
+      Location = Validation.NormalizeOptional(location, Validation.MaxLocationLength, nameof(location)),
+      Notes = Validation.NormalizeOptional(notes, Validation.MaxNotesLength, nameof(notes)),
+      IsAllDay = false,
+      Start = start.ToUniversalTime(),
+      End = end.ToUniversalTime(),
+      TimeZoneId = zone.Id,
+    };
+  }
 
-        var zone = TimeZones.FindIana(timeZoneId);
-
-        return new CalendarEvent
-        {
-            Id = Guid.NewGuid(),
-            Title = normalizedTitle,
-            Location = Validation.NormalizeOptional(location, Validation.MaxLocationLength, nameof(location)),
-            Notes = Validation.NormalizeOptional(notes, Validation.MaxNotesLength, nameof(notes)),
-            IsAllDay = false,
-            Start = start.ToUniversalTime(),
-            End = end.ToUniversalTime(),
-            TimeZoneId = zone.Id,
-        };
+  /// <summary>Creates an all-day event covering <c>[startDate, endDate)</c> (end exclusive).</summary>
+  public static CalendarEvent CreateAllDay(
+      string title,
+      DateOnly startDate,
+      DateOnly endDate,
+      string? location = null,
+      string? notes = null)
+  {
+    var normalizedTitle = Validation.NormalizeTitle(title, nameof(title));
+    if (endDate <= startDate)
+    {
+      throw new ArgumentException("All-day event end date must be after its start date (end is exclusive).", nameof(endDate));
     }
 
-    /// <summary>Creates an all-day event covering <c>[startDate, endDate)</c> (end exclusive).</summary>
-    public static CalendarEvent CreateAllDay(
-        string title,
-        DateOnly startDate,
-        DateOnly endDate,
-        string? location = null,
-        string? notes = null)
+    return new CalendarEvent
     {
-        var normalizedTitle = Validation.NormalizeTitle(title, nameof(title));
-        if (endDate <= startDate)
-        {
-            throw new ArgumentException("All-day event end date must be after its start date (end is exclusive).", nameof(endDate));
-        }
+      Id = Guid.NewGuid(),
+      Title = normalizedTitle,
+      Location = Validation.NormalizeOptional(location, Validation.MaxLocationLength, nameof(location)),
+      Notes = Validation.NormalizeOptional(notes, Validation.MaxNotesLength, nameof(notes)),
+      IsAllDay = true,
+      StartDate = startDate,
+      EndDate = endDate,
+    };
+  }
 
-        return new CalendarEvent
-        {
-            Id = Guid.NewGuid(),
-            Title = normalizedTitle,
-            Location = Validation.NormalizeOptional(location, Validation.MaxLocationLength, nameof(location)),
-            Notes = Validation.NormalizeOptional(notes, Validation.MaxNotesLength, nameof(notes)),
-            IsAllDay = true,
-            StartDate = startDate,
-            EndDate = endDate,
-        };
+  /// <summary>
+  /// True when both events are of the same kind and their spans intersect (half-open, so back-to-back events do
+  /// not overlap). A timed and an all-day event never overlap here: all-day dates are floating and have no
+  /// instant range without picking a zone.
+  /// </summary>
+  public bool Overlaps(CalendarEvent other)
+  {
+    ArgumentNullException.ThrowIfNull(other);
+    if (IsAllDay != other.IsAllDay)
+    {
+      return false;
     }
 
-    /// <summary>
-    /// True when both events are of the same kind and their spans intersect (half-open, so back-to-back events do
-    /// not overlap). A timed and an all-day event never overlap here: all-day dates are floating and have no
-    /// instant range without picking a zone.
-    /// </summary>
-    public bool Overlaps(CalendarEvent other)
-    {
-        ArgumentNullException.ThrowIfNull(other);
-        if (IsAllDay != other.IsAllDay)
-        {
-            return false;
-        }
-
-        return IsAllDay
-            ? StartDate < other.EndDate && other.StartDate < EndDate
-            : Start < other.End && other.Start < End;
-    }
+    return IsAllDay
+        ? StartDate < other.EndDate && other.StartDate < EndDate
+        : Start < other.End && other.Start < End;
+  }
 }

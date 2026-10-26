@@ -17,100 +17,100 @@ namespace Calendar.Domain.Time;
 /// </remarks>
 public readonly record struct DayWindow
 {
-    private DayWindow(DateOnly date, DateTimeOffset start, DateTimeOffset end)
+  private DayWindow(DateOnly date, DateTimeOffset start, DateTimeOffset end)
+  {
+    Date = date;
+    Start = start;
+    End = end;
+  }
+
+  /// <summary>The local calendar date.</summary>
+  public DateOnly Date { get; }
+
+  /// <summary>Inclusive start, UTC (offset zero).</summary>
+  public DateTimeOffset Start { get; }
+
+  /// <summary>Exclusive end, UTC (offset zero).</summary>
+  public DateTimeOffset End { get; }
+
+  public TimeSpan Length => End - Start;
+
+  public static DayWindow Create(DateOnly date, TimeZoneInfo zone)
+  {
+    ArgumentNullException.ThrowIfNull(zone);
+    return new DayWindow(date, StartOfDay(date, zone), StartOfDay(date.AddDays(1), zone));
+  }
+
+  /// <summary>True when <paramref name="instant"/> is within <c>[Start, End)</c>.</summary>
+  public bool Contains(DateTimeOffset instant) => instant >= Start && instant < End;
+
+  // The largest UTC offset is +14h and the smallest -12h, so a local date's first instant lies within
+  // [midnight - 15h, midnight + 13h] when midnight is read as a UTC clock time.
+  private static readonly TimeSpan SearchBefore = TimeSpan.FromHours(15);
+  private static readonly TimeSpan SearchAfter = TimeSpan.FromHours(13);
+  private static readonly TimeSpan SampleStep = TimeSpan.FromMinutes(30);
+
+  /// <summary>
+  /// The earliest instant whose local date in <paramref name="zone"/> is on or after <paramref name="date"/>.
+  /// That is local midnight when it exists (its first occurrence if it repeats), the transition instant when the
+  /// clock jumps over midnight (including a jump that skips the whole date, which gives an empty window), and it
+  /// never depends on <c>IsInvalidTime</c>, which misses gaps that begin exactly at 00:00 in some zones.
+  /// </summary>
+  private static DateTimeOffset StartOfDay(DateOnly date, TimeZoneInfo zone)
+  {
+    var midnight = DateTime.SpecifyKind(date.ToDateTime(TimeOnly.MinValue), DateTimeKind.Utc);
+    var first = new DateTimeOffset(midnight - SearchBefore);
+    var last = new DateTimeOffset(midnight + SearchAfter);
+
+    var firstOffset = zone.GetUtcOffset(first);
+    if (firstOffset == zone.GetUtcOffset(last))
     {
-        Date = date;
-        Start = start;
-        End = end;
+      // No transition in the window (the overwhelmingly common case): local midnight is unambiguous.
+      return new DateTimeOffset(midnight - firstOffset, TimeSpan.Zero);
     }
 
-    /// <summary>The local calendar date.</summary>
-    public DateOnly Date { get; }
-
-    /// <summary>Inclusive start, UTC (offset zero).</summary>
-    public DateTimeOffset Start { get; }
-
-    /// <summary>Exclusive end, UTC (offset zero).</summary>
-    public DateTimeOffset End { get; }
-
-    public TimeSpan Length => End - Start;
-
-    public static DayWindow Create(DateOnly date, TimeZoneInfo zone)
+    // Boundaries of "local date >= date" are local midnight under some offset in force, or a transition instant.
+    var candidates = new List<DateTimeOffset>();
+    var previous = first;
+    var previousOffset = firstOffset;
+    candidates.Add(new DateTimeOffset(midnight - previousOffset, TimeSpan.Zero));
+    while (previous < last)
     {
-        ArgumentNullException.ThrowIfNull(zone);
-        return new DayWindow(date, StartOfDay(date, zone), StartOfDay(date.AddDays(1), zone));
+      var t = previous + SampleStep > last ? last : previous + SampleStep;
+      var offset = zone.GetUtcOffset(t);
+      if (offset != previousOffset)
+      {
+        candidates.Add(new DateTimeOffset(midnight - offset, TimeSpan.Zero));
+        candidates.Add(FindTransition(zone, previous, t, previousOffset));
+      }
+
+      (previous, previousOffset) = (t, offset);
     }
 
-    /// <summary>True when <paramref name="instant"/> is within <c>[Start, End)</c>.</summary>
-    public bool Contains(DateTimeOffset instant) => instant >= Start && instant < End;
+    return candidates.Where(c => LocalDate(c, zone) >= date).Min();
+  }
 
-    // The largest UTC offset is +14h and the smallest -12h, so a local date's first instant lies within
-    // [midnight - 15h, midnight + 13h] when midnight is read as a UTC clock time.
-    private static readonly TimeSpan SearchBefore = TimeSpan.FromHours(15);
-    private static readonly TimeSpan SearchAfter = TimeSpan.FromHours(13);
-    private static readonly TimeSpan SampleStep = TimeSpan.FromMinutes(30);
+  private static DateOnly LocalDate(DateTimeOffset instant, TimeZoneInfo zone) =>
+      DateOnly.FromDateTime(TimeZoneInfo.ConvertTime(instant, zone).DateTime);
 
-    /// <summary>
-    /// The earliest instant whose local date in <paramref name="zone"/> is on or after <paramref name="date"/>.
-    /// That is local midnight when it exists (its first occurrence if it repeats), the transition instant when the
-    /// clock jumps over midnight (including a jump that skips the whole date, which gives an empty window), and it
-    /// never depends on <c>IsInvalidTime</c>, which misses gaps that begin exactly at 00:00 in some zones.
-    /// </summary>
-    private static DateTimeOffset StartOfDay(DateOnly date, TimeZoneInfo zone)
+  /// <summary>First instant in <c>(before, after]</c> whose offset differs from <paramref name="offsetBefore"/>.</summary>
+  private static DateTimeOffset FindTransition(TimeZoneInfo zone, DateTimeOffset before, DateTimeOffset after, TimeSpan offsetBefore)
+  {
+    var low = before.UtcTicks;
+    var high = after.UtcTicks;
+    while (high - low > 1)
     {
-        var midnight = DateTime.SpecifyKind(date.ToDateTime(TimeOnly.MinValue), DateTimeKind.Utc);
-        var first = new DateTimeOffset(midnight - SearchBefore);
-        var last = new DateTimeOffset(midnight + SearchAfter);
-
-        var firstOffset = zone.GetUtcOffset(first);
-        if (firstOffset == zone.GetUtcOffset(last))
-        {
-            // No transition in the window (the overwhelmingly common case): local midnight is unambiguous.
-            return new DateTimeOffset(midnight - firstOffset, TimeSpan.Zero);
-        }
-
-        // Boundaries of "local date >= date" are local midnight under some offset in force, or a transition instant.
-        var candidates = new List<DateTimeOffset>();
-        var previous = first;
-        var previousOffset = firstOffset;
-        candidates.Add(new DateTimeOffset(midnight - previousOffset, TimeSpan.Zero));
-        while (previous < last)
-        {
-            var t = previous + SampleStep > last ? last : previous + SampleStep;
-            var offset = zone.GetUtcOffset(t);
-            if (offset != previousOffset)
-            {
-                candidates.Add(new DateTimeOffset(midnight - offset, TimeSpan.Zero));
-                candidates.Add(FindTransition(zone, previous, t, previousOffset));
-            }
-
-            (previous, previousOffset) = (t, offset);
-        }
-
-        return candidates.Where(c => LocalDate(c, zone) >= date).Min();
+      var mid = low + ((high - low) / 2);
+      if (zone.GetUtcOffset(new DateTimeOffset(mid, TimeSpan.Zero)) == offsetBefore)
+      {
+        low = mid;
+      }
+      else
+      {
+        high = mid;
+      }
     }
 
-    private static DateOnly LocalDate(DateTimeOffset instant, TimeZoneInfo zone) =>
-        DateOnly.FromDateTime(TimeZoneInfo.ConvertTime(instant, zone).DateTime);
-
-    /// <summary>First instant in <c>(before, after]</c> whose offset differs from <paramref name="offsetBefore"/>.</summary>
-    private static DateTimeOffset FindTransition(TimeZoneInfo zone, DateTimeOffset before, DateTimeOffset after, TimeSpan offsetBefore)
-    {
-        var low = before.UtcTicks;
-        var high = after.UtcTicks;
-        while (high - low > 1)
-        {
-            var mid = low + ((high - low) / 2);
-            if (zone.GetUtcOffset(new DateTimeOffset(mid, TimeSpan.Zero)) == offsetBefore)
-            {
-                low = mid;
-            }
-            else
-            {
-                high = mid;
-            }
-        }
-
-        return new DateTimeOffset(high, TimeSpan.Zero);
-    }
+    return new DateTimeOffset(high, TimeSpan.Zero);
+  }
 }

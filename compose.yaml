@@ -1,0 +1,37 @@
+# Local backing services for development (ADR-0016). Start with `make db-up`.
+#
+# REVISIT TRIGGER: when a second backing service (Redis, a message queue, blob storage, an identity
+# provider, ...) is added, re-evaluate .NET Aspire in a new ADR that supersedes the provisioning part of
+# ADR-0016 instead of growing this file by hand.
+#
+# The postgres image tag below is the single source of truth: Testcontainers reads it from this file, and
+# Dependabot (docker ecosystem) bumps it. Credentials come from the untracked .env (see .env.example).
+name: calendar
+
+services:
+  postgres:
+    image: postgres:18.6-alpine
+    restart: unless-stopped
+    ports:
+      # Loopback only: the database must not be reachable from the network.
+      - "127.0.0.1:5432:5432"
+    environment:
+      # Bootstrap superuser; the application never uses it.
+      POSTGRES_USER: ${POSTGRES_ADMIN_USER:?copy .env.example to .env}
+      POSTGRES_PASSWORD: ${POSTGRES_ADMIN_PASSWORD:?copy .env.example to .env}
+      POSTGRES_DB: ${POSTGRES_DB:-calendar}
+      CALENDAR_MIGRATOR_PASSWORD: ${CALENDAR_MIGRATOR_PASSWORD:?copy .env.example to .env}
+      CALENDAR_APP_PASSWORD: ${CALENDAR_APP_PASSWORD:?copy .env.example to .env}
+    volumes:
+      - calendar-pgdata:/var/lib/postgresql
+      # Runs once, on first start of an empty volume (`make db-reset` to re-run it).
+      - ./docker/postgres/init:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U \"$$POSTGRES_USER\" -d \"$$POSTGRES_DB\""]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 10s
+
+volumes:
+  calendar-pgdata:

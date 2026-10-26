@@ -2,10 +2,12 @@
 
   <ItemGroup>
     <PackageReference Include="Microsoft.AspNetCore.Mvc.Testing" />
+    <PackageReference Include="Microsoft.Extensions.TimeProvider.Testing" />
   </ItemGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\..\src\Calendar.Api\Calendar.Api.csproj" />
+    <ProjectReference Include="..\Calendar.Testing\Calendar.Testing.csproj" />
   </ItemGroup>
 
 </Project>

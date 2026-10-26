@@ -45,6 +45,15 @@ else
   fail "pnpm not on PATH and corepack not available" "Install Node $want_node (bundles Corepack), then run 'corepack enable pnpm'"
 fi
 
+# Docker: needed for the local database (make db-up) and the Testcontainers-based tests (ADR-0016).
+if ! command -v docker >/dev/null 2>&1; then
+  fail "docker not found" "Install Docker Engine (or Docker Desktop with WSL integration): https://docs.docker.com/engine/install/"
+elif ! docker info >/dev/null 2>&1; then
+  fail "docker is installed but the daemon is not reachable" "Start Docker (e.g. 'sudo service docker start', or start Docker Desktop) and make sure your user may access the socket"
+else
+  ok "Docker $(docker version --format '{{.Server.Version}}' 2>/dev/null) (daemon reachable)"
+fi
+
 if [ "$problems" -gt 0 ]; then
   echo "Found $problems problem(s). See the README 'Prerequisites' section."
   exit 1

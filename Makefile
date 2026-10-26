@@ -5,14 +5,19 @@ FRONTEND := frontend
 PNPM     := pnpm --dir $(FRONTEND)
 # Run dotnet inside backend/ so backend/global.json (SDK pin, test runner) applies.
 DOTNET   := cd $(BACKEND) && dotnet
+# Repo tooling: .NET file-based apps kept in their skill folder or tools/<name>/ (ADR-0017).
+ADR_SKILL := .claude/skills/adr-draft
+ADR_CHECK := dotnet run $(ADR_SKILL)/scripts/check-adr/check-adr.cs --
+TOOL_DIRS := $(ADR_SKILL) tools
+SHELL_TOOLS := tools/doctor/doctor.sh
 
-.PHONY: help doctor setup build test lint adr-check format check contracts dev-api dev-web clean
+.PHONY: help doctor setup build test lint tooling adr-check format check contracts dev-api dev-web clean
 
 help: ## List targets
 	@grep -hE '^[a-zA-Z_-]+:.*?## ' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "  %-12s %s\n", $$1, $$2}'
 
 doctor: ## Check that dotnet, node and pnpm match the pinned versions
-	@./scripts/doctor.sh
+	@./tools/doctor/doctor.sh
 
 setup: doctor ## Restore .NET packages and install frontend dependencies
 	$(DOTNET) restore
@@ -31,13 +36,21 @@ lint: ## Static analysis (analyzers run as part of the .NET build)
 	$(DOTNET) format --verify-no-changes --no-restore
 	$(PNPM) lint
 	$(PNPM) typecheck
-	python3 -I .claude/skills/adr-draft/scripts/check_adr.py
+	$(MAKE) --no-print-directory tooling adr-check
 
-adr-check: ## Validate ADRs in docs/decisions against the repo conventions
-	python3 -I .claude/skills/adr-draft/scripts/check_adr.py
+tooling: ## Test and lint repo tooling (skill scripts, tools/)
+	dotnet run $(ADR_SKILL)/tests/check-adr.tests.cs
+	@for d in $(TOOL_DIRS); do echo "dotnet format whitespace $$d"; dotnet format whitespace --folder --verify-no-changes $$d || exit 1; done
+	@if command -v shellcheck >/dev/null 2>&1; then echo "shellcheck $(SHELL_TOOLS)"; shellcheck $(SHELL_TOOLS); \
+	elif [ -n "$$CI" ]; then echo "shellcheck is required in CI" >&2; exit 1; \
+	else echo "shellcheck not installed: skipped locally (CI runs it)"; fi
+
+adr-check: ## Validate ADRs in docs/decisions (pass flags via ARGS=, e.g. ARGS=--fix-links)
+	$(ADR_CHECK) $(ARGS)
 
 format: ## Auto-format all code
 	$(DOTNET) format
+	@for d in $(TOOL_DIRS); do dotnet format whitespace --folder $$d; done
 	$(PNPM) format
 
 contracts: ## Regenerate OpenAPI contract and TypeScript client

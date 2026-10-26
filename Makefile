@@ -6,12 +6,15 @@ PNPM     := pnpm --dir $(FRONTEND)
 # Run dotnet inside backend/ so backend/global.json (SDK pin, test runner) applies.
 DOTNET   := cd $(BACKEND) && dotnet
 
-.PHONY: help setup build test lint format check contracts dev-api dev-web clean
+.PHONY: help doctor setup build test lint format check contracts dev-api dev-web clean
 
 help: ## List targets
 	@grep -hE '^[a-zA-Z_-]+:.*?## ' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "  %-12s %s\n", $$1, $$2}'
 
-setup: ## Restore .NET packages and install frontend dependencies
+doctor: ## Check that dotnet, node and pnpm match the pinned versions
+	@./scripts/doctor.sh
+
+setup: doctor ## Restore .NET packages and install frontend dependencies
 	$(DOTNET) restore
 	$(PNPM) install --frozen-lockfile
 

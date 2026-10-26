@@ -1,0 +1,6 @@
+* text=auto eol=lf
+*.{cmd,bat} text eol=crlf
+*.{png,jpg,jpeg,gif,ico,woff,woff2} binary
+pnpm-lock.yaml linguist-generated=true -diff
+**/packages.lock.json linguist-generated=true -diff
+**/*.gen.ts linguist-generated=true

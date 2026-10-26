@@ -1,10 +1,15 @@
 import { ApiStatus } from './features/health/ApiStatus.tsx';
+import { TodayView } from './features/today/TodayView.tsx';
 
 export function App() {
   return (
-    <main>
-      <h1>Calendar</h1>
-      <ApiStatus />
-    </main>
+    <>
+      <main>
+        <TodayView />
+      </main>
+      <footer className="app-footer">
+        <ApiStatus />
+      </footer>
+    </>
   );
 }

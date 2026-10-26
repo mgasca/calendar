@@ -17,3 +17,4 @@ Decisions are recorded in [MADR 4.0](https://adr.github.io/madr/) format. To add
 | [0010](0010-toolchain-version-pins.md) | Pin TypeScript 6.0 and ESLint 9 | accepted |
 | [0011](0011-make-as-top-level-task-runner.md) | GNU Make as a thin top-level task runner | accepted |
 | [0012](0012-ci-and-dependency-updates.md) | GitHub Actions CI, security scanning and Dependabot | accepted |
+| [0013](0013-public-repository-for-github-security-features.md) | Public repository to enable branch rules and security scanning | accepted |

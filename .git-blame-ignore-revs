@@ -1,0 +1,6 @@
+# Bulk formatting commits for `git blame` to skip. GitHub's blame view reads this file
+# automatically; locally run: git config blame.ignoreRevsFile .git-blame-ignore-revs
+# Full SHAs of the commits on main (after squash-merge).
+
+# Use 2-space indentation for C# (#13)
+ee9fd530e52bc7cdff3ac0af3dff1f035f5bd126

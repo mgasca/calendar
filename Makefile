@@ -23,7 +23,8 @@ help: ## List targets
 doctor: ## Check that dotnet, node and pnpm match the pinned versions
 	@./tools/doctor/doctor.sh
 
-setup: doctor ## Restore .NET packages and install frontend dependencies
+setup: doctor ## Restore .NET packages, install frontend dependencies, configure git blame
+	git config blame.ignoreRevsFile .git-blame-ignore-revs
 	$(DOTNET) restore
 	$(PNPM) install --frozen-lockfile
 

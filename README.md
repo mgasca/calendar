@@ -21,14 +21,37 @@ New UIs go under `frontend/apps/` (TypeScript) or a new top-level directory for 
 
 ## Prerequisites
 
-- .NET SDK 10 (pinned in `backend/global.json`)
-- Node 24 (`frontend/.node-version`) and pnpm via Corepack: `corepack enable`
-- GNU Make (optional; it only wraps the native commands)
+| Tool | Version source | Notes |
+| --- | --- | --- |
+| .NET SDK | `backend/global.json` | 10.0.100 or later feature band |
+| Node | `frontend/.node-version` | 24; use a version manager, since Ubuntu's apt `nodejs` is too old and lacks Corepack |
+| pnpm | `packageManager` in `frontend/package.json` | Provided by Corepack (bundled with Node 24); don't install it globally |
+| GNU Make | n/a | Optional; it only wraps the native commands |
+
+Run `make doctor` (also run by `make setup`) to check all of these.
+
+### One-time setup on Linux / WSL
+
+```sh
+# .NET SDK, user-local (no sudo)
+curl -sSL https://dot.net/v1/dotnet-install.sh -o /tmp/dotnet-install.sh
+bash /tmp/dotnet-install.sh --channel 10.0 --install-dir "$HOME/.dotnet"
+echo 'export DOTNET_ROOT=$HOME/.dotnet PATH=$HOME/.dotnet:$HOME/.dotnet/tools:$PATH' >> ~/.bashrc
+
+# Node via fnm, which reads .node-version and switches automatically on cd
+curl -fsSL https://fnm.vercel.app/install | bash -s -- --skip-shell
+echo 'eval "$(fnm env --use-on-cd --version-file-strategy=recursive --corepack-enabled --shell bash)"' >> ~/.bashrc
+exec bash                      # reload the shell
+cd calendar/frontend && fnm install && corepack enable pnpm
+
+make doctor                    # everything should be ✓
+```
 
 ## Common tasks
 
 | Task | Command |
 | --- | --- |
+| Check toolchain versions | `make doctor` |
 | Install dependencies | `make setup` |
 | Run API (http://localhost:5041) | `make dev-api` |
 | Run web UI (proxies `/api` to the API) | `make dev-web` |

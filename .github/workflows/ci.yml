@@ -39,9 +39,9 @@ jobs:
       - name: EF Core model matches migrations
         run: |
           dotnet tool restore
-          dotnet ef migrations has-pending-model-changes --project src/Calendar.Infrastructure --no-build -c Release
+          dotnet ef migrations has-pending-model-changes --project src/Calendar.Infrastructure --no-build --configuration Release
       # Tests start PostgreSQL through Testcontainers; ubuntu-latest runners include Docker (ADR-0016).
-      - run: dotnet test --no-build -c Release -- --coverage --coverage-output-format cobertura --results-directory "$GITHUB_WORKSPACE/backend/TestResults"
+      - run: dotnet test --no-build --configuration Release -- --coverage --coverage-output-format cobertura --results-directory "$GITHUB_WORKSPACE/backend/TestResults"
       - name: OpenAPI contract is up to date
         run: |
           git diff --exit-code -- ../contracts || {

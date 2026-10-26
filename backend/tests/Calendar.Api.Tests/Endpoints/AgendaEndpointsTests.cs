@@ -1,4 +1,5 @@
 using System.Net;
+using System.Net.Http.Json;
 using System.Text.Json.Nodes;
 using Calendar.Domain.Events;
 using Calendar.Domain.Tasks;
@@ -51,6 +52,18 @@ public sealed class AgendaEndpointsTests(PostgresFixture postgres) : ApiTestBase
     public async Task GetDayAgenda_AtTheSupportedDateLimits_Works(string date)
     {
         (await GetAgendaAsync(date, "Pacific/Kiritimati")).Date.ShouldBe(DateOnly.Parse(date, System.Globalization.CultureInfo.InvariantCulture));
+    }
+
+    [Theory]
+    [InlineData("Asia/Calcutta", "Asia/Kolkata")]
+    [InlineData("US/Eastern", "America/New_York")]
+    [InlineData("Etc/GMT%2B5", "Etc/GMT+5")]
+    public async Task GetDayAgenda_AcceptsLegacyAliasesAndEtcZones_EchoingTheCanonicalId(string requested, string canonical)
+    {
+        var agenda = await Client.GetFromJsonAsync<Calendar.Api.Contracts.DayAgendaResponse>(
+            new Uri($"/api/agenda/day?date=2026-10-26&timeZone={requested}", UriKind.Relative), Ct);
+
+        agenda!.TimeZone.ShouldBe(canonical);
     }
 
     // ---- shape ----

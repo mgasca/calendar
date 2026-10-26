@@ -1,3 +1,4 @@
+using System.Data;
 using Calendar.Api.Contracts;
 using Calendar.Domain.Time;
 using Calendar.Infrastructure;
@@ -70,6 +71,11 @@ internal static class AgendaEndpoints
 
         var window = DayWindow.Create(date.Value, zone);
 
+        // One snapshot for all four reads (ADR-0020 D1): a task completed or an event added between them must not
+        // show up in some lists and not in others.
+        await using var snapshot = await db.Database.BeginTransactionAsync(IsolationLevel.RepeatableRead, cancellationToken);
+        await db.Database.ExecuteSqlAsync($"SET TRANSACTION READ ONLY", cancellationToken);
+
         var allDay = await db.Events.AsNoTracking()
             .AllDayOn(window)
             .Select(e => new AllDayEventItem
@@ -101,6 +107,8 @@ internal static class AgendaEndpoints
 
         var dueToday = await db.Tasks.AsNoTracking().DueOn(window).Select(TaskResponse.Projection).ToListAsync(cancellationToken);
         var overdue = await db.Tasks.AsNoTracking().OverdueFor(window).Select(TaskResponse.Projection).ToListAsync(cancellationToken);
+
+        await snapshot.CommitAsync(cancellationToken);
 
         // Ordering happens here, ordinally and case-insensitively, so it does not depend on the database collation.
         return TypedResults.Ok(new DayAgendaResponse

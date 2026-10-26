@@ -51,7 +51,7 @@ Chosen option: "The client sends the local date and its IANA zone id", because i
   * Undated tasks never appear.
 * **Server clock:** the server does not decide what day it is. "Now" is only used when stamping `CompletedAt`, via `TimeProvider`. Whether a timed task due earlier today is past due is left to the client's clock.
 * **Rollover:** the client recomputes the date at local midnight and on focus, so a tab left open does not show yesterday.
-* **Zone database:** IANA ids rely on the host's tz database (see [ADR-0018](0018-time-representation-and-bcl-date-time-types.md)), including legacy aliases some browsers return, such as `Asia/Calcutta`. The runtime image must carry tzdata.
+* **Zone database:** IANA ids rely on the host's tz database (see [ADR-0018](0018-time-representation-and-bcl-date-time-types.md)), so the runtime image must ship tzdata. Legacy aliases that browsers may still report (`Asia/Calcutta`, `US/Eastern`) are resolved through an embedded alias-to-canonical table derived from the tzdata `backward` file (`Calendar.Domain`, with the tzdata release and refresh steps in its header), because hosts without the legacy links would otherwise reject them. Geographic aliases always resolve to the canonical zone, which is the id stored and echoed; slashless ids (`UTC`, `CET`) are tried on the host first. Directory ids, pseudo entries (`localtime`, `Factory`) and malformed paths stay rejected. A `+` in `Etc/GMT+5` must be percent-encoded in the query string (`%2B`), as any HTTP client library does.
 
 ### Consequences
 

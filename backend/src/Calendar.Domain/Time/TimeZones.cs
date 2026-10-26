@@ -24,7 +24,8 @@ public static class TimeZones
     /// Resolves an IANA zone id and never throws for any input. Windows display ids (e.g. "Eastern Standard
     /// Time"), directory-like ids ("America", "America/Indiana"), pseudo entries ("localtime", "Factory") and
     /// non-canonical paths ("America//New_York", "../x") are rejected, as are ids the host cannot resolve.
-    /// Legacy IANA ids without a slash (<c>UTC</c>, <c>CET</c>) are accepted. The returned zone's
+    /// Legacy IANA ids without a slash (<c>UTC</c>, <c>CET</c>) are accepted. Legacy aliases (<c>Asia/Calcutta</c>,
+    /// <c>US/Eastern</c>) are mapped to their canonical id through <see cref="IanaAliases"/>. The returned zone's
     /// <see cref="TimeZoneInfo.Id"/> is the canonical id to store and echo.
     /// </summary>
     public static bool TryFindIana(string? id, out TimeZoneInfo zone)
@@ -41,6 +42,20 @@ public static class TimeZones
             return false;
         }
 
+        // Geographic aliases (Asia/Calcutta, US/Eastern) resolve to their canonical zone on every host, so the stored
+        // id does not depend on whether the host ships the legacy links. Slashless ids (CET, EST, UTC) are real
+        // files on any tzdata, whose rules can differ from the zone they link to today, so the host is tried first.
+        var canonical = IanaAliases.Canonical.GetValueOrDefault(id);
+        if (canonical is not null && id.Contains('/', StringComparison.Ordinal))
+        {
+            return TryLoad(canonical, out zone);
+        }
+
+        return TryLoad(id, out zone) || (canonical is not null && TryLoad(canonical, out zone));
+    }
+
+    private static bool TryLoad(string id, out TimeZoneInfo zone)
+    {
         try
         {
             zone = TimeZoneInfo.FindSystemTimeZoneById(id);

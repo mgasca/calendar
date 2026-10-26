@@ -50,8 +50,8 @@ Chosen option: "A dedicated day-agenda endpoint beside resource endpoints", beca
 * **Writes:** resource endpoints, which are also the way other clients reach the data directly:
   * `POST /api/events`, `GET /api/events/{id}`
   * `POST /api/tasks`, `GET /api/tasks/{id}`, `POST /api/tasks/{id}/complete`, `POST /api/tasks/{id}/reopen`
-* **Shared schemas:** the agenda items reuse the same event and task response schemas as the resource endpoints where they overlap, so clients have one type per concept, and the UI can update its cache from a mutation response.
-* **Query side:** the endpoint runs two projection queries (events, tasks) with `AsNoTracking` against the window computed by the pure `DayWindow` helper. The inclusion predicates are the same ones the unit tests cover.
+* **Shared schemas:** agenda tasks reuse the `TaskResponse` schema of the resource endpoints, so the UI can update its cache from a mutation response. Agenda events use dedicated view schemas, `AllDayEventItem` and `TimedEventItem`, instead of the resource `EventResponse`: the resource schema has nullable fields for both event kinds, while the view schemas make each kind's fields non-null (clearer generated client types) and carry the agenda-only `startsBeforeDay` / `endsAfterDay` flags.
+* **Query side:** the endpoint runs its projection queries (all-day events, timed events, due-today and overdue tasks) with `AsNoTracking`, inside one read-only `REPEATABLE READ` transaction so they see a single snapshot (D1) against the window computed by the pure `DayWindow` helper. The inclusion predicates are the same ones the unit tests cover.
 * **Cache coherence in the web UI:** a TanStack Query key per `(date, timeZone)`; completing or reopening a task invalidates it, or patches it optimistically.
 
 ### Extending to week and month

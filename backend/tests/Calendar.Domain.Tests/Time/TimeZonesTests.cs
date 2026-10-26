@@ -49,6 +49,54 @@ public sealed class TimeZonesTests
         zone.Id.ShouldBe(canonical);
     }
 
+    [Theory]
+    [InlineData("Asia/Calcutta", "Asia/Kolkata")]
+    [InlineData("Europe/Kiev", "Europe/Kyiv")]
+    [InlineData("US/Eastern", "America/New_York")]
+    [InlineData("US/Pacific", "America/Los_Angeles")]
+    [InlineData("Australia/ACT", "Australia/Sydney")]
+    [InlineData("Asia/Saigon", "Asia/Ho_Chi_Minh")]
+    [InlineData("America/Buenos_Aires", "America/Argentina/Buenos_Aires")]
+    [InlineData("Etc/Zulu", "Etc/UTC")]
+    public void TryFindIana_MapsLegacyAliasesToTheCanonicalId(string alias, string canonical)
+    {
+        TimeZones.TryFindIana(alias, out var zone).ShouldBeTrue();
+        zone.Id.ShouldBe(canonical);
+    }
+
+    [Fact]
+    public void TryFindIana_ResolvesEveryAliasInTheTable()
+    {
+        foreach (var (alias, canonical) in IanaAliases.Canonical)
+        {
+            TimeZones.TryFindIana(alias, out var zone).ShouldBeTrue(alias);
+            if (alias.Contains('/', StringComparison.Ordinal))
+            {
+                zone.Id.ShouldBe(canonical, alias);
+            }
+        }
+    }
+
+    [Theory]
+    [InlineData("Etc/GMT+5", -5)]
+    [InlineData("Etc/GMT-14", 14)]
+    [InlineData("Etc/GMT", 0)]
+    public void TryFindIana_AcceptsEtcGmtOffsetZones(string id, int hours)
+    {
+        TimeZones.TryFindIana(id, out var zone).ShouldBeTrue();
+        zone.Id.ShouldBe(id);
+        zone.BaseUtcOffset.ShouldBe(TimeSpan.FromHours(hours));
+    }
+
+    [Theory]
+    [InlineData("Asia/Calcutta/")]
+    [InlineData("asia/calcutta")]
+    [InlineData("US//Eastern")]
+    public void TryFindIana_StillRejectsMalformedOrWrongCaseAliases(string id)
+    {
+        TimeZones.IsValidIanaId(id).ShouldBeFalse();
+    }
+
     [Fact]
     public void TryFindIana_WithVeryLongOrOddInput_ReturnsFalseWithoutThrowing()
     {

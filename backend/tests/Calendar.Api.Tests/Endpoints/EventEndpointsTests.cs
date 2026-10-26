@@ -78,6 +78,21 @@ public sealed class EventEndpointsTests(PostgresFixture postgres) : ApiTestBase(
     }
 
     [Fact]
+    public async Task CreateEvent_WithALegacyZoneAlias_StoresTheCanonicalId()
+    {
+        using var created = await Client.PostAsJsonAsync(Events, new
+        {
+            title = "E",
+            start = "2026-10-26T10:00:00Z",
+            end = "2026-10-26T11:00:00Z",
+            timeZone = "Asia/Calcutta",
+        }, Ct);
+
+        created.StatusCode.ShouldBe(HttpStatusCode.Created);
+        (await created.Content.ReadFromJsonAsync<EventResponse>(Ct))!.TimeZone.ShouldBe("Asia/Kolkata");
+    }
+
+    [Fact]
     public async Task GetEvent_Unknown_Returns404Problem()
     {
         using var response = await Client.GetAsync(new Uri($"/api/events/{Guid.NewGuid()}", UriKind.Relative), Ct);

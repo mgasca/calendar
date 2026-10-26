@@ -25,12 +25,13 @@ Chosen option: "GitHub Actions + Dependabot", the zero-setup default for GitHub-
 * `.github/workflows/dependency-review.yml` fails PRs that introduce dependencies with known vulnerabilities of moderate severity or higher.
 * `.github/dependabot.yml` covers `nuget` (/backend), `npm` (/frontend), and `github-actions`, with minor/patch updates grouped and labelled by area. Majors arrive as individual PRs so breaking changes are reviewed alone.
 * `.github/rulesets/main.json` is the versioned branch ruleset for `main`: PR required, `CI result` must pass, no high+ CodeQL alerts, no force-push or deletion. GitHub doesn't read it automatically; it's applied with `gh api` (see `.github/rulesets/README.md`).
+* Repository settings applied via the API: Dependabot alerts and security updates, secret scanning with push protection, private vulnerability reporting, squash and rebase merges only (merge commits disabled), auto-merge allowed, and head branches deleted on merge. These rely on the repository being public (ADR-0013).
 * `CODEOWNERS`, a PR template, and issue forms standardize contributions.
 * Every workflow uses least-privilege `permissions` (default `contents: read`), and PR runs cancel superseded runs.
-* Toolchain versions come from the repo (`global.json`, `.node-version`, `packageManager`), not duplicated in workflows. Actions are pinned to major tags and kept current by Dependabot.
+* Toolchain versions come from the repo (`global.json`, `.node-version`, `packageManager`), not duplicated in workflows. GitHub-owned actions (`actions/*`, `github/*`) are pinned to major tags. Third-party actions are pinned to a full commit SHA with a version comment (flagged by CodeQL `actions/unpinned-tag`). Dependabot keeps both current.
 
 ### Consequences
 
 * Good, because CI uses the same commands as local development.
 * Bad, because Dependabot groups less flexibly than Renovate. Switch if update noise becomes a problem.
-* Neutral: actions are pinned to major-version tags rather than commit SHAs. That's simpler to read, but trusts the action maintainers. Switch to SHA pinning if the threat model requires it.
+* Neutral: GitHub-owned actions use major tags, which is simpler to read but trusts GitHub's tag hygiene. Pin them by SHA too if the threat model requires it.

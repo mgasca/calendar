@@ -1,7 +1,7 @@
 ---
 status: implemented
 date: 2026-10-27
-pr: https://github.com/mgasca/calendar/pull/17
+pr: https://github.com/mgasca/calendar/pull/24
 adrs: [0018, 0020, 0021, 0024, 0025]
 ---
 
@@ -155,9 +155,9 @@ The Today view can only show today. This story also makes any day viewable, so t
 
 Delivered as three stacked PRs, each green on `make check`:
 
-1. **Backend and [ADR-0024](../decisions/0024-week-agenda-endpoint-on-range-based-internals.md):** `DateRangeWindow`, the range queries and the shared builder (with the day endpoint moved onto it), then `GET /api/agenda/week` with endpoint and agreement tests, and the regenerated contract.
-2. **Routing and [ADR-0025](../decisions/0025-client-side-routing-with-tanstack-router.md):** TanStack Router. The Today view became the day view at `/` and `/day/:date`, and shared agenda code moved to `features/agenda`.
-3. **Week view:** the grid, all-day band, task strips with ticking, Overdue panel, navigation, keyboard shortcuts and day links.
+1. **Backend and [ADR-0024](../decisions/0024-week-agenda-endpoint-on-range-based-internals.md):** ([#18](https://github.com/mgasca/calendar/pull/18)) `DateRangeWindow`, the range queries and the shared builder (with the day endpoint moved onto it), then `GET /api/agenda/week` with endpoint and agreement tests, and the regenerated contract.
+2. **Routing and [ADR-0025](../decisions/0025-client-side-routing-with-tanstack-router.md):** ([#19](https://github.com/mgasca/calendar/pull/19)) TanStack Router. The Today view became the day view at `/` and `/day/:date`, and shared agenda code moved to `features/agenda`.
+3. **Week view:** ([#24](https://github.com/mgasca/calendar/pull/24)) the grid, all-day band, task strips with ticking, Overdue panel, navigation, keyboard shortcuts and day links.
 
 ### Lessons learned during the build
 

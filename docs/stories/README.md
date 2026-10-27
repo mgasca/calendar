@@ -15,3 +15,4 @@ Front matter: `status` (`planned`, `in-progress` or `implemented`), `date`, `pr`
 | Story | Title | Status |
 | --- | --- | --- |
 | [0001](0001-today-view.md) | Today view: see everything for today in one place | implemented |
+| [0002](0002-week-view.md) | Week view: plan and track the whole week in one place | planned |

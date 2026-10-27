@@ -338,10 +338,104 @@
           }
         }
       }
+    },
+    "/api/agenda/week": {
+      "get": {
+        "tags": [
+          "Agenda"
+        ],
+        "summary": "The ISO week (Monday to Sunday) containing a local date: all-day events once per week, timed events and due tasks per day, and the tasks overdue as of today that were due before the week.",
+        "operationId": "GetWeekAgenda",
+        "parameters": [
+          {
+            "name": "date",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "date"
+            }
+          },
+          {
+            "name": "timeZone",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "today",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "date"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WeekAgendaResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HttpValidationProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
     "schemas": {
+      "AgendaDay": {
+        "required": [
+          "date",
+          "window",
+          "events",
+          "tasks"
+        ],
+        "type": "object",
+        "properties": {
+          "date": {
+            "type": "string",
+            "description": "The local calendar date (YYYY-MM-DD).",
+            "format": "date"
+          },
+          "window": {
+            "description": "The UTC instants spanned by the local day; empty for a date the zone skipped.",
+            "$ref": "#/components/schemas/AgendaWindow"
+          },
+          "events": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/TimedEventItem"
+            },
+            "description": "Timed events overlapping the day, by start then title, with flags relative to this day. An event that\ncrosses midnight appears on every day it touches."
+          },
+          "tasks": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/TaskResponse"
+            },
+            "description": "Tasks due on the day (open or completed): timed ones by due instant, then date-only ones by title."
+          }
+        },
+        "description": "One local day of a multi-day agenda: its timed events and the tasks due on it."
+      },
       "AgendaTasks": {
         "required": [
           "overdue",
@@ -855,6 +949,57 @@
           }
         },
         "description": "A timed event in the day agenda."
+      },
+      "WeekAgendaResponse": {
+        "required": [
+          "weekStart",
+          "timeZone",
+          "window",
+          "allDayEvents",
+          "days",
+          "overdue"
+        ],
+        "type": "object",
+        "properties": {
+          "weekStart": {
+            "type": "string",
+            "description": "The Monday the week starts on (YYYY-MM-DD).",
+            "format": "date"
+          },
+          "timeZone": {
+            "type": "string",
+            "description": "Canonical IANA time zone id the week was resolved in."
+          },
+          "window": {
+            "description": "The UTC instants from local midnight on Monday to local midnight on the next Monday.",
+            "$ref": "#/components/schemas/AgendaWindow"
+          },
+          "allDayEvents": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AllDayEventItem"
+            },
+            "description": "All-day events covering any date of the week, once each, by start date then title."
+          },
+          "days": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AgendaDay"
+            },
+            "description": "The seven days, Monday first."
+          },
+          "overdue": {
+            "type": [
+              "null",
+              "array"
+            ],
+            "items": {
+              "$ref": "#/components/schemas/TaskResponse"
+            },
+            "description": "Tasks overdue as of `today` (still open, or completed within today) that were due before the week's\nMonday, oldest due first. Tasks due within the week are in their day instead. `null` when the whole\nweek is before `today`."
+          }
+        },
+        "description": "The ISO week (Monday to Sunday) containing the requested date, from a single snapshot."
       }
     }
   },

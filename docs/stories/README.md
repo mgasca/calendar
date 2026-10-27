@@ -1,6 +1,6 @@
 # Stories
 
-One Markdown file per user story, named `NNNN-short-title.md` like the [ADRs](../docs/decisions/README.md), so stories sort in delivery order and can be linked by number.
+One Markdown file per user story, named `NNNN-short-title.md` like the [ADRs](../decisions/README.md), so stories sort in delivery order and can be linked by number.
 
 Each story records:
 

@@ -1,4 +1,6 @@
+using System.Linq.Expressions;
 using System.Text.Json.Serialization;
+using Calendar.Domain.Events;
 
 namespace Calendar.Api.Contracts;
 
@@ -92,6 +94,17 @@ public sealed record AllDayEventItem
 
   /// <summary>Exclusive end date of the event.</summary>
   public required DateOnly EndDate { get; init; }
+
+  /// <summary>Translatable to SQL, for query projections of all-day events.</summary>
+  public static readonly Expression<Func<CalendarEvent, AllDayEventItem>> Projection = e => new AllDayEventItem
+  {
+    Id = e.Id,
+    Title = e.Title,
+    Location = e.Location,
+    Notes = e.Notes,
+    StartDate = e.StartDate!.Value,
+    EndDate = e.EndDate!.Value,
+  };
 }
 
 /// <summary>A timed event in the day agenda.</summary>
@@ -123,4 +136,22 @@ public sealed record TimedEventItem
 
   /// <summary>The event ends after the day's window (it continues into a later day).</summary>
   public required bool EndsAfterDay { get; init; }
+
+  /// <summary>
+  /// Translatable to SQL, for query projections of timed events. The day-relative <see cref="StartsBeforeDay"/>
+  /// and <see cref="EndsAfterDay"/> flags are left <c>false</c>; the agenda sets them for each day it places the
+  /// event on.
+  /// </summary>
+  public static readonly Expression<Func<CalendarEvent, TimedEventItem>> Projection = e => new TimedEventItem
+  {
+    Id = e.Id,
+    Title = e.Title,
+    Location = e.Location,
+    Notes = e.Notes,
+    Start = e.Start!.Value,
+    End = e.End!.Value,
+    TimeZone = e.TimeZoneId!,
+    StartsBeforeDay = false,
+    EndsAfterDay = false,
+  };
 }

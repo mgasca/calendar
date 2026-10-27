@@ -280,4 +280,48 @@ public sealed class DayInclusionTests
     skipped.Length.ShouldBe(TimeSpan.Zero);
     DayInclusion.EventOccursOn(spanning, skipped).ShouldBeFalse();
   }
+
+  // ---- raw-value forms used by the agenda read models ----
+
+  [Theory]
+  [InlineData(-1, 23, 0, 6, true)]
+  [InlineData(0, 14, 0, 15, true)]
+  [InlineData(0, 2, 0, 4, false)] // ends at window start
+  [InlineData(1, 4, 1, 5, false)] // starts at window end
+  public void RawForms_AgreeWithTheEntityRules_ForTimedEvents(int startDay, int startHour, int endDay, int endHour, bool expected)
+  {
+    var evt = Timed(At(startDay, startHour), At(endDay, endHour));
+
+    DayInclusion.EventOccursOn(evt, Window).ShouldBe(expected);
+    DayInclusion.TimedEventOverlaps(evt.Start!.Value, evt.End!.Value, Window).ShouldBe(expected);
+  }
+
+  [Theory]
+  [InlineData(-1, 0, false)]
+  [InlineData(-1, 1, true)]
+  [InlineData(0, 1, true)]
+  [InlineData(1, 2, false)]
+  public void RawForms_AgreeWithTheEntityRules_ForAllDayEvents(int startOffset, int endOffset, bool expected)
+  {
+    var evt = AllDay(startOffset, endOffset);
+
+    DayInclusion.EventOccursOn(evt, Window).ShouldBe(expected);
+    DayInclusion.AllDayEventCovers(evt.StartDate!.Value, evt.EndDate!.Value, Window).ShouldBe(expected);
+  }
+
+  [Fact]
+  public void RawForms_AgreeWithTheEntityRules_ForDueTasks()
+  {
+    TodoTask[] tasks =
+    [
+        TodoTask.Create("date today", Today),
+        TodoTask.Create("date yesterday", Today.AddDays(-1)),
+        TodoTask.Create("at start", dueAt: Window.Start),
+        TodoTask.Create("at end", dueAt: Window.End),
+        TodoTask.Create("undated"),
+    ];
+
+    tasks.Select(t => DayInclusion.IsDueOn(t.DueDate, t.DueAt, Window)).ShouldBe(tasks.Select(t => DayInclusion.IsDueToday(t, Window)));
+    tasks.Count(t => DayInclusion.IsDueOn(t.DueDate, t.DueAt, Window)).ShouldBe(2);
+  }
 }

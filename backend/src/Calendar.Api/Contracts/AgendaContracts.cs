@@ -42,3 +42,48 @@ public sealed record DayAgendaResponse
   /// <summary>Overdue and due-today tasks.</summary>
   public required AgendaTasks Tasks { get; init; }
 }
+
+/// <summary>One local day of a multi-day agenda: its timed events and the tasks due on it.</summary>
+public sealed record AgendaDay
+{
+  /// <summary>The local calendar date (YYYY-MM-DD).</summary>
+  public required DateOnly Date { get; init; }
+
+  /// <summary>The UTC instants spanned by the local day; empty for a date the zone skipped.</summary>
+  public required AgendaWindow Window { get; init; }
+
+  /// <summary>
+  /// Timed events overlapping the day, by start then title, with flags relative to this day. An event that
+  /// crosses midnight appears on every day it touches.
+  /// </summary>
+  public required IReadOnlyList<TimedEventItem> Events { get; init; }
+
+  /// <summary>Tasks due on the day (open or completed): timed ones by due instant, then date-only ones by title.</summary>
+  public required IReadOnlyList<TaskResponse> Tasks { get; init; }
+}
+
+/// <summary>The ISO week (Monday to Sunday) containing the requested date, from a single snapshot.</summary>
+public sealed record WeekAgendaResponse
+{
+  /// <summary>The Monday the week starts on (YYYY-MM-DD).</summary>
+  public required DateOnly WeekStart { get; init; }
+
+  /// <summary>Canonical IANA time zone id the week was resolved in.</summary>
+  public required string TimeZone { get; init; }
+
+  /// <summary>The UTC instants from local midnight on Monday to local midnight on the next Monday.</summary>
+  public required AgendaWindow Window { get; init; }
+
+  /// <summary>All-day events covering any date of the week, once each, by start date then title.</summary>
+  public required IReadOnlyList<AllDayEventItem> AllDayEvents { get; init; }
+
+  /// <summary>The seven days, Monday first.</summary>
+  public required IReadOnlyList<AgendaDay> Days { get; init; }
+
+  /// <summary>
+  /// Tasks overdue as of <c>today</c> (still open, or completed within today) that were due before the week's
+  /// Monday, oldest due first. Tasks due within the week are in their day instead. <c>null</c> when the whole
+  /// week is before <c>today</c>.
+  /// </summary>
+  public required IReadOnlyList<TaskResponse>? Overdue { get; init; }
+}

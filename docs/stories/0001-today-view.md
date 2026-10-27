@@ -46,12 +46,12 @@ A morning planner wants one glance that answers three questions: *what's fixed i
 
 | ADR | Decision | Why it matters for this story |
 | --- | --- | --- |
-| [0018](../docs/decisions/0018-time-representation-and-bcl-date-time-types.md) | Time representation with built-in .NET types (UTC `DateTimeOffset` + IANA zone, floating `DateOnly`, `TimeProvider`); no NodaTime | How events, all-day events and task due values are stored |
-| [0019](../docs/decisions/0019-single-user-mode-with-authentication-deferred.md) | Single-user mode; authentication deferred, no owner column | Keeps the slice small; the app must not be exposed beyond a trusted network until an auth ADR lands |
-| [0020](../docs/decisions/0020-aggregate-day-agenda-endpoint-as-read-model.md) | A dedicated `GET /api/agenda/day` read model, with resource endpoints for writes | One request returns the whole day; inclusion rules live once, on the server |
-| [0021](../docs/decisions/0021-client-supplied-date-and-time-zone-define-the-day.md) | The client sends its local date and IANA zone; the server computes the day's window | Defines "today" without user accounts or stored preferences |
+| [0018](../decisions/0018-time-representation-and-bcl-date-time-types.md) | Time representation with built-in .NET types (UTC `DateTimeOffset` + IANA zone, floating `DateOnly`, `TimeProvider`); no NodaTime | How events, all-day events and task due values are stored |
+| [0019](../decisions/0019-single-user-mode-with-authentication-deferred.md) | Single-user mode; authentication deferred, no owner column | Keeps the slice small; the app must not be exposed beyond a trusted network until an auth ADR lands |
+| [0020](../decisions/0020-aggregate-day-agenda-endpoint-as-read-model.md) | A dedicated `GET /api/agenda/day` read model, with resource endpoints for writes | One request returns the whole day; inclusion rules live once, on the server |
+| [0021](../decisions/0021-client-supplied-date-and-time-zone-define-the-day.md) | The client sends its local date and IANA zone; the server computes the day's window | Defines "today" without user accounts or stored preferences |
 
-The story also implements these earlier, already-accepted ADRs for the first time: [0014](../docs/decisions/0014-postgresql-database-engine.md) (PostgreSQL), [0015](../docs/decisions/0015-ef-core-data-access.md) (EF Core with code-first migrations) and [0016](../docs/decisions/0016-local-database-provisioning.md) (Docker Compose and Testcontainers). The seed tool follows [0017](../docs/decisions/0017-dotnet-file-based-apps-for-repo-tooling.md).
+The story also implements these earlier, already-accepted ADRs for the first time: [0014](../decisions/0014-postgresql-database-engine.md) (PostgreSQL), [0015](../decisions/0015-ef-core-data-access.md) (EF Core with code-first migrations) and [0016](../decisions/0016-local-database-provisioning.md) (Docker Compose and Testcontainers). The seed tool follows [0017](../decisions/0017-dotnet-file-based-apps-for-repo-tooling.md).
 
 ### Other decisions (not ADR-worthy)
 

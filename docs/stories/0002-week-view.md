@@ -1,5 +1,5 @@
 ---
-status: planned
+status: implemented
 date: 2026-10-27
 pr: https://github.com/mgasca/calendar/pull/17
 adrs: [0018, 0020, 0021, 0024, 0025]
@@ -95,68 +95,84 @@ The Today view can only show today. This story also makes any day viewable, so t
 
 ## Implementation notes
 
-*Planned. This section is completed as the story is built.*
-
-### Where things will live
+### Where things live
 
 | Area | Location |
 | --- | --- |
-| Domain | `backend/src/Calendar.Domain/Time/DateRangeWindow.cs` (new, pure): consecutive `DayWindow`s for any range of dates, with an `IsoWeek(date, zone)` factory |
-| Persistence | `Calendar.Infrastructure/Queries/AgendaQueries.cs`: range forms `AllDayOverlapping`, `TimedOverlapping`, `DueWithin` beside the existing per-day predicates |
-| Agenda assembly | A shared builder that buckets range results into days with `DayInclusion`. The day endpoint uses it for a one-day range and the week endpoint for a seven-day range. |
+| Domain | `backend/src/Calendar.Domain/Time/DateRangeWindow.cs` (pure): consecutive `DayWindow`s for any range of dates, with an `IsoWeek(date, zone)` factory. `Agenda/DayInclusion.cs` gained raw-value rules. |
+| Persistence | `Calendar.Infrastructure/Queries/AgendaQueries.cs`: range forms `AllDayOverlapping`, `TimedOverlapping`, `DueWithin` beside the per-day predicates |
+| Agenda assembly | `Calendar.Api/Endpoints/AgendaBuilder.cs`: runs the range reads in one snapshot and buckets them into days with `DayInclusion`. `AgendaOrder.cs` and `RequestValidation.cs` hold the shared ordering and validation. Both `/day` (a one-day range) and `/week` (seven days) use it. |
 | API | `Calendar.Api/Endpoints/AgendaEndpoints.cs` (`GetWeekAgenda`), `Contracts/AgendaContracts.cs` (`WeekAgendaResponse`, `AgendaDay`) |
-| Contract | `contracts/openapi.json` and `schema.gen.ts`, regenerated with `make contracts` |
-| Web: shared | `frontend/apps/web/src/features/agenda/`: the toggle hook, the task item, problem-details helpers (moved out of `today/`) |
-| Web: day | `features/day/`: `TodayView` becomes `DayView({ date })`. The Earlier/Now/Next badges only show on today. |
-| Web: week | `features/week/`: `WeekView`, `useWeekAgenda`, `weekDates.ts`, `gridLayout.ts`, `TimeGrid`, `AllDayBand`, `OverduePanel` |
-| Routing | The route definitions in `router.tsx` and the layout in `App.tsx`, per [ADR-0025](../decisions/0025-client-side-routing-with-tanstack-router.md) |
+| Contract | `contracts/openapi.json` and `frontend/packages/api-client/src/schema.gen.ts`, regenerated with `make contracts` |
+| Web: routing | `frontend/apps/web/src/router.tsx` (routes `/`, `/day/$date`, `/week`, `/week/$weekStart`) and `App.tsx` (layout with the Today and Week links, not-found and invalid-date pages), per [ADR-0025](../decisions/0025-client-side-routing-with-tanstack-router.md) |
+| Web: shared | `features/agenda/`: `agendaQuery.ts` (key prefix, errors, retry), `useToggleTask.ts`, `TaskItem.tsx`, `EventTimes.tsx`, `dayTime.ts`, `useNow.ts` |
+| Web: day | `features/day/`: `DayView({ date })`, `TodayView`, `useDayAgenda.ts`. The day header links to its week. |
+| Web: week | `features/week/`: `WeekView.tsx`, `TimeGrid.tsx`, `AllDayBand.tsx`, `TaskStrip.tsx`, `OverduePanel.tsx`, `useWeekAgenda.ts`, `useWeekKeys.ts`, and the pure `weekDates.ts` and `gridLayout.ts` |
 
 ### API
 
 | Method and path | Purpose |
 | --- | --- |
 | `GET /api/agenda/week?date=YYYY-MM-DD&timeZone=Area/City&today=YYYY-MM-DD` | The week containing `date`: `{weekStart, timeZone, window{start,end}, allDayEvents[], days[7]{date, window, events[], tasks[]}, overdue[] \| null}` |
+| `GET /api/agenda/day?date=YYYY-MM-DD&timeZone=Area/City` | Unchanged response, now built by the shared `AgendaBuilder` |
 | `POST /api/tasks/{id}/complete` / `reopen` | Existing |
 
-* **Item types:** `AllDayEventItem`, `TimedEventItem`, `TaskResponse` and `AgendaWindow` are reused unchanged, so the generated client gets no new item types.
+* **Item types:** `AllDayEventItem`, `TimedEventItem`, `TaskResponse` and `AgendaWindow` are reused unchanged, so the generated client got no new item types.
 * **`overdue`:** it is `null` when the whole week is before `today`.
+* **Task order:** the server orders each day's tasks like `/day` (timed by due instant, then date-only by title). The open-before-completed order is applied in the UI, in both views.
 * **Validation:**
   * Missing or invalid `date`, `timeZone` or `today` returns 400 problem details.
   * Dates must be in years 1900–2200, the same range as the day agenda.
 
 ### Query approach
 
-* **Cost:** a week costs the same as a day. There are four queries over the whole range window (all-day events, timed events, tasks due in the range, overdue tasks), not seven times four.
-* **Range-ready:**
-  * The queries and the day bucketing take a `DateRangeWindow`, not a week.
-  * Nothing below the endpoint knows a range is seven days long.
-  * A month view, or a generic `/api/agenda?from&to`, then needs only a new endpoint plus the overdue rules for that view.
-  * The day endpoint moves onto the same builder, so all agenda views share one code path.
-* **One snapshot:** the four queries run in the same read-only `REPEATABLE READ` transaction as the day agenda.
-* **Bucketing:** results are split into days in memory with the existing `DayInclusion` rules, so the per-day rules keep a single implementation.
-* **Shared code:** validation and ordering are extracted from the day endpoint so both endpoints share them. The event projections become `Expression` fields, like `TaskResponse.Projection`.
+* **Cost:** a week costs the same as a day: four queries over the whole range window (all-day events, timed events, tasks due in the range, overdue tasks).
+* **Range-ready:** the queries and the bucketing take a `DateRangeWindow`, and nothing below the endpoint knows a range is seven days long. A month view, or a generic `/api/agenda?from&to`, needs only a new endpoint plus its own overdue rule.
+* **One snapshot:** the four queries run in one read-only `REPEATABLE READ` transaction.
+* **Bucketing:** results are split into days in memory with `DayInclusion`. It gained rules on raw values (instants and dates), so the projections are bucketed without loading entities, and the per-day rules still have a single implementation.
+* **Web caching:** every agenda query key starts with `['agenda']`. The week key is `['agenda', 'week', weekStart, timeZone, today]`: `today` comes from the client clock, so the Overdue panel refetches at local midnight while the week shown stays the one in the URL. Ticking a task patches the visible view through a `TaskPatch` adapter (`patchWeekTasks` maps `days[].tasks` and `overdue`), rolls back only that task on failure, and then invalidates the whole prefix, so a cached day view refetches too.
+
+### The week grid
+
+* **One scroll container:** the grid is a single CSS grid inside one scroll container. Day headings, the all-day band and the task strips are sticky at the top, and the 24 hours scroll beneath them. Below about 56 rem the whole grid scrolls sideways.
+* **Accessible structure:** each day is a `<section aria-labelledby>` (with `display: contents`), holding its heading (a link to the day), its task list and an ordered list of its events with time text. Positions are presentational. Events hidden behind a "+N more" chip stay in the list, visually hidden.
+* **Placement:** `gridLayout.ts` places events by local wall-clock minutes in the viewer's zone, from `Intl.DateTimeFormat` parts, clipped to the day's window. Very short events are at least 20 minutes tall. Overlapping events are clustered transitively and get greedy columns; a cluster that needs more than four columns shows three and a "+N more" chip linking to the day.
+* **All-day band:** bars are clipped to the week, marked when they continue before Monday or after Sunday, and stacked into the fewest lanes.
+* **Initial scroll:** each week opens at 07:00, or an hour before now in the current week, by setting `scrollTop` on the grid's container. One hour is a fixed 48 px, so the offset is exact.
+* **Keyboard:** `←`, `→` and `t` are handled on the document and ignored in form fields, in editable text and with a modifier held.
 
 ### Testing
 
-* **Domain:** `DateRangeWindow` unit tests cover:
-  * Ranges of 1, 7 and 42 days.
-  * ISO week snapping across year boundaries, including an ISO week 1 that starts in December.
-  * Daylight-saving weeks (Europe/Berlin 2026-10-25, America/Santiago 2026-09-06).
-  * A skipped date (Pacific/Apia 2011-12-30).
-* **API integration:** tests cover the week shape, snapping to Monday, ordering, completed tasks in past weeks, the Overdue rules (past, current and future week, no duplicates) and the 400 cases.
-* **Agreement test:** for seeded data in several zones, `days[i]` of the week equals `/api/agenda/day` for `weekStart + i`. This keeps the two read models from drifting apart.
+* **Domain:** `DateRangeWindow` unit tests cover ranges of 1, 7 and 42 days, ISO week snapping across year boundaries (including a week 1 that starts in December), the Europe/Berlin and America/Santiago DST weeks, and the skipped Pacific/Apia date.
+* **API integration** (real PostgreSQL via Testcontainers): the week shape, snapping to Monday, ordering, completed tasks in past weeks, the Overdue rules for past, current and future weeks with no duplicates, and the 400 cases.
+* **Agreement:** `WeekAgendaAgreementTests` checks that `days[i]` of the week equals `/api/agenda/day` for `weekStart + i`, for seeded data in several zones and DST weeks. Both outputs come from the same builder, so this test mainly catches multi-day bugs (bucketing, windows, flags). The builder's SQL is anchored separately by the existing `AgendaAgreementTests` against `DayInclusion`.
 * **Frontend:**
-  * Pure tests for `weekDates` and `gridLayout`, covering overlap clustering and daylight-saving days.
-  * `WeekView` tests for navigation and URL state, the Overdue panel, ticking with rollback, completed tasks, initial scroll position, and the empty state.
-  * Routing tests for the redirect to Monday and for `/` being today.
+  * Pure tests for `weekDates` (ISO weeks, arithmetic, locale-aware ranges across months and years) and `gridLayout` (wall-clock spans, midnight crossing, minimum height, overlap clusters, +N more, a 25-hour DST day, a skipped date, all-day lanes).
+  * `WeekView` and routing tests, rendering the app from a memory history: redirects to Monday, navigation by links, keys and browser history, day links and the day view's week link, the Overdue panel in past, current and future weeks, task order and Overdue markers, optimistic ticking with rollback and day-cache invalidation, the empty, loading, error and skipped-date states, and the initial scroll.
+* **Final counts:** 321 backend tests and 148 web tests (plus 1 in `@calendar/api-client`). `make check` is green.
 
 ### Delivery plan
 
-One PR per step, each green on `make check`:
+Delivered as three stacked PRs, each green on `make check`:
 
-1. **Backend and ADR-0024:** `DateRangeWindow`, the range queries and the shared builder (with the day endpoint moved onto it), then `GET /api/agenda/week` with endpoint and agreement tests, and the regenerated contract.
-2. **Routing and [ADR-0025](../decisions/0025-client-side-routing-with-tanstack-router.md):** add the router. The Today view becomes the day view at `/` and `/day/:date`. Shared agenda code moves to `features/agenda`.
-3. **Week view:** grid, all-day band, task strips with ticking, Overdue panel, navigation and day links.
+1. **Backend and [ADR-0024](../decisions/0024-week-agenda-endpoint-on-range-based-internals.md):** `DateRangeWindow`, the range queries and the shared builder (with the day endpoint moved onto it), then `GET /api/agenda/week` with endpoint and agreement tests, and the regenerated contract.
+2. **Routing and [ADR-0025](../decisions/0025-client-side-routing-with-tanstack-router.md):** TanStack Router. The Today view became the day view at `/` and `/day/:date`, and shared agenda code moved to `features/agenda`.
+3. **Week view:** the grid, all-day band, task strips with ticking, Overdue panel, navigation, keyboard shortcuts and day links.
+
+### Lessons learned during the build
+
+* The ADR numbers drafted in this story went stale when #16 merged first: 0022 and 0023 became 0024 and 0025. Run `make adr-check ARGS=--next-number` right before writing an ADR, not when planning it.
+* An agreement test between two outputs of the same builder can't catch a bug the builder shares with itself. It earns its place by catching multi-day bugs; the SQL itself is anchored by a test against an independent implementation.
+* TanStack Router signals not-found and redirects by throwing its own values. ESLint's `only-throw-error` rule allows `NotFoundError` and `Redirect` from `@tanstack/router-core`, and nothing else.
+* Routes render asynchronously, so component tests that need `Link` render inside a minimal router that is loaded before rendering (`renderInRouter`), and app tests wait with `findBy…`.
+* Vitest needed Testing Library's `asyncUtilTimeout` raised to 5 s for the first render of a file while `make check` runs everything in parallel, and `window.scrollTo` stubbed because jsdom doesn't implement it and the router's scroll restoration calls it.
+* jsdom implements neither layout nor `contentEditable`: the grid uses a fixed hour height so scroll offsets can be asserted, and tests set the `contenteditable` attribute directly.
+
+### Known issues
+
+* When moving between days or weeks, the previous view stays on screen, dimmed, until the new one loads. A task toggle error shown for it stays visible after the new view arrives.
+* The API doesn't serve the SPA yet, so deep links such as `/week/2026-10-26` only work with the Vite dev server or `vite preview`. [ADR-0025](../decisions/0025-client-side-routing-with-tanstack-router.md) records the fallback rules for when the API serves it.
+* On a 25-hour day, events in the repeated hour share wall-clock positions and sit side by side, as agreed. Their time text tells them apart.
 
 ### Follow-up stories
 
@@ -164,37 +180,41 @@ One PR per step, each green on `make check`:
 * Editing, moving (including drag and drop) and deleting events and tasks.
 * A month view on the range-ready internals. It supersedes ADR-0024 if it introduces a generic range endpoint.
 * A configurable first day of the week, once user preferences exist.
+* Serving the SPA from the API, with the fallback rules in ADR-0025.
 
 ## User guide
 
-*Planned behaviour. This section is finalised when the story is implemented.*
-
 ### Your week at a glance
 
-Choose **Week** in the Calendar web app, or open `/week`. You'll see the current week, Monday to Sunday, in your device's time zone. The heading shows the dates, for example *26 Oct – 1 Nov 2026*, and a summary such as:
+Choose **Week** in the Calendar web app, or open `/week`. You'll see the current week, Monday to Sunday, in your device's time zone. The heading shows the dates, for example *26 Oct – 1 Nov 2026*, with *This week*, *Next week* or similar above it, and a summary such as:
 
 > 12 events · 9 tasks (4 open)
 
-Today's column is highlighted, and a line marks the current time. The grid covers the whole day and opens at 07:00 (in the current week, at an hour before now). Scroll up or down to see earlier or later hours.
+The summary counts what's in the week. An event that runs past midnight is counted once.
+
+Today's heading is highlighted, and a red line marks the current time in today's column. The grid covers the whole day and opens at 07:00 (in the current week, at an hour before now). Scroll up or down to see earlier or later hours. The day headings, all-day events and tasks stay in view while you scroll.
+
+If nothing is planned, you'll see *Nothing planned this week.*
 
 ### Reading the week
 
 * **All-day events** run across the top of the week. An event that lasts several days is one bar spanning those days. An arrow shows when it started before Monday or carries on after Sunday.
-* **Tasks** are listed under each day's heading: timed tasks first by their due time, then the rest.
+* **Tasks** are listed under each day's heading: timed tasks first, by their due time, then the rest by title.
   * In the current week, unfinished tasks from earlier days are marked **Overdue**.
   * Completed tasks stay in the list, struck through and after the open ones, so past weeks show what you got done.
-* **Timed events** are placed on the hourly grid at their start time, in your local time. Events at the same time sit side by side. An event that runs past midnight appears on both days, marked as continuing. If a day is too busy to show everything, a **+N more** chip opens that day.
-* **Overdue:** unfinished tasks from before this week are collected in the **Overdue** panel next to the grid, so they don't get lost. Past weeks have no Overdue panel.
+* **Timed events** are placed on the hourly grid at their start time, in your local time, with their times written on them. Events at the same time sit side by side. An event that runs past midnight appears on both days, marked as continuing. If more than four events happen at once, a **+N more** chip opens that day.
+* **Overdue:** unfinished tasks from before this week are collected in the **Overdue** panel next to the grid, with their count and how late they are. It's shown for this week and future weeks. Past weeks have no Overdue panel.
+* **Daylight-saving changes:** on the day the clocks go back, events in the repeated hour share the same place on the grid. If your time zone skipped a date entirely, that day says so instead of showing events.
 
 ### Moving around
 
-* **Previous**, **This week** and **Next** move between weeks. You can also use the `←` and `→` keys, and `t` for this week.
-* Each week has its own address, so you can bookmark it or share it, and the browser's back button works.
-* Select a day's heading to open that day on its own.
+* **Previous**, **This week** and **Next** move between weeks. You can also press `←` and `→`, and `t` for this week. The keys don't work while you're typing in a field or holding a modifier key.
+* Each week has its own address, for example `/week/2026-10-26`, so you can bookmark it or share it, and the browser's back and forward buttons work. Any date opens its week: `/week/2026-10-28` shows the week starting on Monday 26 October.
+* Select a day's heading to open that day. The day view has a **Week of …** link back to its week.
 
 ### Ticking off tasks
 
-Tick a task's checkbox to complete it, and untick it to reopen it, in a day column or in the Overdue panel. Changes save straight away and also show in the day view. If a change can't be saved, it's undone and you'll see a message.
+Tick a task's checkbox to complete it, and untick it to reopen it, in a day's task list or in the Overdue panel. Changes show straight away and also appear in the day view. If a change can't be saved, it's undone and you'll see a message.
 
 ### Current limitations
 

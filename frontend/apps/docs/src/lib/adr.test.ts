@@ -108,3 +108,17 @@ it('refreshes known files and rewrites inline/reference images to raw content', 
     'https://raw.githubusercontent.com/mgasca/calendar/main/docs/decisions/chart.png';
   expect(serialized.split(imageUrl).length - 1).toBe(2);
 });
+
+it.each([
+  ['accepted', 'accepted'],
+  ['proposed', 'draft'],
+  ['draft', 'draft'],
+  ['rejected', 'rejected'],
+  ['superseded by ADR-0002', 'superseded'],
+  ['superceded by ADR-0002', 'superseded'],
+  [' Pending ', 'pending'],
+  ['unknown', 'pending'],
+])('styles %s as %s without changing canonical labels', async (status, category) => {
+  const { statusCategory } = await import('./adr');
+  expect(statusCategory(status)).toBe(category);
+});

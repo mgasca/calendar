@@ -57,7 +57,7 @@ How do we enforce code quality and a consistent style in both languages, locally
 
 Implementation:
 
-* **.NET:** `Nullable` enabled, `TreatWarningsAsErrors`, `AnalysisLevel=latest-recommended` and `EnforceCodeStyleInBuild`, all in `Directory.Build.props`. Style lives in `.editorconfig`, checked with `dotnet format --verify-no-changes`. `GenerateDocumentationFile` is on (needed for IDE0005 unused-usings), with CS1591 suppressed.
+* **.NET:** `Nullable` enabled, `TreatWarningsAsErrors`, `AnalysisLevel=latest-recommended` and `EnforceCodeStyleInBuild`, all in `Directory.Build.props`. Style lives in `.editorconfig`, checked with `dotnet format --verify-no-changes`. `GenerateDocumentationFile` is on (needed for IDE0005 unused-usings). CS1591 makes XML doc comments mandatory on public members in production code; test projects suppress it. Single-line methods must be expression-bodied (`csharp_style_expression_bodied_methods = when_on_single_line`, IDE0022).
 * **TypeScript:** `tsconfig.base.json` uses `strict` plus `noUncheckedIndexedAccess`, `exactOptionalPropertyTypes`, `verbatimModuleSyntax` and `erasableSyntaxOnly`. ESLint uses a flat config (`strictTypeChecked` + `stylisticTypeChecked` via `projectService`, react-hooks, react-refresh, jsx-a11y) with `--max-warnings=0`. `eslint-config-prettier` turns off conflicting rules.
 
 ### Consequences

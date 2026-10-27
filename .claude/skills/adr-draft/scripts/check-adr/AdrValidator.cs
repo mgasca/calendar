@@ -6,6 +6,7 @@ namespace AdrDraft;
 /// <summary>Result of validating one ADR file.</summary>
 public sealed record AdrFileResult(string FileName, IReadOnlyList<string> Errors)
 {
+  /// <summary>True when the file has no validation errors.</summary>
   public bool Ok => Errors.Count == 0;
 }
 
@@ -15,7 +16,9 @@ public sealed record AdrFileResult(string FileName, IReadOnlyList<string> Errors
 /// </summary>
 public static partial class AdrValidator
 {
+  /// <summary>File name of the ADR index in the decisions directory.</summary>
   public const string IndexFileName = "README.md";
+  /// <summary>File name of the ADR template in the decisions directory.</summary>
   public const string TemplateFileName = "adr-template.md";
 
   private static readonly string[] RequiredH2 =

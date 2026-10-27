@@ -363,7 +363,8 @@
             },
             "description": "Tasks due on the day (open or completed): timed ones by due instant, then date-only ones by title."
           }
-        }
+        },
+        "description": "Tasks relevant to the day, split into overdue and due-today groups."
       },
       "AgendaWindow": {
         "required": [
@@ -374,14 +375,16 @@
         "properties": {
           "start": {
             "type": "string",
+            "description": "Inclusive start of the day, as a UTC instant.",
             "format": "date-time"
           },
           "end": {
             "type": "string",
+            "description": "Exclusive end of the day, as a UTC instant.",
             "format": "date-time"
           }
         },
-        "description": "The day as UTC instants: [start, end)."
+        "description": "The day as UTC instants, `[start, end)`; may be shorter or longer than 24 hours across DST changes."
       },
       "AllDayEventItem": {
         "required": [
@@ -394,29 +397,35 @@
         "properties": {
           "id": {
             "type": "string",
+            "description": "Unique event id.",
             "format": "uuid"
           },
           "title": {
-            "type": "string"
+            "type": "string",
+            "description": "Event title."
           },
           "location": {
             "type": [
               "null",
               "string"
-            ]
+            ],
+            "description": "Location, or `null` if none."
           },
           "notes": {
             "type": [
               "null",
               "string"
-            ]
+            ],
+            "description": "Notes, or `null` if none."
           },
           "startDate": {
             "type": "string",
+            "description": "First date of the event.",
             "format": "date"
           },
           "endDate": {
             "type": "string",
+            "description": "Exclusive end date of the event.",
             "format": "date"
           }
         },
@@ -430,18 +439,18 @@
         "properties": {
           "title": {
             "type": "string",
-            "description": "Required, at most 200 characters after trimming."
+            "description": "Event title; required, at most 200 characters after trimming."
           },
           "allDay": {
             "type": "boolean",
-            "description": "True for an all-day event (startDate/endDate), false for a timed one (start/end/timeZone)."
+            "description": "`true` for an all-day event (`startDate`/`endDate`), `false` for a timed one (`start`/`end`/`timeZone`)."
           },
           "start": {
             "type": [
               "null",
               "string"
             ],
-            "description": "Timed events: inclusive start instant, RFC 3339 with an explicit offset (e.g. 2026-10-26T14:00:00Z).",
+            "description": "Timed events: inclusive start instant, RFC 3339 with an explicit offset (e.g. 2026-10-26T14:00:00Z); `null` for all-day events.",
             "format": "date-time"
           },
           "end": {
@@ -449,7 +458,7 @@
               "null",
               "string"
             ],
-            "description": "Timed events: exclusive end instant, after start.",
+            "description": "Timed events: exclusive end instant, after `start`; `null` for all-day events.",
             "format": "date-time"
           },
           "timeZone": {
@@ -457,14 +466,14 @@
               "null",
               "string"
             ],
-            "description": "Timed events: IANA time zone the event was created in, e.g. America/New_York."
+            "description": "Timed events: IANA time zone the event was created in, e.g. America/New_York; `null` for all-day events."
           },
           "startDate": {
             "type": [
               "null",
               "string"
             ],
-            "description": "All-day events: first date (YYYY-MM-DD).",
+            "description": "All-day events: first date (YYYY-MM-DD); `null` for timed events.",
             "format": "date"
           },
           "endDate": {
@@ -472,7 +481,7 @@
               "null",
               "string"
             ],
-            "description": "All-day events: exclusive end date (YYYY-MM-DD), after startDate; a one-day event on the 26th ends on the 27th.",
+            "description": "All-day events: exclusive end date (YYYY-MM-DD), after `startDate`; a one-day event on the 26th ends on the 27th. `null` for timed events.",
             "format": "date"
           },
           "location": {
@@ -480,17 +489,17 @@
               "null",
               "string"
             ],
-            "description": "Optional, at most 200 characters."
+            "description": "Optional location, at most 200 characters."
           },
           "notes": {
             "type": [
               "null",
               "string"
             ],
-            "description": "Optional, at most 4000 characters."
+            "description": "Optional notes, at most 4000 characters."
           }
         },
-        "description": "Create an event. Discriminated by bool CreateEventRequest.AllDay: a timed event needs `start`, `end` and\n`timeZone`; an all-day event needs `startDate` and `endDate` (end exclusive) and no timed fields."
+        "description": "Create an event. Discriminated by `allDay`: a timed event needs `start`, `end` and\n`timeZone`; an all-day event needs `startDate` and `endDate` (end exclusive) and no timed fields."
       },
       "CreateTaskRequest": {
         "required": [
@@ -500,14 +509,14 @@
         "properties": {
           "title": {
             "type": "string",
-            "description": "Required, at most 200 characters after trimming."
+            "description": "Task title; required, at most 200 characters after trimming."
           },
           "dueDate": {
             "type": [
               "null",
               "string"
             ],
-            "description": "Floating due date (YYYY-MM-DD); mutually exclusive with dueAt.",
+            "description": "Floating due date (YYYY-MM-DD); mutually exclusive with `dueAt`.",
             "format": "date"
           },
           "dueAt": {
@@ -515,7 +524,7 @@
               "null",
               "string"
             ],
-            "description": "Due instant, RFC 3339 with an explicit offset; mutually exclusive with dueDate.",
+            "description": "Due instant, RFC 3339 with an explicit offset; mutually exclusive with `dueDate`.",
             "format": "date-time"
           }
         },
@@ -534,6 +543,7 @@
         "properties": {
           "date": {
             "type": "string",
+            "description": "The local calendar date (YYYY-MM-DD) in `timeZone`.",
             "format": "date"
           },
           "timeZone": {
@@ -541,6 +551,7 @@
             "description": "Canonical IANA time zone id the day was resolved in."
           },
           "window": {
+            "description": "The UTC instants spanned by the local day.",
             "$ref": "#/components/schemas/AgendaWindow"
           },
           "allDayEvents": {
@@ -558,6 +569,7 @@
             "description": "Timed events overlapping the window, by start then title."
           },
           "tasks": {
+            "description": "Overdue and due-today tasks.",
             "$ref": "#/components/schemas/AgendaTasks"
           }
         },
@@ -573,31 +585,37 @@
         "properties": {
           "id": {
             "type": "string",
+            "description": "Unique event id.",
             "format": "uuid"
           },
           "title": {
-            "type": "string"
+            "type": "string",
+            "description": "Event title."
           },
           "allDay": {
-            "type": "boolean"
+            "type": "boolean",
+            "description": "`true` for an all-day event, `false` for a timed one."
           },
           "location": {
             "type": [
               "null",
               "string"
-            ]
+            ],
+            "description": "Location, or `null` if none."
           },
           "notes": {
             "type": [
               "null",
               "string"
-            ]
+            ],
+            "description": "Notes, or `null` if none."
           },
           "start": {
             "type": [
               "null",
               "string"
             ],
+            "description": "Timed events: inclusive start instant; `null` for all-day events.",
             "format": "date-time"
           },
           "end": {
@@ -605,19 +623,22 @@
               "null",
               "string"
             ],
+            "description": "Timed events: exclusive end instant; `null` for all-day events.",
             "format": "date-time"
           },
           "timeZone": {
             "type": [
               "null",
               "string"
-            ]
+            ],
+            "description": "Timed events: IANA time zone id; `null` for all-day events."
           },
           "startDate": {
             "type": [
               "null",
               "string"
             ],
+            "description": "All-day events: first date; `null` for timed events.",
             "format": "date"
           },
           "endDate": {
@@ -625,6 +646,7 @@
               "null",
               "string"
             ],
+            "description": "All-day events: exclusive end date; `null` for timed events.",
             "format": "date"
           }
         },
@@ -736,16 +758,19 @@
         "properties": {
           "id": {
             "type": "string",
+            "description": "Unique task id.",
             "format": "uuid"
           },
           "title": {
-            "type": "string"
+            "type": "string",
+            "description": "Task title."
           },
           "dueDate": {
             "type": [
               "null",
               "string"
             ],
+            "description": "Floating due date, or `null` if the task has no date-only due.",
             "format": "date"
           },
           "dueAt": {
@@ -753,6 +778,7 @@
               "null",
               "string"
             ],
+            "description": "Due instant, or `null` if the task has no timed due.",
             "format": "date-time"
           },
           "completedAt": {
@@ -760,13 +786,15 @@
               "null",
               "string"
             ],
-            "description": "When the task was completed; null while it is open.",
+            "description": "When the task was completed; `null` while it is open.",
             "format": "date-time"
           },
           "isCompleted": {
-            "type": "boolean"
+            "type": "boolean",
+            "description": "`true` once the task has been completed."
           }
-        }
+        },
+        "description": "A task as stored."
       },
       "TimedEventItem": {
         "required": [
@@ -782,33 +810,40 @@
         "properties": {
           "id": {
             "type": "string",
+            "description": "Unique event id.",
             "format": "uuid"
           },
           "title": {
-            "type": "string"
+            "type": "string",
+            "description": "Event title."
           },
           "location": {
             "type": [
               "null",
               "string"
-            ]
+            ],
+            "description": "Location, or `null` if none."
           },
           "notes": {
             "type": [
               "null",
               "string"
-            ]
+            ],
+            "description": "Notes, or `null` if none."
           },
           "start": {
             "type": "string",
+            "description": "Inclusive start instant.",
             "format": "date-time"
           },
           "end": {
             "type": "string",
+            "description": "Exclusive end instant.",
             "format": "date-time"
           },
           "timeZone": {
-            "type": "string"
+            "type": "string",
+            "description": "IANA time zone id the event was created in."
           },
           "startsBeforeDay": {
             "type": "boolean",

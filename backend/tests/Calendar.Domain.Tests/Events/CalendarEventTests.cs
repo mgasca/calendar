@@ -46,18 +46,12 @@ public sealed class CalendarEventTests
   [Theory]
   [InlineData(0)]
   [InlineData(-30)]
-  public void Create_WhenEndNotAfterStart_Throws(int offsetMinutes)
-  {
-    Should.Throw<ArgumentException>(() => CalendarEvent.Create("Bad", Nine, Nine.AddMinutes(offsetMinutes), NewYork));
-  }
+  public void Create_WhenEndNotAfterStart_Throws(int offsetMinutes) => Should.Throw<ArgumentException>(() => CalendarEvent.Create("Bad", Nine, Nine.AddMinutes(offsetMinutes), NewYork));
 
   [Theory]
   [InlineData("")]
   [InlineData("   ")]
-  public void Create_WithBlankTitle_Throws(string title)
-  {
-    Should.Throw<ArgumentException>(() => CalendarEvent.Create(title, Nine, Nine.AddHours(1), NewYork));
-  }
+  public void Create_WithBlankTitle_Throws(string title) => Should.Throw<ArgumentException>(() => CalendarEvent.Create(title, Nine, Nine.AddHours(1), NewYork));
 
   [Fact]
   public void Create_TitleLength_IsCappedAtTwoHundredAfterTrim()
@@ -78,19 +72,13 @@ public sealed class CalendarEventTests
   }
 
   [Fact]
-  public void Create_StoresTheCanonicalZoneId()
-  {
-    CalendarEvent.Create("E", Nine, Nine.AddHours(1), "utc").TimeZoneId.ShouldBe("UTC");
-  }
+  public void Create_StoresTheCanonicalZoneId() => CalendarEvent.Create("E", Nine, Nine.AddHours(1), "utc").TimeZoneId.ShouldBe("UTC");
 
   [Theory]
   [InlineData("")]
   [InlineData("Nowhere/Land")]
   [InlineData("Eastern Standard Time")]
-  public void Create_WithInvalidZone_Throws(string zone)
-  {
-    Should.Throw<ArgumentException>(() => CalendarEvent.Create("A", Nine, Nine.AddHours(1), zone));
-  }
+  public void Create_WithInvalidZone_Throws(string zone) => Should.Throw<ArgumentException>(() => CalendarEvent.Create("A", Nine, Nine.AddHours(1), zone));
 
   [Theory]
   [InlineData(30, 90, true)]
@@ -123,24 +111,15 @@ public sealed class CalendarEventTests
   [Theory]
   [InlineData(0)]
   [InlineData(-1)]
-  public void CreateAllDay_WhenEndNotAfterStart_Throws(int offsetDays)
-  {
-    Should.Throw<ArgumentException>(() => CalendarEvent.CreateAllDay("Bad", Day, Day.AddDays(offsetDays)));
-  }
+  public void CreateAllDay_WhenEndNotAfterStart_Throws(int offsetDays) => Should.Throw<ArgumentException>(() => CalendarEvent.CreateAllDay("Bad", Day, Day.AddDays(offsetDays)));
 
   [Theory]
   [InlineData("")]
   [InlineData(" ")]
-  public void CreateAllDay_WithBlankTitle_Throws(string title)
-  {
-    Should.Throw<ArgumentException>(() => CalendarEvent.CreateAllDay(title, Day, Day.AddDays(1)));
-  }
+  public void CreateAllDay_WithBlankTitle_Throws(string title) => Should.Throw<ArgumentException>(() => CalendarEvent.CreateAllDay(title, Day, Day.AddDays(1)));
 
   [Fact]
-  public void CreateAllDay_WithTooLongTitle_Throws()
-  {
-    Should.Throw<ArgumentException>(() => CalendarEvent.CreateAllDay(new string('a', 201), Day, Day.AddDays(1)));
-  }
+  public void CreateAllDay_WithTooLongTitle_Throws() => Should.Throw<ArgumentException>(() => CalendarEvent.CreateAllDay(new string('a', 201), Day, Day.AddDays(1)));
 
   [Theory]
   [InlineData(1, 3, true)]

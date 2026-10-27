@@ -9,10 +9,7 @@ public sealed class TimeZonesTests
   [InlineData("Europe/London")]
   [InlineData("Asia/Kolkata")]
   [InlineData("UTC")]
-  public void IsValidIanaId_AcceptsIanaIds(string id)
-  {
-    TimeZones.IsValidIanaId(id).ShouldBeTrue();
-  }
+  public void IsValidIanaId_AcceptsIanaIds(string id) => TimeZones.IsValidIanaId(id).ShouldBeTrue();
 
   [Theory]
   [InlineData(null)]
@@ -35,10 +32,7 @@ public sealed class TimeZonesTests
   [InlineData("America/New_York/")]
   [InlineData("America/../America/New_York")]
   [InlineData("zone.tab")]
-  public void IsValidIanaId_RejectsBlankUnknownAndWindowsIds(string? id)
-  {
-    TimeZones.IsValidIanaId(id).ShouldBeFalse();
-  }
+  public void IsValidIanaId_RejectsBlankUnknownAndWindowsIds(string? id) => TimeZones.IsValidIanaId(id).ShouldBeFalse();
 
   [Theory]
   [InlineData("utc", "UTC")]
@@ -92,10 +86,7 @@ public sealed class TimeZonesTests
   [InlineData("Asia/Calcutta/")]
   [InlineData("asia/calcutta")]
   [InlineData("US//Eastern")]
-  public void TryFindIana_StillRejectsMalformedOrWrongCaseAliases(string id)
-  {
-    TimeZones.IsValidIanaId(id).ShouldBeFalse();
-  }
+  public void TryFindIana_StillRejectsMalformedOrWrongCaseAliases(string id) => TimeZones.IsValidIanaId(id).ShouldBeFalse();
 
   [Fact]
   public void TryFindIana_WithVeryLongOrOddInput_ReturnsFalseWithoutThrowing()
@@ -106,14 +97,8 @@ public sealed class TimeZonesTests
   }
 
   [Fact]
-  public void FindIana_ReturnsZone()
-  {
-    TimeZones.FindIana("Europe/London").Id.ShouldBe("Europe/London");
-  }
+  public void FindIana_ReturnsZone() => TimeZones.FindIana("Europe/London").Id.ShouldBe("Europe/London");
 
   [Fact]
-  public void FindIana_WithInvalidId_Throws()
-  {
-    Should.Throw<ArgumentException>(() => TimeZones.FindIana("Nope"));
-  }
+  public void FindIana_WithInvalidId_Throws() => Should.Throw<ArgumentException>(() => TimeZones.FindIana("Nope"));
 }

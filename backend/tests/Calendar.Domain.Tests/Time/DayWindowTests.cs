@@ -159,10 +159,7 @@ public sealed class DayWindowTests
   }
 
   [Fact]
-  public void Create_WithNullZone_Throws()
-  {
-    Should.Throw<ArgumentNullException>(() => DayWindow.Create(new DateOnly(2026, 10, 26), null!));
-  }
+  public void Create_WithNullZone_Throws() => Should.Throw<ArgumentNullException>(() => DayWindow.Create(new DateOnly(2026, 10, 26), null!));
 
   [Theory]
   [InlineData("America/Asuncion", 2024, 10, 6, 4)]

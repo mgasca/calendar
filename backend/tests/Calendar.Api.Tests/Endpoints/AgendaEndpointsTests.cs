@@ -49,10 +49,7 @@ public sealed class AgendaEndpointsTests(PostgresFixture postgres) : ApiTestBase
   [Theory]
   [InlineData("1900-01-01")]
   [InlineData("2200-12-31")]
-  public async Task GetDayAgenda_AtTheSupportedDateLimits_Works(string date)
-  {
-    (await GetAgendaAsync(date, "Pacific/Kiritimati")).Date.ShouldBe(DateOnly.Parse(date, System.Globalization.CultureInfo.InvariantCulture));
-  }
+  public async Task GetDayAgenda_AtTheSupportedDateLimits_Works(string date) => (await GetAgendaAsync(date, "Pacific/Kiritimati")).Date.ShouldBe(DateOnly.Parse(date, System.Globalization.CultureInfo.InvariantCulture));
 
   [Theory]
   [InlineData("Asia/Calcutta", "Asia/Kolkata")]
@@ -101,10 +98,7 @@ public sealed class AgendaEndpointsTests(PostgresFixture postgres) : ApiTestBase
   }
 
   [Fact]
-  public async Task GetDayAgenda_EchoesTheCanonicalZoneId()
-  {
-    (await GetAgendaAsync("2026-10-26", "utc")).TimeZone.ShouldBe("UTC");
-  }
+  public async Task GetDayAgenda_EchoesTheCanonicalZoneId() => (await GetAgendaAsync("2026-10-26", "utc")).TimeZone.ShouldBe("UTC");
 
   // ---- timed events ----
 

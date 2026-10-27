@@ -6,6 +6,7 @@ import { http, HttpResponse } from 'msw';
 
 import { renderWithProviders } from '../../test/render.tsx';
 import { server } from '../../test/server.ts';
+import { DayView } from './DayView.tsx';
 import { TodayView } from './TodayView.tsx';
 
 type Agenda = Schemas['DayAgendaResponse'];
@@ -117,8 +118,13 @@ function serveAgenda(agenda: Agenda | (() => Agenda)) {
   return requests;
 }
 
+/** The day view following today's date, as the `/` route shows it. */
 function renderToday() {
   return renderWithProviders(<TodayView timeZone={ZONE} locale="en-GB" />);
+}
+
+function renderDay(date: string) {
+  return renderWithProviders(<DayView date={date} timeZone={ZONE} locale="en-GB" />);
 }
 
 /**
@@ -146,7 +152,7 @@ afterEach(() => {
   vi.restoreAllMocks();
 });
 
-describe('TodayView', () => {
+describe('DayView', () => {
   describe('request', () => {
     it('asks for the local date and IANA zone', async () => {
       useFakeClock(MORNING);
@@ -183,6 +189,7 @@ describe('TodayView', () => {
       expect(await screen.findByRole('heading', { level: 1 })).toHaveTextContent(
         /^Monday,? 26 October$/,
       );
+      expect(await screen.findByText('Today')).toBeInTheDocument();
       expect(
         await screen.findByText('2 all-day events · 5 events · 4 tasks to do · 2 overdue'),
       ).toBeInTheDocument();
@@ -302,6 +309,7 @@ describe('TodayView', () => {
     });
 
     it('shows an empty state when nothing is scheduled', async () => {
+      useFakeClock(MORNING);
       serveAgenda(emptyAgenda);
 
       renderToday();
@@ -416,6 +424,8 @@ describe('TodayView', () => {
       // Still the previous day's data, with a matching heading, no Loading screen, and an indicator.
       expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent(/26 October/);
       expect(screen.getByRole('status')).toHaveTextContent('Updating');
+      expect(screen.getByText('Yesterday')).toBeInTheDocument();
+      expect(screen.queryByText('Now')).not.toBeInTheDocument();
       expect(screen.getByText('Standup')).toBeInTheDocument();
       expect(screen.getByRole('checkbox', { name: 'Book flights' })).toBeDisabled();
 
@@ -604,6 +614,112 @@ describe('TodayView', () => {
       expect(
         within(itemFor('File expenses')).queryByText('Overdue by 3 days'),
       ).not.toBeInTheDocument();
+    });
+  });
+
+  describe('another date', () => {
+    beforeEach(() => {
+      useFakeClock(MORNING); // today is Monday 26 October 2026
+    });
+
+    it('asks for that date, not today', async () => {
+      const requests = serveAgenda(buildAgenda({ date: '2026-10-30' }));
+
+      renderDay('2026-10-30');
+
+      expect(await screen.findByRole('heading', { level: 1 })).toHaveTextContent(
+        /^Friday,? 30 October$/,
+      );
+      expect(requests[0]?.searchParams.get('date')).toBe('2026-10-30');
+      expect(requests[0]?.searchParams.get('timeZone')).toBe(ZONE);
+    });
+
+    it('says how far the day is from today', async () => {
+      serveAgenda(buildAgenda({ date: '2026-10-27' }));
+
+      renderDay('2026-10-27');
+
+      expect(await screen.findByText('Tomorrow')).toBeInTheDocument();
+    });
+
+    it('shows no Earlier, Now or Next markers and no past-due flags', async () => {
+      // The same events and tasks as today's agenda, but shown for a day that isn't today.
+      serveAgenda(buildAgenda({ date: '2026-10-20' }));
+
+      renderDay('2026-10-20');
+
+      await screen.findByRole('region', { name: 'Schedule' });
+      expect(screen.getByText('6 days ago')).toBeInTheDocument();
+      expect(screen.queryByText(/^(Earlier|Now|Next)$/)).not.toBeInTheDocument();
+      expect(screen.queryByText(/Past due/)).not.toBeInTheDocument();
+      expect(screen.getByRole('list', { name: 'Due this day' })).toBeInTheDocument();
+      expect(screen.queryByRole('list', { name: 'Due today' })).not.toBeInTheDocument();
+    });
+
+    it('describes events crossing midnight relative to the day shown', async () => {
+      serveAgenda(buildAgenda({ date: '2026-10-20' }));
+
+      renderDay('2026-10-20');
+
+      await screen.findByRole('region', { name: 'Schedule' });
+      expect(itemFor('Night shift')).toHaveTextContent(
+        'Continues from the previous day, until 07:00',
+      );
+      expect(itemFor('Team dinner')).toHaveTextContent('From 21:00, continues the next day');
+    });
+
+    it('shows a neutral empty state', async () => {
+      serveAgenda({ ...emptyAgenda, date: '2026-11-03' });
+
+      renderDay('2026-11-03');
+
+      expect(await screen.findByText('Nothing scheduled.')).toBeInTheDocument();
+      expect(screen.queryByText(/today/)).not.toBeInTheDocument();
+    });
+
+    it('adds the year to the heading for a date in another year', async () => {
+      serveAgenda({ ...emptyAgenda, date: '2025-03-01' });
+
+      renderDay('2025-03-01');
+
+      expect(await screen.findByRole('heading', { level: 1 })).toHaveTextContent(
+        /^Saturday,? 1 March 2025$/,
+      );
+    });
+
+    it('names the day, not today, while loading and on errors', async () => {
+      server.use(
+        http.get('*/api/agenda/day', () =>
+          HttpResponse.json({ title: 'Bad date', status: 400 }, { status: 400 }),
+        ),
+      );
+
+      renderDay('2026-10-30');
+
+      expect(screen.getByRole('status')).toHaveTextContent('Loading the agenda for this day');
+      expect(await screen.findByRole('alert')).toHaveTextContent(
+        'Couldn’t load the agenda for this day.',
+      );
+    });
+
+    it('ticks a task on that day', async () => {
+      const state = buildAgenda({ date: '2026-10-30' });
+      server.use(
+        http.get('*/api/agenda/day', () => HttpResponse.json(state)),
+        http.post('*/api/tasks/:id/complete', ({ params }) => {
+          const task = state.tasks.dueToday.find((t) => t.id === params.id);
+          if (task) {
+            task.isCompleted = true;
+          }
+          return HttpResponse.json(task);
+        }),
+      );
+      renderDay('2026-10-30');
+
+      await userEvent.click(await screen.findByRole('checkbox', { name: 'Book flights' }));
+
+      expect(screen.getByRole('checkbox', { name: 'Book flights' })).toBeChecked();
+      expect(screen.queryByRole('alert')).not.toBeInTheDocument();
     });
   });
 });

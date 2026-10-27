@@ -27,13 +27,17 @@ export function daysBetween(from: string, to: string): number {
   return Math.round((Date.parse(`${to}T00:00:00Z`) - Date.parse(`${from}T00:00:00Z`)) / 86_400_000);
 }
 
-/** Human heading for a floating date, e.g. "Monday, 26 October" (in the en-GB locale). */
-export function formatDate(date: string, locale?: string): string {
+/**
+ * Human heading for a floating date, e.g. "Monday, 26 October" (in the en-GB locale), with the year
+ * when `withYear` is set.
+ */
+export function formatDate(date: string, locale?: string, { withYear = false } = {}): string {
   return new Intl.DateTimeFormat(locale, {
     timeZone: 'UTC',
     weekday: 'long',
     day: 'numeric',
     month: 'long',
+    ...(withYear && { year: 'numeric' }),
   }).format(Date.parse(`${date}T00:00:00Z`));
 }
 
@@ -92,4 +96,36 @@ export function isPastDue(task: AgendaTask, nowMs: number): boolean {
 /** Open tasks first, then completed ones; otherwise the (server) order is kept. */
 export function openFirst(tasks: readonly AgendaTask[]): AgendaTask[] {
   return [...tasks.filter((t) => !t.isCompleted), ...tasks.filter((t) => t.isCompleted)];
+}
+
+const ISO_DATE = /^(\d{4})-(\d{2})-(\d{2})$/;
+
+/** The years the app accepts, the same range as the API's agenda endpoints. */
+const MIN_YEAR = 1900;
+const MAX_YEAR = 2200;
+
+/** Whether `value` is a real calendar date written as `YYYY-MM-DD`, in the supported years. */
+export function isIsoDate(value: string): boolean {
+  const match = ISO_DATE.exec(value);
+  if (!match) {
+    return false;
+  }
+  const [year, month, day] = [Number(match[1]), Number(match[2]), Number(match[3])];
+  if (year < MIN_YEAR || year > MAX_YEAR) {
+    return false;
+  }
+  const date = new Date(Date.UTC(year, month - 1, day));
+  return date.getUTCMonth() === month - 1 && date.getUTCDate() === day;
+}
+
+/** `date` relative to `today`: "Today", "Yesterday", "Tomorrow", "3 days ago" or "In 3 days". */
+export function relativeDay(date: string, today: string): string {
+  const days = daysBetween(today, date);
+  if (days === 0) {
+    return 'Today';
+  }
+  if (Math.abs(days) === 1) {
+    return days < 0 ? 'Yesterday' : 'Tomorrow';
+  }
+  return days < 0 ? `${String(-days)} days ago` : `In ${String(days)} days`;
 }

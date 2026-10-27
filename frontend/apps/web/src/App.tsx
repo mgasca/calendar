@@ -1,5 +1,5 @@
 import { ApiStatus } from './features/health/ApiStatus.tsx';
-import { TodayView } from './features/today/TodayView.tsx';
+import { TodayView } from './features/day/TodayView.tsx';
 
 export function App() {
   return (

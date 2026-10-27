@@ -44,6 +44,8 @@ export function TaskItem({
         />
         <span className="item-title">{task.title}</span>
       </label>
+      {task.priority && <span className="badge">{task.priority} priority</span>}
+      {task.notes && <p className="task-notes">{task.notes}</p>}
       {showMeta && (
         <span id={metaId} className="item-meta">
           {detail && !task.isCompleted && <strong className="flag">{detail}</strong>}

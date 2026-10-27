@@ -5,6 +5,9 @@ import { api } from '../../api/client.ts';
 import { AGENDA_KEY } from './agendaQuery.ts';
 import type { AgendaTask } from './dayTime.ts';
 
+/** Prefix of the task list queries (`My tasks`), which also show completion. */
+const TASKS_KEY = ['tasks'] as const;
+
 export class TaskUpdateError extends Error {
   readonly status: number;
 
@@ -31,8 +34,9 @@ export interface ToggleTaskVariables {
 
 /**
  * Completes or reopens a task. The query at `queryKey` is updated optimistically through `patch`,
- * only that task is rolled back on failure, and once the request settles every agenda query is
- * refetched (which also resolves 409 concurrency conflicts and keeps other views in step).
+ * only that task is rolled back on failure, and once the request settles every agenda query and
+ * the task list are refetched (which also resolves 409 concurrency conflicts and keeps other views
+ * in step).
  */
 export function useToggleTask<TData>(queryKey: QueryKey, patch: TaskPatch<TData>) {
   const queryClient = useQueryClient();
@@ -75,6 +79,10 @@ export function useToggleTask<TData>(queryKey: QueryKey, patch: TaskPatch<TData>
         );
       }
     },
-    onSettled: () => queryClient.invalidateQueries({ queryKey: AGENDA_KEY }),
+    onSettled: () =>
+      Promise.all([
+        queryClient.invalidateQueries({ queryKey: AGENDA_KEY }),
+        queryClient.invalidateQueries({ queryKey: TASKS_KEY }),
+      ]),
   });
 }

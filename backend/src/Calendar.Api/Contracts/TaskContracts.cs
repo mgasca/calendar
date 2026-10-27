@@ -10,6 +10,12 @@ public sealed record CreateTaskRequest
   /// <summary>Task title; required, at most 200 characters after trimming.</summary>
   public required string Title { get; init; }
 
+  /// <summary>Priority level; defaults to medium. Allowed values: low, medium, high.</summary>
+  public string Priority { get; init; } = "medium";
+
+  /// <summary>Optional notes, at most 4000 characters after trimming.</summary>
+  public string? Notes { get; init; }
+
   /// <summary>Floating due date (YYYY-MM-DD); mutually exclusive with <c>dueAt</c>.</summary>
   public DateOnly? DueDate { get; init; }
 
@@ -26,6 +32,12 @@ public sealed record TaskResponse
 
   /// <summary>Task title.</summary>
   public required string Title { get; init; }
+
+  /// <summary>Priority level: low, medium, or high.</summary>
+  public string Priority { get; init; } = "medium";
+
+  /// <summary>Optional task notes.</summary>
+  public string? Notes { get; init; }
 
   /// <summary>Floating due date, or <c>null</c> if the task has no date-only due.</summary>
   public DateOnly? DueDate { get; init; }
@@ -44,6 +56,8 @@ public sealed record TaskResponse
   {
     Id = t.Id,
     Title = t.Title,
+    Priority = t.Priority,
+    Notes = t.Notes,
     DueDate = t.DueDate,
     DueAt = t.DueAt,
     CompletedAt = t.CompletedAt,

@@ -12,6 +12,8 @@ public sealed class TodoTaskTests
     var task = TodoTask.Create("  Buy milk ");
 
     task.Title.ShouldBe("Buy milk");
+    task.Priority.ShouldBe("medium");
+    task.Notes.ShouldBeNull();
     task.Id.ShouldNotBe(Guid.Empty);
     task.DueDate.ShouldBeNull();
     task.DueAt.ShouldBeNull();
@@ -51,6 +53,21 @@ public sealed class TodoTaskTests
     TodoTask.Create(" " + new string('a', 200)).Title.Length.ShouldBe(200);
     Should.Throw<ArgumentException>(() => TodoTask.Create(new string('a', 201)));
   }
+
+  [Fact]
+  public void Create_WithNotes_NormalizesAndLimitsLength()
+  {
+    TodoTask.Create("T", priority: "high", notes: "  Details  ").Notes.ShouldBe("Details");
+    TodoTask.Create("T", notes: "  ").Notes.ShouldBeNull();
+    TodoTask.Create("T", notes: new string('a', 4000)).Notes!.Length.ShouldBe(4000);
+    Should.Throw<ArgumentException>(() => TodoTask.Create("T", notes: new string('a', 4001))).ParamName.ShouldBe("notes");
+  }
+
+  [Theory]
+  [InlineData("urgent")]
+  [InlineData("")]
+  public void Create_WithInvalidPriority_Throws(string priority) =>
+      Should.Throw<ArgumentException>(() => TodoTask.Create("T", priority: priority)).ParamName.ShouldBe("priority");
 
   [Fact]
   public void Complete_SetsCompletedAtInUtc()

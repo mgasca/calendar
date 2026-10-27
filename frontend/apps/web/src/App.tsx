@@ -15,6 +15,9 @@ export function AppLayout() {
         <Link to="/" activeProps={{ 'aria-current': 'page' }} activeOptions={{ exact: true }}>
           Today
         </Link>
+        <Link to="/tasks" activeProps={{ 'aria-current': 'page' }}>
+          My tasks
+        </Link>
       </nav>
       <main>
         <Outlet />

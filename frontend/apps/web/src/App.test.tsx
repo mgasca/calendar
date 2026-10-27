@@ -1,5 +1,5 @@
 import type { Schemas } from '@calendar/api-client';
-import { act, screen, within } from '@testing-library/react';
+import { act, fireEvent, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { http, HttpResponse } from 'msw';
 
@@ -7,6 +7,7 @@ import { renderApp } from './test/render.tsx';
 import { server } from './test/server.ts';
 
 type Agenda = Schemas['DayAgendaResponse'];
+type Task = Schemas['TaskResponse'];
 
 const ZONE = 'Europe/Madrid';
 // 10:30 in Madrid on Monday 26 October 2026.
@@ -157,5 +158,104 @@ describe('navigation', () => {
 
     expect(await screen.findByText('Review on 2026-10-20')).toBeInTheDocument();
     expect(router.state.location.pathname).toBe('/day/2026-10-20');
+  });
+});
+
+describe('date picker', () => {
+  it('shows the shown date and navigates to the picked one', async () => {
+    serveAgendas();
+    const { router } = renderApp('/');
+    await screen.findByText('Review on 2026-10-26');
+    expect(screen.getByLabelText('Calendar date')).toHaveValue('2026-10-26');
+
+    fireEvent.change(screen.getByLabelText('Calendar date'), { target: { value: '2026-10-20' } });
+
+    expect(await screen.findByText('Review on 2026-10-20')).toBeInTheDocument();
+    expect(router.state.location.pathname).toBe('/day/2026-10-20');
+    expect(screen.getByLabelText('Calendar date')).toHaveValue('2026-10-20');
+  });
+
+  it('goes to today when cleared', async () => {
+    serveAgendas();
+    const { router } = renderApp('/day/2026-10-20');
+    await screen.findByText('Review on 2026-10-20');
+
+    fireEvent.change(screen.getByLabelText('Calendar date'), { target: { value: '' } });
+
+    expect(await screen.findByText('Review on 2026-10-26')).toBeInTheDocument();
+    expect(router.state.location.pathname).toBe('/');
+  });
+});
+
+describe('tasks', () => {
+  /** Serves day agendas and the task list from `tasks`, adding posted tasks to it. */
+  function serveTasks() {
+    const tasks: Task[] = [];
+    server.use(
+      http.get('*/api/agenda/day', ({ request }) => {
+        const date = new URL(request.url).searchParams.get('date') ?? '';
+        return HttpResponse.json({
+          ...agendaFor(date),
+          events: [],
+          tasks: { overdue: [], dueToday: tasks.filter((t) => t.dueDate === date) },
+        });
+      }),
+      http.get('*/api/tasks', () => HttpResponse.json(tasks)),
+      http.post('*/api/tasks', async ({ request }) => {
+        const body = (await request.json()) as Schemas['CreateTaskRequest'];
+        const task = { ...body, id: 'new-task', isCompleted: false };
+        tasks.push(task);
+        return HttpResponse.json(task, { status: 201 });
+      }),
+    );
+    return tasks;
+  }
+
+  it('creates a task on the shown day and displays it in the day view and in My tasks', async () => {
+    const tasks = serveTasks();
+    const { router } = renderApp('/day/2099-10-27');
+    const user = userEvent.setup();
+    await screen.findByRole('heading', { level: 1, name: /27 October 2099/ });
+
+    await user.click(screen.getByRole('button', { name: 'Add task' }));
+    expect(screen.getByLabelText('Due date')).toHaveValue('2099-10-27');
+    await user.type(screen.getByLabelText('Title'), 'Pack bag');
+    await user.click(screen.getByRole('button', { name: 'Save task' }));
+    await waitFor(() => {
+      expect(screen.queryByRole('button', { name: 'Save task' })).not.toBeInTheDocument();
+    });
+    expect(screen.getByText('Task added. You can find it in My tasks.')).toHaveAttribute(
+      'role',
+      'status',
+    );
+    expect(await screen.findByRole('checkbox', { name: 'Pack bag' })).toBeInTheDocument();
+
+    const nav = screen.getByRole('navigation', { name: 'Main' });
+    await user.click(within(nav).getByRole('link', { name: 'My tasks' }));
+
+    expect(await screen.findByRole('heading', { level: 1, name: 'My tasks' })).toBeVisible();
+    expect(router.state.location.pathname).toBe('/tasks');
+    expect(within(nav).getByRole('link', { name: 'My tasks' })).toHaveAttribute(
+      'aria-current',
+      'page',
+    );
+    expect(within(nav).getByRole('link', { name: 'Today' })).not.toHaveAttribute('aria-current');
+    expect(await screen.findByRole('checkbox', { name: 'Pack bag' })).toBeInTheDocument();
+    expect(tasks).toHaveLength(1);
+  });
+
+  it('prefills today on / and nothing on /tasks', async () => {
+    serveTasks();
+    const user = userEvent.setup();
+    const { unmount } = renderApp('/');
+    await user.click(await screen.findByRole('button', { name: 'Add task' }));
+    expect(screen.getByLabelText('Due date')).toHaveValue('2026-10-26');
+    unmount();
+
+    renderApp('/tasks');
+    await user.click(await screen.findByRole('button', { name: 'Add task' }));
+    expect(screen.getByLabelText('Deadline')).toHaveValue('none');
+    expect(screen.queryByLabelText('Due date')).not.toBeInTheDocument();
+    expect(screen.queryByLabelText('Calendar date')).not.toBeInTheDocument();
   });
 });

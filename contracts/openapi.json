@@ -107,6 +107,27 @@
       }
     },
     "/api/tasks": {
+      "get": {
+        "tags": [
+          "Tasks"
+        ],
+        "operationId": "ListTasks",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/TaskResponse"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
       "post": {
         "tags": [
           "Tasks"
@@ -605,6 +626,17 @@
             "type": "string",
             "description": "Task title; required, at most 200 characters after trimming."
           },
+          "priority": {
+            "type": "string",
+            "description": "Priority level; defaults to medium. Allowed values: low, medium, high."
+          },
+          "notes": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "Optional notes, at most 4000 characters after trimming."
+          },
           "dueDate": {
             "type": [
               "null",
@@ -858,6 +890,17 @@
           "title": {
             "type": "string",
             "description": "Task title."
+          },
+          "priority": {
+            "type": "string",
+            "description": "Priority level: low, medium, or high."
+          },
+          "notes": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "Optional task notes."
           },
           "dueDate": {
             "type": [

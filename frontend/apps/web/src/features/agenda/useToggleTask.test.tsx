@@ -21,6 +21,7 @@ const patchBoard: TaskPatch<Board> = (board, id, update) => ({
 
 const BOARD_KEY = ['agenda', 'board', '2026-10-26'] as const;
 const OTHER_AGENDA_KEY = ['agenda', 'day', '2026-10-27', 'Europe/Madrid'] as const;
+const TASKS_KEY = ['tasks'] as const;
 const UNRELATED_KEY = ['health'] as const;
 
 const board = (): Board => ({
@@ -42,6 +43,7 @@ function setup() {
   });
   queryClient.setQueryData(BOARD_KEY, board());
   queryClient.setQueryData(OTHER_AGENDA_KEY, { date: '2026-10-27' });
+  queryClient.setQueryData(TASKS_KEY, []);
   queryClient.setQueryData(UNRELATED_KEY, { status: 'ok' });
   const wrapper = ({ children }: { children: ReactNode }) => (
     <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
@@ -112,7 +114,7 @@ describe('useToggleTask', () => {
     expect(task('t2')).toMatchObject({ isCompleted: false, completedAt: null });
   });
 
-  it('invalidates every agenda query on settle, but nothing outside the agenda prefix', async () => {
+  it('invalidates every agenda query and the task list on settle, but nothing else', async () => {
     serveToggle(200);
     const { queryClient, result } = setup();
 
@@ -125,10 +127,11 @@ describe('useToggleTask', () => {
     });
     expect(queryClient.getQueryState(BOARD_KEY)?.isInvalidated).toBe(true);
     expect(queryClient.getQueryState(OTHER_AGENDA_KEY)?.isInvalidated).toBe(true);
+    expect(queryClient.getQueryState(TASKS_KEY)?.isInvalidated).toBe(true);
     expect(queryClient.getQueryState(UNRELATED_KEY)?.isInvalidated).toBe(false);
   });
 
-  it('also invalidates the agenda prefix when the request fails', async () => {
+  it('also invalidates the agenda prefix and the task list when the request fails', async () => {
     serveToggle(500);
     const { queryClient, result } = setup();
 
@@ -140,6 +143,7 @@ describe('useToggleTask', () => {
       expect(result.current.isError).toBe(true);
     });
     expect(queryClient.getQueryState(OTHER_AGENDA_KEY)?.isInvalidated).toBe(true);
+    expect(queryClient.getQueryState(TASKS_KEY)?.isInvalidated).toBe(true);
   });
 
   it('rolls back only the failed task, keeping other changes made meanwhile', async () => {

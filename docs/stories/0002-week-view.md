@@ -64,7 +64,7 @@ The Today view can only show today. This story also makes any day viewable, so t
 | [0020](../decisions/0020-aggregate-day-agenda-endpoint-as-read-model.md) | A dedicated day-agenda read model, with resource endpoints for writes | Its "Extending to week and month" section anticipates this story. The week follows the same pattern. |
 | [0021](../decisions/0021-client-supplied-date-and-time-zone-define-the-day.md) | The client sends its local date and IANA zone; the server computes the window | The week is resolved the same way. The client also sends its "today", which the Overdue panel needs. |
 | 0022 *(to draft)* | Client-side routing: TanStack Router (proposed) or React Router 7 in library mode | The app gets its first routes: `/`, `/day/:date` and `/week/:weekStart?` |
-| 0023 *(to draft, refines 0020)* | A sibling `GET /api/agenda/week` read model, built on range-based internals | Records the ISO-Monday week, the per-day buckets, and the `today` parameter with the overdue-before-the-week rule. It also records that the internals work for any range of days, so a later month or generic range endpoint is a thin addition that supersedes 0023. |
+| [0024](../decisions/0024-week-agenda-endpoint-on-range-based-internals.md) *(refines 0020)* | A sibling `GET /api/agenda/week` read model, built on range-based internals | Records the ISO-Monday week, the per-day buckets, and the `today` parameter with the overdue-before-the-week rule. It also records that the internals work for any range of days, so a later month or generic range endpoint is a thin addition that supersedes 0024. |
 
 ADR-0022 and ADR-0023 are drafted with the `adr-draft` skill and reviewed before the code that depends on them.
 
@@ -154,7 +154,7 @@ ADR-0022 and ADR-0023 are drafted with the `adr-draft` skill and reviewed before
 
 One PR per step, each green on `make check`:
 
-1. **Backend and ADR-0023:** `DateRangeWindow`, the range queries and the shared builder (with the day endpoint moved onto it), then `GET /api/agenda/week` with endpoint and agreement tests, and the regenerated contract.
+1. **Backend and ADR-0024:** `DateRangeWindow`, the range queries and the shared builder (with the day endpoint moved onto it), then `GET /api/agenda/week` with endpoint and agreement tests, and the regenerated contract.
 2. **Routing and ADR-0022:** add the router. The Today view becomes the day view at `/` and `/day/:date`. Shared agenda code moves to `features/agenda`.
 3. **Week view:** grid, all-day band, task strips with ticking, Overdue panel, navigation and day links.
 
@@ -162,7 +162,7 @@ One PR per step, each green on `make check`:
 
 * [0003](0003-create-events-and-tasks.md): create events and tasks from the day and week views.
 * Editing, moving (including drag and drop) and deleting events and tasks.
-* A month view on the range-ready internals. It supersedes ADR-0023 if it introduces a generic range endpoint.
+* A month view on the range-ready internals. It supersedes ADR-0024 if it introduces a generic range endpoint.
 * A configurable first day of the week, once user preferences exist.
 
 ## User guide

@@ -1,0 +1,219 @@
+<!DOCTYPE html><html lang="en" dir="ltr" data-theme="dark" data-has-toc data-has-sidebar class="astro-ssxzqzh3"><head><meta charset="utf-8"/><meta name="viewport" content="width=device-width, initial-scale=1"/><title>ADR Log | Calendar · ADR Log</title><link rel="canonical" href="https://mgasca.github.io/calendar/"/><link rel="sitemap" href="/calendar/sitemap-index.xml"/><link rel="shortcut icon" href="/calendar/favicon.svg" type="image/svg+xml"/><meta name="generator" content="Astro v7.4.2"/><meta name="generator" content="Starlight v0.42.7"/><meta property="og:title" content="ADR Log"/><meta property="og:type" content="article"/><meta property="og:url" content="https://mgasca.github.io/calendar/"/><meta property="og:locale" content="en"/><meta property="og:description" content="Architecture decisions for Calendar, with their context, alternatives and consequences."/><meta property="og:site_name" content="Calendar · ADR Log"/><meta name="twitter:card" content="summary_large_image"/><meta name="description" content="Architecture decisions for Calendar, with their context, alternatives and consequences."/><script>
+	window.StarlightThemeProvider = (() => {
+		const storedTheme =
+			typeof localStorage !== 'undefined' && localStorage.getItem('starlight-theme');
+		const theme =
+			storedTheme ||
+			(window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark');
+		document.documentElement.dataset.theme = theme === 'light' ? 'light' : 'dark';
+		return {
+			updatePickers(theme = storedTheme || 'auto') {
+				document.querySelectorAll('starlight-theme-select').forEach((picker) => {
+					const select = picker.querySelector('select');
+					if (select) select.value = theme;
+					/** @type {HTMLTemplateElement | null} */
+					const tmpl = document.querySelector(`#theme-icons`);
+					const newIcon = tmpl && tmpl.content.querySelector('.' + theme);
+					if (newIcon) {
+						const oldIcon = picker.querySelector('svg.label-icon');
+						if (oldIcon) {
+							oldIcon.replaceChildren(...newIcon.cloneNode(true).childNodes);
+						}
+					}
+				});
+			},
+		};
+	})();
+</script><template id="theme-icons"><svg aria-hidden="true" class="light astro-jnolmrkc" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1em;"><path d="M5 12a1 1 0 0 0-1-1H3a1 1 0 0 0 0 2h1a1 1 0 0 0 1-1Zm.64 5-.71.71a1 1 0 0 0 0 1.41 1 1 0 0 0 1.41 0l.71-.71A1 1 0 0 0 5.64 17ZM12 5a1 1 0 0 0 1-1V3a1 1 0 0 0-2 0v1a1 1 0 0 0 1 1Zm5.66 2.34a1 1 0 0 0 .7-.29l.71-.71a1 1 0 1 0-1.41-1.41l-.66.71a1 1 0 0 0 0 1.41 1 1 0 0 0 .66.29Zm-12-.29a1 1 0 0 0 1.41 0 1 1 0 0 0 0-1.41l-.71-.71a1.004 1.004 0 1 0-1.43 1.41l.73.71ZM21 11h-1a1 1 0 0 0 0 2h1a1 1 0 0 0 0-2Zm-2.64 6A1 1 0 0 0 17 18.36l.71.71a1 1 0 0 0 1.41 0 1 1 0 0 0 0-1.41l-.76-.66ZM12 6.5a5.5 5.5 0 1 0 5.5 5.5A5.51 5.51 0 0 0 12 6.5Zm0 9a3.5 3.5 0 1 1 0-7 3.5 3.5 0 0 1 0 7Zm0 3.5a1 1 0 0 0-1 1v1a1 1 0 0 0 2 0v-1a1 1 0 0 0-1-1Z"/></svg><svg aria-hidden="true" class="dark astro-jnolmrkc" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1em;"><path d="M21.64 13a1 1 0 0 0-1.05-.14 8.049 8.049 0 0 1-3.37.73 8.15 8.15 0 0 1-8.14-8.1 8.59 8.59 0 0 1 .25-2A1 1 0 0 0 8 2.36a10.14 10.14 0 1 0 14 11.69 1 1 0 0 0-.36-1.05Zm-9.5 6.69A8.14 8.14 0 0 1 7.08 5.22v.27a10.15 10.15 0 0 0 10.14 10.14 9.784 9.784 0 0 0 2.1-.22 8.11 8.11 0 0 1-7.18 4.32v-.04Z"/></svg><svg aria-hidden="true" class="auto astro-jnolmrkc" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1em;"><path d="M21 14h-1V7a3 3 0 0 0-3-3H7a3 3 0 0 0-3 3v7H3a1 1 0 0 0-1 1v2a3 3 0 0 0 3 3h14a3 3 0 0 0 3-3v-2a1 1 0 0 0-1-1ZM6 7a1 1 0 0 1 1-1h10a1 1 0 0 1 1 1v7H6V7Zm14 10a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1v-1h16v1Z"/></svg></template><link rel="stylesheet" href="/calendar/_astro/print.ehPL0gv-.css" media="print"><link rel="stylesheet" href="/calendar/_astro/common.8MN5uZS6.css"><script type="module" src="/calendar/_astro/page.cNngjUgL.js"></script></head><body class="astro-ssxzqzh3"><a class="sl-skip-link astro-qgsrl7nl" href="#_top">Skip to content</a><div class="page sl-flex astro-3phc7jhf"><header class="header astro-3phc7jhf"><div class="header astro-asxhfwvk"><div class="title-wrapper sl-flex astro-asxhfwvk"><a href="/calendar/" class="site-title sl-flex astro-jwtjedx2"><span class="astro-jwtjedx2" translate="no">Calendar · ADR Log</span></a></div><div class="sl-flex print:hidden astro-asxhfwvk"><site-search class="astro-asxhfwvk astro-g3eig2t6" data-translations="{&quot;placeholder&quot;:&quot;Search&quot;}"><button data-open-modal disabled aria-label="Search" aria-keyshortcuts="Control+K" class="astro-g3eig2t6"><svg aria-hidden="true" class="astro-g3eig2t6 astro-jnolmrkc" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1em;"><path d="M21.71 20.29 18 16.61A9 9 0 1 0 16.61 18l3.68 3.68a.999.999 0 0 0 1.42 0 1 1 0 0 0 0-1.39ZM11 18a7 7 0 1 1 0-14 7 7 0 0 1 0 14Z"/></svg><span class="sl-hidden md:sl-block astro-g3eig2t6" aria-hidden="true">Search</span><kbd class="sl-hidden md:sl-flex astro-g3eig2t6" style="display: none;"><kbd class="astro-g3eig2t6">Ctrl</kbd><kbd class="astro-g3eig2t6">K</kbd></kbd></button><dialog style="padding:0" aria-label="Search" class="astro-g3eig2t6"><div class="dialog-frame sl-flex astro-g3eig2t6"><button data-close-modal class="sl-flex md:sl-hidden astro-g3eig2t6">Cancel</button><div class="search-container astro-g3eig2t6"><div id="starlight__search" class="astro-g3eig2t6"></div></div></div></dialog></site-search><script>
+	(() => {
+		const openBtn = document.querySelector('button[data-open-modal]');
+		const shortcut = openBtn?.querySelector('kbd');
+		if (!openBtn || !(shortcut instanceof HTMLElement)) return;
+		const platformKey = shortcut.querySelector('kbd');
+		if (platformKey && /(Mac|iPhone|iPod|iPad)/i.test(navigator.platform)) {
+			platformKey.textContent = '⌘';
+			openBtn.setAttribute('aria-keyshortcuts', 'Meta+K');
+		}
+		shortcut.style.display = '';
+	})();
+</script><script type="module" src="/calendar/_astro/Search.astro_astro_type_script_index_0_lang.COAWJ1Qb.js"></script></div><div class="sl-hidden md:sl-flex print:hidden right-group astro-asxhfwvk"><div class="sl-flex social-icons astro-asxhfwvk"><a href="https://github.com/mgasca/calendar" rel="me" class="sl-flex astro-wikfzz5s"><span class="sr-only astro-wikfzz5s">GitHub</span><svg aria-hidden="true" class="astro-wikfzz5s astro-jnolmrkc" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1em;"><path d="M12 .3a12 12 0 0 0-3.8 23.38c.6.12.83-.26.83-.57L9 21.07c-3.34.72-4.04-1.61-4.04-1.61-.55-1.39-1.34-1.76-1.34-1.76-1.08-.74.09-.73.09-.73 1.2.09 1.83 1.24 1.83 1.24 1.08 1.83 2.81 1.3 3.5 1 .1-.78.42-1.31.76-1.61-2.67-.3-5.47-1.33-5.47-5.93 0-1.31.47-2.38 1.24-3.22-.14-.3-.54-1.52.1-3.18 0 0 1-.32 3.3 1.23a11.5 11.5 0 0 1 6 0c2.28-1.55 3.29-1.23 3.29-1.23.64 1.66.24 2.88.12 3.18a4.65 4.65 0 0 1 1.23 3.22c0 4.61-2.8 5.63-5.48 5.92.42.36.81 1.1.81 2.22l-.01 3.29c0 .31.2.69.82.57A12 12 0 0 0 12 .3Z"/></svg></a></div><starlight-theme-select><label style="--sl-select-width: 6.25em" class="astro-v3j37xub"><span class="sr-only astro-v3j37xub">Select theme</span><svg aria-hidden="true" class="icon label-icon astro-v3j37xub astro-jnolmrkc" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1em;"><path d="M21 14h-1V7a3 3 0 0 0-3-3H7a3 3 0 0 0-3 3v7H3a1 1 0 0 0-1 1v2a3 3 0 0 0 3 3h14a3 3 0 0 0 3-3v-2a1 1 0 0 0-1-1ZM6 7a1 1 0 0 1 1-1h10a1 1 0 0 1 1 1v7H6V7Zm14 10a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1v-1h16v1Z"/></svg><select autocomplete="off" class="astro-v3j37xub"><option value="dark" class="astro-v3j37xub">Dark</option><option value="light" class="astro-v3j37xub">Light</option><option value="auto" selected class="astro-v3j37xub">Auto</option></select><svg aria-hidden="true" class="icon caret astro-v3j37xub astro-jnolmrkc" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1em;"><path d="M17 9.17a1 1 0 0 0-1.41 0L12 12.71 8.46 9.17a1 1 0 1 0-1.41 1.42l4.24 4.24a1.002 1.002 0 0 0 1.42 0L17 10.59a1.002 1.002 0 0 0 0-1.42Z"/></svg></label></starlight-theme-select><script>
+	StarlightThemeProvider.updatePickers();
+</script><script type="module">var e=`starlight-theme`,t=e=>e===`auto`||e===`dark`||e===`light`?e:`auto`,n=()=>t(typeof localStorage<`u`&&localStorage.getItem(e));function r(t){typeof localStorage<`u`&&localStorage.setItem(e,t===`light`||t===`dark`?t:``)}var i=()=>matchMedia(`(prefers-color-scheme: light)`).matches?`light`:`dark`;function a(e){StarlightThemeProvider.updatePickers(e),document.documentElement.dataset.theme=e===`auto`?i():e,r(e)}matchMedia(`(prefers-color-scheme: light)`).addEventListener(`change`,()=>{n()===`auto`&&a(`auto`)});var o=class extends HTMLElement{constructor(){super(),a(n()),this.querySelector(`select`)?.addEventListener(`change`,e=>{e.currentTarget instanceof HTMLSelectElement&&a(t(e.currentTarget.value))})}};customElements.define(`starlight-theme-select`,o);</script><script type="module">var e=class extends HTMLElement{constructor(){super();let e=this.querySelector(`select`);e&&(e.addEventListener(`change`,e=>{e.currentTarget instanceof HTMLSelectElement&&(window.location.pathname=e.currentTarget.value)}),window.addEventListener(`pageshow`,t=>{if(!t.persisted)return;let n=e.querySelector(`option[selected]`)?.index;n!==e.selectedIndex&&(e.selectedIndex=n??0)}))}};customElements.define(`starlight-lang-select`,e);</script></div></div></header><nav class="sidebar print:hidden astro-3phc7jhf" aria-label="Main"><button popovertarget="starlight__sidebar" class="sl-menu-button sl-flex md:sl-hidden print:hidden astro-2z6sd2lp"><svg aria-hidden="true" class="open-menu astro-2z6sd2lp astro-jnolmrkc" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1em;"><path d="M3 8h18a1 1 0 1 0 0-2H3a1 1 0 0 0 0 2Zm18 8H3a1 1 0 0 0 0 2h18a1 1 0 0 0 0-2Zm0-5H3a1 1 0 0 0 0 2h18a1 1 0 0 0 0-2Z"/></svg><svg aria-hidden="true" class="close-menu astro-2z6sd2lp astro-jnolmrkc" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1em;"><path d="m13.41 12 6.3-6.29a1.004 1.004 0 1 0-1.42-1.42L12 10.59l-6.29-6.3a1.004 1.004 0 0 0-1.42 1.42l6.3 6.29-6.3 6.29a1 1 0 0 0 0 1.42.998.998 0 0 0 1.42 0l6.29-6.3 6.29 6.3a.999.999 0 0 0 1.42 0 1 1 0 0 0 0-1.42L13.41 12Z"/></svg><span class="sr-only astro-2z6sd2lp">Menu</span></button><script type="module">var e=class extends HTMLElement{constructor(){super();let e=matchMedia(`(min-width: 50em)`),t=()=>{this.popover=e.matches?null:`auto`};t(),e.addEventListener(`change`,()=>t()),this.addEventListener(`toggle`,({newState:e})=>this.trapFocus(e===`open`))}trapFocus(e){document.querySelectorAll(`.main-frame, .sl-skip-link`).forEach(t=>{t.toggleAttribute(`inert`,e)})}};customElements.define(`sl-sidebar-pane`,e);</script><sl-sidebar-pane popover id="starlight__sidebar" class="sidebar-pane astro-3phc7jhf"><div class="sidebar-content sl-flex astro-3phc7jhf"><sl-sidebar-state-persist data-hash="1bq9jf4" class="astro-i7dbper3"><script aria-hidden="true">
+		(() => {
+			try {
+				if (!matchMedia('(min-width: 50em)').matches) return;
+				/** @type {HTMLElement | null} */
+				const target = document.querySelector('sl-sidebar-state-persist');
+				const state = JSON.parse(sessionStorage.getItem('sl-sidebar-state') || '0');
+				if (!target || !state || target.dataset.hash !== state.hash) return;
+				window._starlightScrollRestore = state.scroll;
+				customElements.define(
+					'sl-sidebar-restore',
+					class SidebarRestore extends HTMLElement {
+						connectedCallback() {
+							try {
+								const idx = parseInt(this.dataset.index || '');
+								const details = this.closest('details');
+								if (details && typeof state.open[idx] === 'boolean') details.open = state.open[idx];
+							} catch {}
+						}
+					}
+				);
+			} catch {}
+		})();
+	</script><ul class="top-level astro-rqviumx7"><li class="astro-rqviumx7"><a href="/calendar/" aria-current="page" class="large astro-rqviumx7"><span class="astro-rqviumx7">ADR Log</span></a></li><li class="astro-rqviumx7"><details open class="astro-rqviumx7"><summary class="astro-rqviumx7"><span class="group-label astro-rqviumx7"><span class="large astro-rqviumx7">Architecture decisions</span></span><svg aria-hidden="true" class="caret astro-rqviumx7 astro-jnolmrkc" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1.25rem;"><path d="m14.83 11.29-4.24-4.24a1 1 0 1 0-1.42 1.41L12.71 12l-3.54 3.54a1 1 0 0 0 0 1.41 1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.24-4.24a1.002 1.002 0 0 0 0-1.42Z"/></svg></summary><sl-sidebar-restore data-index="0"></sl-sidebar-restore><ul class="astro-rqviumx7"><li class="astro-rqviumx7"><a href="/calendar/adr/0000/" class="astro-rqviumx7"><span class="astro-rqviumx7">0000 · Use Markdown Architectural Decision Records</span><span class="sl-badge note small  astro-rqviumx7 astro-64xno7wm">accepted</span></a></li><li class="astro-rqviumx7"><a href="/calendar/adr/0001/" class="astro-rqviumx7"><span class="astro-rqviumx7">0001 · Single repository with per-stack top-level directories</span><span class="sl-badge note small  astro-rqviumx7 astro-64xno7wm">accepted</span></a></li><li class="astro-rqviumx7"><a href="/calendar/adr/0002/" class="astro-rqviumx7"><span class="astro-rqviumx7">0002 · .NET 10 LTS with ASP.NET Core Minimal APIs, Domain + Api projects</span><span class="sl-badge note small  astro-rqviumx7 astro-64xno7wm">accepted</span></a></li><li class="astro-rqviumx7"><a href="/calendar/adr/0003/" class="astro-rqviumx7"><span class="astro-rqviumx7">0003 · React + Vite + TypeScript SPA for the web UI</span><span class="sl-badge note small  astro-rqviumx7 astro-64xno7wm">accepted</span></a></li><li class="astro-rqviumx7"><a href="/calendar/adr/0004/" class="astro-rqviumx7"><span class="astro-rqviumx7">0004 · OpenAPI document as the API contract, with a generated TypeScript client</span><span class="sl-badge note small  astro-rqviumx7 astro-64xno7wm">accepted</span></a></li><li class="astro-rqviumx7"><a href="/calendar/adr/0005/" class="astro-rqviumx7"><span class="astro-rqviumx7">0005 · pnpm workspaces for frontend packages</span><span class="sl-badge note small  astro-rqviumx7 astro-64xno7wm">accepted</span></a></li><li class="astro-rqviumx7"><a href="/calendar/adr/0006/" class="astro-rqviumx7"><span class="astro-rqviumx7">0006 · NuGet Central Package Management with lock files and source mapping</span><span class="sl-badge note small  astro-rqviumx7 astro-64xno7wm">accepted</span></a></li><li class="astro-rqviumx7"><a href="/calendar/adr/0007/" class="astro-rqviumx7"><span class="astro-rqviumx7">0007 · xUnit v3 on Microsoft.Testing.Platform, Shouldly and NSubstitute for .NET tests</span><span class="sl-badge note small  astro-rqviumx7 astro-64xno7wm">accepted</span></a></li><li class="astro-rqviumx7"><a href="/calendar/adr/0008/" class="astro-rqviumx7"><span class="astro-rqviumx7">0008 · Vitest, Testing Library and MSW for frontend tests</span><span class="sl-badge note small  astro-rqviumx7 astro-64xno7wm">accepted</span></a></li><li class="astro-rqviumx7"><a href="/calendar/adr/0009/" class="astro-rqviumx7"><span class="astro-rqviumx7">0009 · Static analysis and formatting enforced at build time</span><span class="sl-badge note small  astro-rqviumx7 astro-64xno7wm">accepted</span></a></li><li class="astro-rqviumx7"><a href="/calendar/adr/0010/" class="astro-rqviumx7"><span class="astro-rqviumx7">0010 · Pin TypeScript 6.0 and ESLint 9 for ecosystem compatibility</span><span class="sl-badge note small  astro-rqviumx7 astro-64xno7wm">accepted</span></a></li><li class="astro-rqviumx7"><a href="/calendar/adr/0011/" class="astro-rqviumx7"><span class="astro-rqviumx7">0011 · GNU Make as a thin top-level task runner</span><span class="sl-badge note small  astro-rqviumx7 astro-64xno7wm">accepted</span></a></li><li class="astro-rqviumx7"><a href="/calendar/adr/0012/" class="astro-rqviumx7"><span class="astro-rqviumx7">0012 · GitHub Actions CI, security scanning and Dependabot</span><span class="sl-badge note small  astro-rqviumx7 astro-64xno7wm">accepted</span></a></li><li class="astro-rqviumx7"><a href="/calendar/adr/0013/" class="astro-rqviumx7"><span class="astro-rqviumx7">0013 · Public GitHub repository to enable branch rules and security scanning</span><span class="sl-badge note small  astro-rqviumx7 astro-64xno7wm">accepted</span></a></li><li class="astro-rqviumx7"><a href="/calendar/adr/0014/" class="astro-rqviumx7"><span class="astro-rqviumx7">0014 · PostgreSQL as the database engine, with SQLite on a volume as a budget fallback</span><span class="sl-badge note small  astro-rqviumx7 astro-64xno7wm">accepted</span></a></li><li class="astro-rqviumx7"><a href="/calendar/adr/0015/" class="astro-rqviumx7"><span class="astro-rqviumx7">0015 · EF Core 10 with code-first migrations for data access</span><span class="sl-badge note small  astro-rqviumx7 astro-64xno7wm">accepted</span></a></li><li class="astro-rqviumx7"><a href="/calendar/adr/0016/" class="astro-rqviumx7"><span class="astro-rqviumx7">0016 · Docker Compose for local databases and Testcontainers for tests; adopt .NET Aspire later</span><span class="sl-badge note small  astro-rqviumx7 astro-64xno7wm">accepted</span></a></li><li class="astro-rqviumx7"><a href="/calendar/adr/0017/" class="astro-rqviumx7"><span class="astro-rqviumx7">0017 · .NET 10 file-based apps for all repo tooling scripts, in their skill folder or tools/&lt;name&gt;/</span><span class="sl-badge note small  astro-rqviumx7 astro-64xno7wm">accepted</span></a></li><li class="astro-rqviumx7"><a href="/calendar/adr/0018/" class="astro-rqviumx7"><span class="astro-rqviumx7">0018 · UTC instants plus an IANA zone id and floating dates, using BCL time types instead of NodaTime</span><span class="sl-badge note small  astro-rqviumx7 astro-64xno7wm">accepted</span></a></li><li class="astro-rqviumx7"><a href="/calendar/adr/0019/" class="astro-rqviumx7"><span class="astro-rqviumx7">0019 · Single-user mode with authentication deferred: no auth and no owner column yet</span><span class="sl-badge note small  astro-rqviumx7 astro-64xno7wm">accepted</span></a></li><li class="astro-rqviumx7"><a href="/calendar/adr/0020/" class="astro-rqviumx7"><span class="astro-rqviumx7">0020 · A dedicated day-agenda endpoint as the read model, beside resource endpoints for writes</span><span class="sl-badge note small  astro-rqviumx7 astro-64xno7wm">accepted</span></a></li><li class="astro-rqviumx7"><a href="/calendar/adr/0021/" class="astro-rqviumx7"><span class="astro-rqviumx7">0021 · The client&#39;s IANA time zone and local date define &quot;today&quot;, with the server computing the day window</span><span class="sl-badge note small  astro-rqviumx7 astro-64xno7wm">accepted</span></a></li><li class="astro-rqviumx7"><a href="/calendar/adr/0022/" class="astro-rqviumx7"><span class="astro-rqviumx7">0022 · Astro and Starlight for the developer documentation UI</span><span class="sl-badge note small  astro-rqviumx7 astro-64xno7wm">proposed</span></a></li><li class="astro-rqviumx7"><a href="/calendar/adr/0023/" class="astro-rqviumx7"><span class="astro-rqviumx7">0023 · Build the canonical ADR log as a static site and publish main to GitHub Pages</span><span class="sl-badge note small  astro-rqviumx7 astro-64xno7wm">proposed</span></a></li><li class="astro-rqviumx7"><a href="/calendar/adr/0024/" class="astro-rqviumx7"><span class="astro-rqviumx7">0024 · A sibling week-agenda endpoint as a read model, built on range-based internals</span><span class="sl-badge note small  astro-rqviumx7 astro-64xno7wm">accepted</span></a></li><li class="astro-rqviumx7"><a href="/calendar/adr/0025/" class="astro-rqviumx7"><span class="astro-rqviumx7">0025 · GitHub Pages pull-request previews alongside production using a retained static snapshot</span><span class="sl-badge note small  astro-rqviumx7 astro-64xno7wm">proposed</span></a></li></ul></details></li></ul><script aria-hidden="true">
+		(() => {
+			const scroller = document.getElementById('starlight__sidebar');
+			if (!window._starlightScrollRestore || !scroller) return;
+			scroller.scrollTop = window._starlightScrollRestore;
+			delete window._starlightScrollRestore;
+		})();
+	</script></sl-sidebar-state-persist><div class="md:sl-hidden"><div class="mobile-preferences sl-flex astro-rm2r3yg4"><div class="social-icons astro-rm2r3yg4"><a href="https://github.com/mgasca/calendar" rel="me" class="sl-flex astro-wikfzz5s"><span class="sr-only astro-wikfzz5s">GitHub</span><svg aria-hidden="true" class="astro-wikfzz5s astro-jnolmrkc" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1em;"><path d="M12 .3a12 12 0 0 0-3.8 23.38c.6.12.83-.26.83-.57L9 21.07c-3.34.72-4.04-1.61-4.04-1.61-.55-1.39-1.34-1.76-1.34-1.76-1.08-.74.09-.73.09-.73 1.2.09 1.83 1.24 1.83 1.24 1.08 1.83 2.81 1.3 3.5 1 .1-.78.42-1.31.76-1.61-2.67-.3-5.47-1.33-5.47-5.93 0-1.31.47-2.38 1.24-3.22-.14-.3-.54-1.52.1-3.18 0 0 1-.32 3.3 1.23a11.5 11.5 0 0 1 6 0c2.28-1.55 3.29-1.23 3.29-1.23.64 1.66.24 2.88.12 3.18a4.65 4.65 0 0 1 1.23 3.22c0 4.61-2.8 5.63-5.48 5.92.42.36.81 1.1.81 2.22l-.01 3.29c0 .31.2.69.82.57A12 12 0 0 0 12 .3Z"/></svg></a></div><starlight-theme-select><label style="--sl-select-width: 6.25em" class="astro-v3j37xub"><span class="sr-only astro-v3j37xub">Select theme</span><svg aria-hidden="true" class="icon label-icon astro-v3j37xub astro-jnolmrkc" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1em;"><path d="M21 14h-1V7a3 3 0 0 0-3-3H7a3 3 0 0 0-3 3v7H3a1 1 0 0 0-1 1v2a3 3 0 0 0 3 3h14a3 3 0 0 0 3-3v-2a1 1 0 0 0-1-1ZM6 7a1 1 0 0 1 1-1h10a1 1 0 0 1 1 1v7H6V7Zm14 10a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1v-1h16v1Z"/></svg><select autocomplete="off" class="astro-v3j37xub"><option value="dark" class="astro-v3j37xub">Dark</option><option value="light" class="astro-v3j37xub">Light</option><option value="auto" selected class="astro-v3j37xub">Auto</option></select><svg aria-hidden="true" class="icon caret astro-v3j37xub astro-jnolmrkc" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1em;"><path d="M17 9.17a1 1 0 0 0-1.41 0L12 12.71 8.46 9.17a1 1 0 1 0-1.41 1.42l4.24 4.24a1.002 1.002 0 0 0 1.42 0L17 10.59a1.002 1.002 0 0 0 0-1.42Z"/></svg></label></starlight-theme-select><script>
+	StarlightThemeProvider.updatePickers();
+</script></div></div></div></sl-sidebar-pane></nav><div class="main-frame astro-3phc7jhf"><script type="module">var e=document.getElementById(`starlight__sidebar`),t=e?.querySelector(`sl-sidebar-state-persist`),n=`sl-sidebar-state`,r=()=>{let r=[],i=t?.dataset.hash||``;try{let e=sessionStorage.getItem(n),t=JSON.parse(e||`{}`);Array.isArray(t.open)&&t.hash===i&&(r=t.open)}catch{}return{hash:i,open:r,scroll:e?.scrollTop||0}},i=e=>{try{sessionStorage.setItem(n,JSON.stringify(e))}catch{}},a=()=>i(r()),o=(e,t)=>{let n=r();n.open[t]=e,i(n)};t?.addEventListener(`click`,e=>{if(!(e.target instanceof Element))return;let t=e.target.closest(`summary`)?.closest(`details`);if(!t)return;let n=t.querySelector(`sl-sidebar-restore`),r=parseInt(n?.dataset.index||``);isNaN(r)||o(!t.open,r)}),addEventListener(`visibilitychange`,()=>{document.visibilityState===`hidden`&&a()});</script><div class="lg:sl-flex astro-om2n3kji"><aside class="right-sidebar-container print:hidden astro-om2n3kji"><div class="right-sidebar astro-om2n3kji"><div class="lg:sl-hidden astro-g4uydmjg"><mobile-starlight-toc data-min-h="2" data-max-h="3" class="astro-p3rhq7re"><nav aria-labelledby="starlight__on-this-page--mobile" class="astro-p3rhq7re"><details id="starlight__mobile-toc" class="astro-p3rhq7re"><summary id="starlight__on-this-page--mobile" class="sl-flex astro-p3rhq7re"><span class="toggle sl-flex astro-p3rhq7re">On this page<svg aria-hidden="true" class="caret astro-p3rhq7re astro-jnolmrkc" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1rem;"><path d="m14.83 11.29-4.24-4.24a1 1 0 1 0-1.42 1.41L12.71 12l-3.54 3.54a1 1 0 0 0 0 1.41 1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.24-4.24a1.002 1.002 0 0 0 0-1.42Z"/></svg></span><span class="display-current astro-p3rhq7re"></span></summary><div class="dropdown astro-p3rhq7re"><ul class="isMobile astro-wsqyunvy" style="--depth: 0;"><li style="--depth: 0;" class="astro-wsqyunvy"><a href="#_top" style="--depth: 0;" class="astro-wsqyunvy"><span style="--depth: 0;" class="astro-wsqyunvy">Overview</span></a></li></ul></div></details></nav></mobile-starlight-toc><script type="module" src="/calendar/_astro/MobileTableOfContents.astro_astro_type_script_index_0_lang.C3fM4Kra.js"></script></div><div class="right-sidebar-panel sl-hidden lg:sl-block astro-g4uydmjg"><div class="sl-container astro-g4uydmjg"><starlight-toc data-min-h="2" data-max-h="3"><nav aria-labelledby="starlight__on-this-page"><h2 id="starlight__on-this-page">On this page</h2><ul class="astro-wsqyunvy" style="--depth: 0;"><li style="--depth: 0;" class="astro-wsqyunvy"><a href="#_top" style="--depth: 0;" class="astro-wsqyunvy"><span style="--depth: 0;" class="astro-wsqyunvy">Overview</span></a></li></ul></nav></starlight-toc><script type="module" src="/calendar/_astro/TableOfContents.astro_astro_type_script_index_0_lang.BpJaGz7G.js"></script></div></div></div></aside><div class="main-pane astro-om2n3kji"><main data-pagefind-body class="astro-ssxzqzh3" lang="en" dir="ltr"><div class="content-panel astro-232odwvl"><div class="sl-container astro-232odwvl"><h1 id="_top" class="astro-4mrf36ov">ADR Log</h1></div></div><div class="content-panel astro-232odwvl"><div class="sl-container astro-232odwvl"><div class="sl-markdown-content"><p>Decisions are recorded in <a href="https://adr.github.io/madr/">MADR 4.0</a> format. To add one, copy <a href="https://github.com/mgasca/calendar/blob/main/docs/decisions/adr-template.md"><code>adr-template.md</code></a> to <code>NNNN-short-title.md</code>.</p>
+<p>Every record lists its <strong>decision drivers</strong>, rates each option against them in a table (drivers as rows, options as columns, ★★★ to ☆☆☆), and gives pros and cons for every option in terms of those drivers. See <a href="/calendar/adr/0000/">ADR-0000</a> for the conventions.</p>
+<ul>
+<li><strong>Drafting with an AI agent:</strong> the <a href="https://github.com/mgasca/calendar/blob/main/.claude/skills/adr-draft/SKILL.md"><code>adr-draft</code></a> skill walks through the whole process: drivers, research, writing, validation and the review PR.</li>
+<li><strong>Validation:</strong> <code>make adr-check</code> (also part of <code>make lint</code> and CI) checks structure, rating tables, driver coverage, links and this index.</li>
+</ul>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<table><thead><tr><th>ADR</th><th>Title</th><th>Status</th></tr></thead><tbody><tr><td><a href="/calendar/adr/0000/">0000</a></td><td>Use Markdown Architectural Decision Records</td><td>accepted</td></tr><tr><td><a href="/calendar/adr/0001/">0001</a></td><td>Single repository with per-stack top-level directories</td><td>accepted</td></tr><tr><td><a href="/calendar/adr/0002/">0002</a></td><td>.NET 10 LTS with ASP.NET Core Minimal APIs, Domain + Api projects</td><td>accepted</td></tr><tr><td><a href="/calendar/adr/0003/">0003</a></td><td>React + Vite + TypeScript SPA for the web UI</td><td>accepted</td></tr><tr><td><a href="/calendar/adr/0004/">0004</a></td><td>OpenAPI document as the API contract, with a generated TypeScript client</td><td>accepted</td></tr><tr><td><a href="/calendar/adr/0005/">0005</a></td><td>pnpm workspaces for frontend packages</td><td>accepted</td></tr><tr><td><a href="/calendar/adr/0006/">0006</a></td><td>NuGet Central Package Management with lock files and source mapping</td><td>accepted</td></tr><tr><td><a href="/calendar/adr/0007/">0007</a></td><td>xUnit v3 on Microsoft.Testing.Platform, Shouldly and NSubstitute for .NET tests</td><td>accepted</td></tr><tr><td><a href="/calendar/adr/0008/">0008</a></td><td>Vitest, Testing Library and MSW for frontend tests</td><td>accepted</td></tr><tr><td><a href="/calendar/adr/0009/">0009</a></td><td>Static analysis and formatting enforced at build time</td><td>accepted</td></tr><tr><td><a href="/calendar/adr/0010/">0010</a></td><td>Pin TypeScript 6.0 and ESLint 9 for ecosystem compatibility</td><td>accepted</td></tr><tr><td><a href="/calendar/adr/0011/">0011</a></td><td>GNU Make as a thin top-level task runner</td><td>accepted</td></tr><tr><td><a href="/calendar/adr/0012/">0012</a></td><td>GitHub Actions CI, security scanning and Dependabot</td><td>accepted</td></tr><tr><td><a href="/calendar/adr/0013/">0013</a></td><td>Public GitHub repository to enable branch rules and security scanning</td><td>accepted</td></tr><tr><td><a href="/calendar/adr/0014/">0014</a></td><td>PostgreSQL as the database engine, with SQLite on a volume as a budget fallback</td><td>accepted</td></tr><tr><td><a href="/calendar/adr/0015/">0015</a></td><td>EF Core 10 with code-first migrations for data access</td><td>accepted</td></tr><tr><td><a href="/calendar/adr/0016/">0016</a></td><td>Docker Compose for local databases and Testcontainers for tests; adopt .NET Aspire later</td><td>accepted</td></tr><tr><td><a href="/calendar/adr/0017/">0017</a></td><td>.NET 10 file-based apps for all repo tooling scripts, in their skill folder or <code>tools/&#x3C;name>/</code></td><td>accepted</td></tr><tr><td><a href="/calendar/adr/0018/">0018</a></td><td>UTC instants plus an IANA zone id and floating dates, using BCL time types instead of NodaTime</td><td>accepted</td></tr><tr><td><a href="/calendar/adr/0019/">0019</a></td><td>Single-user mode with authentication deferred: no auth and no owner column yet</td><td>accepted</td></tr><tr><td><a href="/calendar/adr/0020/">0020</a></td><td>A dedicated day-agenda endpoint as the read model, beside resource endpoints for writes</td><td>accepted</td></tr><tr><td><a href="/calendar/adr/0021/">0021</a></td><td>The client’s IANA time zone and local date define “today”, with the server computing the day window</td><td>accepted</td></tr><tr><td><a href="/calendar/adr/0022/">0022</a></td><td>Astro and Starlight for the developer documentation UI</td><td>proposed</td></tr><tr><td><a href="/calendar/adr/0023/">0023</a></td><td>Build the canonical ADR log as a static site and publish main to GitHub Pages</td><td>proposed</td></tr><tr><td><a href="/calendar/adr/0024/">0024</a></td><td>A sibling week-agenda endpoint as a read model, built on range-based internals</td><td>accepted</td></tr><tr><td><a href="/calendar/adr/0025/">0025</a></td><td>GitHub Pages pull-request previews alongside production using a retained static snapshot</td><td>proposed</td></tr></tbody></table></div><footer class="sl-flex astro-vurlyin3"><div class="meta sl-flex astro-vurlyin3"><a href="https://github.com/mgasca/calendar/edit/main/docs/decisions/README.md" class="sl-flex print:hidden astro-ktr4jouv"><svg aria-hidden="true" class="astro-ktr4jouv astro-jnolmrkc" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1.2em;"><path d="M22 7.24a1 1 0 0 0-.29-.71l-4.24-4.24a1 1 0 0 0-1.1-.22 1 1 0 0 0-.32.22l-2.83 2.83L2.29 16.05a1 1 0 0 0-.29.71V21a1 1 0 0 0 1 1h4.24a1 1 0 0 0 .76-.29l10.87-10.93L21.71 8c.1-.1.17-.2.22-.33a1 1 0 0 0 0-.24v-.14l.07-.05ZM6.83 20H4v-2.83l9.93-9.93 2.83 2.83L6.83 20ZM18.17 8.66l-2.83-2.83 1.42-1.41 2.82 2.82-1.41 1.42Z"/></svg>Edit page</a></div><div class="pagination-links print:hidden astro-3tw3d6ie" dir="ltr"><a href="/calendar/adr/0000/" rel="next" class="astro-3tw3d6ie"><svg aria-hidden="true" class="astro-3tw3d6ie astro-jnolmrkc" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1.5rem;"><path d="M17.92 11.62a1.001 1.001 0 0 0-.21-.33l-5-5a1.003 1.003 0 1 0-1.42 1.42l3.3 3.29H7a1 1 0 0 0 0 2h7.59l-3.3 3.29a1.002 1.002 0 0 0 .325 1.639 1 1 0 0 0 1.095-.219l5-5a1 1 0 0 0 .21-.33 1 1 0 0 0 0-.76Z"/></svg><span class="astro-3tw3d6ie">Next<br class="astro-3tw3d6ie"><span class="link-title astro-3tw3d6ie">0000 · Use Markdown Architectural Decision Records</span></span></a></div></footer></div></div></main></div></div></div></div></body></html>

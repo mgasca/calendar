@@ -23,9 +23,26 @@ body {
 }
 
 main,
+.app-nav,
 .app-footer {
   max-width: 40rem;
   margin: 0 auto;
+}
+
+.app-nav {
+  display: flex;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.app-nav a {
+  color: var(--accent);
+}
+
+.app-nav a[aria-current='page'] {
+  color: inherit;
+  font-weight: 700;
+  text-decoration: none;
 }
 
 h1 {

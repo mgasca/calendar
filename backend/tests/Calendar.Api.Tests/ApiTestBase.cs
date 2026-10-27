@@ -65,4 +65,12 @@ public abstract class ApiTestBase(PostgresFixture postgres) : IAsyncLifetime
     response.EnsureSuccessStatusCode();
     return (await response.Content.ReadFromJsonAsync<DayAgendaResponse>(Ct))!;
   }
+
+  protected async Task<WeekAgendaResponse> GetWeekAgendaAsync(string date, string zone, string today)
+  {
+    using var response = await Client.GetAsync(
+        new Uri($"/api/agenda/week?date={date}&timeZone={Uri.EscapeDataString(zone)}&today={today}", UriKind.Relative), Ct);
+    response.EnsureSuccessStatusCode();
+    return (await response.Content.ReadFromJsonAsync<WeekAgendaResponse>(Ct))!;
+  }
 }

@@ -1,4 +1,5 @@
 import type { Schemas } from '@calendar/api-client';
+import { Link } from '@tanstack/react-router';
 import { useMemo } from 'react';
 
 import {
@@ -7,7 +8,6 @@ import {
   daysBetween,
   eventStatuses,
   formatDate,
-  formatTime,
   isPastDue,
   openFirst,
   localDate,
@@ -17,9 +17,11 @@ import {
   type TimedEvent,
 } from '../agenda/dayTime.ts';
 import { AgendaError } from '../agenda/agendaQuery.ts';
+import { EventTimes } from '../agenda/EventTimes.tsx';
 import { TaskItem, TaskToggleError } from '../agenda/TaskItem.tsx';
 import { useNow } from '../agenda/useNow.ts';
 import { useToggleTask } from '../agenda/useToggleTask.ts';
+import { formatDayMonth, isoWeekStart } from '../week/weekDates.ts';
 import { agendaKey, patchDayTasks, useDayAgenda } from './useDayAgenda.ts';
 
 type AllDayEvent = Schemas['AllDayEventItem'];
@@ -97,6 +99,7 @@ export function DayView({ date, timeZone: zoneOverride, locale }: DayViewProps) 
       <header className="day-header">
         <p className="eyebrow">{relativeDay(shownDate, today)}</p>
         <h1 id="day-heading">{formatHeading(shownDate)}</h1>
+        <WeekLink date={shownDate} locale={locale} />
         <button
           type="button"
           className="refresh"
@@ -205,6 +208,18 @@ export function DayView({ date, timeZone: zoneOverride, locale }: DayViewProps) 
   );
 }
 
+/** Link from a day to the week that contains it, e.g. "Week of 26 Oct". */
+function WeekLink({ date, locale }: { date: string; locale?: string | undefined }) {
+  const weekStart = isoWeekStart(date);
+  return (
+    <p className="week-link">
+      <Link to="/week/$weekStart" params={{ weekStart }}>
+        Week of {formatDayMonth(weekStart, locale)}
+      </Link>
+    </p>
+  );
+}
+
 function plural(n: number, singular: string, pluralForm = `${singular}s`) {
   return `${String(n)} ${n === 1 ? singular : pluralForm}`;
 }
@@ -269,51 +284,5 @@ function Schedule({
         );
       })}
     </ul>
-  );
-}
-
-function EventTimes({
-  event,
-  relative,
-  timeZone,
-  locale,
-}: {
-  event: TimedEvent;
-  /** Say "yesterday" and "tomorrow" (the day shown is today) rather than "the previous/next day". */
-  relative: boolean;
-  timeZone: string;
-  locale?: string | undefined;
-}) {
-  const before = relative ? 'yesterday' : 'the previous day';
-  const after = relative ? 'tomorrow' : 'the next day';
-  const start = <time dateTime={event.start}>{formatTime(event.start, timeZone, locale)}</time>;
-  const end = <time dateTime={event.end}>{formatTime(event.end, timeZone, locale)}</time>;
-  if (event.startsBeforeDay && event.endsAfterDay) {
-    return (
-      <>
-        Continues from {before} to {after}
-      </>
-    );
-  }
-  if (event.startsBeforeDay) {
-    return (
-      <>
-        Continues from {before}, until {end}
-      </>
-    );
-  }
-  if (event.endsAfterDay) {
-    return (
-      <>
-        From {start}, continues {after}
-      </>
-    );
-  }
-  return (
-    <>
-      {start}
-      {' – '}
-      {end}
-    </>
   );
 }

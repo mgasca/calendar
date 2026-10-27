@@ -4,7 +4,7 @@ import { act, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { http, HttpResponse } from 'msw';
 
-import { renderWithProviders } from '../../test/render.tsx';
+import { renderInRouter } from '../../test/render.tsx';
 import { server } from '../../test/server.ts';
 import { DayView } from './DayView.tsx';
 import { TodayView } from './TodayView.tsx';
@@ -120,11 +120,11 @@ function serveAgenda(agenda: Agenda | (() => Agenda)) {
 
 /** The day view following today's date, as the `/` route shows it. */
 function renderToday() {
-  return renderWithProviders(<TodayView timeZone={ZONE} locale="en-GB" />);
+  return renderInRouter(<TodayView timeZone={ZONE} locale="en-GB" />);
 }
 
 function renderDay(date: string) {
-  return renderWithProviders(<DayView date={date} timeZone={ZONE} locale="en-GB" />);
+  return renderInRouter(<DayView date={date} timeZone={ZONE} locale="en-GB" />);
 }
 
 /**
@@ -158,7 +158,7 @@ describe('DayView', () => {
       useFakeClock(MORNING);
       const requests = serveAgenda(buildAgenda());
 
-      renderToday();
+      await renderToday();
       await screen.findByRole('heading', { level: 2, name: 'Schedule' });
 
       expect(requests).toHaveLength(1);
@@ -170,7 +170,7 @@ describe('DayView', () => {
       useFakeClock('2026-10-26T23:30:00Z'); // 00:30 on the 27th in Madrid
       const requests = serveAgenda(buildAgenda());
 
-      renderToday();
+      await renderToday();
       await screen.findByRole('heading', { level: 2, name: 'Schedule' });
 
       expect(requests[0]?.searchParams.get('date')).toBe('2026-10-27');
@@ -184,7 +184,7 @@ describe('DayView', () => {
     });
 
     it('shows the human date and a summary of the day', async () => {
-      renderToday();
+      await renderToday();
 
       expect(await screen.findByRole('heading', { level: 1 })).toHaveTextContent(
         /^Monday,? 26 October$/,
@@ -196,7 +196,7 @@ describe('DayView', () => {
     });
 
     it('lists all-day events, with the day of a multi-day event', async () => {
-      renderToday();
+      await renderToday();
 
       const section = await screen.findByRole('region', { name: 'All day' });
       expect(within(section).getAllByRole('listitem')).toHaveLength(2);
@@ -206,7 +206,7 @@ describe('DayView', () => {
     });
 
     it('lists timed events in local time ranges with time elements', async () => {
-      renderToday();
+      await renderToday();
 
       const section = await screen.findByRole('region', { name: 'Schedule' });
       const standup = within(itemFor('Standup'));
@@ -217,7 +217,7 @@ describe('DayView', () => {
     });
 
     it('marks events that continue from yesterday or into tomorrow', async () => {
-      renderToday();
+      await renderToday();
 
       await screen.findByRole('region', { name: 'Schedule' });
       expect(itemFor('Night shift')).toHaveTextContent('Continues from yesterday, until 07:00');
@@ -225,7 +225,7 @@ describe('DayView', () => {
     });
 
     it('marks past, current and next events', async () => {
-      renderToday();
+      await renderToday();
 
       await screen.findByRole('region', { name: 'Schedule' });
       expect(within(itemFor('Standup')).getByText('Earlier')).toBeInTheDocument();
@@ -237,7 +237,7 @@ describe('DayView', () => {
     });
 
     it('lists overdue tasks with how overdue they are', async () => {
-      renderToday();
+      await renderToday();
 
       const overdue = await screen.findByRole('list', { name: 'Overdue' });
       expect(within(overdue).getAllByRole('listitem')).toHaveLength(2);
@@ -248,7 +248,7 @@ describe('DayView', () => {
     });
 
     it('lists tasks due today with their time, flagging past-due ones, and shows completed ones done', async () => {
-      renderToday();
+      await renderToday();
 
       const dueToday = await screen.findByRole('list', { name: 'Due today' });
       expect(within(dueToday).getAllByRole('listitem')).toHaveLength(3);
@@ -288,7 +288,7 @@ describe('DayView', () => {
         }),
       );
 
-      renderToday();
+      await renderToday();
 
       const titles = async (name: string) =>
         within(await screen.findByRole('list', { name }))
@@ -300,10 +300,10 @@ describe('DayView', () => {
   });
 
   describe('states', () => {
-    it('shows a loading state', () => {
+    it('shows a loading state', async () => {
       server.use(http.get('*/api/agenda/day', () => new Promise<Response>(() => undefined)));
 
-      renderToday();
+      await renderToday();
 
       expect(screen.getByRole('status')).toHaveTextContent('Loading');
     });
@@ -312,7 +312,7 @@ describe('DayView', () => {
       useFakeClock(MORNING);
       serveAgenda(emptyAgenda);
 
-      renderToday();
+      await renderToday();
 
       expect(await screen.findByText(/Nothing scheduled today/)).toBeInTheDocument();
       expect(screen.queryByRole('heading', { level: 2 })).not.toBeInTheDocument();
@@ -326,7 +326,7 @@ describe('DayView', () => {
           return new HttpResponse(null, { status: 500 });
         }),
       );
-      renderToday();
+      await renderToday();
       expect(await screen.findByRole('alert')).toHaveTextContent('Couldn’t load today’s agenda');
       expect(calls).toBe(3);
 
@@ -348,7 +348,7 @@ describe('DayView', () => {
         }),
       );
 
-      renderToday();
+      await renderToday();
 
       expect(await screen.findByRole('region', { name: 'Schedule' })).toBeInTheDocument();
       expect(calls).toBe(2);
@@ -370,7 +370,7 @@ describe('DayView', () => {
         }),
       );
 
-      renderToday();
+      await renderToday();
 
       expect(await screen.findByRole('alert')).toHaveTextContent(
         "Unsupported time zone 'Mars/Base'.",
@@ -383,7 +383,7 @@ describe('DayView', () => {
     it('moves the Now and Next markers as time passes', async () => {
       useFakeClock(MORNING, { intervals: true });
       serveAgenda(buildAgenda());
-      renderToday();
+      await renderToday();
       await screen.findByRole('region', { name: 'Schedule' });
       expect(within(itemFor('Lunch with Ana')).getByText('Next')).toBeInTheDocument();
 
@@ -399,7 +399,7 @@ describe('DayView', () => {
     it('rolls over at local midnight, keeping the old day visible and dimmed until the new one loads', async () => {
       useFakeClock('2026-10-26T22:59:00Z', { intervals: true }); // 23:59 in Madrid
       const requests = serveAgenda(buildAgenda());
-      renderToday();
+      await renderToday();
       expect(await screen.findByRole('heading', { level: 1 })).toHaveTextContent(/26 October/);
       await screen.findByRole('region', { name: 'Schedule' });
 
@@ -440,7 +440,7 @@ describe('DayView', () => {
     it('refetches when the window regains focus', async () => {
       useFakeClock(MORNING);
       const requests = serveAgenda(buildAgenda());
-      renderToday();
+      await renderToday();
       await screen.findByRole('region', { name: 'Schedule' });
       expect(requests).toHaveLength(1);
 
@@ -458,7 +458,7 @@ describe('DayView', () => {
     it('refetches every five minutes to pick up changes from other devices', async () => {
       useFakeClock(MORNING, { intervals: true });
       const requests = serveAgenda(buildAgenda());
-      renderToday();
+      await renderToday();
       await screen.findByRole('region', { name: 'Schedule' });
       expect(requests).toHaveLength(1);
 
@@ -476,7 +476,7 @@ describe('DayView', () => {
       let release: () => void = () => undefined;
       let gate = Promise.resolve();
       const requests = serveAgenda(buildAgenda());
-      renderToday();
+      await renderToday();
       const button = await screen.findByRole('button', { name: 'Refresh' });
       server.use(
         http.get('*/api/agenda/day', async ({ request }) => {
@@ -546,7 +546,7 @@ describe('DayView', () => {
         release = resolve;
       });
       const { getCount } = statefulServer({ gate });
-      renderToday();
+      await renderToday();
       const checkbox = await screen.findByRole('checkbox', { name: 'Book flights' });
 
       await userEvent.click(checkbox);
@@ -562,7 +562,7 @@ describe('DayView', () => {
 
     it('reopens a completed task', async () => {
       statefulServer();
-      renderToday();
+      await renderToday();
       const checkbox = await screen.findByRole('checkbox', { name: 'Buy milk' });
 
       await userEvent.click(checkbox);
@@ -575,7 +575,7 @@ describe('DayView', () => {
 
     it('rolls back and announces an error when the server fails', async () => {
       const { getCount } = statefulServer({ failWith: 500 });
-      renderToday();
+      await renderToday();
       const checkbox = await screen.findByRole('checkbox', { name: 'Book flights' });
 
       await userEvent.click(checkbox);
@@ -591,7 +591,7 @@ describe('DayView', () => {
 
     it('refetches and explains on a 409 conflict', async () => {
       const { getCount } = statefulServer({ failWith: 409 });
-      renderToday();
+      await renderToday();
 
       await userEvent.click(await screen.findByRole('checkbox', { name: 'Call dentist' }));
 
@@ -604,7 +604,7 @@ describe('DayView', () => {
 
     it('keeps a completed overdue task visible, shown done', async () => {
       statefulServer();
-      renderToday();
+      await renderToday();
 
       await userEvent.click(await screen.findByRole('checkbox', { name: 'File expenses' }));
 
@@ -625,7 +625,7 @@ describe('DayView', () => {
     it('asks for that date, not today', async () => {
       const requests = serveAgenda(buildAgenda({ date: '2026-10-30' }));
 
-      renderDay('2026-10-30');
+      await renderDay('2026-10-30');
 
       expect(await screen.findByRole('heading', { level: 1 })).toHaveTextContent(
         /^Friday,? 30 October$/,
@@ -637,7 +637,7 @@ describe('DayView', () => {
     it('says how far the day is from today', async () => {
       serveAgenda(buildAgenda({ date: '2026-10-27' }));
 
-      renderDay('2026-10-27');
+      await renderDay('2026-10-27');
 
       expect(await screen.findByText('Tomorrow')).toBeInTheDocument();
     });
@@ -646,7 +646,7 @@ describe('DayView', () => {
       // The same events and tasks as today's agenda, but shown for a day that isn't today.
       serveAgenda(buildAgenda({ date: '2026-10-20' }));
 
-      renderDay('2026-10-20');
+      await renderDay('2026-10-20');
 
       await screen.findByRole('region', { name: 'Schedule' });
       expect(screen.getByText('6 days ago')).toBeInTheDocument();
@@ -659,7 +659,7 @@ describe('DayView', () => {
     it('describes events crossing midnight relative to the day shown', async () => {
       serveAgenda(buildAgenda({ date: '2026-10-20' }));
 
-      renderDay('2026-10-20');
+      await renderDay('2026-10-20');
 
       await screen.findByRole('region', { name: 'Schedule' });
       expect(itemFor('Night shift')).toHaveTextContent(
@@ -671,7 +671,7 @@ describe('DayView', () => {
     it('shows a neutral empty state', async () => {
       serveAgenda({ ...emptyAgenda, date: '2026-11-03' });
 
-      renderDay('2026-11-03');
+      await renderDay('2026-11-03');
 
       expect(await screen.findByText('Nothing scheduled.')).toBeInTheDocument();
       expect(screen.queryByText(/today/)).not.toBeInTheDocument();
@@ -680,7 +680,7 @@ describe('DayView', () => {
     it('adds the year to the heading for a date in another year', async () => {
       serveAgenda({ ...emptyAgenda, date: '2025-03-01' });
 
-      renderDay('2025-03-01');
+      await renderDay('2025-03-01');
 
       expect(await screen.findByRole('heading', { level: 1 })).toHaveTextContent(
         /^Saturday,? 1 March 2025$/,
@@ -694,7 +694,7 @@ describe('DayView', () => {
         ),
       );
 
-      renderDay('2026-10-30');
+      await renderDay('2026-10-30');
 
       expect(screen.getByRole('status')).toHaveTextContent('Loading the agenda for this day');
       expect(await screen.findByRole('alert')).toHaveTextContent(
@@ -714,7 +714,7 @@ describe('DayView', () => {
           return HttpResponse.json(task);
         }),
       );
-      renderDay('2026-10-30');
+      await renderDay('2026-10-30');
 
       await userEvent.click(await screen.findByRole('checkbox', { name: 'Book flights' }));
 

@@ -45,6 +45,7 @@ Chosen option: "TanStack Router with code-based route definitions", because it i
 * **Router context:** the IANA time zone and locale are passed as router context, defaulting to the browser's. Tests pass fixed values.
 * **Params:** date params are validated in `params.parse`. A value that isn't a real `YYYY-MM-DD` date in the supported range (1900–2200, the same as the API) throws `notFound()`, which renders the route's invalid-date page. Route components can then rely on the param being valid.
 * **Adding a route:** one `createRoute({ getParentRoute: () => rootRoute, path: '/week/$weekStart', params: { parse, stringify }, beforeLoad, component })`, added to `rootRoute.addChildren([...])`. Redirects such as week snapping throw `redirect({ to, params })` from `beforeLoad`.
+* **Linting:** TanStack Router signals not-found and redirects by throwing its own values, so `frontend/eslint.config.js` allows `NotFoundError` and `Redirect` from `@tanstack/router-core` in `@typescript-eslint/only-throw-error`. Everything else must still throw `Error` objects.
 * **Tests:** `createAppRouter({ history: createMemoryHistory({ initialEntries: [path] }) })`, rendered inside the usual `QueryClientProvider`. Route matching is asynchronous, so tests wait with `findBy…`.
 
 ### Deep links
@@ -112,6 +113,6 @@ Chosen option: "TanStack Router with code-based route definitions", because it i
 ## More Information
 
 * Versions at the time of writing (`npm view`): `@tanstack/react-router` 1.170.46 (MIT), `react-router` 8.5.0 (MIT; latest 7.x is 7.18.4).
-* Story [0002](../stories/0002-week-view.md) plans this decision as number 0022, but that number was taken by [ADR-0022](0022-astro-starlight-documentation-ui.md) before this record was written, so it is ADR-0024.
+* Story [0002](../stories/0002-week-view.md) first planned this decision as number 0022, which the documentation-site record ([ADR-0022](0022-astro-starlight-documentation-ui.md)) had already taken.
 * The single-container SPA hosting is the follow-up recorded in [ADR-0002](0002-dotnet-10-minimal-api-backend.md); the *Deep links* section above lists what it must do for routing.
 * Revisit file-based routing (the `@tanstack/router-plugin` Vite plugin) if the app grows past roughly ten routes or needs automatic route-level code splitting. That would supersede this ADR.

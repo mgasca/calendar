@@ -40,18 +40,12 @@ public sealed class TodoTaskTests
   }
 
   [Fact]
-  public void Create_WithBothDueValues_Throws()
-  {
-    Should.Throw<ArgumentException>(() => TodoTask.Create("A", new DateOnly(2026, 10, 26), Now));
-  }
+  public void Create_WithBothDueValues_Throws() => Should.Throw<ArgumentException>(() => TodoTask.Create("A", new DateOnly(2026, 10, 26), Now));
 
   [Theory]
   [InlineData("")]
   [InlineData("  ")]
-  public void Create_WithBlankTitle_Throws(string title)
-  {
-    Should.Throw<ArgumentException>(() => TodoTask.Create(title));
-  }
+  public void Create_WithBlankTitle_Throws(string title) => Should.Throw<ArgumentException>(() => TodoTask.Create(title));
 
   [Fact]
   public void Create_TitleLength_IsCappedAtTwoHundredAfterTrim()
@@ -72,10 +66,8 @@ public sealed class TodoTaskTests
   [Theory]
   [InlineData("urgent")]
   [InlineData("")]
-  public void Create_WithInvalidPriority_Throws(string priority)
-  {
-    Should.Throw<ArgumentException>(() => TodoTask.Create("T", priority: priority)).ParamName.ShouldBe("priority");
-  }
+  public void Create_WithInvalidPriority_Throws(string priority) =>
+      Should.Throw<ArgumentException>(() => TodoTask.Create("T", priority: priority)).ParamName.ShouldBe("priority");
 
   [Fact]
   public void Complete_SetsCompletedAtInUtc()

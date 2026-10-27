@@ -1,6 +1,8 @@
 # Stories
 
-One Markdown file per user story, named `NNNN-short-title.md` like the [ADRs](../docs/decisions/README.md), so stories sort in delivery order and can be linked by number.
+One Markdown file per user story, named `NNNN-short-title.md` like the [ADRs](../decisions/README.md), so stories sort in delivery order and can be linked by number.
+
+A planned story that isn't scheduled yet is named `XXXX-short-title.md`, and gets the next number when it is scheduled, so numbers keep matching delivery order.
 
 Each story records:
 
@@ -15,4 +17,6 @@ Front matter: `status` (`planned`, `in-progress` or `implemented`), `date`, `pr`
 | Story | Title | Status |
 | --- | --- | --- |
 | [0001](0001-today-view.md) | Today view: see everything for today in one place | implemented |
-| [0003](../docs/stories/0003-add-todo-tasks.md) | Add todo tasks | implemented |
+| [0002](0002-week-view.md) | Week view: plan and track the whole week in one place | planned |
+| [0003](0003-add-todo-tasks.md) | Add todo tasks | implemented |
+| [XXXX](XXXX-create-events-and-tasks-from-week-view.md) | Create events and tasks from the week view (unnumbered until scheduled) | planned |

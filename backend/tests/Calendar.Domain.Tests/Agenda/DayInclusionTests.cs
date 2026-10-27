@@ -24,40 +24,22 @@ public sealed class DayInclusionTests
   // ---- events ----
 
   [Fact]
-  public void Event_Timed_InsideWindow_Included()
-  {
-    DayInclusion.EventOccursOn(Timed(At(0, 14), At(0, 15)), Window).ShouldBeTrue();
-  }
+  public void Event_Timed_InsideWindow_Included() => DayInclusion.EventOccursOn(Timed(At(0, 14), At(0, 15)), Window).ShouldBeTrue();
 
   [Fact]
-  public void Event_Timed_OvernightFromYesterday_Included()
-  {
-    DayInclusion.EventOccursOn(Timed(At(-1, 23), At(0, 6)), Window).ShouldBeTrue();
-  }
+  public void Event_Timed_OvernightFromYesterday_Included() => DayInclusion.EventOccursOn(Timed(At(-1, 23), At(0, 6)), Window).ShouldBeTrue();
 
   [Fact]
-  public void Event_Timed_ContinuingIntoTomorrow_Included()
-  {
-    DayInclusion.EventOccursOn(Timed(At(0, 22), At(1, 6)), Window).ShouldBeTrue();
-  }
+  public void Event_Timed_ContinuingIntoTomorrow_Included() => DayInclusion.EventOccursOn(Timed(At(0, 22), At(1, 6)), Window).ShouldBeTrue();
 
   [Fact]
-  public void Event_Timed_SpanningWholeDay_Included()
-  {
-    DayInclusion.EventOccursOn(Timed(At(-2, 0), At(3, 0)), Window).ShouldBeTrue();
-  }
+  public void Event_Timed_SpanningWholeDay_Included() => DayInclusion.EventOccursOn(Timed(At(-2, 0), At(3, 0)), Window).ShouldBeTrue();
 
   [Fact]
-  public void Event_Timed_EndingExactlyAtWindowStart_Excluded()
-  {
-    DayInclusion.EventOccursOn(Timed(At(0, 2), Window.Start), Window).ShouldBeFalse();
-  }
+  public void Event_Timed_EndingExactlyAtWindowStart_Excluded() => DayInclusion.EventOccursOn(Timed(At(0, 2), Window.Start), Window).ShouldBeFalse();
 
   [Fact]
-  public void Event_Timed_StartingExactlyAtWindowEnd_Excluded()
-  {
-    DayInclusion.EventOccursOn(Timed(Window.End, Window.End.AddHours(1)), Window).ShouldBeFalse();
-  }
+  public void Event_Timed_StartingExactlyAtWindowEnd_Excluded() => DayInclusion.EventOccursOn(Timed(Window.End, Window.End.AddHours(1)), Window).ShouldBeFalse();
 
   [Fact]
   public void Event_Timed_OneTickInsideEdges_Included()
@@ -83,10 +65,7 @@ public sealed class DayInclusionTests
   [InlineData(-3, 0, false)] // ends (exclusive) on today
   [InlineData(1, 2, false)]
   [InlineData(-1, 0, false)]
-  public void Event_AllDay_UsesDatesWithExclusiveEnd(int startOffset, int endOffset, bool expected)
-  {
-    DayInclusion.EventOccursOn(AllDay(startOffset, endOffset), Window).ShouldBe(expected);
-  }
+  public void Event_AllDay_UsesDatesWithExclusiveEnd(int startOffset, int endOffset, bool expected) => DayInclusion.EventOccursOn(AllDay(startOffset, endOffset), Window).ShouldBe(expected);
 
   [Fact]
   public void Event_AllDay_IsFloating_IgnoresWindowInstants()
@@ -99,10 +78,7 @@ public sealed class DayInclusionTests
   }
 
   [Fact]
-  public void Event_Null_Throws()
-  {
-    Should.Throw<ArgumentNullException>(() => DayInclusion.EventOccursOn(null!, Window));
-  }
+  public void Event_Null_Throws() => Should.Throw<ArgumentNullException>(() => DayInclusion.EventOccursOn(null!, Window));
 
   // ---- tasks: due today ----
 
@@ -118,10 +94,7 @@ public sealed class DayInclusionTests
   [Theory]
   [InlineData(-1, false)]
   [InlineData(1, false)]
-  public void Task_DueDateOtherDay_IsNotDueToday(int offset, bool expected)
-  {
-    DayInclusion.IsDueToday(TodoTask.Create("T", dueDate: Today.AddDays(offset)), Window).ShouldBe(expected);
-  }
+  public void Task_DueDateOtherDay_IsNotDueToday(int offset, bool expected) => DayInclusion.IsDueToday(TodoTask.Create("T", dueDate: Today.AddDays(offset)), Window).ShouldBe(expected);
 
   [Fact]
   public void Task_DueAt_InWindow_IsDueToday_EvenIfAlreadyPastLocalTime()
@@ -153,10 +126,7 @@ public sealed class DayInclusionTests
   }
 
   [Fact]
-  public void Task_DueAtBeforeWindowStart_IsOverdue()
-  {
-    DayInclusion.IsOverdue(TodoTask.Create("T", dueAt: Window.Start.AddTicks(-1)), Window).ShouldBeTrue();
-  }
+  public void Task_DueAtBeforeWindowStart_IsOverdue() => DayInclusion.IsOverdue(TodoTask.Create("T", dueAt: Window.Start.AddTicks(-1)), Window).ShouldBeTrue();
 
   [Fact]
   public void Task_DueInFuture_IsNeitherDueTodayNorOverdue()
@@ -309,5 +279,49 @@ public sealed class DayInclusionTests
 
     skipped.Length.ShouldBe(TimeSpan.Zero);
     DayInclusion.EventOccursOn(spanning, skipped).ShouldBeFalse();
+  }
+
+  // ---- raw-value forms used by the agenda read models ----
+
+  [Theory]
+  [InlineData(-1, 23, 0, 6, true)]
+  [InlineData(0, 14, 0, 15, true)]
+  [InlineData(0, 2, 0, 4, false)] // ends at window start
+  [InlineData(1, 4, 1, 5, false)] // starts at window end
+  public void RawForms_AgreeWithTheEntityRules_ForTimedEvents(int startDay, int startHour, int endDay, int endHour, bool expected)
+  {
+    var evt = Timed(At(startDay, startHour), At(endDay, endHour));
+
+    DayInclusion.EventOccursOn(evt, Window).ShouldBe(expected);
+    DayInclusion.TimedEventOverlaps(evt.Start!.Value, evt.End!.Value, Window).ShouldBe(expected);
+  }
+
+  [Theory]
+  [InlineData(-1, 0, false)]
+  [InlineData(-1, 1, true)]
+  [InlineData(0, 1, true)]
+  [InlineData(1, 2, false)]
+  public void RawForms_AgreeWithTheEntityRules_ForAllDayEvents(int startOffset, int endOffset, bool expected)
+  {
+    var evt = AllDay(startOffset, endOffset);
+
+    DayInclusion.EventOccursOn(evt, Window).ShouldBe(expected);
+    DayInclusion.AllDayEventCovers(evt.StartDate!.Value, evt.EndDate!.Value, Window).ShouldBe(expected);
+  }
+
+  [Fact]
+  public void RawForms_AgreeWithTheEntityRules_ForDueTasks()
+  {
+    TodoTask[] tasks =
+    [
+        TodoTask.Create("date today", Today),
+        TodoTask.Create("date yesterday", Today.AddDays(-1)),
+        TodoTask.Create("at start", dueAt: Window.Start),
+        TodoTask.Create("at end", dueAt: Window.End),
+        TodoTask.Create("undated"),
+    ];
+
+    tasks.Select(t => DayInclusion.IsDueOn(t.DueDate, t.DueAt, Window)).ShouldBe(tasks.Select(t => DayInclusion.IsDueToday(t, Window)));
+    tasks.Count(t => DayInclusion.IsDueOn(t.DueDate, t.DueAt, Window)).ShouldBe(2);
   }
 }

@@ -16,7 +16,7 @@ The Today view already supports task completion and reopening; creation previous
 
 ### Agreed scope
 
-* Create from the calendar or My tasks. The calendar prefills its selected date; My tasks defaults to no deadline.
+* Create from the Today view of the calendar or My tasks. The calendar prefills its selected date; My tasks defaults to no deadline.
 * Required title, completion checkbox, optional deadline, low/medium/high priority (default medium), and optional notes.
 * A deadline is a floating date, an exact instant, or absent, following ADR-0018. Never both date and instant.
 * Upcoming (today and later), Overdue (before today), Completed, and No deadline views. Exact deadlines earlier today carry a Past due label.
@@ -28,7 +28,7 @@ The Today view already supports task completion and reopening; creation previous
 
 ### Acceptance criteria
 
-1. Create from calendar or task list, with title required and deadline optional.
+1. Create from the Today view of the calendar or task list, with title required and deadline optional.
 2. Persist priority and notes with the task; reject invalid priority, blank/overlong title, and overlong notes.
 3. Saving refreshes calendar and list data. A failed save retains form values and permits retry.
 4. Tasks appear in the correct view based on completion and the viewer's local date/timezone.
@@ -71,7 +71,7 @@ The Today view already supports task completion and reopening; creation previous
 
 ## User guide
 
-Choose **Add task** on the calendar to start with the displayed date, or open **My tasks** and choose **Add task** to start without a deadline. Enter a title, choose a deadline and priority if needed, add notes, and select **Save task**. For an exact deadline the form shows your device timezone; if the local time occurs twice, select its offset.
+Choose **Add task** from the Today view to start with its displayed date, or open **My tasks** and choose **Add task** to start without a deadline. Enter a title, choose a deadline and priority if needed, add notes, and select **Save task**. For an exact deadline the form shows your device timezone; if the local time occurs twice, select its offset.
 
 Use **Upcoming**, **Overdue**, **Completed**, or **No deadline** to review tasks. Tick a task to complete it, or untick it to reopen it. In the calendar, choose a date to see that day's agenda; **Today** restores the live local day.
 

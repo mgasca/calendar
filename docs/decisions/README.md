@@ -31,3 +31,7 @@ Every record lists its **decision drivers**, rates each option against them in a
 | [0019](0019-single-user-mode-with-authentication-deferred.md) | Single-user mode with authentication deferred: no auth and no owner column yet | accepted |
 | [0020](0020-aggregate-day-agenda-endpoint-as-read-model.md) | A dedicated day-agenda endpoint as the read model, beside resource endpoints for writes | accepted |
 | [0021](0021-client-supplied-date-and-time-zone-define-the-day.md) | The client's IANA time zone and local date define "today", with the server computing the day window | accepted |
+| [0022](0022-astro-starlight-documentation-ui.md) | Astro and Starlight for the developer documentation UI | proposed |
+| [0023](0023-static-adr-log-publication.md) | Build the canonical ADR log as a static site and publish main to GitHub Pages | proposed |
+| [0024](0024-week-agenda-endpoint-on-range-based-internals.md) | A sibling week-agenda endpoint as a read model, built on range-based internals | accepted |
+| [0025](0025-github-pages-pr-previews.md) | GitHub Pages pull-request previews alongside production using a retained static snapshot | proposed |

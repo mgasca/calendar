@@ -1,3 +1,5 @@
+using Calendar.Domain.Time;
+
 namespace Calendar.Api.Endpoints;
 
 /// <summary>Collects field errors for a <c>400</c> validation problem.</summary>
@@ -38,6 +40,39 @@ internal sealed class FieldErrors
     {
       Add(field, $"Date must be between {MinDate:yyyy-MM-dd} and {MaxDate:yyyy-MM-dd}.");
     }
+  }
+
+  /// <summary>Requires a date (YYYY-MM-DD) within the supported range; returns it, or <c>null</c> when missing.</summary>
+  public DateOnly? RequireDate(DateOnly? date, string field)
+  {
+    if (date is null)
+    {
+      Add(field, $"{field} is required (YYYY-MM-DD).");
+    }
+    else
+    {
+      CheckDate(date, field);
+    }
+
+    return date;
+  }
+
+  /// <summary>Requires an IANA time zone id; returns the resolved zone, or <c>null</c> when missing or unknown.</summary>
+  public TimeZoneInfo? RequireTimeZone(string? timeZone, string field)
+  {
+    if (string.IsNullOrWhiteSpace(timeZone))
+    {
+      Add(field, $"{field} is required (IANA id, e.g. America/New_York).");
+      return null;
+    }
+
+    if (TimeZones.TryFindIana(timeZone, out var zone))
+    {
+      return zone;
+    }
+
+    Add(field, $"'{timeZone}' is not a valid IANA time zone id.");
+    return null;
   }
 
   /// <summary>Maps a domain <see cref="ArgumentException"/> parameter name to the API field it came from.</summary>

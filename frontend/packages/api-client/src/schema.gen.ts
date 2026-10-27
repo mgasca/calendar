@@ -133,119 +133,197 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/agenda/week": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The ISO week (Monday to Sunday) containing a local date: all-day events once per week, timed events and due tasks per day, and the tasks overdue as of today that were due before the week. */
+        get: operations["GetWeekAgenda"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        /** @description One local day of a multi-day agenda: its timed events and the tasks due on it. */
+        AgendaDay: {
+            /**
+             * Format: date
+             * @description The local calendar date (YYYY-MM-DD).
+             */
+            date: string;
+            /** @description The UTC instants spanned by the local day; empty for a date the zone skipped. */
+            window: components["schemas"]["AgendaWindow"];
+            /**
+             * @description Timed events overlapping the day, by start then title, with flags relative to this day. An event that
+             *     crosses midnight appears on every day it touches.
+             */
+            events: components["schemas"]["TimedEventItem"][];
+            /** @description Tasks due on the day (open or completed): timed ones by due instant, then date-only ones by title. */
+            tasks: components["schemas"]["TaskResponse"][];
+        };
+        /** @description Tasks relevant to the day, split into overdue and due-today groups. */
         AgendaTasks: {
             /** @description Overdue tasks, oldest due first: still open, or completed within the day. Not due on the day itself. */
             overdue: components["schemas"]["TaskResponse"][];
             /** @description Tasks due on the day (open or completed): timed ones by due instant, then date-only ones by title. */
             dueToday: components["schemas"]["TaskResponse"][];
         };
-        /** @description The day as UTC instants: [start, end). */
+        /** @description The day as UTC instants, `[start, end)`; may be shorter or longer than 24 hours across DST changes. */
         AgendaWindow: {
-            /** Format: date-time */
+            /**
+             * Format: date-time
+             * @description Inclusive start of the day, as a UTC instant.
+             */
             start: string;
-            /** Format: date-time */
+            /**
+             * Format: date-time
+             * @description Exclusive end of the day, as a UTC instant.
+             */
             end: string;
         };
         /** @description An all-day event in the day agenda (floating dates, end exclusive). */
         AllDayEventItem: {
-            /** Format: uuid */
+            /**
+             * Format: uuid
+             * @description Unique event id.
+             */
             id: string;
+            /** @description Event title. */
             title: string;
+            /** @description Location, or `null` if none. */
             location?: null | string;
+            /** @description Notes, or `null` if none. */
             notes?: null | string;
-            /** Format: date */
+            /**
+             * Format: date
+             * @description First date of the event.
+             */
             startDate: string;
-            /** Format: date */
+            /**
+             * Format: date
+             * @description Exclusive end date of the event.
+             */
             endDate: string;
         };
         /**
-         * @description Create an event. Discriminated by bool CreateEventRequest.AllDay: a timed event needs `start`, `end` and
+         * @description Create an event. Discriminated by `allDay`: a timed event needs `start`, `end` and
          *     `timeZone`; an all-day event needs `startDate` and `endDate` (end exclusive) and no timed fields.
          */
         CreateEventRequest: {
-            /** @description Required, at most 200 characters after trimming. */
+            /** @description Event title; required, at most 200 characters after trimming. */
             title: string;
-            /** @description True for an all-day event (startDate/endDate), false for a timed one (start/end/timeZone). */
+            /** @description `true` for an all-day event (`startDate`/`endDate`), `false` for a timed one (`start`/`end`/`timeZone`). */
             allDay?: boolean;
             /**
              * Format: date-time
-             * @description Timed events: inclusive start instant, RFC 3339 with an explicit offset (e.g. 2026-10-26T14:00:00Z).
+             * @description Timed events: inclusive start instant, RFC 3339 with an explicit offset (e.g. 2026-10-26T14:00:00Z); `null` for all-day events.
              */
             start?: null | string;
             /**
              * Format: date-time
-             * @description Timed events: exclusive end instant, after start.
+             * @description Timed events: exclusive end instant, after `start`; `null` for all-day events.
              */
             end?: null | string;
-            /** @description Timed events: IANA time zone the event was created in, e.g. America/New_York. */
+            /** @description Timed events: IANA time zone the event was created in, e.g. America/New_York; `null` for all-day events. */
             timeZone?: null | string;
             /**
              * Format: date
-             * @description All-day events: first date (YYYY-MM-DD).
+             * @description All-day events: first date (YYYY-MM-DD); `null` for timed events.
              */
             startDate?: null | string;
             /**
              * Format: date
-             * @description All-day events: exclusive end date (YYYY-MM-DD), after startDate; a one-day event on the 26th ends on the 27th.
+             * @description All-day events: exclusive end date (YYYY-MM-DD), after `startDate`; a one-day event on the 26th ends on the 27th. `null` for timed events.
              */
             endDate?: null | string;
-            /** @description Optional, at most 200 characters. */
+            /** @description Optional location, at most 200 characters. */
             location?: null | string;
-            /** @description Optional, at most 4000 characters. */
+            /** @description Optional notes, at most 4000 characters. */
             notes?: null | string;
         };
         /** @description Create a task, optionally due on a floating date or at an instant (not both). */
         CreateTaskRequest: {
-            /** @description Required, at most 200 characters after trimming. */
+            /** @description Task title; required, at most 200 characters after trimming. */
             title: string;
-            /** @description low, medium or high; defaults to medium. */
+            /** @description Priority level; defaults to medium. Allowed values: low, medium, high. */
             priority?: string;
             /** @description Optional notes, at most 4000 characters after trimming. */
             notes?: null | string;
             /**
              * Format: date
-             * @description Floating due date (YYYY-MM-DD); mutually exclusive with dueAt.
+             * @description Floating due date (YYYY-MM-DD); mutually exclusive with `dueAt`.
              */
             dueDate?: null | string;
             /**
              * Format: date-time
-             * @description Due instant, RFC 3339 with an explicit offset; mutually exclusive with dueDate.
+             * @description Due instant, RFC 3339 with an explicit offset; mutually exclusive with `dueDate`.
              */
             dueAt?: null | string;
         };
         /** @description Everything for one local day, from a single snapshot. */
         DayAgendaResponse: {
-            /** Format: date */
+            /**
+             * Format: date
+             * @description The local calendar date (YYYY-MM-DD) in `timeZone`.
+             */
             date: string;
             /** @description Canonical IANA time zone id the day was resolved in. */
             timeZone: string;
+            /** @description The UTC instants spanned by the local day. */
             window: components["schemas"]["AgendaWindow"];
             /** @description All-day events covering the date, by start date then title. */
             allDayEvents: components["schemas"]["AllDayEventItem"][];
             /** @description Timed events overlapping the window, by start then title. */
             events: components["schemas"]["TimedEventItem"][];
+            /** @description Overdue and due-today tasks. */
             tasks: components["schemas"]["AgendaTasks"];
         };
         /** @description An event as stored. Fields of the other kind are `null`. */
         EventResponse: {
-            /** Format: uuid */
+            /**
+             * Format: uuid
+             * @description Unique event id.
+             */
             id: string;
+            /** @description Event title. */
             title: string;
+            /** @description `true` for an all-day event, `false` for a timed one. */
             allDay: boolean;
+            /** @description Location, or `null` if none. */
             location?: null | string;
+            /** @description Notes, or `null` if none. */
             notes?: null | string;
-            /** Format: date-time */
+            /**
+             * Format: date-time
+             * @description Timed events: inclusive start instant; `null` for all-day events.
+             */
             start?: null | string;
-            /** Format: date-time */
+            /**
+             * Format: date-time
+             * @description Timed events: exclusive end instant; `null` for all-day events.
+             */
             end?: null | string;
+            /** @description Timed events: IANA time zone id; `null` for all-day events. */
             timeZone?: null | string;
-            /** Format: date */
+            /**
+             * Format: date
+             * @description All-day events: first date; `null` for timed events.
+             */
             startDate?: null | string;
-            /** Format: date */
+            /**
+             * Format: date
+             * @description All-day events: exclusive end date; `null` for timed events.
+             */
             endDate?: null | string;
         };
         HealthResponse: {
@@ -270,39 +348,88 @@ export interface components {
             detail?: null | string;
             instance?: null | string;
         };
+        /** @description A task as stored. */
         TaskResponse: {
-            /** Format: uuid */
+            /**
+             * Format: uuid
+             * @description Unique task id.
+             */
             id: string;
+            /** @description Task title. */
             title: string;
+            /** @description Priority level: low, medium, or high. */
             priority?: string;
+            /** @description Optional task notes. */
             notes?: null | string;
-            /** Format: date */
+            /**
+             * Format: date
+             * @description Floating due date, or `null` if the task has no date-only due.
+             */
             dueDate?: null | string;
-            /** Format: date-time */
+            /**
+             * Format: date-time
+             * @description Due instant, or `null` if the task has no timed due.
+             */
             dueAt?: null | string;
             /**
              * Format: date-time
-             * @description When the task was completed; null while it is open.
+             * @description When the task was completed; `null` while it is open.
              */
             completedAt?: null | string;
+            /** @description `true` once the task has been completed. */
             isCompleted: boolean;
         };
         /** @description A timed event in the day agenda. */
         TimedEventItem: {
-            /** Format: uuid */
+            /**
+             * Format: uuid
+             * @description Unique event id.
+             */
             id: string;
+            /** @description Event title. */
             title: string;
+            /** @description Location, or `null` if none. */
             location?: null | string;
+            /** @description Notes, or `null` if none. */
             notes?: null | string;
-            /** Format: date-time */
+            /**
+             * Format: date-time
+             * @description Inclusive start instant.
+             */
             start: string;
-            /** Format: date-time */
+            /**
+             * Format: date-time
+             * @description Exclusive end instant.
+             */
             end: string;
+            /** @description IANA time zone id the event was created in. */
             timeZone: string;
             /** @description The event began before the day's window (it continues from an earlier day). */
             startsBeforeDay: boolean;
             /** @description The event ends after the day's window (it continues into a later day). */
             endsAfterDay: boolean;
+        };
+        /** @description The ISO week (Monday to Sunday) containing the requested date, from a single snapshot. */
+        WeekAgendaResponse: {
+            /**
+             * Format: date
+             * @description The Monday the week starts on (YYYY-MM-DD).
+             */
+            weekStart: string;
+            /** @description Canonical IANA time zone id the week was resolved in. */
+            timeZone: string;
+            /** @description The UTC instants from local midnight on Monday to local midnight on the next Monday. */
+            window: components["schemas"]["AgendaWindow"];
+            /** @description All-day events covering any date of the week, once each, by start date then title. */
+            allDayEvents: components["schemas"]["AllDayEventItem"][];
+            /** @description The seven days, Monday first. */
+            days: components["schemas"]["AgendaDay"][];
+            /**
+             * @description Tasks overdue as of `today` (still open, or completed within today) that were due before the week's
+             *     Monday, oldest due first. Tasks due within the week are in their day instead. `null` when the whole
+             *     week is before `today`.
+             */
+            overdue: null | components["schemas"]["TaskResponse"][];
         };
     };
     responses: never;
@@ -580,6 +707,39 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["DayAgendaResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["HttpValidationProblemDetails"];
+                };
+            };
+        };
+    };
+    GetWeekAgenda: {
+        parameters: {
+            query: {
+                date: string;
+                timeZone: string;
+                today: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WeekAgendaResponse"];
                 };
             };
             /** @description Bad Request */

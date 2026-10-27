@@ -78,6 +78,39 @@ jobs:
       - run: pnpm typecheck
       - run: pnpm test:coverage
       - run: pnpm build
+      - name: Verify ADR site at the root path
+        run: pnpm --filter @calendar/docs verify:build
+      - name: Verify ADR site at a project subpath
+        run: |
+          pnpm --filter @calendar/docs build
+          pnpm --filter @calendar/docs verify:build
+        env:
+          DOCS_SITE_URL: https://example.org/calendar/
+      - name: Read GitHub Pages configuration
+        id: pages
+        if: (github.event_name == 'push' && github.ref == 'refs/heads/main') || (github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository)
+        uses: actions/configure-pages@983d7736d9b0ae728b81ab479565c72886d7745b # v5
+      - name: Build and verify publication artifact
+        if: steps.pages.outcome == 'success'
+        run: |
+          if [ -n "$PR_NUMBER" ]; then
+            export DOCS_SITE_URL="${PAGES_URL%/}/pr-preview/pr-$PR_NUMBER/"
+          else
+            export DOCS_SITE_URL="$PAGES_URL"
+          fi
+          pnpm --filter @calendar/docs build
+          pnpm --filter @calendar/docs verify:build
+        env:
+          PAGES_URL: ${{ steps.pages.outputs.base_url }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+      - name: Upload verified publication artifact
+        if: steps.pages.outcome == 'success'
+        uses: actions/upload-artifact@v7
+        with:
+          name: adr-site
+          path: frontend/apps/docs/dist
+          if-no-files-found: error
+          retention-days: 7
       - uses: actions/upload-artifact@v7
         if: ${{ !cancelled() }}
         with:

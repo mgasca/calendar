@@ -81,6 +81,7 @@ public static class TimeZones
     }
   }
 
+  /// <summary>True when <paramref name="id"/> resolves to an IANA zone (see <see cref="TryFindIana"/>).</summary>
   public static bool IsValidIanaId(string? id) => TryFindIana(id, out _);
 
   /// <summary>Resolves an IANA zone id (see <see cref="TryFindIana"/>) or throws <see cref="ArgumentException"/>.</summary>

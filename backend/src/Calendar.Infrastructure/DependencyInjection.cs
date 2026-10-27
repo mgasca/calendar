@@ -4,6 +4,7 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace Calendar.Infrastructure;
 
+/// <summary>Service registration for the infrastructure layer.</summary>
 public static class DependencyInjection
 {
   /// <summary>Configuration key of the application's connection string (user-secrets or <c>ConnectionStrings__Calendar</c>).</summary>

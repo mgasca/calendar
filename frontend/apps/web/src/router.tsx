@@ -19,7 +19,7 @@ export interface AppRouterContext {
   locale: string | undefined;
 }
 
-// Routes are defined in code (ADR-0024): no router plugin and no generated route tree.
+// Routes are defined in code (ADR-0025): no router plugin and no generated route tree.
 const rootRoute = createRootRouteWithContext<AppRouterContext>()({
   component: AppLayout,
   notFoundComponent: NotFoundPage,

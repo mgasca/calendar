@@ -34,7 +34,7 @@ export default defineConfig([
       globals: globals.browser,
     },
     rules: {
-      // TanStack Router signals not-found and redirects by throwing its own values (ADR-0024).
+      // TanStack Router signals not-found and redirects by throwing its own values (ADR-0025).
       '@typescript-eslint/only-throw-error': [
         'error',
         {

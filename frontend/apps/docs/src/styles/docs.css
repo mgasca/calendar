@@ -1,0 +1,15 @@
+:root {
+  --sl-content-width: 58rem;
+  --sl-sidebar-width: 23rem;
+}
+.sidebar-content a span {
+  overflow-wrap: anywhere;
+}
+.sl-markdown-content table {
+  display: block;
+  max-width: 100%;
+  overflow-x: auto;
+}
+.sl-markdown-content pre {
+  max-width: 100%;
+}

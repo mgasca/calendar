@@ -1,0 +1,9 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "include": [".astro/types.d.ts", "**/*"],
+  "exclude": ["dist", "coverage"],
+  "compilerOptions": {
+    "jsx": "preserve",
+    "types": ["astro/client", "node"]
+  }
+}

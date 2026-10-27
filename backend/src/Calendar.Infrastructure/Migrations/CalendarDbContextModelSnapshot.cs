@@ -120,6 +120,19 @@ namespace Calendar.Infrastructure.Migrations
                         .HasColumnType("date")
                         .HasColumnName("due_date");
 
+                    b.Property<string>("Notes")
+                        .HasMaxLength(4000)
+                        .HasColumnType("character varying(4000)")
+                        .HasColumnName("notes");
+
+                    b.Property<string>("Priority")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(6)
+                        .HasColumnType("character varying(6)")
+                        .HasDefaultValue("medium")
+                        .HasColumnName("priority");
+
                     b.Property<string>("Title")
                         .IsRequired()
                         .HasMaxLength(200)
@@ -150,6 +163,8 @@ namespace Calendar.Infrastructure.Migrations
                     b.ToTable("tasks", null, t =>
                         {
                             t.HasCheckConstraint("ck_tasks_due_date_xor_due_at", "due_date IS NULL OR due_at IS NULL");
+
+                            t.HasCheckConstraint("ck_tasks_priority", "priority IN ('low', 'medium', 'high')");
 
                             t.HasCheckConstraint("ck_tasks_title_not_blank", "length(btrim(title)) > 0");
                         });

@@ -22,16 +22,18 @@ import { useNow } from './useNow.ts';
 type AllDayEvent = Schemas['AllDayEventItem'];
 
 interface TodayViewProps {
+  /** Selected calendar day; omit to follow the live local day. */
+  date?: string | undefined;
   /** IANA zone defining "today"; defaults to the browser's. */
   timeZone?: string | undefined;
   /** BCP 47 locale for formatting; defaults to the browser's. */
   locale?: string | undefined;
 }
 
-export function TodayView({ timeZone: zoneOverride, locale }: TodayViewProps) {
+export function TodayView({ timeZone: zoneOverride, locale, date: selectedDate }: TodayViewProps) {
   const timeZone = useMemo(() => zoneOverride ?? browserTimeZone(), [zoneOverride]);
   const now = useNow();
-  const date = localDate(now, timeZone);
+  const date = selectedDate ?? localDate(now, timeZone);
   const agenda = useDayAgenda(date, timeZone);
   const toggle = useToggleTask(agendaKey(date, timeZone));
 
@@ -39,7 +41,7 @@ export function TodayView({ timeZone: zoneOverride, locale }: TodayViewProps) {
     return (
       <section aria-labelledby="today-heading">
         <h1 id="today-heading">{formatDate(date, locale)}</h1>
-        <p role="status">Loading today’s agenda…</p>
+        <p role="status">{selectedDate ? 'Loading agenda…' : 'Loading today’s agenda…'}</p>
       </section>
     );
   }
@@ -48,7 +50,7 @@ export function TodayView({ timeZone: zoneOverride, locale }: TodayViewProps) {
       <section aria-labelledby="today-heading">
         <h1 id="today-heading">{formatDate(date, locale)}</h1>
         <div role="alert" className="notice notice-error">
-          <p>Couldn’t load today’s agenda.</p>
+          <p>{selectedDate ? 'Couldn’t load agenda.' : 'Couldn’t load today’s agenda.'}</p>
           {agenda.error instanceof AgendaError && <p>{agenda.error.message}</p>}
           <button type="button" onClick={() => void agenda.refetch()}>
             Try again
@@ -83,7 +85,7 @@ export function TodayView({ timeZone: zoneOverride, locale }: TodayViewProps) {
       aria-busy={stale}
     >
       <header className="today-header">
-        <p className="eyebrow">{stale ? 'Previous day' : 'Today'}</p>
+        <p className="eyebrow">{stale ? 'Previous day' : selectedDate ? 'Calendar' : 'Today'}</p>
         <h1 id="today-heading">{heading}</h1>
         <button
           type="button"
@@ -121,7 +123,13 @@ export function TodayView({ timeZone: zoneOverride, locale }: TodayViewProps) {
         </p>
       )}
 
-      {isEmpty && <p className="empty">Nothing scheduled today. Enjoy the free day!</p>}
+      {isEmpty && (
+        <p className="empty">
+          {selectedDate
+            ? 'Nothing scheduled for this day.'
+            : 'Nothing scheduled today. Enjoy the free day!'}
+        </p>
+      )}
 
       {allDayEvents.length > 0 && (
         <section aria-labelledby="all-day-heading">
@@ -167,7 +175,7 @@ export function TodayView({ timeZone: zoneOverride, locale }: TodayViewProps) {
           )}
           {tasks.dueToday.length > 0 && (
             <div>
-              <h3 id="due-today-heading">Due today</h3>
+              <h3 id="due-today-heading">{selectedDate ? 'Due this day' : 'Due today'}</h3>
               <ul className="items" aria-labelledby="due-today-heading">
                 {tasks.dueToday.map((task) => (
                   <TaskItem
@@ -326,6 +334,8 @@ function TaskItem({
         />
         <span className="item-title">{task.title}</span>
       </label>
+      {task.priority && <span className="badge">{task.priority} priority</span>}
+      {task.notes && <p className="task-notes">{task.notes}</p>}
       {showMeta && (
         <span id={metaId} className="item-meta">
           {detail && !task.isCompleted && <strong className="flag">{detail}</strong>}

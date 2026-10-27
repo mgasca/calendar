@@ -11,6 +11,7 @@ internal sealed class TodoTaskConfiguration : IEntityTypeConfiguration<TodoTask>
     builder.ToTable("tasks", table =>
     {
       table.HasCheckConstraint("ck_tasks_title_not_blank", "length(btrim(title)) > 0");
+      table.HasCheckConstraint("ck_tasks_priority", "priority IN ('low', 'medium', 'high')");
       table.HasCheckConstraint("ck_tasks_due_date_xor_due_at", "due_date IS NULL OR due_at IS NULL");
     });
 
@@ -18,6 +19,8 @@ internal sealed class TodoTaskConfiguration : IEntityTypeConfiguration<TodoTask>
     builder.Property(t => t.Id).ValueGeneratedNever();
 
     builder.Property(t => t.Title).HasMaxLength(200).IsRequired();
+    builder.Property(t => t.Priority).HasMaxLength(6).HasDefaultValue("medium").IsRequired();
+    builder.Property(t => t.Notes).HasMaxLength(4000);
     builder.Property(t => t.DueDate).HasColumnType("date");
 
     // Partial indexes: undated tasks never match the agenda's due-date predicates.

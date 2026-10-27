@@ -59,7 +59,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get?: never;
+        get: operations["ListTasks"];
         put?: never;
         post: operations["CreateTask"];
         delete?: never;
@@ -255,6 +255,10 @@ export interface components {
         CreateTaskRequest: {
             /** @description Task title; required, at most 200 characters after trimming. */
             title: string;
+            /** @description Priority level; defaults to medium. Allowed values: low, medium, high. */
+            priority?: string;
+            /** @description Optional notes, at most 4000 characters after trimming. */
+            notes?: null | string;
             /**
              * Format: date
              * @description Floating due date (YYYY-MM-DD); mutually exclusive with `dueAt`.
@@ -353,6 +357,10 @@ export interface components {
             id: string;
             /** @description Task title. */
             title: string;
+            /** @description Priority level: low, medium, or high. */
+            priority?: string;
+            /** @description Optional task notes. */
+            notes?: null | string;
             /**
              * Format: date
              * @description Floating due date, or `null` if the task has no date-only due.
@@ -512,6 +520,26 @@ export interface operations {
                 };
                 content: {
                     "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    ListTasks: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TaskResponse"][];
                 };
             };
         };

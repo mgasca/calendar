@@ -77,6 +77,10 @@ export function useToggleTask(agendaKey: readonly unknown[]) {
         );
       }
     },
-    onSettled: () => queryClient.invalidateQueries({ queryKey: agendaKey }),
+    onSettled: () =>
+      Promise.all([
+        queryClient.invalidateQueries({ queryKey: agendaKey }),
+        queryClient.invalidateQueries({ queryKey: ['tasks'] }),
+      ]),
   });
 }

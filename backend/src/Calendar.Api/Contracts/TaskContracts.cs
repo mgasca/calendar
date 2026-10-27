@@ -11,6 +11,12 @@ public sealed record CreateTaskRequest
   [Description("Required, at most 200 characters after trimming.")]
   public required string Title { get; init; }
 
+  [Description("low, medium or high; defaults to medium.")]
+  public string Priority { get; init; } = "medium";
+
+  [Description("Optional notes, at most 4000 characters after trimming.")]
+  public string? Notes { get; init; }
+
   [Description("Floating due date (YYYY-MM-DD); mutually exclusive with dueAt.")]
   public DateOnly? DueDate { get; init; }
 
@@ -24,6 +30,10 @@ public sealed record TaskResponse
   public required Guid Id { get; init; }
 
   public required string Title { get; init; }
+
+  public string Priority { get; init; } = "medium";
+
+  public string? Notes { get; init; }
 
   public DateOnly? DueDate { get; init; }
 
@@ -39,6 +49,8 @@ public sealed record TaskResponse
   {
     Id = t.Id,
     Title = t.Title,
+    Priority = t.Priority,
+    Notes = t.Notes,
     DueDate = t.DueDate,
     DueAt = t.DueAt,
     CompletedAt = t.CompletedAt,

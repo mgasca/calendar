@@ -59,7 +59,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get?: never;
+        get: operations["ListTasks"];
         put?: never;
         post: operations["CreateTask"];
         delete?: never;
@@ -202,6 +202,10 @@ export interface components {
         CreateTaskRequest: {
             /** @description Required, at most 200 characters after trimming. */
             title: string;
+            /** @description low, medium or high; defaults to medium. */
+            priority?: string;
+            /** @description Optional notes, at most 4000 characters after trimming. */
+            notes?: null | string;
             /**
              * Format: date
              * @description Floating due date (YYYY-MM-DD); mutually exclusive with dueAt.
@@ -270,6 +274,8 @@ export interface components {
             /** Format: uuid */
             id: string;
             title: string;
+            priority?: string;
+            notes?: null | string;
             /** Format: date */
             dueDate?: null | string;
             /** Format: date-time */
@@ -387,6 +393,26 @@ export interface operations {
                 };
                 content: {
                     "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    ListTasks: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TaskResponse"][];
                 };
             };
         };

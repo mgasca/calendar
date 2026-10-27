@@ -14,6 +14,7 @@ internal static class TaskEndpoints
   {
     var group = app.MapGroup("/api/tasks").WithTags("Tasks");
 
+    group.MapGet("/", ListAsync).WithName("ListTasks");
     group.MapPost("/", CreateAsync).WithName("CreateTask");
     group.MapGet("/{id:guid}", GetAsync).WithName(GetTaskName).ProducesProblem(StatusCodes.Status404NotFound);
     group.MapPost("/{id:guid}/complete", CompleteAsync).WithName("CompleteTask").ProducesProblem(StatusCodes.Status404NotFound).ProducesProblem(StatusCodes.Status409Conflict);
@@ -35,7 +36,7 @@ internal static class TaskEndpoints
     {
       try
       {
-        created = TodoTask.Create(request.Title, request.DueDate, request.DueAt);
+        created = TodoTask.Create(request.Title, request.DueDate, request.DueAt, request.Priority, request.Notes);
       }
       catch (ArgumentException ex)
       {
@@ -52,6 +53,11 @@ internal static class TaskEndpoints
     await db.SaveChangesAsync(cancellationToken);
     return TypedResults.CreatedAtRoute(TaskResponse.From(created), GetTaskName, new { id = created.Id });
   }
+
+  private static async Task<Ok<List<TaskResponse>>> ListAsync(
+      CalendarDbContext db,
+      CancellationToken cancellationToken) =>
+      TypedResults.Ok(await db.Tasks.AsNoTracking().OrderBy(t => t.Id).Select(TaskResponse.Projection).ToListAsync(cancellationToken));
 
   private static async Task<Results<Ok<TaskResponse>, ProblemHttpResult>> GetAsync(
       Guid id,

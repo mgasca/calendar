@@ -2,6 +2,8 @@
 
 Monorepo for the Calendar application: a .NET backend and a web front end, with room for more UIs.
 
+Create todo tasks from the calendar or **My tasks**, with optional date or exact-time deadlines, priority, and notes. Review Upcoming, Overdue, Completed, and No deadline lists. See the [task story and user guide](docs/stories/0003-add-todo-tasks.md). Apply the new migration with `make db-migrate` before running an existing database.
+
 ## Layout
 
 ```

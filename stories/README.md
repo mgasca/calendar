@@ -15,3 +15,4 @@ Front matter: `status` (`planned`, `in-progress` or `implemented`), `date`, `pr`
 | Story | Title | Status |
 | --- | --- | --- |
 | [0001](0001-today-view.md) | Today view: see everything for today in one place | implemented |
+| [0003](../docs/stories/0003-add-todo-tasks.md) | Add todo tasks | implemented |

@@ -634,6 +634,20 @@ describe('DayView', () => {
       expect(requests[0]?.searchParams.get('timeZone')).toBe(ZONE);
     });
 
+    it.each([
+      ['a weekday', '2026-10-30'],
+      ['a Sunday, the last day of its week', '2026-11-01'],
+    ])('links %s to the week containing it', async (_case, date) => {
+      serveAgenda({ ...emptyAgenda, date });
+
+      await renderDay(date);
+
+      expect(await screen.findByRole('link', { name: 'Week of 26 Oct' })).toHaveAttribute(
+        'href',
+        '/week/2026-10-26',
+      );
+    });
+
     it('says how far the day is from today', async () => {
       serveAgenda(buildAgenda({ date: '2026-10-27' }));
 

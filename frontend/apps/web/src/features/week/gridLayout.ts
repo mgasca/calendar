@@ -245,3 +245,11 @@ export function layoutAllDay<T extends { startDate: string; endDate: string }>(
   }
   return { bars, lanes: laneEnds.length };
 }
+
+/** Height of one lane of all-day bars, in rem; the band's height is derived from it. */
+export const BAND_LANE_REM = 1.75;
+
+/** The band's height for `lanes` lanes, as a CSS length (zero when there are no all-day events). */
+export function bandHeight(lanes: number): string {
+  return lanes === 0 ? '0px' : `${String(lanes * BAND_LANE_REM + 0.5)}rem`;
+}

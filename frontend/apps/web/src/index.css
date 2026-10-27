@@ -219,3 +219,313 @@ button {
 .is-stale > :not(header) {
   opacity: 0.5;
 }
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}
+
+.week-link {
+  margin: 0.25rem 0 0;
+  font-size: 0.9rem;
+}
+
+.week-link a {
+  color: var(--accent);
+}
+
+/* Week view: the page widens to fit seven columns. */
+
+body:has(.week) main,
+body:has(.week) .app-nav,
+body:has(.week) .app-footer {
+  max-width: 96rem;
+}
+
+.week-header {
+  margin-bottom: 1rem;
+}
+
+.week-nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 0.75rem;
+}
+
+.week-nav a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 2.25rem;
+  padding: 0 1rem;
+  border: 1px solid var(--border);
+  border-radius: 0.5rem;
+  color: inherit;
+  text-decoration: none;
+}
+
+.week-nav a[aria-current='date'] {
+  font-weight: 700;
+}
+
+.week-body {
+  display: grid;
+  gap: 1rem;
+}
+
+@media (min-width: 64rem) {
+  .week-body.has-overdue {
+    grid-template-columns: minmax(0, 1fr) 18rem;
+  }
+}
+
+.week-overdue h2 {
+  margin-top: 0;
+}
+
+.count {
+  color: var(--muted);
+  font-weight: 400;
+}
+
+/*
+ * The grid is one scroll container. Day headings, the all-day band and the task strips stick to the
+ * top while the hours scroll beneath them; narrow screens scroll the whole grid sideways.
+ */
+.week-scroll {
+  max-height: calc(100vh - 14rem);
+  min-height: 24rem;
+  overflow: auto;
+  border: 1px solid var(--border);
+  border-radius: 0.5rem;
+}
+
+.week-grid {
+  --head-h: 3rem;
+  --tasks-top: calc(var(--head-h) + var(--band-h));
+
+  display: grid;
+  grid-template-columns: 3.5rem repeat(7, minmax(7.5rem, 1fr));
+  grid-template-rows: var(--head-h) var(--band-h) auto var(--day-h);
+  min-width: 56rem;
+}
+
+.week-day {
+  display: contents;
+}
+
+.week-corner,
+.week-day-heading,
+.week-band,
+.week-tasks {
+  position: sticky;
+  z-index: 3;
+  background: Canvas;
+}
+
+.week-corner {
+  grid-row: 1 / 4;
+  grid-column: 1;
+  top: 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.week-day-heading {
+  grid-row: 1;
+  top: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0;
+  font-size: 1rem;
+  border-left: 1px solid var(--border);
+}
+
+.week-day-heading a {
+  padding: 0.25rem 0.5rem;
+  border-radius: 1rem;
+  color: inherit;
+  text-decoration: none;
+}
+
+.week-day-heading a:hover {
+  text-decoration: underline;
+}
+
+.week-dow {
+  font-weight: 400;
+  color: var(--muted);
+}
+
+.is-today .week-day-heading a {
+  background: var(--accent);
+  color: Canvas;
+}
+
+.is-today .week-day-heading .week-dow {
+  color: inherit;
+}
+
+.week-band {
+  grid-row: 2;
+  grid-column: 2 / -1;
+  top: var(--head-h);
+  overflow: hidden;
+}
+
+.week-band-list {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  grid-auto-rows: 1.5rem;
+  row-gap: 0.25rem;
+  margin: 0;
+  padding: 0.25rem 0;
+  list-style: none;
+}
+
+.week-bar {
+  margin: 0 0.15rem;
+  padding: 0 0.4rem;
+  overflow: hidden;
+  border-left: 3px solid var(--accent);
+  border-radius: 0.25rem;
+  background: var(--now-bg);
+  font-size: 0.85rem;
+  line-height: 1.5rem;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.week-bar-before {
+  border-left-style: dashed;
+}
+
+.week-tasks {
+  grid-row: 3;
+  top: var(--tasks-top);
+  max-height: 8rem;
+  overflow-y: auto;
+  border-left: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+}
+
+.week-task-list {
+  border-top: 0;
+}
+
+.week-task-list .item {
+  padding: 0.15rem 0.35rem;
+  font-size: 0.85rem;
+}
+
+.week-task-list .task-label {
+  gap: 0.4rem;
+  min-height: 1.75rem;
+}
+
+.week-task-list .task-label input {
+  width: 1rem;
+  height: 1rem;
+}
+
+.week-gutter,
+.week-day-time {
+  grid-row: 4;
+  position: relative;
+  height: var(--day-h);
+}
+
+.week-gutter {
+  grid-column: 1;
+}
+
+.week-hour {
+  position: absolute;
+  right: 0.4rem;
+  font-size: 0.75rem;
+  font-variant-numeric: tabular-nums;
+  color: var(--muted);
+}
+
+.week-day-time {
+  border-left: 1px solid var(--border);
+  background-image: linear-gradient(to bottom, var(--border) 1px, transparent 1px);
+  background-size: 100% var(--hour-h);
+}
+
+.is-today .week-day-time {
+  background-color: color-mix(in srgb, var(--accent) 5%, transparent);
+}
+
+.week-events {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.week-event,
+.week-more {
+  position: absolute;
+  box-sizing: border-box;
+  overflow: hidden;
+  padding: 0.1rem 0.3rem;
+  border: 1px solid Canvas;
+  border-radius: 0.3rem;
+  font-size: 0.75rem;
+  line-height: 1.2;
+}
+
+.week-event {
+  border-left: 3px solid var(--accent);
+  background: color-mix(in srgb, var(--accent) 22%, Canvas);
+}
+
+.week-event-before {
+  border-top-style: dashed;
+}
+
+.week-event-after {
+  border-bottom-style: dashed;
+}
+
+.week-event-time {
+  display: block;
+  font-variant-numeric: tabular-nums;
+  color: var(--muted);
+}
+
+.week-event-title {
+  font-weight: 600;
+}
+
+.week-more {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--border);
+  color: inherit;
+  font-weight: 600;
+}
+
+.week-now {
+  position: absolute;
+  z-index: 2;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: var(--danger);
+  pointer-events: none;
+}
+
+.week-skipped {
+  margin: 1rem 0.5rem;
+  font-size: 0.85rem;
+  color: var(--muted);
+}

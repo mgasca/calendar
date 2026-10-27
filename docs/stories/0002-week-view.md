@@ -20,7 +20,7 @@ The [Today view](0001-today-view.md) answers "what's in my day". A forward plann
 
 That needs a view across seven days that shows fixed commitments (events) and work to do (tasks) together. It should be built on the same local-day rules as Today, so the two views never disagree.
 
-The Today view left two gaps that a planner hits straight away: there is no way to create events or tasks in the app, and no way to look at any day other than today. This story closes both for the week view.
+The Today view can only show today. This story also makes any day viewable, so the week can link to its days. Creating events and tasks in the app is a separate story, [0003](0003-create-events-and-tasks.md), which builds on this one.
 
 ### Scope agreed with the product owner
 
@@ -28,13 +28,15 @@ The Today view left two gaps that a planner hits straight away: there is no way 
 * **Layout:** a **time grid**, with seven day columns on an hourly grid (the usual desktop calendar week).
   * All-day events sit in a band across the top, as one bar per event spanning its days.
   * Each day has a task strip under the band for the tasks due that day.
+  * The grid always shows all 24 hours.
 * **Overdue tasks:** a separate **Overdue** panel beside the grid, shown only when the week contains today or is in the future.
+* **Completed tasks** stay visible, struck through, in every week, including past weeks.
 * **Interactions:**
   * Move to the previous, current or next week, with the week kept in the URL.
   * Tick tasks complete or reopen them.
   * Open any day from the week.
-  * Create events and tasks inline.
 * **Not in this story:**
+  * Creating events and tasks: story [0003](0003-create-events-and-tasks.md).
   * Dragging items to move or resize them.
   * Editing or deleting existing items.
   * Recurring events.
@@ -48,7 +50,7 @@ The Today view left two gaps that a planner hits straight away: there is no way 
 2. Previous, This week and Next change the URL and the content. The browser's back and forward buttons restore them, and a week URL can be bookmarked.
 3. Selecting a day's heading opens that day. The day view and the Today view are the same view.
 4. Ticking a task in the week updates it immediately, and the change shows in the day view without a reload.
-5. An event or task created from the week appears in the right place without a reload, and in the day view.
+5. Completed tasks show struck through, after the open ones, in past, current and future weeks.
 6. The Overdue panel follows the rules under *Other decisions*, and never repeats a task that is already shown in a day column.
 7. All of the above works in weeks with a daylight-saving change, and is usable with a keyboard and with assistive technology.
 
@@ -62,17 +64,20 @@ The Today view left two gaps that a planner hits straight away: there is no way 
 | [0020](../decisions/0020-aggregate-day-agenda-endpoint-as-read-model.md) | A dedicated day-agenda read model, with resource endpoints for writes | Its "Extending to week and month" section anticipates this story. The week follows the same pattern. |
 | [0021](../decisions/0021-client-supplied-date-and-time-zone-define-the-day.md) | The client sends its local date and IANA zone; the server computes the window | The week is resolved the same way. The client also sends its "today", which the Overdue panel needs. |
 | 0022 *(to draft)* | Client-side routing: TanStack Router (proposed) or React Router 7 in library mode | The app gets its first routes: `/`, `/day/:date` and `/week/:weekStart?` |
-| 0023 *(to draft, refines 0020)* | A sibling `GET /api/agenda/week` read model rather than a generic range endpoint | Records the ISO-Monday week, the per-day buckets, and the `today` parameter with the overdue-before-the-week rule |
+| 0023 *(to draft, refines 0020)* | A sibling `GET /api/agenda/week` read model, built on range-based internals | Records the ISO-Monday week, the per-day buckets, and the `today` parameter with the overdue-before-the-week rule. It also records that the internals work for any range of days, so a later month or generic range endpoint is a thin addition that supersedes 0023. |
 
 ADR-0022 and ADR-0023 are drafted with the `adr-draft` skill and reviewed before the code that depends on them.
 
 ### Other decisions (not ADR-worthy)
 
-* **The week window** runs from local midnight on Monday to local midnight on the next Monday. It is made of seven `DayWindow`s, so 23- and 25-hour days and skipped dates behave exactly as in the Today view.
+* **The week window** runs from local midnight on Monday to local midnight on the next Monday.
+  * It is a `DateRangeWindow` of seven `DayWindow`s: 23- and 25-hour days and skipped dates behave exactly as in the Today view.
+  * `DateRangeWindow` works for any number of consecutive days. The ISO week is one factory on it.
 * **Any date selects its week:** the API and the URL accept any date and use that week's Monday. `/week/2026-10-28` redirects to `/week/2026-10-26`.
 * **Per-day contents use the Today rules unchanged** (`DayInclusion`):
   * Timed events that overlap the day are included. An event that crosses midnight appears in each day it touches, with "continues" cues.
   * Each day lists the tasks due that day, open and completed.
+* **Completed tasks** are struck through and listed after the open ones, in every week. There is no toggle to hide them: past weeks are a record of what got done, which supports tracking.
 * **Overdue panel:**
   * It contains tasks that are overdue as of today, by the Today rule: open, or completed today.
   * It is limited to tasks **due before this week's Monday**. Tasks that became overdue earlier this week stay in their day column, marked *Overdue*.
@@ -84,13 +89,8 @@ ADR-0022 and ADR-0023 are drafted with the `adr-draft` skill and reviewed before
   * On a 25-hour day, events in the repeated hour overlap and share the column width.
   * A skipped date shows a note instead of timed events.
 * **Overlapping events** share the column width side by side. More than about four at once collapse into a "+N more" chip that opens the day. Very short events get a minimum height.
-* **The grid shows all 24 hours** and opens scrolled to 07:00, or to an hour before now in the current week.
-* **Inline create:**
-  * Clicking an empty slot prefills a one-hour event. Dragging selects a range, snapped to 30 minutes.
-  * Clicking the all-day band prefills an all-day event.
-  * "+ Task" prefills a task due that day.
-  * Every column also has an "Add to *weekday*" button, so creating never needs a pointer.
-* **Caching:** all agenda queries share an `['agenda']` key prefix. A change patches the visible view straight away, then refreshes every agenda view, so the day and week views never show different data.
+* **The grid always shows all 24 hours** and opens scrolled to 07:00, or to an hour before now in the current week. Empty hours are not collapsed, so an early flight or a late call is never hidden and the grid doesn't shift between weeks.
+* **Caching:** all agenda queries share an `['agenda']` key prefix. Ticking a task patches the visible view straight away, then refreshes every agenda view, so the day and week views never show different data.
 * **Header summary:** "N events · M tasks (K open)" counts only what is in the week. The Overdue panel shows its own count.
 
 ## Implementation notes
@@ -101,11 +101,12 @@ ADR-0022 and ADR-0023 are drafted with the `adr-draft` skill and reviewed before
 
 | Area | Location |
 | --- | --- |
-| Domain | `backend/src/Calendar.Domain/Time/WeekWindow.cs` (new, pure): the ISO Monday and seven `DayWindow`s |
+| Domain | `backend/src/Calendar.Domain/Time/DateRangeWindow.cs` (new, pure): consecutive `DayWindow`s for any range of dates, with an `IsoWeek(date, zone)` factory |
 | Persistence | `Calendar.Infrastructure/Queries/AgendaQueries.cs`: range forms `AllDayOverlapping`, `TimedOverlapping`, `DueWithin` beside the existing per-day predicates |
+| Agenda assembly | A shared builder that buckets range results into days with `DayInclusion`. The day endpoint uses it for a one-day range and the week endpoint for a seven-day range. |
 | API | `Calendar.Api/Endpoints/AgendaEndpoints.cs` (`GetWeekAgenda`), `Contracts/AgendaContracts.cs` (`WeekAgendaResponse`, `AgendaDay`) |
 | Contract | `contracts/openapi.json` and `schema.gen.ts`, regenerated with `make contracts` |
-| Web: shared | `frontend/apps/web/src/features/agenda/`: toggle and create hooks, the create popover, the task item, problem-details helpers (moved out of `today/`) |
+| Web: shared | `frontend/apps/web/src/features/agenda/`: the toggle hook, the task item, problem-details helpers (moved out of `today/`) |
 | Web: day | `features/day/`: `TodayView` becomes `DayView({ date })`. The Earlier/Now/Next badges only show on today. |
 | Web: week | `features/week/`: `WeekView`, `useWeekAgenda`, `weekDates.ts`, `gridLayout.ts`, `TimeGrid`, `AllDayBand`, `OverduePanel` |
 | Routing | The router setup in `App.tsx`, per ADR-0022 |
@@ -115,7 +116,6 @@ ADR-0022 and ADR-0023 are drafted with the `adr-draft` skill and reviewed before
 | Method and path | Purpose |
 | --- | --- |
 | `GET /api/agenda/week?date=YYYY-MM-DD&timeZone=Area/City&today=YYYY-MM-DD` | The week containing `date`: `{weekStart, timeZone, window{start,end}, allDayEvents[], days[7]{date, window, events[], tasks[]}, overdue[] \| null}` |
-| `POST /api/events`, `POST /api/tasks` | Existing, now used by the inline create UI |
 | `POST /api/tasks/{id}/complete` / `reopen` | Existing |
 
 * **Item types:** `AllDayEventItem`, `TimedEventItem`, `TaskResponse` and `AgendaWindow` are reused unchanged, so the generated client gets no new item types.
@@ -126,38 +126,44 @@ ADR-0022 and ADR-0023 are drafted with the `adr-draft` skill and reviewed before
 
 ### Query approach
 
-* **Cost:** a week costs the same as a day. There are four queries over the whole week window (all-day events, timed events, tasks due in the week, overdue tasks), not seven times four.
+* **Cost:** a week costs the same as a day. There are four queries over the whole range window (all-day events, timed events, tasks due in the range, overdue tasks), not seven times four.
+* **Range-ready:**
+  * The queries and the day bucketing take a `DateRangeWindow`, not a week.
+  * Nothing below the endpoint knows a range is seven days long.
+  * A month view, or a generic `/api/agenda?from&to`, then needs only a new endpoint plus the overdue rules for that view.
+  * The day endpoint moves onto the same builder, so all agenda views share one code path.
 * **One snapshot:** the four queries run in the same read-only `REPEATABLE READ` transaction as the day agenda.
 * **Bucketing:** results are split into days in memory with the existing `DayInclusion` rules, so the per-day rules keep a single implementation.
 * **Shared code:** validation and ordering are extracted from the day endpoint so both endpoints share them. The event projections become `Expression` fields, like `TaskResponse.Projection`.
 
 ### Testing
 
-* **Domain:** `WeekWindow` unit tests cover:
-  * Year boundaries, including an ISO week 1 that starts in December.
+* **Domain:** `DateRangeWindow` unit tests cover:
+  * Ranges of 1, 7 and 42 days.
+  * ISO week snapping across year boundaries, including an ISO week 1 that starts in December.
   * Daylight-saving weeks (Europe/Berlin 2026-10-25, America/Santiago 2026-09-06).
   * A skipped date (Pacific/Apia 2011-12-30).
-* **API integration:** tests cover the week shape, snapping to Monday, ordering, the Overdue rules (past, current and future week, no duplicates) and the 400 cases.
+* **API integration:** tests cover the week shape, snapping to Monday, ordering, completed tasks in past weeks, the Overdue rules (past, current and future week, no duplicates) and the 400 cases.
 * **Agreement test:** for seeded data in several zones, `days[i]` of the week equals `/api/agenda/day` for `weekStart + i`. This keeps the two read models from drifting apart.
 * **Frontend:**
   * Pure tests for `weekDates` and `gridLayout`, covering overlap clustering and daylight-saving days.
-  * `WeekView` tests for navigation and URL state, the Overdue panel, ticking with rollback, inline create with validation errors, and the empty state.
+  * `WeekView` tests for navigation and URL state, the Overdue panel, ticking with rollback, completed tasks, initial scroll position, and the empty state.
   * Routing tests for the redirect to Monday and for `/` being today.
 
 ### Delivery plan
 
 One PR per step, each green on `make check`:
 
-1. **Backend and ADR-0023:** `WeekWindow`, the range queries, `GET /api/agenda/week` with endpoint and agreement tests, and the regenerated contract.
+1. **Backend and ADR-0023:** `DateRangeWindow`, the range queries and the shared builder (with the day endpoint moved onto it), then `GET /api/agenda/week` with endpoint and agreement tests, and the regenerated contract.
 2. **Routing and ADR-0022:** add the router. The Today view becomes the day view at `/` and `/day/:date`. Shared agenda code moves to `features/agenda`.
-3. **Read-only week view:** grid, all-day band, task strips, Overdue panel, navigation and day links.
-4. **Interactions:** ticking tasks in the week, then inline create. Inline create also gives the day view an "Add" button.
+3. **Week view:** grid, all-day band, task strips with ticking, Overdue panel, navigation and day links.
 
-### Open questions
+### Follow-up stories
 
-* Should past weeks show completed tasks struck through (proposed, since it helps tracking), or hide them behind a toggle?
-* Should empty early and late hours collapse? The proposal is to show all 24 hours and revisit this after use.
-* If a month view later needs a generic range endpoint, ADR-0023 is the decision to supersede.
+* [0003](0003-create-events-and-tasks.md): create events and tasks from the day and week views.
+* Editing, moving (including drag and drop) and deleting events and tasks.
+* A month view on the range-ready internals. It supersedes ADR-0023 if it introduces a generic range endpoint.
+* A configurable first day of the week, once user preferences exist.
 
 ## User guide
 
@@ -169,14 +175,16 @@ Choose **Week** in the Calendar web app, or open `/week`. You'll see the current
 
 > 12 events · 9 tasks (4 open)
 
-Today's column is highlighted, and a line marks the current time.
+Today's column is highlighted, and a line marks the current time. The grid covers the whole day and opens at 07:00 (in the current week, at an hour before now). Scroll up or down to see earlier or later hours.
 
 ### Reading the week
 
 * **All-day events** run across the top of the week. An event that lasts several days is one bar spanning those days. An arrow shows when it started before Monday or carries on after Sunday.
-* **Tasks** are listed under each day's heading: timed tasks first by their due time, then the rest. Completed tasks are struck through. In the current week, unfinished tasks from earlier days are marked **Overdue**.
+* **Tasks** are listed under each day's heading: timed tasks first by their due time, then the rest.
+  * In the current week, unfinished tasks from earlier days are marked **Overdue**.
+  * Completed tasks stay in the list, struck through and after the open ones, so past weeks show what you got done.
 * **Timed events** are placed on the hourly grid at their start time, in your local time. Events at the same time sit side by side. An event that runs past midnight appears on both days, marked as continuing. If a day is too busy to show everything, a **+N more** chip opens that day.
-* **Overdue:** unfinished tasks from before this week are collected in the **Overdue** panel next to the grid, so they don't get lost. Past weeks have no Overdue panel. Their columns show what was due and what got done.
+* **Overdue:** unfinished tasks from before this week are collected in the **Overdue** panel next to the grid, so they don't get lost. Past weeks have no Overdue panel.
 
 ### Moving around
 
@@ -188,18 +196,9 @@ Today's column is highlighted, and a line marks the current time.
 
 Tick a task's checkbox to complete it, and untick it to reopen it, in a day column or in the Overdue panel. Changes save straight away and also show in the day view. If a change can't be saved, it's undone and you'll see a message.
 
-### Adding events and tasks
-
-* **Timed event:** click an empty spot on the grid to add a one-hour event, or drag to choose the start and end.
-* **All-day event:** click the all-day band.
-* **Task:** select **+ Task** under a day's heading. It's due that day, and you can add a time.
-* **Without a mouse:** each day has an **Add to *weekday*** button.
-
-Give it a title (required) and, if you like, a location and notes, then save. If something isn't valid, for example an end time before the start, the form tells you what to fix and keeps what you typed.
-
 ### Current limitations
 
-* You can't yet move, edit or delete events and tasks.
+* You can't yet create, edit, move or delete events and tasks in the app. Creating them is coming in a later release.
 * The week always starts on Monday.
 * Recurring events aren't supported.
 * On a phone, the week grid scrolls sideways. Use the day view for a phone-sized layout.

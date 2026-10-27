@@ -27,3 +27,5 @@ Every record lists its **decision drivers**, rates each option against them in a
 | [0015](0015-ef-core-data-access.md) | EF Core 10 with code-first migrations for data access | accepted |
 | [0016](0016-local-database-provisioning.md) | Docker Compose for local databases and Testcontainers for tests; adopt .NET Aspire later | accepted |
 | [0017](0017-dotnet-file-based-apps-for-repo-tooling.md) | .NET 10 file-based apps for all repo tooling scripts, in their skill folder or `tools/<name>/` | accepted |
+| [0018](0018-astro-starlight-documentation-ui.md) | Astro and Starlight for the developer documentation UI | proposed |
+| [0019](0019-static-adr-log-publication.md) | Build the canonical ADR log as a static site and publish main to GitHub Pages | proposed |

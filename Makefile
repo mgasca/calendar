@@ -11,7 +11,7 @@ ADR_CHECK := dotnet run $(ADR_SKILL)/scripts/check-adr/check-adr.cs --
 TOOL_DIRS := $(ADR_SKILL) tools
 SHELL_TOOLS := tools/doctor/doctor.sh
 
-.PHONY: help doctor setup build test lint tooling tool-versions adr-check format check contracts dev-api dev-web clean
+.PHONY: help doctor setup build test lint tooling tool-versions adr-check format check contracts dev-api dev-web dev-docs build-docs preview-docs clean
 
 help: ## List targets
 	@grep -hE '^[a-zA-Z_-]+:.*?## ' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "  %-12s %s\n", $$1, $$2}'
@@ -67,6 +67,16 @@ dev-api: ## Run the API on http://localhost:5041
 
 dev-web: ## Run the web UI (proxies /api to the API)
 	$(PNPM) dev
+
+dev-docs: ## Run the ADR documentation site on http://localhost:4321
+	$(PNPM) --filter @calendar/docs dev
+
+build-docs: ## Build and verify the static ADR site (optional DOCS_SITE_URL for hosting URL)
+	$(PNPM) --filter @calendar/docs build
+	$(PNPM) --filter @calendar/docs verify:build
+
+preview-docs: ## Preview the built ADR site locally
+	$(PNPM) --filter @calendar/docs preview
 
 clean: ## Remove build outputs
 	$(DOTNET) clean

@@ -34,3 +34,4 @@ Every record lists its **decision drivers**, rates each option against them in a
 | [0022](0022-astro-starlight-documentation-ui.md) | Astro and Starlight for the developer documentation UI | proposed |
 | [0023](0023-static-adr-log-publication.md) | Build the canonical ADR log as a static site and publish main to GitHub Pages | proposed |
 | [0024](0024-week-agenda-endpoint-on-range-based-internals.md) | A sibling week-agenda endpoint as a read model, built on range-based internals | accepted |
+| [0025](0025-github-pages-pr-previews.md) | GitHub Pages pull-request previews alongside production using a retained static snapshot | proposed |

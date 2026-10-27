@@ -17,7 +17,7 @@ frontend/                pnpm workspace
   apps/docs/               Astro + Starlight ADR log and reader
   packages/api-client/     Typed client generated from contracts/openapi.json, shared by all TS UIs
 docs/decisions/          Architecture Decision Records (MADR)
-stories/                 User stories: background, decisions, implementation notes, user guide
+docs/stories/            User stories: background, decisions, implementation notes, user guide
 .github/                 CI and Dependabot
 ```
 

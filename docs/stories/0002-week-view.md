@@ -135,11 +135,11 @@ The Today view can only show today. This story also makes any day viewable, so t
 ### The week grid
 
 * **One scroll container:** the grid is a single CSS grid inside one scroll container. Day headings, the all-day band and the task strips are sticky at the top, and the 24 hours scroll beneath them. Below about 56 rem the whole grid scrolls sideways.
-* **Accessible structure:** each day is a `<section aria-labelledby>` (with `display: contents`), holding its heading (a link to the day), its task list and an ordered list of its events with time text. Positions are presentational. Events hidden behind a "+N more" chip stay in the list, visually hidden.
-* **Placement:** `gridLayout.ts` places events by local wall-clock minutes in the viewer's zone, from `Intl.DateTimeFormat` parts, clipped to the day's window. Very short events are at least 20 minutes tall. Overlapping events are clustered transitively and get greedy columns; a cluster that needs more than four columns shows three and a "+N more" chip linking to the day.
+* **Accessible structure:** each day is a `<section aria-labelledby>` (with `display: contents`) named by its full date. It holds its heading, its task list and an ordered list of its events with time text. The heading's link to the day is named by its visible text ("Mon 26") and described by the full date. Positions are presentational. Events hidden behind a "+N more" chip stay in the list, visually hidden.
+* **Placement:** `gridLayout.ts` places events by local wall-clock minutes in the viewer's zone, from `Intl.DateTimeFormat` parts, clipped to the day's window. On a day whose local midnight was skipped (such as America/Santiago on 6 September 2026, which starts at 01:00), the top is clipped to the window start's wall clock, not to 00:00. Very short events are at least 20 minutes tall. Overlapping events are clustered transitively and get greedy columns; a cluster that needs more than four columns shows three and a "+N more" chip linking to the day.
 * **All-day band:** bars are clipped to the week, marked when they continue before Monday or after Sunday, and stacked into the fewest lanes.
 * **Initial scroll:** each week opens at 07:00, or an hour before now in the current week, by setting `scrollTop` on the grid's container. One hour is a fixed 48 px, so the offset is exact.
-* **Keyboard:** `←`, `→` and `t` are handled on the document and ignored in form fields, in editable text and with a modifier held.
+* **Keyboard:** `←`, `→` and `t` are handled on the document and ignored in form fields, in editable text and with a modifier held. The grid's scroll container is a focusable region named "Week grid", so it can be scrolled from the keyboard; while focus is inside it, `←` and `→` scroll it instead of changing week.
 
 ### Testing
 
@@ -149,7 +149,7 @@ The Today view can only show today. This story also makes any day viewable, so t
 * **Frontend:**
   * Pure tests for `weekDates` (ISO weeks, arithmetic, locale-aware ranges across months and years) and `gridLayout` (wall-clock spans, midnight crossing, minimum height, overlap clusters, +N more, a 25-hour DST day, a skipped date, all-day lanes).
   * `WeekView` and routing tests, rendering the app from a memory history: redirects to Monday, navigation by links, keys and browser history, day links and the day view's week link, the Overdue panel in past, current and future weeks, task order and Overdue markers, optimistic ticking with rollback and day-cache invalidation, the empty, loading, error and skipped-date states, and the initial scroll.
-* **Final counts:** 321 backend tests and 148 web tests (plus 1 in `@calendar/api-client`). `make check` is green.
+* **Final counts:** 321 backend tests and 151 web tests (plus 1 in `@calendar/api-client`). `make check` is green.
 
 ### Delivery plan
 
@@ -208,7 +208,7 @@ If nothing is planned, you'll see *Nothing planned this week.*
 
 ### Moving around
 
-* **Previous**, **This week** and **Next** move between weeks. You can also press `←` and `→`, and `t` for this week. The keys don't work while you're typing in a field or holding a modifier key.
+* **Previous**, **This week** and **Next** move between weeks. You can also press `←` and `→`, and `t` for this week. The keys don't work while you're typing in a field or holding a modifier key. While the week grid has focus, `←` and `→` scroll it sideways instead.
 * Each week has its own address, for example `/week/2026-10-26`, so you can bookmark it or share it, and the browser's back and forward buttons work. Any date opens its week: `/week/2026-10-28` shows the week starting on Monday 26 October.
 * Select a day's heading to open that day. The day view has a **Week of …** link back to its week.
 

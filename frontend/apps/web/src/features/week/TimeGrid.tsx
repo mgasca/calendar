@@ -76,7 +76,18 @@ export function TimeGrid({ agenda, today, nowMinute, ...taskProps }: TimeGridPro
   } as CSSProperties;
 
   return (
-    <div className="week-scroll" ref={scroller} data-testid="week-scroll">
+    <div
+      className="week-scroll"
+      ref={scroller}
+      data-testid="week-scroll"
+      data-week-scroll=""
+      role="region"
+      aria-label="Week grid"
+      // A scrollable region must be focusable so keyboard users can scroll it; inside it the arrow
+      // keys scroll the grid instead of changing week (see useWeekKeys).
+      // eslint-disable-next-line jsx-a11y/no-noninteractive-tabindex
+      tabIndex={0}
+    >
       <div className="week-grid" style={gridStyle}>
         <div className="week-corner" aria-hidden="true" />
         <AllDayBand layout={band} locale={taskProps.locale} />
@@ -127,7 +138,9 @@ function DayColumn({
   nowMinute: number | undefined;
 }) {
   const { timeZone, locale } = taskProps;
-  const headingId = `week-day-${day.date}`;
+  // The section is named by the full date; the heading link shows (and is named by) "Mon 26",
+  // with the full date as its description, so its accessible name contains its visible text.
+  const dateId = `week-day-${day.date}`;
   const { weekday, day: dayOfMonth } = dayHeadingParts(day.date, locale);
   const fullDate = formatDate(day.date, locale);
   const skipped = isSkippedDay(day.window);
@@ -135,19 +148,19 @@ function DayColumn({
   const place = { gridColumn: String(column) };
 
   return (
-    <section aria-labelledby={headingId} className={`week-day${isToday ? ' is-today' : ''}`}>
-      <h2 id={headingId} className="week-day-heading" style={place}>
+    <section aria-labelledby={dateId} className={`week-day${isToday ? ' is-today' : ''}`}>
+      <h2 className="week-day-heading" style={place}>
         <Link
           to="/day/$date"
           params={{ date: day.date }}
           aria-current={isToday ? 'date' : undefined}
+          aria-describedby={dateId}
         >
-          <span className="visually-hidden">{fullDate}</span>
-          <span aria-hidden="true">
-            <span className="week-dow">{weekday}</span>{' '}
-            <span className="week-dom">{dayOfMonth}</span>
-          </span>
-        </Link>
+          <span className="week-dow">{weekday}</span> <span className="week-dom">{dayOfMonth}</span>
+        </Link>{' '}
+        <span id={dateId} className="visually-hidden">
+          {fullDate}
+        </span>
       </h2>
       <div className="week-tasks" style={place}>
         <TaskStrip tasks={day.tasks} overdue={overdue} {...taskProps} />

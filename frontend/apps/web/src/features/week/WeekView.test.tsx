@@ -393,6 +393,38 @@ describe('WeekView', () => {
       expect(router.state.location.pathname).toBe('/week/2026-10-26');
     });
 
+    it('leaves the arrow keys to the grid while focus is inside it, and changes week outside it', async () => {
+      serveBusyWeeks();
+      const { router } = renderApp('/week/2026-10-26');
+      await screen.findByText('Design review');
+      const grid = screen.getByRole('region', { name: 'Week grid' });
+      expect(grid).toHaveAttribute('tabindex', '0');
+
+      within(grid).getByRole('link', { name: 'Tue 27' }).focus();
+      await userEvent.keyboard('{ArrowRight}');
+      grid.focus();
+      await userEvent.keyboard('{ArrowLeft}');
+      await act(() => Promise.resolve());
+      expect(router.state.location.pathname).toBe('/week/2026-10-26');
+
+      screen.getByRole('link', { name: 'Next' }).focus();
+      await userEvent.keyboard('{ArrowRight}');
+      expect(await screen.findByText('Review on 2026-11-02')).toBeInTheDocument();
+      expect(router.state.location.pathname).toBe('/week/2026-11-02');
+    });
+
+    it('returns to this week with t even from inside the grid', async () => {
+      serveBusyWeeks();
+      const { router } = renderApp('/week/2026-11-02');
+      await screen.findByText('Review on 2026-11-02');
+
+      screen.getByRole('region', { name: 'Week grid' }).focus();
+      await userEvent.keyboard('t');
+
+      expect(await screen.findByText('Design review')).toBeInTheDocument();
+      expect(router.state.location.pathname).toBe('/week/2026-10-26');
+    });
+
     it('ignores the keys with a modifier held or while focus is in a form field', async () => {
       serveBusyWeeks();
       const { router } = renderApp('/week/2026-10-26');
@@ -432,11 +464,11 @@ describe('WeekView', () => {
       const { router } = renderApp('/week/2026-10-26');
       await screen.findByText('Design review');
 
-      await userEvent.click(
-        within(dayRegion(/^Thursday,? 29 October$/)).getByRole('link', {
-          name: /Thursday,? 29 October/,
-        }),
-      );
+      const thursday = within(dayRegion(/^Thursday,? 29 October$/)).getByRole('link', {
+        name: 'Thu 29',
+      });
+      expect(thursday).toHaveAccessibleDescription(/^Thursday,? 29 October$/);
+      await userEvent.click(thursday);
 
       expect(await screen.findByRole('heading', { level: 1 })).toHaveTextContent(
         /^Thursday,? 29 October$/,

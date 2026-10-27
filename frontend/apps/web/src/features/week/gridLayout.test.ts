@@ -51,6 +51,25 @@ describe('eventSpan', () => {
     expect(eventSpan(at('22:00', '24:00'), MONDAY, MADRID)).toEqual({ start: 1320, end: 1440 });
   });
 
+  it('clips to the first wall-clock minute of a day whose midnight was skipped', () => {
+    // America/Santiago skipped 00:00–01:00 on 6 September 2026: the day starts at 01:00 (04:00Z).
+    const window = { start: '2026-09-06T04:00:00Z', end: '2026-09-07T03:00:00Z' };
+    const zone = 'America/Santiago';
+    expect(
+      eventSpan({ start: '2026-09-06T04:00:00Z', end: '2026-09-06T05:00:00Z' }, window, zone),
+    ).toEqual({
+      start: 60,
+      end: 120,
+    });
+    // An event from the previous evening is clipped to the same first minute.
+    expect(
+      eventSpan({ start: '2026-09-06T01:00:00Z', end: '2026-09-06T05:00:00Z' }, window, zone),
+    ).toEqual({
+      start: 60,
+      end: 120,
+    });
+  });
+
   it('gives very short events a minimum height, also at the end of the day', () => {
     expect(eventSpan(at('09:00', '09:05'), MONDAY, MADRID)).toEqual({
       start: 540,

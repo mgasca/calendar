@@ -62,7 +62,7 @@ export interface Span {
 
 /**
  * The part of `event` drawn in the day `window`, in local wall-clock minutes of the viewer's zone.
- * Parts before or after the day are clipped to midnight, and the result is at least
+ * Parts before or after the day are clipped to the day's window, and the result is at least
  * `MIN_EVENT_MINUTES` tall. On a 25-hour day, events in the repeated hour share wall-clock minutes.
  */
 export function eventSpan(
@@ -72,7 +72,13 @@ export function eventSpan(
 ): Span {
   const startMs = Date.parse(event.start);
   const endMs = Date.parse(event.end);
-  let start = startMs <= Date.parse(window.start) ? 0 : wallClockMinutes(startMs, timeZone);
+  // Clip to the day: its first wall-clock minute is usually 00:00, but later when the zone skipped
+  // local midnight (e.g. America/Santiago, where 00:00 became 01:00). The window's end always falls
+  // on the next date, so the day itself runs to 24:00 on the wall clock.
+  let start =
+    startMs <= Date.parse(window.start)
+      ? wallClockMinutes(window.start, timeZone)
+      : wallClockMinutes(startMs, timeZone);
   let end = endMs >= Date.parse(window.end) ? MINUTES_PER_DAY : wallClockMinutes(endMs, timeZone);
   if (end <= start) {
     // The wall clock went backwards inside the event (the repeated hour of a DST change).

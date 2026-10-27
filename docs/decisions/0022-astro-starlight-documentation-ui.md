@@ -44,7 +44,7 @@ Chosen option: "Astro with Starlight", because it supplies the documentation exp
 * Preserve a separate URL for every ADR, active navigation state, accessible links, Markdown tables, code blocks and heading navigation.
 * Keep the product React/Vite application and its decision unchanged. This record scopes Astro to developer documentation.
 * Use the repository's frontend quality checks, including Astro-aware type checking and formatting. Keep dependencies in the existing lockfile.
-* Record content sourcing and publication separately in [ADR-0019](0019-static-adr-log-publication.md).
+* Record content sourcing and publication separately in [ADR-0023](0023-static-adr-log-publication.md).
 
 ### Consequences
 

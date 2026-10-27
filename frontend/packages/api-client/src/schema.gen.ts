@@ -20,12 +20,352 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/events": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["CreateEvent"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/events/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["GetEvent"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/tasks": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["CreateTask"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/tasks/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["GetTask"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/tasks/{id}/complete": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["CompleteTask"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/tasks/{id}/reopen": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["ReopenTask"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/agenda/day": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Everything for one local day: all-day events, timed events, and due-today and overdue tasks. */
+        get: operations["GetDayAgenda"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        /** @description Tasks relevant to the day, split into overdue and due-today groups. */
+        AgendaTasks: {
+            /** @description Overdue tasks, oldest due first: still open, or completed within the day. Not due on the day itself. */
+            overdue: components["schemas"]["TaskResponse"][];
+            /** @description Tasks due on the day (open or completed): timed ones by due instant, then date-only ones by title. */
+            dueToday: components["schemas"]["TaskResponse"][];
+        };
+        /** @description The day as UTC instants, `[start, end)`; may be shorter or longer than 24 hours across DST changes. */
+        AgendaWindow: {
+            /**
+             * Format: date-time
+             * @description Inclusive start of the day, as a UTC instant.
+             */
+            start: string;
+            /**
+             * Format: date-time
+             * @description Exclusive end of the day, as a UTC instant.
+             */
+            end: string;
+        };
+        /** @description An all-day event in the day agenda (floating dates, end exclusive). */
+        AllDayEventItem: {
+            /**
+             * Format: uuid
+             * @description Unique event id.
+             */
+            id: string;
+            /** @description Event title. */
+            title: string;
+            /** @description Location, or `null` if none. */
+            location?: null | string;
+            /** @description Notes, or `null` if none. */
+            notes?: null | string;
+            /**
+             * Format: date
+             * @description First date of the event.
+             */
+            startDate: string;
+            /**
+             * Format: date
+             * @description Exclusive end date of the event.
+             */
+            endDate: string;
+        };
+        /**
+         * @description Create an event. Discriminated by `allDay`: a timed event needs `start`, `end` and
+         *     `timeZone`; an all-day event needs `startDate` and `endDate` (end exclusive) and no timed fields.
+         */
+        CreateEventRequest: {
+            /** @description Event title; required, at most 200 characters after trimming. */
+            title: string;
+            /** @description `true` for an all-day event (`startDate`/`endDate`), `false` for a timed one (`start`/`end`/`timeZone`). */
+            allDay?: boolean;
+            /**
+             * Format: date-time
+             * @description Timed events: inclusive start instant, RFC 3339 with an explicit offset (e.g. 2026-10-26T14:00:00Z); `null` for all-day events.
+             */
+            start?: null | string;
+            /**
+             * Format: date-time
+             * @description Timed events: exclusive end instant, after `start`; `null` for all-day events.
+             */
+            end?: null | string;
+            /** @description Timed events: IANA time zone the event was created in, e.g. America/New_York; `null` for all-day events. */
+            timeZone?: null | string;
+            /**
+             * Format: date
+             * @description All-day events: first date (YYYY-MM-DD); `null` for timed events.
+             */
+            startDate?: null | string;
+            /**
+             * Format: date
+             * @description All-day events: exclusive end date (YYYY-MM-DD), after `startDate`; a one-day event on the 26th ends on the 27th. `null` for timed events.
+             */
+            endDate?: null | string;
+            /** @description Optional location, at most 200 characters. */
+            location?: null | string;
+            /** @description Optional notes, at most 4000 characters. */
+            notes?: null | string;
+        };
+        /** @description Create a task, optionally due on a floating date or at an instant (not both). */
+        CreateTaskRequest: {
+            /** @description Task title; required, at most 200 characters after trimming. */
+            title: string;
+            /**
+             * Format: date
+             * @description Floating due date (YYYY-MM-DD); mutually exclusive with `dueAt`.
+             */
+            dueDate?: null | string;
+            /**
+             * Format: date-time
+             * @description Due instant, RFC 3339 with an explicit offset; mutually exclusive with `dueDate`.
+             */
+            dueAt?: null | string;
+        };
+        /** @description Everything for one local day, from a single snapshot. */
+        DayAgendaResponse: {
+            /**
+             * Format: date
+             * @description The local calendar date (YYYY-MM-DD) in `timeZone`.
+             */
+            date: string;
+            /** @description Canonical IANA time zone id the day was resolved in. */
+            timeZone: string;
+            /** @description The UTC instants spanned by the local day. */
+            window: components["schemas"]["AgendaWindow"];
+            /** @description All-day events covering the date, by start date then title. */
+            allDayEvents: components["schemas"]["AllDayEventItem"][];
+            /** @description Timed events overlapping the window, by start then title. */
+            events: components["schemas"]["TimedEventItem"][];
+            /** @description Overdue and due-today tasks. */
+            tasks: components["schemas"]["AgendaTasks"];
+        };
+        /** @description An event as stored. Fields of the other kind are `null`. */
+        EventResponse: {
+            /**
+             * Format: uuid
+             * @description Unique event id.
+             */
+            id: string;
+            /** @description Event title. */
+            title: string;
+            /** @description `true` for an all-day event, `false` for a timed one. */
+            allDay: boolean;
+            /** @description Location, or `null` if none. */
+            location?: null | string;
+            /** @description Notes, or `null` if none. */
+            notes?: null | string;
+            /**
+             * Format: date-time
+             * @description Timed events: inclusive start instant; `null` for all-day events.
+             */
+            start?: null | string;
+            /**
+             * Format: date-time
+             * @description Timed events: exclusive end instant; `null` for all-day events.
+             */
+            end?: null | string;
+            /** @description Timed events: IANA time zone id; `null` for all-day events. */
+            timeZone?: null | string;
+            /**
+             * Format: date
+             * @description All-day events: first date; `null` for timed events.
+             */
+            startDate?: null | string;
+            /**
+             * Format: date
+             * @description All-day events: exclusive end date; `null` for timed events.
+             */
+            endDate?: null | string;
+        };
         HealthResponse: {
             status: string;
+        };
+        HttpValidationProblemDetails: {
+            type?: null | string;
+            title?: null | string;
+            /** Format: int32 */
+            status?: null | number | string;
+            detail?: null | string;
+            instance?: null | string;
+            errors?: {
+                [key: string]: string[];
+            };
+        };
+        ProblemDetails: {
+            type?: null | string;
+            title?: null | string;
+            /** Format: int32 */
+            status?: null | number | string;
+            detail?: null | string;
+            instance?: null | string;
+        };
+        /** @description A task as stored. */
+        TaskResponse: {
+            /**
+             * Format: uuid
+             * @description Unique task id.
+             */
+            id: string;
+            /** @description Task title. */
+            title: string;
+            /**
+             * Format: date
+             * @description Floating due date, or `null` if the task has no date-only due.
+             */
+            dueDate?: null | string;
+            /**
+             * Format: date-time
+             * @description Due instant, or `null` if the task has no timed due.
+             */
+            dueAt?: null | string;
+            /**
+             * Format: date-time
+             * @description When the task was completed; `null` while it is open.
+             */
+            completedAt?: null | string;
+            /** @description `true` once the task has been completed. */
+            isCompleted: boolean;
+        };
+        /** @description A timed event in the day agenda. */
+        TimedEventItem: {
+            /**
+             * Format: uuid
+             * @description Unique event id.
+             */
+            id: string;
+            /** @description Event title. */
+            title: string;
+            /** @description Location, or `null` if none. */
+            location?: null | string;
+            /** @description Notes, or `null` if none. */
+            notes?: null | string;
+            /**
+             * Format: date-time
+             * @description Inclusive start instant.
+             */
+            start: string;
+            /**
+             * Format: date-time
+             * @description Exclusive end instant.
+             */
+            end: string;
+            /** @description IANA time zone id the event was created in. */
+            timeZone: string;
+            /** @description The event began before the day's window (it continues from an earlier day). */
+            startsBeforeDay: boolean;
+            /** @description The event ends after the day's window (it continues into a later day). */
+            endsAfterDay: boolean;
         };
     };
     responses: never;
@@ -52,6 +392,246 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HealthResponse"];
+                };
+            };
+        };
+    };
+    CreateEvent: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateEventRequest"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EventResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["HttpValidationProblemDetails"];
+                };
+            };
+        };
+    };
+    GetEvent: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EventResponse"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    CreateTask: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateTaskRequest"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TaskResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["HttpValidationProblemDetails"];
+                };
+            };
+        };
+    };
+    GetTask: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TaskResponse"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    CompleteTask: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TaskResponse"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    ReopenTask: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TaskResponse"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    GetDayAgenda: {
+        parameters: {
+            query: {
+                date: string;
+                timeZone: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DayAgendaResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["HttpValidationProblemDetails"];
                 };
             };
         };

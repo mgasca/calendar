@@ -24,10 +24,634 @@
           }
         }
       }
+    },
+    "/api/events": {
+      "post": {
+        "tags": [
+          "Events"
+        ],
+        "operationId": "CreateEvent",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateEventRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EventResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HttpValidationProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/events/{id}": {
+      "get": {
+        "tags": [
+          "Events"
+        ],
+        "operationId": "GetEvent",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EventResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/tasks": {
+      "post": {
+        "tags": [
+          "Tasks"
+        ],
+        "operationId": "CreateTask",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateTaskRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TaskResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HttpValidationProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/tasks/{id}": {
+      "get": {
+        "tags": [
+          "Tasks"
+        ],
+        "operationId": "GetTask",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TaskResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/tasks/{id}/complete": {
+      "post": {
+        "tags": [
+          "Tasks"
+        ],
+        "operationId": "CompleteTask",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TaskResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/tasks/{id}/reopen": {
+      "post": {
+        "tags": [
+          "Tasks"
+        ],
+        "operationId": "ReopenTask",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TaskResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/agenda/day": {
+      "get": {
+        "tags": [
+          "Agenda"
+        ],
+        "summary": "Everything for one local day: all-day events, timed events, and due-today and overdue tasks.",
+        "operationId": "GetDayAgenda",
+        "parameters": [
+          {
+            "name": "date",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "date"
+            }
+          },
+          {
+            "name": "timeZone",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DayAgendaResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HttpValidationProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
     "schemas": {
+      "AgendaTasks": {
+        "required": [
+          "overdue",
+          "dueToday"
+        ],
+        "type": "object",
+        "properties": {
+          "overdue": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/TaskResponse"
+            },
+            "description": "Overdue tasks, oldest due first: still open, or completed within the day. Not due on the day itself."
+          },
+          "dueToday": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/TaskResponse"
+            },
+            "description": "Tasks due on the day (open or completed): timed ones by due instant, then date-only ones by title."
+          }
+        },
+        "description": "Tasks relevant to the day, split into overdue and due-today groups."
+      },
+      "AgendaWindow": {
+        "required": [
+          "start",
+          "end"
+        ],
+        "type": "object",
+        "properties": {
+          "start": {
+            "type": "string",
+            "description": "Inclusive start of the day, as a UTC instant.",
+            "format": "date-time"
+          },
+          "end": {
+            "type": "string",
+            "description": "Exclusive end of the day, as a UTC instant.",
+            "format": "date-time"
+          }
+        },
+        "description": "The day as UTC instants, `[start, end)`; may be shorter or longer than 24 hours across DST changes."
+      },
+      "AllDayEventItem": {
+        "required": [
+          "id",
+          "title",
+          "startDate",
+          "endDate"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Unique event id.",
+            "format": "uuid"
+          },
+          "title": {
+            "type": "string",
+            "description": "Event title."
+          },
+          "location": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "Location, or `null` if none."
+          },
+          "notes": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "Notes, or `null` if none."
+          },
+          "startDate": {
+            "type": "string",
+            "description": "First date of the event.",
+            "format": "date"
+          },
+          "endDate": {
+            "type": "string",
+            "description": "Exclusive end date of the event.",
+            "format": "date"
+          }
+        },
+        "description": "An all-day event in the day agenda (floating dates, end exclusive)."
+      },
+      "CreateEventRequest": {
+        "required": [
+          "title"
+        ],
+        "type": "object",
+        "properties": {
+          "title": {
+            "type": "string",
+            "description": "Event title; required, at most 200 characters after trimming."
+          },
+          "allDay": {
+            "type": "boolean",
+            "description": "`true` for an all-day event (`startDate`/`endDate`), `false` for a timed one (`start`/`end`/`timeZone`)."
+          },
+          "start": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "Timed events: inclusive start instant, RFC 3339 with an explicit offset (e.g. 2026-10-26T14:00:00Z); `null` for all-day events.",
+            "format": "date-time"
+          },
+          "end": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "Timed events: exclusive end instant, after `start`; `null` for all-day events.",
+            "format": "date-time"
+          },
+          "timeZone": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "Timed events: IANA time zone the event was created in, e.g. America/New_York; `null` for all-day events."
+          },
+          "startDate": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "All-day events: first date (YYYY-MM-DD); `null` for timed events.",
+            "format": "date"
+          },
+          "endDate": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "All-day events: exclusive end date (YYYY-MM-DD), after `startDate`; a one-day event on the 26th ends on the 27th. `null` for timed events.",
+            "format": "date"
+          },
+          "location": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "Optional location, at most 200 characters."
+          },
+          "notes": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "Optional notes, at most 4000 characters."
+          }
+        },
+        "description": "Create an event. Discriminated by `allDay`: a timed event needs `start`, `end` and\n`timeZone`; an all-day event needs `startDate` and `endDate` (end exclusive) and no timed fields."
+      },
+      "CreateTaskRequest": {
+        "required": [
+          "title"
+        ],
+        "type": "object",
+        "properties": {
+          "title": {
+            "type": "string",
+            "description": "Task title; required, at most 200 characters after trimming."
+          },
+          "dueDate": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "Floating due date (YYYY-MM-DD); mutually exclusive with `dueAt`.",
+            "format": "date"
+          },
+          "dueAt": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "Due instant, RFC 3339 with an explicit offset; mutually exclusive with `dueDate`.",
+            "format": "date-time"
+          }
+        },
+        "description": "Create a task, optionally due on a floating date or at an instant (not both)."
+      },
+      "DayAgendaResponse": {
+        "required": [
+          "date",
+          "timeZone",
+          "window",
+          "allDayEvents",
+          "events",
+          "tasks"
+        ],
+        "type": "object",
+        "properties": {
+          "date": {
+            "type": "string",
+            "description": "The local calendar date (YYYY-MM-DD) in `timeZone`.",
+            "format": "date"
+          },
+          "timeZone": {
+            "type": "string",
+            "description": "Canonical IANA time zone id the day was resolved in."
+          },
+          "window": {
+            "description": "The UTC instants spanned by the local day.",
+            "$ref": "#/components/schemas/AgendaWindow"
+          },
+          "allDayEvents": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AllDayEventItem"
+            },
+            "description": "All-day events covering the date, by start date then title."
+          },
+          "events": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/TimedEventItem"
+            },
+            "description": "Timed events overlapping the window, by start then title."
+          },
+          "tasks": {
+            "description": "Overdue and due-today tasks.",
+            "$ref": "#/components/schemas/AgendaTasks"
+          }
+        },
+        "description": "Everything for one local day, from a single snapshot."
+      },
+      "EventResponse": {
+        "required": [
+          "id",
+          "title",
+          "allDay"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Unique event id.",
+            "format": "uuid"
+          },
+          "title": {
+            "type": "string",
+            "description": "Event title."
+          },
+          "allDay": {
+            "type": "boolean",
+            "description": "`true` for an all-day event, `false` for a timed one."
+          },
+          "location": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "Location, or `null` if none."
+          },
+          "notes": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "Notes, or `null` if none."
+          },
+          "start": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "Timed events: inclusive start instant; `null` for all-day events.",
+            "format": "date-time"
+          },
+          "end": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "Timed events: exclusive end instant; `null` for all-day events.",
+            "format": "date-time"
+          },
+          "timeZone": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "Timed events: IANA time zone id; `null` for all-day events."
+          },
+          "startDate": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "All-day events: first date; `null` for timed events.",
+            "format": "date"
+          },
+          "endDate": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "All-day events: exclusive end date; `null` for timed events.",
+            "format": "date"
+          }
+        },
+        "description": "An event as stored. Fields of the other kind are `null`."
+      },
       "HealthResponse": {
         "required": [
           "status"
@@ -38,12 +662,214 @@
             "type": "string"
           }
         }
+      },
+      "HttpValidationProblemDetails": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "title": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "status": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "null",
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "detail": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "instance": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "errors": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          }
+        }
+      },
+      "ProblemDetails": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "title": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "status": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "null",
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "detail": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "instance": {
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        }
+      },
+      "TaskResponse": {
+        "required": [
+          "id",
+          "title",
+          "isCompleted"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Unique task id.",
+            "format": "uuid"
+          },
+          "title": {
+            "type": "string",
+            "description": "Task title."
+          },
+          "dueDate": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "Floating due date, or `null` if the task has no date-only due.",
+            "format": "date"
+          },
+          "dueAt": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "Due instant, or `null` if the task has no timed due.",
+            "format": "date-time"
+          },
+          "completedAt": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "When the task was completed; `null` while it is open.",
+            "format": "date-time"
+          },
+          "isCompleted": {
+            "type": "boolean",
+            "description": "`true` once the task has been completed."
+          }
+        },
+        "description": "A task as stored."
+      },
+      "TimedEventItem": {
+        "required": [
+          "id",
+          "title",
+          "start",
+          "end",
+          "timeZone",
+          "startsBeforeDay",
+          "endsAfterDay"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Unique event id.",
+            "format": "uuid"
+          },
+          "title": {
+            "type": "string",
+            "description": "Event title."
+          },
+          "location": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "Location, or `null` if none."
+          },
+          "notes": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "Notes, or `null` if none."
+          },
+          "start": {
+            "type": "string",
+            "description": "Inclusive start instant.",
+            "format": "date-time"
+          },
+          "end": {
+            "type": "string",
+            "description": "Exclusive end instant.",
+            "format": "date-time"
+          },
+          "timeZone": {
+            "type": "string",
+            "description": "IANA time zone id the event was created in."
+          },
+          "startsBeforeDay": {
+            "type": "boolean",
+            "description": "The event began before the day's window (it continues from an earlier day)."
+          },
+          "endsAfterDay": {
+            "type": "boolean",
+            "description": "The event ends after the day's window (it continues into a later day)."
+          }
+        },
+        "description": "A timed event in the day agenda."
       }
     }
   },
   "tags": [
     {
       "name": "Health"
+    },
+    {
+      "name": "Events"
+    },
+    {
+      "name": "Tasks"
+    },
+    {
+      "name": "Agenda"
     }
   ]
 }

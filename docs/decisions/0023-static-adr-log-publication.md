@@ -8,7 +8,7 @@ decision-makers: mgasca, Codex (AI assistant)
 
 ## Context and Problem Statement
 
-The Astro and Starlight documentation application ([ADR-0018](0018-astro-starlight-documentation-ui.md)) must publish the merged ADR log and let readers navigate to individual records. The canonical Markdown records and their index already live in `docs/decisions/` under [ADR-0000](0000-use-markdown-architectural-decision-records.md). How should the web log stay synchronized with these sources and publish only merged content?
+The Astro and Starlight documentation application ([ADR-0022](0022-astro-starlight-documentation-ui.md)) must publish the merged ADR log and let readers navigate to individual records. The canonical Markdown records and their index already live in `docs/decisions/` under [ADR-0000](0000-use-markdown-architectural-decision-records.md). How should the web log stay synchronized with these sources and publish only merged content?
 
 ## Decision Drivers
 

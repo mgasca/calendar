@@ -4,7 +4,7 @@ import type { ReactElement } from 'react';
 
 export function renderWithProviders(ui: ReactElement, options?: RenderOptions) {
   const queryClient = new QueryClient({
-    defaultOptions: { queries: { retry: false } },
+    defaultOptions: { queries: { retry: false, retryDelay: 0 } },
   });
   return render(<QueryClientProvider client={queryClient}>{ui}</QueryClientProvider>, options);
 }

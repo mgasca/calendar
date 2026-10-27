@@ -6,7 +6,8 @@
     <IsPackable>false</IsPackable>
     <IsTestProject>true</IsTestProject>
     <!-- CA1707: test method names use underscores (Method_State_Expected). -->
-    <NoWarn>$(NoWarn);CA1707</NoWarn>
+    <!-- CS1591: test names describe behaviour; xUnit needs them public, so docs aren't required. -->
+    <NoWarn>$(NoWarn);CA1707;CS1591</NoWarn>
   </PropertyGroup>
 
   <ItemGroup>

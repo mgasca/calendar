@@ -1,6 +1,8 @@
 <Project Sdk="Microsoft.NET.Sdk.Web">
 
   <PropertyGroup>
+    <!-- Dev connection string lives in user-secrets (ConnectionStrings:Calendar), never in tracked appsettings. -->
+    <UserSecretsId>calendar-api-2f6c1d1e-6a53-4c0e-9d57-3b1d8a4c7e10</UserSecretsId>
     <!-- Emit the OpenAPI document at build time; it is the contract consumed by every UI. -->
     <OpenApiDocumentsDirectory>$(MSBuildThisFileDirectory)../../../contracts</OpenApiDocumentsDirectory>
     <OpenApiGenerateDocumentsOptions>--file-name openapi</OpenApiGenerateDocumentsOptions>
@@ -13,6 +15,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\Calendar.Domain\Calendar.Domain.csproj" />
+    <ProjectReference Include="..\Calendar.Infrastructure\Calendar.Infrastructure.csproj" />
   </ItemGroup>
 
 </Project>

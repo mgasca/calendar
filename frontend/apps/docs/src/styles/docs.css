@@ -13,3 +13,93 @@
 .sl-markdown-content pre {
   max-width: 100%;
 }
+
+/* Keep canonical status wording, with the same readable palette in both themes. */
+:root {
+  --adr-status-accepted-bg: #dcfce7;
+  --adr-status-accepted-text: #14532d;
+  --adr-status-draft-bg: #fef3c7;
+  --adr-status-draft-text: #78350f;
+  --adr-status-rejected-bg: #fee2e2;
+  --adr-status-rejected-text: #7f1d1d;
+  --adr-status-superseded-bg: #ffedd5;
+  --adr-status-superseded-text: #7c2d12;
+  --adr-status-pending-bg: #e5e7eb;
+  --adr-status-pending-text: #374151;
+}
+.sidebar-content a[data-adr-number] {
+  display: grid;
+  grid-template-columns: max-content auto minmax(0, 1fr);
+  align-items: start;
+  gap: 0.4rem;
+}
+.sidebar-content a[data-adr-number]::before {
+  content: attr(data-adr-number);
+  grid-column: 1;
+  grid-row: 1;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.sidebar-content a[data-adr-number] > span:first-child {
+  grid-column: 3;
+  grid-row: 1;
+  margin: 0;
+}
+.sidebar-content .adr-status {
+  grid-column: 2;
+  grid-row: 1;
+  max-width: 6rem;
+  margin: 0;
+  white-space: normal;
+  line-height: 1.4;
+  border-color: currentColor;
+  background: var(--adr-status-bg);
+  color: var(--adr-status-text);
+}
+.adr-status-accepted {
+  --adr-status-bg: var(--adr-status-accepted-bg);
+  --adr-status-text: var(--adr-status-accepted-text);
+}
+.adr-status-draft {
+  --adr-status-bg: var(--adr-status-draft-bg);
+  --adr-status-text: var(--adr-status-draft-text);
+}
+.adr-status-rejected {
+  --adr-status-bg: var(--adr-status-rejected-bg);
+  --adr-status-text: var(--adr-status-rejected-text);
+}
+.adr-status-superseded {
+  --adr-status-bg: var(--adr-status-superseded-bg);
+  --adr-status-text: var(--adr-status-superseded-text);
+}
+.adr-status-pending {
+  --adr-status-bg: var(--adr-status-pending-bg);
+  --adr-status-text: var(--adr-status-pending-text);
+}
+
+@media (min-width: 72rem) {
+  /* Match Starlight's original rail calculation, then reclaim exactly 30%. */
+  .right-sidebar-container {
+    --adr-toc-original-width: max(
+      var(--sl-sidebar-width),
+      calc(var(--sl-sidebar-width) + (100% - var(--sl-content-width) - var(--sl-sidebar-width)) / 2)
+    );
+    width: calc(var(--adr-toc-original-width) * 0.7);
+    flex-shrink: 0;
+  }
+  .right-sidebar-container .right-sidebar {
+    position: sticky;
+    top: var(--sl-nav-height);
+    padding-top: 0;
+    height: calc(100vh - var(--sl-nav-height));
+  }
+  .right-sidebar-panel .sl-container {
+    width: 100%;
+    max-width: none;
+  }
+  [data-has-sidebar][data-has-toc] .main-pane {
+    flex: 1;
+    min-width: 0;
+    width: auto;
+  }
+}

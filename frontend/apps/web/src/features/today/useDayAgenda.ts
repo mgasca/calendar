@@ -1,51 +1,31 @@
+import type { Schemas } from '@calendar/api-client';
 import { keepPreviousData, useQuery } from '@tanstack/react-query';
 
 import { api } from '../../api/client.ts';
+import {
+  AGENDA_KEY,
+  AGENDA_REFETCH_INTERVAL_MS,
+  AgendaError,
+  problemMessage,
+  shouldRetryAgenda,
+} from '../agenda/agendaQuery.ts';
+import type { AgendaTask } from '../agenda/dayTime.ts';
+import type { TaskPatch } from '../agenda/useToggleTask.ts';
+
+type DayAgenda = Schemas['DayAgendaResponse'];
 
 export const agendaKey = (date: string, timeZone: string) =>
-  ['agenda', 'day', date, timeZone] as const;
+  [...AGENDA_KEY, 'day', date, timeZone] as const;
 
-/** Pick up changes made on other devices while the page stays open and visible. */
-export const AGENDA_REFETCH_INTERVAL_MS = 5 * 60_000;
-
-export class AgendaError extends Error {
-  readonly status: number;
-
-  constructor(status: number, message: string) {
-    super(message);
-    this.status = status;
-  }
-}
-
-/** Best human-readable message from a problem-details body (first field error, else detail/title). */
-export function problemMessage(body: unknown): string | undefined {
-  if (typeof body !== 'object' || body === null) {
-    return undefined;
-  }
-  const problem = body as {
-    errors?: Record<string, string[] | undefined>;
-    detail?: unknown;
-    title?: unknown;
+/** `useToggleTask` adapter for the day agenda: patches the task in both task groups. */
+export const patchDayTasks: TaskPatch<DayAgenda> = (agenda, id, update) => {
+  const apply = (tasks: AgendaTask[]) =>
+    tasks.map((task) => (task.id === id ? update(task) : task));
+  return {
+    ...agenda,
+    tasks: { overdue: apply(agenda.tasks.overdue), dueToday: apply(agenda.tasks.dueToday) },
   };
-  const fieldError = Object.values(problem.errors ?? {}).flat()[0];
-  if (fieldError) {
-    return fieldError;
-  }
-  for (const text of [problem.detail, problem.title]) {
-    if (typeof text === 'string' && text) {
-      return text;
-    }
-  }
-  return undefined;
-}
-
-/** Retry network failures and 5xx twice; a 4xx will not get better by asking again. */
-export function shouldRetryAgenda(failureCount: number, error: Error): boolean {
-  if (error instanceof AgendaError && error.status >= 400 && error.status < 500) {
-    return false;
-  }
-  return failureCount < 2;
-}
+};
 
 export function useDayAgenda(date: string, timeZone: string) {
   return useQuery({
@@ -65,7 +45,8 @@ export function useDayAgenda(date: string, timeZone: string) {
     },
     retry: shouldRetryAgenda,
     refetchInterval: AGENDA_REFETCH_INTERVAL_MS,
-    // At midnight the key changes; keep showing the previous day until the new one arrives.
+    // When the key changes (at midnight, or on moving to another day), keep showing the previous
+    // day until the new one arrives.
     placeholderData: keepPreviousData,
   });
 }

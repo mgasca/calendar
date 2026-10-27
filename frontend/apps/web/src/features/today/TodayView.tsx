@@ -14,10 +14,12 @@ import {
   type AgendaTask,
   type EventStatus,
   type TimedEvent,
-} from './dayTime.ts';
-import { TaskUpdateError, useToggleTask } from './useToggleTask.ts';
-import { AgendaError, agendaKey, useDayAgenda } from './useDayAgenda.ts';
-import { useNow } from './useNow.ts';
+} from '../agenda/dayTime.ts';
+import { AgendaError } from '../agenda/agendaQuery.ts';
+import { TaskItem, TaskToggleError } from '../agenda/TaskItem.tsx';
+import { useNow } from '../agenda/useNow.ts';
+import { useToggleTask } from '../agenda/useToggleTask.ts';
+import { agendaKey, patchDayTasks, useDayAgenda } from './useDayAgenda.ts';
 
 type AllDayEvent = Schemas['AllDayEventItem'];
 
@@ -33,7 +35,7 @@ export function TodayView({ timeZone: zoneOverride, locale }: TodayViewProps) {
   const now = useNow();
   const date = localDate(now, timeZone);
   const agenda = useDayAgenda(date, timeZone);
-  const toggle = useToggleTask(agendaKey(date, timeZone));
+  const toggle = useToggleTask(agendaKey(date, timeZone), patchDayTasks);
 
   if (agenda.isPending) {
     return (
@@ -113,13 +115,7 @@ export function TodayView({ timeZone: zoneOverride, locale }: TodayViewProps) {
           </button>
         </div>
       )}
-      {toggle.isError && (
-        <p role="alert" className="notice notice-error">
-          {toggle.error instanceof TaskUpdateError && toggle.error.status === 409
-            ? 'That task was changed elsewhere. The list has been refreshed; please try again.'
-            : 'Couldn’t update the task. Your change was undone.'}
-        </p>
-      )}
+      <TaskToggleError error={toggle.error} />
 
       {isEmpty && <p className="empty">Nothing scheduled today. Enjoy the free day!</p>}
 
@@ -281,64 +277,5 @@ function EventTimes({
       {' – '}
       {end}
     </>
-  );
-}
-
-interface TaskItemProps {
-  task: AgendaTask;
-  /** Text shown for the due state (overdue tasks). */
-  detail?: string | undefined;
-  overdue?: boolean | undefined;
-  dueAt?: string | null | undefined;
-  pastDue?: boolean | undefined;
-  timeZone?: string | undefined;
-  locale?: string | undefined;
-  disabled: boolean;
-  onToggle: (task: AgendaTask) => void;
-}
-
-function TaskItem({
-  task,
-  detail,
-  overdue,
-  dueAt,
-  pastDue,
-  timeZone,
-  locale,
-  disabled,
-  onToggle,
-}: TaskItemProps) {
-  const metaId = `task-meta-${task.id}`;
-  const showMeta = !!detail || (!!dueAt && !!timeZone) || pastDue;
-  return (
-    <li
-      className={`item task${task.isCompleted ? ' task-done' : ''}${overdue && !task.isCompleted ? ' task-overdue' : ''}`}
-    >
-      <label className="task-label">
-        <input
-          type="checkbox"
-          checked={task.isCompleted}
-          disabled={disabled}
-          aria-describedby={showMeta ? metaId : undefined}
-          onChange={() => {
-            onToggle(task);
-          }}
-        />
-        <span className="item-title">{task.title}</span>
-      </label>
-      {showMeta && (
-        <span id={metaId} className="item-meta">
-          {detail && !task.isCompleted && <strong className="flag">{detail}</strong>}
-          {detail && task.isCompleted && 'Was overdue'}
-          {dueAt && timeZone && (
-            <>
-              {'Due '}
-              <time dateTime={dueAt}>{formatTime(dueAt, timeZone, locale)}</time>
-            </>
-          )}
-          {pastDue && <strong className="flag"> · Past due</strong>}
-        </span>
-      )}
-    </li>
   );
 }

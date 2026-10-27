@@ -104,9 +104,7 @@ it('refreshes known files and rewrites inline/reference images to raw content', 
   await transform(tree);
   const serialized = JSON.stringify(tree);
   expect(serialized).toContain('/calendar/adr/0001/');
-  expect(
-    serialized.match(
-      /https:\/\/raw.githubusercontent.com\/mgasca\/calendar\/main\/docs\/decisions\/chart.png/g,
-    ),
-  ).toHaveLength(2);
+  const imageUrl =
+    'https://raw.githubusercontent.com/mgasca/calendar/main/docs/decisions/chart.png';
+  expect(serialized.split(imageUrl).length - 1).toBe(2);
 });

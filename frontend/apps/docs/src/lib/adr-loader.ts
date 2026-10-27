@@ -2,7 +2,7 @@ import { readdir, readFile } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 import { relative, resolve } from 'node:path';
 import type { Loader } from 'astro/loaders';
-import { parseLog, repository } from './adr';
+import { parseLog, repository, statusCategory } from './adr';
 
 export const decisionsDirectory = new URL('../../../../../docs/decisions/', import.meta.url);
 export async function readLog() {
@@ -40,8 +40,15 @@ export function adrLoader(): Loader {
             file: record.file,
             sidebar: {
               order,
-              label: `${record.number} · ${record.title}`,
-              badge: { text: record.status, variant: 'note' },
+              label: record.title,
+              attrs: {
+                'data-adr-number': record.number,
+                'aria-label': `${record.number} · ${record.status} · ${record.title}`,
+              },
+              badge: {
+                text: record.status,
+                class: `adr-status adr-status-${statusCategory(record.status)}`,
+              },
             },
           })),
         ];

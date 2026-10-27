@@ -137,3 +137,13 @@ export function remarkAdrLinks(options: {
     });
   };
 }
+
+/** Group canonical status text for presentation without changing the record's wording. */
+export function statusCategory(status: string) {
+  const normalized = status.trim().toLowerCase();
+  if (/^(superseded|superceded)\b/.test(normalized)) return 'superseded';
+  if (normalized === 'accepted') return 'accepted';
+  if (normalized === 'proposed' || normalized === 'draft') return 'draft';
+  if (normalized === 'rejected') return 'rejected';
+  return 'pending';
+}

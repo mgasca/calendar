@@ -2,7 +2,7 @@
 status: implemented
 date: 2026-10-27
 pr: https://github.com/mgasca/calendar/pull/24
-adrs: [0018, 0020, 0021, 0024, 0025]
+adrs: [0018, 0020, 0021, 0024, 0026]
 ---
 
 # 0002 Week view: plan and track the whole week in one place
@@ -64,9 +64,9 @@ The Today view can only show today. This story also makes any day viewable, so t
 | [0020](../decisions/0020-aggregate-day-agenda-endpoint-as-read-model.md) | A dedicated day-agenda read model, with resource endpoints for writes | Its "Extending to week and month" section anticipates this story. The week follows the same pattern. |
 | [0021](../decisions/0021-client-supplied-date-and-time-zone-define-the-day.md) | The client sends its local date and IANA zone; the server computes the window | The week is resolved the same way. The client also sends its "today", which the Overdue panel needs. |
 | [0024](../decisions/0024-week-agenda-endpoint-on-range-based-internals.md) *(refines 0020)* | A sibling `GET /api/agenda/week` read model, built on range-based internals | Records the ISO-Monday week, the per-day buckets, and the `today` parameter with the overdue-before-the-week rule. It also records that the internals work for any range of days, so a later month or generic range endpoint is a thin addition that supersedes 0024. |
-| [0025](../decisions/0025-client-side-routing-with-tanstack-router.md) | Client-side routing: TanStack Router with code-based route definitions | The app gets its first routes: `/`, `/day/:date` and `/week/:weekStart?` |
+| [0026](../decisions/0026-client-side-routing-with-tanstack-router.md) | Client-side routing: TanStack Router with code-based route definitions | The app gets its first routes: `/`, `/day/:date` and `/week/:weekStart?` |
 
-[ADR-0024](../decisions/0024-week-agenda-endpoint-on-range-based-internals.md) and [ADR-0025](../decisions/0025-client-side-routing-with-tanstack-router.md) were drafted with the `adr-draft` skill and accepted with the code that depends on them.
+[ADR-0024](../decisions/0024-week-agenda-endpoint-on-range-based-internals.md) and [ADR-0026](../decisions/0026-client-side-routing-with-tanstack-router.md) were drafted with the `adr-draft` skill and accepted with the code that depends on them.
 
 ### Other decisions (not ADR-worthy)
 
@@ -104,7 +104,7 @@ The Today view can only show today. This story also makes any day viewable, so t
 | Agenda assembly | `Calendar.Api/Endpoints/AgendaBuilder.cs`: runs the range reads in one snapshot and buckets them into days with `DayInclusion`. `AgendaOrder.cs` and `RequestValidation.cs` hold the shared ordering and validation. Both `/day` (a one-day range) and `/week` (seven days) use it. |
 | API | `Calendar.Api/Endpoints/AgendaEndpoints.cs` (`GetWeekAgenda`), `Contracts/AgendaContracts.cs` (`WeekAgendaResponse`, `AgendaDay`) |
 | Contract | `contracts/openapi.json` and `frontend/packages/api-client/src/schema.gen.ts`, regenerated with `make contracts` |
-| Web: routing | `frontend/apps/web/src/router.tsx` (routes `/`, `/day/$date`, `/week`, `/week/$weekStart`) and `App.tsx` (layout with the Today and Week links, not-found and invalid-date pages), per [ADR-0025](../decisions/0025-client-side-routing-with-tanstack-router.md) |
+| Web: routing | `frontend/apps/web/src/router.tsx` (routes `/`, `/day/$date`, `/week`, `/week/$weekStart`) and `App.tsx` (layout with the Today and Week links, not-found and invalid-date pages), per [ADR-0026](../decisions/0026-client-side-routing-with-tanstack-router.md) |
 | Web: shared | `features/agenda/`: `agendaQuery.ts` (key prefix, errors, retry), `useToggleTask.ts`, `TaskItem.tsx`, `EventTimes.tsx`, `dayTime.ts`, `useNow.ts` |
 | Web: day | `features/day/`: `DayView({ date })`, `TodayView`, `useDayAgenda.ts`. The day header links to its week. |
 | Web: week | `features/week/`: `WeekView.tsx`, `TimeGrid.tsx`, `AllDayBand.tsx`, `TaskStrip.tsx`, `OverduePanel.tsx`, `useWeekAgenda.ts`, `useWeekKeys.ts`, and the pure `weekDates.ts` and `gridLayout.ts` |
@@ -156,12 +156,12 @@ The Today view can only show today. This story also makes any day viewable, so t
 Delivered as three stacked PRs, each green on `make check`:
 
 1. **Backend and [ADR-0024](../decisions/0024-week-agenda-endpoint-on-range-based-internals.md):** ([#18](https://github.com/mgasca/calendar/pull/18)) `DateRangeWindow`, the range queries and the shared builder (with the day endpoint moved onto it), then `GET /api/agenda/week` with endpoint and agreement tests, and the regenerated contract.
-2. **Routing and [ADR-0025](../decisions/0025-client-side-routing-with-tanstack-router.md):** ([#19](https://github.com/mgasca/calendar/pull/19)) TanStack Router. The Today view became the day view at `/` and `/day/:date`, and shared agenda code moved to `features/agenda`.
+2. **Routing and [ADR-0026](../decisions/0026-client-side-routing-with-tanstack-router.md):** ([#19](https://github.com/mgasca/calendar/pull/19)) TanStack Router. The Today view became the day view at `/` and `/day/:date`, and shared agenda code moved to `features/agenda`.
 3. **Week view:** ([#24](https://github.com/mgasca/calendar/pull/24)) the grid, all-day band, task strips with ticking, Overdue panel, navigation, keyboard shortcuts and day links.
 
 ### Lessons learned during the build
 
-* The ADR numbers drafted in this story went stale when #16 merged first: 0022 and 0023 became 0024 and 0025. Run `make adr-check ARGS=--next-number` right before writing an ADR, not when planning it.
+* The ADR numbers drafted in this story went stale when #16 merged first: 0022 and 0023 became 0024 and 0025, and the routing ADR moved again to 0026 when #21 took 0025. Run `make adr-check ARGS=--next-number` right before writing an ADR, not when planning it.
 * An agreement test between two outputs of the same builder can't catch a bug the builder shares with itself. It earns its place by catching multi-day bugs; the SQL itself is anchored by a test against an independent implementation.
 * TanStack Router signals not-found and redirects by throwing its own values. ESLint's `only-throw-error` rule allows `NotFoundError` and `Redirect` from `@tanstack/router-core`, and nothing else.
 * Routes render asynchronously, so component tests that need `Link` render inside a minimal router that is loaded before rendering (`renderInRouter`), and app tests wait with `findBy…`.
@@ -171,7 +171,7 @@ Delivered as three stacked PRs, each green on `make check`:
 ### Known issues
 
 * When moving between days or weeks, the previous view stays on screen, dimmed, until the new one loads. A task toggle error shown for it stays visible after the new view arrives.
-* The API doesn't serve the SPA yet, so deep links such as `/week/2026-10-26` only work with the Vite dev server or `vite preview`. [ADR-0025](../decisions/0025-client-side-routing-with-tanstack-router.md) records the fallback rules for when the API serves it.
+* The API doesn't serve the SPA yet, so deep links such as `/week/2026-10-26` only work with the Vite dev server or `vite preview`. [ADR-0026](../decisions/0026-client-side-routing-with-tanstack-router.md) records the fallback rules for when the API serves it.
 * On a 25-hour day, events in the repeated hour share wall-clock positions and sit side by side, as agreed. Their time text tells them apart.
 
 ### Follow-up stories
@@ -180,7 +180,7 @@ Delivered as three stacked PRs, each green on `make check`:
 * Editing, moving (including drag and drop) and deleting events and tasks.
 * A month view on the range-ready internals. It supersedes ADR-0024 if it introduces a generic range endpoint.
 * A configurable first day of the week, once user preferences exist.
-* Serving the SPA from the API, with the fallback rules in ADR-0025.
+* Serving the SPA from the API, with the fallback rules in ADR-0026.
 
 ## User guide
 

@@ -20,7 +20,7 @@ The [Today view](0001-today-view.md) answers "what's in my day". A forward plann
 
 That needs a view across seven days that shows fixed commitments (events) and work to do (tasks) together. It should be built on the same local-day rules as Today, so the two views never disagree.
 
-The Today view can only show today. This story also makes any day viewable, so the week can link to its days. Creating events and tasks in the app is a separate story, [0003](0003-create-events-and-tasks.md), which builds on this one.
+The Today view can only show today. This story also makes any day viewable, so the week can link to its days. Creating events and tasks from the week is a separate story, [XXXX](XXXX-create-events-and-tasks-from-week-view.md), which builds on this one and on the stories that add creating from the day view.
 
 ### Scope agreed with the product owner
 
@@ -36,7 +36,7 @@ The Today view can only show today. This story also makes any day viewable, so t
   * Tick tasks complete or reopen them.
   * Open any day from the week.
 * **Not in this story:**
-  * Creating events and tasks: story [0003](0003-create-events-and-tasks.md).
+  * Creating events and tasks from the week: story [XXXX](XXXX-create-events-and-tasks-from-week-view.md).
   * Dragging items to move or resize them.
   * Editing or deleting existing items.
   * Recurring events.
@@ -160,7 +160,7 @@ One PR per step, each green on `make check`:
 
 ### Follow-up stories
 
-* [0003](0003-create-events-and-tasks.md): create events and tasks from the day and week views.
+* [XXXX](XXXX-create-events-and-tasks-from-week-view.md): create events and tasks from the week view, after the day-view create stories.
 * Editing, moving (including drag and drop) and deleting events and tasks.
 * A month view on the range-ready internals. It supersedes ADR-0024 if it introduces a generic range endpoint.
 * A configurable first day of the week, once user preferences exist.

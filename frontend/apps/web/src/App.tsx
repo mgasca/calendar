@@ -64,7 +64,9 @@ export function AppLayout() {
         <Outlet />
       </main>
     );
-  if (user.isPending || (user.isSuccess && !user.data)) return <main>Checking session…</main>;
+  // The session check runs alongside the page's own requests, which are rejected with 401 when
+  // signed out, so the page isn't held back waiting for it.
+  if (user.isSuccess && !user.data) return <main>Checking session…</main>;
   if (user.isError) return <main role="alert">Unable to check your session.</main>;
 
   return (

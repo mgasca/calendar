@@ -2,12 +2,14 @@ import type { Schemas } from '@calendar/api-client';
 import { act, fireEvent, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { http, HttpResponse } from 'msw';
+import { Profiler } from 'react';
 
-import { renderApp } from '../../test/render.tsx';
+import { renderApp, renderInRouter } from '../../test/render.tsx';
 import { server } from '../../test/server.ts';
 import { emptyWeek, madridMidnight, TEST_ZONE as ZONE } from '../../test/weekAgenda.ts';
 import { agendaKey } from '../day/useDayAgenda.ts';
 import { minuteToPx } from './gridLayout.ts';
+import { WeekView } from './WeekView.tsx';
 
 type WeekAgenda = Schemas['WeekAgendaResponse'];
 type Task = Schemas['TaskResponse'];
@@ -126,6 +128,40 @@ beforeEach(() => {
 
 afterEach(() => {
   vi.useRealTimers();
+});
+
+describe('clock rendering', () => {
+  it('does not render a past week on a minute tick', async () => {
+    vi.useFakeTimers({ toFake: ['Date', 'setInterval', 'clearInterval'] });
+    vi.setSystemTime(new Date(NOW));
+    serveBusyWeeks();
+    const onRender = vi.fn();
+    await renderInRouter(
+      <Profiler id="week" onRender={onRender}>
+        <WeekView weekStart="2026-10-19" timeZone={ZONE} locale="en-GB" />
+      </Profiler>,
+    );
+    await vi.waitFor(() => expect(screen.getByText('Review on 2026-10-19')).toBeInTheDocument());
+    onRender.mockClear();
+    act(() => {
+      vi.advanceTimersByTime(60_000);
+    });
+    expect(onRender).not.toHaveBeenCalled();
+  });
+
+  it('moves the now line on a minute tick', async () => {
+    vi.useFakeTimers({ toFake: ['Date', 'setInterval', 'clearInterval'] });
+    vi.setSystemTime(new Date(NOW));
+    serveBusyWeeks();
+    await renderInRouter(<WeekView weekStart={THIS_WEEK} timeZone={ZONE} locale="en-GB" />);
+    await vi.waitFor(() => expect(screen.getByText('Design review')).toBeInTheDocument());
+    const line = document.querySelector('.week-now');
+    expect(line).toHaveStyle({ top: `${String(minuteToPx(630))}px` });
+    act(() => {
+      vi.advanceTimersByTime(60_000);
+    });
+    expect(Number.parseFloat((line as HTMLElement).style.top)).toBeCloseTo(minuteToPx(631));
+  });
 });
 
 describe('week routes', () => {

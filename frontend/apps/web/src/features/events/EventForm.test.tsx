@@ -3,6 +3,7 @@ import userEvent from '@testing-library/user-event';
 import { http, HttpResponse } from 'msw';
 import { renderWithProviders } from '../../test/render.tsx';
 import { server } from '../../test/server.ts';
+import * as deadline from '../agenda/deadline.ts';
 import { EventForm } from './EventForm.tsx';
 
 describe('event creation', () => {
@@ -41,6 +42,16 @@ describe('event creation', () => {
       allDay: false,
     });
   });
+  it('reuses deadline candidates while unrelated fields change', () => {
+    const calculate = vi.spyOn(deadline, 'deadlineInstants');
+    renderWithProviders(<EventForm date="2026-10-29" timeZone="UTC" onClose={vi.fn()} />);
+    const callsAfterRender = calculate.mock.calls.length;
+    fireEvent.change(screen.getByLabelText('Title'), { target: { value: 'Meeting' } });
+    fireEvent.change(screen.getByLabelText('Notes'), { target: { value: 'Bring notes' } });
+    expect(calculate).toHaveBeenCalledTimes(callsAfterRender);
+    fireEvent.change(screen.getByLabelText('Start'), { target: { value: '2026-10-29T10:00' } });
+    expect(calculate).toHaveBeenCalledTimes(callsAfterRender + 2);
+  }, 15_000);
   it('retains values after a field error and permits retry', async () => {
     server.use(
       http.post('/api/events', () =>

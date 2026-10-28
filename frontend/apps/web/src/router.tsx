@@ -11,7 +11,7 @@ import { AppLayout, InvalidDatePage, NotFoundPage } from './App.tsx';
 import { browserTimeZone, isIsoDate, localDate } from './features/agenda/dayTime.ts';
 import { SignIn } from './features/auth/SignIn.tsx';
 import { DayPage } from './features/day/DayPage.tsx';
-import { useToday } from './features/day/useToday.ts';
+import { useToday } from './features/agenda/useNow.ts';
 import { AddTask } from './features/tasks/AddTask.tsx';
 import { TaskList } from './features/tasks/TaskList.tsx';
 import { isoWeekStart } from './features/week/weekDates.ts';

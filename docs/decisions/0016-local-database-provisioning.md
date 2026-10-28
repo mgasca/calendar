@@ -50,7 +50,7 @@ Chosen option: "Docker Compose for development, Testcontainers for tests". It is
   * the pinned image `postgres:18.x-alpine`
   * port bound to **`127.0.0.1:5432` only**
   * a named volume, and a health check
-  * an init script that creates the `calendar_migrator` and `calendar_app` roles ([ADR-0014](0014-postgresql-database-engine.md))
+  * an init script that creates the `calendar_migrator` and `calendar_app` roles ([ADR-0014](0014-postgresql-database-engine.md)), bind-mounted with `create_host_path: false`, so a missing folder fails loudly instead of the Docker daemon creating a root-owned directory that blocks `git pull`
   * a header comment carrying the Aspire revisit trigger
 * Credentials:
   * An untracked `.env` holds them, with a committed `.env.example` of placeholders.

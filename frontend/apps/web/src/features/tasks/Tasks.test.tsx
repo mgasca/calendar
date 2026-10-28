@@ -7,7 +7,6 @@ import { server } from '../../test/server.ts';
 import { TaskForm } from './TaskForm.tsx';
 import { deadlineInstants } from '../agenda/deadline.ts';
 import { TaskList } from './TaskList.tsx';
-import { taskView } from './taskViews.ts';
 
 describe('task creation', () => {
   it('prefills a calendar date and saves priority and notes', async () => {
@@ -96,21 +95,6 @@ describe('task creation', () => {
   });
 });
 
-it('classifies tasks using floating dates and the viewer timezone', () => {
-  const base = { id: '1', title: 'Task', isCompleted: false, priority: 'medium' };
-  expect(taskView(base, '2026-10-26', 'Europe/London')).toBe('No deadline');
-  expect(taskView({ ...base, dueDate: '2026-10-25' }, '2026-10-26', 'Europe/London')).toBe(
-    'Overdue',
-  );
-  expect(
-    taskView({ ...base, dueAt: '2026-10-26T01:00:00Z' }, '2026-10-26', 'America/New_York'),
-  ).toBe('Overdue');
-  expect(taskView({ ...base, dueDate: '2026-10-26' }, '2026-10-26', 'Europe/London')).toBe(
-    'Upcoming',
-  );
-  expect(taskView({ ...base, isCompleted: true }, '2026-10-26', 'Europe/London')).toBe('Completed');
-});
-
 it('completes and reopens undated tasks across list views', async () => {
   let task = {
     id: '1',
@@ -120,7 +104,17 @@ it('completes and reopens undated tasks across list views', async () => {
     isCompleted: false,
   };
   server.use(
-    http.get('/api/tasks', () => HttpResponse.json([task])),
+    http.get('/api/tasks', ({ request }) => {
+      const view = new URL(request.url).searchParams.get('view');
+      return HttpResponse.json({
+        items: (
+          view === 'completed' ? task.isCompleted : view === 'no-deadline' && !task.isCompleted
+        )
+          ? [task]
+          : [],
+        nextCursor: null,
+      });
+    }),
     http.post('/api/tasks/1/complete', () => {
       task = { ...task, isCompleted: true };
       return HttpResponse.json(task);
@@ -151,4 +145,29 @@ it('completes and reopens undated tasks across list views', async () => {
 it('rejects invalid deadline input', () => {
   expect(deadlineInstants('')).toEqual([]);
   expect(deadlineInstants('invalid')).toEqual([]);
+});
+
+it('loads the next page and requests the selected view', async () => {
+  const requests: string[] = [];
+  server.use(
+    http.get('/api/tasks', ({ request }) => {
+      const params = new URL(request.url).searchParams;
+      requests.push(`${params.get('view') ?? ''}:${params.get('cursor') ?? ''}`);
+      const second = params.has('cursor');
+      return HttpResponse.json({
+        items: [{ id: second ? '2' : '1', title: second ? 'Second' : 'First', isCompleted: false }],
+        nextCursor: second ? null : 'next',
+      });
+    }),
+  );
+  renderWithProviders(<TaskList />);
+  const user = userEvent.setup();
+  expect(await screen.findByText('First')).toBeInTheDocument();
+  await user.click(screen.getByRole('button', { name: 'Load more' }));
+  expect(await screen.findByText('Second')).toBeInTheDocument();
+  await user.click(screen.getByRole('button', { name: 'Overdue' }));
+  await waitFor(() => {
+    expect(requests).toContain('overdue:');
+  });
+  expect(requests).toContain('upcoming:next');
 });

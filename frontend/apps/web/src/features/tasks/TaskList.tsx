@@ -1,8 +1,8 @@
 import type { Schemas } from '@calendar/api-client';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useInfiniteQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
 
-import { views, taskView, type View } from './taskViews.ts';
+import { viewParam, views, type View } from './taskViews.ts';
 import { api } from '../../api/client.ts';
 import { browserTimeZone, localDate, isPastDue } from '../agenda/dayTime.ts';
 import { useNow } from '../agenda/useNow.ts';
@@ -15,13 +15,26 @@ export function TaskList() {
   const zone = browserTimeZone();
   const today = localDate(now, zone);
   const client = useQueryClient();
-  const tasks = useQuery({
-    queryKey: ['tasks'],
-    queryFn: async ({ signal }) => {
-      const { data, error } = await api.GET('/api/tasks', { signal });
+  const tasks = useInfiniteQuery({
+    queryKey: ['tasks', view, today, zone],
+    initialPageParam: undefined as string | undefined,
+    queryFn: async ({ signal, pageParam }) => {
+      const { data, error } = await api.GET('/api/tasks', {
+        signal,
+        params: {
+          query: {
+            view: viewParam[view],
+            today,
+            timeZone: zone,
+            ...(pageParam && { cursor: pageParam }),
+          },
+        },
+      });
       if (!data) throw new Error(problemMessage(error) ?? 'Couldn’t load tasks.');
       return data;
     },
+    // Each page names the next by its cursor; the last page has none.
+    getNextPageParam: (page) => page.nextCursor ?? undefined,
     refetchInterval: 300_000,
   });
   const toggle = useMutation({
@@ -44,22 +57,7 @@ export function TaskList() {
       ]);
     },
   });
-  const rank: Record<string, number> = { high: 0, medium: 1, low: 2 };
-  const visible = (tasks.data ?? [])
-    .filter((task) => taskView(task, today, zone) === view)
-    .sort((a, b) => {
-      const date = (task: Task) =>
-        task.dueDate ?? (task.dueAt ? localDate(Date.parse(task.dueAt), zone) : '');
-      if (view === 'Completed')
-        return (b.completedAt ?? '').localeCompare(a.completedAt ?? '') || a.id.localeCompare(b.id);
-      return (
-        date(a).localeCompare(date(b)) ||
-        (a.dueAt ?? '').localeCompare(b.dueAt ?? '') ||
-        (rank[a.priority ?? 'medium'] ?? 1) - (rank[b.priority ?? 'medium'] ?? 1) ||
-        a.title.localeCompare(b.title) ||
-        a.id.localeCompare(b.id)
-      );
-    });
+  const visible = tasks.data?.pages.flatMap((page) => page.items) ?? [];
   return (
     <section aria-labelledby="personal-tasks-heading">
       <h1 id="personal-tasks-heading">My tasks</h1>
@@ -111,7 +109,7 @@ export function TaskList() {
             <span className="badge">{task.priority ?? 'medium'} priority</span>
             <span className="item-meta">
               {task.dueDate ?? (task.dueAt ? new Date(task.dueAt).toLocaleString() : 'No deadline')}
-              {isPastDue(task, now) && taskView(task, today, zone) === 'Upcoming' && (
+              {isPastDue(task, now) && view === 'Upcoming' && (
                 <strong className="flag"> · Past due</strong>
               )}
             </span>
@@ -119,6 +117,17 @@ export function TaskList() {
           </li>
         ))}
       </ul>
+      {tasks.hasNextPage && (
+        <button
+          type="button"
+          disabled={tasks.isFetchingNextPage}
+          onClick={() => {
+            void tasks.fetchNextPage();
+          }}
+        >
+          {tasks.isFetchingNextPage ? 'Loading…' : 'Load more'}
+        </button>
+      )}
     </section>
   );
 }

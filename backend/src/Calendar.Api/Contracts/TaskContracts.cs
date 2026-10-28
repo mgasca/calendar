@@ -69,3 +69,13 @@ public sealed record TaskResponse
   /// <summary>Maps a <see cref="TodoTask"/> to its response.</summary>
   public static TaskResponse From(TodoTask task) => Compiled(task);
 }
+
+/// <summary>One page of a task list view.</summary>
+public sealed record TaskPage
+{
+  /// <summary>The page's tasks, in the view's order.</summary>
+  public required IReadOnlyList<TaskResponse> Items { get; init; }
+
+  /// <summary>Pass as <c>cursor</c> for the next page; <c>null</c> on the last page.</summary>
+  public string? NextCursor { get; init; }
+}

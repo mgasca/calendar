@@ -54,7 +54,9 @@ export function TaskForm({
     <ModalDialog
       heading="Add task"
       pending={save.isPending}
-      onClose={() => onClose()}
+      onClose={() => {
+        onClose();
+      }}
       initialFocusRef={titleInput}
     >
       <form

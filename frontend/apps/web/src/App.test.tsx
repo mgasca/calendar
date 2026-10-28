@@ -254,7 +254,8 @@ describe('tasks', () => {
     const add = await screen.findByRole('button', { name: 'Add task' });
     await user.click(add);
     await user.type(screen.getByLabelText('Title'), 'Discard me');
-    await user.keyboard('{Escape}');
+    // jsdom doesn't turn Escape into the dialog's cancelable "cancel" event, so fire it.
+    fireEvent(screen.getByRole('dialog'), new Event('cancel', { cancelable: true }));
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
     await waitFor(() => expect(add).toHaveFocus());
     expect(saved).toHaveLength(0);
@@ -283,11 +284,13 @@ describe('tasks', () => {
     await user.type(screen.getByLabelText('Title'), 'Pending task');
     await user.click(screen.getByRole('button', { name: 'Save task' }));
     expect(screen.getByRole('button', { name: 'Saving…' })).toBeDisabled();
-    await user.keyboard('{Escape}');
+    fireEvent(screen.getByRole('dialog'), new Event('cancel', { cancelable: true }));
     expect(screen.getByRole('dialog', { name: 'Add task' })).toBeVisible();
     await user.click(screen.getByRole('button', { name: 'Cancel' }));
     expect(screen.getByRole('dialog', { name: 'Add task' })).toBeVisible();
-    await act(async () => finish?.());
+    act(() => {
+      finish?.();
+    });
     await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
   });
 

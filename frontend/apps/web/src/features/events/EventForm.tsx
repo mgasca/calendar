@@ -27,7 +27,9 @@ export function EventForm({
     <ModalDialog
       heading="Add event"
       pending={save.isPending}
-      onClose={() => onClose()}
+      onClose={() => {
+        onClose();
+      }}
       initialFocusRef={title}
     >
       <form

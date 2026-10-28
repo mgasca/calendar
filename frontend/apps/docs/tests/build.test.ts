@@ -1,4 +1,4 @@
-import { access, readFile, readdir } from 'node:fs/promises';
+import { access, readFile, readdir, stat } from 'node:fs/promises';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { deployment, storySlug } from '../src/lib/adr';
@@ -46,11 +46,13 @@ describe('published documentation links', () => {
         if (href === `${base}favicon.svg`) continue;
         const target = builtFile(href);
         expect(target, `${file} -> ${href}`).toBeDefined();
-        await access(target ?? '');
         const fragment = href.split('#')[1];
+        // Reading the page fails if it is missing, so no separate existence check is needed.
         if (fragment && target?.endsWith('.html')) {
           const targetHtml = await readFile(target, 'utf8');
           expect(targetHtml, `${file} -> ${href}`).toContain(`id="${fragment}"`);
+        } else {
+          await stat(target ?? '');
         }
       }
     }

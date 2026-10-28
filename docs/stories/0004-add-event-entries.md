@@ -88,7 +88,7 @@ No new ADR is expected. Adding a date-picker library or a form library would nee
 
 ## Implementation notes
 
-The event form uses the existing event endpoint and shared agenda queries. It was first delivered inline, matching **Add task** (#35), and is now a modal dialog (#NNN).
+The event form uses the existing event endpoint and shared agenda queries. It was first delivered inline, matching **Add task** (#35), and is now a modal dialog (#37).
 
 ### Where things live
 
@@ -115,7 +115,7 @@ Vitest covers form logic, DST resolution, validation, retry, pending state, focu
 ### Delivery plan
 
 1. **Done (#35):** the pure logic, the shared resolver, `useCreateEvent`, and the form and its entry point, delivered inline.
-2. **Done (#NNN):** the form is shown in a modal `<dialog>` that opens with `showModal()` and closes on Cancel and Escape except while saving, with the dialog tests above. The **Add event** button stays visible behind the dialog.
+2. **Done (#37):** the form is shown in a modal `<dialog>` that opens with `showModal()` and closes on Cancel and Escape except while saving, with the dialog tests above. The **Add event** button stays visible behind the dialog.
 
 ### Follow-ups
 

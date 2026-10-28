@@ -150,7 +150,7 @@
 <li>the pinned image <code>postgres:18.x-alpine</code></li>
 <li>port bound to <strong><code>127.0.0.1:5432</code> only</strong></li>
 <li>a named volume, and a health check</li>
-<li>an init script that creates the <code>calendar_migrator</code> and <code>calendar_app</code> roles (<a href="/calendar/adr/0014/">ADR-0014</a>)</li>
+<li>an init script that creates the <code>calendar_migrator</code> and <code>calendar_app</code> roles (<a href="/calendar/adr/0014/">ADR-0014</a>), bind-mounted with <code>create_host_path: false</code>, so a missing folder fails loudly instead of the Docker daemon creating a root-owned directory that blocks <code>git pull</code></li>
 <li>a header comment carrying the Aspire revisit trigger</li>
 </ul>
 </li>

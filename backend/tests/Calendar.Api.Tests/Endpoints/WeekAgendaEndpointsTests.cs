@@ -294,6 +294,27 @@ public sealed class WeekAgendaEndpointsTests(PostgresFixture postgres) : ApiTest
   }
 
   [Fact]
+  public async Task Tasks_InWeekDaysAndOverdue_UsePriorityAfterDeadline()
+  {
+    await SeedAsync(tasks:
+    [
+        TodoTask.Create("old high", D("2026-10-24"), priority: "high"),
+            TodoTask.Create("older low", D("2026-10-23"), priority: "low"),
+            TodoTask.Create("due date low", D(Monday), priority: "low"),
+            TodoTask.Create("due date high", D(Monday), priority: "high"),
+            TodoTask.Create("same instant medium", dueAt: Utc(2026, 10, 26, 12), priority: "medium"),
+            TodoTask.Create("same instant high z", dueAt: Utc(2026, 10, 26, 12), priority: "high"),
+            TodoTask.Create("same instant high a", dueAt: Utc(2026, 10, 26, 12), priority: "high"),
+        ]);
+
+    var week = await GetWeekAgendaAsync(Wednesday, NewYork, Wednesday);
+
+    week.Overdue.ShouldNotBeNull().Select(t => t.Title).ShouldBe(["older low", "old high"]);
+    week.Days[0].Tasks.Select(t => t.Title).ShouldBe(
+        ["same instant high a", "same instant high z", "same instant medium", "due date high", "due date low"]);
+  }
+
+  [Fact]
   public async Task Overdue_InAFutureWeek_IsTheFullOverdueListAsOfToday()
   {
     await SeedAsync(tasks:

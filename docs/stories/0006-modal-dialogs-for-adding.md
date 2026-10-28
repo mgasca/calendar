@@ -5,7 +5,7 @@ pr: https://github.com/mgasca/calendar/pull/40
 adrs: [0021, 0026]
 ---
 
-# 0005 Add tasks and events in a modal dialog
+# 0006 Add tasks and events in a modal dialog
 
 ## Story
 

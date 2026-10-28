@@ -148,6 +148,33 @@ it('completes and reopens undated tasks across list views', async () => {
   expect(screen.getByRole('checkbox', { name: 'Plan holiday' })).not.toBeChecked();
 });
 
+it('rolls back an optimistic task completion and explains a 409 conflict', async () => {
+  let release: () => void = () => undefined;
+  const gate = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  const task = { id: '1', title: 'Plan holiday', isCompleted: false };
+  server.use(
+    http.get('/api/tasks', () => HttpResponse.json([task])),
+    http.post('/api/tasks/1/complete', async () => {
+      await gate;
+      return HttpResponse.json({ status: 409 }, { status: 409 });
+    }),
+  );
+  renderWithProviders(<TaskList />);
+  const user = userEvent.setup();
+  await user.click(screen.getByRole('button', { name: 'No deadline' }));
+  await user.click(await screen.findByRole('checkbox', { name: 'Plan holiday' }));
+  await waitFor(() =>
+    expect(screen.queryByRole('checkbox', { name: 'Plan holiday' })).not.toBeInTheDocument(),
+  );
+  release();
+  expect(await screen.findByRole('alert')).toHaveTextContent(
+    'That task changed elsewhere. The list has been refreshed; try again.',
+  );
+  expect(await screen.findByRole('checkbox', { name: 'Plan holiday' })).not.toBeChecked();
+});
+
 it('rejects invalid deadline input', () => {
   expect(deadlineInstants('')).toEqual([]);
   expect(deadlineInstants('invalid')).toEqual([]);

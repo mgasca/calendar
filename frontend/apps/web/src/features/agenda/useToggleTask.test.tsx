@@ -187,11 +187,17 @@ it('coalesces invalidation until all concurrent toggles settle', async () => {
     result.current.mutate({ id: 't1', complete: true });
     result.current.mutate({ id: 't3', complete: true });
   });
-  await waitFor(() => expect(queryClient.isMutating()).toBe(2));
+  await waitFor(() => {
+    expect(queryClient.isMutating()).toBe(2);
+  });
   first.release();
-  await waitFor(() => expect(queryClient.isMutating()).toBe(1));
+  await waitFor(() => {
+    expect(queryClient.isMutating()).toBe(1);
+  });
   expect(queryClient.getQueryState(OTHER_AGENDA_KEY)?.isInvalidated).toBe(false);
   second.release();
-  await waitFor(() => expect(queryClient.isMutating()).toBe(0));
+  await waitFor(() => {
+    expect(queryClient.isMutating()).toBe(0);
+  });
   expect(queryClient.getQueryState(OTHER_AGENDA_KEY)?.isInvalidated).toBe(true);
 });

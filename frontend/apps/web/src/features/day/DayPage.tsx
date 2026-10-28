@@ -1,5 +1,6 @@
 import { useNavigate } from '@tanstack/react-router';
 
+import { AddEvent } from '../events/AddEvent.tsx';
 import { AddTask } from '../tasks/AddTask.tsx';
 import { DayView } from './DayView.tsx';
 
@@ -33,6 +34,7 @@ export function DayPage({ date, timeZone, locale }: DayPageProps) {
         </label>
       </div>
       <AddTask initialDate={date} />
+      <AddEvent date={date} timeZone={timeZone} />
       <DayView date={date} timeZone={timeZone} locale={locale} />
     </>
   );

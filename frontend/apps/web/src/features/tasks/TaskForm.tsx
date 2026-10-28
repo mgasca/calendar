@@ -2,7 +2,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useRef, useState } from 'react';
 
 import { api } from '../../api/client.ts';
-import { deadlineInstants } from './deadline.ts';
+import { deadlineInstants } from '../agenda/deadline.ts';
 import { problemMessage } from '../agenda/agendaQuery.ts';
 
 export function TaskForm({

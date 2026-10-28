@@ -3,11 +3,12 @@ import { focusManager } from '@tanstack/react-query';
 import { act, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { http, HttpResponse } from 'msw';
+import { Profiler } from 'react';
 
 import { renderInRouter } from '../../test/render.tsx';
 import { server } from '../../test/server.ts';
 import { DayView } from './DayView.tsx';
-import { useToday } from './useToday.ts';
+import { useToday } from '../agenda/useNow.ts';
 
 type Agenda = Schemas['DayAgendaResponse'];
 type Task = Schemas['TaskResponse'];
@@ -411,6 +412,23 @@ describe('DayView', () => {
   });
 
   describe('clock', () => {
+    it('does not render the past day on a minute tick', async () => {
+      useFakeClock('2026-10-27T09:30:00Z', { intervals: true });
+      serveAgenda(buildAgenda());
+      const onRender = vi.fn();
+      await renderInRouter(
+        <Profiler id="day" onRender={onRender}>
+          <DayView date="2026-10-26" timeZone={ZONE} locale="en-GB" />
+        </Profiler>,
+      );
+      await vi.waitFor(() => expect(screen.getByText('Design review')).toBeInTheDocument());
+      onRender.mockClear();
+      act(() => {
+        vi.advanceTimersByTime(60_000);
+      });
+      expect(onRender).not.toHaveBeenCalled();
+    });
+
     it('moves the Now and Next markers as time passes', async () => {
       useFakeClock(MORNING, { intervals: true });
       serveAgenda(buildAgenda());
@@ -468,18 +486,26 @@ describe('DayView', () => {
       expect(screen.queryByText('Standup')).not.toBeInTheDocument();
     });
 
-    it('refetches when the window regains focus', async () => {
+    it('refetches when the window regains focus once the data is stale', async () => {
       useFakeClock(MORNING);
       const requests = serveAgenda(buildAgenda());
       await renderToday();
       await screen.findByRole('region', { name: 'Schedule' });
       expect(requests).toHaveLength(1);
 
-      for (const focused of [false, true]) {
-        act(() => {
-          focusManager.setFocused(focused);
-        });
-      }
+      const refocus = () => {
+        for (const focused of [false, true]) {
+          act(() => {
+            focusManager.setFocused(focused);
+          });
+        }
+      };
+
+      refocus();
+      expect(requests).toHaveLength(1);
+
+      vi.setSystemTime(new Date(Date.parse(MORNING) + 31_000));
+      refocus();
 
       await eventually(() => {
         expect(requests.length).toBeGreaterThan(1);
@@ -589,6 +615,60 @@ describe('DayView', () => {
       });
       expect(screen.getByRole('checkbox', { name: 'Book flights' })).toBeChecked();
       expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+    });
+
+    it('allows different tasks to toggle concurrently and refreshes once after both settle', async () => {
+      let releaseFirst: () => void = () => undefined;
+      let releaseSecond: () => void = () => undefined;
+      const first = new Promise<void>((resolve) => {
+        releaseFirst = resolve;
+      });
+      const second = new Promise<void>((resolve) => {
+        releaseSecond = resolve;
+      });
+      const state = buildAgenda();
+      let gets = 0;
+      const posts: string[] = [];
+      server.use(
+        http.get('*/api/agenda/day', () => {
+          gets += 1;
+          return HttpResponse.json(state);
+        }),
+        http.post('*/api/tasks/:id/complete', async ({ params }) => {
+          const id = String(params.id);
+          posts.push(id);
+          await (id === 't4' ? first : second);
+          const task = state.tasks.dueToday.find((item) => item.id === id);
+          if (task) task.isCompleted = true;
+          return HttpResponse.json(task);
+        }),
+      );
+      await renderToday();
+      const firstCheckbox = await screen.findByRole('checkbox', { name: 'Book flights' });
+      const secondCheckbox = screen.getByRole('checkbox', { name: 'Send report' });
+      await userEvent.click(firstCheckbox);
+      await eventually(() => expect(firstCheckbox).toBeDisabled());
+      expect(secondCheckbox).toBeEnabled();
+      await userEvent.click(secondCheckbox);
+      await eventually(() => {
+        expect(posts).toHaveLength(2);
+      });
+      expect(secondCheckbox).toBeDisabled();
+      expect(gets).toBe(1);
+      releaseFirst();
+      await eventually(() => {
+        expect(firstCheckbox).toBeEnabled();
+      });
+      expect(secondCheckbox).toBeDisabled();
+      expect(gets).toBe(1);
+      releaseSecond();
+      await eventually(() => {
+        expect(gets).toBe(2);
+      });
+      await eventually(() => {
+        expect(secondCheckbox).toBeEnabled();
+      });
+      expect(gets).toBe(2);
     });
 
     it('reopens a completed task', async () => {

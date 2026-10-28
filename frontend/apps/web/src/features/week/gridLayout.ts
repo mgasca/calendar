@@ -3,7 +3,7 @@
  * share the column, and how all-day events stack into lanes across the week.
  */
 
-import { daysBetween } from '../agenda/dayTime.ts';
+import { dateTimeFormat, daysBetween } from '../agenda/dayTime.ts';
 import { WEEK_LENGTH } from './weekDates.ts';
 
 export const MINUTES_PER_DAY = 24 * 60;
@@ -29,7 +29,7 @@ export interface DayWindow {
 /** The wall-clock time of instant `instant` in `timeZone`, as minutes since local midnight (0–1439). */
 export function wallClockMinutes(instant: string | number, timeZone: string): number {
   const ms = typeof instant === 'number' ? instant : Date.parse(instant);
-  const parts = new Intl.DateTimeFormat('en-US', {
+  const parts = dateTimeFormat('en-US', {
     timeZone,
     hour: '2-digit',
     minute: '2-digit',

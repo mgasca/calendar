@@ -200,7 +200,7 @@ describe('tasks', () => {
           tasks: { overdue: [], dueToday: tasks.filter((t) => t.dueDate === date) },
         });
       }),
-      http.get('*/api/tasks', () => HttpResponse.json(tasks)),
+      http.get('*/api/tasks', () => HttpResponse.json({ items: tasks, nextCursor: null })),
       http.post('*/api/tasks', async ({ request }) => {
         const body = (await request.json()) as Schemas['CreateTaskRequest'];
         const task = { ...body, id: 'new-task', isCompleted: false };

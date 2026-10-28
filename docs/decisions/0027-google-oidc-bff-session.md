@@ -51,6 +51,8 @@ Chosen option: "Google OIDC with a BFF cookie", because the API handles the code
 * Bad, because deployments must configure Google credentials, trusted proxies and HTTPS correctly.
 * Neutral, because ownership isolation and non-browser bearer authentication remain follow-ups.
 
+* Neutral, because a configured development-only seed key permits the local seeder to authenticate via `X-Dev-Seed-Key`; it is unavailable outside Development and does not change CORS. Use a unique secret of at least 32 characters.
+
 ### Confirmation
 
 API and web tests cover anonymous 401 responses, allowed and denied accounts, session lifecycle and return paths; deployment checks cover forwarded headers, cookie attributes and the absence of CORS headers. Code review checks the follow-up triggers in the README and PR template.

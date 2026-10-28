@@ -66,7 +66,7 @@ make doctor                    # everything should be ✓
 | Start / stop local PostgreSQL | `make db-up` / `make db-down` |
 | Apply migrations locally (as `calendar_migrator`) | `make db-migrate` |
 | Wipe the local database | `make db-reset` (then `make db-migrate`) |
-| Seed a sample day into the running API (additive; `ARGS="--date … --time-zone …"`) | `make db-seed` |
+| Seed a sample day into the running API (additive; `ARGS="--date … --time-zone …"`) | `make db-seed` (set `Auth__DevSeedKey` in `.env` and export it before starting the API in Development) |
 | psql shell | `make db-psql` |
 | Run web UI (proxies `/api` to the API) | `make dev-web` |
 | Run ADR site (http://localhost:4321) | `make dev-docs` |

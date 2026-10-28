@@ -76,7 +76,7 @@ db-migrate: ## Apply EF Core migrations to the local database as calendar_migrat
 	dotnet ef database update --project src/Calendar.Infrastructure
 
 db-seed: ## Seed a running API with a sample day (ARGS="--date YYYY-MM-DD --time-zone ID --api-url URL"; additive)
-	dotnet run tools/seed-dev/seed-dev.cs -- $(ARGS)
+	@if [ -f .env ]; then $(DB_ENV); fi; dotnet run tools/seed-dev/seed-dev.cs -- $(ARGS)
 
 db-psql: ## Open psql on the local database as calendar_migrator
 	@$(DB_ENV) && $(COMPOSE) exec -e PGPASSWORD="$$CALENDAR_MIGRATOR_PASSWORD" postgres psql -U calendar_migrator -d "$$POSTGRES_DB"

@@ -29,6 +29,12 @@ namespace Calendar.Infrastructure.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("id");
 
+                    b.Property<NpgsqlRange<DateOnly>?>("DateSpan")
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("daterange")
+                        .HasColumnName("date_span")
+                        .HasComputedColumnSql("CASE WHEN is_all_day THEN daterange(start_date, end_date, '[)') END", true);
+
                     b.Property<DateTimeOffset?>("End")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("ends_at");
@@ -85,14 +91,16 @@ namespace Calendar.Infrastructure.Migrations
                     b.HasKey("Id")
                         .HasName("pk_events");
 
+                    b.HasIndex("DateSpan")
+                        .HasDatabaseName("ix_events_date_span")
+                        .HasFilter("is_all_day");
+
+                    NpgsqlIndexBuilderExtensions.HasMethod(b.HasIndex("DateSpan"), "gist");
+
                     b.HasIndex("Span")
                         .HasDatabaseName("ix_events_span");
 
                     NpgsqlIndexBuilderExtensions.HasMethod(b.HasIndex("Span"), "gist");
-
-                    b.HasIndex("StartDate", "EndDate")
-                        .HasDatabaseName("ix_events_all_day_dates")
-                        .HasFilter("is_all_day");
 
                     b.ToTable("events", null, t =>
                         {

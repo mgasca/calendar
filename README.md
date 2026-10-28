@@ -138,7 +138,16 @@ or set the environment variable `ConnectionStrings__Calendar`. In Development th
 
 > **Adding a backing service?** Re-evaluate .NET Aspire for local orchestration before wiring it into Docker Compose by hand, and add a row here. See [ADR-0016](docs/decisions/0016-local-database-provisioning.md).
 
-> **No authentication yet.** The API is single-user and unauthenticated, so it is unsafe to expose: run it only on your own machine or a network you alone control, with no permissive CORS and no personal data ([ADR-0019](docs/decisions/0019-single-user-mode-with-authentication-deferred.md)). Write an auth ADR and implement it **before the first of**: a deployment reachable from outside the owner's machine or trusted network; a second user; or a non-browser client (mobile, desktop, CLI, integration) that has to call the API.
+### Google sign-in setup
+
+Create a Google OAuth web application client and configure its authorized redirect URIs for each environment:
+
+* Development: `http://localhost:5173/api/auth/callback/google`
+* Production: `https://<host>/api/auth/callback/google`
+
+Set `Auth__Google__ClientId`, `Auth__Google__ClientSecret` and indexed entries such as `Auth__AllowedEmails__0` in the untracked `.env` for local development, then export them into the API process (for example, `set -a; . ./.env; set +a` before `make dev-api`); use deployment secrets for production. Add only the verified Google emails permitted to access the calendar. Keep the client secret out of version control. Use HTTPS in production and configure trusted forwarded headers when behind a proxy so redirects and secure cookies use the public origin.
+
+> **Authentication and limitations.** Google sign-in protects the API with a same-origin cookie ([ADR-0027](docs/decisions/0027-google-oidc-bff-session.md)). All allowed accounts currently share the same data: add `owner_id` and per-user scoping before supporting a second user. Add bearer support before enabling non-browser clients.
 
 ## Tooling
 

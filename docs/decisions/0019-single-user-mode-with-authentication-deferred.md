@@ -1,5 +1,5 @@
 ---
-status: accepted
+status: superseded by [ADR-0027](0027-google-oidc-bff-session.md)
 date: 2026-10-26
 decision-makers: mgasca, Claude (AI assistant)
 ---

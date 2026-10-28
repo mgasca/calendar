@@ -1,4 +1,4 @@
-import { screen, waitFor } from '@testing-library/react';
+import { fireEvent, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { http, HttpResponse } from 'msw';
 
@@ -8,8 +8,25 @@ import { TaskForm } from './TaskForm.tsx';
 import { deadlineInstants } from '../agenda/deadline.ts';
 import { TaskList } from './TaskList.tsx';
 import { taskView } from './taskViews.ts';
+import * as deadline from '../agenda/deadline.ts';
 
 describe('task creation', () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it('reuses deadline candidates while unrelated fields change', () => {
+    const calculate = vi.spyOn(deadline, 'deadlineInstants');
+    renderWithProviders(<TaskForm initialDate="2026-10-27" onClose={vi.fn()} />);
+    fireEvent.change(screen.getByLabelText('Deadline'), { target: { value: 'time' } });
+    const callsAfterDeadlineSelection = calculate.mock.calls.length;
+    fireEvent.change(screen.getByLabelText('Title'), { target: { value: 'Call' } });
+    fireEvent.change(screen.getByLabelText('Notes'), { target: { value: 'Discuss plans' } });
+    expect(calculate).toHaveBeenCalledTimes(callsAfterDeadlineSelection);
+    fireEvent.change(screen.getByLabelText('Due time'), { target: { value: '14:30' } });
+    expect(calculate).toHaveBeenCalledTimes(callsAfterDeadlineSelection + 1);
+  }, 15_000);
+
   it('prefills a calendar date and saves priority and notes', async () => {
     const close = vi.fn();
     let body: unknown;

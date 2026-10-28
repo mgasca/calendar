@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import { ModalDialog } from '../../components/ModalDialog.tsx';
 import { deadlineInstants } from '../agenda/deadline.ts';
 import { defaults, moveStart, validate, type EventValues, type FieldErrors } from './eventForm.ts';
@@ -22,7 +22,9 @@ export function EventForm({
   const set = (patch: Partial<EventValues>) => {
     setValues((v) => ({ ...v, ...patch }));
   };
-  const candidates = (field: 'start' | 'end') => deadlineInstants(values[field]);
+  const startCandidates = useMemo(() => deadlineInstants(values.start), [values.start]);
+  const endCandidates = useMemo(() => deadlineInstants(values.end), [values.end]);
+  const candidates = { start: startCandidates, end: endCandidates };
   return (
     <ModalDialog
       heading="Add event"
@@ -103,7 +105,7 @@ export function EventForm({
                   }}
                 />
               </label>
-              {!values.allDay && candidates(field).length > 1 && (
+              {!values.allDay && candidates[field].length > 1 && (
                 <label>
                   {field === 'start' ? 'Start' : 'End'} occurs twice. Choose an occurrence
                   <select
@@ -113,9 +115,11 @@ export function EventForm({
                     }}
                   >
                     <option value="">Choose…</option>
-                    {candidates(field).map((value) => (
+                    {candidates[field].map((value) => (
                       <option key={value} value={value}>
-                        {new Date(value).toLocaleString(undefined, { timeZoneName: 'shortOffset' })}
+                        {new Date(value).toLocaleString(undefined, {
+                          timeZoneName: 'shortOffset',
+                        })}
                       </option>
                     ))}
                   </select>

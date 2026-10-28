@@ -8,7 +8,7 @@ import { Profiler } from 'react';
 import { renderInRouter } from '../../test/render.tsx';
 import { server } from '../../test/server.ts';
 import { DayView } from './DayView.tsx';
-import { useToday } from './useToday.ts';
+import { useToday } from '../agenda/useNow.ts';
 
 type Agenda = Schemas['DayAgendaResponse'];
 type Task = Schemas['TaskResponse'];

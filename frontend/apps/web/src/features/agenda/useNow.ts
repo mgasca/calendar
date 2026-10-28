@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 
 import { localDate } from './dayTime.ts';
 
@@ -9,21 +9,23 @@ function currentMinute(): number {
 }
 
 /**
- * The client clock, truncated to the minute so the view only re-renders when it can change.
- * Re-checked every `intervalMs` and whenever the tab regains focus or becomes visible.
+ * A value derived from the client clock by `read`, re-read every `intervalMs` and whenever the tab
+ * regains focus or becomes visible. Components re-render only when the value changes, so callers
+ * pick the coarsest value they need. `read` must be stable between renders.
  */
-export function useNow(intervalMs = 15_000): number {
-  const [now, setNow] = useState(currentMinute);
+function useClock<T>(read: () => T, intervalMs: number): T {
+  const [value, setValue] = useState(read);
 
   useEffect(() => {
     const tick = () => {
-      setNow(currentMinute());
+      setValue(read());
     };
     const onVisibility = () => {
       if (document.visibilityState === 'visible') {
         tick();
       }
     };
+    tick();
     const id = setInterval(tick, intervalMs);
     window.addEventListener('focus', tick);
     document.addEventListener('visibilitychange', onVisibility);
@@ -32,30 +34,21 @@ export function useNow(intervalMs = 15_000): number {
       window.removeEventListener('focus', tick);
       document.removeEventListener('visibilitychange', onVisibility);
     };
-  }, [intervalMs]);
+  }, [read, intervalMs]);
 
-  return now;
+  return value;
 }
 
-/** The local date, refreshed on the same timer and visibility events as the minute clock. */
-export function useToday(timeZone: string): string {
-  const [today, setToday] = useState(() => localDate(Date.now(), timeZone));
-  useEffect(() => {
-    const tick = () => {
-      setToday(localDate(Date.now(), timeZone));
-    };
-    const onVisibility = () => {
-      if (document.visibilityState === 'visible') tick();
-    };
-    tick();
-    const id = setInterval(tick, 15_000);
-    window.addEventListener('focus', tick);
-    document.addEventListener('visibilitychange', onVisibility);
-    return () => {
-      clearInterval(id);
-      window.removeEventListener('focus', tick);
-      document.removeEventListener('visibilitychange', onVisibility);
-    };
-  }, [timeZone]);
-  return today;
+/** The client clock, truncated to the minute so the view only re-renders when it can change. */
+export function useNow(intervalMs = 15_000): number {
+  return useClock(currentMinute, intervalMs);
+}
+
+/**
+ * Today's local date (`YYYY-MM-DD`) in `timeZone`, moving on to the next day at local midnight.
+ * Re-renders once a day rather than once a minute.
+ */
+export function useToday(timeZone: string, intervalMs = 15_000): string {
+  const read = useCallback(() => localDate(Date.now(), timeZone), [timeZone]);
+  return useClock(read, intervalMs);
 }

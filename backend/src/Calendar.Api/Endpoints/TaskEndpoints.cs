@@ -1,6 +1,8 @@
 using Calendar.Api.Contracts;
 using Calendar.Domain.Tasks;
+using Calendar.Domain.Time;
 using Calendar.Infrastructure;
+using Calendar.Infrastructure.Queries;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.EntityFrameworkCore;
 
@@ -10,11 +12,22 @@ internal static class TaskEndpoints
 {
   private const string GetTaskName = "GetTask";
 
+  private const int DefaultPageSize = 50;
+  private const int MaxPageSize = 200;
+
+  private static readonly Dictionary<string, TaskListView> Views = new(StringComparer.Ordinal)
+  {
+    ["upcoming"] = TaskListView.Upcoming,
+    ["overdue"] = TaskListView.Overdue,
+    ["completed"] = TaskListView.Completed,
+    ["no-deadline"] = TaskListView.NoDeadline,
+  };
+
   public static IEndpointRouteBuilder MapTaskEndpoints(this IEndpointRouteBuilder app)
   {
     var group = app.MapGroup("/api/tasks").WithTags("Tasks");
 
-    group.MapGet("/", ListAsync).WithName("ListTasks");
+    group.MapGet("/", ListAsync).WithName("ListTasks").RequireQueryParameters("view");
     group.MapPost("/", CreateAsync).WithName("CreateTask");
     group.MapGet("/{id:guid}", GetAsync).WithName(GetTaskName).ProducesProblem(StatusCodes.Status404NotFound);
     group.MapPost("/{id:guid}/complete", CompleteAsync).WithName("CompleteTask").ProducesProblem(StatusCodes.Status404NotFound).ProducesProblem(StatusCodes.Status409Conflict);
@@ -54,10 +67,64 @@ internal static class TaskEndpoints
     return TypedResults.CreatedAtRoute(TaskResponse.From(created), GetTaskName, new { id = created.Id });
   }
 
-  private static async Task<Ok<List<TaskResponse>>> ListAsync(
+  /// <summary>
+  /// One page of a task list view. The dated views take the client's <paramref name="today"/> and
+  /// <paramref name="timeZone"/>, since the server never decides what day it is (ADR-0021).
+  /// </summary>
+  private static async Task<Results<Ok<TaskPage>, ValidationProblem>> ListAsync(
+      string? view,
+      DateOnly? today,
+      string? timeZone,
+      int? limit,
+      string? cursor,
       CalendarDbContext db,
-      CancellationToken cancellationToken) =>
-      TypedResults.Ok(await db.Tasks.AsNoTracking().OrderBy(t => t.Id).Select(TaskResponse.Projection).ToListAsync(cancellationToken));
+      CancellationToken cancellationToken)
+  {
+    var errors = new FieldErrors();
+    TaskListView? listView = view is not null && Views.TryGetValue(view, out var known) ? known : null;
+    errors.Require(listView is not null, "view", "view is required: upcoming, overdue, completed or no-deadline.");
+
+    DateOnly? todayDate = null;
+    TimeZoneInfo? zone = null;
+    if (listView is TaskListView.Upcoming or TaskListView.Overdue)
+    {
+      todayDate = errors.RequireDate(today, "today");
+      zone = errors.RequireTimeZone(timeZone, "timeZone");
+    }
+
+    var pageSize = limit ?? DefaultPageSize;
+    errors.Require(pageSize is >= 1 and <= MaxPageSize, "limit", $"limit must be between 1 and {MaxPageSize}.");
+
+    TaskListKey? after = null;
+    if (cursor is not null && listView is { } cursorView)
+    {
+      errors.Require(TaskListCursor.TryDecode(cursor, cursorView, out var key), "cursor", "cursor is not valid for this view.");
+      after = key;
+    }
+
+    if (errors.Any || listView is not { } selected)
+    {
+      return TypedResults.ValidationProblem(errors.ToDictionary());
+    }
+
+    DayWindow? window = todayDate is { } date && zone is not null ? DayWindow.Create(date, zone) : null;
+    var items = await db.Tasks.AsNoTracking()
+        .ForView(selected, window, zone, after)
+        .Take(pageSize + 1)
+        .Select(TaskResponse.Projection)
+        .ToListAsync(cancellationToken);
+
+    // One extra row tells whether another page follows; the cursor is the key of the last row returned.
+    string? next = null;
+    if (items.Count > pageSize)
+    {
+      items.RemoveAt(pageSize);
+      var last = items[^1];
+      next = TaskListCursor.Encode(selected, TaskListQueries.KeyOf(selected, last.Id, last.DueDate, last.DueAt, last.CompletedAt, zone));
+    }
+
+    return TypedResults.Ok(new TaskPage { Items = items, NextCursor = next });
+  }
 
   private static async Task<Results<Ok<TaskResponse>, ProblemHttpResult>> GetAsync(
       Guid id,

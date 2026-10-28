@@ -385,6 +385,13 @@ export interface components {
             detail?: null | string;
             instance?: null | string;
         };
+        /** @description One page of a task list view. */
+        TaskPage: {
+            /** @description The page's tasks, in the view's order. */
+            items: components["schemas"]["TaskResponse"][];
+            /** @description Pass as `cursor` for the next page; `null` on the last page. */
+            nextCursor?: null | string;
+        };
         /** @description A task as stored. */
         TaskResponse: {
             /**
@@ -601,7 +608,13 @@ export interface operations {
     };
     ListTasks: {
         parameters: {
-            query?: never;
+            query: {
+                view: string;
+                today?: string;
+                timeZone?: string;
+                limit?: number | string;
+                cursor?: string;
+            };
             header?: never;
             path?: never;
             cookie?: never;
@@ -614,7 +627,16 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["TaskResponse"][];
+                    "application/json": components["schemas"]["TaskPage"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["HttpValidationProblemDetails"];
                 };
             };
         };

@@ -1,5 +1,5 @@
 import type { Schemas } from '@calendar/api-client';
-import { localDate } from '../today/dayTime.ts';
+import { localDate } from '../agenda/dayTime.ts';
 type Task = Schemas['TaskResponse'];
 export const views = ['Upcoming', 'Overdue', 'Completed', 'No deadline'] as const;
 export type View = (typeof views)[number];

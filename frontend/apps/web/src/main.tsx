@@ -3,6 +3,7 @@ import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 
 import { App } from './App.tsx';
+import { createAppRouter } from './router.tsx';
 import './index.css';
 
 const root = document.getElementById('root');
@@ -11,11 +12,12 @@ if (!root) {
 }
 
 const queryClient = new QueryClient();
+const router = createAppRouter();
 
 createRoot(root).render(
   <StrictMode>
     <QueryClientProvider client={queryClient}>
-      <App />
+      <App router={router} />
     </QueryClientProvider>
   </StrictMode>,
 );

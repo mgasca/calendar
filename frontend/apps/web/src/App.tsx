@@ -1,96 +1,60 @@
-import { useRef, useState } from 'react';
+import { Link, Outlet, RouterProvider, useLocation } from '@tanstack/react-router';
 
-import { TaskForm } from './features/tasks/TaskForm.tsx';
-import { TaskList } from './features/tasks/TaskList.tsx';
-import { browserTimeZone, localDate } from './features/today/dayTime.ts';
 import { ApiStatus } from './features/health/ApiStatus.tsx';
-import { TodayView } from './features/today/TodayView.tsx';
+import type { AppRouter } from './router.tsx';
 
-export function App() {
-  const [view, setView] = useState('calendar');
-  const [date, setDate] = useState('');
-  const [adding, setAdding] = useState(false);
-  const [saved, setSaved] = useState(false);
-  const [formDate, setFormDate] = useState<string>();
-  const addButton = useRef<HTMLButtonElement>(null);
-  const closeForm = (wasSaved = false) => {
-    setSaved(wasSaved);
-    setAdding(false);
-    requestAnimationFrame(() => {
-      addButton.current?.focus();
-    });
-  };
+export function App({ router }: { router: AppRouter }) {
+  return <RouterProvider router={router} />;
+}
+
+/** The shell around every route: navigation, the current page and the footer. */
+export function AppLayout() {
   return (
     <>
+      <nav className="app-nav" aria-label="Main">
+        <Link to="/" activeProps={{ 'aria-current': 'page' }} activeOptions={{ exact: true }}>
+          Today
+        </Link>
+        <Link to="/tasks" activeProps={{ 'aria-current': 'page' }}>
+          My tasks
+        </Link>
+      </nav>
       <main>
-        <nav className="actions" aria-label="Main navigation">
-          <button
-            type="button"
-            aria-pressed={view === 'calendar'}
-            onClick={() => {
-              setView('calendar');
-            }}
-          >
-            Calendar
-          </button>
-          <button
-            type="button"
-            aria-pressed={view === 'tasks'}
-            onClick={() => {
-              setView('tasks');
-            }}
-          >
-            My tasks
-          </button>
-        </nav>
-        {view === 'calendar' && (
-          <div className="actions">
-            <label>
-              Calendar date
-              <input
-                type="date"
-                min="1900-01-01"
-                max="2200-12-31"
-                value={date}
-                onChange={(e) => {
-                  setDate(e.target.value);
-                }}
-              />
-            </label>
-            <button
-              type="button"
-              onClick={() => {
-                setDate('');
-              }}
-            >
-              Today
-            </button>
-          </div>
-        )}
-        {!adding && (
-          <button
-            ref={addButton}
-            type="button"
-            onClick={() => {
-              setFormDate(
-                view === 'calendar' ? date || localDate(Date.now(), browserTimeZone()) : undefined,
-              );
-              setSaved(false);
-              setAdding(true);
-            }}
-          >
-            Add task
-          </button>
-        )}
-        {saved && <p role="status">Task added. You can find it in My tasks.</p>}
-        {adding && (
-          <TaskForm {...(formDate ? { initialDate: formDate } : {})} onClose={closeForm} />
-        )}
-        {view === 'calendar' ? <TodayView date={date || undefined} /> : <TaskList />}
+        <Outlet />
       </main>
       <footer className="app-footer">
         <ApiStatus />
       </footer>
     </>
+  );
+}
+
+export function NotFoundPage() {
+  return (
+    <section aria-labelledby="not-found-heading">
+      <h1 id="not-found-heading">Page not found</h1>
+      <p>There’s nothing at this address.</p>
+      <p>
+        <Link to="/">Go to today</Link>
+      </p>
+    </section>
+  );
+}
+
+/** Shown for `/day/<value>` when the value isn't a real `YYYY-MM-DD` date. */
+export function InvalidDatePage() {
+  const { pathname } = useLocation();
+  const value = decodeURIComponent(pathname.split('/').pop() ?? '');
+  return (
+    <section aria-labelledby="invalid-date-heading">
+      <h1 id="invalid-date-heading">Invalid date</h1>
+      <p>
+        “{value}” isn’t a date the calendar can show. Dates look like 2026-10-26 (year, month, day),
+        between the years 1900 and 2200.
+      </p>
+      <p>
+        <Link to="/">Go to today</Link>
+      </p>
+    </section>
   );
 }

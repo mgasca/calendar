@@ -201,3 +201,23 @@ it('coalesces invalidation until all concurrent toggles settle', async () => {
   });
   expect(queryClient.getQueryState(OTHER_AGENDA_KEY)?.isInvalidated).toBe(true);
 });
+
+it('invalidates once when concurrent toggles settle together', async () => {
+  const { gate, release } = deferred();
+  serveToggle(200, gate);
+  const { queryClient, result } = setup();
+  const invalidate = vi.spyOn(queryClient, 'invalidateQueries');
+  act(() => {
+    result.current.mutate({ id: 't1', complete: true });
+    result.current.mutate({ id: 't3', complete: true });
+  });
+  await waitFor(() => {
+    expect(queryClient.isMutating()).toBe(2);
+  });
+  release();
+  await waitFor(() => {
+    expect(queryClient.isMutating()).toBe(0);
+  });
+  expect(queryClient.getQueryState(OTHER_AGENDA_KEY)?.isInvalidated).toBe(true);
+  expect(invalidate).toHaveBeenCalledTimes(2);
+});

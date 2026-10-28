@@ -1,4 +1,4 @@
-import type { QueryKey } from '@tanstack/react-query';
+import type { QueryClient, QueryKey } from '@tanstack/react-query';
 import { useIsMutating, useMutation, useQueryClient } from '@tanstack/react-query';
 
 import { api } from '../../api/client.ts';
@@ -8,6 +8,12 @@ import type { AgendaTask } from './dayTime.ts';
 /** Prefix of the task list queries (`My tasks`), which also show completion. */
 const TASKS_KEY = ['tasks'] as const;
 const TOGGLE_TASK_KEY = ['toggleTask'] as const;
+
+/**
+ * Toggles still in flight per client. Counted in `onMutate`/`onSettled` rather than read from
+ * `isMutating()`, because mutations that settle together all still count as pending there.
+ */
+const inFlight = new WeakMap<QueryClient, number>();
 
 export function useTaskTogglePending(id: string) {
   return (
@@ -65,6 +71,7 @@ export function useToggleTask<TData>(queryKey: QueryKey, patch: TaskPatch<TData>
       return data;
     },
     onMutate: async ({ id, complete }) => {
+      inFlight.set(queryClient, (inFlight.get(queryClient) ?? 0) + 1);
       await queryClient.cancelQueries({ queryKey });
       let previous: AgendaTask | undefined;
       queryClient.setQueryData<TData>(
@@ -91,12 +98,17 @@ export function useToggleTask<TData>(queryKey: QueryKey, patch: TaskPatch<TData>
         );
       }
     },
-    onSettled: () =>
-      queryClient.isMutating({ mutationKey: TOGGLE_TASK_KEY }) === 1
+    // Refetch once the last of a burst of toggles settles, or straight away after a failure so
+    // the views reconcile with the server.
+    onSettled: (_data, error) => {
+      const remaining = (inFlight.get(queryClient) ?? 1) - 1;
+      inFlight.set(queryClient, remaining);
+      return remaining === 0 || error
         ? Promise.all([
             queryClient.invalidateQueries({ queryKey: AGENDA_KEY }),
             queryClient.invalidateQueries({ queryKey: TASKS_KEY }),
           ])
-        : undefined,
+        : undefined;
+    },
   });
 }

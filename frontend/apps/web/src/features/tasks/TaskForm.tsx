@@ -1,7 +1,8 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { useEffect, useRef, useState } from 'react';
+import { useRef, useState } from 'react';
 
 import { api } from '../../api/client.ts';
+import { ModalDialog } from '../../components/ModalDialog.tsx';
 import { deadlineInstants } from '../agenda/deadline.ts';
 import { problemMessage } from '../agenda/agendaQuery.ts';
 
@@ -14,9 +15,6 @@ export function TaskForm({
 }) {
   const client = useQueryClient();
   const titleInput = useRef<HTMLInputElement>(null);
-  useEffect(() => {
-    titleInput.current?.focus();
-  }, []);
   const [title, setTitle] = useState('');
   const [kind, setKind] = useState(initialDate ? 'date' : 'none');
   const [date, setDate] = useState(initialDate ?? '');
@@ -53,8 +51,12 @@ export function TaskForm({
     },
   });
   return (
-    <section className="task-form" aria-labelledby="add-task-heading">
-      <h2 id="add-task-heading">Add task</h2>
+    <ModalDialog
+      heading="Add task"
+      pending={save.isPending}
+      onClose={() => onClose()}
+      initialFocusRef={titleInput}
+    >
       <form
         onSubmit={(event) => {
           event.preventDefault();
@@ -180,6 +182,6 @@ export function TaskForm({
         </fieldset>
         {save.isError && <p role="alert">{save.error.message}</p>}
       </form>
-    </section>
+    </ModalDialog>
   );
 }

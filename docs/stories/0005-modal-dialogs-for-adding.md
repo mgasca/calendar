@@ -1,5 +1,5 @@
 ---
-status: planned
+status: implemented
 date: 2026-10-28
 pr: https://github.com/mgasca/calendar/pull/40
 adrs: [0021, 0026]
@@ -69,6 +69,8 @@ No new ADR is expected. Using a dialog library would need its own ADR first; the
 
 ## Implementation notes
 
+The native dialog behavior is shared by `ModalDialog`; both forms keep their existing fields, validation, mutations and confirmation behavior. Task creation now uses the same modal on the day page and **My tasks**.
+
 ### Where things live
 
 | Area | Location |
@@ -85,12 +87,12 @@ No changes.
 
 ### Testing
 
-Vitest with Testing Library and MSW. The existing event dialog tests continue to pass unchanged. New or updated tests cover the task dialog: opening from both entry points, saving, **Cancel**, Escape, pending lock, failure and retry, and focus. jsdom has no modal dialogs, so `test/setup.ts` keeps stubbing `showModal()` and `close()`; the browser's focus trap and inert background are not tested.
+Vitest with Testing Library and MSW. The existing event dialog tests continue to pass unchanged. Task coverage: [day entry, save and confirmation](../../frontend/apps/web/src/App.test.tsx) (`creates a task on the shown day and displays it in the day view and in My tasks`); [day and My tasks defaults](../../frontend/apps/web/src/App.test.tsx) (`prefills today on / and nothing on /tasks`); [Escape, Cancel, focus return and fresh values](../../frontend/apps/web/src/App.test.tsx) (`cancels with Escape, restores focus, and opens with fresh values`); [pending lock](../../frontend/apps/web/src/App.test.tsx) (`keeps the task dialog open and disables controls while saving`); [failure and retry](../../frontend/apps/web/src/features/tasks/Tasks.test.tsx) (`preserves input on failure and allows retry without a deadline`); [timed deadline and DST rules](../../frontend/apps/web/src/features/tasks/Tasks.test.tsx) (`sends an exact deadline as a UTC instant`, with resolver coverage in `features/agenda/deadline.test.ts`). Existing event dialog tests cover its unchanged modal behavior. jsdom stubs `showModal()` and `close()` in `test/setup.ts`; the browser's focus trap and inert background are not tested.
 
 ### Delivery plan
 
-1. The story (this PR).
-2. The shared dialog, the task form in it, the event form moved onto it, tests and styles.
+1. **Done:** extract the shared dialog and move both forms onto it.
+2. **Done:** add task dialog coverage and shared styles; update the story status and notes.
 
 ### Follow-ups
 

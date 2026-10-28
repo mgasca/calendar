@@ -20,19 +20,18 @@ export function AddTask({ initialDate }: { initialDate?: string | undefined }) {
   };
   return (
     <>
-      {!adding && (
-        <button
-          ref={addButton}
-          type="button"
-          onClick={() => {
-            setFormDate(initialDate);
-            setSaved(false);
-            setAdding(true);
-          }}
-        >
-          Add task
-        </button>
-      )}
+      <button
+        ref={addButton}
+        type="button"
+        aria-haspopup="dialog"
+        onClick={() => {
+          setFormDate(initialDate);
+          setSaved(false);
+          setAdding(true);
+        }}
+      >
+        Add task
+      </button>
       {saved && <p role="status">Task added. You can find it in My tasks.</p>}
       {adding && <TaskForm {...(formDate ? { initialDate: formDate } : {})} onClose={closeForm} />}
     </>

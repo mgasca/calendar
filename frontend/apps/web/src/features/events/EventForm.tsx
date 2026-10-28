@@ -1,4 +1,5 @@
-import { useEffect, useRef, useState } from 'react';
+import { useRef, useState } from 'react';
+import { ModalDialog } from '../../components/ModalDialog.tsx';
 import { deadlineInstants } from '../agenda/deadline.ts';
 import { defaults, moveStart, validate, type EventValues, type FieldErrors } from './eventForm.ts';
 import { CreateEventError, useCreateEvent } from './useCreateEvent.ts';
@@ -16,35 +17,21 @@ export function EventForm({
 }) {
   const [values, setValues] = useState(() => defaults(date, initialValues));
   const [errors, setErrors] = useState<FieldErrors>({});
-  const dialog = useRef<HTMLDialogElement>(null);
   const title = useRef<HTMLInputElement>(null);
-  useEffect(() => {
-    // StrictMode runs this effect twice on the same element, and showModal() throws if it is already open.
-    if (dialog.current && !dialog.current.open) {
-      dialog.current.showModal();
-    }
-    title.current?.focus();
-  }, []);
   const save = useCreateEvent(timeZone);
   const set = (patch: Partial<EventValues>) => {
     setValues((v) => ({ ...v, ...patch }));
   };
   const candidates = (field: 'start' | 'end') => deadlineInstants(values[field]);
   return (
-    <dialog
-      ref={dialog}
-      className="event-dialog"
-      aria-labelledby="add-event-heading"
-      onCancel={(e) => {
-        // Escape closes without a prompt, but never while a save is in flight: the request can't be
-        // cancelled, so closing would hide its result.
-        e.preventDefault();
-        if (!save.isPending) {
-          onClose();
-        }
+    <ModalDialog
+      heading="Add event"
+      pending={save.isPending}
+      onClose={() => {
+        onClose();
       }}
+      initialFocusRef={title}
     >
-      <h2 id="add-event-heading">Add event</h2>
       <form
         noValidate
         onSubmit={(e) => {
@@ -190,6 +177,6 @@ export function EventForm({
         </fieldset>
         {errors.form && <p role="alert">{errors.form}</p>}
       </form>
-    </dialog>
+    </ModalDialog>
   );
 }

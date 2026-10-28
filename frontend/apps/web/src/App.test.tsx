@@ -218,6 +218,8 @@ describe('tasks', () => {
     await screen.findByRole('heading', { level: 1, name: /27 October 2099/ });
 
     await user.click(screen.getByRole('button', { name: 'Add task' }));
+    expect(screen.getByRole('dialog', { name: 'Add task' })).toBeVisible();
+    expect(screen.getByLabelText('Title')).toHaveFocus();
     expect(screen.getByLabelText('Due date')).toHaveValue('2099-10-27');
     await user.type(screen.getByLabelText('Title'), 'Pack bag');
     await user.click(screen.getByRole('button', { name: 'Save task' }));
@@ -229,6 +231,7 @@ describe('tasks', () => {
       'status',
     );
     expect(await screen.findByRole('checkbox', { name: 'Pack bag' })).toBeInTheDocument();
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Add task' })).toHaveFocus());
 
     const nav = screen.getByRole('navigation', { name: 'Main' });
     await user.click(within(nav).getByRole('link', { name: 'My tasks' }));
@@ -242,6 +245,53 @@ describe('tasks', () => {
     expect(within(nav).getByRole('link', { name: 'Today' })).not.toHaveAttribute('aria-current');
     expect(await screen.findByRole('checkbox', { name: 'Pack bag' })).toBeInTheDocument();
     expect(tasks).toHaveLength(1);
+  });
+
+  it('cancels with Escape, restores focus, and opens with fresh values', async () => {
+    const saved = serveTasks();
+    renderApp('/day/2099-10-27');
+    const user = userEvent.setup();
+    const add = await screen.findByRole('button', { name: 'Add task' });
+    await user.click(add);
+    await user.type(screen.getByLabelText('Title'), 'Discard me');
+    // jsdom doesn't turn Escape into the dialog's cancelable "cancel" event, so fire it.
+    fireEvent(screen.getByRole('dialog'), new Event('cancel', { cancelable: true }));
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    await waitFor(() => expect(add).toHaveFocus());
+    expect(saved).toHaveLength(0);
+    await user.click(add);
+    expect(screen.getByLabelText('Title')).toHaveValue('');
+    await user.type(screen.getByLabelText('Title'), 'Cancel me');
+    await user.click(screen.getByRole('button', { name: 'Cancel' }));
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    await waitFor(() => expect(add).toHaveFocus());
+    expect(saved).toHaveLength(0);
+  });
+
+  it('keeps the task dialog open and disables controls while saving', async () => {
+    let finish: (() => void) | undefined;
+    server.use(
+      http.post('*/api/tasks', async () => {
+        await new Promise<void>((resolve) => {
+          finish = resolve;
+        });
+        return HttpResponse.json({ id: 'pending', isCompleted: false }, { status: 201 });
+      }),
+    );
+    renderApp('/day/2099-10-27');
+    const user = userEvent.setup();
+    await user.click(await screen.findByRole('button', { name: 'Add task' }));
+    await user.type(screen.getByLabelText('Title'), 'Pending task');
+    await user.click(screen.getByRole('button', { name: 'Save task' }));
+    expect(screen.getByRole('button', { name: 'Saving…' })).toBeDisabled();
+    fireEvent(screen.getByRole('dialog'), new Event('cancel', { cancelable: true }));
+    expect(screen.getByRole('dialog', { name: 'Add task' })).toBeVisible();
+    await user.click(screen.getByRole('button', { name: 'Cancel' }));
+    expect(screen.getByRole('dialog', { name: 'Add task' })).toBeVisible();
+    act(() => {
+      finish?.();
+    });
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
   });
 
   it('prefills today on / and nothing on /tasks', async () => {

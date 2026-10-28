@@ -30,6 +30,32 @@ Single tests:
 - **Repo tooling** (ADR-0017): scripts are .NET 10 *file-based apps* (`dotnet run x.cs`), located in `.claude/skills/<skill>/` or `tools/<name>/`, each folder with its own analyzers, `.editorconfig` and xUnit tests. The only exception is `tools/doctor/doctor.sh` (shellcheck). Don't write new tooling in Python/Node/shell.
 - **ADRs**: MADR 4.0 with decision drivers, a star-rating table and driver-tagged pros/cons; the index in `docs/decisions/README.md` is validated by `make adr-check`. To write one, use the `adr-draft` skill.
 
+## Frontend practices (lessons from the performance review, issues #42–#49)
+
+- **Date formatting**: don't build an `Intl.DateTimeFormat` per call or per item, because construction costs far more than formatting. Use the cached `dateTimeFormat(locale, options)` in `features/agenda/dayTime.ts`. Never construct one inside a sort comparator.
+- **Clock subscriptions**: `useNow()` re-renders its component every minute. Call it in the smallest component that actually shows minute-sensitive state: the now line, today's event statuses, past-due flags. Never call it at the top of a whole view. Use `useToday(zone)` when only the date matters. Both share one timer, and both refresh on focus and visibility changes and roll over at midnight. Memoize layouts, groupings and sorts on their real inputs (data, date, zone, view), and keep the props passed to `memo` children stable.
+- **Controlled forms**: anything expensive derived from form state, such as `deadlineInstants` (a 361-step DST scan), gets a `useMemo` keyed on the specific input string, so unrelated keystrokes don't recompute it.
+- **TanStack Query defaults**: create clients with `createQueryClient()` (`src/queryClient.ts`, `staleTime: 30_000`), in the app and in tests. Don't call `new QueryClient()` directly. Data is fresh for 30 s, so focus and remount don't refetch within that window.
+- **Optimistic mutations** (`features/agenda/useToggleTask.ts` is the reference):
+  - Disable an item while its own mutation is pending, rather than disabling the whole list.
+  - To refetch once after a burst of mutations, count in-flight mutations yourself in `onMutate`/`onSettled`. Don't use `queryClient.isMutating()` inside `onSettled`: mutations that settle in the same tick all still count as pending there, so the refetch never happens.
+  - Invalidate right away after an error.
+  - Reuse the shared hook instead of writing a second mutation for the same endpoint.
+- **Code splitting**: routes can be lazy-loaded with code-based `.lazy()` + `createLazyRoute` (ADR-0026). The gain was only about 2% of the entry chunk, because React, the router and Query make up most of it. Measure `vite build` output before and after any bundle change, and put the numbers in the PR.
+- **Performance claims**: say whether a finding is measured or inferred from the code. Every fix needs a test that fails without it, for example a React `Profiler` render count, an MSW request counter, or a `vi.spyOn` call count. For race fixes, confirm the new test fails against the old code before trusting it.
+
+## Testing notes
+
+- Run the frontend checks from `frontend/` as CI does: `corepack pnpm lint` (type-aware ESLint, which can take minutes, so don't kill it as hung), `typecheck`, `format:check`, `test`.
+- Vitest's 5 s timeout is tight for a few heavy tests, notably WeekView "back and forward restore the weeks" and the docs "reads every repository ADR". Under load they time out on any branch. Don't run several full suites in parallel. Before treating a timeout as a regression, rerun the file with `--maxWorkers=1` and compare against a branch without your change.
+- Clock tests fake only `Date` by default (`useFakeClock` in `DayView.test.tsx`). Query staleness reads `Date.now()`, so `vi.setSystemTime` past 30 s makes data stale, for example to test a refetch on focus.
+- DST tests depend on the host's time-zone data. If they fail only in one environment, check `TZ` and tzdata before the code.
+
+## Working on several changes at once
+
+- Give each branch its own `git worktree` based on fresh `origin/main`, and never edit the main checkout. Each worktree needs its own `pnpm install --frozen-lockfile` in `frontend/`.
+- For work driven by issues, use one issue per defect and one PR per issue, with `Closes #N`. Labels: `performance` for slow or wasteful behaviour, `bug` for wrong behaviour. Before opening PRs, compare which files each branch touches. Merge the self-contained and correctness fixes first, and leave wide refactors (e.g. render restructuring across views) last, to be rebased once.
+
 ## Notes
 
 - `.plan/` and `.env` are git-ignored scratch/local files.

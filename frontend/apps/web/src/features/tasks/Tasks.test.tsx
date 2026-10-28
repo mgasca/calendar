@@ -7,7 +7,6 @@ import { server } from '../../test/server.ts';
 import { TaskForm } from './TaskForm.tsx';
 import { deadlineInstants } from '../agenda/deadline.ts';
 import { TaskList } from './TaskList.tsx';
-import { taskView } from './taskViews.ts';
 import * as deadline from '../agenda/deadline.ts';
 
 describe('task creation', () => {
@@ -113,20 +112,16 @@ describe('task creation', () => {
   });
 });
 
-it('classifies tasks using floating dates and the viewer timezone', () => {
-  const base = { id: '1', title: 'Task', isCompleted: false, priority: 'medium' };
-  expect(taskView(base, '2026-10-26', 'Europe/London')).toBe('No deadline');
-  expect(taskView({ ...base, dueDate: '2026-10-25' }, '2026-10-26', 'Europe/London')).toBe(
-    'Overdue',
-  );
-  expect(
-    taskView({ ...base, dueAt: '2026-10-26T01:00:00Z' }, '2026-10-26', 'America/New_York'),
-  ).toBe('Overdue');
-  expect(taskView({ ...base, dueDate: '2026-10-26' }, '2026-10-26', 'Europe/London')).toBe(
-    'Upcoming',
-  );
-  expect(taskView({ ...base, isCompleted: true }, '2026-10-26', 'Europe/London')).toBe('Completed');
-});
+/** Serves a task in the view the request asks for, as the API does: one page, filtered on the server. */
+function serveTask(current: () => { isCompleted: boolean }) {
+  return http.get('/api/tasks', ({ request }) => {
+    const task = current();
+    const view = new URL(request.url).searchParams.get('view');
+    const shown =
+      view === 'completed' ? task.isCompleted : view === 'no-deadline' && !task.isCompleted;
+    return HttpResponse.json({ items: shown ? [task] : [], nextCursor: null });
+  });
+}
 
 it('completes and reopens undated tasks across list views', async () => {
   let task = {
@@ -137,7 +132,7 @@ it('completes and reopens undated tasks across list views', async () => {
     isCompleted: false,
   };
   server.use(
-    http.get('/api/tasks', () => HttpResponse.json([task])),
+    serveTask(() => task),
     http.post('/api/tasks/1/complete', () => {
       task = { ...task, isCompleted: true };
       return HttpResponse.json(task);
@@ -172,7 +167,7 @@ it('rolls back an optimistic task completion and explains a 409 conflict', async
   });
   const task = { id: '1', title: 'Plan holiday', isCompleted: false };
   server.use(
-    http.get('/api/tasks', () => HttpResponse.json([task])),
+    serveTask(() => task),
     http.post('/api/tasks/1/complete', async () => {
       await gate;
       return HttpResponse.json({ status: 409 }, { status: 409 });
@@ -182,9 +177,11 @@ it('rolls back an optimistic task completion and explains a 409 conflict', async
   const user = userEvent.setup();
   await user.click(screen.getByRole('button', { name: 'No deadline' }));
   await user.click(await screen.findByRole('checkbox', { name: 'Plan holiday' }));
-  await waitFor(() =>
-    expect(screen.queryByRole('checkbox', { name: 'Plan holiday' })).not.toBeInTheDocument(),
-  );
+  // The list is server-filtered, so the row stays (checked and disabled) until the request settles.
+  await waitFor(() => {
+    expect(screen.getByRole('checkbox', { name: 'Plan holiday' })).toBeChecked();
+  });
+  expect(screen.getByRole('checkbox', { name: 'Plan holiday' })).toBeDisabled();
   release();
   expect(await screen.findByRole('alert')).toHaveTextContent(
     'That task changed elsewhere. The list has been refreshed; try again.',
@@ -195,4 +192,29 @@ it('rolls back an optimistic task completion and explains a 409 conflict', async
 it('rejects invalid deadline input', () => {
   expect(deadlineInstants('')).toEqual([]);
   expect(deadlineInstants('invalid')).toEqual([]);
+});
+
+it('loads the next page and requests the selected view', async () => {
+  const requests: string[] = [];
+  server.use(
+    http.get('/api/tasks', ({ request }) => {
+      const params = new URL(request.url).searchParams;
+      requests.push(`${params.get('view') ?? ''}:${params.get('cursor') ?? ''}`);
+      const second = params.has('cursor');
+      return HttpResponse.json({
+        items: [{ id: second ? '2' : '1', title: second ? 'Second' : 'First', isCompleted: false }],
+        nextCursor: second ? null : 'next',
+      });
+    }),
+  );
+  renderWithProviders(<TaskList />);
+  const user = userEvent.setup();
+  expect(await screen.findByText('First')).toBeInTheDocument();
+  await user.click(screen.getByRole('button', { name: 'Load more' }));
+  expect(await screen.findByText('Second')).toBeInTheDocument();
+  await user.click(screen.getByRole('button', { name: 'Overdue' }));
+  await waitFor(() => {
+    expect(requests).toContain('overdue:');
+  });
+  expect(requests).toContain('upcoming:next');
 });

@@ -1,10 +1,10 @@
 import type { Schemas } from '@calendar/api-client';
-import { useQuery } from '@tanstack/react-query';
-import { useMemo, useState } from 'react';
+import { useInfiniteQuery, type InfiniteData } from '@tanstack/react-query';
+import { useState } from 'react';
 
-import { views, taskView, type View } from './taskViews.ts';
+import { viewParam, views, type View } from './taskViews.ts';
 import { api } from '../../api/client.ts';
-import { browserTimeZone, localDate, isPastDue } from '../agenda/dayTime.ts';
+import { browserTimeZone, isPastDue } from '../agenda/dayTime.ts';
 import { useNow, useToday } from '../agenda/useNow.ts';
 import { problemMessage } from '../agenda/agendaQuery.ts';
 import {
@@ -15,8 +15,15 @@ import {
 } from '../agenda/useToggleTask.ts';
 
 type Task = Schemas['TaskResponse'];
-const patchTasks: TaskPatch<Task[]> = (tasks, id, update) =>
-  tasks.map((task) => (task.id === id ? update(task) : task));
+type TaskPage = Schemas['TaskPage'];
+
+const patchPages: TaskPatch<InfiniteData<TaskPage>> = (data, id, update) => ({
+  ...data,
+  pages: data.pages.map((page) => ({
+    ...page,
+    items: page.items.map((task) => (task.id === id ? update(task) : task)),
+  })),
+});
 
 function TaskCheckbox({ task, onToggle }: { task: Task; onToggle: () => void }) {
   const pending = useTaskTogglePending(task.id);
@@ -29,40 +36,31 @@ export function TaskList() {
   const [view, setView] = useState<View>('Upcoming');
   const zone = browserTimeZone();
   const today = useToday(zone);
-  const tasks = useQuery({
-    queryKey: ['tasks'],
-    queryFn: async ({ signal }) => {
-      const { data, error } = await api.GET('/api/tasks', { signal });
+  // One cache entry per view, day and zone: the server filters and orders each view.
+  const queryKey = ['tasks', view, today, zone] as const;
+  const tasks = useInfiniteQuery({
+    queryKey,
+    initialPageParam: undefined as string | undefined,
+    queryFn: async ({ signal, pageParam }) => {
+      const { data, error } = await api.GET('/api/tasks', {
+        signal,
+        params: {
+          query: {
+            view: viewParam[view],
+            today,
+            timeZone: zone,
+            ...(pageParam && { cursor: pageParam }),
+          },
+        },
+      });
       if (!data) throw new Error(problemMessage(error) ?? 'Couldn’t load tasks.');
       return data;
     },
+    getNextPageParam: (page) => page.nextCursor ?? undefined,
     refetchInterval: 300_000,
   });
-  const toggle = useToggleTask(['tasks'], patchTasks);
-  const visible = useMemo(() => {
-    const rank: Record<string, number> = { high: 0, medium: 1, low: 2 };
-    return (tasks.data ?? [])
-      .map((task) => ({
-        task,
-        date: task.dueDate ?? (task.dueAt ? localDate(Date.parse(task.dueAt), zone) : ''),
-      }))
-      .filter(({ task, date }) => taskView(task, today, zone, date || null) === view)
-      .sort((a, b) => {
-        if (view === 'Completed')
-          return (
-            (b.task.completedAt ?? '').localeCompare(a.task.completedAt ?? '') ||
-            a.task.id.localeCompare(b.task.id)
-          );
-        return (
-          a.date.localeCompare(b.date) ||
-          (a.task.dueAt ?? '').localeCompare(b.task.dueAt ?? '') ||
-          (rank[a.task.priority ?? 'medium'] ?? 1) - (rank[b.task.priority ?? 'medium'] ?? 1) ||
-          a.task.title.localeCompare(b.task.title) ||
-          a.task.id.localeCompare(b.task.id)
-        );
-      })
-      .map(({ task }) => task);
-  }, [tasks.data, today, view, zone]);
+  const toggle = useToggleTask(queryKey, patchPages);
+  const visible = tasks.data?.pages.flatMap((page) => page.items) ?? [];
   return (
     <section aria-labelledby="personal-tasks-heading">
       <h1 id="personal-tasks-heading">My tasks</h1>
@@ -124,6 +122,17 @@ export function TaskList() {
           </li>
         ))}
       </ul>
+      {tasks.hasNextPage && (
+        <button
+          type="button"
+          disabled={tasks.isFetchingNextPage}
+          onClick={() => {
+            void tasks.fetchNextPage();
+          }}
+        >
+          {tasks.isFetchingNextPage ? 'Loading…' : 'Load more'}
+        </button>
+      )}
     </section>
   );
 }

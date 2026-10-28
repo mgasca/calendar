@@ -655,6 +655,7 @@
         "dependencies": {
           "Calendar.Domain": "[1.0.0, )",
           "Calendar.Infrastructure": "[1.0.0, )",
+          "Microsoft.AspNetCore.Authentication.Google": "[10.0.14, )",
           "Microsoft.AspNetCore.OpenApi": "[10.0.14, )"
         }
       },
@@ -687,6 +688,12 @@
           "Microsoft.EntityFrameworkCore.Relational": "[10.0.1, 11.0.0)",
           "Microsoft.Extensions.DependencyInjection.Abstractions": "10.0.1"
         }
+      },
+      "Microsoft.AspNetCore.Authentication.Google": {
+        "type": "CentralTransitive",
+        "requested": "[10.0.14, )",
+        "resolved": "10.0.14",
+        "contentHash": "3enUvuEqorstWs1o2wc2hd8VgiF+fK0vZtGXl3wjE760887BNXUTh9vl86cLY+qdDujCHHWxA773nkWW4n8FBA=="
       },
       "Microsoft.AspNetCore.OpenApi": {
         "type": "CentralTransitive",

@@ -47,7 +47,7 @@ A morning planner wants one glance that answers three questions: *what's fixed i
 | ADR | Decision | Why it matters for this story |
 | --- | --- | --- |
 | [0018](../decisions/0018-time-representation-and-bcl-date-time-types.md) | Time representation with built-in .NET types (UTC `DateTimeOffset` + IANA zone, floating `DateOnly`, `TimeProvider`); no NodaTime | How events, all-day events and task due values are stored |
-| [0019](../decisions/0019-single-user-mode-with-authentication-deferred.md) | Single-user mode; authentication deferred, no owner column | Keeps the slice small; the app must not be exposed beyond a trusted network until an auth ADR lands |
+| [0019](../decisions/0019-single-user-mode-with-authentication-deferred.md) | Single-user mode; authentication deferred, no owner column | Historical constraint; superseded by [ADR-0027](../decisions/0027-google-oidc-bff-session.md) |
 | [0020](../decisions/0020-aggregate-day-agenda-endpoint-as-read-model.md) | A dedicated `GET /api/agenda/day` read model, with resource endpoints for writes | One request returns the whole day; inclusion rules live once, on the server |
 | [0021](../decisions/0021-client-supplied-date-and-time-zone-define-the-day.md) | The client sends its local date and IANA zone; the server computes the day's window | Defines "today" without user accounts or stored preferences |
 
@@ -141,7 +141,7 @@ Errors use `application/problem+json`: 400 with per-field `errors`, 404 and 409.
 * A UI for creating and editing events and tasks
 * Recurring events (likely revisits ADR-0018's NodaTime trade-off)
 * Reminders and notifications
-* Authentication (ADR-0019's revisit trigger)
+* Authentication (addressed by [story 0005](0005-google-sign-in.md))
 * Showing event notes; collapsing past events; grouping overlapping events
 
 ## User guide

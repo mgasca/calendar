@@ -68,7 +68,7 @@ This story adds the event form to the day view, beside **Add task**, so an edito
 | ADR | Decision | Why it matters for this story |
 | --- | --- | --- |
 | [0018](../decisions/0018-time-representation-and-bcl-date-time-types.md) | UTC instants with an IANA zone, and floating dates | Timed events are sent as instants with an explicit offset plus the zone; all-day events as dates with an exclusive end |
-| [0019](../decisions/0019-single-user-mode-with-authentication-deferred.md) | Single user, no sign-in | The form has no owner or permissions |
+| [0019](../decisions/0019-single-user-mode-with-authentication-deferred.md) | Single-user data, without per-user scoping | The form has no owner or permissions |
 | [0020](../decisions/0020-aggregate-day-agenda-endpoint-as-read-model.md) | Resource endpoints for writes, the agenda as a read model | Saving uses `POST /api/events`; the agenda is refetched and the server decides which days an event appears on |
 | [0021](../decisions/0021-client-supplied-date-and-time-zone-define-the-day.md) | The client's local date and zone define "today" | The form's default date and zone come from the browser |
 | [0026](../decisions/0026-client-side-routing-with-tanstack-router.md) | Client-side routing with TanStack Router | **Show day** navigates to `/day/:date`; the day page already knows the shown date |

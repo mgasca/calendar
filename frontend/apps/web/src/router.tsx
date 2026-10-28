@@ -9,6 +9,7 @@ import {
 
 import { AppLayout, InvalidDatePage, NotFoundPage } from './App.tsx';
 import { browserTimeZone, isIsoDate, localDate } from './features/agenda/dayTime.ts';
+import { SignIn } from './features/auth/SignIn.tsx';
 import { DayPage } from './features/day/DayPage.tsx';
 import { useToday } from './features/day/useToday.ts';
 import { AddTask } from './features/tasks/AddTask.tsx';
@@ -28,6 +29,18 @@ export interface AppRouterContext {
 const rootRoute = createRootRouteWithContext<AppRouterContext>()({
   component: AppLayout,
   notFoundComponent: NotFoundPage,
+});
+
+const signinRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/signin',
+  validateSearch: (search: Record<string, unknown>) => ({
+    error: typeof search.error === 'string' ? search.error : undefined,
+    returnTo: typeof search.returnTo === 'string' ? search.returnTo : undefined,
+  }),
+  component: function SignInRoute() {
+    return <SignIn {...signinRoute.useSearch()} />;
+  },
 });
 
 const todayRoute = createRoute({
@@ -116,6 +129,7 @@ const weekRoute = createRoute({
 });
 
 const routeTree = rootRoute.addChildren([
+  signinRoute,
   todayRoute,
   dayRoute,
   currentWeekRoute,

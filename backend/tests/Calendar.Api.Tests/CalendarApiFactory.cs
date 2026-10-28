@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.AspNetCore.TestHost;
@@ -17,6 +18,11 @@ public sealed class CalendarApiFactory(Calendar.Testing.PostgresTestDatabase dat
   protected override void ConfigureWebHost(IWebHostBuilder builder)
   {
     builder.UseSetting("ConnectionStrings:Calendar", database.AppConnectionString);
+    builder.ConfigureTestServices(services => services.AddAuthentication(options =>
+    {
+      options.DefaultAuthenticateScheme = "Test";
+      options.DefaultChallengeScheme = "Test";
+    }).AddScheme<AuthenticationSchemeOptions, FakeAuthenticationHandler>("Test", _ => { }));
     if (timeProvider is not null)
     {
       builder.ConfigureTestServices(services => services.AddSingleton(timeProvider));

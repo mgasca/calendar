@@ -1,5 +1,5 @@
 import { formatTime, type AgendaTask } from './dayTime.ts';
-import { TaskUpdateError } from './useToggleTask.ts';
+import { TaskUpdateError, useTaskTogglePending } from './useToggleTask.ts';
 
 export interface TaskItemProps {
   task: AgendaTask;
@@ -26,6 +26,7 @@ export function TaskItem({
   disabled,
   onToggle,
 }: TaskItemProps) {
+  const pending = useTaskTogglePending(task.id);
   const metaId = `task-meta-${task.id}`;
   const showMeta = !!detail || (!!dueAt && !!timeZone) || pastDue;
   return (
@@ -36,7 +37,7 @@ export function TaskItem({
         <input
           type="checkbox"
           checked={task.isCompleted}
-          disabled={disabled}
+          disabled={disabled || pending}
           aria-describedby={showMeta ? metaId : undefined}
           onChange={() => {
             onToggle(task);

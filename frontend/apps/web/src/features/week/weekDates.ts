@@ -3,6 +3,8 @@
  * as UTC midnights purely as a counting device, so no DST change can shift them.
  */
 
+import { dateTimeFormat } from '../agenda/dayTime.ts';
+
 const DAY_MS = 86_400_000;
 
 /** Days in a week; the week always starts on Monday (ISO 8601). */
@@ -48,7 +50,7 @@ export function isInWeek(date: string, weekStart: string): boolean {
  * month, or "28 Dec 2026 – 3 Jan 2027" across years.
  */
 export function formatWeekRange(weekStart: string, locale?: string): string {
-  return new Intl.DateTimeFormat(locale, {
+  return dateTimeFormat(locale, {
     timeZone: 'UTC',
     day: 'numeric',
     month: 'short',
@@ -58,7 +60,7 @@ export function formatWeekRange(weekStart: string, locale?: string): string {
 
 /** A short day and month, e.g. "26 Oct" (en-GB). */
 export function formatDayMonth(date: string, locale?: string): string {
-  return new Intl.DateTimeFormat(locale, {
+  return dateTimeFormat(locale, {
     timeZone: 'UTC',
     day: 'numeric',
     month: 'short',
@@ -69,7 +71,7 @@ export function formatDayMonth(date: string, locale?: string): string {
 export function dayHeadingParts(date: string, locale?: string): { weekday: string; day: string } {
   const ms = toUtcMs(date);
   return {
-    weekday: new Intl.DateTimeFormat(locale, { timeZone: 'UTC', weekday: 'short' }).format(ms),
-    day: new Intl.DateTimeFormat(locale, { timeZone: 'UTC', day: 'numeric' }).format(ms),
+    weekday: dateTimeFormat(locale, { timeZone: 'UTC', weekday: 'short' }).format(ms),
+    day: dateTimeFormat(locale, { timeZone: 'UTC', day: 'numeric' }).format(ms),
   };
 }

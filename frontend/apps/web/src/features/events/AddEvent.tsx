@@ -2,6 +2,7 @@ import { useNavigate } from '@tanstack/react-router';
 import { useRef, useState } from 'react';
 import { EventForm } from './EventForm.tsx';
 import type { EventValues } from './eventForm.ts';
+import { dateTimeFormat } from '../agenda/dayTime.ts';
 
 export function AddEvent({
   date,
@@ -32,11 +33,11 @@ export function AddEvent({
       {saved && (
         <p role="status">
           {saved.title} added for{' '}
-          {new Date(`${saved.date}T12:00:00`).toLocaleDateString(undefined, {
+          {dateTimeFormat(undefined, {
             weekday: 'short',
             day: 'numeric',
             month: 'short',
-          })}
+          }).format(new Date(`${saved.date}T12:00:00`))}
           .{' '}
           {saved.date !== date && (
             <button

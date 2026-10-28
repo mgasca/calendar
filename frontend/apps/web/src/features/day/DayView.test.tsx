@@ -599,6 +599,60 @@ describe('DayView', () => {
       expect(screen.queryByRole('alert')).not.toBeInTheDocument();
     });
 
+    it('allows different tasks to toggle concurrently and refreshes once after both settle', async () => {
+      let releaseFirst: () => void = () => undefined;
+      let releaseSecond: () => void = () => undefined;
+      const first = new Promise<void>((resolve) => {
+        releaseFirst = resolve;
+      });
+      const second = new Promise<void>((resolve) => {
+        releaseSecond = resolve;
+      });
+      const state = buildAgenda();
+      let gets = 0;
+      const posts: string[] = [];
+      server.use(
+        http.get('*/api/agenda/day', () => {
+          gets += 1;
+          return HttpResponse.json(state);
+        }),
+        http.post('*/api/tasks/:id/complete', async ({ params }) => {
+          const id = String(params.id);
+          posts.push(id);
+          await (id === 't4' ? first : second);
+          const task = state.tasks.dueToday.find((item) => item.id === id);
+          if (task) task.isCompleted = true;
+          return HttpResponse.json(task);
+        }),
+      );
+      await renderToday();
+      const firstCheckbox = await screen.findByRole('checkbox', { name: 'Book flights' });
+      const secondCheckbox = screen.getByRole('checkbox', { name: 'Send report' });
+      await userEvent.click(firstCheckbox);
+      await eventually(() => expect(firstCheckbox).toBeDisabled());
+      expect(secondCheckbox).toBeEnabled();
+      await userEvent.click(secondCheckbox);
+      await eventually(() => {
+        expect(posts).toHaveLength(2);
+      });
+      expect(secondCheckbox).toBeDisabled();
+      expect(gets).toBe(1);
+      releaseFirst();
+      await eventually(() => {
+        expect(firstCheckbox).toBeEnabled();
+      });
+      expect(secondCheckbox).toBeDisabled();
+      expect(gets).toBe(1);
+      releaseSecond();
+      await eventually(() => {
+        expect(gets).toBe(2);
+      });
+      await eventually(() => {
+        expect(secondCheckbox).toBeEnabled();
+      });
+      expect(gets).toBe(2);
+    });
+
     it('reopens a completed task', async () => {
       statefulServer();
       await renderToday();

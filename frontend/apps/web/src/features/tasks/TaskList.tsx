@@ -1,5 +1,5 @@
 import type { Schemas } from '@calendar/api-client';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useQuery } from '@tanstack/react-query';
 import { useState } from 'react';
 
 import { views, taskView, type View } from './taskViews.ts';
@@ -7,14 +7,29 @@ import { api } from '../../api/client.ts';
 import { browserTimeZone, localDate, isPastDue } from '../agenda/dayTime.ts';
 import { useNow } from '../agenda/useNow.ts';
 import { problemMessage } from '../agenda/agendaQuery.ts';
+import {
+  TaskUpdateError,
+  useTaskTogglePending,
+  useToggleTask,
+  type TaskPatch,
+} from '../agenda/useToggleTask.ts';
 
 type Task = Schemas['TaskResponse'];
+const patchTasks: TaskPatch<Task[]> = (tasks, id, update) =>
+  tasks.map((task) => (task.id === id ? update(task) : task));
+
+function TaskCheckbox({ task, onToggle }: { task: Task; onToggle: () => void }) {
+  const pending = useTaskTogglePending(task.id);
+  return (
+    <input type="checkbox" checked={task.isCompleted} disabled={pending} onChange={onToggle} />
+  );
+}
+
 export function TaskList() {
   const [view, setView] = useState<View>('Upcoming');
   const now = useNow();
   const zone = browserTimeZone();
   const today = localDate(now, zone);
-  const client = useQueryClient();
   const tasks = useQuery({
     queryKey: ['tasks'],
     queryFn: async ({ signal }) => {
@@ -24,26 +39,7 @@ export function TaskList() {
     },
     refetchInterval: 300_000,
   });
-  const toggle = useMutation({
-    mutationFn: async (task: Task) => {
-      const params = { params: { path: { id: task.id } } };
-      const { data, response } = task.isCompleted
-        ? await api.POST('/api/tasks/{id}/reopen', params)
-        : await api.POST('/api/tasks/{id}/complete', params);
-      if (!data)
-        throw new Error(
-          response.status === 409
-            ? 'That task changed elsewhere. The list has been refreshed; try again.'
-            : 'Couldn’t update the task. Try again.',
-        );
-    },
-    onSettled: async () => {
-      await Promise.all([
-        client.invalidateQueries({ queryKey: ['tasks'] }),
-        client.invalidateQueries({ queryKey: ['agenda'] }),
-      ]);
-    },
-  });
+  const toggle = useToggleTask(['tasks'], patchTasks);
   const rank: Record<string, number> = { high: 0, medium: 1, low: 2 };
   const visible = (tasks.data ?? [])
     .filter((task) => taskView(task, today, zone) === view)
@@ -92,18 +88,22 @@ export function TaskList() {
           </button>
         </div>
       )}
-      {toggle.isError && <p role="alert">{toggle.error.message}</p>}
+      {toggle.isError && (
+        <p role="alert">
+          {toggle.error instanceof TaskUpdateError && toggle.error.status === 409
+            ? 'That task changed elsewhere. The list has been refreshed; try again.'
+            : 'Couldn’t update the task. Try again.'}
+        </p>
+      )}
       {tasks.isSuccess && !visible.length && <p>No tasks in this view.</p>}
       <ul className="items">
         {visible.map((task) => (
           <li key={task.id} className={`item task${task.isCompleted ? ' task-done' : ''}`}>
             <label className="task-label">
-              <input
-                type="checkbox"
-                checked={task.isCompleted}
-                disabled={toggle.isPending}
-                onChange={() => {
-                  toggle.mutate(task);
+              <TaskCheckbox
+                task={task}
+                onToggle={() => {
+                  toggle.mutate({ id: task.id, complete: !task.isCompleted });
                 }}
               />
               <span className="item-title">{task.title}</span>

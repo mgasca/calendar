@@ -2,7 +2,7 @@ import type { Schemas } from '@calendar/api-client';
 import { Link } from '@tanstack/react-router';
 import { useLayoutEffect, useRef, type CSSProperties } from 'react';
 
-import { formatDate } from '../agenda/dayTime.ts';
+import { dateTimeFormat, formatDate } from '../agenda/dayTime.ts';
 import { EventTimes } from '../agenda/EventTimes.tsx';
 import { AllDayBand } from './AllDayBand.tsx';
 import {
@@ -25,7 +25,7 @@ type AgendaDay = Schemas['AgendaDay'];
 const HOURS = Array.from({ length: 24 }, (_, hour) => hour);
 
 function hourLabel(hour: number, locale: string | undefined): string {
-  return new Intl.DateTimeFormat(locale, {
+  return dateTimeFormat(locale, {
     timeZone: 'UTC',
     hour: '2-digit',
     minute: '2-digit',

@@ -28,13 +28,13 @@ The Today view already supports task completion and reopening; creation previous
 
 ### Acceptance criteria
 
-1. **Given** the Today view or task list is open, **when** a task is created with a title and optional deadline, **then** the task is accepted and appears in the corresponding task data.
-2. **Given** a task has a priority and notes, **when** it is saved, **then** those values persist; an invalid priority, blank or overlong title, or overlong notes are rejected.
-3. **Given** a task form contains values, **when** saving succeeds or fails, **then** calendar and list data refresh on success, while the values remain available and retry is possible on failure.
-4. **Given** tasks have different completion states and deadlines, **when** the viewer's local date and time zone are applied, **then** each task appears in the correct view.
-5. **Given** a task is shown in the calendar or list, **when** it is completed or reopened, **then** the change persists and both views refresh.
-6. **Given** a floating date or exact deadline is entered, **when** it is processed, **then** the date is preserved across zones and the exact deadline is normalized to UTC; nonexistent local times are rejected and ambiguous times require an occurrence choice.
-7. **Given** the task controls are displayed, **when** they are used with a keyboard or assistive technology and a save is in progress, **then** they have accessible labels, support keyboard operation, and prevent duplicate submission.
+1. **Given** the Today view or task list is open, **when** a task is created with a title and optional deadline, **then** the task is accepted and appears in the corresponding task data. [Go to tests...](../../frontend/apps/web/src/App.test.tsx#L214) ([undated creation and retry](../../frontend/apps/web/src/features/tasks/Tasks.test.tsx#L43); full list-entry creation is not tested).
+2. **Given** a task has a priority and notes, **when** it is saved, **then** those values persist; an invalid priority, blank or overlong title, or overlong notes are rejected. [Go to tests...](../../backend/tests/Calendar.Api.Tests/Endpoints/TaskEndpointsTests.cs#L27) ([validation cases](../../backend/tests/Calendar.Api.Tests/Endpoints/TaskEndpointsTests.cs#L82)).
+3. **Given** a task form contains values, **when** saving succeeds or fails, **then** calendar and list data refresh on success, while the values remain available and retry is possible on failure. [Go to tests...](../../frontend/apps/web/src/features/tasks/Tasks.test.tsx#L43) ([calendar and list display after creation](../../frontend/apps/web/src/App.test.tsx#L214); refreshing both already-open views and retaining every field are not asserted).
+4. **Given** tasks have different completion states and deadlines, **when** the viewer's local date and time zone are applied, **then** each task appears in the correct view. [Go to tests...](../../frontend/apps/web/src/features/tasks/Tasks.test.tsx#L99) ([floating dates across zones](../../backend/tests/Calendar.Api.Tests/Endpoints/AgendaEndpointsTests.cs#L348), [instant deadlines across zones](../../backend/tests/Calendar.Api.Tests/Endpoints/AgendaEndpointsTests.cs#L360); a full rendered-list matrix is not tested).
+5. **Given** a task is shown in the calendar or list, **when** it is completed or reopened, **then** the change persists and both views refresh. [Go to tests...](../../frontend/apps/web/src/features/tasks/Tasks.test.tsx#L114) ([calendar completion](../../frontend/apps/web/src/features/day/DayView.test.tsx#L574), [calendar reopen](../../frontend/apps/web/src/features/day/DayView.test.tsx#L594), [API completion](../../backend/tests/Calendar.Api.Tests/Endpoints/TaskEndpointsTests.cs#L95), [API reopen](../../backend/tests/Calendar.Api.Tests/Endpoints/TaskEndpointsTests.cs#L112); cross-view refresh after each action is not directly tested).
+6. **Given** a floating date or exact deadline is entered, **when** it is processed, **then** the date is preserved across zones and the exact deadline is normalized to UTC; nonexistent local times are rejected and ambiguous times require an occurrence choice. [Go to tests...](../../frontend/apps/web/src/features/tasks/deadline.test.ts#L11) ([floating dates across zones](../../backend/tests/Calendar.Api.Tests/Endpoints/AgendaEndpointsTests.cs#L348), [UTC storage](../../backend/tests/Calendar.Api.Tests/Endpoints/TaskEndpointsTests.cs#L54); form behavior for nonexistent and ambiguous times is not directly tested).
+7. **Given** the task controls are displayed, **when** they are used with a keyboard or assistive technology and a save is in progress, **then** they have accessible labels, support keyboard operation, and prevent duplicate submission. [Go to tests...](../../frontend/apps/web/src/features/tasks/Tasks.test.tsx#L13) (some accessible label queries are tested; keyboard operation, assistive-technology usability and duplicate submission are not).
 
 ## Design decisions
 
@@ -59,7 +59,7 @@ The Today view already supports task completion and reopening; creation previous
 ### Validation
 
 * Backend: all API and PostgreSQL integration tests pass; domain tests cover priority validation and notes normalization/limits.
-* Frontend: creation with all deadline types, failed-save retry, completion/reopening, list classification, and calendar/list synchronization are tested through MSW and Testing Library.
+* Frontend: creation with all deadline types, failed-save retry, completion/reopening, list classification, and calendar creation followed by list display are tested through MSW and Testing Library.
 * DST tests cover a spring gap and both occurrences of a fall overlap in America/New_York.
 * The web production build, frontend type checking, ESLint, and Prettier checks pass.
 

@@ -2,7 +2,7 @@
 status: implemented
 date: 2026-10-26
 pr: https://github.com/mgasca/calendar/pull/11
-adrs: [0018, 0019, 0020, 0021]
+adrs: ["0018", "0019", "0020", "0021"]
 ---
 
 # 0001 Today view: see everything for today in one place

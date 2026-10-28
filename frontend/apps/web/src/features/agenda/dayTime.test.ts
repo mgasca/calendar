@@ -1,5 +1,6 @@
 import {
   daysBetween,
+  dateTimeFormat,
   describeOverdue,
   eventStatuses,
   formatDate,
@@ -12,6 +13,21 @@ import {
   type AgendaTask,
   type TimedEvent,
 } from './dayTime.ts';
+
+describe('dateTimeFormat', () => {
+  it('reuses a formatter for equal locale and options', () => {
+    expect(dateTimeFormat('en-GB', { timeZone: 'UTC', day: 'numeric' })).toBe(
+      dateTimeFormat('en-GB', { timeZone: 'UTC', day: 'numeric' }),
+    );
+  });
+
+  it('keeps formatters distinct when locale or options differ', () => {
+    const base = dateTimeFormat('en-GB', { timeZone: 'UTC', day: 'numeric' });
+    expect(dateTimeFormat('fr-FR', { timeZone: 'UTC', day: 'numeric' })).not.toBe(base);
+    expect(dateTimeFormat('en-GB', { timeZone: 'Europe/Madrid', day: 'numeric' })).not.toBe(base);
+    expect(dateTimeFormat('en-GB', { timeZone: 'UTC', month: 'numeric' })).not.toBe(base);
+  });
+});
 
 const event = (id: string, start: string, end: string): TimedEvent => ({
   id,

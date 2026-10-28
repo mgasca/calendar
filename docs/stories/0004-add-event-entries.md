@@ -119,7 +119,7 @@ Vitest covers form logic, DST resolution, validation, retry, pending state, focu
 
 ### Follow-ups
 
-* **Inline or dialog, then consolidate:** **Add event** is a dialog and **Add task** is inline. Once the event dialog is in, the product owner will run usability testing to see which the editors prefer, and then make both forms use it. That is a separate story. Until then the two are intentionally different.
+* **Inline or dialog, then consolidate:** **Add event** is a dialog and **Add task** is inline. Once the event dialog is in, the product owner will run usability testing to see which the editors prefer, and then make both forms use it. That is [story 0005](0005-modal-dialogs-for-adding.md), where usability testing preferred the dialog. Until it is delivered the two are intentionally different.
 * **Discard prompt:** none for now. Revisit if testing shows people losing typed text by closing the dialog.
 
 ## User guide

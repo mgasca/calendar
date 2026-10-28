@@ -1,4 +1,5 @@
 import {
+  createLazyRoute,
   createRootRouteWithContext,
   createRoute,
   createRouter,
@@ -13,9 +14,7 @@ import { SignIn } from './features/auth/SignIn.tsx';
 import { DayPage } from './features/day/DayPage.tsx';
 import { useToday } from './features/day/useToday.ts';
 import { AddTask } from './features/tasks/AddTask.tsx';
-import { TaskList } from './features/tasks/TaskList.tsx';
 import { isoWeekStart } from './features/week/weekDates.ts';
-import { WeekView } from './features/week/WeekView.tsx';
 
 /** Values every route can read; tests pass fixed ones. */
 export interface AppRouterContext {
@@ -78,14 +77,18 @@ const dayRoute = createRoute({
 const tasksRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/tasks',
-  component: function TasksRoute() {
-    return (
-      <>
-        <AddTask />
-        <TaskList />
-      </>
-    );
-  },
+}).lazy(async () => {
+  const { TaskList } = await import('./features/tasks/TaskList.tsx');
+  return createLazyRoute('/tasks')({
+    component: function TasksRoute() {
+      return (
+        <>
+          <AddTask />
+          <TaskList />
+        </>
+      );
+    },
+  });
 });
 
 // `/week` is the current week: its Monday is computed from the local date now in the app's zone.
@@ -121,11 +124,15 @@ const weekRoute = createRoute({
     }
   },
   notFoundComponent: InvalidDatePage,
-  component: function WeekRoute() {
-    const { weekStart } = weekRoute.useParams();
-    const { timeZone, locale } = weekRoute.useRouteContext();
-    return <WeekView weekStart={weekStart} timeZone={timeZone} locale={locale} />;
-  },
+}).lazy(async () => {
+  const { WeekView } = await import('./features/week/WeekView.tsx');
+  return createLazyRoute('/week/$weekStart')({
+    component: function WeekRoute() {
+      const { weekStart } = weekRoute.useParams();
+      const { timeZone, locale } = weekRoute.useRouteContext();
+      return <WeekView weekStart={weekStart} timeZone={timeZone} locale={locale} />;
+    },
+  });
 });
 
 const routeTree = rootRoute.addChildren([

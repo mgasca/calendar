@@ -1,22 +1,45 @@
 import type { Schemas } from '@calendar/api-client';
-import { useInfiniteQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useInfiniteQuery, type InfiniteData } from '@tanstack/react-query';
 import { useState } from 'react';
 
 import { viewParam, views, type View } from './taskViews.ts';
 import { api } from '../../api/client.ts';
-import { browserTimeZone, localDate, isPastDue } from '../agenda/dayTime.ts';
-import { useNow } from '../agenda/useNow.ts';
+import { browserTimeZone, isPastDue } from '../agenda/dayTime.ts';
+import { useNow, useToday } from '../agenda/useNow.ts';
 import { problemMessage } from '../agenda/agendaQuery.ts';
+import {
+  TaskUpdateError,
+  useTaskTogglePending,
+  useToggleTask,
+  type TaskPatch,
+} from '../agenda/useToggleTask.ts';
 
 type Task = Schemas['TaskResponse'];
+type TaskPage = Schemas['TaskPage'];
+
+const patchPages: TaskPatch<InfiniteData<TaskPage>> = (data, id, update) => ({
+  ...data,
+  pages: data.pages.map((page) => ({
+    ...page,
+    items: page.items.map((task) => (task.id === id ? update(task) : task)),
+  })),
+});
+
+function TaskCheckbox({ task, onToggle }: { task: Task; onToggle: () => void }) {
+  const pending = useTaskTogglePending(task.id);
+  return (
+    <input type="checkbox" checked={task.isCompleted} disabled={pending} onChange={onToggle} />
+  );
+}
+
 export function TaskList() {
   const [view, setView] = useState<View>('Upcoming');
-  const now = useNow();
   const zone = browserTimeZone();
-  const today = localDate(now, zone);
-  const client = useQueryClient();
+  const today = useToday(zone);
+  // One cache entry per view, day and zone: the server filters and orders each view.
+  const queryKey = ['tasks', view, today, zone] as const;
   const tasks = useInfiniteQuery({
-    queryKey: ['tasks', view, today, zone],
+    queryKey,
     initialPageParam: undefined as string | undefined,
     queryFn: async ({ signal, pageParam }) => {
       const { data, error } = await api.GET('/api/tasks', {
@@ -33,30 +56,10 @@ export function TaskList() {
       if (!data) throw new Error(problemMessage(error) ?? 'Couldn’t load tasks.');
       return data;
     },
-    // Each page names the next by its cursor; the last page has none.
     getNextPageParam: (page) => page.nextCursor ?? undefined,
     refetchInterval: 300_000,
   });
-  const toggle = useMutation({
-    mutationFn: async (task: Task) => {
-      const params = { params: { path: { id: task.id } } };
-      const { data, response } = task.isCompleted
-        ? await api.POST('/api/tasks/{id}/reopen', params)
-        : await api.POST('/api/tasks/{id}/complete', params);
-      if (!data)
-        throw new Error(
-          response.status === 409
-            ? 'That task changed elsewhere. The list has been refreshed; try again.'
-            : 'Couldn’t update the task. Try again.',
-        );
-    },
-    onSettled: async () => {
-      await Promise.all([
-        client.invalidateQueries({ queryKey: ['tasks'] }),
-        client.invalidateQueries({ queryKey: ['agenda'] }),
-      ]);
-    },
-  });
+  const toggle = useToggleTask(queryKey, patchPages);
   const visible = tasks.data?.pages.flatMap((page) => page.items) ?? [];
   return (
     <section aria-labelledby="personal-tasks-heading">
@@ -90,18 +93,22 @@ export function TaskList() {
           </button>
         </div>
       )}
-      {toggle.isError && <p role="alert">{toggle.error.message}</p>}
+      {toggle.isError && (
+        <p role="alert">
+          {toggle.error instanceof TaskUpdateError && toggle.error.status === 409
+            ? 'That task changed elsewhere. The list has been refreshed; try again.'
+            : 'Couldn’t update the task. Try again.'}
+        </p>
+      )}
       {tasks.isSuccess && !visible.length && <p>No tasks in this view.</p>}
       <ul className="items">
         {visible.map((task) => (
           <li key={task.id} className={`item task${task.isCompleted ? ' task-done' : ''}`}>
             <label className="task-label">
-              <input
-                type="checkbox"
-                checked={task.isCompleted}
-                disabled={toggle.isPending}
-                onChange={() => {
-                  toggle.mutate(task);
+              <TaskCheckbox
+                task={task}
+                onToggle={() => {
+                  toggle.mutate({ id: task.id, complete: !task.isCompleted });
                 }}
               />
               <span className="item-title">{task.title}</span>
@@ -109,9 +116,7 @@ export function TaskList() {
             <span className="badge">{task.priority ?? 'medium'} priority</span>
             <span className="item-meta">
               {task.dueDate ?? (task.dueAt ? new Date(task.dueAt).toLocaleString() : 'No deadline')}
-              {isPastDue(task, now) && view === 'Upcoming' && (
-                <strong className="flag"> · Past due</strong>
-              )}
+              {view === 'Upcoming' && task.dueAt && <PastDue task={task} />}
             </span>
             {task.notes && <p className="task-notes">{task.notes}</p>}
           </li>
@@ -130,4 +135,9 @@ export function TaskList() {
       )}
     </section>
   );
+}
+
+function PastDue({ task }: { task: Task }) {
+  const now = useNow();
+  return isPastDue(task, now) ? <strong className="flag"> · Past due</strong> : null;
 }

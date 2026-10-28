@@ -1,4 +1,4 @@
-import { screen, waitFor } from '@testing-library/react';
+import { fireEvent, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { http, HttpResponse } from 'msw';
 
@@ -7,8 +7,25 @@ import { server } from '../../test/server.ts';
 import { TaskForm } from './TaskForm.tsx';
 import { deadlineInstants } from '../agenda/deadline.ts';
 import { TaskList } from './TaskList.tsx';
+import * as deadline from '../agenda/deadline.ts';
 
 describe('task creation', () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it('reuses deadline candidates while unrelated fields change', () => {
+    const calculate = vi.spyOn(deadline, 'deadlineInstants');
+    renderWithProviders(<TaskForm initialDate="2026-10-27" onClose={vi.fn()} />);
+    fireEvent.change(screen.getByLabelText('Deadline'), { target: { value: 'time' } });
+    const callsAfterDeadlineSelection = calculate.mock.calls.length;
+    fireEvent.change(screen.getByLabelText('Title'), { target: { value: 'Call' } });
+    fireEvent.change(screen.getByLabelText('Notes'), { target: { value: 'Discuss plans' } });
+    expect(calculate).toHaveBeenCalledTimes(callsAfterDeadlineSelection);
+    fireEvent.change(screen.getByLabelText('Due time'), { target: { value: '14:30' } });
+    expect(calculate).toHaveBeenCalledTimes(callsAfterDeadlineSelection + 1);
+  }, 15_000);
+
   it('prefills a calendar date and saves priority and notes', async () => {
     const close = vi.fn();
     let body: unknown;
@@ -95,6 +112,17 @@ describe('task creation', () => {
   });
 });
 
+/** Serves a task in the view the request asks for, as the API does: one page, filtered on the server. */
+function serveTask(current: () => { isCompleted: boolean }) {
+  return http.get('/api/tasks', ({ request }) => {
+    const task = current();
+    const view = new URL(request.url).searchParams.get('view');
+    const shown =
+      view === 'completed' ? task.isCompleted : view === 'no-deadline' && !task.isCompleted;
+    return HttpResponse.json({ items: shown ? [task] : [], nextCursor: null });
+  });
+}
+
 it('completes and reopens undated tasks across list views', async () => {
   let task = {
     id: '1',
@@ -104,17 +132,7 @@ it('completes and reopens undated tasks across list views', async () => {
     isCompleted: false,
   };
   server.use(
-    http.get('/api/tasks', ({ request }) => {
-      const view = new URL(request.url).searchParams.get('view');
-      return HttpResponse.json({
-        items: (
-          view === 'completed' ? task.isCompleted : view === 'no-deadline' && !task.isCompleted
-        )
-          ? [task]
-          : [],
-        nextCursor: null,
-      });
-    }),
+    serveTask(() => task),
     http.post('/api/tasks/1/complete', () => {
       task = { ...task, isCompleted: true };
       return HttpResponse.json(task);
@@ -140,6 +158,35 @@ it('completes and reopens undated tasks across list views', async () => {
   });
   await user.click(screen.getByRole('button', { name: 'No deadline' }));
   expect(screen.getByRole('checkbox', { name: 'Plan holiday' })).not.toBeChecked();
+});
+
+it('rolls back an optimistic task completion and explains a 409 conflict', async () => {
+  let release: () => void = () => undefined;
+  const gate = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  const task = { id: '1', title: 'Plan holiday', isCompleted: false };
+  server.use(
+    serveTask(() => task),
+    http.post('/api/tasks/1/complete', async () => {
+      await gate;
+      return HttpResponse.json({ status: 409 }, { status: 409 });
+    }),
+  );
+  renderWithProviders(<TaskList />);
+  const user = userEvent.setup();
+  await user.click(screen.getByRole('button', { name: 'No deadline' }));
+  await user.click(await screen.findByRole('checkbox', { name: 'Plan holiday' }));
+  // The list is server-filtered, so the row stays (checked and disabled) until the request settles.
+  await waitFor(() => {
+    expect(screen.getByRole('checkbox', { name: 'Plan holiday' })).toBeChecked();
+  });
+  expect(screen.getByRole('checkbox', { name: 'Plan holiday' })).toBeDisabled();
+  release();
+  expect(await screen.findByRole('alert')).toHaveTextContent(
+    'That task changed elsewhere. The list has been refreshed; try again.',
+  );
+  expect(await screen.findByRole('checkbox', { name: 'Plan holiday' })).not.toBeChecked();
 });
 
 it('rejects invalid deadline input', () => {

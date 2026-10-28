@@ -18,7 +18,7 @@ internal static class AgendaOrder
   public static readonly IComparer<TimedEventItem> TimedEvents = Comparer<TimedEventItem>.Create((a, b) =>
       FirstDifference(a.Start.CompareTo(b.Start), Title.Compare(a.Title, b.Title), a.Id.CompareTo(b.Id)));
 
-  /// <summary>Tasks due on a day: timed ones by due instant first, then date-only ones; then title, then id.</summary>
+  /// <summary>Tasks due on a day: timed ones by due instant first, then date-only ones; then priority, title, and id.</summary>
   public static readonly IComparer<TaskResponse> DueTasks = Comparer<TaskResponse>.Create(CompareDue);
 
   /// <summary>
@@ -32,8 +32,17 @@ internal static class AgendaOrder
       FirstDifference(
           (a.DueAt is null).CompareTo(b.DueAt is null),
           Nullable.Compare(a.DueAt, b.DueAt),
+          PriorityRank(a.Priority).CompareTo(PriorityRank(b.Priority)),
           Title.Compare(a.Title, b.Title),
           a.Id.CompareTo(b.Id));
+
+  private static int PriorityRank(string priority) => priority switch
+  {
+    "high" => 0,
+    "medium" => 1,
+    "low" => 2,
+    _ => 3,
+  };
 
   private static DateOnly DueLocalDate(TaskResponse task, TimeZoneInfo zone) =>
       task.DueDate ?? DateOnly.FromDateTime(TimeZoneInfo.ConvertTime(task.DueAt!.Value, zone).DateTime);

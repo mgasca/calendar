@@ -15,6 +15,9 @@ export function AppLayout() {
         <Link to="/" activeProps={{ 'aria-current': 'page' }} activeOptions={{ exact: true }}>
           Today
         </Link>
+        <Link to="/week" activeProps={{ 'aria-current': 'page' }}>
+          Week
+        </Link>
         <Link to="/tasks" activeProps={{ 'aria-current': 'page' }}>
           My tasks
         </Link>
@@ -41,7 +44,7 @@ export function NotFoundPage() {
   );
 }
 
-/** Shown for `/day/<value>` when the value isn't a real `YYYY-MM-DD` date. */
+/** Shown for `/day/<value>` and `/week/<value>` when the value isn't a real `YYYY-MM-DD` date. */
 export function InvalidDatePage() {
   const { pathname } = useLocation();
   const value = decodeURIComponent(pathname.split('/').pop() ?? '');

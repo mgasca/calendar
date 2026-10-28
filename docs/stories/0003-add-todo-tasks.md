@@ -28,13 +28,13 @@ The Today view already supports task completion and reopening; creation previous
 
 ### Acceptance criteria
 
-1. Create from the Today view of the calendar or task list, with title required and deadline optional.
-2. Persist priority and notes with the task; reject invalid priority, blank/overlong title, and overlong notes.
-3. Saving refreshes calendar and list data. A failed save retains form values and permits retry.
-4. Tasks appear in the correct view based on completion and the viewer's local date/timezone.
-5. Completing/reopening persists and refreshes both views.
-6. Preserve floating dates across zones and normalize exact deadlines to UTC. Reject nonexistent local times and ask which occurrence of an ambiguous time is intended.
-7. Controls have accessible labels and work with a keyboard; saving disables duplicate submission.
+1. **Given** the Today view or task list is open, **when** a task is created with a title and optional deadline, **then** the task is accepted and appears in the corresponding task data.
+2. **Given** a task has a priority and notes, **when** it is saved, **then** those values persist; an invalid priority, blank or overlong title, or overlong notes are rejected.
+3. **Given** a task form contains values, **when** saving succeeds or fails, **then** calendar and list data refresh on success, while the values remain available and retry is possible on failure.
+4. **Given** tasks have different completion states and deadlines, **when** the viewer's local date and time zone are applied, **then** each task appears in the correct view.
+5. **Given** a task is shown in the calendar or list, **when** it is completed or reopened, **then** the change persists and both views refresh.
+6. **Given** a floating date or exact deadline is entered, **when** it is processed, **then** the date is preserved across zones and the exact deadline is normalized to UTC; nonexistent local times are rejected and ambiguous times require an occurrence choice.
+7. **Given** the task controls are displayed, **when** they are used with a keyboard or assistive technology and a save is in progress, **then** they have accessible labels, support keyboard operation, and prevent duplicate submission.
 
 ## Design decisions
 

@@ -47,11 +47,11 @@ The `POST /api/events` and `POST /api/tasks` endpoints already exist. This is a 
 
 ### Acceptance criteria
 
-1. From the week view, a timed event, an all-day event and a task can each be created with a pointer, and also with the keyboard alone.
-2. The form opens prefilled from where it was opened: the slot or dragged range, the date of the all-day band, or the day of the task strip.
-3. A new item appears in the right place in the week without a reload, and in the day view.
-4. Validation, error and retry behaviour is the same as when creating from the day view.
-5. Focus returns to the slot, band or button the form was opened from.
+1. **Given** the week view is open, **when** a timed event, all-day event or task is created with a pointer or keyboard alone, **then** the corresponding item is created.
+2. **Given** creation is opened from a slot, dragged range, all-day band or task strip, **when** the form opens, **then** it is prefilled with the selected time range or day.
+3. **Given** an item is created successfully from the week view, **when** the server confirms it, **then** it appears in the correct place in the week and in the day view without a reload.
+4. **Given** a create form is submitted with invalid data or the request fails, **when** validation or the error state is shown, **then** validation, error and retry behaviour matches creation from the day view.
+5. **Given** the form was opened from a slot, band or button, **when** the form closes, **then** focus returns to that originating control.
 
 ## Design decisions
 

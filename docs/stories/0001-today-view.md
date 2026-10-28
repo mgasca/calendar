@@ -32,13 +32,13 @@ A morning planner wants one glance that answers three questions: *what's fixed i
 
 ### Acceptance criteria
 
-1. Opening the web app shows today's date and everything for today in one scrolling view: all-day events, timed events in time order, overdue tasks and tasks due today.
-2. "Today" follows the browser's local date and time zone, including days with daylight-saving changes.
-3. Events that started yesterday or end tomorrow appear and say so.
-4. Overdue tasks are flagged in text, not just colour.
-5. Ticking a task's checkbox completes it, and unticking reopens it. The change persists.
-6. The view stays current: it moves to the new day at local midnight and picks up changes when you return to the window.
-7. Loading, error and empty states are clear. The view is usable on a phone and with assistive technology.
+1. **Given** the web app is opened, **when** today's agenda loads, **then** today's date, all-day events, timed events in time order, overdue tasks and tasks due today are shown in one scrolling view.
+2. **Given** the browser has a local date and time zone, **when** the Today view loads on an ordinary or daylight-saving transition day, **then** it uses that local date and time zone.
+3. **Given** an event started yesterday or ends tomorrow, **when** today's agenda is shown, **then** the event appears with the corresponding continuation label.
+4. **Given** a task is overdue, **when** it appears in the Today view, **then** its overdue status is conveyed in text as well as colour.
+5. **Given** a task is shown, **when** its checkbox is ticked or unticked, **then** it is respectively completed or reopened and the change persists.
+6. **Given** the Today view is open, **when** local midnight passes or the user returns to the window after data changes, **then** the view shows the new day or refreshed data.
+7. **Given** the view is loading, empty, or an error occurs, **when** the corresponding state is displayed on a phone or with assistive technology, **then** the state is clear and usable.
 
 ## Design decisions
 

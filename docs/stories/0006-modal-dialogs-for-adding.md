@@ -2,7 +2,7 @@
 status: implemented
 date: 2026-10-28
 pr: https://github.com/mgasca/calendar/pull/40
-adrs: [0021, 0026]
+adrs: ["0021", "0026"]
 ---
 
 # 0006 Add tasks and events in a modal dialog

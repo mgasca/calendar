@@ -2,7 +2,7 @@
 status: implemented
 date: 2026-10-27
 pr: https://github.com/mgasca/calendar/pull/24
-adrs: [0018, 0020, 0021, 0024, 0026]
+adrs: ["0018", "0020", "0021", "0024", "0026"]
 ---
 
 # 0002 Week view: plan and track the whole week in one place

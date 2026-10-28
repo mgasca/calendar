@@ -18,18 +18,17 @@ export function AddEvent({
   const navigate = useNavigate();
   return (
     <>
-      {!adding && (
-        <button
-          ref={button}
-          type="button"
-          onClick={() => {
-            setSaved(undefined);
-            setAdding(true);
-          }}
-        >
-          Add event
-        </button>
-      )}
+      <button
+        ref={button}
+        type="button"
+        aria-haspopup="dialog"
+        onClick={() => {
+          setSaved(undefined);
+          setAdding(true);
+        }}
+      >
+        Add event
+      </button>
       {saved && (
         <p role="status">
           {saved.title} added for{' '}

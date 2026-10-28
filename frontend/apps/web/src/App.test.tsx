@@ -312,14 +312,29 @@ describe('event creation from a day', () => {
     const add = await screen.findByRole('button', { name: 'Add event' });
     add.focus();
     await user.keyboard('{Enter}');
+    expect(screen.getByRole('dialog', { name: 'Add event' })).toBeVisible();
     expect(screen.getByLabelText('Title')).toHaveFocus();
     await user.type(screen.getByLabelText('Title'), 'Dentist');
     await user.click(screen.getByRole('button', { name: 'Save event' }));
     expect(await screen.findByText('Dentist')).toBeVisible();
     expect(screen.getByText(/Dentist added for/)).toHaveAttribute('role', 'status');
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
     await waitFor(() => {
       expect(screen.getByRole('button', { name: 'Add event' })).toHaveFocus();
     });
+  });
+  it('returns focus to Add event when the dialog is cancelled, and saves nothing', async () => {
+    const saved = serveEvents();
+    renderApp('/day/2099-10-29', { timeZone: 'UTC', locale: 'en-GB' });
+    const user = userEvent.setup();
+    await user.click(await screen.findByRole('button', { name: 'Add event' }));
+    await user.type(screen.getByLabelText('Title'), 'Unsaved');
+    await user.click(screen.getByRole('button', { name: 'Cancel' }));
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: 'Add event' })).toHaveFocus();
+    });
+    expect(saved).toHaveLength(0);
   });
   it('keeps the current day after saving elsewhere and Show day navigates', async () => {
     serveEvents();

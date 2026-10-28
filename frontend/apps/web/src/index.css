@@ -240,13 +240,32 @@ button[aria-pressed='true'] {
   border-radius: 0.5rem;
 }
 
-.task-form fieldset {
+/* A modal <dialog>: the browser centres it and traps focus; this only sizes and skins it. */
+.event-dialog {
+  box-sizing: border-box;
+  width: min(36rem, calc(100vw - 2rem));
+  max-height: calc(100vh - 2rem);
+  overflow: auto;
+  padding: 1rem;
+  border: 1px solid var(--border);
+  border-radius: 0.5rem;
+  color: inherit;
+  background: Canvas;
+}
+
+.event-dialog::backdrop {
+  background: color-mix(in srgb, black 50%, transparent);
+}
+
+.task-form fieldset,
+.event-dialog fieldset {
   border: 0;
   padding: 0;
   min-width: 0;
 }
 
 .task-form label,
+.event-dialog label,
 .actions label {
   display: flex;
   flex-direction: column;

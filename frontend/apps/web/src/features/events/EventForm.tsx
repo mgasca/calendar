@@ -16,8 +16,13 @@ export function EventForm({
 }) {
   const [values, setValues] = useState(() => defaults(date, initialValues));
   const [errors, setErrors] = useState<FieldErrors>({});
+  const dialog = useRef<HTMLDialogElement>(null);
   const title = useRef<HTMLInputElement>(null);
   useEffect(() => {
+    // StrictMode runs this effect twice on the same element, and showModal() throws if it is already open.
+    if (dialog.current && !dialog.current.open) {
+      dialog.current.showModal();
+    }
     title.current?.focus();
   }, []);
   const save = useCreateEvent(timeZone);
@@ -26,7 +31,19 @@ export function EventForm({
   };
   const candidates = (field: 'start' | 'end') => deadlineInstants(values[field]);
   return (
-    <section className="task-form" aria-labelledby="add-event-heading">
+    <dialog
+      ref={dialog}
+      className="event-dialog"
+      aria-labelledby="add-event-heading"
+      onCancel={(e) => {
+        // Escape closes without a prompt, but never while a save is in flight: the request can't be
+        // cancelled, so closing would hide its result.
+        e.preventDefault();
+        if (!save.isPending) {
+          onClose();
+        }
+      }}
+    >
       <h2 id="add-event-heading">Add event</h2>
       <form
         noValidate
@@ -173,6 +190,6 @@ export function EventForm({
         </fieldset>
         {errors.form && <p role="alert">{errors.form}</p>}
       </form>
-    </section>
+    </dialog>
   );
 }

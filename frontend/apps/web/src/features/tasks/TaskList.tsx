@@ -5,7 +5,7 @@ import { useMemo, useState } from 'react';
 import { views, taskView, type View } from './taskViews.ts';
 import { api } from '../../api/client.ts';
 import { browserTimeZone, localDate, isPastDue } from '../agenda/dayTime.ts';
-import { useNow } from '../agenda/useNow.ts';
+import { useNow, useToday } from '../agenda/useNow.ts';
 import { problemMessage } from '../agenda/agendaQuery.ts';
 import {
   TaskUpdateError,
@@ -27,9 +27,8 @@ function TaskCheckbox({ task, onToggle }: { task: Task; onToggle: () => void }) 
 
 export function TaskList() {
   const [view, setView] = useState<View>('Upcoming');
-  const now = useNow();
   const zone = browserTimeZone();
-  const today = localDate(now, zone);
+  const today = useToday(zone);
   const tasks = useQuery({
     queryKey: ['tasks'],
     queryFn: async ({ signal }) => {
@@ -47,7 +46,7 @@ export function TaskList() {
         task,
         date: task.dueDate ?? (task.dueAt ? localDate(Date.parse(task.dueAt), zone) : ''),
       }))
-      .filter(({ task }) => taskView(task, today, zone) === view)
+      .filter(({ task, date }) => taskView(task, today, zone, date || null) === view)
       .sort((a, b) => {
         if (view === 'Completed')
           return (
@@ -119,9 +118,7 @@ export function TaskList() {
             <span className="badge">{task.priority ?? 'medium'} priority</span>
             <span className="item-meta">
               {task.dueDate ?? (task.dueAt ? new Date(task.dueAt).toLocaleString() : 'No deadline')}
-              {isPastDue(task, now) && taskView(task, today, zone) === 'Upcoming' && (
-                <strong className="flag"> · Past due</strong>
-              )}
+              {view === 'Upcoming' && task.dueAt && <PastDue task={task} />}
             </span>
             {task.notes && <p className="task-notes">{task.notes}</p>}
           </li>
@@ -129,4 +126,9 @@ export function TaskList() {
       </ul>
     </section>
   );
+}
+
+function PastDue({ task }: { task: Task }) {
+  const now = useNow();
+  return isPastDue(task, now) ? <strong className="flag"> · Past due</strong> : null;
 }

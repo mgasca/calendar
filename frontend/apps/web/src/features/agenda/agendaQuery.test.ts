@@ -1,4 +1,4 @@
-import { AgendaError, problemMessage, shouldRetryAgenda } from './useDayAgenda.ts';
+import { AgendaError, problemMessage, shouldRetryAgenda } from './agendaQuery.ts';
 
 describe('shouldRetryAgenda', () => {
   it('retries network errors and 5xx up to twice', () => {

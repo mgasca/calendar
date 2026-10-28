@@ -33,6 +33,21 @@ export default defineConfig([
     languageOptions: {
       globals: globals.browser,
     },
+    rules: {
+      // TanStack Router signals not-found and redirects by throwing its own values (ADR-0026).
+      '@typescript-eslint/only-throw-error': [
+        'error',
+        {
+          allow: [
+            {
+              from: 'package',
+              package: '@tanstack/router-core',
+              name: ['NotFoundError', 'Redirect'],
+            },
+          ],
+        },
+      ],
+    },
   },
   {
     files: ['**/*.config.{js,ts}'],

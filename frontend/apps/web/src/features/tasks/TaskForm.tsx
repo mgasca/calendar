@@ -3,7 +3,7 @@ import { useEffect, useRef, useState } from 'react';
 
 import { api } from '../../api/client.ts';
 import { deadlineInstants } from './deadline.ts';
-import { problemMessage } from '../today/useDayAgenda.ts';
+import { problemMessage } from '../agenda/agendaQuery.ts';
 
 export function TaskForm({
   initialDate,

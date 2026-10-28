@@ -11,46 +11,56 @@ import {
   isPastDue,
   openFirst,
   localDate,
+  relativeDay,
   type AgendaTask,
   type EventStatus,
   type TimedEvent,
-} from './dayTime.ts';
-import { TaskUpdateError, useToggleTask } from './useToggleTask.ts';
-import { AgendaError, agendaKey, useDayAgenda } from './useDayAgenda.ts';
-import { useNow } from './useNow.ts';
+} from '../agenda/dayTime.ts';
+import { AgendaError } from '../agenda/agendaQuery.ts';
+import { TaskItem, TaskToggleError } from '../agenda/TaskItem.tsx';
+import { useNow } from '../agenda/useNow.ts';
+import { useToggleTask } from '../agenda/useToggleTask.ts';
+import { agendaKey, patchDayTasks, useDayAgenda } from './useDayAgenda.ts';
 
 type AllDayEvent = Schemas['AllDayEventItem'];
 
-interface TodayViewProps {
-  /** Selected calendar day; omit to follow the live local day. */
-  date?: string | undefined;
-  /** IANA zone defining "today"; defaults to the browser's. */
+interface DayViewProps {
+  /** The floating date (`YYYY-MM-DD`) to show. */
+  date: string;
+  /** IANA zone defining the day and "today"; defaults to the browser's. */
   timeZone?: string | undefined;
   /** BCP 47 locale for formatting; defaults to the browser's. */
   locale?: string | undefined;
 }
 
-export function TodayView({ timeZone: zoneOverride, locale, date: selectedDate }: TodayViewProps) {
+/**
+ * The agenda of one day. When that day is today it also tracks the clock: events are marked
+ * Earlier, Now and Next, and timed tasks whose time has passed are flagged.
+ */
+export function DayView({ date, timeZone: zoneOverride, locale }: DayViewProps) {
   const timeZone = useMemo(() => zoneOverride ?? browserTimeZone(), [zoneOverride]);
   const now = useNow();
-  const date = selectedDate ?? localDate(now, timeZone);
+  const today = localDate(now, timeZone);
   const agenda = useDayAgenda(date, timeZone);
-  const toggle = useToggleTask(agendaKey(date, timeZone));
+  const toggle = useToggleTask(agendaKey(date, timeZone), patchDayTasks);
+  const formatHeading = (day: string) =>
+    formatDate(day, locale, { withYear: day.slice(0, 4) !== today.slice(0, 4) });
+  const agendaName = date === today ? 'today’s agenda' : 'the agenda for this day';
 
   if (agenda.isPending) {
     return (
-      <section aria-labelledby="today-heading">
-        <h1 id="today-heading">{formatDate(date, locale)}</h1>
-        <p role="status">{selectedDate ? 'Loading agenda…' : 'Loading today’s agenda…'}</p>
+      <section aria-labelledby="day-heading">
+        <h1 id="day-heading">{formatHeading(date)}</h1>
+        <p role="status">Loading {agendaName}…</p>
       </section>
     );
   }
   if (agenda.isError && !agenda.data) {
     return (
-      <section aria-labelledby="today-heading">
-        <h1 id="today-heading">{formatDate(date, locale)}</h1>
+      <section aria-labelledby="day-heading">
+        <h1 id="day-heading">{formatHeading(date)}</h1>
         <div role="alert" className="notice notice-error">
-          <p>{selectedDate ? 'Couldn’t load agenda.' : 'Couldn’t load today’s agenda.'}</p>
+          <p>Couldn’t load {agendaName}.</p>
           {agenda.error instanceof AgendaError && <p>{agenda.error.message}</p>}
           <button type="button" onClick={() => void agenda.refetch()}>
             Try again
@@ -60,11 +70,11 @@ export function TodayView({ timeZone: zoneOverride, locale, date: selectedDate }
     );
   }
 
-  // After midnight the previous day's data stays on screen until the new day loads; the heading
-  // follows the data so the two never disagree.
+  // After midnight, or on moving to another day, the previous day's data stays on screen until the
+  // new day loads; the heading follows the data so the two never disagree.
   const stale = agenda.isPlaceholderData;
   const shownDate = agenda.data.date;
-  const heading = formatDate(shownDate, locale);
+  const isToday = shownDate === today;
   const { allDayEvents, events } = agenda.data;
   const overdueTasks = openFirst(agenda.data.tasks.overdue);
   const dueTodayTasks = openFirst(agenda.data.tasks.dueToday);
@@ -80,13 +90,13 @@ export function TodayView({ timeZone: zoneOverride, locale, date: selectedDate }
 
   return (
     <section
-      aria-labelledby="today-heading"
+      aria-labelledby="day-heading"
       className={stale ? 'is-stale' : undefined}
       aria-busy={stale}
     >
-      <header className="today-header">
-        <p className="eyebrow">{stale ? 'Previous day' : selectedDate ? 'Calendar' : 'Today'}</p>
-        <h1 id="today-heading">{heading}</h1>
+      <header className="day-header">
+        <p className="eyebrow">{relativeDay(shownDate, today)}</p>
+        <h1 id="day-heading">{formatHeading(shownDate)}</h1>
         <button
           type="button"
           className="refresh"
@@ -115,19 +125,11 @@ export function TodayView({ timeZone: zoneOverride, locale, date: selectedDate }
           </button>
         </div>
       )}
-      {toggle.isError && (
-        <p role="alert" className="notice notice-error">
-          {toggle.error instanceof TaskUpdateError && toggle.error.status === 409
-            ? 'That task was changed elsewhere. The list has been refreshed; please try again.'
-            : 'Couldn’t update the task. Your change was undone.'}
-        </p>
-      )}
+      <TaskToggleError error={toggle.error} />
 
       {isEmpty && (
         <p className="empty">
-          {selectedDate
-            ? 'Nothing scheduled for this day.'
-            : 'Nothing scheduled today. Enjoy the free day!'}
+          {isToday ? 'Nothing scheduled today. Enjoy the free day!' : 'Nothing scheduled.'}
         </p>
       )}
 
@@ -138,7 +140,7 @@ export function TodayView({ timeZone: zoneOverride, locale, date: selectedDate }
             {allDayEvents.map((event) => (
               <li key={event.id} className="item">
                 <span className="item-title">{event.title}</span>
-                <AllDayDetail event={event} today={shownDate} />
+                <AllDayDetail event={event} day={shownDate} />
                 <Location value={event.location} />
               </li>
             ))}
@@ -149,7 +151,12 @@ export function TodayView({ timeZone: zoneOverride, locale, date: selectedDate }
       {events.length > 0 && (
         <section aria-labelledby="schedule-heading">
           <h2 id="schedule-heading">Schedule</h2>
-          <Schedule events={events} nowMs={now} timeZone={timeZone} locale={locale} />
+          <Schedule
+            events={events}
+            nowMs={isToday ? now : undefined}
+            timeZone={timeZone}
+            locale={locale}
+          />
         </section>
       )}
 
@@ -175,14 +182,14 @@ export function TodayView({ timeZone: zoneOverride, locale, date: selectedDate }
           )}
           {tasks.dueToday.length > 0 && (
             <div>
-              <h3 id="due-today-heading">{selectedDate ? 'Due this day' : 'Due today'}</h3>
-              <ul className="items" aria-labelledby="due-today-heading">
+              <h3 id="due-heading">{isToday ? 'Due today' : 'Due this day'}</h3>
+              <ul className="items" aria-labelledby="due-heading">
                 {tasks.dueToday.map((task) => (
                   <TaskItem
                     key={task.id}
                     task={task}
                     dueAt={task.dueAt}
-                    pastDue={isPastDue(task, now)}
+                    pastDue={isToday && isPastDue(task, now)}
                     timeZone={timeZone}
                     locale={locale}
                     disabled={stale}
@@ -215,13 +222,13 @@ function Location({ value }: { value?: string | null | undefined }) {
   return value ? <span className="item-meta">{value}</span> : null;
 }
 
-function AllDayDetail({ event, today }: { event: AllDayEvent; today: string }) {
+function AllDayDetail({ event, day }: { event: AllDayEvent; day: string }) {
   const length = daysBetween(event.startDate, event.endDate);
   if (length <= 1) {
     return null;
   }
-  const day = daysBetween(event.startDate, today) + 1;
-  return <span className="item-meta">{`Day ${String(day)} of ${String(length)}`}</span>;
+  const dayNumber = daysBetween(event.startDate, day) + 1;
+  return <span className="item-meta">{`Day ${String(dayNumber)} of ${String(length)}`}</span>;
 }
 
 const STATUS_LABEL: Record<EventStatus, string | null> = {
@@ -238,20 +245,22 @@ function Schedule({
   locale,
 }: {
   events: TimedEvent[];
-  nowMs: number;
+  /** The current time when the day shown is today; without it no event gets a status. */
+  nowMs: number | undefined;
   timeZone: string;
   locale?: string | undefined;
 }) {
-  const statuses = eventStatuses(events, nowMs);
+  const statuses = nowMs === undefined ? undefined : eventStatuses(events, nowMs);
+  const relative = nowMs !== undefined;
   return (
     <ul className="items">
       {events.map((event) => {
-        const status = statuses.get(event.id) ?? 'upcoming';
+        const status = statuses?.get(event.id) ?? 'upcoming';
         const label = STATUS_LABEL[status];
         return (
           <li key={event.id} className={`item event event-${status}`}>
             <span className="item-time">
-              <EventTimes event={event} timeZone={timeZone} locale={locale} />
+              <EventTimes event={event} relative={relative} timeZone={timeZone} locale={locale} />
             </span>
             <span className="item-title">{event.title}</span>
             {label && <span className={`badge badge-${status}`}>{label}</span>}
@@ -265,23 +274,40 @@ function Schedule({
 
 function EventTimes({
   event,
+  relative,
   timeZone,
   locale,
 }: {
   event: TimedEvent;
+  /** Say "yesterday" and "tomorrow" (the day shown is today) rather than "the previous/next day". */
+  relative: boolean;
   timeZone: string;
   locale?: string | undefined;
 }) {
+  const before = relative ? 'yesterday' : 'the previous day';
+  const after = relative ? 'tomorrow' : 'the next day';
   const start = <time dateTime={event.start}>{formatTime(event.start, timeZone, locale)}</time>;
   const end = <time dateTime={event.end}>{formatTime(event.end, timeZone, locale)}</time>;
   if (event.startsBeforeDay && event.endsAfterDay) {
-    return <>Continues from yesterday to tomorrow</>;
+    return (
+      <>
+        Continues from {before} to {after}
+      </>
+    );
   }
   if (event.startsBeforeDay) {
-    return <>Continues from yesterday, until {end}</>;
+    return (
+      <>
+        Continues from {before}, until {end}
+      </>
+    );
   }
   if (event.endsAfterDay) {
-    return <>From {start}, continues tomorrow</>;
+    return (
+      <>
+        From {start}, continues {after}
+      </>
+    );
   }
   return (
     <>
@@ -289,66 +315,5 @@ function EventTimes({
       {' – '}
       {end}
     </>
-  );
-}
-
-interface TaskItemProps {
-  task: AgendaTask;
-  /** Text shown for the due state (overdue tasks). */
-  detail?: string | undefined;
-  overdue?: boolean | undefined;
-  dueAt?: string | null | undefined;
-  pastDue?: boolean | undefined;
-  timeZone?: string | undefined;
-  locale?: string | undefined;
-  disabled: boolean;
-  onToggle: (task: AgendaTask) => void;
-}
-
-function TaskItem({
-  task,
-  detail,
-  overdue,
-  dueAt,
-  pastDue,
-  timeZone,
-  locale,
-  disabled,
-  onToggle,
-}: TaskItemProps) {
-  const metaId = `task-meta-${task.id}`;
-  const showMeta = !!detail || (!!dueAt && !!timeZone) || pastDue;
-  return (
-    <li
-      className={`item task${task.isCompleted ? ' task-done' : ''}${overdue && !task.isCompleted ? ' task-overdue' : ''}`}
-    >
-      <label className="task-label">
-        <input
-          type="checkbox"
-          checked={task.isCompleted}
-          disabled={disabled}
-          aria-describedby={showMeta ? metaId : undefined}
-          onChange={() => {
-            onToggle(task);
-          }}
-        />
-        <span className="item-title">{task.title}</span>
-      </label>
-      {task.priority && <span className="badge">{task.priority} priority</span>}
-      {task.notes && <p className="task-notes">{task.notes}</p>}
-      {showMeta && (
-        <span id={metaId} className="item-meta">
-          {detail && !task.isCompleted && <strong className="flag">{detail}</strong>}
-          {detail && task.isCompleted && 'Was overdue'}
-          {dueAt && timeZone && (
-            <>
-              {'Due '}
-              <time dateTime={dueAt}>{formatTime(dueAt, timeZone, locale)}</time>
-            </>
-          )}
-          {pastDue && <strong className="flag"> · Past due</strong>}
-        </span>
-      )}
-    </li>
   );
 }

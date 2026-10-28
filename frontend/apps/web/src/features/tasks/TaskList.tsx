@@ -4,9 +4,9 @@ import { useState } from 'react';
 
 import { views, taskView, type View } from './taskViews.ts';
 import { api } from '../../api/client.ts';
-import { browserTimeZone, localDate, isPastDue } from '../today/dayTime.ts';
-import { useNow } from '../today/useNow.ts';
-import { problemMessage } from '../today/useDayAgenda.ts';
+import { browserTimeZone, localDate, isPastDue } from '../agenda/dayTime.ts';
+import { useNow } from '../agenda/useNow.ts';
+import { problemMessage } from '../agenda/agendaQuery.ts';
 
 type Task = Schemas['TaskResponse'];
 export function TaskList() {

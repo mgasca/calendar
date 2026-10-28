@@ -4,9 +4,11 @@ import {
   eventStatuses,
   formatDate,
   formatTime,
+  isIsoDate,
   isPastDue,
   openFirst,
   localDate,
+  relativeDay,
   type AgendaTask,
   type TimedEvent,
 } from './dayTime.ts';
@@ -63,6 +65,12 @@ describe('daysBetween', () => {
 describe('formatting', () => {
   it('formats a floating date as a human heading', () => {
     expect(formatDate('2026-10-26', 'en-GB')).toMatch(/^Monday,? 26 October$/);
+  });
+
+  it('adds the year on request', () => {
+    expect(formatDate('2025-03-01', 'en-GB', { withYear: true })).toMatch(
+      /^Saturday,? 1 March 2025$/,
+    );
   });
 
   it('uses two-digit hours so morning and evening times line up', () => {
@@ -172,5 +180,39 @@ describe('openFirst', () => {
     ];
 
     expect(openFirst(tasks).map((t) => t.id)).toEqual(['b', 'd', 'a', 'c']);
+  });
+});
+
+describe('isIsoDate', () => {
+  it('accepts real YYYY-MM-DD dates, including 29 February in a leap year', () => {
+    expect(isIsoDate('2026-10-26')).toBe(true);
+    expect(isIsoDate('2028-02-29')).toBe(true);
+    expect(isIsoDate('1900-01-01')).toBe(true);
+    expect(isIsoDate('2200-12-31')).toBe(true);
+  });
+
+  it('rejects other formats and dates that do not exist', () => {
+    for (const value of ['2026-1-5', '26-10-2026', '2026/10/26', '2026-10-26T00:00', 'today', '']) {
+      expect(isIsoDate(value)).toBe(false);
+    }
+    expect(isIsoDate('2026-02-29')).toBe(false);
+    expect(isIsoDate('2026-13-01')).toBe(false);
+    expect(isIsoDate('2026-04-31')).toBe(false);
+    expect(isIsoDate('2026-10-00')).toBe(false);
+  });
+
+  it('rejects years outside the range the API supports', () => {
+    expect(isIsoDate('1899-12-31')).toBe(false);
+    expect(isIsoDate('2201-01-01')).toBe(false);
+  });
+});
+
+describe('relativeDay', () => {
+  it('names nearby days and counts the rest', () => {
+    expect(relativeDay('2026-10-26', '2026-10-26')).toBe('Today');
+    expect(relativeDay('2026-10-25', '2026-10-26')).toBe('Yesterday');
+    expect(relativeDay('2026-10-27', '2026-10-26')).toBe('Tomorrow');
+    expect(relativeDay('2026-10-20', '2026-10-26')).toBe('6 days ago');
+    expect(relativeDay('2026-11-02', '2026-10-26')).toBe('In 7 days');
   });
 });

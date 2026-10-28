@@ -1,9 +1,5 @@
-import { keepPreviousData, useQuery } from '@tanstack/react-query';
-
-import { api } from '../../api/client.ts';
-
-export const agendaKey = (date: string, timeZone: string) =>
-  ['agenda', 'day', date, timeZone] as const;
+/** Prefix shared by every agenda query, so one invalidation refreshes the day and week views. */
+export const AGENDA_KEY = ['agenda'] as const;
 
 /** Pick up changes made on other devices while the page stays open and visible. */
 export const AGENDA_REFETCH_INTERVAL_MS = 5 * 60_000;
@@ -45,27 +41,4 @@ export function shouldRetryAgenda(failureCount: number, error: Error): boolean {
     return false;
   }
   return failureCount < 2;
-}
-
-export function useDayAgenda(date: string, timeZone: string) {
-  return useQuery({
-    queryKey: agendaKey(date, timeZone),
-    queryFn: async ({ signal }) => {
-      const { data, error, response } = await api.GET('/api/agenda/day', {
-        params: { query: { date, timeZone } },
-        signal,
-      });
-      if (!data) {
-        throw new AgendaError(
-          response.status,
-          problemMessage(error) ?? `Loading the agenda failed: ${String(response.status)}`,
-        );
-      }
-      return data;
-    },
-    retry: shouldRetryAgenda,
-    refetchInterval: AGENDA_REFETCH_INTERVAL_MS,
-    // At midnight the key changes; keep showing the previous day until the new one arrives.
-    placeholderData: keepPreviousData,
-  });
 }

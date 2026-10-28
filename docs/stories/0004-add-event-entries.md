@@ -42,16 +42,18 @@ This story adds the event form to the day view, beside **Add task**, so an edito
 
 ### Acceptance criteria
 
-1. **Given** the day view, **when** I choose **Add event**, enter "Dentist" for 29 October 15:00–16:00 and save, **then** the form closes, a message says "Dentist added for Thu 29 Oct", and the event is listed on 29 October.
-2. **Given** an all-day event from 29 to 31 October (inclusive end in the form), **then** it is listed under *All day* on each of those three days and not on 1 November.
-3. **Given** a timed event from 23:30 to 00:30 the next day, **then** it appears on both days, marked as continuing.
-4. **Given** an empty title, or an end before the start, **then** the form does not submit and says what to fix next to the field.
-5. **Given** a start or end that doesn't exist because clocks change, **then** the form rejects it. **Given** one that occurs twice, **then** the form asks which occurrence is meant before it saves.
-6. **Given** the server rejects the request (400), **then** the form stays open, the message appears next to the matching field, and what I typed is kept.
-7. **Given** a network or server error (other than 400), **then** the form stays open with a message and can be submitted again. Nothing is shown as saved until the server confirms it. Saving disables the form, so it can't be submitted twice.
-8. **Given** two events at the same time, **then** both are saved and both are shown.
-9. The form is keyboard-operable with labelled controls. Focus moves to the title when it opens, and returns to **Add event** when it closes.
-10. Times in the form and the agenda use the browser's time zone.
+1. **Given** the day view is open, **when** I choose **Add event**, enter "Dentist" for 29 October 15:00–16:00 and save, **then** the form closes, a message says "Dentist added for Thu 29 Oct", and the event is listed on 29 October.
+2. **Given** the event form is open, **when** I save an all-day event from 29 to 31 October (inclusive end in the form), **then** it is listed under *All day* on each of those three days and not on 1 November.
+3. **Given** the event form is open, **when** I save a timed event from 23:30 to 00:30 the next day, **then** it appears on both days, marked as continuing.
+4. **Given** the event form is open, **when** I submit it with an empty title or an end before the start, **then** the form does not submit and says what to fix next to the field.
+5. **Given** the event form is open, **when** I enter a start or end that doesn't exist because clocks change, **then** the form rejects it.
+6. **Given** the event form is open, **when** I enter a start or end that occurs twice because clocks change, **then** the form asks which occurrence is meant before it saves.
+7. **Given** the event form is filled in, **when** the server rejects the request (400), **then** the form stays open, the message appears next to the matching field, and what I typed is kept.
+8. **Given** the event form is filled in, **when** saving fails with a network or server error (other than 400), **then** the form stays open with a message and can be submitted again, and nothing is shown as saved until the server confirms it.
+9. **Given** an event is being saved, **when** the request is in progress, **then** the form is disabled so it can't be submitted twice.
+10. **Given** an event exists at a time, **when** I save another event at the same time, **then** both are saved and both are shown.
+11. **Given** the day view is open, **when** I use the form with the keyboard alone, **then** all controls are labelled and operable, focus moves to the title when the form opens, and focus returns to **Add event** when it closes.
+12. **Given** the browser has a time zone, **when** the form and the agenda show times, **then** they use that time zone.
 
 ## Design decisions
 

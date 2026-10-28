@@ -1,6 +1,6 @@
 import type { Schemas } from '@calendar/api-client';
 import { useQuery } from '@tanstack/react-query';
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 
 import { views, taskView, type View } from './taskViews.ts';
 import { api } from '../../api/client.ts';
@@ -40,22 +40,30 @@ export function TaskList() {
     refetchInterval: 300_000,
   });
   const toggle = useToggleTask(['tasks'], patchTasks);
-  const rank: Record<string, number> = { high: 0, medium: 1, low: 2 };
-  const visible = (tasks.data ?? [])
-    .filter((task) => taskView(task, today, zone) === view)
-    .sort((a, b) => {
-      const date = (task: Task) =>
-        task.dueDate ?? (task.dueAt ? localDate(Date.parse(task.dueAt), zone) : '');
-      if (view === 'Completed')
-        return (b.completedAt ?? '').localeCompare(a.completedAt ?? '') || a.id.localeCompare(b.id);
-      return (
-        date(a).localeCompare(date(b)) ||
-        (a.dueAt ?? '').localeCompare(b.dueAt ?? '') ||
-        (rank[a.priority ?? 'medium'] ?? 1) - (rank[b.priority ?? 'medium'] ?? 1) ||
-        a.title.localeCompare(b.title) ||
-        a.id.localeCompare(b.id)
-      );
-    });
+  const visible = useMemo(() => {
+    const rank: Record<string, number> = { high: 0, medium: 1, low: 2 };
+    return (tasks.data ?? [])
+      .map((task) => ({
+        task,
+        date: task.dueDate ?? (task.dueAt ? localDate(Date.parse(task.dueAt), zone) : ''),
+      }))
+      .filter(({ task }) => taskView(task, today, zone) === view)
+      .sort((a, b) => {
+        if (view === 'Completed')
+          return (
+            (b.task.completedAt ?? '').localeCompare(a.task.completedAt ?? '') ||
+            a.task.id.localeCompare(b.task.id)
+          );
+        return (
+          a.date.localeCompare(b.date) ||
+          (a.task.dueAt ?? '').localeCompare(b.task.dueAt ?? '') ||
+          (rank[a.task.priority ?? 'medium'] ?? 1) - (rank[b.task.priority ?? 'medium'] ?? 1) ||
+          a.task.title.localeCompare(b.task.title) ||
+          a.task.id.localeCompare(b.task.id)
+        );
+      })
+      .map(({ task }) => task);
+  }, [tasks.data, today, view, zone]);
   return (
     <section aria-labelledby="personal-tasks-heading">
       <h1 id="personal-tasks-heading">My tasks</h1>

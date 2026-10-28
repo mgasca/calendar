@@ -17,6 +17,12 @@ public sealed class TodoTask
   /// <summary>Normalized, non-empty title.</summary>
   public string Title { get; private set; }
 
+  /// <summary>Priority level, one of low, medium, or high.</summary>
+  public string Priority { get; private set; } = "medium";
+
+  /// <summary>Optional task notes.</summary>
+  public string? Notes { get; private set; }
+
   /// <summary>Floating due date (no zone); mutually exclusive with <see cref="DueAt"/>.</summary>
   public DateOnly? DueDate { get; private set; }
 
@@ -33,7 +39,9 @@ public sealed class TodoTask
   /// <param name="title">The task title.</param>
   /// <param name="dueDate">Floating due date, or <c>null</c>.</param>
   /// <param name="dueAt">Due instant (normalized to UTC), or <c>null</c>.</param>
-  public static TodoTask Create(string title, DateOnly? dueDate = null, DateTimeOffset? dueAt = null)
+  /// <param name="priority">Priority level; defaults to medium.</param>
+  /// <param name="notes">Optional task notes.</param>
+  public static TodoTask Create(string title, DateOnly? dueDate = null, DateTimeOffset? dueAt = null, string priority = "medium", string? notes = null)
   {
     var normalizedTitle = Validation.NormalizeTitle(title, nameof(title));
     if (dueDate is not null && dueAt is not null)
@@ -41,10 +49,19 @@ public sealed class TodoTask
       throw new ArgumentException("A task can have a due date or a due instant, not both.", nameof(dueAt));
     }
 
+    if (priority is not ("low" or "medium" or "high"))
+    {
+      throw new ArgumentException("Priority must be low, medium or high.", nameof(priority));
+    }
+
+    var normalizedNotes = Validation.NormalizeOptional(notes, Validation.MaxNotesLength, nameof(notes));
+
     return new TodoTask
     {
       Id = Guid.NewGuid(),
       Title = normalizedTitle,
+      Priority = priority,
+      Notes = normalizedNotes,
       DueDate = dueDate,
       DueAt = dueAt?.ToUniversalTime(),
     };

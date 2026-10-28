@@ -18,6 +18,9 @@ export function AppLayout() {
         <Link to="/week" activeProps={{ 'aria-current': 'page' }}>
           Week
         </Link>
+        <Link to="/tasks" activeProps={{ 'aria-current': 'page' }}>
+          My tasks
+        </Link>
       </nav>
       <main>
         <Outlet />

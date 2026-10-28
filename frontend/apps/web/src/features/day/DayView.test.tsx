@@ -7,7 +7,7 @@ import { http, HttpResponse } from 'msw';
 import { renderInRouter } from '../../test/render.tsx';
 import { server } from '../../test/server.ts';
 import { DayView } from './DayView.tsx';
-import { TodayView } from './TodayView.tsx';
+import { useToday } from './useToday.ts';
 
 type Agenda = Schemas['DayAgendaResponse'];
 type Task = Schemas['TaskResponse'];
@@ -119,8 +119,12 @@ function serveAgenda(agenda: Agenda | (() => Agenda)) {
 }
 
 /** The day view following today's date, as the `/` route shows it. */
+function TodayView() {
+  return <DayView date={useToday(ZONE)} timeZone={ZONE} locale="en-GB" />;
+}
+
 function renderToday() {
-  return renderInRouter(<TodayView timeZone={ZONE} locale="en-GB" />);
+  return renderInRouter(<TodayView />);
 }
 
 function renderDay(date: string) {
@@ -258,6 +262,33 @@ describe('DayView', () => {
       expect(within(itemFor('Book flights')).queryByText(/Past due/)).not.toBeInTheDocument();
       expect(screen.getByRole('checkbox', { name: 'Buy milk' })).toBeChecked();
       expect(screen.getByRole('checkbox', { name: 'Book flights' })).not.toBeChecked();
+    });
+
+    it('shows a task’s priority and notes', async () => {
+      serveAgenda(
+        buildAgenda({
+          tasks: {
+            overdue: [],
+            dueToday: [
+              {
+                id: 't6',
+                title: 'Pack bag',
+                dueDate: '2026-10-26',
+                priority: 'high',
+                notes: 'Passport\nCharger',
+                isCompleted: false,
+              },
+            ],
+          },
+        }),
+      );
+      await renderToday();
+
+      await screen.findByRole('checkbox', { name: 'Pack bag' });
+      expect(within(itemFor('Pack bag')).getByText('high priority')).toBeInTheDocument();
+      expect(within(itemFor('Pack bag')).getByText(/Passport/)).toHaveTextContent(
+        'Passport Charger',
+      );
     });
   });
 

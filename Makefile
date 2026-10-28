@@ -59,6 +59,7 @@ adr-check: ## Validate ADRs in docs/decisions (pass flags via ARGS=, e.g. ARGS=-
 	$(ADR_CHECK) $(ARGS)
 
 db-up: ## Start the local PostgreSQL (creates .env from .env.example on first run)
+	@test -f docker/postgres/init/01-roles.sh || { echo "docker/postgres/init/01-roles.sh is missing: the working tree is incomplete (check 'git status', then 'git pull')." >&2; exit 1; }
 	@test -f .env || { cp .env.example .env && echo "Created .env from .env.example"; }
 	$(COMPOSE) up -d --wait postgres
 

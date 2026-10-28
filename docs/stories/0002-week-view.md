@@ -46,13 +46,13 @@ The Today view can only show today. This story also makes any day viewable, so t
 
 ### Acceptance criteria
 
-1. `/week` shows the current Monday–Sunday week in the browser's time zone, with all-day events, timed events and tasks on the correct days. Each day matches what the day view shows for that date.
-2. Previous, This week and Next change the URL and the content. The browser's back and forward buttons restore them, and a week URL can be bookmarked.
-3. Selecting a day's heading opens that day. The day view and the Today view are the same view.
-4. Ticking a task in the week updates it immediately, and the change shows in the day view without a reload.
-5. Completed tasks show struck through, after the open ones, in past, current and future weeks.
-6. The Overdue panel follows the rules under *Other decisions*, and never repeats a task that is already shown in a day column.
-7. All of the above works in weeks with a daylight-saving change, and is usable with a keyboard and with assistive technology.
+1. **Given** a chosen date and the browser's time zone, **when** `/week` loads, **then** it shows the containing Monday–Sunday week with all-day events, timed events and tasks on the correct days, matching the day view for each date.
+2. **Given** the week view is open, **when** Previous, This week or Next is selected, the browser navigates back or forward, or a week URL is opened directly, **then** the URL and content show the corresponding week and the URL remains bookmarkable.
+3. **Given** a day is shown in the week view, **when** its heading is selected, **then** that day opens in the same view used by the Today view.
+4. **Given** a task is shown in the week view, **when** it is ticked, **then** it updates immediately and the change appears in the day view without a reload.
+5. **Given** completed tasks exist in a past, current or future week, **when** that week is displayed, **then** they appear struck through after open tasks.
+6. **Given** a week contains today or is in the future, **when** its Overdue panel is displayed, **then** it follows the overdue rules and does not repeat tasks shown in a day column.
+7. **Given** the week contains a daylight-saving change, **when** it is displayed and operated with a keyboard or assistive technology, **then** all week-view behaviours remain correct and usable.
 
 ## Design decisions
 

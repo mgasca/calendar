@@ -220,6 +220,61 @@ button {
   opacity: 0.5;
 }
 
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: end;
+  gap: 0.5rem;
+  margin: 1rem 0;
+}
+
+button[aria-pressed='true'] {
+  border: 2px solid var(--accent);
+  font-weight: 700;
+}
+
+.task-form {
+  margin: 1rem 0;
+  padding: 1rem;
+  border: 1px solid var(--border);
+  border-radius: 0.5rem;
+}
+
+.task-form fieldset {
+  border: 0;
+  padding: 0;
+  min-width: 0;
+}
+
+.task-form label,
+.actions label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  margin-bottom: 0.75rem;
+}
+
+input:not([type='checkbox']),
+textarea,
+select {
+  box-sizing: border-box;
+  max-width: 100%;
+  min-height: 2.5rem;
+  padding: 0.5rem;
+  font: inherit;
+}
+
+.task-notes {
+  flex-basis: 100%;
+  margin: 0;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.item-title {
+  overflow-wrap: anywhere;
+}
+
 .visually-hidden {
   position: absolute;
   width: 1px;

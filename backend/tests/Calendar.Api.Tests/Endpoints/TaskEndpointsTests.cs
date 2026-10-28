@@ -24,6 +24,18 @@ public sealed class TaskEndpointsTests(PostgresFixture postgres) : ApiTestBase(p
   }
 
   [Fact]
+  public async Task CreateTask_WithPriorityAndNotes_AppearsInListAndAgenda()
+  {
+    var created = await CreateAsync(new { title = "Plan trip", dueDate = "2026-10-26", priority = "high", notes = "  Book tickets  " });
+    created.Priority.ShouldBe("high");
+    created.Notes.ShouldBe("Book tickets");
+    var listed = await Client.GetFromJsonAsync<List<TaskResponse>>(Tasks, Ct);
+    listed.ShouldNotBeNull().ShouldContain(created);
+    var agenda = await Client.GetFromJsonAsync<DayAgendaResponse>(new Uri("/api/agenda/day?date=2026-10-26&timeZone=Europe/London", UriKind.Relative), Ct);
+    agenda.ShouldNotBeNull().Tasks.DueToday.ShouldContain(created);
+  }
+
+  [Fact]
   public async Task CreateTask_WithDueDate_RoundTrips()
   {
     var created = await CreateAsync(new { title = " Pay rent ", dueDate = "2026-10-26" });
@@ -58,6 +70,8 @@ public sealed class TaskEndpointsTests(PostgresFixture postgres) : ApiTestBase(p
 
   public static TheoryData<string, string, object> InvalidRequests => new()
     {
+        { "invalid priority", "priority", new { title = "T", priority = "urgent" } },
+        { "notes too long", "notes", new { title = "T", notes = new string('a', 4001) } },
         { "blank title", "title", new { title = " " } },
         { "title too long", "title", new { title = new string('a', 201) } },
         { "both due values", "dueAt", new { title = "T", dueDate = "2026-10-26", dueAt = "2026-10-26T10:00:00Z" } },

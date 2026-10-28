@@ -9,8 +9,10 @@ import {
 
 import { AppLayout, InvalidDatePage, NotFoundPage } from './App.tsx';
 import { browserTimeZone, isIsoDate, localDate } from './features/agenda/dayTime.ts';
-import { DayView } from './features/day/DayView.tsx';
-import { TodayView } from './features/day/TodayView.tsx';
+import { DayPage } from './features/day/DayPage.tsx';
+import { useToday } from './features/day/useToday.ts';
+import { AddTask } from './features/tasks/AddTask.tsx';
+import { TaskList } from './features/tasks/TaskList.tsx';
 import { isoWeekStart } from './features/week/weekDates.ts';
 import { WeekView } from './features/week/WeekView.tsx';
 
@@ -33,7 +35,9 @@ const todayRoute = createRoute({
   path: '/',
   component: function TodayRoute() {
     const { timeZone, locale } = todayRoute.useRouteContext();
-    return <TodayView timeZone={timeZone} locale={locale} />;
+    // Follows the clock, so the page moves on to the next day at local midnight.
+    const today = useToday(timeZone);
+    return <DayPage date={today} timeZone={timeZone} locale={locale} />;
   },
 });
 
@@ -54,7 +58,20 @@ const dayRoute = createRoute({
   component: function DayRoute() {
     const { date } = dayRoute.useParams();
     const { timeZone, locale } = dayRoute.useRouteContext();
-    return <DayView date={date} timeZone={timeZone} locale={locale} />;
+    return <DayPage date={date} timeZone={timeZone} locale={locale} />;
+  },
+});
+
+const tasksRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/tasks',
+  component: function TasksRoute() {
+    return (
+      <>
+        <AddTask />
+        <TaskList />
+      </>
+    );
   },
 });
 
@@ -98,7 +115,13 @@ const weekRoute = createRoute({
   },
 });
 
-const routeTree = rootRoute.addChildren([todayRoute, dayRoute, currentWeekRoute, weekRoute]);
+const routeTree = rootRoute.addChildren([
+  todayRoute,
+  dayRoute,
+  currentWeekRoute,
+  weekRoute,
+  tasksRoute,
+]);
 
 export interface AppRouterOptions {
   /** Defaults to the browser's history; tests pass a memory history. */

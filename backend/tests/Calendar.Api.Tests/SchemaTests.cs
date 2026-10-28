@@ -6,6 +6,20 @@ namespace Calendar.Api.Tests;
 /// <summary>The database enforces the invariants itself, not only the domain code.</summary>
 public sealed class SchemaTests(PostgresFixture postgres) : ApiTestBase(postgres)
 {
+  [Theory]
+  [InlineData("ix_tasks_open_due_date", "due_date")]
+  [InlineData("ix_tasks_open_due_at", "due_at")]
+  public async Task OpenTaskDueIndex_ExcludesCompletedAndUndatedTasks(string indexName, string column)
+  {
+    await using var db = Postgres.Database.CreateMigratorContext();
+    var definition = await db.Database.SqlQuery<string>(
+        $"SELECT indexdef AS \"Value\" FROM pg_indexes WHERE tablename = 'tasks' AND indexname = {indexName}").SingleAsync(Ct);
+
+    definition.ShouldContain($"({column})");
+    definition.ShouldContain($"({column} IS NOT NULL)");
+    definition.ShouldContain("(completed_at IS NULL)");
+  }
+
   [Fact]
   public async Task Task_WithBothDueValues_IsRejected()
   {

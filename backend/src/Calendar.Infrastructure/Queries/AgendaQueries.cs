@@ -47,9 +47,12 @@ public static class AgendaQueries
   {
     ArgumentNullException.ThrowIfNull(tasks);
     var (date, start, end) = (window.Date, window.Start, window.End);
-    return tasks.Where(t =>
-        (t.DueDate < date || t.DueAt < start)
-        && (t.CompletedAt == null || (t.CompletedAt >= start && t.CompletedAt < end)));
+
+    // Two disjoint branches (UNION ALL) rather than one OR, so open tasks are read from the open-task due
+    // indexes and today's completions from the completed-at index, never the whole completed history.
+    var pastDue = tasks.Where(t => t.DueDate < date || t.DueAt < start);
+    return pastDue.Where(t => t.CompletedAt == null)
+        .Concat(pastDue.Where(t => t.CompletedAt >= start && t.CompletedAt < end));
   }
 
   /// <summary>

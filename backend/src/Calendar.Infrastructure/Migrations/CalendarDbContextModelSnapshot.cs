@@ -160,6 +160,14 @@ namespace Calendar.Infrastructure.Migrations
                         .HasDatabaseName("ix_tasks_due_date")
                         .HasFilter("due_date IS NOT NULL");
 
+                    b.HasIndex(new[] { "DueAt" }, "ix_tasks_open_due_at")
+                        .HasDatabaseName("ix_tasks_open_due_at")
+                        .HasFilter("due_at IS NOT NULL AND completed_at IS NULL");
+
+                    b.HasIndex(new[] { "DueDate" }, "ix_tasks_open_due_date")
+                        .HasDatabaseName("ix_tasks_open_due_date")
+                        .HasFilter("due_date IS NOT NULL AND completed_at IS NULL");
+
                     b.ToTable("tasks", null, t =>
                         {
                             t.HasCheckConstraint("ck_tasks_due_date_xor_due_at", "due_date IS NULL OR due_at IS NULL");

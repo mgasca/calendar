@@ -329,19 +329,48 @@ public sealed class AgendaEndpointsTests(PostgresFixture postgres) : ApiTestBase
   }
 
   [Fact]
-  public async Task Tasks_DueToday_AreOrderedTimedByInstantThenDateOnlyByTitle()
+  public async Task Tasks_Overdue_PriorityBreaksEqualDeadlinesButNotEarlierDeadlines()
   {
     await SeedAsync(tasks:
     [
-        TodoTask.Create("zeta", new DateOnly(2026, 10, 26)),
-            TodoTask.Create("late", dueAt: Utc(2026, 10, 26, 21)),
-            TodoTask.Create("Alpha", new DateOnly(2026, 10, 26)),
-            TodoTask.Create("early", dueAt: Utc(2026, 10, 26, 9)),
+        TodoTask.Create("zeta", new DateOnly(2026, 10, 20), priority: "low"),
+            TodoTask.Create("later high", new DateOnly(2026, 10, 21), priority: "high"),
+            TodoTask.Create("date medium", new DateOnly(2026, 10, 20), priority: "medium"),
+            TodoTask.Create("date high", new DateOnly(2026, 10, 20), priority: "high"),
+            TodoTask.Create("timed medium", dueAt: Utc(2026, 10, 20, 12), priority: "medium"),
+            TodoTask.Create("timed low", dueAt: Utc(2026, 10, 20, 12), priority: "low"),
+            TodoTask.Create("timed high", dueAt: Utc(2026, 10, 20, 12), priority: "high"),
+        ]);
+
+    var overdue = (await GetAgendaAsync("2026-10-26", NewYork)).Tasks.Overdue;
+
+    overdue.Select(t => t.Title).ShouldBe(
+    [
+        "timed high", "timed medium", "timed low",
+        "date high", "date medium", "zeta",
+        "later high",
+    ]);
+  }
+
+  [Fact]
+  public async Task Tasks_DueToday_DeadlinePrecedesPriorityAndPriorityPrecedesTitle()
+  {
+    await SeedAsync(tasks:
+    [
+        TodoTask.Create("date zeta", new DateOnly(2026, 10, 26), priority: "low"),
+            TodoTask.Create("date medium", new DateOnly(2026, 10, 26), priority: "medium"),
+            TodoTask.Create("date high", new DateOnly(2026, 10, 26), priority: "high"),
+            TodoTask.Create("late high", dueAt: Utc(2026, 10, 26, 21), priority: "high"),
+            TodoTask.Create("early low", dueAt: Utc(2026, 10, 26, 9), priority: "low"),
+            TodoTask.Create("early medium", dueAt: Utc(2026, 10, 26, 9), priority: "medium"),
+            TodoTask.Create("early high z", dueAt: Utc(2026, 10, 26, 9), priority: "high"),
+            TodoTask.Create("early high a", dueAt: Utc(2026, 10, 26, 9), priority: "high"),
         ]);
 
     var dueToday = (await GetAgendaAsync("2026-10-26", NewYork)).Tasks.DueToday;
 
-    dueToday.Select(t => t.Title).ShouldBe(["early", "late", "Alpha", "zeta"]);
+    dueToday.Select(t => t.Title).ShouldBe(
+        ["early high a", "early high z", "early medium", "early low", "late high", "date high", "date medium", "date zeta"]);
   }
 
   [Fact]

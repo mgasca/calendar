@@ -60,15 +60,76 @@ internal static class AgendaBuilder
     return new AgendaSnapshot(
         range,
         [.. allDay.Order(AgendaOrder.AllDayEvents)],
-        [.. range.Days.Select(day => Bucket(day, timed, due))],
+        Bucket(range, timed, due),
         overdue is null ? null : [.. overdue.Order(AgendaOrder.OverdueTasks(range.Zone))]);
   }
 
-  private static AgendaSnapshotDay Bucket(DayWindow day, List<TimedEventItem> timed, List<TaskResponse> due) => new(
-      day,
-      [.. timed
-          .Where(e => DayInclusion.TimedEventOverlaps(e.Start, e.End, day))
-          .Select(e => e with { StartsBeforeDay = e.Start < day.Start, EndsAfterDay = e.End > day.End })
-          .Order(AgendaOrder.TimedEvents)],
-      [.. due.Where(t => DayInclusion.IsDueOn(t.DueDate, t.DueAt, day)).Order(AgendaOrder.DueTasks)]);
+  /// <summary>
+  /// Splits the range's items into its days. Each item is tested only against the days its instants or date can
+  /// fall on (found by binary search over the sorted day boundaries), and <see cref="DayInclusion"/> still
+  /// decides, so the work is linear in the items rather than days × items.
+  /// </summary>
+  internal static IReadOnlyList<AgendaSnapshotDay> Bucket(
+      DateRangeWindow range, IReadOnlyList<TimedEventItem> timed, IReadOnlyList<TaskResponse> due)
+  {
+    var days = range.Days;
+    var eventsByDay = days.Select(_ => new List<TimedEventItem>()).ToArray();
+    var tasksByDay = days.Select(_ => new List<TaskResponse>()).ToArray();
+
+    foreach (var evt in timed)
+    {
+      // Ends and starts are monotonic, including repeated boundaries for skipped dates.
+      var first = LowerBound(days, day => day.End > evt.Start);
+      var end = LowerBound(days, day => day.Start >= evt.End);
+      for (var i = first; i < end; i++)
+      {
+        var day = days[i];
+        if (DayInclusion.TimedEventOverlaps(evt.Start, evt.End, day))
+        {
+          eventsByDay[i].Add(evt with { StartsBeforeDay = evt.Start < day.Start, EndsAfterDay = evt.End > day.End });
+        }
+      }
+    }
+
+    foreach (var task in due)
+    {
+      var dateIndex = task.DueDate is { } date ? date.DayNumber - range.StartDate.DayNumber : -1;
+      if (dateIndex >= 0 && dateIndex < days.Count && DayInclusion.IsDueOn(task.DueDate, task.DueAt, days[dateIndex]))
+      {
+        tasksByDay[dateIndex].Add(task);
+      }
+
+      if (task.DueAt is { } at)
+      {
+        var index = LowerBound(days, day => day.Start > at) - 1;
+        if (index >= 0 && index != dateIndex && DayInclusion.IsDueOn(task.DueDate, task.DueAt, days[index]))
+        {
+          tasksByDay[index].Add(task);
+        }
+      }
+    }
+
+    return [.. days.Select((day, i) => new AgendaSnapshotDay(
+        day, [.. eventsByDay[i].Order(AgendaOrder.TimedEvents)], [.. tasksByDay[i].Order(AgendaOrder.DueTasks)]))];
+  }
+
+  private static int LowerBound(IReadOnlyList<DayWindow> days, Func<DayWindow, bool> predicate)
+  {
+    var low = 0;
+    var high = days.Count;
+    while (low < high)
+    {
+      var middle = low + ((high - low) / 2);
+      if (predicate(days[middle]))
+      {
+        high = middle;
+      }
+      else
+      {
+        low = middle + 1;
+      }
+    }
+
+    return low;
+  }
 }

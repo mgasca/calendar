@@ -1,4 +1,4 @@
-import { screen, waitFor } from '@testing-library/react';
+import { fireEvent, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { http, HttpResponse } from 'msw';
 import { renderWithProviders } from '../../test/render.tsx';
@@ -6,6 +6,9 @@ import { server } from '../../test/server.ts';
 import { EventForm } from './EventForm.tsx';
 
 describe('event creation', () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
   it('sends a timed event and closes only after confirmation', async () => {
     let body: unknown;
     server.use(
@@ -173,6 +176,81 @@ describe('validation and request handling', () => {
     await waitFor(() => {
       expect(close).toHaveBeenCalledOnce();
     });
+  });
+  it('opens as a modal dialog named by its heading, with focus on the title', () => {
+    const showModal = vi.spyOn(HTMLDialogElement.prototype, 'showModal');
+    renderWithProviders(<EventForm date="2026-10-29" timeZone="UTC" onClose={vi.fn()} />);
+    expect(showModal).toHaveBeenCalledOnce();
+    expect(screen.getByRole('dialog', { name: 'Add event' })).toBeVisible();
+    expect(screen.getByLabelText('Title')).toHaveFocus();
+  });
+  it('closes on Escape without a prompt and saves nothing', async () => {
+    let posts = 0;
+    server.use(
+      http.post('/api/events', () => {
+        posts += 1;
+        return HttpResponse.json({ id: 'new' }, { status: 201 });
+      }),
+    );
+    const confirm = vi.spyOn(window, 'confirm');
+    const close = vi.fn();
+    renderWithProviders(<EventForm date="2026-10-29" timeZone="UTC" onClose={close} />);
+    await userEvent.type(screen.getByLabelText('Title'), 'Unsaved');
+    // Escape makes the browser fire a cancelable "cancel" event on the dialog. The form handles it
+    // itself, so the browser's own close must be prevented.
+    const notPrevented = fireEvent(
+      screen.getByRole('dialog'),
+      new Event('cancel', { cancelable: true }),
+    );
+    expect(notPrevented).toBe(false);
+    expect(close).toHaveBeenCalledOnce();
+    expect(close).toHaveBeenCalledWith();
+    expect(confirm).not.toHaveBeenCalled();
+    expect(posts).toBe(0);
+  });
+  it('closes from Cancel without a prompt, even after typing', async () => {
+    const confirm = vi.spyOn(window, 'confirm');
+    const close = vi.fn();
+    renderWithProviders(<EventForm date="2026-10-29" timeZone="UTC" onClose={close} />);
+    await userEvent.type(screen.getByLabelText('Title'), 'Unsaved');
+    await userEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+    expect(close).toHaveBeenCalledOnce();
+    expect(close).toHaveBeenCalledWith();
+    expect(confirm).not.toHaveBeenCalled();
+  });
+  it('ignores Escape while a save is pending', async () => {
+    let release: () => void = () => undefined;
+    const pending = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    server.use(
+      http.post('/api/events', async () => {
+        await pending;
+        return HttpResponse.json({ id: 'new' }, { status: 201 });
+      }),
+    );
+    const close = vi.fn();
+    renderWithProviders(
+      <EventForm
+        date="2026-10-29"
+        timeZone="UTC"
+        initialValues={{ title: 'Pending' }}
+        onClose={close}
+      />,
+    );
+    await userEvent.click(screen.getByRole('button', { name: 'Save event' }));
+    await screen.findByRole('button', { name: 'Saving…' });
+    const notPrevented = fireEvent(
+      screen.getByRole('dialog'),
+      new Event('cancel', { cancelable: true }),
+    );
+    expect(notPrevented).toBe(false);
+    expect(close).not.toHaveBeenCalled();
+    release();
+    await waitFor(() => {
+      expect(close).toHaveBeenCalledOnce();
+    });
+    expect(close).toHaveBeenCalledWith({ title: 'Pending', date: expect.any(String) as string });
   });
   it('shows the browser time zone and sends it with the instant', () => {
     renderWithProviders(<EventForm date="2026-10-29" timeZone="Asia/Kolkata" onClose={vi.fn()} />);

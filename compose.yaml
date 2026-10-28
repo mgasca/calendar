@@ -25,7 +25,14 @@ services:
     volumes:
       - calendar-pgdata:/var/lib/postgresql
       # Runs once, on first start of an empty volume (`make db-reset` to re-run it).
-      - ./docker/postgres/init:/docker-entrypoint-initdb.d:ro
+      # create_host_path: false — if the folder is missing (e.g. mid-checkout), fail instead of letting the
+      # Docker daemon create it as an empty root-owned directory, which then blocks `git pull`.
+      - type: bind
+        source: ./docker/postgres/init
+        target: /docker-entrypoint-initdb.d
+        read_only: true
+        bind:
+          create_host_path: false
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U \"$$POSTGRES_USER\" -d \"$$POSTGRES_DB\""]
       interval: 5s

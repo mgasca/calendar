@@ -1,8 +1,9 @@
+import { fileURLToPath } from 'node:url';
 import { defineConfig } from 'astro/config';
 import starlight from '@astrojs/starlight';
 import { unified } from '@astrojs/markdown-remark';
-import { deployment, remarkAdrLinks, repository } from './src/lib/adr';
-import { readLog } from './src/lib/adr-loader';
+import { deployment, remarkDocLinks, repository } from './src/lib/adr';
+import { documentRoutes } from './src/lib/docs-loader';
 
 const { site, base } = deployment(process.env.DOCS_SITE_URL);
 export default defineConfig({
@@ -13,10 +14,11 @@ export default defineConfig({
     processor: unified({
       remarkPlugins: [
         [
-          remarkAdrLinks,
+          remarkDocLinks,
           {
+            root: fileURLToPath(new URL('../../../', import.meta.url)),
             base,
-            files: async () => new Set((await readLog()).records.map((record) => record.file)),
+            links: documentRoutes,
           },
         ],
       ],
@@ -24,9 +26,9 @@ export default defineConfig({
   },
   integrations: [
     starlight({
-      title: 'Calendar · ADR Log',
+      title: 'Calendar · Docs',
       description:
-        'Architecture decisions for Calendar, with their context, alternatives and consequences.',
+        'Architecture decisions and user stories for Calendar, with their context, alternatives, consequences and user guides.',
       social: [{ icon: 'github', label: 'GitHub', href: repository }],
       customCss: ['./src/styles/docs.css'],
       sidebar: [
@@ -34,6 +36,13 @@ export default defineConfig({
         {
           label: 'Architecture decisions',
           items: [{ autogenerate: { directory: '../../../docs/decisions' } }],
+        },
+        {
+          label: 'User stories',
+          items: [
+            { slug: 'stories', label: 'All stories' },
+            { autogenerate: { directory: '../../../docs/stories' } },
+          ],
         },
       ],
     }),

@@ -10,6 +10,15 @@ configure({ asyncUtilTimeout: 5000 });
 // jsdom doesn't implement scrolling; the router's scroll restoration calls it on every navigation.
 window.scrollTo = () => undefined;
 
+// jsdom doesn't implement the modal <dialog> methods. Model the part the app relies on: opening and closing.
+// Focus trapping and the inert background are browser behaviour and can't be tested here.
+HTMLDialogElement.prototype.showModal = function showModal(this: HTMLDialogElement) {
+  this.setAttribute('open', '');
+};
+HTMLDialogElement.prototype.close = function close(this: HTMLDialogElement) {
+  this.removeAttribute('open');
+};
+
 beforeAll(() => {
   server.listen({ onUnhandledFrame: 'error' });
 });

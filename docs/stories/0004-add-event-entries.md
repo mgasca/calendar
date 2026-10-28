@@ -1,5 +1,5 @@
 ---
-status: in-progress
+status: implemented
 date: 2026-10-27
 pr: https://github.com/mgasca/calendar/pull/35
 adrs: [0018, 0019, 0020, 0021, 0026]
@@ -54,11 +54,11 @@ This story adds the event form to the day view, beside **Add task**, so an edito
 6. **Given** the event form is open, **when** I enter a start or end that occurs twice because clocks change, **then** the form asks which occurrence is meant before it saves. [Repeated times](../../frontend/apps/web/src/features/events/EventForm.test.tsx) (`requires explicit choices for repeated start and end times`).
 7. **Given** the event form is filled in, **when** the server rejects the request (400), **then** the form stays open, the message appears next to the matching field, and what I typed is kept. [Server validation](../../frontend/apps/web/src/features/events/EventForm.test.tsx) (`retains values after a field error and permits retry`).
 8. **Given** the event form is filled in, **when** saving fails with a network or server error (other than 400), **then** the form stays open with a message and can be submitted again, and nothing is shown as saved until the server confirms it. [Network retry](../../frontend/apps/web/src/features/events/EventForm.test.tsx) (`retains values after a network error and saves on retry`).
-9. **Given** an event is being saved, **when** the request is in progress, **then** the form is disabled so it can't be submitted twice, and the dialog can't be closed. [Pending save](../../frontend/apps/web/src/features/events/EventForm.test.tsx) (`disables all controls while a save is pending`) (the inline form's controls and Cancel are tested; Escape and the dialog are not yet).
-10. **Given** the dialog is open and I have typed values, **when** I select **Cancel** or press Escape, **then** the dialog closes without asking for confirmation, nothing is saved, and focus returns to **Add event**. (Not yet tested; to be added with the dialog.)
+9. **Given** an event is being saved, **when** the request is in progress, **then** the form is disabled so it can't be submitted twice, and the dialog can't be closed. [Pending save](../../frontend/apps/web/src/features/events/EventForm.test.tsx) (`disables all controls while a save is pending`) [Escape while saving](../../frontend/apps/web/src/features/events/EventForm.test.tsx) (`ignores Escape while a save is pending`).
+10. **Given** the dialog is open and I have typed values, **when** I select **Cancel** or press Escape, **then** the dialog closes without asking for confirmation, nothing is saved, and focus returns to **Add event**. [Escape](../../frontend/apps/web/src/features/events/EventForm.test.tsx) (`closes on Escape without a prompt and saves nothing`); [Cancel](../../frontend/apps/web/src/features/events/EventForm.test.tsx) (`closes from Cancel without a prompt, even after typing`); [focus returns to Add event](../../frontend/apps/web/src/App.test.tsx) (`returns focus to Add event when the dialog is cancelled, and saves nothing`).
 11. **Given** the day view shows one day, **when** I save an event for a different day and the save succeeds, **then** the view stays on the day it showed, the confirmation names the event's day and offers **Show day**, and selecting **Show day** opens that day. [Show day](../../frontend/apps/web/src/App.test.tsx) (`keeps the current day after saving elsewhere and Show day navigates`).
 12. **Given** an event exists at a time, **when** I save another event at the same time, **then** both are saved and both are shown. [Overlapping events](../../frontend/apps/web/src/App.test.tsx) (`shows a midnight event as continuing on both days and permits overlapping events`).
-13. **Given** the day view is open, **when** I use the dialog with the keyboard alone, **then** all controls are labelled and operable, focus moves to the title when the dialog opens and stays inside it while it is open, and focus returns to **Add event** when it closes. [Keyboard and focus](../../frontend/apps/web/src/App.test.tsx) (`saves a timed event, refreshes the agenda, and returns keyboard focus`) (focus staying inside the dialog is not yet tested).
+13. **Given** the day view is open, **when** I use the dialog with the keyboard alone, **then** all controls are labelled and operable, focus moves to the title when the dialog opens and stays inside it while it is open, and focus returns to **Add event** when it closes. [Keyboard and focus](../../frontend/apps/web/src/App.test.tsx) (`saves a timed event, refreshes the agenda, and returns keyboard focus`) [Modal dialog](../../frontend/apps/web/src/features/events/EventForm.test.tsx) (`opens as a modal dialog named by its heading, with focus on the title`); the focus trap itself is the browser's and isn't tested, because jsdom has no modal dialogs.
 14. **Given** the browser has a time zone, **when** the form and the agenda show times, **then** they use that time zone. [Form zone](../../frontend/apps/web/src/features/events/EventForm.test.tsx) (`shows the browser time zone and sends it with the instant`); [time resolver](../../frontend/apps/web/src/features/agenda/deadline.test.ts) (`resolves a half-hour offset in Kolkata`); [agenda time formatting](../../frontend/apps/web/src/features/day/DayView.test.tsx).
 
 ## Design decisions
@@ -88,7 +88,7 @@ No new ADR is expected. Adding a date-picker library or a form library would nee
 
 ## Implementation notes
 
-The event form uses the existing event endpoint and shared agenda queries. It was first delivered inline, matching **Add task** (#35). The decision is for it to be a modal dialog, so converting it is the remaining work (see the delivery plan).
+The event form uses the existing event endpoint and shared agenda queries. It was first delivered inline, matching **Add task** (#35), and is now a modal dialog (#37).
 
 ### Where things live
 
@@ -97,7 +97,7 @@ The event form uses the existing event endpoint and shared agenda queries. It wa
 | Pure logic | `frontend/apps/web/src/features/events/eventForm.ts`: defaults, linked fields, validation, request body, server error mapping |
 | Daylight-saving resolver | Moved from `features/tasks/deadline.ts` to `features/agenda/` (shared with the task form) |
 | Mutation | `features/events/useCreateEvent.ts`: `POST /api/events`, then invalidates `AGENDA_KEY` |
-| Form and button | `features/events/EventForm.tsx` (the form, to be shown in a modal `<dialog>`) and `AddEvent.tsx` (the button, the dialog, the confirmation and **Show day**) |
+| Form and button | `features/events/EventForm.tsx` (the form, shown in a modal `<dialog>`) and `AddEvent.tsx` (the button, the dialog, the confirmation and **Show day**) |
 | Entry point | `features/day/DayPage.tsx`, next to `AddTask`, with `date` as the initial date |
 
 ### API
@@ -106,7 +106,7 @@ No changes. Uses the existing `POST /api/events` ([0001](0001-today-view.md#api)
 
 ### Testing
 
-Vitest covers form logic, DST resolution, validation, retry, pending state, focus and routed agenda display. Existing API tests cover all-day and overnight agenda inclusion. See the links beside each acceptance criterion for the specific cases. The dialog adds tests that:
+Vitest covers form logic, DST resolution, validation, retry, pending state, focus and routed agenda display. Existing API tests cover all-day and overnight agenda inclusion. See the links beside each acceptance criterion for the specific cases. jsdom doesn't implement `showModal()` or `close()`, so `test/setup.ts` stubs them to open and close the dialog. The browser's focus trap and inert background aren't covered by tests. The dialog adds tests that:
 
 * Focus moves to the title, stays inside the dialog, and returns to **Add event** on close.
 * **Cancel** and Escape close the dialog without a prompt, even after typing, and nothing is saved.
@@ -115,7 +115,7 @@ Vitest covers form logic, DST resolution, validation, retry, pending state, focu
 ### Delivery plan
 
 1. **Done (#35):** the pure logic, the shared resolver, `useCreateEvent`, and the form and its entry point, delivered inline.
-2. **To do:** show the form in a modal `<dialog>` (`AddEvent` opens it with `showModal()`), close it on Cancel and Escape except while saving, and add the dialog tests above.
+2. **Done (#37):** the form is shown in a modal `<dialog>` that opens with `showModal()` and closes on Cancel and Escape except while saving, with the dialog tests above. The **Add event** button stays visible behind the dialog.
 
 ### Follow-ups
 
@@ -125,8 +125,6 @@ Vitest covers form logic, DST resolution, validation, retry, pending state, focu
 ## User guide
 
 ### Adding an event
-
-*Describes the dialog. Until the dialog is built, the form opens inline instead.*
 
 1. Open the day you want, then select **Add event**. A form opens over the page.
 2. Enter a title. The start and end default to the next half hour and one hour later on today; on other days, they start at 09:00.

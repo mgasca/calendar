@@ -1,17 +1,16 @@
 import { Link, useNavigate } from '@tanstack/react-router';
-import { useMemo } from 'react';
+import { useCallback, useMemo } from 'react';
 
 import { AgendaError } from '../agenda/agendaQuery.ts';
-import { browserTimeZone, localDate, type AgendaTask } from '../agenda/dayTime.ts';
+import { browserTimeZone, type AgendaTask } from '../agenda/dayTime.ts';
 import { TaskToggleError } from '../agenda/TaskItem.tsx';
-import { useNow } from '../agenda/useNow.ts';
+import { useToday } from '../agenda/useNow.ts';
 import { useToggleTask } from '../agenda/useToggleTask.ts';
-import { wallClockMinutes } from './gridLayout.ts';
 import { OverduePanel } from './OverduePanel.tsx';
 import { TimeGrid } from './TimeGrid.tsx';
 import { patchWeekTasks, useWeekAgenda, weekKey, type WeekAgenda } from './useWeekAgenda.ts';
 import { useWeekKeys } from './useWeekKeys.ts';
-import { addWeeks, formatWeekRange, isInWeek, isoWeekStart } from './weekDates.ts';
+import { addWeeks, formatWeekRange, isoWeekStart } from './weekDates.ts';
 
 interface WeekViewProps {
   /** The Monday (`YYYY-MM-DD`) of the week to show. */
@@ -28,12 +27,19 @@ interface WeekViewProps {
  */
 export function WeekView({ weekStart, timeZone: zoneOverride, locale }: WeekViewProps) {
   const timeZone = useMemo(() => zoneOverride ?? browserTimeZone(), [zoneOverride]);
-  const now = useNow();
-  const today = localDate(now, timeZone);
+  const today = useToday(timeZone);
   const thisWeek = isoWeekStart(today);
   const agenda = useWeekAgenda(weekStart, timeZone, today);
   const toggle = useToggleTask(weekKey(weekStart, timeZone, today), patchWeekTasks);
+  const counts = useMemo(() => (agenda.data ? countWeek(agenda.data) : undefined), [agenda.data]);
   const navigate = useNavigate();
+  const mutate = toggle.mutate;
+  const onToggle = useCallback(
+    (task: AgendaTask) => {
+      mutate({ id: task.id, complete: !task.isCompleted });
+    },
+    [mutate],
+  );
 
   const goTo = (target: string) => {
     void navigate({ to: '/week/$weekStart', params: { weekStart: target } });
@@ -99,13 +105,9 @@ export function WeekView({ weekStart, timeZone: zoneOverride, locale }: WeekView
   const stale = agenda.isPlaceholderData;
   const data = agenda.data;
   const shownWeek = data.weekStart;
-  const isCurrentWeek = isInWeek(today, shownWeek);
-  const counts = countWeek(data);
+  if (!counts) throw new Error('Missing week counts');
   const overdue = data.overdue ?? [];
 
-  const onToggle = (task: AgendaTask) => {
-    toggle.mutate({ id: task.id, complete: !task.isCompleted });
-  };
   const taskProps = { timeZone, locale, disabled: stale, onToggle };
 
   return (
@@ -147,12 +149,7 @@ export function WeekView({ weekStart, timeZone: zoneOverride, locale }: WeekView
       {counts.items === 0 && <p className="empty">Nothing planned this week.</p>}
 
       <div className={`week-body${overdue.length > 0 ? ' has-overdue' : ''}`}>
-        <TimeGrid
-          agenda={data}
-          today={today}
-          nowMinute={isCurrentWeek ? wallClockMinutes(now, timeZone) : undefined}
-          {...taskProps}
-        />
+        <TimeGrid agenda={data} today={today} {...taskProps} />
         {overdue.length > 0 && <OverduePanel tasks={overdue} today={today} {...taskProps} />}
       </div>
     </section>

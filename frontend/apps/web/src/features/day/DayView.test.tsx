@@ -3,11 +3,12 @@ import { focusManager } from '@tanstack/react-query';
 import { act, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { http, HttpResponse } from 'msw';
+import { Profiler } from 'react';
 
 import { renderInRouter } from '../../test/render.tsx';
 import { server } from '../../test/server.ts';
 import { DayView } from './DayView.tsx';
-import { useToday } from './useToday.ts';
+import { useToday } from '../agenda/useNow.ts';
 
 type Agenda = Schemas['DayAgendaResponse'];
 type Task = Schemas['TaskResponse'];
@@ -411,6 +412,23 @@ describe('DayView', () => {
   });
 
   describe('clock', () => {
+    it('does not render the past day on a minute tick', async () => {
+      useFakeClock('2026-10-27T09:30:00Z', { intervals: true });
+      serveAgenda(buildAgenda());
+      const onRender = vi.fn();
+      await renderInRouter(
+        <Profiler id="day" onRender={onRender}>
+          <DayView date="2026-10-26" timeZone={ZONE} locale="en-GB" />
+        </Profiler>,
+      );
+      await vi.waitFor(() => expect(screen.getByText('Design review')).toBeInTheDocument());
+      onRender.mockClear();
+      act(() => {
+        vi.advanceTimersByTime(60_000);
+      });
+      expect(onRender).not.toHaveBeenCalled();
+    });
+
     it('moves the Now and Next markers as time passes', async () => {
       useFakeClock(MORNING, { intervals: true });
       serveAgenda(buildAgenda());

@@ -259,3 +259,122 @@ describe('tasks', () => {
     expect(screen.queryByLabelText('Calendar date')).not.toBeInTheDocument();
   });
 });
+
+describe('event creation from a day', () => {
+  function serveEvents() {
+    const saved: Schemas['CreateEventRequest'][] = [];
+    server.use(
+      http.post('*/api/events', async ({ request }) => {
+        const body = (await request.json()) as Schemas['CreateEventRequest'];
+        saved.push(body);
+        return HttpResponse.json({ id: String(saved.length) }, { status: 201 });
+      }),
+      http.get('*/api/agenda/day', ({ request }) => {
+        const date = new URL(request.url).searchParams.get('date') ?? '';
+        const base = agendaFor(date);
+        const allDayEvents = saved
+          .filter(
+            (e) => e.allDay && e.startDate && e.endDate && e.startDate <= date && date < e.endDate,
+          )
+          .map((e, index) => ({
+            id: `a${String(index)}`,
+            title: e.title,
+            startDate: e.startDate ?? '',
+            endDate: e.endDate ?? '',
+          }));
+        const events = saved
+          .filter(
+            (e) =>
+              !e.allDay &&
+              e.start &&
+              e.end &&
+              e.start.slice(0, 10) <= date &&
+              e.end.slice(0, 10) >= date,
+          )
+          .map((e, index) => ({
+            id: `e${String(index)}`,
+            title: e.title,
+            start: e.start ?? '',
+            end: e.end ?? '',
+            timeZone: e.timeZone ?? 'UTC',
+            startsBeforeDay: (e.start ?? '').slice(0, 10) < date,
+            endsAfterDay: (e.end ?? '').slice(0, 10) > date,
+          }));
+        return HttpResponse.json({ ...base, allDayEvents, events });
+      }),
+    );
+    return saved;
+  }
+  it('saves a timed event, refreshes the agenda, and returns keyboard focus', async () => {
+    serveEvents();
+    renderApp('/day/2099-10-29', { timeZone: 'UTC', locale: 'en-GB' });
+    const user = userEvent.setup();
+    const add = await screen.findByRole('button', { name: 'Add event' });
+    add.focus();
+    await user.keyboard('{Enter}');
+    expect(screen.getByLabelText('Title')).toHaveFocus();
+    await user.type(screen.getByLabelText('Title'), 'Dentist');
+    await user.click(screen.getByRole('button', { name: 'Save event' }));
+    expect(await screen.findByText('Dentist')).toBeVisible();
+    expect(screen.getByText(/Dentist added for/)).toHaveAttribute('role', 'status');
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: 'Add event' })).toHaveFocus();
+    });
+  });
+  it('keeps the current day after saving elsewhere and Show day navigates', async () => {
+    serveEvents();
+    const { router } = renderApp('/day/2099-10-29', { timeZone: 'UTC', locale: 'en-GB' });
+    const user = userEvent.setup();
+    await user.click(await screen.findByRole('button', { name: 'Add event' }));
+    await user.type(screen.getByLabelText('Title'), 'Later');
+    fireEvent.change(screen.getByLabelText('Start'), { target: { value: '2099-10-30T09:00' } });
+    await user.click(screen.getByRole('button', { name: 'Save event' }));
+    await user.click(await screen.findByRole('button', { name: 'Show day' }));
+    await waitFor(() => {
+      expect(router.state.location.pathname).toBe('/day/2099-10-30');
+    });
+    expect(await screen.findByText('Later')).toBeVisible();
+  });
+  it('saves a three day all-day event with an exclusive end and displays it on each day', async () => {
+    const saved = serveEvents();
+    renderApp('/day/2099-10-29', { timeZone: 'UTC', locale: 'en-GB' });
+    const user = userEvent.setup();
+    await user.click(await screen.findByRole('button', { name: 'Add event' }));
+    await user.type(screen.getByLabelText('Title'), 'Trip');
+    await user.click(screen.getByLabelText('All day'));
+    fireEvent.change(screen.getByLabelText('End'), { target: { value: '2099-10-31' } });
+    await user.click(screen.getByRole('button', { name: 'Save event' }));
+    expect(await screen.findByText('Trip')).toBeVisible();
+    expect(saved[0]).toMatchObject({ startDate: '2099-10-29', endDate: '2099-11-01' });
+    for (const date of ['2099-10-30', '2099-10-31']) {
+      fireEvent.change(screen.getByLabelText('Calendar date'), { target: { value: date } });
+      await screen.findByRole('heading', {
+        level: 1,
+        name: new RegExp(date.endsWith('30') ? '30 October' : '31 October'),
+      });
+      expect(await screen.findByText('Trip')).toBeVisible();
+    }
+    fireEvent.change(screen.getByLabelText('Calendar date'), { target: { value: '2099-11-01' } });
+    await screen.findByRole('heading', { level: 1, name: /1 November/ });
+    expect(screen.queryByText('Trip')).not.toBeInTheDocument();
+  });
+  it('shows a midnight event as continuing on both days and permits overlapping events', async () => {
+    const saved = serveEvents();
+    renderApp('/day/2099-10-29', { timeZone: 'UTC', locale: 'en-GB' });
+    const user = userEvent.setup();
+    for (const title of ['Night shift', 'Second shift']) {
+      await user.click(await screen.findByRole('button', { name: 'Add event' }));
+      await user.type(screen.getByLabelText('Title'), title);
+      fireEvent.change(screen.getByLabelText('Start'), { target: { value: '2099-10-29T23:30' } });
+      await user.click(screen.getByRole('button', { name: 'Save event' }));
+      expect(await screen.findByText(title)).toBeVisible();
+    }
+    expect(saved).toHaveLength(2);
+    expect(screen.getAllByText(/continues the next day/)).toHaveLength(2);
+    fireEvent.change(screen.getByLabelText('Calendar date'), { target: { value: '2099-10-30' } });
+    await screen.findByRole('heading', { level: 1, name: /30 October/ });
+    expect(await screen.findByText('Night shift')).toBeVisible();
+    expect(screen.getByText('Second shift')).toBeVisible();
+    expect(screen.getAllByText(/Continues from the previous day/)).toHaveLength(2);
+  });
+});

@@ -21,7 +21,7 @@ So far, events and tasks can only be created through the API or `make db-seed` (
 
 Creating events and tasks **from the day view** is covered by other stories, which are delivered first:
 
-* Adding events from the day view: story 0004 ([#20](https://github.com/mgasca/calendar/pull/20)).
+* Adding events from the day view: [story 0004](0004-add-event-entries.md).
 * Adding todo tasks: [#23](https://github.com/mgasca/calendar/pull/23).
 
 Those stories build the forms, the client-side validation, the create hooks and the error handling. This story **reuses them** and only adds the week view's ways in: choosing a time slot, a date or a day, and opening the existing forms prefilled. If the day-view stories change the forms, this story follows them rather than defining its own.
@@ -31,7 +31,7 @@ The `POST /api/events` and `POST /api/tasks` endpoints already exist. This is a 
 ### Dependencies
 
 * Story 0002 (week view), implemented in [#18](https://github.com/mgasca/calendar/pull/18), [#19](https://github.com/mgasca/calendar/pull/19) and [#24](https://github.com/mgasca/calendar/pull/24).
-* Story 0004 ([#20](https://github.com/mgasca/calendar/pull/20)): the event form.
+* [Story 0004](0004-add-event-entries.md): the event form.
 * The todo task story ([#23](https://github.com/mgasca/calendar/pull/23)): the task form.
 
 ### Scope (proposed)
@@ -66,7 +66,7 @@ No new ADR is expected.
 
 ### Other decisions (proposed, not ADR-worthy)
 
-* **Reuse, don't fork:** the week opens the same dialogs as the day view, with prefilled values. Any week-only behaviour lives in the entry points, not in the forms.
+* **Reuse, don't fork:** the week opens the same forms as the day view, with prefilled values. Any week-only behaviour lives in the entry points, not in the forms.
 * **Slot to time:** a slot's position is turned back into a wall-clock time in the viewer's zone with the same helpers that place events on the grid (`gridLayout.ts`), so a click lands where it looks like it does, including on daylight-saving days. A drag on a skipped date is not possible: that column has no timed slots.
 * **No optimistic insert:** the new item appears once the server confirms it. All `['agenda']` queries are then invalidated, so the day and week views both pick it up.
 

@@ -5,7 +5,7 @@ import { http, HttpResponse } from 'msw';
 import { renderWithProviders } from '../../test/render.tsx';
 import { server } from '../../test/server.ts';
 import { TaskForm } from './TaskForm.tsx';
-import { deadlineInstants } from './deadline.ts';
+import { deadlineInstants } from '../agenda/deadline.ts';
 import { TaskList } from './TaskList.tsx';
 import { taskView } from './taskViews.ts';
 

@@ -1,7 +1,6 @@
 ---
-status: planned
+status: implemented
 date: 2026-10-27
-pr: https://github.com/mgasca/calendar/pull/20
 adrs: [0018, 0019, 0020, 0021, 0026]
 ---
 
@@ -42,18 +41,18 @@ This story adds the event form to the day view, beside **Add task**, so an edito
 
 ### Acceptance criteria
 
-1. **Given** the day view is open, **when** I choose **Add event**, enter "Dentist" for 29 October 15:00–16:00 and save, **then** the form closes, a message says "Dentist added for Thu 29 Oct", and the event is listed on 29 October.
-2. **Given** the event form is open, **when** I save an all-day event from 29 to 31 October (inclusive end in the form), **then** it is listed under *All day* on each of those three days and not on 1 November.
-3. **Given** the event form is open, **when** I save a timed event from 23:30 to 00:30 the next day, **then** it appears on both days, marked as continuing.
-4. **Given** the event form is open, **when** I submit it with an empty title or an end before the start, **then** the form does not submit and says what to fix next to the field.
-5. **Given** the event form is open, **when** I enter a start or end that doesn't exist because clocks change, **then** the form rejects it.
-6. **Given** the event form is open, **when** I enter a start or end that occurs twice because clocks change, **then** the form asks which occurrence is meant before it saves.
-7. **Given** the event form is filled in, **when** the server rejects the request (400), **then** the form stays open, the message appears next to the matching field, and what I typed is kept.
-8. **Given** the event form is filled in, **when** saving fails with a network or server error (other than 400), **then** the form stays open with a message and can be submitted again, and nothing is shown as saved until the server confirms it.
-9. **Given** an event is being saved, **when** the request is in progress, **then** the form is disabled so it can't be submitted twice.
-10. **Given** an event exists at a time, **when** I save another event at the same time, **then** both are saved and both are shown.
-11. **Given** the day view is open, **when** I use the form with the keyboard alone, **then** all controls are labelled and operable, focus moves to the title when the form opens, and focus returns to **Add event** when it closes.
-12. **Given** the browser has a time zone, **when** the form and the agenda show times, **then** they use that time zone.
+1. **Given** the day view is open, **when** I choose **Add event**, enter "Dentist" for 29 October 15:00–16:00 and save, **then** the form closes, a message says "Dentist added for Thu 29 Oct", and the event is listed on 29 October. [Timed creation and agenda refresh](../../frontend/apps/web/src/App.test.tsx) (`saves a timed event, refreshes the agenda, and returns keyboard focus`); [Show day](../../frontend/apps/web/src/App.test.tsx) (`keeps the current day after saving elsewhere and Show day navigates`).
+2. **Given** the event form is open, **when** I save an all-day event from 29 to 31 October (inclusive end in the form), **then** it is listed under *All day* on each of those three days and not on 1 November. [Three-day all-day event](../../frontend/apps/web/src/App.test.tsx) (`saves a three day all-day event with an exclusive end and displays it on each day`); [API inclusion](../../backend/tests/Calendar.Api.Tests/Endpoints/AgendaEndpointsTests.cs) (`AllDayEvents_MultiDay_CoverStartThroughTheDayBeforeTheExclusiveEnd`).
+3. **Given** the event form is open, **when** I save a timed event from 23:30 to 00:30 the next day, **then** it appears on both days, marked as continuing. [Overnight display](../../frontend/apps/web/src/App.test.tsx) (`shows a midnight event as continuing on both days and permits overlapping events`); [API continuation flags](../../backend/tests/Calendar.Api.Tests/Endpoints/AgendaEndpointsTests.cs) (`Events_OvernightSpan_AppearsOnBothDaysWithContinuationFlags`).
+4. **Given** the event form is open, **when** I submit it with an empty title or an end before the start, **then** the form does not submit and says what to fix next to the field. [Field validation](../../frontend/apps/web/src/features/events/EventForm.test.tsx) (`shows field errors for a blank title and an end before the start`).
+5. **Given** the event form is open, **when** I enter a start or end that doesn't exist because clocks change, **then** the form rejects it. [Skipped times](../../frontend/apps/web/src/features/events/EventForm.test.tsx) (`rejects skipped start and end local times`).
+6. **Given** the event form is open, **when** I enter a start or end that occurs twice because clocks change, **then** the form asks which occurrence is meant before it saves. [Repeated times](../../frontend/apps/web/src/features/events/EventForm.test.tsx) (`requires explicit choices for repeated start and end times`).
+7. **Given** the event form is filled in, **when** the server rejects the request (400), **then** the form stays open, the message appears next to the matching field, and what I typed is kept. [Server validation](../../frontend/apps/web/src/features/events/EventForm.test.tsx) (`retains values after a field error and permits retry`).
+8. **Given** the event form is filled in, **when** saving fails with a network or server error (other than 400), **then** the form stays open with a message and can be submitted again, and nothing is shown as saved until the server confirms it. [Network retry](../../frontend/apps/web/src/features/events/EventForm.test.tsx) (`retains values after a network error and saves on retry`).
+9. **Given** an event is being saved, **when** the request is in progress, **then** the form is disabled so it can't be submitted twice. [Pending save](../../frontend/apps/web/src/features/events/EventForm.test.tsx) (`disables all controls while a save is pending`).
+10. **Given** an event exists at a time, **when** I save another event at the same time, **then** both are saved and both are shown. [Overlapping events](../../frontend/apps/web/src/App.test.tsx) (`shows a midnight event as continuing on both days and permits overlapping events`).
+11. **Given** the day view is open, **when** I use the form with the keyboard alone, **then** all controls are labelled and operable, focus moves to the title when the form opens, and focus returns to **Add event** when it closes. [Keyboard and focus](../../frontend/apps/web/src/App.test.tsx) (`saves a timed event, refreshes the agenda, and returns keyboard focus`).
+12. **Given** the browser has a time zone, **when** the form and the agenda show times, **then** they use that time zone. [Form zone](../../frontend/apps/web/src/features/events/EventForm.test.tsx) (`shows the browser time zone and sends it with the instant`); [time resolver](../../frontend/apps/web/src/features/agenda/deadline.test.ts) (`resolves a half-hour offset in Kolkata`); [agenda time formatting](../../frontend/apps/web/src/features/day/DayView.test.tsx).
 
 ## Design decisions
 
@@ -80,9 +79,9 @@ No new ADR is expected. Adding a date-picker library or a form library would nee
 
 ## Implementation notes
 
-*Planned. This section is completed as the story is built.*
+The event form is inline and uses the existing event endpoint and shared agenda queries.
 
-### Where things will live
+### Where things live
 
 | Area | Location |
 | --- | --- |
@@ -98,35 +97,19 @@ No changes. Uses the existing `POST /api/events` ([0001](0001-today-view.md#api)
 
 ### Testing
 
-* **Pure tests (Vitest):**
-  * `eventForm`: next-half-hour rounding, including 23:45 → next day; the end follows the start; editing the end changes the duration; all-day inclusive → exclusive; validation messages; server error mapping.
-  * The moved resolver keeps its existing tests (spring gap, fall overlap in `America/New_York`). Add a half-hour-offset zone (`Asia/Kolkata`) and a 30-minute change (`Australia/Lord_Howe`).
-* **Component tests (Testing Library and MSW):**
-  * A timed event is saved with the right body; the form closes; the confirmation appears; the agenda shows the event.
-  * A one-day and a three-day all-day event (posted `endDate` is the day after the last day).
-  * An event for another day shows **Show day**, which moves to that day.
-  * A repeated local time asks for the occurrence; a skipped time is rejected.
-  * A 400 with `errors.end` puts the message by the end field and keeps the input.
-  * A network error keeps the form open, and resubmitting works.
-  * Focus moves to the title on open and returns to **Add event** on close.
-* **API:** none expected. The existing endpoint tests cover creation. A test that a midnight-spanning timed event appears on both days' agendas should exist already; if not, add it.
+Vitest covers form logic, DST resolution, validation, retry, pending state, focus and routed agenda display. Existing API tests cover all-day and overnight agenda inclusion. See the links beside each acceptance criterion for the specific cases.
 
 ### Delivery plan
 
-Two PRs:
+The implementation is delivered in one PR.
 
-1. The pure logic, the moved resolver and `useCreateEvent`, with unit tests and no UI.
-2. `EventForm`, `AddEvent`, the entry point in `DayPage` and the component tests.
+### Resolved questions
 
-### Open questions
-
-1. **Inline form or dialog?** The planned design opens the form as a modal `<dialog>`, which traps focus and closes on Escape. **Add task** reveals an inline form instead. Should the two match? If so, either change the event form to inline, or move both to a dialog in a follow-up.
-2. **After a save for another day:** should the view move to that day automatically, rather than offering **Show day**?
-3. **Discarding:** should closing an edited form ask "Discard this event?" first, or is that unnecessary for a short form?
+1. The event form is inline, matching Add task.
+2. Saving for another day leaves the current day open and offers **Show day**.
+3. Cancel closes the form without a discard confirmation.
 
 ## User guide
-
-*Planned behaviour. This section is finalised when the story is implemented.*
 
 ### Adding an event
 

@@ -1,0 +1,70 @@
+import { useNavigate } from '@tanstack/react-router';
+import { useRef, useState } from 'react';
+import { EventForm } from './EventForm.tsx';
+import type { EventValues } from './eventForm.ts';
+
+export function AddEvent({
+  date,
+  timeZone,
+  initialValues,
+}: {
+  date: string;
+  timeZone: string;
+  initialValues?: Partial<EventValues> | undefined;
+}) {
+  const [adding, setAdding] = useState(false);
+  const [saved, setSaved] = useState<{ title: string; date: string }>();
+  const button = useRef<HTMLButtonElement>(null);
+  const navigate = useNavigate();
+  return (
+    <>
+      {!adding && (
+        <button
+          ref={button}
+          type="button"
+          onClick={() => {
+            setSaved(undefined);
+            setAdding(true);
+          }}
+        >
+          Add event
+        </button>
+      )}
+      {saved && (
+        <p role="status">
+          {saved.title} added for{' '}
+          {new Date(`${saved.date}T12:00:00`).toLocaleDateString(undefined, {
+            weekday: 'short',
+            day: 'numeric',
+            month: 'short',
+          })}
+          .{' '}
+          {saved.date !== date && (
+            <button
+              type="button"
+              onClick={() => {
+                void navigate({ to: '/day/$date', params: { date: saved.date } });
+              }}
+            >
+              Show day
+            </button>
+          )}
+        </p>
+      )}
+      {adding && (
+        <EventForm
+          date={date}
+          timeZone={timeZone}
+          initialValues={initialValues}
+          onClose={(result) => {
+            setSaved(result);
+            setAdding(false);
+            requestAnimationFrame(() => {
+              button.current?.focus();
+            });
+          }}
+        />
+      )}
+    </>
+  );
+}

@@ -3,15 +3,18 @@ import {
   createRoute,
   createRouter,
   notFound,
+  redirect,
   type RouterHistory,
 } from '@tanstack/react-router';
 
 import { AppLayout, InvalidDatePage, NotFoundPage } from './App.tsx';
-import { browserTimeZone, isIsoDate } from './features/agenda/dayTime.ts';
+import { browserTimeZone, isIsoDate, localDate } from './features/agenda/dayTime.ts';
 import { DayPage } from './features/day/DayPage.tsx';
 import { useToday } from './features/day/useToday.ts';
 import { AddTask } from './features/tasks/AddTask.tsx';
 import { TaskList } from './features/tasks/TaskList.tsx';
+import { isoWeekStart } from './features/week/weekDates.ts';
+import { WeekView } from './features/week/WeekView.tsx';
 
 /** Values every route can read; tests pass fixed ones. */
 export interface AppRouterContext {
@@ -72,7 +75,53 @@ const tasksRoute = createRoute({
   },
 });
 
-const routeTree = rootRoute.addChildren([todayRoute, dayRoute, tasksRoute]);
+// `/week` is the current week: its Monday is computed from the local date now in the app's zone.
+const currentWeekRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/week',
+  beforeLoad: ({ context }) => {
+    throw redirect({
+      to: '/week/$weekStart',
+      params: { weekStart: isoWeekStart(localDate(Date.now(), context.timeZone)) },
+      replace: true,
+    });
+  },
+});
+
+const weekRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/week/$weekStart',
+  params: {
+    parse: ({ weekStart }) => {
+      if (!isIsoDate(weekStart)) {
+        throw notFound();
+      }
+      return { weekStart };
+    },
+    stringify: ({ weekStart }) => ({ weekStart }),
+  },
+  // Any date selects its week: `/week/2026-10-28` becomes `/week/2026-10-26`.
+  beforeLoad: ({ params }) => {
+    const monday = isoWeekStart(params.weekStart);
+    if (monday !== params.weekStart) {
+      throw redirect({ to: '/week/$weekStart', params: { weekStart: monday }, replace: true });
+    }
+  },
+  notFoundComponent: InvalidDatePage,
+  component: function WeekRoute() {
+    const { weekStart } = weekRoute.useParams();
+    const { timeZone, locale } = weekRoute.useRouteContext();
+    return <WeekView weekStart={weekStart} timeZone={timeZone} locale={locale} />;
+  },
+});
+
+const routeTree = rootRoute.addChildren([
+  todayRoute,
+  dayRoute,
+  currentWeekRoute,
+  weekRoute,
+  tasksRoute,
+]);
 
 export interface AppRouterOptions {
   /** Defaults to the browser's history; tests pass a memory history. */

@@ -1,5 +1,5 @@
 import type { QueryKey } from '@tanstack/react-query';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useIsMutating, useMutation, useQueryClient } from '@tanstack/react-query';
 
 import { api } from '../../api/client.ts';
 import { AGENDA_KEY } from './agendaQuery.ts';
@@ -7,6 +7,17 @@ import type { AgendaTask } from './dayTime.ts';
 
 /** Prefix of the task list queries (`My tasks`), which also show completion. */
 const TASKS_KEY = ['tasks'] as const;
+const TOGGLE_TASK_KEY = ['toggleTask'] as const;
+
+export function useTaskTogglePending(id: string) {
+  return (
+    useIsMutating({
+      mutationKey: TOGGLE_TASK_KEY,
+      predicate: (mutation) =>
+        (mutation.state.variables as ToggleTaskVariables | undefined)?.id === id,
+    }) > 0
+  );
+}
 
 export class TaskUpdateError extends Error {
   readonly status: number;
@@ -42,6 +53,7 @@ export function useToggleTask<TData>(queryKey: QueryKey, patch: TaskPatch<TData>
   const queryClient = useQueryClient();
 
   return useMutation({
+    mutationKey: TOGGLE_TASK_KEY,
     mutationFn: async ({ id, complete }: ToggleTaskVariables) => {
       const params = { params: { path: { id } } };
       const { data, response } = complete
@@ -80,9 +92,11 @@ export function useToggleTask<TData>(queryKey: QueryKey, patch: TaskPatch<TData>
       }
     },
     onSettled: () =>
-      Promise.all([
-        queryClient.invalidateQueries({ queryKey: AGENDA_KEY }),
-        queryClient.invalidateQueries({ queryKey: TASKS_KEY }),
-      ]),
+      queryClient.isMutating({ mutationKey: TOGGLE_TASK_KEY }) === 1
+        ? Promise.all([
+            queryClient.invalidateQueries({ queryKey: AGENDA_KEY }),
+            queryClient.invalidateQueries({ queryKey: TASKS_KEY }),
+          ])
+        : undefined,
   });
 }

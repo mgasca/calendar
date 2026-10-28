@@ -172,3 +172,26 @@ describe('useToggleTask', () => {
     expect(task('t1')?.title).toBe('Send the report');
   });
 });
+
+it('coalesces invalidation until all concurrent toggles settle', async () => {
+  const first = deferred();
+  const second = deferred();
+  server.use(
+    http.post('*/api/tasks/:id/:action', async ({ params }) => {
+      await (params.id === 't1' ? first.gate : second.gate);
+      return HttpResponse.json({ id: params.id, title: 'x', isCompleted: true });
+    }),
+  );
+  const { queryClient, result } = setup();
+  act(() => {
+    result.current.mutate({ id: 't1', complete: true });
+    result.current.mutate({ id: 't3', complete: true });
+  });
+  await waitFor(() => expect(queryClient.isMutating()).toBe(2));
+  first.release();
+  await waitFor(() => expect(queryClient.isMutating()).toBe(1));
+  expect(queryClient.getQueryState(OTHER_AGENDA_KEY)?.isInvalidated).toBe(false);
+  second.release();
+  await waitFor(() => expect(queryClient.isMutating()).toBe(0));
+  expect(queryClient.getQueryState(OTHER_AGENDA_KEY)?.isInvalidated).toBe(true);
+});

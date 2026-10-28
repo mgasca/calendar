@@ -468,18 +468,26 @@ describe('DayView', () => {
       expect(screen.queryByText('Standup')).not.toBeInTheDocument();
     });
 
-    it('refetches when the window regains focus', async () => {
+    it('refetches when the window regains focus once the data is stale', async () => {
       useFakeClock(MORNING);
       const requests = serveAgenda(buildAgenda());
       await renderToday();
       await screen.findByRole('region', { name: 'Schedule' });
       expect(requests).toHaveLength(1);
 
-      for (const focused of [false, true]) {
-        act(() => {
-          focusManager.setFocused(focused);
-        });
-      }
+      const refocus = () => {
+        for (const focused of [false, true]) {
+          act(() => {
+            focusManager.setFocused(focused);
+          });
+        }
+      };
+
+      refocus();
+      expect(requests).toHaveLength(1);
+
+      vi.setSystemTime(new Date(Date.parse(MORNING) + 31_000));
+      refocus();
 
       await eventually(() => {
         expect(requests.length).toBeGreaterThan(1);

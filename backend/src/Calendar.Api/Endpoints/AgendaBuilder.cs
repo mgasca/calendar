@@ -61,7 +61,7 @@ internal static class AgendaBuilder
         range,
         [.. allDay.Order(AgendaOrder.AllDayEvents)],
         [.. range.Days.Select(day => Bucket(day, timed, due))],
-        overdue is null ? null : [.. overdue.Order(AgendaOrder.OverdueTasks(range.Zone))]);
+        overdue is null ? null : [.. AgendaOrder.OverdueTasks(overdue, range.Zone)]);
   }
 
   private static AgendaSnapshotDay Bucket(DayWindow day, List<TimedEventItem> timed, List<TaskResponse> due) => new(

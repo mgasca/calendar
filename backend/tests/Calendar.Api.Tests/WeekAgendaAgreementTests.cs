@@ -1,4 +1,5 @@
 using System.Globalization;
+using Calendar.Api.Contracts;
 using Calendar.Domain.Events;
 using Calendar.Domain.Tasks;
 using Calendar.Domain.Time;
@@ -33,14 +34,14 @@ public sealed class WeekAgendaAgreementTests(PostgresFixture postgres) : ApiTest
     await SeedAsync(BuildEvents(range, zoneId), BuildTasks(range));
 
     // With today on the Monday, the week's overdue list is the Monday's: nothing due in the week is overdue yet.
-    var week = await GetWeekAgendaAsync(dateText, zoneId, weekStart);
+    WeekAgendaResponse week = await GetWeekAgendaAsync(dateText, zoneId, weekStart);
 
     week.WeekStart.ShouldBe(range.StartDate);
     week.Days.Count.ShouldBe(7);
     for (var i = 0; i < 7; i++)
     {
-      var date = range.StartDate.AddDays(i);
-      var day = await GetAgendaAsync(Text(date), zoneId);
+      DateOnly date = range.StartDate.AddDays(i);
+      DayAgendaResponse day = await GetAgendaAsync(Text(date), zoneId);
 
       week.Days[i].Date.ShouldBe(day.Date);
       week.Days[i].Window.ShouldBe(day.Window);
@@ -67,7 +68,7 @@ public sealed class WeekAgendaAgreementTests(PostgresFixture postgres) : ApiTest
   private static DateTimeOffset[] EdgePoints(DateRangeWindow range)
   {
     var points = new List<DateTimeOffset> { range.Start.AddHours(-26), range.End.AddSeconds(1), range.End.AddHours(26) };
-    foreach (var day in range.Days)
+    foreach (DayWindow day in range.Days)
     {
       points.AddRange([day.Start.AddSeconds(-1), day.Start, day.Start.AddSeconds(1), day.End]);
       if (day.Length > TimeSpan.FromHours(2))
@@ -81,7 +82,7 @@ public sealed class WeekAgendaAgreementTests(PostgresFixture postgres) : ApiTest
 
   private static List<CalendarEvent> BuildEvents(DateRangeWindow range, string zoneId)
   {
-    var points = EdgePoints(range);
+    DateTimeOffset[] points = EdgePoints(range);
     var events = new List<CalendarEvent>();
     for (var i = 0; i < points.Length; i++)
     {
@@ -97,7 +98,10 @@ public sealed class WeekAgendaAgreementTests(PostgresFixture postgres) : ApiTest
     {
       foreach (var length in new[] { 1, 2, 9 })
       {
-        events.Add(CalendarEvent.CreateAllDay($"all-day {start}+{length}", range.StartDate.AddDays(start), range.StartDate.AddDays(start + length)));
+        events.Add(CalendarEvent.CreateAllDay(
+          $"all-day {start}+{length}",
+          range.StartDate.AddDays(start),
+          range.StartDate.AddDays(start + length)));
       }
     }
 
@@ -106,18 +110,18 @@ public sealed class WeekAgendaAgreementTests(PostgresFixture postgres) : ApiTest
 
   private static List<TodoTask> BuildTasks(DateRangeWindow range)
   {
-    var points = EdgePoints(range);
-    var monday = range.Days[0];
+    DateTimeOffset[] points = EdgePoints(range);
+    DayWindow monday = range.Days[0];
     DateTimeOffset?[] completions = [null, monday.Start.AddSeconds(-1), monday.Start, monday.Start.AddHours(1), monday.End, range.End];
     var tasks = new List<TodoTask>();
-    foreach (var completedAt in completions)
+    foreach (DateTimeOffset? completedAt in completions)
     {
       for (var offset = -2; offset <= 8; offset++)
       {
         tasks.Add(Task($"date {offset}", range.StartDate.AddDays(offset), null, completedAt));
       }
 
-      foreach (var dueAt in points)
+      foreach (DateTimeOffset dueAt in points)
       {
         tasks.Add(Task($"at {dueAt:O}", null, dueAt, completedAt));
       }

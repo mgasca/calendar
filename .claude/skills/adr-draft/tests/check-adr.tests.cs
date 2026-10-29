@@ -87,7 +87,8 @@ public sealed class AdrValidatorTests : IDisposable
   public void SectionsOutOfOrder_AreReported()
   {
     var text = File.ReadAllText(Path.Combine(_dir, First));
-    var drivers = text[text.IndexOf("## Decision Drivers", StringComparison.Ordinal)..text.IndexOf("## Considered Options", StringComparison.Ordinal)];
+    var start = text.IndexOf("## Decision Drivers", StringComparison.Ordinal);
+    var drivers = text[start..text.IndexOf("## Considered Options", StringComparison.Ordinal)];
     Mutate(First, drivers, "");
     Mutate(First, "## Pros and Cons of the Options", drivers + "## Pros and Cons of the Options");
 
@@ -99,7 +100,7 @@ public sealed class AdrValidatorTests : IDisposable
   {
     Mutate("README.md", "| First decision | accepted |", "| Old title | proposed |");
 
-    var errors = Check(First).Errors;
+    IReadOnlyList<string> errors = Check(First).Errors;
 
     errors.ShouldContain(e => e.Contains("index title differs from H1", StringComparison.Ordinal));
     errors.ShouldContain(e => e.Contains("index status 'proposed' differs", StringComparison.Ordinal));
@@ -119,7 +120,7 @@ public sealed class AdrValidatorTests : IDisposable
     File.Move(Path.Combine(_dir, "0001-second-decision.md"), Path.Combine(_dir, "0005-second-decision.md"));
     File.WriteAllText(Path.Combine(_dir, "notes.md"), "stray");
 
-    var errors = AdrValidator.CheckRepository(_dir);
+    IReadOnlyList<string> errors = AdrValidator.CheckRepository(_dir);
 
     errors.ShouldContain(e => e.Contains("contiguous from 0000", StringComparison.Ordinal));
     errors.ShouldContain(e => e.Contains("notes.md", StringComparison.Ordinal));

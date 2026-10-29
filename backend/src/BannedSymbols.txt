@@ -1,0 +1,6 @@
+P:System.DateTime.Now;Use the injected TimeProvider; the client supplies today and its time zone (ADR-0021)
+P:System.DateTime.UtcNow;Use the injected TimeProvider
+P:System.DateTime.Today;The client supplies today and its time zone (ADR-0021)
+P:System.DateTimeOffset.Now;Use the injected TimeProvider
+P:System.DateTimeOffset.UtcNow;Use the injected TimeProvider
+P:System.TimeZoneInfo.Local;The server's time zone is meaningless; the client supplies its time zone (ADR-0021)

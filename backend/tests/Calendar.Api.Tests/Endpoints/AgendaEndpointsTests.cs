@@ -1,6 +1,7 @@
 using System.Net;
 using System.Net.Http.Json;
 using System.Text.Json.Nodes;
+using Calendar.Api.Contracts;
 using Calendar.Domain.Events;
 using Calendar.Domain.Tasks;
 
@@ -27,11 +28,11 @@ public sealed class AgendaEndpointsTests(PostgresFixture postgres) : ApiTestBase
   [InlineData("date=9999-12-31&timeZone=Pacific/Kiritimati", "date")]
   public async Task GetDayAgenda_InvalidInput_Returns400ValidationProblem(string query, string field)
   {
-    using var response = await Client.GetAsync(new Uri($"/api/agenda/day?{query}", UriKind.Relative), Ct);
+    using HttpResponseMessage response = await Client.GetAsync(new Uri($"/api/agenda/day?{query}", UriKind.Relative), Ct);
 
     response.StatusCode.ShouldBe(HttpStatusCode.BadRequest);
     response.Content.Headers.ContentType!.MediaType.ShouldBe("application/problem+json");
-    var errors = JsonNode.Parse(await response.Content.ReadAsStringAsync(Ct))!["errors"]!.AsObject();
+    JsonObject errors = JsonNode.Parse(await response.Content.ReadAsStringAsync(Ct))!["errors"]!.AsObject();
     errors.ContainsKey(field).ShouldBeTrue(errors.ToJsonString());
   }
 
@@ -40,7 +41,7 @@ public sealed class AgendaEndpointsTests(PostgresFixture postgres) : ApiTestBase
   [InlineData("date=2026-13-45&timeZone=UTC")]
   public async Task GetDayAgenda_UnparsableDate_Returns400(string query)
   {
-    using var response = await Client.GetAsync(new Uri($"/api/agenda/day?{query}", UriKind.Relative), Ct);
+    using HttpResponseMessage response = await Client.GetAsync(new Uri($"/api/agenda/day?{query}", UriKind.Relative), Ct);
 
     response.StatusCode.ShouldBe(HttpStatusCode.BadRequest);
     response.Content.Headers.ContentType!.MediaType.ShouldBe("application/problem+json");
@@ -49,7 +50,11 @@ public sealed class AgendaEndpointsTests(PostgresFixture postgres) : ApiTestBase
   [Theory]
   [InlineData("1900-01-01")]
   [InlineData("2200-12-31")]
-  public async Task GetDayAgenda_AtTheSupportedDateLimits_Works(string date) => (await GetAgendaAsync(date, "Pacific/Kiritimati")).Date.ShouldBe(DateOnly.Parse(date, System.Globalization.CultureInfo.InvariantCulture));
+  public async Task GetDayAgenda_AtTheSupportedDateLimits_Works(string date)
+  {
+    DayAgendaResponse agenda = await GetAgendaAsync(date, "Pacific/Kiritimati");
+    agenda.Date.ShouldBe(DateOnly.Parse(date, System.Globalization.CultureInfo.InvariantCulture));
+  }
 
   [Theory]
   [InlineData("Asia/Calcutta", "Asia/Kolkata")]
@@ -57,8 +62,9 @@ public sealed class AgendaEndpointsTests(PostgresFixture postgres) : ApiTestBase
   [InlineData("Etc/GMT%2B5", "Etc/GMT+5")]
   public async Task GetDayAgenda_AcceptsLegacyAliasesAndEtcZones_EchoingTheCanonicalId(string requested, string canonical)
   {
-    var agenda = await Client.GetFromJsonAsync<Calendar.Api.Contracts.DayAgendaResponse>(
-        new Uri($"/api/agenda/day?date=2026-10-26&timeZone={requested}", UriKind.Relative), Ct);
+    DayAgendaResponse? agenda = await Client.GetFromJsonAsync<Calendar.Api.Contracts.DayAgendaResponse>(
+        new Uri($"/api/agenda/day?date=2026-10-26&timeZone={requested}", UriKind.Relative),
+        Ct);
 
     agenda!.TimeZone.ShouldBe(canonical);
   }
@@ -68,7 +74,7 @@ public sealed class AgendaEndpointsTests(PostgresFixture postgres) : ApiTestBase
   [Fact]
   public async Task GetDayAgenda_Empty_ReturnsWindowAndEmptyLists()
   {
-    var agenda = await GetAgendaAsync("2026-10-26", NewYork);
+    DayAgendaResponse agenda = await GetAgendaAsync("2026-10-26", NewYork);
 
     agenda.Date.ShouldBe(new DateOnly(2026, 10, 26));
     agenda.TimeZone.ShouldBe(NewYork);
@@ -84,12 +90,15 @@ public sealed class AgendaEndpointsTests(PostgresFixture postgres) : ApiTestBase
   public async Task GetDayAgenda_UsesCamelCasePropertyNames()
   {
     await SeedAsync(
-        [CalendarEvent.Create("E", Utc(2026, 10, 26, 14), Utc(2026, 10, 26, 15), NewYork), CalendarEvent.CreateAllDay("A", new DateOnly(2026, 10, 26), new DateOnly(2026, 10, 27))],
+        [
+          CalendarEvent.Create("E", Utc(2026, 10, 26, 14), Utc(2026, 10, 26, 15), NewYork),
+          CalendarEvent.CreateAllDay("A", new DateOnly(2026, 10, 26), new DateOnly(2026, 10, 27)),
+        ],
         [TodoTask.Create("T", new DateOnly(2026, 10, 26))]);
 
     var json = await Client.GetStringAsync(new Uri("/api/agenda/day?date=2026-10-26&timeZone=America/New_York", UriKind.Relative), Ct);
 
-    var root = JsonNode.Parse(json)!.AsObject();
+    JsonObject root = JsonNode.Parse(json)!.AsObject();
     root.Select(p => p.Key).ShouldBe(["date", "timeZone", "window", "allDayEvents", "events", "tasks"], ignoreOrder: true);
     root["date"]!.GetValue<string>().ShouldBe("2026-10-26");
     root["events"]![0]!.AsObject().ContainsKey("startsBeforeDay").ShouldBeTrue();
@@ -108,15 +117,15 @@ public sealed class AgendaEndpointsTests(PostgresFixture postgres) : ApiTestBase
     // 23:00 on the 25th to 06:00 on the 26th, New York (EDT, -4).
     await SeedAsync([CalendarEvent.Create("Night shift", Utc(2026, 10, 26, 3), Utc(2026, 10, 26, 10), NewYork)]);
 
-    var before = await GetAgendaAsync("2026-10-25", NewYork);
-    var today = await GetAgendaAsync("2026-10-26", NewYork);
-    var after = await GetAgendaAsync("2026-10-27", NewYork);
+    DayAgendaResponse before = await GetAgendaAsync("2026-10-25", NewYork);
+    DayAgendaResponse today = await GetAgendaAsync("2026-10-26", NewYork);
+    DayAgendaResponse after = await GetAgendaAsync("2026-10-27", NewYork);
 
-    var first = before.Events.ShouldHaveSingleItem();
+    TimedEventItem first = before.Events.ShouldHaveSingleItem();
     first.StartsBeforeDay.ShouldBeFalse();
     first.EndsAfterDay.ShouldBeTrue();
 
-    var second = today.Events.ShouldHaveSingleItem();
+    TimedEventItem second = today.Events.ShouldHaveSingleItem();
     second.StartsBeforeDay.ShouldBeTrue();
     second.EndsAfterDay.ShouldBeFalse();
     second.Start.ShouldBe(Utc(2026, 10, 26, 3));
@@ -131,7 +140,7 @@ public sealed class AgendaEndpointsTests(PostgresFixture postgres) : ApiTestBase
   {
     await SeedAsync([CalendarEvent.Create("Conference", Utc(2026, 10, 24, 12), Utc(2026, 10, 29, 12), NewYork)]);
 
-    var item = (await GetAgendaAsync("2026-10-26", NewYork)).Events.ShouldHaveSingleItem();
+    TimedEventItem item = (await GetAgendaAsync("2026-10-26", NewYork)).Events.ShouldHaveSingleItem();
 
     item.StartsBeforeDay.ShouldBeTrue();
     item.EndsAfterDay.ShouldBeTrue();
@@ -149,7 +158,7 @@ public sealed class AgendaEndpointsTests(PostgresFixture postgres) : ApiTestBase
             CalendarEvent.Create("starts a second before the end", Utc(2026, 10, 27, 4).AddSeconds(-1), Utc(2026, 10, 27, 5), NewYork),
         ]);
 
-    var titles = (await GetAgendaAsync("2026-10-26", NewYork)).Events.Select(e => e.Title);
+    IEnumerable<string> titles = (await GetAgendaAsync("2026-10-26", NewYork)).Events.Select(e => e.Title);
 
     titles.ShouldBe(["ends a second into the day", "starts a second before the end"]);
   }
@@ -166,7 +175,7 @@ public sealed class AgendaEndpointsTests(PostgresFixture postgres) : ApiTestBase
             CalendarEvent.Create("00:00 EST on the 2nd", Utc(2026, 11, 2, 5), Utc(2026, 11, 2, 6), NewYork),
         ]);
 
-    var nov1 = await GetAgendaAsync("2026-11-01", NewYork);
+    DayAgendaResponse nov1 = await GetAgendaAsync("2026-11-01", NewYork);
 
     nov1.Window.Start.ShouldBe(Utc(2026, 11, 1, 4));
     nov1.Window.End.ShouldBe(Utc(2026, 11, 2, 5));
@@ -210,8 +219,8 @@ public sealed class AgendaEndpointsTests(PostgresFixture postgres) : ApiTestBase
 
     foreach (var zone in new[] { "Pacific/Kiritimati", "UTC", "Pacific/Pago_Pago" })
     {
-      var agenda = await GetAgendaAsync("2026-10-26", zone);
-      var item = agenda.AllDayEvents.ShouldHaveSingleItem();
+      DayAgendaResponse agenda = await GetAgendaAsync("2026-10-26", zone);
+      AllDayEventItem item = agenda.AllDayEvents.ShouldHaveSingleItem();
       item.StartDate.ShouldBe(new DateOnly(2026, 10, 26));
       item.EndDate.ShouldBe(new DateOnly(2026, 10, 27));
       (await GetAgendaAsync("2026-10-27", zone)).AllDayEvents.ShouldBeEmpty();
@@ -229,7 +238,7 @@ public sealed class AgendaEndpointsTests(PostgresFixture postgres) : ApiTestBase
             CalendarEvent.Create("timed", Utc(2026, 10, 26, 14), Utc(2026, 10, 26, 15), NewYork),
         ]);
 
-    var agenda = await GetAgendaAsync("2026-10-26", NewYork);
+    DayAgendaResponse agenda = await GetAgendaAsync("2026-10-26", NewYork);
 
     agenda.AllDayEvents.Select(e => e.Title).ShouldBe(["older", "a", "b"]);
     agenda.Events.Select(e => e.Title).ShouldBe(["timed"]);
@@ -250,7 +259,7 @@ public sealed class AgendaEndpointsTests(PostgresFixture postgres) : ApiTestBase
             TodoTask.Create("undated"),
         ]);
 
-    var agenda = await GetAgendaAsync("2026-10-26", NewYork);
+    DayAgendaResponse agenda = await GetAgendaAsync("2026-10-26", NewYork);
 
     agenda.Tasks.DueToday.Select(t => t.Title).ShouldBe(["timed at window start", "timed today", "date today"]);
     agenda.Tasks.Overdue.ShouldBeEmpty();
@@ -271,11 +280,13 @@ public sealed class AgendaEndpointsTests(PostgresFixture postgres) : ApiTestBase
             TodoTask.Create("timed just before window", dueAt: Utc(2026, 10, 26, 3, 59)),
         ]);
 
-    var overdue = (await GetAgendaAsync("2026-10-26", NewYork)).Tasks.Overdue;
+    IReadOnlyList<AgendaTaskItem> overdue = (await GetAgendaAsync("2026-10-26", NewYork)).Tasks.Overdue;
 
     overdue.Take(3).Select(t => t.Title).ShouldBe(["open, due last week", "open, timed yesterday", "timed just before window"]);
     overdue.Skip(3).ShouldAllBe(t => t.IsCompleted);
-    overdue.Where(t => t.IsCompleted).Select(t => t.Title).ShouldBe(["done this morning", "done at window start", "timed, done today"], ignoreOrder: true);
+    overdue.Where(t => t.IsCompleted)
+      .Select(t => t.Title)
+      .ShouldBe(["done this morning", "done at window start", "timed, done today"], ignoreOrder: true);
   }
 
   [Fact]
@@ -288,7 +299,7 @@ public sealed class AgendaEndpointsTests(PostgresFixture postgres) : ApiTestBase
             CompletedTask("done timed", null, Utc(2026, 10, 26, 13), dueAt: Utc(2026, 10, 26, 14)),
         ]);
 
-    var dueToday = (await GetAgendaAsync("2026-10-26", NewYork)).Tasks.DueToday;
+    IReadOnlyList<AgendaTaskItem> dueToday = (await GetAgendaAsync("2026-10-26", NewYork)).Tasks.DueToday;
 
     dueToday.Select(t => t.Title).ShouldBe(["done timed", "done earlier", "done today"]);
     dueToday.ShouldAllBe(t => t.IsCompleted);
@@ -308,7 +319,7 @@ public sealed class AgendaEndpointsTests(PostgresFixture postgres) : ApiTestBase
             TodoTask.Create("e: timed 10-25 00:30 local", dueAt: Utc(2026, 10, 25, 4, 30)),
         ]);
 
-    var overdue = (await GetAgendaAsync("2026-10-26", NewYork)).Tasks.Overdue;
+    IReadOnlyList<AgendaTaskItem> overdue = (await GetAgendaAsync("2026-10-26", NewYork)).Tasks.Overdue;
 
     overdue.Select(t => t.Title).ShouldBe(
     [
@@ -335,7 +346,7 @@ public sealed class AgendaEndpointsTests(PostgresFixture postgres) : ApiTestBase
             TodoTask.Create("timed high", dueAt: Utc(2026, 10, 20, 12), priority: "high"),
         ]);
 
-    var overdue = (await GetAgendaAsync("2026-10-26", NewYork)).Tasks.Overdue;
+    IReadOnlyList<AgendaTaskItem> overdue = (await GetAgendaAsync("2026-10-26", NewYork)).Tasks.Overdue;
 
     overdue.Take(3).ShouldAllBe(t => t.DueAt != null);
     overdue.Skip(3).Take(3).ShouldAllBe(t => t.DueDate == new DateOnly(2026, 10, 20));
@@ -357,7 +368,7 @@ public sealed class AgendaEndpointsTests(PostgresFixture postgres) : ApiTestBase
             TodoTask.Create("early high a", dueAt: Utc(2026, 10, 26, 9), priority: "high"),
         ]);
 
-    var dueToday = (await GetAgendaAsync("2026-10-26", NewYork)).Tasks.DueToday;
+    IReadOnlyList<AgendaTaskItem> dueToday = (await GetAgendaAsync("2026-10-26", NewYork)).Tasks.DueToday;
 
     dueToday.Select(t => t.Title).ShouldBe(
         ["early high a", "early high z", "early medium", "early low", "late high", "date high", "date medium", "date zeta"]);
@@ -394,10 +405,13 @@ public sealed class AgendaEndpointsTests(PostgresFixture postgres) : ApiTestBase
     await SeedAsync(tasks: [task]);
     Clock.SetUtcNow(Utc(2026, 10, 26, 15));
 
-    using var completed = await Client.PostAsync(new Uri($"/api/tasks/{task.Id}/complete", UriKind.Relative), content: null, Ct);
+    using HttpResponseMessage completed = await Client.PostAsync(
+      new Uri($"/api/tasks/{task.Id}/complete", UriKind.Relative),
+      content: null,
+      Ct);
     completed.EnsureSuccessStatusCode();
 
-    var overdue = (await GetAgendaAsync("2026-10-26", NewYork)).Tasks.Overdue.ShouldHaveSingleItem();
+    AgendaTaskItem overdue = (await GetAgendaAsync("2026-10-26", NewYork)).Tasks.Overdue.ShouldHaveSingleItem();
     overdue.IsCompleted.ShouldBeTrue();
     (await GetAgendaAsync("2026-10-27", NewYork)).Tasks.Overdue.ShouldBeEmpty();
   }
@@ -408,9 +422,11 @@ public sealed class AgendaEndpointsTests(PostgresFixture postgres) : ApiTestBase
     var tasks = Enumerable.Range(0, 25).Select(i => TodoTask.Create($"open {i}", new DateOnly(2026, 10, 1).AddDays(i % 5))).ToList();
     tasks.Add(CompletedTask("done today", new DateOnly(2026, 10, 1), Utc(2026, 10, 26, 12)));
     await SeedAsync(tasks: tasks);
-    var day = await GetAgendaAsync("2026-10-26", NewYork);
-    var week = await GetWeekAgendaAsync("2026-10-26", NewYork, "2026-10-26");
-    var page = await Client.GetFromJsonAsync<Calendar.Api.Contracts.TaskPage>(new Uri("/api/tasks?view=overdue&today=2026-10-26&timeZone=America/New_York&limit=20", UriKind.Relative), Ct);
+    DayAgendaResponse day = await GetAgendaAsync("2026-10-26", NewYork);
+    WeekAgendaResponse week = await GetWeekAgendaAsync("2026-10-26", NewYork, "2026-10-26");
+    TaskPage? page = await Client.GetFromJsonAsync<Calendar.Api.Contracts.TaskPage>(
+      new Uri("/api/tasks?view=overdue&today=2026-10-26&timeZone=America/New_York&limit=20", UriKind.Relative),
+      Ct);
     day.Tasks.Overdue.Count.ShouldBe(20);
     day.Tasks.OverdueTotal.ShouldBe(26);
     day.Tasks.OverdueOpenTotal.ShouldBe(25);
@@ -428,8 +444,8 @@ public sealed class AgendaEndpointsTests(PostgresFixture postgres) : ApiTestBase
       TodoTask.Create("open", new DateOnly(2026, 10, 20)),
       CompletedTask("completed", new DateOnly(2026, 10, 1), Utc(2026, 10, 26, 12)),
     ]);
-    var day = await GetAgendaAsync("2026-10-26", NewYork);
-    var week = await GetWeekAgendaAsync("2026-10-26", NewYork, "2026-10-26");
+    DayAgendaResponse day = await GetAgendaAsync("2026-10-26", NewYork);
+    WeekAgendaResponse week = await GetWeekAgendaAsync("2026-10-26", NewYork, "2026-10-26");
     day.Tasks.Overdue.Select(t => t.Title).ShouldBe(["open", "completed"]);
     day.Tasks.OverdueTotal.ShouldBe(2);
     day.Tasks.OverdueOpenTotal.ShouldBe(1);
@@ -444,8 +460,11 @@ public sealed class AgendaEndpointsTests(PostgresFixture postgres) : ApiTestBase
       CalendarEvent.Create("timed", Utc(2026, 10, 26, 14), Utc(2026, 10, 26, 15), NewYork, notes: "secret event"),
       CalendarEvent.CreateAllDay("all day", new DateOnly(2026, 10, 26), new DateOnly(2026, 10, 27)),
     ],
-    [TodoTask.Create("with notes", new DateOnly(2026, 10, 26), notes: "secret task"), TodoTask.Create("without", new DateOnly(2026, 10, 26))]);
-    var day = await GetAgendaAsync("2026-10-26", NewYork);
+    [
+      TodoTask.Create("with notes", new DateOnly(2026, 10, 26), notes: "secret task"),
+      TodoTask.Create("without", new DateOnly(2026, 10, 26)),
+    ]);
+    DayAgendaResponse day = await GetAgendaAsync("2026-10-26", NewYork);
     day.Events.Single().HasNotes.ShouldBeTrue();
     day.AllDayEvents.Single().HasNotes.ShouldBeFalse();
     day.Tasks.DueToday.Single(t => t.Title == "with notes").HasNotes.ShouldBeTrue();
@@ -453,7 +472,9 @@ public sealed class AgendaEndpointsTests(PostgresFixture postgres) : ApiTestBase
     var json = await Client.GetStringAsync(new Uri("/api/agenda/day?date=2026-10-26&timeZone=America/New_York", UriKind.Relative), Ct);
     json.ShouldNotContain("\"notes\"");
     json.ShouldNotContain("secret");
-    var weekJson = await Client.GetStringAsync(new Uri("/api/agenda/week?date=2026-10-26&timeZone=America/New_York&today=2026-10-26", UriKind.Relative), Ct);
+    var weekJson = await Client.GetStringAsync(
+      new Uri("/api/agenda/week?date=2026-10-26&timeZone=America/New_York&today=2026-10-26", UriKind.Relative),
+      Ct);
     weekJson.ShouldNotContain("\"notes\"");
     weekJson.ShouldNotContain("secret");
   }
@@ -470,7 +491,7 @@ public sealed class AgendaEndpointsTests(PostgresFixture postgres) : ApiTestBase
             CalendarEvent.CreateAllDay("floating", new DateOnly(2011, 12, 30), new DateOnly(2011, 12, 31)),
         ]);
 
-    var agenda = await GetAgendaAsync("2011-12-30", "Pacific/Apia");
+    DayAgendaResponse agenda = await GetAgendaAsync("2011-12-30", "Pacific/Apia");
 
     agenda.Window.Start.ShouldBe(agenda.Window.End);
     agenda.Events.ShouldBeEmpty();
@@ -482,7 +503,7 @@ public sealed class AgendaEndpointsTests(PostgresFixture postgres) : ApiTestBase
   [Fact]
   public async Task Window_OnAGapStartingAtMidnight_StartsAtTheTransition()
   {
-    var agenda = await GetAgendaAsync("2024-10-06", "America/Asuncion");
+    DayAgendaResponse agenda = await GetAgendaAsync("2024-10-06", "America/Asuncion");
 
     agenda.Window.Start.ShouldBe(Utc(2024, 10, 6, 4));
   }

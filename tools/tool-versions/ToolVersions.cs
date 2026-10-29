@@ -38,7 +38,10 @@ public static partial class VersionChecker
     var pins = new List<PinnedPackage>();
     foreach (var dir in ToolingDirectories.Select(d => Path.Combine(root, d)).Where(Directory.Exists))
     {
-      foreach (var file in Directory.EnumerateFiles(dir, "*", SearchOption.AllDirectories).Where(f => !IsSkipped(root, f)).Order(StringComparer.Ordinal))
+      IEnumerable<string> files = Directory.EnumerateFiles(dir, "*", SearchOption.AllDirectories)
+        .Where(f => !IsSkipped(root, f))
+        .Order(StringComparer.Ordinal);
+      foreach (var file in files)
       {
         var relative = Path.GetRelativePath(root, file).Replace('\\', '/');
         if (file.EndsWith(".cs", StringComparison.Ordinal))
@@ -67,19 +70,23 @@ public static partial class VersionChecker
   public static int Fix(string root, IEnumerable<VersionDrift> drifts)
   {
     var changed = 0;
-    foreach (var group in drifts.GroupBy(d => d.Pin.File, StringComparer.Ordinal))
+    foreach (IGrouping<string, VersionDrift> group in drifts.GroupBy(d => d.Pin.File, StringComparer.Ordinal))
     {
       var path = Path.Combine(root, group.Key);
       var text = File.ReadAllText(path);
-      foreach (var drift in group)
+      foreach (VersionDrift? drift in group)
       {
         var name = Regex.Escape(drift.Pin.Package);
         var oldVersion = Regex.Escape(drift.Pin.Version);
         var pattern = path.EndsWith(".cs", StringComparison.Ordinal)
             ? $@"(?m)^(#:package\s+{name}@){oldVersion}(?=\s|$)"
             : $@"(<PackageReference\s+Include=""{name}""\s+Version=""){oldVersion}("")";
-        var updated = Regex.Replace(text, pattern, m => m.Groups[1].Value + drift.BackendVersion + (m.Groups.Count > 2 ? m.Groups[2].Value : ""),
-            RegexOptions.IgnoreCase, TimeSpan.FromSeconds(1));
+        var updated = Regex.Replace(
+          text,
+          pattern,
+          m => m.Groups[1].Value + drift.BackendVersion + (m.Groups.Count > 2 ? m.Groups[2].Value : ""),
+          RegexOptions.IgnoreCase,
+          TimeSpan.FromSeconds(1));
         if (updated != text)
         {
           changed++;

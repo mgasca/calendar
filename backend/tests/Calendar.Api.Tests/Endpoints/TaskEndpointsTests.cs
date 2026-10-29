@@ -11,14 +11,14 @@ public sealed class TaskEndpointsTests(PostgresFixture postgres) : ApiTestBase(p
 
   private async Task<TaskResponse> CreateAsync(object payload)
   {
-    using var response = await Client.PostAsJsonAsync(Tasks, payload, Ct);
+    using HttpResponseMessage response = await Client.PostAsJsonAsync(Tasks, payload, Ct);
     response.StatusCode.ShouldBe(HttpStatusCode.Created);
     return (await response.Content.ReadFromJsonAsync<TaskResponse>(Ct))!;
   }
 
   private async Task<TaskPage> ListAsync(string query)
   {
-    var page = await Client.GetFromJsonAsync<TaskPage>(new Uri($"/api/tasks?view={query}", UriKind.Relative), Ct);
+    TaskPage? page = await Client.GetFromJsonAsync<TaskPage>(new Uri($"/api/tasks?view={query}", UriKind.Relative), Ct);
     return page.ShouldNotBeNull();
   }
 
@@ -29,7 +29,7 @@ public sealed class TaskEndpointsTests(PostgresFixture postgres) : ApiTestBase(p
     string? cursor = null;
     do
     {
-      var page = await ListAsync($"{query}&limit={limit}" + (cursor is null ? "" : $"&cursor={cursor}"));
+      TaskPage page = await ListAsync($"{query}&limit={limit}" + (cursor is null ? "" : $"&cursor={cursor}"));
       page.Items.Count.ShouldBeLessThanOrEqualTo(limit);
       all.AddRange(page.Items);
       cursor = page.NextCursor;
@@ -41,7 +41,7 @@ public sealed class TaskEndpointsTests(PostgresFixture postgres) : ApiTestBase(p
 
   private async Task<TaskResponse> PostActionAsync(Guid id, string action)
   {
-    using var response = await Client.PostAsync(new Uri($"/api/tasks/{id}/{action}", UriKind.Relative), content: null, Ct);
+    using HttpResponseMessage response = await Client.PostAsync(new Uri($"/api/tasks/{id}/{action}", UriKind.Relative), content: null, Ct);
     response.StatusCode.ShouldBe(HttpStatusCode.OK);
     return (await response.Content.ReadFromJsonAsync<TaskResponse>(Ct))!;
   }
@@ -49,19 +49,22 @@ public sealed class TaskEndpointsTests(PostgresFixture postgres) : ApiTestBase(p
   [Fact]
   public async Task CreateTask_WithPriorityAndNotes_AppearsInListAndAgenda()
   {
-    var created = await CreateAsync(new { title = "Plan trip", dueDate = "2026-10-26", priority = "high", notes = "  Book tickets  " });
+    TaskResponse created = await CreateAsync(
+      new { title = "Plan trip", dueDate = "2026-10-26", priority = "high", notes = "  Book tickets  " });
     created.Priority.ShouldBe("high");
     created.Notes.ShouldBe("Book tickets");
-    var listed = await ListAsync("upcoming&today=2026-10-26&timeZone=Europe/London");
+    TaskPage listed = await ListAsync("upcoming&today=2026-10-26&timeZone=Europe/London");
     listed.Items.ShouldContain(created);
-    var agenda = await Client.GetFromJsonAsync<DayAgendaResponse>(new Uri("/api/agenda/day?date=2026-10-26&timeZone=Europe/London", UriKind.Relative), Ct);
+    DayAgendaResponse? agenda = await Client.GetFromJsonAsync<DayAgendaResponse>(
+      new Uri("/api/agenda/day?date=2026-10-26&timeZone=Europe/London", UriKind.Relative),
+      Ct);
     agenda.ShouldNotBeNull().Tasks.DueToday.ShouldContain(t => t.Id == created.Id && t.HasNotes);
   }
 
   [Fact]
   public async Task CreateTask_WithDueDate_RoundTrips()
   {
-    var created = await CreateAsync(new { title = " Pay rent ", dueDate = "2026-10-26" });
+    TaskResponse created = await CreateAsync(new { title = " Pay rent ", dueDate = "2026-10-26" });
 
     created.Title.ShouldBe("Pay rent");
     created.DueDate.ShouldBe(new DateOnly(2026, 10, 26));
@@ -69,14 +72,14 @@ public sealed class TaskEndpointsTests(PostgresFixture postgres) : ApiTestBase(p
     created.IsCompleted.ShouldBeFalse();
     created.CompletedAt.ShouldBeNull();
 
-    var fetched = await Client.GetFromJsonAsync<TaskResponse>(new Uri($"/api/tasks/{created.Id}", UriKind.Relative), Ct);
+    TaskResponse? fetched = await Client.GetFromJsonAsync<TaskResponse>(new Uri($"/api/tasks/{created.Id}", UriKind.Relative), Ct);
     fetched.ShouldBe(created);
   }
 
   [Fact]
   public async Task CreateTask_WithDueAt_StoresUtc()
   {
-    var created = await CreateAsync(new { title = "Call", dueAt = "2026-10-26T09:30:00-04:00" });
+    TaskResponse created = await CreateAsync(new { title = "Call", dueAt = "2026-10-26T09:30:00-04:00" });
 
     created.DueAt.ShouldBe(Utc(2026, 10, 26, 13, 30));
     created.DueDate.ShouldBeNull();
@@ -85,7 +88,7 @@ public sealed class TaskEndpointsTests(PostgresFixture postgres) : ApiTestBase(p
   [Fact]
   public async Task CreateTask_Undated_IsAllowed()
   {
-    var created = await CreateAsync(new { title = "Someday" });
+    TaskResponse created = await CreateAsync(new { title = "Someday" });
 
     created.DueDate.ShouldBeNull();
     created.DueAt.ShouldBeNull();
@@ -106,39 +109,39 @@ public sealed class TaskEndpointsTests(PostgresFixture postgres) : ApiTestBase(p
   [MemberData(nameof(InvalidRequests))]
   public async Task CreateTask_Invalid_Returns400ValidationProblem(string scenario, string field, object payload)
   {
-    using var response = await Client.PostAsJsonAsync(Tasks, payload, Ct);
+    using HttpResponseMessage response = await Client.PostAsJsonAsync(Tasks, payload, Ct);
 
     response.StatusCode.ShouldBe(HttpStatusCode.BadRequest, scenario);
     response.Content.Headers.ContentType!.MediaType.ShouldBe("application/problem+json");
-    var errors = JsonNode.Parse(await response.Content.ReadAsStringAsync(Ct))!["errors"]!.AsObject();
+    JsonObject errors = JsonNode.Parse(await response.Content.ReadAsStringAsync(Ct))!["errors"]!.AsObject();
     errors.ContainsKey(field).ShouldBeTrue($"{scenario}: {errors.ToJsonString()}");
   }
 
   [Fact]
   public async Task Complete_SetsCompletedAtFromTheClock_AndIsIdempotent()
   {
-    var created = await CreateAsync(new { title = "T", dueDate = "2026-10-26" });
+    TaskResponse created = await CreateAsync(new { title = "T", dueDate = "2026-10-26" });
 
-    var first = await PostActionAsync(created.Id, "complete");
+    TaskResponse first = await PostActionAsync(created.Id, "complete");
     first.IsCompleted.ShouldBeTrue();
     first.CompletedAt.ShouldBe(Clock.GetUtcNow());
 
     Clock.Advance(TimeSpan.FromHours(2));
-    var second = await PostActionAsync(created.Id, "complete");
+    TaskResponse second = await PostActionAsync(created.Id, "complete");
 
     second.ShouldBe(first); // keeps the first completion time
-    var fetched = await Client.GetFromJsonAsync<TaskResponse>(new Uri($"/api/tasks/{created.Id}", UriKind.Relative), Ct);
+    TaskResponse? fetched = await Client.GetFromJsonAsync<TaskResponse>(new Uri($"/api/tasks/{created.Id}", UriKind.Relative), Ct);
     fetched.ShouldBe(first);
   }
 
   [Fact]
   public async Task Reopen_ClearsCompletion_AndIsIdempotent()
   {
-    var created = await CreateAsync(new { title = "T" });
+    TaskResponse created = await CreateAsync(new { title = "T" });
     await PostActionAsync(created.Id, "complete");
 
-    var reopened = await PostActionAsync(created.Id, "reopen");
-    var again = await PostActionAsync(created.Id, "reopen");
+    TaskResponse reopened = await PostActionAsync(created.Id, "reopen");
+    TaskResponse again = await PostActionAsync(created.Id, "reopen");
 
     reopened.IsCompleted.ShouldBeFalse();
     reopened.CompletedAt.ShouldBeNull();
@@ -148,7 +151,7 @@ public sealed class TaskEndpointsTests(PostgresFixture postgres) : ApiTestBase(p
   [Fact]
   public async Task Reopen_OfAnOpenTask_ReturnsItUnchanged()
   {
-    var created = await CreateAsync(new { title = "T" });
+    TaskResponse created = await CreateAsync(new { title = "T" });
 
     (await PostActionAsync(created.Id, "reopen")).ShouldBe(created);
   }
@@ -158,7 +161,10 @@ public sealed class TaskEndpointsTests(PostgresFixture postgres) : ApiTestBase(p
   [InlineData("reopen")]
   public async Task Actions_OnUnknownTask_Return404Problem(string action)
   {
-    using var response = await Client.PostAsync(new Uri($"/api/tasks/{Guid.NewGuid()}/{action}", UriKind.Relative), content: null, Ct);
+    using HttpResponseMessage response = await Client.PostAsync(
+      new Uri($"/api/tasks/{Guid.NewGuid()}/{action}", UriKind.Relative),
+      content: null,
+      Ct);
 
     response.StatusCode.ShouldBe(HttpStatusCode.NotFound);
     response.Content.Headers.ContentType!.MediaType.ShouldBe("application/problem+json");
@@ -167,7 +173,7 @@ public sealed class TaskEndpointsTests(PostgresFixture postgres) : ApiTestBase(p
   [Fact]
   public async Task GetTask_Unknown_Returns404Problem()
   {
-    using var response = await Client.GetAsync(new Uri($"/api/tasks/{Guid.NewGuid()}", UriKind.Relative), Ct);
+    using HttpResponseMessage response = await Client.GetAsync(new Uri($"/api/tasks/{Guid.NewGuid()}", UriKind.Relative), Ct);
 
     response.StatusCode.ShouldBe(HttpStatusCode.NotFound);
     response.Content.Headers.ContentType!.MediaType.ShouldBe("application/problem+json");
@@ -179,15 +185,15 @@ public sealed class TaskEndpointsTests(PostgresFixture postgres) : ApiTestBase(p
   public async Task ListTasks_DatedViews_SplitOnTheClientsDay_AndOrderByLocalDueDate()
   {
     // In New York on 2026-10-26 (UTC-4). Instants whose UTC date differs from their local date land on the local one.
-    var dateOnlyYesterday = await CreateAsync(new { title = "A", dueDate = "2026-10-25" });
-    var lateYesterdayLocal = await CreateAsync(new { title = "B", dueAt = "2026-10-26T03:00:00Z" });
-    var lateTodayLocal = await CreateAsync(new { title = "C", dueAt = "2026-10-27T02:00:00Z" });
-    var dateOnlyToday = await CreateAsync(new { title = "D", dueDate = "2026-10-26" });
-    var morningToday = await CreateAsync(new { title = "E", dueAt = "2026-10-26T14:00:00Z" });
-    var tomorrow = await CreateAsync(new { title = "F", dueDate = "2026-10-27" });
-    var done = await CreateAsync(new { title = "G", dueDate = "2026-10-20" });
+    TaskResponse dateOnlyYesterday = await CreateAsync(new { title = "A", dueDate = "2026-10-25" });
+    TaskResponse lateYesterdayLocal = await CreateAsync(new { title = "B", dueAt = "2026-10-26T03:00:00Z" });
+    TaskResponse lateTodayLocal = await CreateAsync(new { title = "C", dueAt = "2026-10-27T02:00:00Z" });
+    TaskResponse dateOnlyToday = await CreateAsync(new { title = "D", dueDate = "2026-10-26" });
+    TaskResponse morningToday = await CreateAsync(new { title = "E", dueAt = "2026-10-26T14:00:00Z" });
+    TaskResponse tomorrow = await CreateAsync(new { title = "F", dueDate = "2026-10-27" });
+    TaskResponse done = await CreateAsync(new { title = "G", dueDate = "2026-10-20" });
     await PostActionAsync(done.Id, "complete");
-    var undated = await CreateAsync(new { title = "H" });
+    TaskResponse undated = await CreateAsync(new { title = "H" });
 
     (await ListAsync($"overdue&{NewYorkToday}")).Items.ShouldBe([lateYesterdayLocal, dateOnlyYesterday]);
     (await ListAsync($"upcoming&{NewYorkToday}")).Items.ShouldBe([morningToday, lateTodayLocal, dateOnlyToday, tomorrow]);
@@ -198,8 +204,8 @@ public sealed class TaskEndpointsTests(PostgresFixture postgres) : ApiTestBase(p
   [Fact]
   public async Task ListTasks_Completed_MostRecentFirst()
   {
-    var first = await CreateAsync(new { title = "First" });
-    var second = await CreateAsync(new { title = "Second" });
+    TaskResponse first = await CreateAsync(new { title = "First" });
+    TaskResponse second = await CreateAsync(new { title = "Second" });
     await PostActionAsync(first.Id, "complete");
     Clock.Advance(TimeSpan.FromMinutes(5));
     await PostActionAsync(second.Id, "complete");
@@ -235,7 +241,7 @@ public sealed class TaskEndpointsTests(PostgresFixture postgres) : ApiTestBase(p
       await CreateAsync(new { title = "undated" });
     }
 
-    var whole = (await ListAsync($"{query}&limit=200")).Items;
+    IReadOnlyList<TaskResponse> whole = (await ListAsync($"{query}&limit=200")).Items;
     whole.ShouldNotBeEmpty();
 
     foreach (var limit in new[] { 1, 2, 3 })
@@ -249,7 +255,7 @@ public sealed class TaskEndpointsTests(PostgresFixture postgres) : ApiTestBase(p
   {
     await CreateAsync(new { title = "Only" });
 
-    var page = await ListAsync("no-deadline&limit=1");
+    TaskPage page = await ListAsync("no-deadline&limit=1");
 
     page.Items.Count.ShouldBe(1);
     page.NextCursor.ShouldBeNull();
@@ -271,10 +277,10 @@ public sealed class TaskEndpointsTests(PostgresFixture postgres) : ApiTestBase(p
   [MemberData(nameof(InvalidListQueries))]
   public async Task ListTasks_Invalid_Returns400ValidationProblem(string scenario, string query, string field)
   {
-    using var response = await Client.GetAsync(new Uri($"/api/tasks{query}", UriKind.Relative), Ct);
+    using HttpResponseMessage response = await Client.GetAsync(new Uri($"/api/tasks{query}", UriKind.Relative), Ct);
 
     response.StatusCode.ShouldBe(HttpStatusCode.BadRequest, scenario);
-    var errors = JsonNode.Parse(await response.Content.ReadAsStringAsync(Ct))!["errors"]!.AsObject();
+    JsonObject errors = JsonNode.Parse(await response.Content.ReadAsStringAsync(Ct))!["errors"]!.AsObject();
     errors.ContainsKey(field).ShouldBeTrue($"{scenario}: {errors.ToJsonString()}");
   }
 
@@ -285,7 +291,7 @@ public sealed class TaskEndpointsTests(PostgresFixture postgres) : ApiTestBase(p
     await CreateAsync(new { title = "Two" });
     var cursor = (await ListAsync("no-deadline&limit=1")).NextCursor.ShouldNotBeNull();
 
-    using var response = await Client.GetAsync(new Uri($"/api/tasks?view=completed&cursor={cursor}", UriKind.Relative), Ct);
+    using HttpResponseMessage response = await Client.GetAsync(new Uri($"/api/tasks?view=completed&cursor={cursor}", UriKind.Relative), Ct);
 
     response.StatusCode.ShouldBe(HttpStatusCode.BadRequest);
   }

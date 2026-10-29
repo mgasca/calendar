@@ -17,7 +17,8 @@ public static class TimeZones
   // Entries of the host's zoneinfo directory that are not zones (or are alternate rule sets of one).
   private static readonly HashSet<string> NotZones = new(StringComparer.OrdinalIgnoreCase)
     {
-        "localtime", "posixrules", "Factory", "posix", "right", "SystemV", "leapseconds", "tzdata", "zone", "zone1970", "iso3166", "leap-seconds",
+        "localtime", "posixrules", "Factory", "posix", "right", "SystemV",
+        "leapseconds", "tzdata", "zone", "zone1970", "iso3166", "leap-seconds",
     };
 
   /// <summary>
@@ -86,7 +87,7 @@ public static class TimeZones
 
   /// <summary>Resolves an IANA zone id (see <see cref="TryFindIana"/>) or throws <see cref="ArgumentException"/>.</summary>
   public static TimeZoneInfo FindIana(string? id, string paramName = "timeZoneId") =>
-      TryFindIana(id, out var zone)
+      TryFindIana(id, out TimeZoneInfo? zone)
           ? zone
           : throw new ArgumentException($"'{id}' is not a valid IANA time zone id.", paramName);
 }

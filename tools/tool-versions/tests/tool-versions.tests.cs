@@ -45,7 +45,8 @@ public sealed class VersionCheckerTests : IDisposable
   [Fact]
   public void ReadCentralVersions_ReadsPackageVersions()
   {
-    var central = VersionChecker.ReadCentralVersions(Path.Combine(_root, "backend/Directory.Packages.props"));
+    IReadOnlyDictionary<string, string> central =
+      VersionChecker.ReadCentralVersions(Path.Combine(_root, "backend/Directory.Packages.props"));
 
     central["SonarAnalyzer.CSharp"].ShouldBe("2.0.0");
     central["shouldly"].ShouldBe("4.3.0", "lookups are case-insensitive, like NuGet ids");
@@ -54,22 +55,23 @@ public sealed class VersionCheckerTests : IDisposable
   [Fact]
   public void FindPins_ReadsDirectivesAndProps_AndSkipsFixtures()
   {
-    var pins = VersionChecker.FindPins(_root);
+    IReadOnlyList<PinnedPackage> pins = VersionChecker.FindPins(_root);
 
     pins.ShouldBe(
-    [
-        new PinnedPackage("SonarAnalyzer.CSharp", "1.0.0", ".claude/skills/demo/Directory.Build.props"),
-            new PinnedPackage("Shouldly", "4.3.0", ".claude/skills/demo/tests/demo.tests.cs"),
-            new PinnedPackage("Untracked.Package", "9.9.9", ".claude/skills/demo/tests/demo.tests.cs"),
-        ], ignoreOrder: true);
+      [
+          new PinnedPackage("SonarAnalyzer.CSharp", "1.0.0", ".claude/skills/demo/Directory.Build.props"),
+              new PinnedPackage("Shouldly", "4.3.0", ".claude/skills/demo/tests/demo.tests.cs"),
+              new PinnedPackage("Untracked.Package", "9.9.9", ".claude/skills/demo/tests/demo.tests.cs"),
+          ],
+      ignoreOrder: true);
   }
 
   [Fact]
   public void FindDrift_ReportsOnlyTrackedPackagesWithDifferentVersions()
   {
-    var drifts = Drifts();
+    IReadOnlyList<VersionDrift> drifts = Drifts();
 
-    var drift = drifts.ShouldHaveSingleItem();
+    VersionDrift drift = drifts.ShouldHaveSingleItem();
     drift.Pin.Package.ShouldBe("SonarAnalyzer.CSharp");
     drift.BackendVersion.ShouldBe("2.0.0");
   }
@@ -94,7 +96,8 @@ public sealed class VersionCheckerTests : IDisposable
 
     VersionChecker.Fix(_root, Drifts());
 
-    Read(".claude/skills/demo/Directory.Build.props").ShouldBe(before.Replace("Version=\"1.0.0\"", "Version=\"2.0.0\"", StringComparison.Ordinal));
+    Read(".claude/skills/demo/Directory.Build.props")
+      .ShouldBe(before.Replace("Version=\"1.0.0\"", "Version=\"2.0.0\"", StringComparison.Ordinal));
   }
 
   private IReadOnlyList<VersionDrift> Drifts() =>

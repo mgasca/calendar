@@ -41,7 +41,7 @@ public static partial class AdrValidator
     foreach (var path in Directory.EnumerateFiles(decisionsDir, "*.md"))
     {
       var name = Path.GetFileName(path);
-      var m = FileNameRegex().Match(name);
+      Match m = FileNameRegex().Match(name);
       if (m.Success)
       {
         files[m.Groups[1].Value] = name;
@@ -94,18 +94,18 @@ public static partial class AdrValidator
       errors.Add("filename must be NNNN-lowercase-kebab-title.md");
     }
 
-    var meta = CheckFrontMatter(text, errors, out var body);
-    var title = H1Regex().Match(body);
+    Dictionary<string, string> meta = CheckFrontMatter(text, errors, out var body);
+    Match title = H1Regex().Match(body);
     if (!title.Success)
     {
       errors.Add("missing H1 title");
     }
 
-    var h2Ordered = Sections(body, 2);
-    var h2 = SectionMap(h2Ordered);
+    List<(string Heading, string Content)> h2Ordered = Sections(body, 2);
+    Dictionary<string, string> h2 = SectionMap(h2Ordered);
     CheckSectionOrder(h2Ordered.ConvertAll(s => s.Heading), errors);
 
-    var drivers = CheckDrivers(h2.GetValueOrDefault("Decision Drivers", ""), errors);
+    List<string> drivers = CheckDrivers(h2.GetValueOrDefault("Decision Drivers", ""), errors);
     var outcome = h2.GetValueOrDefault("Decision Outcome", "");
     var prosCons = h2.GetValueOrDefault("Pros and Cons of the Options", "");
 
@@ -157,7 +157,7 @@ public static partial class AdrValidator
   private static Dictionary<string, string> CheckFrontMatter(string text, List<string> errors, out string body)
   {
     var meta = new Dictionary<string, string>(StringComparer.Ordinal);
-    var fm = FrontMatterRegex().Match(text);
+    Match fm = FrontMatterRegex().Match(text);
     if (!fm.Success)
     {
       errors.Add("missing YAML front matter (status, date, decision-makers)");
@@ -270,9 +270,14 @@ public static partial class AdrValidator
   }
 
   private static void CheckRatingTable(
-      int tableNumber, List<List<string>> table, List<string> drivers, string status, HashSet<string> rated, List<string> errors)
+      int tableNumber,
+      List<List<string>> table,
+      List<string> drivers,
+      string status,
+      HashSet<string> rated,
+      List<string> errors)
   {
-    var header = table[0];
+    List<string> header = table[0];
     var chosen = header.Skip(1).Where(c => ChosenColumnRegex().IsMatch(c)).ToList();
     if (status is "proposed" or "accepted" && chosen.Count != 1)
     {
@@ -287,9 +292,9 @@ public static partial class AdrValidator
       errors.Add($"table {tableNumber}: needs at least two option columns");
     }
 
-    foreach (var row in table.Skip(2))
+    foreach (List<string>? row in table.Skip(2))
     {
-      var m = RowLabelRegex().Match(row[0] + " ");
+      Match m = RowLabelRegex().Match(row[0] + " ");
       if (!m.Success)
       {
         errors.Add($"table {tableNumber}: row label '{row[0]}' must start with a driver id (e.g. 'D1 Name')");
@@ -315,7 +320,7 @@ public static partial class AdrValidator
 
   private static void CheckProsCons(string prosCons, List<string> drivers, List<string> errors)
   {
-    var untagged = BulletLineRegex().Matches(prosCons).Select(m => m.Value).Where(b => !ProConRegex().IsMatch(b));
+    IEnumerable<string> untagged = BulletLineRegex().Matches(prosCons).Select(m => m.Value).Where(b => !ProConRegex().IsMatch(b));
     foreach (var bullet in untagged)
     {
       var preview = bullet.Length > 70 ? bullet[..70] : bullet;
@@ -329,7 +334,7 @@ public static partial class AdrValidator
       errors.Add($"drivers never argued in pros/cons: [{string.Join(", ", unused)}]");
     }
 
-    foreach (var (heading, content) in Sections(prosCons, 3))
+    foreach ((var heading, var content) in Sections(prosCons, 3))
     {
       if (!BulletRegex().IsMatch(content))
       {
@@ -339,7 +344,12 @@ public static partial class AdrValidator
   }
 
   private static void CheckLinks(
-      string path, string text, string number, IReadOnlyDictionary<string, string> files, List<string> errors)
+      string path,
+      string text,
+      string number,
+      IReadOnlyDictionary<string,
+      string> files,
+      List<string> errors)
   {
     var plain = StripCode(text);
     foreach (Match m in BareReferenceRegex().Matches(plain))
@@ -364,10 +374,16 @@ public static partial class AdrValidator
   }
 
   private static void CheckIndexRow(
-      string name, string number, Match title, Dictionary<string, string> meta, string indexText, List<string> errors)
+      string name,
+      string number,
+      Match title,
+      Dictionary<string,
+      string> meta,
+      string indexText,
+      List<string> errors)
   {
     var pattern = $@"^\| \[{number}\]\({Regex.Escape(name)}\) \| (.+?) \| (.+?) \|$";
-    var row = Regex.Match(indexText, pattern, RegexOptions.Multiline, TimeSpan.FromSeconds(1));
+    Match row = Regex.Match(indexText, pattern, RegexOptions.Multiline, TimeSpan.FromSeconds(1));
     if (!row.Success)
     {
       errors.Add($"no row for {name} in docs/decisions/{IndexFileName}");
@@ -388,7 +404,7 @@ public static partial class AdrValidator
   /// <summary>Splits Markdown into (heading, content) pairs, in document order, for headings of exactly <paramref name="level"/>.</summary>
   private static List<(string Heading, string Content)> Sections(string markdown, int level)
   {
-    var headings = Regex.Matches(markdown, $"^{new string('#', level)} (.+)$", RegexOptions.Multiline, TimeSpan.FromSeconds(1));
+    MatchCollection headings = Regex.Matches(markdown, $"^{new string('#', level)} (.+)$", RegexOptions.Multiline, TimeSpan.FromSeconds(1));
     var result = new List<(string Heading, string Content)>(headings.Count);
     for (var i = 0; i < headings.Count; i++)
     {
@@ -402,7 +418,7 @@ public static partial class AdrValidator
   private static Dictionary<string, string> SectionMap(List<(string Heading, string Content)> sections)
   {
     var map = new Dictionary<string, string>(StringComparer.Ordinal);
-    foreach (var (heading, content) in sections)
+    foreach ((var heading, var content) in sections)
     {
       map[heading] = content;
     }
@@ -442,7 +458,10 @@ public static partial class AdrValidator
   [GeneratedRegex(@"^([0-9]{4})-[a-z0-9]+(?:-[a-z0-9]+)*\.md$", RegexOptions.None, 1000)]
   private static partial Regex FileNameRegex();
 
-  [GeneratedRegex(@"^(proposed|accepted|rejected|deprecated|superseded by \[ADR-[0-9]{4}\]\([0-9]{4}-[a-z0-9-]+\.md\))$", RegexOptions.None, 1000)]
+  [GeneratedRegex(
+    @"^(proposed|accepted|rejected|deprecated|superseded by \[ADR-[0-9]{4}\]\([0-9]{4}-[a-z0-9-]+\.md\))$",
+    RegexOptions.None,
+    1000)]
   private static partial Regex StatusRegex();
 
   [GeneratedRegex(@"^[0-9]{4}-[0-9]{2}-[0-9]{2}$", RegexOptions.None, 1000)]

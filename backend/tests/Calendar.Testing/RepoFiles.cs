@@ -21,7 +21,7 @@ internal static partial class RepoFiles
   /// <summary>The postgres image pinned in compose.yaml.</summary>
   public static string PostgresImage()
   {
-    var match = ImageRegex().Match(File.ReadAllText(Find("compose.yaml")));
+    Match match = ImageRegex().Match(File.ReadAllText(Find("compose.yaml")));
     return match.Success ? match.Groups["image"].Value : throw new InvalidOperationException("No postgres image found in compose.yaml.");
   }
 

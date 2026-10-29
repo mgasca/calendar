@@ -12,7 +12,7 @@ internal static class EventEndpoints
 
   public static IEndpointRouteBuilder MapEventEndpoints(this IEndpointRouteBuilder app)
   {
-    var group = app.MapGroup("/api/events").WithTags("Events");
+    RouteGroupBuilder group = app.MapGroup("/api/events").WithTags("Events");
 
     group.MapPost("/", CreateAsync).WithName("CreateEvent");
     group.MapGet("/{id:guid}", GetAsync).WithName(GetEventName).ProducesProblem(StatusCodes.Status404NotFound);
@@ -52,7 +52,13 @@ internal static class EventEndpoints
       {
         created = request.AllDay
             ? CalendarEvent.CreateAllDay(request.Title, request.StartDate!.Value, request.EndDate!.Value, request.Location, request.Notes)
-            : CalendarEvent.Create(request.Title, request.Start!.Value, request.End!.Value, request.TimeZone!, request.Location, request.Notes);
+            : CalendarEvent.Create(
+              request.Title,
+              request.Start!.Value,
+              request.End!.Value,
+              request.TimeZone!,
+              request.Location,
+              request.Notes);
       }
       catch (ArgumentException ex)
       {
@@ -75,7 +81,7 @@ internal static class EventEndpoints
       CalendarDbContext db,
       CancellationToken cancellationToken)
   {
-    var found = await db.Events.AsNoTracking().FirstOrDefaultAsync(e => e.Id == id, cancellationToken);
+    CalendarEvent? found = await db.Events.AsNoTracking().FirstOrDefaultAsync(e => e.Id == id, cancellationToken);
     return found is null
         ? TypedResults.Problem(statusCode: StatusCodes.Status404NotFound, title: "Event not found.")
         : TypedResults.Ok(ToResponse(found));

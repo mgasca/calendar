@@ -16,12 +16,16 @@ public sealed class AgendaBucketingTests
   {
     var range = DateRangeWindow.Create(new DateOnly(year, month, day), 7, TimeZoneInfo.FindSystemTimeZoneById(zoneId));
     var random = new Random(55);
-    var instants = range.Days.SelectMany(d => new[] { d.Start, d.End, d.Start.AddTicks(-1), d.Start.AddTicks(1) })
-        .Concat(Enumerable.Range(0, 200).Select(_ => range.Start.AddMinutes(random.Next(-2880, 14400)))).ToArray();
-    var events = Enumerable.Range(0, 500).Select(i =>
+    DateTimeOffset[] instants =
+    [
+      .. range.Days.SelectMany(d => new[] { d.Start, d.End, d.Start.AddTicks(-1), d.Start.AddTicks(1) })
+,
+      .. Enumerable.Range(0, 200).Select(_ => range.Start.AddMinutes(random.Next(-2880, 14400))),
+    ];
+    TimedEventItem[] events = [.. Enumerable.Range(0, 500).Select(i =>
     {
-      var start = instants[random.Next(instants.Length)];
-      var end = i % 5 == 0 ? start : instants[random.Next(instants.Length)];
+      DateTimeOffset start = instants[random.Next(instants.Length)];
+      DateTimeOffset end = i % 5 == 0 ? start : instants[random.Next(instants.Length)];
       if (end < start)
       {
         (start, end) = (end, start);
@@ -38,8 +42,8 @@ public sealed class AgendaBucketingTests
         EndsAfterDay = false,
         HasNotes = false
       };
-    }).ToArray();
-    var tasks = Enumerable.Range(0, 500).Select(i => new AgendaTaskItem
+    })];
+    AgendaTaskItem[] tasks = [.. Enumerable.Range(0, 500).Select(i => new AgendaTaskItem
     {
       Id = Guid.NewGuid(),
       Title = $"Task {i % 8}",
@@ -47,17 +51,16 @@ public sealed class AgendaBucketingTests
       HasNotes = false,
       DueDate = i % 3 == 0 ? range.StartDate.AddDays(random.Next(-2, 9)) : null,
       DueAt = i % 3 != 0 ? instants[random.Next(instants.Length)] : null,
-    }).ToArray();
+    })];
 
-    var actual = AgendaBuilder.Bucket(range, events, tasks);
+    IReadOnlyList<AgendaSnapshotDay> actual = AgendaBuilder.Bucket(range, events, tasks);
     for (var i = 0; i < range.Days.Count; i++)
     {
-      var window = range.Days[i];
-      var expectedEvents = events.Where(e => DayInclusion.TimedEventOverlaps(e.Start, e.End, window))
+      DayWindow window = range.Days[i];
+      TimedEventItem[] expectedEvents = [.. events.Where(e => DayInclusion.TimedEventOverlaps(e.Start, e.End, window))
           .Select(e => e with { StartsBeforeDay = e.Start < window.Start, EndsAfterDay = e.End > window.End })
-          .Order(AgendaOrder.TimedEvents).ToArray();
-      var expectedTasks = tasks.Where(t => DayInclusion.IsDueOn(t.DueDate, t.DueAt, window))
-          .Order(AgendaOrder.DueTasks).ToArray();
+          .Order(AgendaOrder.TimedEvents)];
+      AgendaTaskItem[] expectedTasks = [.. tasks.Where(t => DayInclusion.IsDueOn(t.DueDate, t.DueAt, window)).Order(AgendaOrder.DueTasks)];
       actual[i].Window.ShouldBe(window);
       actual[i].Events.ShouldBe(expectedEvents);
       actual[i].Tasks.ShouldBe(expectedTasks);

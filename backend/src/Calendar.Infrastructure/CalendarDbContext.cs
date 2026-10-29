@@ -21,5 +21,6 @@ public sealed class CalendarDbContext(DbContextOptions<CalendarDbContext> option
   public DbSet<TodoTask> Tasks => Set<TodoTask>();
 
   /// <inheritdoc />
-  protected override void OnModelCreating(ModelBuilder modelBuilder) => modelBuilder.ApplyConfigurationsFromAssembly(typeof(CalendarDbContext).Assembly);
+  protected override void OnModelCreating(ModelBuilder modelBuilder) =>
+    modelBuilder.ApplyConfigurationsFromAssembly(typeof(CalendarDbContext).Assembly);
 }

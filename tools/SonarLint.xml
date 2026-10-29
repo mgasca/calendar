@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Parameters for SonarAnalyzer rules; severities live in .editorconfig. Keep in sync with max_line_length there. -->
+<AnalysisInput>
+  <Rules>
+    <Rule>
+      <Key>S103</Key>
+      <Parameters>
+        <Parameter>
+          <Key>maximumLineLength</Key>
+          <Value>140</Value>
+        </Parameter>
+      </Parameters>
+    </Rule>
+  </Rules>
+</AnalysisInput>

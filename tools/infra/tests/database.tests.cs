@@ -61,6 +61,7 @@ public sealed class DatabaseTests
   [Fact]
   public void GrantsIncludeIdempotentSchemaPrivileges()
   {
+    Infra.GrantsSql.ShouldContain("GRANT CONNECT ON DATABASE calendar TO CURRENT_USER;");
     Infra.GrantsSql.ShouldContain("REVOKE CREATE ON SCHEMA public FROM PUBLIC;");
     Infra.GrantsSql.ShouldContain("GRANT USAGE, CREATE ON SCHEMA public TO calendar_migrator;");
     Infra.GrantsSql.ShouldContain("GRANT USAGE ON SCHEMA public TO calendar_app;");
@@ -92,15 +93,26 @@ public sealed class DatabaseTests
     azure.Calls.SelectMany(x => x).ShouldNotContain("secret-value");
   }
 
+  [Fact]
+  public async Task FailedFirewallCleanupReportsRuleForManualRemoval()
+  {
+    var azure = new FakeAzure { FailDelete = true };
+    var error = await Should.ThrowAsync<InvalidOperationException>(() => Infra.WithFirewall(azure, "rg", "server", "192.0.2.1", () => Task.CompletedTask));
+    error.Message.ShouldContain("remove it manually");
+    error.Message.ShouldContain(azure.Calls[1][Array.IndexOf(azure.Calls[1], "--name") + 1]);
+  }
+
   private sealed class FakeAzure : IAzureProcess
   {
     public List<string[]> Calls { get; } = [];
+    public bool FailDelete { get; init; }
     public string FileContents { get; private set; } = "";
     public string FilePath { get; private set; } = "";
     public UnixFileMode FileMode { get; private set; }
     public Task<string> RunAsync(params string[] args)
     {
       Calls.Add(args);
+      if (FailDelete && args.Contains("delete")) { throw new InvalidOperationException("Azure failure"); }
       var index = Array.IndexOf(args, "--file");
       if (index >= 0)
       {

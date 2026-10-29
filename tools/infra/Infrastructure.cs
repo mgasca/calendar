@@ -128,7 +128,7 @@ public static partial class Infra
       });
       return 0;
     }
-    catch (HttpRequestException)
+    catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException)
     {
       await error.WriteLineAsync("Unable to detect public IP; pass --client-ip IPv4.");
       return 1;

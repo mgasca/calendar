@@ -151,7 +151,13 @@ public static partial class Infra
       await az.RunAsync("postgres", "flexible-server", "firewall-rule", "create", "--resource-group", group, "--server-name", server, "--name", rule, "--start-ip-address", ip, "--end-ip-address", ip, "--output", "none");
       await action();
     }
-    finally { await az.RunAsync("postgres", "flexible-server", "firewall-rule", "delete", "--resource-group", group, "--server-name", server, "--name", rule, "--yes", "--output", "none"); }
+    finally { await DeleteFirewall(az, group, server, rule); }
+  }
+
+  private static async Task DeleteFirewall(IAzureProcess az, string group, string server, string rule)
+  {
+    try { await az.RunAsync("postgres", "flexible-server", "firewall-rule", "delete", "--resource-group", group, "--server-name", server, "--name", rule, "--yes", "--output", "none"); }
+    catch (InvalidOperationException) { throw new InvalidOperationException($"Could not remove temporary firewall rule {rule} from {server}; remove it manually."); }
   }
 
   private static async Task RunLocal(string command, string[] args, string directory, string? connection, Func<string, Task>? after = null)

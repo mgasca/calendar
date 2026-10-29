@@ -145,7 +145,7 @@ Create a Google OAuth web application client and configure its authorized redire
 * Development: `http://localhost:5173/api/auth/callback/google`
 * Production: `https://<host>/api/auth/callback/google`
 
-Set `Auth__Google__ClientId`, `Auth__Google__ClientSecret` and indexed entries such as `Auth__AllowedEmails__0` in the untracked `.env` for local development, then export them into the API process (for example, `set -a; . ./.env; set +a` before `make dev-api`); use deployment secrets for production. Add only the verified Google emails permitted to access the calendar. Keep the client secret out of version control. Use HTTPS in production and configure trusted forwarded headers when behind a proxy so redirects and secure cookies use the public origin.
+Set `Auth__Google__ClientId`, `Auth__Google__ClientSecret` and indexed entries such as `Auth__AllowedEmails__0` in the untracked `.env` for local development, then export them into the API process (`make dev-api` loads `.env` for you; restart it after editing, since hot reload does not re-read the environment); use deployment secrets for production. Add only the verified Google emails permitted to access the calendar. Keep the client secret out of version control. Use HTTPS in production and configure trusted forwarded headers when behind a proxy so redirects and secure cookies use the public origin.
 
 > **Authentication and limitations.** Google sign-in protects the API with a same-origin cookie ([ADR-0027](docs/decisions/0027-google-oidc-bff-session.md)). All allowed accounts currently share the same data: add `owner_id` and per-user scoping before supporting a second user. Add bearer support before enabling non-browser clients.
 

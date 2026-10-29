@@ -92,7 +92,11 @@ contracts: ## Regenerate OpenAPI contract and TypeScript client
 
 check: lint test ## Everything CI runs
 
-dev-api: ## Run the API on http://localhost:5041
+dev-api: ## Run the API on http://localhost:5041 (loads .env, e.g. the Google sign-in settings)
+	@if [ -f .env ]; then $(DB_ENV); else echo "No .env found: copy .env.example to .env"; fi; \
+	if [ -z "$$Auth__Google__ClientId" ] || [ -z "$$Auth__Google__ClientSecret" ]; then \
+		echo "Warning: Auth__Google__ClientId/ClientSecret are not set in .env, so 'Sign in with Google' will return 503 (see README)."; \
+	fi; \
 	$(DOTNET) watch --project src/Calendar.Api
 
 dev-web: ## Run the web UI (proxies /api to the API)

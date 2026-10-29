@@ -4,6 +4,7 @@ param tags object
 param sku string
 @secure()
 param administratorPassword string
+param appOutboundIps array
 param allowedFirewallIps array
 param allowAzureServices bool
 resource server 'Microsoft.DBforPostgreSQL/flexibleServers@2025-08-01' = {
@@ -40,3 +41,9 @@ resource azureFirewall 'Microsoft.DBforPostgreSQL/flexibleServers/firewallRules@
   name: 'allow-azure-services'
   properties: { startIpAddress: '0.0.0.0', endIpAddress: '0.0.0.0' }
 }
+
+resource appFirewall 'Microsoft.DBforPostgreSQL/flexibleServers/firewallRules@2025-08-01' = [for (ip, i) in appOutboundIps: {
+  parent: server
+  name: 'container-app-${i}'
+  properties: { startIpAddress: ip, endIpAddress: ip }
+}]

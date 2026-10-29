@@ -20,8 +20,9 @@ var mappings = [
   { secret: 'google-client-id', env: 'Auth__Google__ClientId' }
   { secret: 'google-client-secret', env: 'Auth__Google__ClientSecret' }
 ]
-var fixedEnv = [for mapping in filter(mappings, m => contains(keyVaultSecretNames, m.secret)): { name: mapping.env, secretRef: mapping.secret }]
-var emailEnv = [for secret in filter(keyVaultSecretNames, s => startsWith(s, 'allowed-email-')): { name: 'Auth__AllowedEmails__${substring(secret, 14)}', secretRef: secret }]
+var allowedNames = filter(keyVaultSecretNames, s => contains(['calendar-connection-string', 'google-client-id', 'google-client-secret'], s) || (startsWith(s, 'allowed-email-') && length(s) > 14 && empty(reduce(range(0, 10), substring(s, min(length(s), 14)), (remaining, digit) => replace(remaining, string(digit), '')))))
+var fixedEnv = [for mapping in filter(mappings, m => contains(allowedNames, m.secret)): { name: mapping.env, secretRef: mapping.secret }]
+var emailEnv = [for secret in filter(allowedNames, s => startsWith(s, 'allowed-email-')): { name: 'Auth__AllowedEmails__${substring(secret, 14)}', secretRef: secret }]
 resource environment 'Microsoft.App/managedEnvironments@2026-07-01' = {
   name: 'cae-calendar-${suffix}'
   location: location
@@ -46,7 +47,7 @@ resource app 'Microsoft.App/containerApps@2026-07-01' = {
       activeRevisionsMode: 'Single'
       ingress: { external: true, targetPort: targetPort, allowInsecure: false, transport: 'auto' }
       registries: [ { server: registryLoginServer, identity: identityId } ]
-      secrets: [for secret in keyVaultSecretNames: { name: secret, keyVaultUrl: '${vaultUri}secrets/${secret}', identity: identityId }]
+      secrets: [for secret in allowedNames: { name: secret, keyVaultUrl: '${vaultUri}secrets/${secret}', identity: identityId }]
     }
     template: {
       containers: [ {
@@ -64,3 +65,5 @@ resource app 'Microsoft.App/containerApps@2026-07-01' = {
     }
   }
 }
+
+output outboundIps array = app.properties.outboundIpAddresses

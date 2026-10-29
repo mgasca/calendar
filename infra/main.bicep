@@ -15,8 +15,8 @@ param allowAzureServices bool = false
 param postgresSku string
 param minReplicas int = 0
 param maxReplicas int = 1
-param targetPort int = 80
-param enableHealthProbes bool = false
+param targetPort int = 8080
+var isPlaceholder = containerImage == 'mcr.microsoft.com/azuredocs/containerapps-helloworld:latest'
 var suffix = uniqueString(resourceGroup().id)
 var tags = { environment: environment, app: 'calendar' }
 module monitoring 'modules/monitoring.bicep' = {
@@ -43,6 +43,7 @@ module database 'modules/database.bicep' = if (deployDatabaseAndApp) {
     administratorPassword: postgresAdministratorPassword
     allowedFirewallIps: allowedFirewallIps
     allowAzureServices: allowAzureServices
+    appOutboundIps: app!.outputs.outboundIps
   }
 }
 module app 'modules/app.bicep' = if (deployDatabaseAndApp) {
@@ -55,12 +56,15 @@ module app 'modules/app.bicep' = if (deployDatabaseAndApp) {
     workspaceCustomerId: monitoring.outputs.workspaceCustomerId
     registryLoginServer: foundation.outputs.registryLoginServer
     identityId: foundation.outputs.identityId
-    vaultUri: foundation.outputs.vaultUri
+    vaultUri: foundation.outputs.appVaultUri
     containerImage: containerImage
     keyVaultSecretNames: keyVaultSecretNames
     minReplicas: minReplicas
     maxReplicas: maxReplicas
-    targetPort: targetPort
-    enableHealthProbes: enableHealthProbes
+    targetPort: isPlaceholder ? 80 : targetPort
+    enableHealthProbes: !isPlaceholder
   }
 }
+
+output appKeyVaultName string = foundation.outputs.appKeyVaultName
+output opsKeyVaultName string = foundation.outputs.opsKeyVaultName

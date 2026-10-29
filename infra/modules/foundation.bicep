@@ -12,8 +12,8 @@ resource registry 'Microsoft.ContainerRegistry/registries@2025-11-01' = {
   sku: { name: 'Basic' }
   properties: { adminUserEnabled: false }
 }
-resource vault 'Microsoft.KeyVault/vaults@2026-05-15' = {
-  name: 'kv-calendar-${suffix}'
+resource appVault 'Microsoft.KeyVault/vaults@2026-05-15' = {
+  name: 'kv-app-${suffix}'
   location: location
   tags: tags
   properties: {
@@ -24,13 +24,27 @@ resource vault 'Microsoft.KeyVault/vaults@2026-05-15' = {
     enabledForTemplateDeployment: true
   }
 }
-resource diagnostics 'Microsoft.Insights/diagnosticSettings@2021-05-01-preview' = {
-  scope: vault
-  name: 'audit'
+resource opsVault 'Microsoft.KeyVault/vaults@2026-05-15' = {
+  name: 'kv-ops-${suffix}'
+  location: location
+  tags: tags
   properties: {
-    workspaceId: workspaceId
-    logs: [ { category: 'AuditEvent', enabled: true } ]
+    tenantId: tenant().tenantId
+    sku: { family: 'A', name: 'standard' }
+    accessPolicies: []
+    enableRbacAuthorization: true
+    enabledForTemplateDeployment: true
   }
+}
+resource appDiagnostics 'Microsoft.Insights/diagnosticSettings@2021-05-01-preview' = {
+  scope: appVault
+  name: 'audit'
+  properties: { workspaceId: workspaceId, logs: [ { category: 'AuditEvent', enabled: true } ] }
+}
+resource opsDiagnostics 'Microsoft.Insights/diagnosticSettings@2021-05-01-preview' = {
+  scope: opsVault
+  name: 'audit'
+  properties: { workspaceId: workspaceId, logs: [ { category: 'AuditEvent', enabled: true } ] }
 }
 resource identity 'Microsoft.ManagedIdentity/userAssignedIdentities@2024-11-30' = {
   name: 'id-calendar-${suffix}'
@@ -43,15 +57,22 @@ resource registryRole 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
   properties: { roleDefinitionId: acrPull, principalId: identity.properties.principalId, principalType: 'ServicePrincipal' }
 }
 resource vaultRole 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
-  name: guid(vault.id, identity.id, secretsUser)
-  scope: vault
+  name: guid(appVault.id, identity.id, secretsUser)
+  scope: appVault
   properties: { roleDefinitionId: secretsUser, principalId: identity.properties.principalId, principalType: 'ServicePrincipal' }
 }
-resource deployerRole 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
-  name: guid(vault.id, deployerPrincipalId, secretsUser)
-  scope: vault
+resource deployerAppRole 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
+  name: guid(appVault.id, deployerPrincipalId, secretsUser)
+  scope: appVault
+  properties: { roleDefinitionId: secretsUser, principalId: deployerPrincipalId, principalType: 'ServicePrincipal' }
+}
+resource deployerOpsRole 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
+  name: guid(opsVault.id, deployerPrincipalId, secretsUser)
+  scope: opsVault
   properties: { roleDefinitionId: secretsUser, principalId: deployerPrincipalId, principalType: 'ServicePrincipal' }
 }
 output registryLoginServer string = registry.properties.loginServer
 output identityId string = identity.id
-output vaultUri string = vault.properties.vaultUri
+output appVaultUri string = appVault.properties.vaultUri
+output appKeyVaultName string = appVault.name
+output opsKeyVaultName string = opsVault.name

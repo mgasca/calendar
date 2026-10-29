@@ -89,7 +89,7 @@ jobs:
       - name: Read GitHub Pages configuration
         id: pages
         if: (github.event_name == 'push' && github.ref == 'refs/heads/main') || (github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository)
-        uses: actions/configure-pages@983d7736d9b0ae728b81ab479565c72886d7745b # v5
+        uses: actions/configure-pages@45bfe0192ca1faeb007ade9deae92b16b8254a0d # v6.0.0
       - name: Build and verify publication artifact
         if: steps.pages.outcome == 'success'
         run: |
@@ -155,7 +155,7 @@ jobs:
           --health-retries 10
     steps:
       - uses: actions/checkout@v7
-      - uses: actions/cache@v5
+      - uses: actions/cache@v6
         with:
           path: /tmp/calendar-buildx-cache
           key: image-${{ runner.os }}-${{ github.sha }}

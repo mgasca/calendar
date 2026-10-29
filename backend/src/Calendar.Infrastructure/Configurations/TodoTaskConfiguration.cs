@@ -27,6 +27,9 @@ internal sealed class TodoTaskConfiguration : IEntityTypeConfiguration<TodoTask>
     builder.HasIndex(t => t.DueDate).HasDatabaseName("ix_tasks_due_date").HasFilter("due_date IS NOT NULL");
     builder.HasIndex(t => t.DueAt).HasDatabaseName("ix_tasks_due_at").HasFilter("due_at IS NOT NULL");
     builder.HasIndex(t => t.CompletedAt).HasDatabaseName("ix_tasks_completed_at").HasFilter("completed_at IS NOT NULL");
+    // Open tasks only: the overdue list's open branch, which must not grow with the completed history.
+    builder.HasIndex(t => t.DueDate, "ix_tasks_open_due_date").HasDatabaseName("ix_tasks_open_due_date").HasFilter("due_date IS NOT NULL AND completed_at IS NULL");
+    builder.HasIndex(t => t.DueAt, "ix_tasks_open_due_at").HasDatabaseName("ix_tasks_open_due_at").HasFilter("due_at IS NOT NULL AND completed_at IS NULL");
 
     builder.Property<uint>("xmin").HasColumnType("xid").ValueGeneratedOnAddOrUpdate().IsConcurrencyToken();
   }

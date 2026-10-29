@@ -1,4 +1,4 @@
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { QueryClientProvider } from '@tanstack/react-query';
 import {
   createMemoryHistory,
   createRootRoute,
@@ -9,10 +9,11 @@ import { render, type RenderOptions } from '@testing-library/react';
 import type { ReactElement } from 'react';
 
 import { App } from '../App.tsx';
+import { createQueryClient } from '../queryClient.ts';
 import { createAppRouter } from '../router.tsx';
 
 export function renderWithProviders(ui: ReactElement, options?: RenderOptions) {
-  const queryClient = new QueryClient({
+  const queryClient = createQueryClient({
     defaultOptions: { queries: { retry: false, retryDelay: 0 } },
   });
   return {

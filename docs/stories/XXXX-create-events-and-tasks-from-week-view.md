@@ -2,7 +2,7 @@
 status: planned
 date: 2026-10-27
 pr: https://github.com/mgasca/calendar/pull/17
-adrs: [0018, 0020]
+adrs: ["0018", "0020"]
 ---
 
 # XXXX Create events and tasks from the week view

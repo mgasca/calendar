@@ -3,6 +3,22 @@ import type { Schemas } from '@calendar/api-client';
 export type TimedEvent = Schemas['TimedEventItem'];
 export type AgendaTask = Schemas['TaskResponse'];
 
+const dateTimeFormatters = new Map<string, Intl.DateTimeFormat>();
+
+/** Reuses date formatters for identical locale and options. */
+export function dateTimeFormat(
+  locale: string | undefined,
+  options: Intl.DateTimeFormatOptions,
+): Intl.DateTimeFormat {
+  const key = JSON.stringify([locale, options]);
+  let formatter = dateTimeFormatters.get(key);
+  if (!formatter) {
+    formatter = new Intl.DateTimeFormat(locale, options);
+    dateTimeFormatters.set(key, formatter);
+  }
+  return formatter;
+}
+
 export type EventStatus = 'past' | 'current' | 'next' | 'upcoming';
 
 /** The browser's IANA time zone, e.g. `Europe/Madrid`. */
@@ -12,7 +28,7 @@ export function browserTimeZone(): string {
 
 /** The calendar date (`YYYY-MM-DD`) at instant `ms` in `timeZone`, not in UTC. */
 export function localDate(ms: number, timeZone: string): string {
-  const parts = new Intl.DateTimeFormat('en-US', {
+  const parts = dateTimeFormat('en-US', {
     timeZone,
     year: 'numeric',
     month: '2-digit',
@@ -32,7 +48,7 @@ export function daysBetween(from: string, to: string): number {
  * when `withYear` is set.
  */
 export function formatDate(date: string, locale?: string, { withYear = false } = {}): string {
-  return new Intl.DateTimeFormat(locale, {
+  return dateTimeFormat(locale, {
     timeZone: 'UTC',
     weekday: 'long',
     day: 'numeric',
@@ -43,7 +59,7 @@ export function formatDate(date: string, locale?: string, { withYear = false } =
 
 /** Wall-clock time of an instant in `timeZone`, e.g. "09:30". */
 export function formatTime(iso: string, timeZone: string, locale?: string): string {
-  return new Intl.DateTimeFormat(locale, {
+  return dateTimeFormat(locale, {
     timeZone,
     hour: '2-digit',
     minute: '2-digit',

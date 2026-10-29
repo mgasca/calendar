@@ -14,13 +14,17 @@ namespace InfraTool.Integration;
 #pragma warning disable CS1591
 public sealed class RoleAgreementTests
 {
+  // File-based apps run from their build directory, so locate the repository from this source file.
+  private static string SourceDirectory([System.Runtime.CompilerServices.CallerFilePath] string path = "") => Path.GetDirectoryName(path)!;
+
   [Fact]
   public async Task GrantsAgreeWithLocalScriptAndAppCannotCreateTables()
   {
+    var script = Path.GetFullPath(Path.Combine(SourceDirectory(), "..", "..", "..", "docker", "postgres", "init", "01-roles.sh"));
     await using var reference = new PostgreSqlBuilder("postgres:18.6-alpine").WithDatabase("calendar").WithPassword("admin-password")
       .WithEnvironment("CALENDAR_MIGRATOR_PASSWORD", "migrator-password")
       .WithEnvironment("CALENDAR_APP_PASSWORD", "app-password")
-      .WithResourceMapping(new FileInfo(Path.GetFullPath("docker/postgres/init/01-roles.sh")), "/docker-entrypoint-initdb.d/").Build();
+      .WithResourceMapping(new FileInfo(script), "/docker-entrypoint-initdb.d/").Build();
     await using var candidate = new PostgreSqlBuilder("postgres:18.6-alpine").WithDatabase("calendar").WithPassword("admin-password").Build();
     await reference.StartAsync(TestContext.Current.CancellationToken);
     await candidate.StartAsync(TestContext.Current.CancellationToken);

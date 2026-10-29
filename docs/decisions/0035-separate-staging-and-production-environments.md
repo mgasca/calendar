@@ -1,5 +1,5 @@
 ---
-status: proposed
+status: accepted
 date: 2026-10-29
 decision-makers: mgasca, Claude (AI assistant)
 ---
@@ -41,7 +41,7 @@ Chosen option: "Separate staging and production resources", because the D1 cost 
 
 * Provision separate resource groups, Container Apps, PostgreSQL Flexible Servers, Key Vaults and Google OAuth clients for staging and production. Each app uses its own database, vault, OAuth credentials, allow-list and redirect URI on its own default `azurecontainerapps.io` hostname. Staging holds synthetic test data, not production data or credentials. Resource groups alone do not provide a security boundary: scope access, identities and credentials to their environment.
 * Use the smallest available staging PostgreSQL SKU that supports the workload in UK South; its availability and price for the subscription remain unverified. Stop staging PostgreSQL when idle and start it before deployment, migrations or tests; staging is unavailable while it is stopped. A stopped server automatically starts after seven days, so monitor it and stop it again when appropriate. Compute savings are not zero-cost: provisioned storage and applicable excess backup storage remain billable, and compute billing resumes on restart. No new backups are taken while stopped. Check costs and operational state rather than assuming it stays stopped indefinitely.
-* Apply the same infrastructure modules with environment-specific parameters, as proposed in [ADR-0033](0033-bicep-for-infrastructure-as-code.md). The hosting, packaging, database, secrets and deployment mechanisms are addressed separately in [ADR-0029](0029-azure-container-apps-compute-platform.md), [ADR-0030](0030-single-container-for-api-and-spa.md), [ADR-0031](0031-azure-postgresql-flexible-server.md), [ADR-0032](0032-azure-key-vault-for-secrets.md) and [ADR-0034](0034-github-actions-oidc-deployment.md).
+* Apply the same infrastructure modules with environment-specific parameters, as decided in [ADR-0033](0033-bicep-for-infrastructure-as-code.md). The hosting, packaging, database, secrets and deployment mechanisms are addressed separately in [ADR-0029](0029-azure-container-apps-compute-platform.md), [ADR-0030](0030-single-container-for-api-and-spa.md), [ADR-0031](0031-azure-postgresql-flexible-server.md), [ADR-0032](0032-azure-key-vault-for-secrets.md) and [ADR-0034](0034-github-actions-oidc-deployment.md).
 
 ### Consequences
 

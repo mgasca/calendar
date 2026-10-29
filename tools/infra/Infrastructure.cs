@@ -2,10 +2,10 @@ using System.Buffers.Binary;
 using System.Diagnostics;
 using System.Net;
 using System.Net.Sockets;
-using System.Text.RegularExpressions;
 using System.Security.Cryptography;
 using System.Text.Json;
 using System.Text.Json.Nodes;
+using System.Text.RegularExpressions;
 
 namespace InfraTool;
 
@@ -26,14 +26,20 @@ public sealed class AzureProcess : IAzureProcess
     var info = new ProcessStartInfo("az") { RedirectStandardOutput = true, RedirectStandardError = true };
 #pragma warning restore S4036
     info.Environment["AZURE_BICEP_USE_BINARY_FROM_PATH"] = "false";
-    foreach (var arg in args) { info.ArgumentList.Add(arg); }
-    using var process = Process.Start(info) ?? throw new InvalidOperationException("Unable to start az.");
-    var stdout = process.StandardOutput.ReadToEndAsync();
-    var stderr = process.StandardError.ReadToEndAsync();
+    foreach (var arg in args)
+    {
+      info.ArgumentList.Add(arg);
+    }
+    using Process process = Process.Start(info) ?? throw new InvalidOperationException("Unable to start az.");
+    Task<string> stdout = process.StandardOutput.ReadToEndAsync();
+    Task<string> stderr = process.StandardError.ReadToEndAsync();
     await process.WaitForExitAsync();
     var output = await stdout;
     _ = await stderr; // Azure error output can contain sensitive input: never relay it.
-    if (process.ExitCode != 0) { throw new InvalidOperationException($"Azure CLI failed (exit {process.ExitCode}); check access and parameters."); }
+    if (process.ExitCode != 0)
+    {
+      throw new InvalidOperationException($"Azure CLI failed (exit {process.ExitCode}); check access and parameters.");
+    }
     return output.Trim();
   }
 }
@@ -49,50 +55,128 @@ public static class Infra
     try
     {
       SweepStaleFiles();
-      if (args.Length < 2) { throw new ArgumentException("Usage: deploy|what-if ENV [--phase foundation|full], db start|stop staging, or secret init-postgres-password ENV"); }
+      if (args.Length < 2)
+      {
+        throw new ArgumentException(
+          "Usage: deploy|what-if ENV [--phase foundation|full], db start|stop staging, or secret init-postgres-password ENV");
+      }
       if (args[0] == "db")
       {
-        if (args.Length != 3 || (args[1] != "start" && args[1] != "stop") || args[2] != "staging") { throw new ArgumentException("db start|stop requires staging."); }
+        if (args.Length != 3 || (args[1] != "start" && args[1] != "stop") || args[2] != "staging")
+        {
+          throw new ArgumentException("db start|stop requires staging.");
+        }
         var server = await ResourceName(az, "staging", "Microsoft.DBforPostgreSQL/flexibleServers");
-        await az.RunAsync("postgres", "flexible-server", args[1], "--resource-group", "rg-calendar-staging", "--name", server, "--output", "none");
+        await az.RunAsync(
+          "postgres",
+          "flexible-server",
+          args[1],
+          "--resource-group",
+          "rg-calendar-staging",
+          "--name",
+          server,
+          "--output",
+          "none");
         return 0;
       }
       if (args[0] == "secret")
       {
-        if (args.Length != 3 || args[1] != "init-postgres-password") { throw new ArgumentException("Invalid secret command."); }
+        if (args.Length != 3 || args[1] != "init-postgres-password")
+        {
+          throw new ArgumentException("Invalid secret command.");
+        }
         ValidateEnvironment(args[2]);
         var vault = await VaultName(az, args[2], "opsKeyVaultName");
         var names = await SecretNames(az, vault, false);
-        if (names.Contains(PasswordName, StringComparer.OrdinalIgnoreCase)) { throw new InvalidOperationException("Password already exists; coordinated manual rotation is required."); }
+        if (names.Contains(PasswordName, StringComparer.OrdinalIgnoreCase))
+        {
+          throw new InvalidOperationException("Password already exists; coordinated manual rotation is required.");
+        }
         var password = "Aa1!" + Convert.ToBase64String(RandomNumberGenerator.GetBytes(48));
-        await WithPrivateFile(password, async path => { await az.RunAsync("keyvault", "secret", "set", "--vault-name", vault, "--name", PasswordName, "--file", path, "--output", "none"); });
+        await WithPrivateFile(password, async path =>
+        {
+          await az.RunAsync(
+            "keyvault",
+            "secret",
+            "set",
+            "--vault-name",
+            vault,
+            "--name",
+            PasswordName,
+            "--file",
+            path,
+            "--output",
+            "none");
+        });
         await output.WriteLineAsync("PostgreSQL password stored in Key Vault.");
         return 0;
       }
-      if (args[0] != "deploy" && args[0] != "what-if") { throw new ArgumentException("Unknown command."); }
+      if (args[0] != "deploy" && args[0] != "what-if")
+      {
+        throw new ArgumentException("Unknown command.");
+      }
       ValidateEnvironment(args[1]);
       var phase = "full";
       var allowedIps = new List<string>();
       var configuredIps = Environment.GetEnvironmentVariable("AZURE_ALLOWED_IPS");
-      if (!string.IsNullOrWhiteSpace(configuredIps)) { allowedIps.AddRange(configuredIps.Split(',', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries)); }
+      if (!string.IsNullOrWhiteSpace(configuredIps))
+      {
+        allowedIps.AddRange(configuredIps.Split(',', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries));
+      }
       var options = new Queue<string>(args.Skip(2));
       while (options.TryDequeue(out var option))
       {
-        if (option == "--phase" && options.TryDequeue(out var selectedPhase)) { phase = selectedPhase; }
-        else if (option == "--allow-ip" && options.TryDequeue(out var ip)) { allowedIps.Add(ip); }
-        else { throw new ArgumentException("Use --phase foundation|full and repeatable --allow-ip CIDR."); }
+        if (option == "--phase" && options.TryDequeue(out var selectedPhase))
+        {
+          phase = selectedPhase;
+        }
+        else if (option == "--allow-ip" && options.TryDequeue(out var ip))
+        {
+          allowedIps.Add(ip);
+        }
+        else
+        {
+          throw new ArgumentException("Use --phase foundation|full and repeatable --allow-ip CIDR.");
+        }
       }
-      if (phase != "foundation" && phase != "full") { throw new ArgumentException("Invalid phase; use foundation or full."); }
-      foreach (var ip in allowedIps) { ValidateIp(ip); }
+      if (phase != "foundation" && phase != "full")
+      {
+        throw new ArgumentException("Invalid phase; use foundation or full.");
+      }
+      foreach (var ip in allowedIps)
+      {
+        ValidateIp(ip);
+      }
       var clientId = Environment.GetEnvironmentVariable("AZURE_DEPLOYER_CLIENT_ID");
-      if (!Guid.TryParse(clientId, out var clientGuid)) { throw new ArgumentException("Set AZURE_DEPLOYER_CLIENT_ID to the environment's deployment identity client ID (GUID)."); }
-      var principalId = await az.RunAsync("rest", "--method", "get", "--url", $"https://graph.microsoft.com/v1.0/servicePrincipals(appId='{clientGuid:D}')", "--query", "id", "-o", "tsv");
-      if (!Guid.TryParse(principalId, out _)) { throw new InvalidOperationException("Azure returned an invalid deployment principal object ID."); }
+      if (!Guid.TryParse(clientId, out Guid clientGuid))
+      {
+        throw new ArgumentException("Set AZURE_DEPLOYER_CLIENT_ID to the environment's deployment identity client ID (GUID).");
+      }
+      var principalId = await az.RunAsync(
+        "rest",
+        "--method",
+        "get",
+        "--url",
+        $"https://graph.microsoft.com/v1.0/servicePrincipals(appId='{clientGuid:D}')",
+        "--query",
+        "id",
+        "-o",
+        "tsv");
+      if (!Guid.TryParse(principalId, out _))
+      {
+        throw new InvalidOperationException("Azure returned an invalid deployment principal object ID.");
+      }
       var json = await az.RunAsync("bicep", "build-params", "--file", $"infra/parameters/{args[1]}.bicepparam", "--stdout");
-      var compiled = JsonNode.Parse(json)?["parametersJson"]?.GetValue<string>() ?? throw new InvalidOperationException("Invalid Bicep compiler output.");
-      var parameters = JsonNode.Parse(compiled)?["parameters"]?.AsObject() ?? throw new InvalidOperationException("Invalid compiled parameters.");
+      var compiled = JsonNode.Parse(json)?["parametersJson"]?.GetValue<string>()
+        ?? throw new InvalidOperationException("Invalid Bicep compiler output.");
+      JsonObject parameters = JsonNode.Parse(compiled)?["parameters"]?.AsObject()
+        ?? throw new InvalidOperationException("Invalid compiled parameters.");
       parameters["deployDatabaseAndApp"] = new JsonObject { ["value"] = phase == "full" };
-      parameters["allowedFirewallIps"] = new JsonObject { ["value"] = new JsonArray(allowedIps.Distinct(StringComparer.Ordinal).Order(StringComparer.Ordinal).Select(n => (JsonNode?)IpRange(n)).ToArray()) };
+      JsonNode?[] firewallRanges =
+      [
+        .. allowedIps.Distinct(StringComparer.Ordinal).Order(StringComparer.Ordinal).Select(n => (JsonNode?)IpRange(n)),
+      ];
+      parameters["allowedFirewallIps"] = new JsonObject { ["value"] = new JsonArray(firewallRanges) };
       parameters["deployerPrincipalId"] = new JsonObject { ["value"] = principalId };
       var image = Environment.GetEnvironmentVariable("CALENDAR_CONTAINER_IMAGE");
       if (!string.IsNullOrWhiteSpace(image))
@@ -108,22 +192,53 @@ public static class Infra
       {
         var vault = await VaultName(az, args[1], "opsKeyVaultName");
         var names = await SecretNames(az, vault, false);
-        if (!names.Contains(PasswordName, StringComparer.OrdinalIgnoreCase)) { throw new InvalidOperationException("Postgres password missing; owner must run secret init-postgres-password first."); }
-        var password = await az.RunAsync("keyvault", "secret", "show", "--vault-name", vault, "--name", PasswordName, "--query", "value", "-o", "tsv");
+        if (!names.Contains(PasswordName, StringComparer.OrdinalIgnoreCase))
+        {
+          throw new InvalidOperationException("Postgres password missing; owner must run secret init-postgres-password first.");
+        }
+        var password = await az.RunAsync(
+          "keyvault",
+          "secret",
+          "show",
+          "--vault-name",
+          vault,
+          "--name",
+          PasswordName,
+          "--query",
+          "value",
+          "-o",
+          "tsv");
         secretValue = password;
         parameters["postgresAdministratorPassword"] = new JsonObject { ["value"] = password };
         var appVault = await VaultName(az, args[1], "appKeyVaultName");
         var appNames = await SecretNames(az, appVault, true);
-        parameters["keyVaultSecretNames"] = new JsonObject { ["value"] = new JsonArray(appNames.Select(n => (JsonNode?)JsonValue.Create(n)).ToArray()) };
+        JsonNode?[] secretNames = [.. appNames.Select(n => (JsonNode?)JsonValue.Create(n))];
+        parameters["keyVaultSecretNames"] = new JsonObject { ["value"] = new JsonArray(secretNames) };
       }
       var document = new JsonObject { ["parameters"] = parameters.DeepClone() };
       await WithPrivateFile(document.ToJsonString(), async path =>
       {
-        var command = new List<string> { "deployment", "group", args[0] == "deploy" ? "create" : "what-if", "--resource-group", $"rg-calendar-{args[1]}", "--template-file", "infra/main.bicep", "--parameters", "@" + path, "--no-prompt" };
-        if (phase == "foundation") { command.AddRange(["--name", "calendar-foundation"]); }
-        if (args[0] == "what-if") { command.AddRange(["--no-pretty-print", "-o", "json"]); }
-        var result = await az.RunAsync(command.ToArray());
-        if (args[0] == "what-if") { await output.WriteLineAsync(SafePreview(result, secretValue)); }
+        var command = new List<string>
+        {
+          "deployment", "group", args[0] == "deploy" ? "create" : "what-if",
+          "--resource-group", $"rg-calendar-{args[1]}",
+          "--template-file", "infra/main.bicep",
+          "--parameters", "@" + path,
+          "--no-prompt",
+        };
+        if (phase == "foundation")
+        {
+          command.AddRange(["--name", "calendar-foundation"]);
+        }
+        if (args[0] == "what-if")
+        {
+          command.AddRange(["--no-pretty-print", "-o", "json"]);
+        }
+        var result = await az.RunAsync([.. command]);
+        if (args[0] == "what-if")
+        {
+          await output.WriteLineAsync(SafePreview(result, secretValue));
+        }
       });
       return 0;
     }
@@ -136,40 +251,86 @@ public static class Infra
 
   private static void ValidateEnvironment(string env)
   {
-    if (env != "staging" && env != "production") { throw new ArgumentException("Environment must be staging or production."); }
+    if (env != "staging" && env != "production")
+    {
+      throw new ArgumentException("Environment must be staging or production.");
+    }
   }
 
   private static async Task<string> ResourceName(IAzureProcess az, string env, string type)
   {
-    var json = await az.RunAsync("resource", "list", "--resource-group", $"rg-calendar-{env}", "--resource-type", type, "--query", "[].name", "-o", "json");
+    var json = await az.RunAsync(
+      "resource",
+      "list",
+      "--resource-group",
+      $"rg-calendar-{env}",
+      "--resource-type",
+      type,
+      "--query",
+      "[].name",
+      "-o",
+      "json");
     var names = JsonNode.Parse(json)?.AsArray().Select(n => n?.GetValue<string>() ?? "").ToArray() ?? [];
-    if (names.Length != 1) { throw new InvalidOperationException($"Expected exactly one {type} resource in rg-calendar-{env}."); }
+    if (names.Length != 1)
+    {
+      throw new InvalidOperationException($"Expected exactly one {type} resource in rg-calendar-{env}.");
+    }
     return names[0];
   }
 
   private static async Task<string> VaultName(IAzureProcess az, string env, string outputName)
   {
-    var name = await az.RunAsync("deployment", "group", "show", "--resource-group", $"rg-calendar-{env}", "--name", "calendar-foundation", "--query", $"properties.outputs.{outputName}.value", "-o", "tsv");
-    if (string.IsNullOrWhiteSpace(name) || name == "null") { throw new InvalidOperationException("Foundation vault output missing; deploy foundation first."); }
+    var name = await az.RunAsync(
+      "deployment",
+      "group",
+      "show",
+      "--resource-group",
+      $"rg-calendar-{env}",
+      "--name",
+      "calendar-foundation",
+      "--query",
+      $"properties.outputs.{outputName}.value",
+      "-o",
+      "tsv");
+    if (string.IsNullOrWhiteSpace(name) || name == "null")
+    {
+      throw new InvalidOperationException("Foundation vault output missing; deploy foundation first.");
+    }
     return name;
   }
 
   private static async Task<string[]> SecretNames(IAzureProcess az, string vault, bool appOnly)
   {
-    var json = await az.RunAsync("keyvault", "secret", "list", "--vault-name", vault, "--query", "[].{id:id,enabled:attributes.enabled}", "-o", "json");
-    var entries = JsonNode.Parse(json)?.AsArray() ?? throw new InvalidOperationException("Invalid Key Vault secret list.");
-    return entries.Where(n => !appOnly || n?["enabled"]?.GetValue<bool>() == true)
+    var json = await az.RunAsync(
+      "keyvault",
+      "secret",
+      "list",
+      "--vault-name",
+      vault,
+      "--query",
+      "[].{id:id,enabled:attributes.enabled}",
+      "-o",
+      "json");
+    JsonArray entries = JsonNode.Parse(json)?.AsArray() ?? throw new InvalidOperationException("Invalid Key Vault secret list.");
+    return [.. entries.Where(n => !appOnly || n?["enabled"]?.GetValue<bool>() == true)
       .Select(n => (n?["id"]?.GetValue<string>() ?? "").Split('/')[^1])
-      .Where(n => !appOnly || IsAppSecret(n)).Distinct(StringComparer.Ordinal).Order(StringComparer.Ordinal).ToArray();
+      .Where(n => !appOnly || IsAppSecret(n)).Distinct(StringComparer.Ordinal).Order(StringComparer.Ordinal)];
   }
 
-  private static bool IsAppSecret(string name) => name is "calendar-connection-string" or "google-client-id" or "google-client-secret" || Regex.IsMatch(name, "^allowed-email-[0-9]+$", RegexOptions.CultureInvariant, TimeSpan.FromSeconds(1));
+  private static bool IsAppSecret(string name) =>
+    name is "calendar-connection-string" or "google-client-id" or "google-client-secret"
+    || Regex.IsMatch(name, "^allowed-email-[0-9]+$", RegexOptions.CultureInvariant, TimeSpan.FromSeconds(1));
 
   private static void ValidateIp(string value)
   {
     var parts = value.Split('/');
-    if (parts.Length > 2 || !IPAddress.TryParse(parts[0], out var address) || address.AddressFamily != AddressFamily.InterNetwork || (parts.Length == 2 && (!int.TryParse(parts[1], out var prefix) || prefix is < 0 or > 32)))
-    { throw new ArgumentException("Allowed firewall addresses must be IPv4 addresses or IPv4 CIDRs (0–32)."); }
+    if (parts.Length > 2
+      || !IPAddress.TryParse(parts[0], out IPAddress? address)
+      || address.AddressFamily != AddressFamily.InterNetwork
+      || (parts.Length == 2 && (!int.TryParse(parts[1], out var prefix) || prefix is < 0 or > 32)))
+    {
+      throw new ArgumentException("Allowed firewall addresses must be IPv4 addresses or IPv4 CIDRs (0–32).");
+    }
   }
 
   private static JsonObject IpRange(string value)
@@ -190,7 +351,7 @@ public static class Infra
 
   private static string SafePreview(string json, string? secret)
   {
-    var node = JsonNode.Parse(json) ?? throw new InvalidOperationException("Invalid what-if result.");
+    JsonNode node = JsonNode.Parse(json) ?? throw new InvalidOperationException("Invalid what-if result.");
     Redact(node);
     var result = node.ToJsonString(new JsonSerializerOptions { WriteIndented = true });
     return string.IsNullOrEmpty(secret) ? result : result.Replace(secret, "[redacted]", StringComparison.Ordinal);
@@ -200,7 +361,10 @@ public static class Infra
   {
     if (node is JsonObject obj)
     {
-      if (obj.Any(p => (p.Key is "path" or "propertyName") && p.Value is JsonValue value && value.TryGetValue<string>(out var text) && IsSensitiveName(text)))
+      if (obj.Any(p => (p.Key is "path" or "propertyName")
+        && p.Value is JsonValue value
+        && value.TryGetValue<string>(out var text)
+        && IsSensitiveName(text)))
       {
         obj.Clear();
         obj["redacted"] = true;
@@ -208,45 +372,84 @@ public static class Infra
       }
       foreach (var key in obj.Select(p => p.Key).ToArray())
       {
-        if (IsSensitiveName(key)) { obj[key] = "[redacted]"; }
-        else if (obj[key] is JsonNode child) { Redact(child); }
+        if (IsSensitiveName(key))
+        {
+          obj[key] = "[redacted]";
+        }
+        else if (obj[key] is JsonNode child)
+        {
+          Redact(child);
+        }
       }
     }
-    else if (node is JsonArray array) { foreach (var child in array) { if (child is not null) { Redact(child); } } }
+    else if (node is JsonArray array)
+    {
+      foreach (JsonNode child in array.OfType<JsonNode>())
+      {
+        Redact(child);
+      }
+    }
   }
 
-  private static bool IsSensitiveName(string name) => name.Contains("secret", StringComparison.OrdinalIgnoreCase) || name.Contains("password", StringComparison.OrdinalIgnoreCase) || name.Contains("credential", StringComparison.OrdinalIgnoreCase) || name.Contains("token", StringComparison.OrdinalIgnoreCase);
+  private static bool IsSensitiveName(string name) =>
+    name.Contains("secret", StringComparison.OrdinalIgnoreCase)
+    || name.Contains("password", StringComparison.OrdinalIgnoreCase)
+    || name.Contains("credential", StringComparison.OrdinalIgnoreCase)
+    || name.Contains("token", StringComparison.OrdinalIgnoreCase);
 
   private static string RuntimeDirectory()
   {
-    if (OperatingSystem.IsWindows()) { throw new InvalidOperationException("Infrastructure tooling requires Linux or WSL."); }
+    if (OperatingSystem.IsWindows())
+    {
+      throw new InvalidOperationException("Infrastructure tooling requires Linux or WSL.");
+    }
     var runtime = Environment.GetEnvironmentVariable("XDG_RUNTIME_DIR");
     var parent = !string.IsNullOrWhiteSpace(runtime) && Path.IsPathFullyQualified(runtime) && Directory.Exists(runtime)
       ? runtime : Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".cache");
     var directory = Path.Combine(parent, "calendar-infra-private");
     Directory.CreateDirectory(directory, UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute);
-    if ((File.GetAttributes(directory) & FileAttributes.ReparsePoint) != 0 || File.GetUnixFileMode(directory) != (UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute)) { throw new InvalidOperationException("Infrastructure runtime directory must be private (0700) and not a symlink."); }
+    if ((File.GetAttributes(directory) & FileAttributes.ReparsePoint) != 0
+      || File.GetUnixFileMode(directory) != (UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute))
+    {
+      throw new InvalidOperationException("Infrastructure runtime directory must be private (0700) and not a symlink.");
+    }
     return directory;
   }
 
   private static void SweepStaleFiles()
   {
-    foreach (var path in Directory.EnumerateFiles(RuntimeDirectory(), "calendar-infra-*"))
+    DateTime cutoff = DateTime.UtcNow.AddHours(-24);
+    foreach (var path in Directory.EnumerateFiles(RuntimeDirectory(), "calendar-infra-*").Where(p => File.GetLastWriteTimeUtc(p) < cutoff))
     {
-      if (File.GetLastWriteTimeUtc(path) < DateTime.UtcNow.AddHours(-24)) { File.Delete(path); }
+      File.Delete(path);
     }
   }
 
   private static async Task WithPrivateFile(string data, Func<string, Task> action)
   {
-    if (OperatingSystem.IsWindows()) { throw new InvalidOperationException("Infrastructure tooling requires Linux or WSL."); }
+    if (OperatingSystem.IsWindows())
+    {
+      throw new InvalidOperationException("Infrastructure tooling requires Linux or WSL.");
+    }
     var path = Path.Combine(RuntimeDirectory(), "calendar-infra-" + Guid.NewGuid().ToString("N"));
     try
     {
-      using (var file = new FileStream(path, new FileStreamOptions { Mode = FileMode.CreateNew, Access = FileAccess.Write, UnixCreateMode = UnixFileMode.UserRead | UnixFileMode.UserWrite }))
-      using (var writer = new StreamWriter(file)) { await writer.WriteAsync(data); }
+      var options = new FileStreamOptions
+      {
+        Mode = FileMode.CreateNew,
+        Access = FileAccess.Write,
+        UnixCreateMode = UnixFileMode.UserRead | UnixFileMode.UserWrite,
+      };
+      using (var file = new FileStream(path, options))
+      using (var writer = new StreamWriter(file))
+      {
+        await writer.WriteAsync(data);
+      }
       await action(path);
     }
-    finally { File.Delete(path); }
+    finally
+    {
+      File.Delete(path);
+    }
   }
 }

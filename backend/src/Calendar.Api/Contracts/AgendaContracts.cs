@@ -14,7 +14,9 @@ public sealed record AgendaWindow
 /// <summary>Tasks relevant to the day, split into overdue and due-today groups.</summary>
 public sealed record AgendaTasks
 {
-  /// <summary>Up to 20 overdue tasks, open first then completed within the day; each group is ordered by local due date, instant and id.</summary>
+  /// <summary>
+  /// Up to 20 overdue tasks, open first then completed within the day; each group is ordered by local due date, instant and id.
+  /// </summary>
   public required IReadOnlyList<AgendaTaskItem> Overdue { get; init; }
 
   /// <summary>Number of overdue tasks, including those completed today.</summary>

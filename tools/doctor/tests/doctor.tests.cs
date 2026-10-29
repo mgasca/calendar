@@ -30,7 +30,10 @@ public sealed class DoctorTests : IDisposable
   {
     var path = Path.Combine(_bin, name);
     File.WriteAllText(path, "#!/bin/sh\n" + body + "\n");
-    if (!OperatingSystem.IsWindows()) { File.SetUnixFileMode(path, UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute); }
+    if (!OperatingSystem.IsWindows())
+    {
+      File.SetUnixFileMode(path, UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute);
+    }
   }
 
   public void Dispose() => Directory.Delete(_bin, true);
@@ -38,7 +41,7 @@ public sealed class DoctorTests : IDisposable
   [Fact]
   public async Task MissingAzureCliFailsWithInstallHint()
   {
-    var (code, text) = await RunDoctor();
+    (var code, var text) = await RunDoctor();
     code.ShouldNotBe(0);
     text.ShouldContain("Azure CLI not found");
     text.ShouldContain("Install Azure CLI");
@@ -53,7 +56,7 @@ public sealed class DoctorTests : IDisposable
   {
     var bicepCommand = string.IsNullOrEmpty(bicep) ? "exit 1" : $"echo 'Bicep CLI version {bicep} (fake)'";
     WriteExecutable("az", $"case \"$1\" in version) echo {azure};; bicep) {bicepCommand};; esac");
-    var (code, text) = await RunDoctor();
+    (var code, var text) = await RunDoctor();
     (code == 0).ShouldBe(success);
     text.ShouldContain(expected);
   }
@@ -61,7 +64,7 @@ public sealed class DoctorTests : IDisposable
   [Fact]
   public async Task OrdinaryDoctorDoesNotRequireAzure()
   {
-    var (code, text) = await RunDoctor(infra: false);
+    (var code, var text) = await RunDoctor(infra: false);
     code.ShouldBe(0);
     text.ShouldNotContain("Azure CLI not found");
   }
@@ -72,9 +75,12 @@ public sealed class DoctorTests : IDisposable
   {
     var info = new ProcessStartInfo("/bin/bash") { RedirectStandardOutput = true, RedirectStandardError = true };
     info.ArgumentList.Add(Path.GetFullPath(Path.Combine(Path.GetDirectoryName(SourcePath())!, "../doctor.sh")));
-    if (infra) { info.ArgumentList.Add("--infra"); }
+    if (infra)
+    {
+      info.ArgumentList.Add("--infra");
+    }
     info.Environment["PATH"] = _bin;
-    using var process = Process.Start(info) ?? throw new InvalidOperationException();
+    using Process process = Process.Start(info) ?? throw new InvalidOperationException();
     var output = await process.StandardOutput.ReadToEndAsync();
     await process.WaitForExitAsync();
     return (process.ExitCode, output + await process.StandardError.ReadToEndAsync());

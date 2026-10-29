@@ -40,7 +40,9 @@ public sealed class DateRangeWindow
   /// <summary>Exclusive end of the last day, UTC.</summary>
   public DateTimeOffset End => Days[^1].End;
 
-  /// <summary>Builds the <paramref name="dayCount"/> consecutive days from <paramref name="startDate"/> in <paramref name="zone"/>.</summary>
+  /// <summary>
+  /// Builds the <paramref name="dayCount"/> consecutive days from <paramref name="startDate"/> in <paramref name="zone"/>.
+  /// </summary>
   /// <param name="startDate">The first local date.</param>
   /// <param name="dayCount">The number of days; at least one.</param>
   /// <param name="zone">The zone the days are resolved in.</param>

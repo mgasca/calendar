@@ -1,3 +1,5 @@
 # EF Core scaffolds these files; analyzers and `dotnet format` must not rewrite them.
 [*.cs]
 generated_code = true
+# Sonar does not treat generated_code as generated, so turn its line-length rule off explicitly.
+dotnet_diagnostic.S103.severity = none

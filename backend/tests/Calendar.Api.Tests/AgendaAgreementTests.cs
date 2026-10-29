@@ -1,7 +1,9 @@
+using Calendar.Api.Contracts;
 using Calendar.Domain.Agenda;
 using Calendar.Domain.Events;
 using Calendar.Domain.Tasks;
 using Calendar.Domain.Time;
+using Calendar.Infrastructure;
 
 namespace Calendar.Api.Tests;
 
@@ -29,28 +31,32 @@ public sealed class AgendaAgreementTests(PostgresFixture postgres) : ApiTestBase
   public async Task Api_SelectsExactlyWhatDayInclusionSelects(string dateText, string zoneId)
   {
     var date = DateOnly.Parse(dateText, System.Globalization.CultureInfo.InvariantCulture);
-    var zone = TimeZones.FindIana(zoneId);
+    TimeZoneInfo zone = TimeZones.FindIana(zoneId);
     var window = DayWindow.Create(date, zone);
 
     await SeedAsync(BuildEvents(date, zoneId, window), BuildTasks(date, window));
 
-    await using var db = Postgres.Database.CreateMigratorContext();
+    await using CalendarDbContext db = Postgres.Database.CreateMigratorContext();
     var events = db.Events.ToList();
     var tasks = db.Tasks.ToList();
     events.Count.ShouldBeGreaterThan(40);
 
-    var agenda = await GetAgendaAsync(dateText, zoneId);
+    DayAgendaResponse agenda = await GetAgendaAsync(dateText, zoneId);
 
-    var expectedAllDay = events.Where(e => e.IsAllDay && DayInclusion.EventOccursOn(e, window)).Select(e => e.Id);
-    var expectedTimed = events.Where(e => !e.IsAllDay && DayInclusion.EventOccursOn(e, window)).Select(e => e.Id);
-    var expectedDue = tasks.Where(t => DayInclusion.IsIncludedInDay(t, window) && DayInclusion.IsDueToday(t, window)).Select(t => t.Id);
-    var expectedOverdue = tasks.Where(t => DayInclusion.IsIncludedInDay(t, window) && DayInclusion.IsOverdue(t, window)).Select(t => t.Id);
+    IEnumerable<Guid> expectedAllDay = events.Where(e => e.IsAllDay && DayInclusion.EventOccursOn(e, window)).Select(e => e.Id);
+    IEnumerable<Guid> expectedTimed = events.Where(e => !e.IsAllDay && DayInclusion.EventOccursOn(e, window)).Select(e => e.Id);
+    List<Guid> expectedDue = [.. tasks
+      .Where(t => DayInclusion.IsIncludedInDay(t, window) && DayInclusion.IsDueToday(t, window))
+      .Select(t => t.Id)];
+    List<Guid> expectedOverdue = [.. tasks
+      .Where(t => DayInclusion.IsIncludedInDay(t, window) && DayInclusion.IsOverdue(t, window))
+      .Select(t => t.Id)];
 
     agenda.AllDayEvents.Select(e => e.Id).Order().ShouldBe(expectedAllDay.Order());
     agenda.Events.Select(e => e.Id).Order().ShouldBe(expectedTimed.Order());
     agenda.Tasks.DueToday.Select(t => t.Id).Order().ShouldBe(expectedDue.Order());
-    agenda.Tasks.Overdue.Count.ShouldBe(Math.Min(20, expectedOverdue.Count()));
-    agenda.Tasks.OverdueTotal.ShouldBe(expectedOverdue.Count());
+    agenda.Tasks.Overdue.Count.ShouldBe(Math.Min(20, expectedOverdue.Count));
+    agenda.Tasks.OverdueTotal.ShouldBe(expectedOverdue.Count);
     agenda.Tasks.Overdue.Select(t => t.Id).ShouldAllBe(id => expectedOverdue.Contains(id));
 
     // The scenario must actually select and reject things, or the comparison proves nothing.
@@ -82,7 +88,7 @@ public sealed class AgendaAgreementTests(PostgresFixture postgres) : ApiTestBase
 
   private static List<CalendarEvent> BuildEvents(DateOnly date, string zoneId, DayWindow window)
   {
-    var points = EdgePoints(window);
+    DateTimeOffset[] points = EdgePoints(window);
     var events = new List<CalendarEvent>();
     for (var i = 0; i < points.Length; i++)
     {
@@ -105,17 +111,17 @@ public sealed class AgendaAgreementTests(PostgresFixture postgres) : ApiTestBase
 
   private static List<TodoTask> BuildTasks(DateOnly date, DayWindow window)
   {
-    var points = EdgePoints(window);
+    DateTimeOffset[] points = EdgePoints(window);
     DateTimeOffset?[] completions = [null, .. points.Cast<DateTimeOffset?>()];
     var tasks = new List<TodoTask>();
-    foreach (var completedAt in completions)
+    foreach (DateTimeOffset? completedAt in completions)
     {
       for (var offset = -2; offset <= 2; offset++)
       {
         tasks.Add(Task($"date {offset}", date.AddDays(offset), null, completedAt));
       }
 
-      foreach (var dueAt in points)
+      foreach (DateTimeOffset dueAt in points)
       {
         tasks.Add(Task($"at {dueAt:O}", null, dueAt, completedAt));
       }

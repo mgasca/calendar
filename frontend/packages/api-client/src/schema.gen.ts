@@ -300,7 +300,10 @@ export interface components {
         CreateEventRequest: {
             /** @description Event title; required, at most 200 characters after trimming. */
             title: string;
-            /** @description `true` for an all-day event (`startDate`/`endDate`), `false` for a timed one (`start`/`end`/`timeZone`). */
+            /**
+             * @description `true` for an all-day event (`startDate`/`endDate`),
+             *     `false` for a timed one (`start`/`end`/`timeZone`).
+             */
             allDay?: boolean;
             /**
              * Format: date-time
@@ -321,7 +324,8 @@ export interface components {
             startDate?: null | string;
             /**
              * Format: date
-             * @description All-day events: exclusive end date (YYYY-MM-DD), after `startDate`; a one-day event on the 26th ends on the 27th. `null` for timed events.
+             * @description All-day events: exclusive end date (YYYY-MM-DD), after `startDate`; a one-day event on the 26th ends on the 27th.
+             *     `null` for timed events.
              */
             endDate?: null | string;
             /** @description Optional location, at most 200 characters. */

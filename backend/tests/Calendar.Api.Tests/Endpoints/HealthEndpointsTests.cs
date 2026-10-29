@@ -10,12 +10,14 @@ public sealed class HealthEndpointsTests(WebApplicationFactory<Program> factory)
   [Fact]
   public async Task GetHealth_ReturnsOk()
   {
-    using var client = factory.CreateClient();
+    using HttpClient client = factory.CreateClient();
 
-    using var response = await client.GetAsync(new Uri("/api/health", UriKind.Relative), TestContext.Current.CancellationToken);
+    using HttpResponseMessage response = await client.GetAsync(
+      new Uri("/api/health", UriKind.Relative),
+      TestContext.Current.CancellationToken);
 
     response.StatusCode.ShouldBe(HttpStatusCode.OK);
-    var body = await response.Content.ReadFromJsonAsync<HealthBody>(TestContext.Current.CancellationToken);
+    HealthBody? body = await response.Content.ReadFromJsonAsync<HealthBody>(TestContext.Current.CancellationToken);
     body.ShouldNotBeNull().Status.ShouldBe("ok");
   }
 

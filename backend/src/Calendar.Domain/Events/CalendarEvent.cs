@@ -65,7 +65,7 @@ public sealed class CalendarEvent
       throw new ArgumentException("Event end must be after its start.", nameof(end));
     }
 
-    var zone = TimeZones.FindIana(timeZoneId);
+    TimeZoneInfo zone = TimeZones.FindIana(timeZoneId);
 
     return new CalendarEvent
     {

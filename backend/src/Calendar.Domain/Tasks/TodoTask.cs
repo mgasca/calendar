@@ -41,7 +41,12 @@ public sealed class TodoTask
   /// <param name="dueAt">Due instant (normalized to UTC), or <c>null</c>.</param>
   /// <param name="priority">Priority level; defaults to medium.</param>
   /// <param name="notes">Optional task notes.</param>
-  public static TodoTask Create(string title, DateOnly? dueDate = null, DateTimeOffset? dueAt = null, string priority = "medium", string? notes = null)
+  public static TodoTask Create(
+    string title,
+    DateOnly? dueDate = null,
+    DateTimeOffset? dueAt = null,
+    string priority = "medium",
+    string? notes = null)
   {
     var normalizedTitle = Validation.NormalizeTitle(title, nameof(title));
     if (dueDate is not null && dueAt is not null)

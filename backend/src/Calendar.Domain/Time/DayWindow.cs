@@ -64,7 +64,7 @@ public readonly record struct DayWindow
     var first = new DateTimeOffset(midnight - SearchBefore);
     var last = new DateTimeOffset(midnight + SearchAfter);
 
-    var firstOffset = zone.GetUtcOffset(first);
+    TimeSpan firstOffset = zone.GetUtcOffset(first);
     if (firstOffset == zone.GetUtcOffset(last))
     {
       // No transition in the window (the overwhelmingly common case): local midnight is unambiguous.
@@ -73,13 +73,13 @@ public readonly record struct DayWindow
 
     // Boundaries of "local date >= date" are local midnight under some offset in force, or a transition instant.
     var candidates = new List<DateTimeOffset>();
-    var previous = first;
-    var previousOffset = firstOffset;
+    DateTimeOffset previous = first;
+    TimeSpan previousOffset = firstOffset;
     candidates.Add(new DateTimeOffset(midnight - previousOffset, TimeSpan.Zero));
     while (previous < last)
     {
-      var t = previous + SampleStep > last ? last : previous + SampleStep;
-      var offset = zone.GetUtcOffset(t);
+      DateTimeOffset t = previous + SampleStep > last ? last : previous + SampleStep;
+      TimeSpan offset = zone.GetUtcOffset(t);
       if (offset != previousOffset)
       {
         candidates.Add(new DateTimeOffset(midnight - offset, TimeSpan.Zero));

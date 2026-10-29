@@ -24,5 +24,8 @@
 
   <ItemGroup>
     <PackageReference Include="SonarAnalyzer.CSharp" Version="10.35.0.4138" PrivateAssets="all" IncludeAssets="runtime; build; native; contentfiles; analyzers" />
+    <PackageReference Include="StyleCop.Analyzers" Version="1.3.151-beta" PrivateAssets="all" IncludeAssets="runtime; build; native; contentfiles; analyzers" />
+    <!-- Sonar rule parameters, e.g. the S103 maximum line length. -->
+    <AdditionalFiles Include="$(MSBuildThisFileDirectory)SonarLint.xml" />
   </ItemGroup>
 </Project>

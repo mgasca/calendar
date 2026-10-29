@@ -11,7 +11,7 @@ internal static class OpenApiExtensions
   public static RouteHandlerBuilder RequireQueryParameters(this RouteHandlerBuilder builder, params string[] names) =>
       builder.AddOpenApiOperationTransformer((operation, _, _) =>
       {
-        foreach (var parameter in operation.Parameters ?? [])
+        foreach (IOpenApiParameter parameter in operation.Parameters ?? [])
         {
           if (parameter is OpenApiParameter concrete && names.Contains(concrete.Name, StringComparer.Ordinal))
           {

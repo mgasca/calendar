@@ -1,10 +1,12 @@
 using System.Data;
 using Calendar.Api.Contracts;
 using Calendar.Domain.Agenda;
+using Calendar.Domain.Tasks;
 using Calendar.Domain.Time;
 using Calendar.Infrastructure;
 using Calendar.Infrastructure.Queries;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Storage;
 
 namespace Calendar.Api.Endpoints;
 
@@ -47,22 +49,34 @@ internal static class AgendaBuilder
   /// </param>
   /// <param name="cancellationToken">Cancels the reads.</param>
   public static async Task<AgendaSnapshot> ReadAsync(
-      CalendarDbContext db, DateRangeWindow range, DayWindow? overdueAsOf, CancellationToken cancellationToken)
+      CalendarDbContext db,
+      DateRangeWindow range,
+      DayWindow? overdueAsOf,
+      CancellationToken cancellationToken)
   {
     // One snapshot for all reads (ADR-0020 D1): a task completed or an event added between them must not show
     // up in some lists and not in others.
-    await using var snapshot = await db.Database.BeginTransactionAsync(IsolationLevel.RepeatableRead, cancellationToken);
+    await using IDbContextTransaction snapshot = await db.Database.BeginTransactionAsync(IsolationLevel.RepeatableRead, cancellationToken);
     await db.Database.ExecuteSqlAsync($"SET TRANSACTION READ ONLY", cancellationToken);
 
-    var allDay = await db.Events.AsNoTracking().AllDayOverlapping(range).Select(AllDayEventItem.Projection).ToListAsync(cancellationToken);
-    var timed = await db.Events.AsNoTracking().TimedOverlapping(range).Select(TimedEventItem.Projection).ToListAsync(cancellationToken);
-    var due = await db.Tasks.AsNoTracking().DueWithin(range).Select(AgendaTaskItem.Projection).ToListAsync(cancellationToken);
+    List<AllDayEventItem> allDay = await db.Events.AsNoTracking()
+      .AllDayOverlapping(range)
+      .Select(AllDayEventItem.Projection)
+      .ToListAsync(cancellationToken);
+    List<TimedEventItem> timed = await db.Events.AsNoTracking()
+      .TimedOverlapping(range)
+      .Select(TimedEventItem.Projection)
+      .ToListAsync(cancellationToken);
+    List<AgendaTaskItem> due = await db.Tasks.AsNoTracking()
+      .DueWithin(range)
+      .Select(AgendaTaskItem.Projection)
+      .ToListAsync(cancellationToken);
     List<AgendaTaskItem>? overdue = null;
     var overdueTotal = 0;
     var overdueOpenTotal = 0;
     if (overdueAsOf is { } asOf)
     {
-      var query = db.Tasks.AsNoTracking().OverdueFor(asOf).DueBefore(range);
+      IQueryable<TodoTask> query = db.Tasks.AsNoTracking().OverdueFor(asOf).DueBefore(range);
       overdueTotal = await query.CountAsync(cancellationToken);
       overdueOpenTotal = await query.CountAsync(t => t.CompletedAt == null, cancellationToken);
       overdue = await query.OrderByDated(range.Zone.Id).Take(OverdueLimit).Select(AgendaTaskItem.Projection).ToListAsync(cancellationToken);
@@ -71,10 +85,12 @@ internal static class AgendaBuilder
     await snapshot.CommitAsync(cancellationToken);
 
     return new AgendaSnapshot(
-        range,
-        [.. allDay.Order(AgendaOrder.AllDayEvents)],
-        Bucket(range, timed, due),
-        overdue, overdueTotal, overdueOpenTotal);
+      range,
+      [.. allDay.Order(AgendaOrder.AllDayEvents)],
+      Bucket(range, timed, due),
+      overdue,
+      overdueTotal,
+      overdueOpenTotal);
   }
 
   /// <summary>
@@ -83,20 +99,22 @@ internal static class AgendaBuilder
   /// decides, so the work is linear in the items rather than days × items.
   /// </summary>
   internal static IReadOnlyList<AgendaSnapshotDay> Bucket(
-      DateRangeWindow range, IReadOnlyList<TimedEventItem> timed, IReadOnlyList<AgendaTaskItem> due)
+      DateRangeWindow range,
+      IReadOnlyList<TimedEventItem> timed,
+      IReadOnlyList<AgendaTaskItem> due)
   {
-    var days = range.Days;
-    var eventsByDay = days.Select(_ => new List<TimedEventItem>()).ToArray();
-    var tasksByDay = days.Select(_ => new List<AgendaTaskItem>()).ToArray();
+    IReadOnlyList<DayWindow> days = range.Days;
+    List<TimedEventItem>[] eventsByDay = [.. days.Select(_ => new List<TimedEventItem>())];
+    List<AgendaTaskItem>[] tasksByDay = [.. days.Select(_ => new List<AgendaTaskItem>())];
 
-    foreach (var evt in timed)
+    foreach (TimedEventItem evt in timed)
     {
       // Ends and starts are monotonic, including repeated boundaries for skipped dates.
       var first = LowerBound(days, day => day.End > evt.Start);
       var end = LowerBound(days, day => day.Start >= evt.End);
       for (var i = first; i < end; i++)
       {
-        var day = days[i];
+        DayWindow day = days[i];
         if (DayInclusion.TimedEventOverlaps(evt.Start, evt.End, day))
         {
           eventsByDay[i].Add(evt with { StartsBeforeDay = evt.Start < day.Start, EndsAfterDay = evt.End > day.End });
@@ -104,7 +122,7 @@ internal static class AgendaBuilder
       }
     }
 
-    foreach (var task in due)
+    foreach (AgendaTaskItem task in due)
     {
       var dateIndex = task.DueDate is { } date ? date.DayNumber - range.StartDate.DayNumber : -1;
       if (dateIndex >= 0 && dateIndex < days.Count && DayInclusion.IsDueOn(task.DueDate, task.DueAt, days[dateIndex]))
@@ -123,7 +141,9 @@ internal static class AgendaBuilder
     }
 
     return [.. days.Select((day, i) => new AgendaSnapshotDay(
-        day, [.. eventsByDay[i].Order(AgendaOrder.TimedEvents)], [.. tasksByDay[i].Order(AgendaOrder.DueTasks)]))];
+        day,
+        [.. eventsByDay[i].Order(AgendaOrder.TimedEvents)],
+        [.. tasksByDay[i].Order(AgendaOrder.DueTasks)]))];
   }
 
   private static int LowerBound(IReadOnlyList<DayWindow> days, Func<DayWindow, bool> predicate)

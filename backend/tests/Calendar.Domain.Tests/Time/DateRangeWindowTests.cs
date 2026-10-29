@@ -29,7 +29,7 @@ public sealed class DateRangeWindowTests
   [Fact]
   public void Create_OneDay_IsThatDaysWindow()
   {
-    var zone = TimeZones.FindIana("America/New_York");
+    TimeZoneInfo zone = TimeZones.FindIana("America/New_York");
 
     var range = DateRangeWindow.Create(Date(2026, 10, 26), 1, zone);
 
@@ -102,7 +102,7 @@ public sealed class DateRangeWindowTests
   [Fact]
   public void IsoWeek_WeekOneCanStartInDecember()
   {
-    var monday = DateRangeWindow.IsoWeekStart(Date(2026, 1, 1));
+    DateOnly monday = DateRangeWindow.IsoWeekStart(Date(2026, 1, 1));
 
     monday.ShouldBe(Date(2025, 12, 29));
     ISOWeek.GetYear(monday.ToDateTime(TimeOnly.MinValue)).ShouldBe(2026);
@@ -112,7 +112,7 @@ public sealed class DateRangeWindowTests
   [Fact]
   public void IsoWeekStart_AgreesWithTheBclIsoCalendar_AcrossYearBoundaries()
   {
-    for (var date = Date(2019, 12, 1); date <= Date(2032, 1, 31); date = date.AddDays(1))
+    for (DateOnly date = Date(2019, 12, 1); date <= Date(2032, 1, 31); date = date.AddDays(1))
     {
       var dateTime = date.ToDateTime(TimeOnly.MinValue);
       var expected = ISOWeek.ToDateTime(ISOWeek.GetYear(dateTime), ISOWeek.GetWeekOfYear(dateTime), DayOfWeek.Monday);
@@ -159,7 +159,7 @@ public sealed class DateRangeWindowTests
 
     range.StartDate.ShouldBe(Date(2011, 12, 26));
     range.Days.Count.ShouldBe(7);
-    var skipped = range.Days[4];
+    DayWindow skipped = range.Days[4];
     skipped.Date.ShouldBe(Date(2011, 12, 30));
     skipped.Length.ShouldBe(TimeSpan.Zero);
     skipped.Start.ShouldBe(Utc(2011, 12, 30, 10));

@@ -25,13 +25,19 @@ internal static class TaskEndpoints
 
   public static IEndpointRouteBuilder MapTaskEndpoints(this IEndpointRouteBuilder app)
   {
-    var group = app.MapGroup("/api/tasks").WithTags("Tasks");
+    RouteGroupBuilder group = app.MapGroup("/api/tasks").WithTags("Tasks");
 
     group.MapGet("/", ListAsync).WithName("ListTasks").RequireQueryParameters("view");
     group.MapPost("/", CreateAsync).WithName("CreateTask");
     group.MapGet("/{id:guid}", GetAsync).WithName(GetTaskName).ProducesProblem(StatusCodes.Status404NotFound);
-    group.MapPost("/{id:guid}/complete", CompleteAsync).WithName("CompleteTask").ProducesProblem(StatusCodes.Status404NotFound).ProducesProblem(StatusCodes.Status409Conflict);
-    group.MapPost("/{id:guid}/reopen", ReopenAsync).WithName("ReopenTask").ProducesProblem(StatusCodes.Status404NotFound).ProducesProblem(StatusCodes.Status409Conflict);
+    group.MapPost("/{id:guid}/complete", CompleteAsync)
+      .WithName("CompleteTask")
+      .ProducesProblem(StatusCodes.Status404NotFound)
+      .ProducesProblem(StatusCodes.Status409Conflict);
+    group.MapPost("/{id:guid}/reopen", ReopenAsync)
+      .WithName("ReopenTask")
+      .ProducesProblem(StatusCodes.Status404NotFound)
+      .ProducesProblem(StatusCodes.Status409Conflict);
 
     return app;
   }
@@ -81,7 +87,7 @@ internal static class TaskEndpoints
       CancellationToken cancellationToken)
   {
     var errors = new FieldErrors();
-    TaskListView? listView = view is not null && Views.TryGetValue(view, out var known) ? known : null;
+    TaskListView? listView = view is not null && Views.TryGetValue(view, out TaskListView known) ? known : null;
     errors.Require(listView is not null, "view", "view is required: upcoming, overdue, completed or no-deadline.");
 
     DateOnly? todayDate = null;
@@ -98,7 +104,7 @@ internal static class TaskEndpoints
     TaskListKey? after = null;
     if (cursor is not null && listView is { } cursorView)
     {
-      errors.Require(TaskListCursor.TryDecode(cursor, cursorView, out var key), "cursor", "cursor is not valid for this view.");
+      errors.Require(TaskListCursor.TryDecode(cursor, cursorView, out TaskListKey? key), "cursor", "cursor is not valid for this view.");
       after = key;
     }
 
@@ -108,7 +114,7 @@ internal static class TaskEndpoints
     }
 
     DayWindow? window = todayDate is { } date && zone is not null ? DayWindow.Create(date, zone) : null;
-    var items = await db.Tasks.AsNoTracking()
+    List<TaskResponse> items = await db.Tasks.AsNoTracking()
         .ForView(selected, window, zone, after)
         .Take(pageSize + 1)
         .Select(TaskResponse.Projection)
@@ -119,7 +125,7 @@ internal static class TaskEndpoints
     if (items.Count > pageSize)
     {
       items.RemoveAt(pageSize);
-      var last = items[^1];
+      TaskResponse last = items[^1];
       next = TaskListCursor.Encode(selected, TaskListQueries.KeyOf(selected, last.Id, last.DueDate, last.DueAt, last.CompletedAt, zone));
     }
 
@@ -131,7 +137,10 @@ internal static class TaskEndpoints
       CalendarDbContext db,
       CancellationToken cancellationToken)
   {
-    var found = await db.Tasks.AsNoTracking().Where(t => t.Id == id).Select(TaskResponse.Projection).FirstOrDefaultAsync(cancellationToken);
+    TaskResponse? found = await db.Tasks.AsNoTracking()
+      .Where(t => t.Id == id)
+      .Select(TaskResponse.Projection)
+      .FirstOrDefaultAsync(cancellationToken);
     return found is null ? NotFound() : TypedResults.Ok(found);
   }
 
@@ -155,7 +164,7 @@ internal static class TaskEndpoints
       Action<TodoTask> change,
       CancellationToken cancellationToken)
   {
-    var task = await db.Tasks.FirstOrDefaultAsync(t => t.Id == id, cancellationToken);
+    TodoTask? task = await db.Tasks.FirstOrDefaultAsync(t => t.Id == id, cancellationToken);
     if (task is null)
     {
       return NotFound();

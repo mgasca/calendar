@@ -17,7 +17,7 @@ using SeedDev;
 #pragma warning disable S1075 // the dev API address is the documented default (make dev-api)
 var apiUrl = "http://localhost:5041";
 #pragma warning restore S1075
-string? seedKey = Environment.GetEnvironmentVariable("Auth__DevSeedKey");
+var seedKey = Environment.GetEnvironmentVariable("Auth__DevSeedKey");
 string? zoneId = null;
 DateOnly? date = null;
 var pending = new Queue<string>(args);
@@ -34,12 +34,19 @@ while (pending.TryDequeue(out var arg))
     case "--time-zone" when pending.Count > 0:
       zoneId = pending.Dequeue();
       break;
-    case "--date" when pending.Count > 0 && DateOnly.TryParseExact(pending.Peek(), "yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture, System.Globalization.DateTimeStyles.None, out var parsed):
+    case "--date" when pending.Count > 0
+      && DateOnly.TryParseExact(
+        pending.Peek(),
+        "yyyy-MM-dd",
+        System.Globalization.CultureInfo.InvariantCulture,
+        System.Globalization.DateTimeStyles.None,
+        out DateOnly parsed):
       date = parsed;
       pending.Dequeue();
       break;
     default:
-      await Console.Error.WriteLineAsync($"unknown or invalid argument: {arg}\nusage: seed-dev [--seed-key KEY] [--api-url URL] [--time-zone IANA_ID] [--date YYYY-MM-DD]");
+      await Console.Error.WriteLineAsync(
+        $"unknown or invalid argument: {arg}\nusage: seed-dev [--seed-key KEY] [--api-url URL] [--time-zone IANA_ID] [--date YYYY-MM-DD]");
       return 2;
   }
 }
@@ -66,7 +73,7 @@ SeedAuthentication.Configure(http, seedKey);
 
 try
 {
-  using var health = await http.GetAsync("api/health");
+  using HttpResponseMessage health = await http.GetAsync("api/health");
   health.EnsureSuccessStatusCode();
 }
 catch (Exception e) when (e is HttpRequestException or TaskCanceledException)
@@ -81,20 +88,23 @@ catch (Exception e) when (e is HttpRequestException or TaskCanceledException)
 
 Console.WriteLine($"Seeding {date:yyyy-MM-dd} in {zone.Id} via {apiUrl}");
 
-foreach (var item in plan.Events)
+foreach (EventSeed item in plan.Events)
 {
-  using var response = await http.PostAsJsonAsync("api/events", item, SeedJson.Default.EventSeed);
+  using HttpResponseMessage response = await http.PostAsJsonAsync("api/events", item, SeedJson.Default.EventSeed);
   await EnsureCreatedAsync(response, $"event '{item.Title}'");
   Console.WriteLine($"  event  {item.Title}");
 }
 
-foreach (var item in plan.Tasks)
+foreach (TaskSeed item in plan.Tasks)
 {
-  using var response = await http.PostAsJsonAsync("api/tasks", item with { CompleteAfterCreate = false }, SeedJson.Default.TaskSeed);
-  var created = await EnsureCreatedAsync(response, $"task '{item.Title}'");
+  using HttpResponseMessage response = await http.PostAsJsonAsync(
+    "api/tasks",
+    item with { CompleteAfterCreate = false },
+    SeedJson.Default.TaskSeed);
+  Created created = await EnsureCreatedAsync(response, $"task '{item.Title}'");
   if (item.CompleteAfterCreate)
   {
-    using var completed = await http.PostAsync($"api/tasks/{created.Id}/complete", content: null);
+    using HttpResponseMessage completed = await http.PostAsync($"api/tasks/{created.Id}/complete", content: null);
     await EnsureCreatedAsync(completed, $"completing task '{item.Title}'");
   }
   Console.WriteLine($"  task   {item.Title}{(item.CompleteAfterCreate ? " (completed)" : "")}");
@@ -113,5 +123,6 @@ static async Task<Created> EnsureCreatedAsync(HttpResponseMessage response, stri
     }
     throw new InvalidOperationException($"API rejected {what}: {(int)response.StatusCode} {await response.Content.ReadAsStringAsync()}");
   }
-  return await response.Content.ReadFromJsonAsync(SeedJson.Default.Created) ?? throw new InvalidOperationException($"empty response for {what}");
+  return await response.Content.ReadFromJsonAsync(SeedJson.Default.Created)
+    ?? throw new InvalidOperationException($"empty response for {what}");
 }

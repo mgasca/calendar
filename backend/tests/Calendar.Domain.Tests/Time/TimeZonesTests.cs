@@ -39,7 +39,7 @@ public sealed class TimeZonesTests
   [InlineData("America/New_York", "America/New_York")]
   public void TryFindIana_ReturnsCanonicalId(string input, string canonical)
   {
-    TimeZones.TryFindIana(input, out var zone).ShouldBeTrue();
+    TimeZones.TryFindIana(input, out TimeZoneInfo? zone).ShouldBeTrue();
     zone.Id.ShouldBe(canonical);
   }
 
@@ -54,16 +54,16 @@ public sealed class TimeZonesTests
   [InlineData("Etc/Zulu", "Etc/UTC")]
   public void TryFindIana_MapsLegacyAliasesToTheCanonicalId(string alias, string canonical)
   {
-    TimeZones.TryFindIana(alias, out var zone).ShouldBeTrue();
+    TimeZones.TryFindIana(alias, out TimeZoneInfo? zone).ShouldBeTrue();
     zone.Id.ShouldBe(canonical);
   }
 
   [Fact]
   public void TryFindIana_ResolvesEveryAliasInTheTable()
   {
-    foreach (var (alias, canonical) in IanaAliases.Canonical)
+    foreach ((var alias, var canonical) in IanaAliases.Canonical)
     {
-      TimeZones.TryFindIana(alias, out var zone).ShouldBeTrue(alias);
+      TimeZones.TryFindIana(alias, out TimeZoneInfo? zone).ShouldBeTrue(alias);
       if (alias.Contains('/', StringComparison.Ordinal))
       {
         zone.Id.ShouldBe(canonical, alias);
@@ -77,7 +77,7 @@ public sealed class TimeZonesTests
   [InlineData("Etc/GMT", 0)]
   public void TryFindIana_AcceptsEtcGmtOffsetZones(string id, int hours)
   {
-    TimeZones.TryFindIana(id, out var zone).ShouldBeTrue();
+    TimeZones.TryFindIana(id, out TimeZoneInfo? zone).ShouldBeTrue();
     zone.Id.ShouldBe(id);
     zone.BaseUtcOffset.ShouldBe(TimeSpan.FromHours(hours));
   }

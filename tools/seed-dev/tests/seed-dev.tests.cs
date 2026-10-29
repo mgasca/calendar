@@ -41,7 +41,7 @@ public sealed class SeedPlanTests
   [Fact]
   public void Timed_events_include_an_overlap_an_overnight_from_yesterday_and_one_into_tomorrow()
   {
-    var (dayStart, dayEnd) = Window(Berlin);
+    (DateTimeOffset dayStart, DateTimeOffset dayEnd) = Window(Berlin);
     var timed = SeedPlan.Build(Day, Berlin).Events.Where(e => e.AllDay is null).ToList();
 
     timed.ShouldAllBe(e => e.Start < dayEnd && e.End > dayStart);
@@ -63,8 +63,8 @@ public sealed class SeedPlanTests
   [Fact]
   public void Tasks_cover_due_today_overdue_undated_and_tomorrow()
   {
-    var (dayStart, dayEnd) = Window(Berlin);
-    var tasks = SeedPlan.Build(Day, Berlin).Tasks;
+    (DateTimeOffset dayStart, DateTimeOffset dayEnd) = Window(Berlin);
+    IReadOnlyList<TaskSeed> tasks = SeedPlan.Build(Day, Berlin).Tasks;
 
     tasks.Count(t => t.DueDate == Day).ShouldBe(2);
     tasks.Count(t => t.DueAt >= dayStart && t.DueAt < dayEnd).ShouldBe(1);
@@ -79,7 +79,7 @@ public sealed class SeedPlanTests
   [Fact]
   public void Times_are_anchored_to_local_wall_clock_in_the_zone()
   {
-    var standup = SeedPlan.Build(Day, Berlin).Events.Single(e => e.Title == "Team standup");
+    EventSeed standup = SeedPlan.Build(Day, Berlin).Events.Single(e => e.Title == "Team standup");
 
     standup.Start!.Value.Offset.ShouldBe(TimeSpan.FromHours(1)); // CET after the 2026-10-25 change
     standup.Start.Value.Hour.ShouldBe(9);
@@ -89,7 +89,7 @@ public sealed class SeedPlanTests
   public void A_time_skipped_by_a_dst_gap_moves_to_the_first_valid_time()
   {
     var gapDay = new DateOnly(2026, 3, 29);
-    var instant = SeedPlan.At(gapDay, new TimeOnly(2, 30), Berlin);
+    DateTimeOffset instant = SeedPlan.At(gapDay, new TimeOnly(2, 30), Berlin);
 
     instant.ShouldBe(new DateTimeOffset(2026, 3, 29, 3, 0, 0, TimeSpan.FromHours(2)));
   }

@@ -739,7 +739,7 @@
           },
           "allDay": {
             "type": "boolean",
-            "description": "`true` for an all-day event (`startDate`/`endDate`), `false` for a timed one (`start`/`end`/`timeZone`)."
+            "description": "`true` for an all-day event (`startDate`/`endDate`),\n`false` for a timed one (`start`/`end`/`timeZone`)."
           },
           "start": {
             "type": [
@@ -777,7 +777,7 @@
               "null",
               "string"
             ],
-            "description": "All-day events: exclusive end date (YYYY-MM-DD), after `startDate`; a one-day event on the 26th ends on the 27th. `null` for timed events.",
+            "description": "All-day events: exclusive end date (YYYY-MM-DD), after `startDate`; a one-day event on the 26th ends on the 27th.\n`null` for timed events.",
             "format": "date"
           },
           "location": {

@@ -14,7 +14,7 @@ public sealed class DayWindowTests
   [Fact]
   public void Create_OrdinaryDay_Is24Hours()
   {
-    var w = Window(2026, 10, 26, "America/New_York");
+    DayWindow w = Window(2026, 10, 26, "America/New_York");
 
     w.Start.ShouldBe(Utc(2026, 10, 26, 4));
     w.End.ShouldBe(Utc(2026, 10, 27, 4));
@@ -25,7 +25,7 @@ public sealed class DayWindowTests
   [Fact]
   public void Create_InUtc_MatchesCalendarDay()
   {
-    var w = Window(2026, 10, 26, "UTC");
+    DayWindow w = Window(2026, 10, 26, "UTC");
 
     w.Start.ShouldBe(Utc(2026, 10, 26, 0));
     w.End.ShouldBe(Utc(2026, 10, 27, 0));
@@ -34,7 +34,7 @@ public sealed class DayWindowTests
   [Fact]
   public void Create_EastOfUtc_StartsOnPreviousUtcDay()
   {
-    var w = Window(2026, 10, 26, "Asia/Kolkata");
+    DayWindow w = Window(2026, 10, 26, "Asia/Kolkata");
 
     w.Start.ShouldBe(Utc(2026, 10, 25, 18, 30));
     w.Length.ShouldBe(TimeSpan.FromHours(24));
@@ -43,7 +43,7 @@ public sealed class DayWindowTests
   [Fact]
   public void Create_NewYorkSpringForward_Is23Hours()
   {
-    var w = Window(2026, 3, 8, "America/New_York");
+    DayWindow w = Window(2026, 3, 8, "America/New_York");
 
     w.Start.ShouldBe(Utc(2026, 3, 8, 5));
     w.End.ShouldBe(Utc(2026, 3, 9, 4));
@@ -53,7 +53,7 @@ public sealed class DayWindowTests
   [Fact]
   public void Create_NewYorkFallBack_Is25Hours()
   {
-    var w = Window(2026, 11, 1, "America/New_York");
+    DayWindow w = Window(2026, 11, 1, "America/New_York");
 
     w.Start.ShouldBe(Utc(2026, 11, 1, 4));
     w.End.ShouldBe(Utc(2026, 11, 2, 5));
@@ -63,7 +63,7 @@ public sealed class DayWindowTests
   [Fact]
   public void Create_LondonSpringForward_Is23Hours()
   {
-    var w = Window(2026, 3, 29, "Europe/London");
+    DayWindow w = Window(2026, 3, 29, "Europe/London");
 
     w.Start.ShouldBe(Utc(2026, 3, 29, 0));
     w.End.ShouldBe(Utc(2026, 3, 29, 23));
@@ -73,7 +73,7 @@ public sealed class DayWindowTests
   [Fact]
   public void Create_LondonFallBack_Is25Hours()
   {
-    var w = Window(2026, 10, 25, "Europe/London");
+    DayWindow w = Window(2026, 10, 25, "Europe/London");
 
     w.Start.ShouldBe(Utc(2026, 10, 24, 23));
     w.End.ShouldBe(Utc(2026, 10, 26, 0));
@@ -84,7 +84,7 @@ public sealed class DayWindowTests
   public void Create_SantiagoSkippedMidnight_StartsAtFirstValidInstant()
   {
     // 2026-09-06 00:00 -04:00 jumps to 01:00 -03:00; local midnight does not exist.
-    var zone = TimeZones.FindIana("America/Santiago");
+    TimeZoneInfo zone = TimeZones.FindIana("America/Santiago");
     zone.IsInvalidTime(Local(2026, 9, 6)).ShouldBeTrue();
 
     var w = DayWindow.Create(new DateOnly(2026, 9, 6), zone);
@@ -98,8 +98,8 @@ public sealed class DayWindowTests
   [Fact]
   public void Create_SantiagoSkippedMidnight_PreviousDayEndsAtSameInstant()
   {
-    var prev = Window(2026, 9, 5, "America/Santiago");
-    var skipped = Window(2026, 9, 6, "America/Santiago");
+    DayWindow prev = Window(2026, 9, 5, "America/Santiago");
+    DayWindow skipped = Window(2026, 9, 6, "America/Santiago");
 
     prev.End.ShouldBe(skipped.Start);
   }
@@ -109,7 +109,7 @@ public sealed class DayWindowTests
   [InlineData("Asia/Beirut", 2026, 3, 29)]
   public void Create_OtherSkippedMidnightZones_StartAtTransition(string id, int y, int mo, int d)
   {
-    var zone = TimeZones.FindIana(id);
+    TimeZoneInfo zone = TimeZones.FindIana(id);
     zone.IsInvalidTime(Local(y, mo, d)).ShouldBeTrue();
 
     var w = DayWindow.Create(new DateOnly(y, mo, d), zone);
@@ -124,7 +124,7 @@ public sealed class DayWindowTests
   public void Create_AmbiguousMidnight_StartsAtFirstOccurrence()
   {
     // Havana falls back 01:00 -> 00:00 on 2026-11-01, so local midnight happens twice.
-    var zone = TimeZones.FindIana("America/Havana");
+    TimeZoneInfo zone = TimeZones.FindIana("America/Havana");
     zone.IsAmbiguousTime(Local(2026, 11, 1)).ShouldBeTrue();
 
     var w = DayWindow.Create(new DateOnly(2026, 11, 1), zone);
@@ -136,7 +136,7 @@ public sealed class DayWindowTests
   [Fact]
   public void Create_ConsecutiveDays_TileWithoutGapsAcrossDstChange()
   {
-    var zone = TimeZones.FindIana("America/New_York");
+    TimeZoneInfo zone = TimeZones.FindIana("America/New_York");
     var date = new DateOnly(2026, 11, 1);
 
     for (var i = -3; i <= 3; i++)
@@ -150,7 +150,7 @@ public sealed class DayWindowTests
   [Fact]
   public void Contains_IsHalfOpen()
   {
-    var w = Window(2026, 10, 26, "UTC");
+    DayWindow w = Window(2026, 10, 26, "UTC");
 
     w.Contains(w.Start).ShouldBeTrue();
     w.Contains(w.End.AddTicks(-1)).ShouldBeTrue();
@@ -159,7 +159,8 @@ public sealed class DayWindowTests
   }
 
   [Fact]
-  public void Create_WithNullZone_Throws() => Should.Throw<ArgumentNullException>(() => DayWindow.Create(new DateOnly(2026, 10, 26), null!));
+  public void Create_WithNullZone_Throws() =>
+    Should.Throw<ArgumentNullException>(() => DayWindow.Create(new DateOnly(2026, 10, 26), null!));
 
   [Theory]
   [InlineData("America/Asuncion", 2024, 10, 6, 4)]
@@ -168,7 +169,7 @@ public sealed class DayWindowTests
   {
     // The BCL does not flag 00:00 as invalid here although the clock jumps 00:00 -> 01:00; the previous
     // local date must not leak into the window.
-    var zone = TimeZones.FindIana(id);
+    TimeZoneInfo zone = TimeZones.FindIana(id);
 
     var w = DayWindow.Create(new DateOnly(y, mo, d), zone);
 
@@ -181,7 +182,7 @@ public sealed class DayWindowTests
   public void Create_DateSkippedEntirely_IsEmptyAtTheTransition()
   {
     // Pacific/Apia jumped from 2011-12-29 23:59:59 (-10) to 2011-12-31 00:00 (+14).
-    var zone = TimeZones.FindIana("Pacific/Apia");
+    TimeZoneInfo zone = TimeZones.FindIana("Pacific/Apia");
     var skipped = DayWindow.Create(new DateOnly(2011, 12, 30), zone);
     var before = DayWindow.Create(new DateOnly(2011, 12, 29), zone);
     var after = DayWindow.Create(new DateOnly(2011, 12, 31), zone);
@@ -197,7 +198,7 @@ public sealed class DayWindowTests
   public void Create_ConsecutiveDays_TileInEverySystemZoneAcrossYears()
   {
     var failures = new List<string>();
-    foreach (var zone in TimeZoneInfo.GetSystemTimeZones())
+    foreach (TimeZoneInfo zone in TimeZoneInfo.GetSystemTimeZones())
     {
       var date = new DateOnly(2023, 12, 25);
       var previous = DayWindow.Create(date, zone);

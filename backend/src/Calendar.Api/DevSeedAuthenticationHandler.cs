@@ -4,10 +4,15 @@ using System.Text;
 using System.Text.Encodings.Web;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.Extensions.Options;
+using Microsoft.Extensions.Primitives;
 
 namespace Calendar.Api;
 
-internal sealed class DevSeedAuthenticationHandler(IOptionsMonitor<AuthenticationSchemeOptions> options, ILoggerFactory logger, UrlEncoder encoder, IConfiguration configuration)
+internal sealed class DevSeedAuthenticationHandler(
+  IOptionsMonitor<AuthenticationSchemeOptions> options,
+  ILoggerFactory logger,
+  UrlEncoder encoder,
+  IConfiguration configuration)
   : AuthenticationHandler<AuthenticationSchemeOptions>(options, logger, encoder)
 {
   public const string SchemeName = "DevSeed";
@@ -15,8 +20,11 @@ internal sealed class DevSeedAuthenticationHandler(IOptionsMonitor<Authenticatio
 
   protected override Task<AuthenticateResult> HandleAuthenticateAsync()
   {
-    var provided = Request.Headers["X-Dev-Seed-Key"];
-    if (provided.Count != 1 || !CryptographicOperations.FixedTimeEquals(Encoding.UTF8.GetBytes(provided.ToString()), Encoding.UTF8.GetBytes(configuration["Auth:DevSeedKey"]!)))
+    StringValues provided = Request.Headers["X-Dev-Seed-Key"];
+    if (provided.Count != 1
+      || !CryptographicOperations.FixedTimeEquals(
+        Encoding.UTF8.GetBytes(provided.ToString()),
+        Encoding.UTF8.GetBytes(configuration["Auth:DevSeedKey"]!)))
     {
       return Task.FromResult(AuthenticateResult.NoResult());
     }

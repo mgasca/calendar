@@ -79,6 +79,11 @@ Single tests:
   - IDE0011 needs braces.
   - IDE0005 flags an unused `using` after code moves.
   - S8969 flags a redundant `!`.
+  - Layout (ADR-0036): SA1501 forbids single-line blocks such as `if (y) { Foo(); }`. SA1116/SA1117 require a wrapped parameter or argument list to start on a new line with one item per line. SA1117 still accepts all the items together on the continuation line, so don't write that either. `dotnet format` fixes these.
+  - S103 caps lines at 140 characters. Nothing fixes it automatically, so wrap long lines by hand. Split long strings with `+` and long `<summary>` text over several lines; a split summary adds a soft line break to the OpenAPI description, so run `make contracts`.
+  - IDE0008 wants an explicit type unless the type is apparent or built in.
+  - RS0030 bans `DateTime.Now`/`UtcNow`/`Today`, `DateTimeOffset.Now`/`UtcNow` and `TimeZoneInfo.Local` in `backend/src`. Use the injected `TimeProvider`.
+  - `dotnet format` doesn't accept file-based apps. To apply code fixes to a tool, `dotnet project convert` it into a scratch folder inside its own directory (so `.editorconfig` and `Directory.Build.props` apply), format that, then copy the code back, keeping the `#!`/`#:` header lines.
 
 ## Testing notes
 

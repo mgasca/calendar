@@ -103,7 +103,7 @@ public sealed class WeekAgendaEndpointsTests(PostgresFixture postgres) : ApiTest
     var past = await Client.GetStringAsync(new Uri($"/api/agenda/week?date=2026-10-19&timeZone={NewYork}&today={Wednesday}", UriKind.Relative), Ct);
 
     var root = JsonNode.Parse(json)!.AsObject();
-    root.Select(p => p.Key).ShouldBe(["weekStart", "timeZone", "window", "allDayEvents", "days", "overdue"], ignoreOrder: true);
+    root.Select(p => p.Key).ShouldBe(["weekStart", "timeZone", "window", "allDayEvents", "days", "overdue", "overdueTotal", "overdueOpenTotal"], ignoreOrder: true);
     root["weekStart"]!.GetValue<string>().ShouldBe(Monday);
     root["days"]!.AsArray().Count.ShouldBe(7);
     root["days"]![0]!.AsObject().Select(p => p.Key).ShouldBe(["date", "window", "events", "tasks"], ignoreOrder: true);
@@ -285,7 +285,7 @@ public sealed class WeekAgendaEndpointsTests(PostgresFixture postgres) : ApiTest
     var week = await GetWeekAgendaAsync(Wednesday, NewYork, Wednesday);
 
     var overdue = week.Overdue.ShouldNotBeNull();
-    overdue.Select(t => t.Title).ShouldBe(["last week, done today", "last week, open", "timed Sunday night, open"]);
+    overdue.Select(t => t.Title).ShouldBe(["last week, open", "timed Sunday night, open", "last week, done today"]);
     overdue.Single(t => t.Title == "last week, done today").IsCompleted.ShouldBeTrue();
     var inDays = week.Days.SelectMany(d => d.Tasks).Select(t => t.Id).ToList();
     overdue.Select(t => t.Id).Intersect(inDays).ShouldBeEmpty();
@@ -336,9 +336,9 @@ public sealed class WeekAgendaEndpointsTests(PostgresFixture postgres) : ApiTest
     week.Overdue.ShouldNotBeNull().Select(t => t.Title).ShouldBe(
     [
         "last week, open",
-        "this Monday, done today",
         "this Monday, open",
         "timed yesterday, open",
+        "this Monday, done today",
     ]);
     week.Days[1].Tasks.Select(t => t.Title).ShouldBe(["in the week"]);
   }

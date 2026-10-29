@@ -1,7 +1,23 @@
 import type { Schemas } from '@calendar/api-client';
 
 export type TimedEvent = Schemas['TimedEventItem'];
-export type AgendaTask = Schemas['TaskResponse'];
+export type AgendaTask = Schemas['AgendaTaskItem'];
+
+const dateTimeFormatters = new Map<string, Intl.DateTimeFormat>();
+
+/** Reuses date formatters for identical locale and options. */
+export function dateTimeFormat(
+  locale: string | undefined,
+  options: Intl.DateTimeFormatOptions,
+): Intl.DateTimeFormat {
+  const key = JSON.stringify([locale, options]);
+  let formatter = dateTimeFormatters.get(key);
+  if (!formatter) {
+    formatter = new Intl.DateTimeFormat(locale, options);
+    dateTimeFormatters.set(key, formatter);
+  }
+  return formatter;
+}
 
 export type EventStatus = 'past' | 'current' | 'next' | 'upcoming';
 
@@ -12,7 +28,7 @@ export function browserTimeZone(): string {
 
 /** The calendar date (`YYYY-MM-DD`) at instant `ms` in `timeZone`, not in UTC. */
 export function localDate(ms: number, timeZone: string): string {
-  const parts = new Intl.DateTimeFormat('en-US', {
+  const parts = dateTimeFormat('en-US', {
     timeZone,
     year: 'numeric',
     month: '2-digit',
@@ -32,7 +48,7 @@ export function daysBetween(from: string, to: string): number {
  * when `withYear` is set.
  */
 export function formatDate(date: string, locale?: string, { withYear = false } = {}): string {
-  return new Intl.DateTimeFormat(locale, {
+  return dateTimeFormat(locale, {
     timeZone: 'UTC',
     weekday: 'long',
     day: 'numeric',
@@ -43,7 +59,7 @@ export function formatDate(date: string, locale?: string, { withYear = false } =
 
 /** Wall-clock time of an instant in `timeZone`, e.g. "09:30". */
 export function formatTime(iso: string, timeZone: string, locale?: string): string {
-  return new Intl.DateTimeFormat(locale, {
+  return dateTimeFormat(locale, {
     timeZone,
     hour: '2-digit',
     minute: '2-digit',
@@ -76,7 +92,11 @@ export function eventStatuses(
 }
 
 /** How late an overdue task is, e.g. "Overdue by 3 days" or "Due yesterday". */
-export function describeOverdue(task: AgendaTask, today: string, timeZone: string): string {
+export function describeOverdue(
+  task: AgendaTask | Schemas['TaskResponse'],
+  today: string,
+  timeZone: string,
+): string {
   const dueDate = task.dueDate ?? (task.dueAt ? localDate(Date.parse(task.dueAt), timeZone) : null);
   if (!dueDate) {
     return 'Overdue';
@@ -89,7 +109,7 @@ export function describeOverdue(task: AgendaTask, today: string, timeZone: strin
 }
 
 /** A timed task due earlier today that is still open. */
-export function isPastDue(task: AgendaTask, nowMs: number): boolean {
+export function isPastDue(task: AgendaTask | Schemas['TaskResponse'], nowMs: number): boolean {
   return !task.isCompleted && !!task.dueAt && Date.parse(task.dueAt) <= nowMs;
 }
 

@@ -13,17 +13,21 @@ namespace Calendar.Api.Endpoints;
 /// <param name="AllDayEvents">All-day events covering any date of the range, once each.</param>
 /// <param name="Days">One entry per day of <paramref name="Range"/>, in date order.</param>
 /// <param name="Overdue">The overdue tasks, or <c>null</c> when they were not requested.</param>
+/// <param name="OverdueTotal">The total number of overdue tasks.</param>
+/// <param name="OverdueOpenTotal">The number of open overdue tasks.</param>
 internal sealed record AgendaSnapshot(
     DateRangeWindow Range,
     IReadOnlyList<AllDayEventItem> AllDayEvents,
     IReadOnlyList<AgendaSnapshotDay> Days,
-    IReadOnlyList<TaskResponse>? Overdue);
+    IReadOnlyList<AgendaTaskItem>? Overdue,
+    int OverdueTotal,
+    int OverdueOpenTotal);
 
 /// <summary>One day of an <see cref="AgendaSnapshot"/>.</summary>
 /// <param name="Window">The day.</param>
 /// <param name="Events">Timed events overlapping the day, with continuation flags relative to it.</param>
 /// <param name="Tasks">Tasks due on the day, open or completed.</param>
-internal sealed record AgendaSnapshotDay(DayWindow Window, IReadOnlyList<TimedEventItem> Events, IReadOnlyList<TaskResponse> Tasks);
+internal sealed record AgendaSnapshotDay(DayWindow Window, IReadOnlyList<TimedEventItem> Events, IReadOnlyList<AgendaTaskItem> Tasks);
 
 /// <summary>
 /// The shared read side of every agenda view. It reads a <see cref="DateRangeWindow"/> with a fixed number of
@@ -32,6 +36,8 @@ internal sealed record AgendaSnapshotDay(DayWindow Window, IReadOnlyList<TimedEv
 /// </summary>
 internal static class AgendaBuilder
 {
+  private const int OverdueLimit = 20;
+
   /// <summary>Reads and buckets the agenda for <paramref name="range"/>.</summary>
   /// <param name="db">The database context.</param>
   /// <param name="range">The days to read.</param>
@@ -50,25 +56,93 @@ internal static class AgendaBuilder
 
     var allDay = await db.Events.AsNoTracking().AllDayOverlapping(range).Select(AllDayEventItem.Projection).ToListAsync(cancellationToken);
     var timed = await db.Events.AsNoTracking().TimedOverlapping(range).Select(TimedEventItem.Projection).ToListAsync(cancellationToken);
-    var due = await db.Tasks.AsNoTracking().DueWithin(range).Select(TaskResponse.Projection).ToListAsync(cancellationToken);
-    var overdue = overdueAsOf is { } asOf
-        ? await db.Tasks.AsNoTracking().OverdueFor(asOf).DueBefore(range).Select(TaskResponse.Projection).ToListAsync(cancellationToken)
-        : null;
+    var due = await db.Tasks.AsNoTracking().DueWithin(range).Select(AgendaTaskItem.Projection).ToListAsync(cancellationToken);
+    List<AgendaTaskItem>? overdue = null;
+    var overdueTotal = 0;
+    var overdueOpenTotal = 0;
+    if (overdueAsOf is { } asOf)
+    {
+      var query = db.Tasks.AsNoTracking().OverdueFor(asOf).DueBefore(range);
+      overdueTotal = await query.CountAsync(cancellationToken);
+      overdueOpenTotal = await query.CountAsync(t => t.CompletedAt == null, cancellationToken);
+      overdue = await query.OrderByDated(range.Zone.Id).Take(OverdueLimit).Select(AgendaTaskItem.Projection).ToListAsync(cancellationToken);
+    }
 
     await snapshot.CommitAsync(cancellationToken);
 
     return new AgendaSnapshot(
         range,
         [.. allDay.Order(AgendaOrder.AllDayEvents)],
-        [.. range.Days.Select(day => Bucket(day, timed, due))],
-        overdue is null ? null : [.. overdue.Order(AgendaOrder.OverdueTasks(range.Zone))]);
+        Bucket(range, timed, due),
+        overdue, overdueTotal, overdueOpenTotal);
   }
 
-  private static AgendaSnapshotDay Bucket(DayWindow day, List<TimedEventItem> timed, List<TaskResponse> due) => new(
-      day,
-      [.. timed
-          .Where(e => DayInclusion.TimedEventOverlaps(e.Start, e.End, day))
-          .Select(e => e with { StartsBeforeDay = e.Start < day.Start, EndsAfterDay = e.End > day.End })
-          .Order(AgendaOrder.TimedEvents)],
-      [.. due.Where(t => DayInclusion.IsDueOn(t.DueDate, t.DueAt, day)).Order(AgendaOrder.DueTasks)]);
+  /// <summary>
+  /// Splits the range's items into its days. Each item is tested only against the days its instants or date can
+  /// fall on (found by binary search over the sorted day boundaries), and <see cref="DayInclusion"/> still
+  /// decides, so the work is linear in the items rather than days × items.
+  /// </summary>
+  internal static IReadOnlyList<AgendaSnapshotDay> Bucket(
+      DateRangeWindow range, IReadOnlyList<TimedEventItem> timed, IReadOnlyList<AgendaTaskItem> due)
+  {
+    var days = range.Days;
+    var eventsByDay = days.Select(_ => new List<TimedEventItem>()).ToArray();
+    var tasksByDay = days.Select(_ => new List<AgendaTaskItem>()).ToArray();
+
+    foreach (var evt in timed)
+    {
+      // Ends and starts are monotonic, including repeated boundaries for skipped dates.
+      var first = LowerBound(days, day => day.End > evt.Start);
+      var end = LowerBound(days, day => day.Start >= evt.End);
+      for (var i = first; i < end; i++)
+      {
+        var day = days[i];
+        if (DayInclusion.TimedEventOverlaps(evt.Start, evt.End, day))
+        {
+          eventsByDay[i].Add(evt with { StartsBeforeDay = evt.Start < day.Start, EndsAfterDay = evt.End > day.End });
+        }
+      }
+    }
+
+    foreach (var task in due)
+    {
+      var dateIndex = task.DueDate is { } date ? date.DayNumber - range.StartDate.DayNumber : -1;
+      if (dateIndex >= 0 && dateIndex < days.Count && DayInclusion.IsDueOn(task.DueDate, task.DueAt, days[dateIndex]))
+      {
+        tasksByDay[dateIndex].Add(task);
+      }
+
+      if (task.DueAt is { } at)
+      {
+        var index = LowerBound(days, day => day.Start > at) - 1;
+        if (index >= 0 && index != dateIndex && DayInclusion.IsDueOn(task.DueDate, task.DueAt, days[index]))
+        {
+          tasksByDay[index].Add(task);
+        }
+      }
+    }
+
+    return [.. days.Select((day, i) => new AgendaSnapshotDay(
+        day, [.. eventsByDay[i].Order(AgendaOrder.TimedEvents)], [.. tasksByDay[i].Order(AgendaOrder.DueTasks)]))];
+  }
+
+  private static int LowerBound(IReadOnlyList<DayWindow> days, Func<DayWindow, bool> predicate)
+  {
+    var low = 0;
+    var high = days.Count;
+    while (low < high)
+    {
+      var middle = low + ((high - low) / 2);
+      if (predicate(days[middle]))
+      {
+        high = middle;
+      }
+      else
+      {
+        low = middle + 1;
+      }
+    }
+
+    return low;
+  }
 }

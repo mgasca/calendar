@@ -26,12 +26,21 @@ const UNRELATED_KEY = ['health'] as const;
 
 const board = (): Board => ({
   columns: [
-    { name: 'Mon', tasks: [{ id: 't1', title: 'Send report', isCompleted: false }] },
+    {
+      name: 'Mon',
+      tasks: [{ id: 't1', title: 'Send report', hasNotes: false, isCompleted: false }],
+    },
     {
       name: 'Tue',
       tasks: [
-        { id: 't2', title: 'Buy milk', isCompleted: true, completedAt: '2026-10-26T07:00:00Z' },
-        { id: 't3', title: 'Book flights', isCompleted: false },
+        {
+          id: 't2',
+          title: 'Buy milk',
+          hasNotes: false,
+          isCompleted: true,
+          completedAt: '2026-10-26T07:00:00Z',
+        },
+        { id: 't3', title: 'Book flights', hasNotes: false, isCompleted: false },
       ],
     },
   ],
@@ -111,7 +120,7 @@ describe('useToggleTask', () => {
     await waitFor(() => {
       expect(result.current.isSuccess).toBe(true);
     });
-    expect(task('t2')).toMatchObject({ isCompleted: false, completedAt: null });
+    expect(task('t2')).toMatchObject({ hasNotes: false, isCompleted: false, completedAt: null });
   });
 
   it('invalidates every agenda query and the task list on settle, but nothing else', async () => {
@@ -168,7 +177,60 @@ describe('useToggleTask', () => {
     });
     expect(result.current.error).toBeInstanceOf(TaskUpdateError);
     expect((result.current.error as TaskUpdateError).status).toBe(409);
-    expect(task('t3')).toMatchObject({ isCompleted: false, title: 'Book flights' });
+    expect(task('t3')).toMatchObject({
+      hasNotes: false,
+      isCompleted: false,
+      title: 'Book flights',
+    });
     expect(task('t1')?.title).toBe('Send the report');
   });
+});
+
+it('coalesces invalidation until all concurrent toggles settle', async () => {
+  const first = deferred();
+  const second = deferred();
+  server.use(
+    http.post('*/api/tasks/:id/:action', async ({ params }) => {
+      await (params.id === 't1' ? first.gate : second.gate);
+      return HttpResponse.json({ id: params.id, title: 'x', hasNotes: false, isCompleted: true });
+    }),
+  );
+  const { queryClient, result } = setup();
+  act(() => {
+    result.current.mutate({ id: 't1', complete: true });
+    result.current.mutate({ id: 't3', complete: true });
+  });
+  await waitFor(() => {
+    expect(queryClient.isMutating()).toBe(2);
+  });
+  first.release();
+  await waitFor(() => {
+    expect(queryClient.isMutating()).toBe(1);
+  });
+  expect(queryClient.getQueryState(OTHER_AGENDA_KEY)?.isInvalidated).toBe(false);
+  second.release();
+  await waitFor(() => {
+    expect(queryClient.isMutating()).toBe(0);
+  });
+  expect(queryClient.getQueryState(OTHER_AGENDA_KEY)?.isInvalidated).toBe(true);
+});
+
+it('invalidates once when concurrent toggles settle together', async () => {
+  const { gate, release } = deferred();
+  serveToggle(200, gate);
+  const { queryClient, result } = setup();
+  const invalidate = vi.spyOn(queryClient, 'invalidateQueries');
+  act(() => {
+    result.current.mutate({ id: 't1', complete: true });
+    result.current.mutate({ id: 't3', complete: true });
+  });
+  await waitFor(() => {
+    expect(queryClient.isMutating()).toBe(2);
+  });
+  release();
+  await waitFor(() => {
+    expect(queryClient.isMutating()).toBe(0);
+  });
+  expect(queryClient.getQueryState(OTHER_AGENDA_KEY)?.isInvalidated).toBe(true);
+  expect(invalidate).toHaveBeenCalledTimes(2);
 });

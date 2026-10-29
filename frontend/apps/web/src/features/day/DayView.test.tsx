@@ -3,14 +3,15 @@ import { focusManager } from '@tanstack/react-query';
 import { act, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { http, HttpResponse } from 'msw';
+import { Profiler } from 'react';
 
 import { renderInRouter } from '../../test/render.tsx';
 import { server } from '../../test/server.ts';
 import { DayView } from './DayView.tsx';
-import { useToday } from './useToday.ts';
+import { useToday } from '../agenda/useNow.ts';
 
 type Agenda = Schemas['DayAgendaResponse'];
-type Task = Schemas['TaskResponse'];
+type Task = Schemas['AgendaTaskItem'];
 
 const ZONE = 'Europe/Madrid';
 // 10:30 in Madrid (CET, UTC+1) on Monday 26 October 2026.
@@ -22,11 +23,18 @@ function buildAgenda(overrides: Partial<Agenda> = {}): Agenda {
     timeZone: ZONE,
     window: { start: '2026-10-25T23:00:00Z', end: '2026-10-26T23:00:00Z' },
     allDayEvents: [
-      { id: 'a1', title: 'Public holiday', startDate: '2026-10-26', endDate: '2026-10-27' },
+      {
+        id: 'a1',
+        title: 'Public holiday',
+        hasNotes: false,
+        startDate: '2026-10-26',
+        endDate: '2026-10-27',
+      },
       {
         id: 'a2',
         title: 'Conference',
         location: 'Valencia',
+        hasNotes: false,
         startDate: '2026-10-25',
         endDate: '2026-10-28',
       },
@@ -40,6 +48,7 @@ function buildAgenda(overrides: Partial<Agenda> = {}): Agenda {
         timeZone: ZONE,
         startsBeforeDay: true,
         endsAfterDay: false,
+        hasNotes: false,
       },
       {
         id: 'e1',
@@ -49,6 +58,7 @@ function buildAgenda(overrides: Partial<Agenda> = {}): Agenda {
         timeZone: ZONE,
         startsBeforeDay: false,
         endsAfterDay: false,
+        hasNotes: false,
       },
       {
         id: 'e2',
@@ -59,6 +69,7 @@ function buildAgenda(overrides: Partial<Agenda> = {}): Agenda {
         timeZone: ZONE,
         startsBeforeDay: false,
         endsAfterDay: false,
+        hasNotes: false,
       },
       {
         id: 'e3',
@@ -68,6 +79,7 @@ function buildAgenda(overrides: Partial<Agenda> = {}): Agenda {
         timeZone: ZONE,
         startsBeforeDay: false,
         endsAfterDay: false,
+        hasNotes: false,
       },
       {
         id: 'e4',
@@ -77,21 +89,49 @@ function buildAgenda(overrides: Partial<Agenda> = {}): Agenda {
         timeZone: ZONE,
         startsBeforeDay: false,
         endsAfterDay: true,
+        hasNotes: false,
       },
     ],
     tasks: {
+      overdueTotal: 2,
+      overdueOpenTotal: 2,
       overdue: [
-        { id: 't1', title: 'File expenses', dueDate: '2026-10-23', isCompleted: false },
-        { id: 't2', title: 'Call dentist', dueAt: '2026-10-25T10:00:00Z', isCompleted: false },
+        {
+          id: 't1',
+          title: 'File expenses',
+          dueDate: '2026-10-23',
+          hasNotes: false,
+          isCompleted: false,
+        },
+        {
+          id: 't2',
+          title: 'Call dentist',
+          dueAt: '2026-10-25T10:00:00Z',
+          hasNotes: false,
+          isCompleted: false,
+        },
       ],
       dueToday: [
-        { id: 't3', title: 'Send report', dueAt: '2026-10-26T08:00:00Z', isCompleted: false },
-        { id: 't4', title: 'Book flights', dueAt: '2026-10-26T15:00:00Z', isCompleted: false },
+        {
+          id: 't3',
+          title: 'Send report',
+          dueAt: '2026-10-26T08:00:00Z',
+          hasNotes: false,
+          isCompleted: false,
+        },
+        {
+          id: 't4',
+          title: 'Book flights',
+          dueAt: '2026-10-26T15:00:00Z',
+          hasNotes: false,
+          isCompleted: false,
+        },
         {
           id: 't5',
           title: 'Buy milk',
           dueDate: '2026-10-26',
           completedAt: '2026-10-26T07:00:00Z',
+          hasNotes: false,
           isCompleted: true,
         },
       ],
@@ -103,7 +143,7 @@ function buildAgenda(overrides: Partial<Agenda> = {}): Agenda {
 const emptyAgenda = buildAgenda({
   allDayEvents: [],
   events: [],
-  tasks: { overdue: [], dueToday: [] },
+  tasks: { overdueTotal: 0, overdueOpenTotal: 0, overdue: [], dueToday: [] },
 });
 
 /** Serves `agenda` and records each request URL. */
@@ -199,6 +239,25 @@ describe('DayView', () => {
       ).toBeInTheDocument();
     });
 
+    it('shows the full overdue counts when the list is capped', async () => {
+      const agenda = buildAgenda();
+      agenda.tasks.overdueTotal = 27;
+      agenda.tasks.overdueOpenTotal = 24;
+      serveAgenda(agenda);
+      await renderToday();
+      expect(await screen.findByText('Showing 20 of 27')).toBeInTheDocument();
+      expect(screen.getByText(/24 overdue/)).toBeInTheDocument();
+    });
+
+    it('does not show a cap message for 20 overdue tasks', async () => {
+      const agenda = buildAgenda();
+      agenda.tasks.overdueTotal = 20;
+      serveAgenda(agenda);
+      await renderToday();
+      await screen.findByRole('list', { name: 'Overdue' });
+      expect(screen.queryByText(/Showing 20 of/)).not.toBeInTheDocument();
+    });
+
     it('lists all-day events, with the day of a multi-day event', async () => {
       await renderToday();
 
@@ -207,6 +266,33 @@ describe('DayView', () => {
       expect(within(section).getByText('Public holiday')).toBeInTheDocument();
       expect(within(section).getByText('Day 2 of 3')).toBeInTheDocument();
       expect(within(section).getByText('Valencia')).toBeInTheDocument();
+    });
+
+    it('fetches event notes when opened', async () => {
+      let requests = 0;
+      server.use(
+        http.get('*/api/events/e1', () => {
+          requests++;
+          return HttpResponse.json({
+            id: 'e1',
+            title: 'Standup',
+            allDay: false,
+            notes: 'Bring agenda',
+          });
+        }),
+      );
+      const agenda = buildAgenda();
+      const event = agenda.events.find((item) => item.id === 'e1');
+      if (!event) throw new Error('Missing event');
+      event.hasNotes = true;
+      serveAgenda(agenda);
+      await renderToday();
+      await screen.findByText('Standup');
+      const item = itemFor('Standup');
+      expect(requests).toBe(0);
+      await userEvent.click(within(item).getByRole('button', { name: 'Notes' }));
+      expect(await within(item).findByText('Bring agenda')).toBeInTheDocument();
+      expect(requests).toBe(1);
     });
 
     it('lists timed events in local time ranges with time elements', async () => {
@@ -264,10 +350,24 @@ describe('DayView', () => {
       expect(screen.getByRole('checkbox', { name: 'Book flights' })).not.toBeChecked();
     });
 
-    it('shows a task’s priority and notes', async () => {
+    it('fetches task notes only when expanded', async () => {
+      let requests = 0;
+      server.use(
+        http.get('*/api/tasks/t6', () => {
+          requests++;
+          return HttpResponse.json({
+            id: 't6',
+            title: 'Pack bag',
+            isCompleted: false,
+            notes: 'Passport\nCharger',
+          });
+        }),
+      );
       serveAgenda(
         buildAgenda({
           tasks: {
+            overdueTotal: 0,
+            overdueOpenTotal: 0,
             overdue: [],
             dueToday: [
               {
@@ -275,7 +375,7 @@ describe('DayView', () => {
                 title: 'Pack bag',
                 dueDate: '2026-10-26',
                 priority: 'high',
-                notes: 'Passport\nCharger',
+                hasNotes: true,
                 isCompleted: false,
               },
             ],
@@ -286,9 +386,12 @@ describe('DayView', () => {
 
       await screen.findByRole('checkbox', { name: 'Pack bag' });
       expect(within(itemFor('Pack bag')).getByText('high priority')).toBeInTheDocument();
-      expect(within(itemFor('Pack bag')).getByText(/Passport/)).toHaveTextContent(
+      expect(requests).toBe(0);
+      await userEvent.click(within(itemFor('Pack bag')).getByRole('button', { name: 'Notes' }));
+      expect(await within(itemFor('Pack bag')).findByText(/Passport/)).toHaveTextContent(
         'Passport Charger',
       );
+      expect(requests).toBe(1);
     });
   });
 
@@ -298,6 +401,7 @@ describe('DayView', () => {
       const done = (id: string, title: string, rest: Partial<Task>): Task => ({
         id,
         title,
+        hasNotes: false,
         isCompleted: true,
         completedAt: MORNING,
         ...rest,
@@ -305,15 +409,41 @@ describe('DayView', () => {
       serveAgenda(
         buildAgenda({
           tasks: {
+            overdueTotal: 0,
+            overdueOpenTotal: 0,
             overdue: [
               done('o1', 'Overdue done', { dueDate: '2026-10-20' }),
-              { id: 'o2', title: 'Overdue oldest', dueDate: '2026-10-21', isCompleted: false },
-              { id: 'o3', title: 'Overdue newer', dueDate: '2026-10-24', isCompleted: false },
+              {
+                id: 'o2',
+                title: 'Overdue oldest',
+                dueDate: '2026-10-21',
+                hasNotes: false,
+                isCompleted: false,
+              },
+              {
+                id: 'o3',
+                title: 'Overdue newer',
+                dueDate: '2026-10-24',
+                hasNotes: false,
+                isCompleted: false,
+              },
             ],
             dueToday: [
               done('d1', 'Today done', { dueDate: '2026-10-26' }),
-              { id: 'd2', title: 'Today first', dueDate: '2026-10-26', isCompleted: false },
-              { id: 'd3', title: 'Today second', dueDate: '2026-10-26', isCompleted: false },
+              {
+                id: 'd2',
+                title: 'Today first',
+                dueDate: '2026-10-26',
+                hasNotes: false,
+                isCompleted: false,
+              },
+              {
+                id: 'd3',
+                title: 'Today second',
+                dueDate: '2026-10-26',
+                hasNotes: false,
+                isCompleted: false,
+              },
             ],
           },
         }),
@@ -411,6 +541,23 @@ describe('DayView', () => {
   });
 
   describe('clock', () => {
+    it('does not render the past day on a minute tick', async () => {
+      useFakeClock('2026-10-27T09:30:00Z', { intervals: true });
+      serveAgenda(buildAgenda());
+      const onRender = vi.fn();
+      await renderInRouter(
+        <Profiler id="day" onRender={onRender}>
+          <DayView date="2026-10-26" timeZone={ZONE} locale="en-GB" />
+        </Profiler>,
+      );
+      await vi.waitFor(() => expect(screen.getByText('Design review')).toBeInTheDocument());
+      onRender.mockClear();
+      act(() => {
+        vi.advanceTimersByTime(60_000);
+      });
+      expect(onRender).not.toHaveBeenCalled();
+    });
+
     it('moves the Now and Next markers as time passes', async () => {
       useFakeClock(MORNING, { intervals: true });
       serveAgenda(buildAgenda());
@@ -468,18 +615,26 @@ describe('DayView', () => {
       expect(screen.queryByText('Standup')).not.toBeInTheDocument();
     });
 
-    it('refetches when the window regains focus', async () => {
+    it('refetches when the window regains focus once the data is stale', async () => {
       useFakeClock(MORNING);
       const requests = serveAgenda(buildAgenda());
       await renderToday();
       await screen.findByRole('region', { name: 'Schedule' });
       expect(requests).toHaveLength(1);
 
-      for (const focused of [false, true]) {
-        act(() => {
-          focusManager.setFocused(focused);
-        });
-      }
+      const refocus = () => {
+        for (const focused of [false, true]) {
+          act(() => {
+            focusManager.setFocused(focused);
+          });
+        }
+      };
+
+      refocus();
+      expect(requests).toHaveLength(1);
+
+      vi.setSystemTime(new Date(Date.parse(MORNING) + 31_000));
+      refocus();
 
       await eventually(() => {
         expect(requests.length).toBeGreaterThan(1);
@@ -589,6 +744,60 @@ describe('DayView', () => {
       });
       expect(screen.getByRole('checkbox', { name: 'Book flights' })).toBeChecked();
       expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+    });
+
+    it('allows different tasks to toggle concurrently and refreshes once after both settle', async () => {
+      let releaseFirst: () => void = () => undefined;
+      let releaseSecond: () => void = () => undefined;
+      const first = new Promise<void>((resolve) => {
+        releaseFirst = resolve;
+      });
+      const second = new Promise<void>((resolve) => {
+        releaseSecond = resolve;
+      });
+      const state = buildAgenda();
+      let gets = 0;
+      const posts: string[] = [];
+      server.use(
+        http.get('*/api/agenda/day', () => {
+          gets += 1;
+          return HttpResponse.json(state);
+        }),
+        http.post('*/api/tasks/:id/complete', async ({ params }) => {
+          const id = String(params.id);
+          posts.push(id);
+          await (id === 't4' ? first : second);
+          const task = state.tasks.dueToday.find((item) => item.id === id);
+          if (task) task.isCompleted = true;
+          return HttpResponse.json(task);
+        }),
+      );
+      await renderToday();
+      const firstCheckbox = await screen.findByRole('checkbox', { name: 'Book flights' });
+      const secondCheckbox = screen.getByRole('checkbox', { name: 'Send report' });
+      await userEvent.click(firstCheckbox);
+      await eventually(() => expect(firstCheckbox).toBeDisabled());
+      expect(secondCheckbox).toBeEnabled();
+      await userEvent.click(secondCheckbox);
+      await eventually(() => {
+        expect(posts).toHaveLength(2);
+      });
+      expect(secondCheckbox).toBeDisabled();
+      expect(gets).toBe(1);
+      releaseFirst();
+      await eventually(() => {
+        expect(firstCheckbox).toBeEnabled();
+      });
+      expect(secondCheckbox).toBeDisabled();
+      expect(gets).toBe(1);
+      releaseSecond();
+      await eventually(() => {
+        expect(gets).toBe(2);
+      });
+      await eventually(() => {
+        expect(secondCheckbox).toBeEnabled();
+      });
+      expect(gets).toBe(2);
     });
 
     it('reopens a completed task', async () => {

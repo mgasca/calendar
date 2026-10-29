@@ -102,14 +102,14 @@ dev-api: ## Run the API on http://localhost:5041 (loads .env, e.g. the Google si
 dev-web: ## Run the web UI (proxies /api to the API)
 	$(PNPM) dev
 
-dev-docs: ## Run the ADR documentation site on http://localhost:4321
+dev-docs: ## Run the documentation site (ADRs and stories) on http://localhost:4321
 	$(PNPM) --filter @calendar/docs dev
 
-build-docs: ## Build and verify the static ADR site (optional DOCS_SITE_URL for hosting URL)
+build-docs: ## Build and verify the static documentation site (optional DOCS_SITE_URL for hosting URL)
 	$(PNPM) --filter @calendar/docs build
 	$(PNPM) --filter @calendar/docs verify:build
 
-preview-docs: ## Preview the built ADR site locally
+preview-docs: ## Preview the built documentation site locally
 	$(PNPM) --filter @calendar/docs preview
 
 clean: ## Remove build outputs

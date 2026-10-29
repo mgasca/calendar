@@ -1,5 +1,6 @@
+import { Notes } from './Notes.tsx';
 import { formatTime, type AgendaTask } from './dayTime.ts';
-import { TaskUpdateError } from './useToggleTask.ts';
+import { TaskUpdateError, useTaskTogglePending } from './useToggleTask.ts';
 
 export interface TaskItemProps {
   task: AgendaTask;
@@ -26,6 +27,7 @@ export function TaskItem({
   disabled,
   onToggle,
 }: TaskItemProps) {
+  const pending = useTaskTogglePending(task.id);
   const metaId = `task-meta-${task.id}`;
   const showMeta = !!detail || (!!dueAt && !!timeZone) || pastDue;
   return (
@@ -36,7 +38,7 @@ export function TaskItem({
         <input
           type="checkbox"
           checked={task.isCompleted}
-          disabled={disabled}
+          disabled={disabled || pending}
           aria-describedby={showMeta ? metaId : undefined}
           onChange={() => {
             onToggle(task);
@@ -45,7 +47,7 @@ export function TaskItem({
         <span className="item-title">{task.title}</span>
       </label>
       {task.priority && <span className="badge">{task.priority} priority</span>}
-      {task.notes && <p className="task-notes">{task.notes}</p>}
+      {task.hasNotes && <Notes id={task.id} kind="task" />}
       {showMeta && (
         <span id={metaId} className="item-meta">
           {detail && !task.isCompleted && <strong className="flag">{detail}</strong>}

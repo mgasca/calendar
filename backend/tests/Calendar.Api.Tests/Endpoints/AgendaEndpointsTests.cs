@@ -94,7 +94,7 @@ public sealed class AgendaEndpointsTests(PostgresFixture postgres) : ApiTestBase
     root["date"]!.GetValue<string>().ShouldBe("2026-10-26");
     root["events"]![0]!.AsObject().ContainsKey("startsBeforeDay").ShouldBeTrue();
     root["allDayEvents"]![0]!["startDate"]!.GetValue<string>().ShouldBe("2026-10-26");
-    root["tasks"]!.AsObject().Select(p => p.Key).ShouldBe(["overdue", "dueToday"], ignoreOrder: true);
+    root["tasks"]!.AsObject().Select(p => p.Key).ShouldBe(["overdue", "overdueTotal", "overdueOpenTotal", "dueToday"], ignoreOrder: true);
   }
 
   [Fact]
@@ -273,15 +273,8 @@ public sealed class AgendaEndpointsTests(PostgresFixture postgres) : ApiTestBase
 
     var overdue = (await GetAgendaAsync("2026-10-26", NewYork)).Tasks.Overdue;
 
-    overdue.Select(t => t.Title).ShouldBe(
-    [
-        "open, due last week",
-            "done at window start",
-            "done this morning",
-            "timed, done today",
-            "open, timed yesterday",
-            "timed just before window",
-        ]);
+    overdue.Take(3).Select(t => t.Title).ShouldBe(["open, due last week", "open, timed yesterday", "timed just before window"]);
+    overdue.Skip(3).ShouldAllBe(t => t.IsCompleted);
     overdue.Where(t => t.IsCompleted).Select(t => t.Title).ShouldBe(["done this morning", "done at window start", "timed, done today"], ignoreOrder: true);
   }
 
@@ -329,7 +322,7 @@ public sealed class AgendaEndpointsTests(PostgresFixture postgres) : ApiTestBase
   }
 
   [Fact]
-  public async Task Tasks_Overdue_PriorityBreaksEqualDeadlinesButNotEarlierDeadlines()
+  public async Task Tasks_Overdue_OrdersTimedBeforeDateOnlyOnTheSameDay()
   {
     await SeedAsync(tasks:
     [
@@ -344,12 +337,9 @@ public sealed class AgendaEndpointsTests(PostgresFixture postgres) : ApiTestBase
 
     var overdue = (await GetAgendaAsync("2026-10-26", NewYork)).Tasks.Overdue;
 
-    overdue.Select(t => t.Title).ShouldBe(
-    [
-        "timed high", "timed medium", "timed low",
-        "date high", "date medium", "zeta",
-        "later high",
-    ]);
+    overdue.Take(3).ShouldAllBe(t => t.DueAt != null);
+    overdue.Skip(3).Take(3).ShouldAllBe(t => t.DueDate == new DateOnly(2026, 10, 20));
+    overdue[^1].Title.ShouldBe("later high");
   }
 
   [Fact]
@@ -410,6 +400,62 @@ public sealed class AgendaEndpointsTests(PostgresFixture postgres) : ApiTestBase
     var overdue = (await GetAgendaAsync("2026-10-26", NewYork)).Tasks.Overdue.ShouldHaveSingleItem();
     overdue.IsCompleted.ShouldBeTrue();
     (await GetAgendaAsync("2026-10-27", NewYork)).Tasks.Overdue.ShouldBeEmpty();
+  }
+
+  [Fact]
+  public async Task Overdue_IsCappedAndMatchesTaskListOrderInDayAndWeek()
+  {
+    var tasks = Enumerable.Range(0, 25).Select(i => TodoTask.Create($"open {i}", new DateOnly(2026, 10, 1).AddDays(i % 5))).ToList();
+    tasks.Add(CompletedTask("done today", new DateOnly(2026, 10, 1), Utc(2026, 10, 26, 12)));
+    await SeedAsync(tasks: tasks);
+    var day = await GetAgendaAsync("2026-10-26", NewYork);
+    var week = await GetWeekAgendaAsync("2026-10-26", NewYork, "2026-10-26");
+    var page = await Client.GetFromJsonAsync<Calendar.Api.Contracts.TaskPage>(new Uri("/api/tasks?view=overdue&today=2026-10-26&timeZone=America/New_York&limit=20", UriKind.Relative), Ct);
+    day.Tasks.Overdue.Count.ShouldBe(20);
+    day.Tasks.OverdueTotal.ShouldBe(26);
+    day.Tasks.OverdueOpenTotal.ShouldBe(25);
+    day.Tasks.Overdue.Select(t => t.Id).ShouldBe(page!.Items.Select(t => t.Id));
+    week.Overdue!.Select(t => t.Id).ShouldBe(day.Tasks.Overdue.Select(t => t.Id));
+    week.OverdueTotal.ShouldBe(26);
+    week.OverdueOpenTotal.ShouldBe(25);
+  }
+
+  [Fact]
+  public async Task Overdue_CompletedTodayFollowsOpenTasksEvenWhenDueEarlier()
+  {
+    await SeedAsync(tasks:
+    [
+      TodoTask.Create("open", new DateOnly(2026, 10, 20)),
+      CompletedTask("completed", new DateOnly(2026, 10, 1), Utc(2026, 10, 26, 12)),
+    ]);
+    var day = await GetAgendaAsync("2026-10-26", NewYork);
+    var week = await GetWeekAgendaAsync("2026-10-26", NewYork, "2026-10-26");
+    day.Tasks.Overdue.Select(t => t.Title).ShouldBe(["open", "completed"]);
+    day.Tasks.OverdueTotal.ShouldBe(2);
+    day.Tasks.OverdueOpenTotal.ShouldBe(1);
+    week.Overdue.ShouldNotBeNull().Select(t => t.Title).ShouldBe(["open", "completed"]);
+  }
+
+  [Fact]
+  public async Task Agenda_ReportsNotesWithoutIncludingTheirText()
+  {
+    await SeedAsync(
+    [
+      CalendarEvent.Create("timed", Utc(2026, 10, 26, 14), Utc(2026, 10, 26, 15), NewYork, notes: "secret event"),
+      CalendarEvent.CreateAllDay("all day", new DateOnly(2026, 10, 26), new DateOnly(2026, 10, 27)),
+    ],
+    [TodoTask.Create("with notes", new DateOnly(2026, 10, 26), notes: "secret task"), TodoTask.Create("without", new DateOnly(2026, 10, 26))]);
+    var day = await GetAgendaAsync("2026-10-26", NewYork);
+    day.Events.Single().HasNotes.ShouldBeTrue();
+    day.AllDayEvents.Single().HasNotes.ShouldBeFalse();
+    day.Tasks.DueToday.Single(t => t.Title == "with notes").HasNotes.ShouldBeTrue();
+    day.Tasks.DueToday.Single(t => t.Title == "without").HasNotes.ShouldBeFalse();
+    var json = await Client.GetStringAsync(new Uri("/api/agenda/day?date=2026-10-26&timeZone=America/New_York", UriKind.Relative), Ct);
+    json.ShouldNotContain("\"notes\"");
+    json.ShouldNotContain("secret");
+    var weekJson = await Client.GetStringAsync(new Uri("/api/agenda/week?date=2026-10-26&timeZone=America/New_York&today=2026-10-26", UriKind.Relative), Ct);
+    weekJson.ShouldNotContain("\"notes\"");
+    weekJson.ShouldNotContain("secret");
   }
 
   // ---- skipped / odd days ----

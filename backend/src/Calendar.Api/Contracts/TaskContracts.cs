@@ -69,3 +69,55 @@ public sealed record TaskResponse
   /// <summary>Maps a <see cref="TodoTask"/> to its response.</summary>
   public static TaskResponse From(TodoTask task) => Compiled(task);
 }
+
+/// <summary>A task in an agenda.</summary>
+public sealed record AgendaTaskItem
+{
+  /// <summary>Unique task id.</summary>
+  public required Guid Id { get; init; }
+
+  /// <summary>Task title.</summary>
+  public required string Title { get; init; }
+
+  /// <summary>Priority level: low, medium, or high.</summary>
+  public string Priority { get; init; } = "medium";
+
+  /// <summary>Whether the task has notes.</summary>
+  public required bool HasNotes { get; init; }
+
+  /// <summary>Floating due date, or <c>null</c> if the task has no date-only due.</summary>
+  public DateOnly? DueDate { get; init; }
+
+  /// <summary>Due instant, or <c>null</c> if the task has no timed due.</summary>
+  public DateTimeOffset? DueAt { get; init; }
+
+  /// <summary>When the task was completed; <c>null</c> while it is open.</summary>
+  public DateTimeOffset? CompletedAt { get; init; }
+
+  /// <summary><c>true</c> once the task has been completed.</summary>
+  public required bool IsCompleted { get; init; }
+
+  /// <summary>Translatable to SQL, for query projections.</summary>
+  public static readonly Expression<Func<TodoTask, AgendaTaskItem>> Projection = t => new AgendaTaskItem
+  {
+    Id = t.Id,
+    Title = t.Title,
+    Priority = t.Priority,
+    HasNotes = t.Notes != null,
+    DueDate = t.DueDate,
+    DueAt = t.DueAt,
+    CompletedAt = t.CompletedAt,
+    IsCompleted = t.CompletedAt != null,
+  };
+
+}
+
+/// <summary>One page of a task list view.</summary>
+public sealed record TaskPage
+{
+  /// <summary>The page's tasks, in the view's order.</summary>
+  public required IReadOnlyList<TaskResponse> Items { get; init; }
+
+  /// <summary>Pass as <c>cursor</c> for the next page; <c>null</c> on the last page.</summary>
+  public string? NextCursor { get; init; }
+}

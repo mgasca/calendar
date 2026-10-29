@@ -14,11 +14,17 @@ public sealed record AgendaWindow
 /// <summary>Tasks relevant to the day, split into overdue and due-today groups.</summary>
 public sealed record AgendaTasks
 {
-  /// <summary>Overdue tasks, oldest due first: still open, or completed within the day. Not due on the day itself.</summary>
-  public required IReadOnlyList<TaskResponse> Overdue { get; init; }
+  /// <summary>Up to 20 overdue tasks, open first then completed within the day; each group is ordered by local due date, instant and id.</summary>
+  public required IReadOnlyList<AgendaTaskItem> Overdue { get; init; }
+
+  /// <summary>Number of overdue tasks, including those completed today.</summary>
+  public required int OverdueTotal { get; init; }
+
+  /// <summary>Number of open overdue tasks.</summary>
+  public required int OverdueOpenTotal { get; init; }
 
   /// <summary>Tasks due on the day (open or completed): timed ones by due instant, then date-only ones by title.</summary>
-  public required IReadOnlyList<TaskResponse> DueToday { get; init; }
+  public required IReadOnlyList<AgendaTaskItem> DueToday { get; init; }
 }
 
 /// <summary>Everything for one local day, from a single snapshot.</summary>
@@ -59,7 +65,7 @@ public sealed record AgendaDay
   public required IReadOnlyList<TimedEventItem> Events { get; init; }
 
   /// <summary>Tasks due on the day (open or completed): timed ones by due instant, then date-only ones by title.</summary>
-  public required IReadOnlyList<TaskResponse> Tasks { get; init; }
+  public required IReadOnlyList<AgendaTaskItem> Tasks { get; init; }
 }
 
 /// <summary>The ISO week (Monday to Sunday) containing the requested date, from a single snapshot.</summary>
@@ -82,8 +88,15 @@ public sealed record WeekAgendaResponse
 
   /// <summary>
   /// Tasks overdue as of <c>today</c> (still open, or completed within today) that were due before the week's
-  /// Monday, oldest due first. Tasks due within the week are in their day instead. <c>null</c> when the whole
+  /// Monday, capped at 20 and ordered open first, then completed today, by local due date, instant and id within
+  /// each group. Tasks due within the week are in their day instead. <c>null</c> when the whole
   /// week is before <c>today</c>.
   /// </summary>
-  public required IReadOnlyList<TaskResponse>? Overdue { get; init; }
+  public required IReadOnlyList<AgendaTaskItem>? Overdue { get; init; }
+
+  /// <summary>Number of overdue tasks, including those completed today.</summary>
+  public required int OverdueTotal { get; init; }
+
+  /// <summary>Number of open overdue tasks.</summary>
+  public required int OverdueOpenTotal { get; init; }
 }

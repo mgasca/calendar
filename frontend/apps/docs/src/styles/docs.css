@@ -27,20 +27,20 @@
   --adr-status-pending-bg: #e5e7eb;
   --adr-status-pending-text: #374151;
 }
-.sidebar-content a[data-adr-number] {
+.sidebar-content a[data-doc-number] {
   display: grid;
   grid-template-columns: max-content auto minmax(0, 1fr);
   align-items: start;
   gap: 0.4rem;
 }
-.sidebar-content a[data-adr-number]::before {
-  content: attr(data-adr-number);
+.sidebar-content a[data-doc-number]::before {
+  content: attr(data-doc-number);
   grid-column: 1;
   grid-row: 1;
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
 }
-.sidebar-content a[data-adr-number] > span:first-child {
+.sidebar-content a[data-doc-number] > span:first-child {
   grid-column: 3;
   grid-row: 1;
   margin: 0;

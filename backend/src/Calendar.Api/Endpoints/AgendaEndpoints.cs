@@ -2,7 +2,6 @@ using Calendar.Api.Contracts;
 using Calendar.Domain.Time;
 using Calendar.Infrastructure;
 using Microsoft.AspNetCore.Http.HttpResults;
-using Microsoft.OpenApi;
 
 namespace Calendar.Api.Endpoints;
 
@@ -56,6 +55,8 @@ internal static class AgendaEndpoints
       Tasks = new AgendaTasks
       {
         Overdue = snapshot.Overdue ?? [],
+        OverdueTotal = snapshot.OverdueTotal,
+        OverdueOpenTotal = snapshot.OverdueOpenTotal,
         DueToday = only.Tasks,
       },
     });
@@ -98,26 +99,10 @@ internal static class AgendaEndpoints
         Tasks = d.Tasks,
       })],
       Overdue = snapshot.Overdue,
+      OverdueTotal = snapshot.OverdueTotal,
+      OverdueOpenTotal = snapshot.OverdueOpenTotal,
     });
   }
 
   private static AgendaWindow Window(DateTimeOffset start, DateTimeOffset end) => new() { Start = start, End = end };
-
-  /// <summary>
-  /// Marks query parameters required in the OpenAPI document. They bind as nullable so that a missing value is
-  /// reported as a validation problem, but the contract still says they are required.
-  /// </summary>
-  private static RouteHandlerBuilder RequireQueryParameters(this RouteHandlerBuilder builder, params string[] names) =>
-      builder.AddOpenApiOperationTransformer((operation, _, _) =>
-      {
-        foreach (var parameter in operation.Parameters ?? [])
-        {
-          if (parameter is OpenApiParameter concrete && names.Contains(concrete.Name, StringComparer.Ordinal))
-          {
-            concrete.Required = true;
-          }
-        }
-
-        return Task.CompletedTask;
-      });
 }

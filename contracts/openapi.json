@@ -145,16 +145,67 @@
           "Tasks"
         ],
         "operationId": "ListTasks",
+        "parameters": [
+          {
+            "name": "view",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "today",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "date"
+            }
+          },
+          {
+            "name": "timeZone",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": {
+              "pattern": "^-?(?:0|[1-9]\\d*)$",
+              "type": [
+                "integer",
+                "string"
+              ],
+              "format": "int32"
+            }
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
         "responses": {
           "200": {
             "description": "OK",
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/TaskResponse"
-                  }
+                  "$ref": "#/components/schemas/TaskPage"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HttpValidationProblemDetails"
                 }
               }
             }
@@ -483,16 +534,75 @@
           "tasks": {
             "type": "array",
             "items": {
-              "$ref": "#/components/schemas/TaskResponse"
+              "$ref": "#/components/schemas/AgendaTaskItem"
             },
             "description": "Tasks due on the day (open or completed): timed ones by due instant, then date-only ones by title."
           }
         },
         "description": "One local day of a multi-day agenda: its timed events and the tasks due on it."
       },
+      "AgendaTaskItem": {
+        "required": [
+          "id",
+          "title",
+          "hasNotes",
+          "isCompleted"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Unique task id.",
+            "format": "uuid"
+          },
+          "title": {
+            "type": "string",
+            "description": "Task title."
+          },
+          "priority": {
+            "type": "string",
+            "description": "Priority level: low, medium, or high."
+          },
+          "hasNotes": {
+            "type": "boolean",
+            "description": "Whether the task has notes."
+          },
+          "dueDate": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "Floating due date, or `null` if the task has no date-only due.",
+            "format": "date"
+          },
+          "dueAt": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "Due instant, or `null` if the task has no timed due.",
+            "format": "date-time"
+          },
+          "completedAt": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "When the task was completed; `null` while it is open.",
+            "format": "date-time"
+          },
+          "isCompleted": {
+            "type": "boolean",
+            "description": "`true` once the task has been completed."
+          }
+        },
+        "description": "A task in an agenda."
+      },
       "AgendaTasks": {
         "required": [
           "overdue",
+          "overdueTotal",
+          "overdueOpenTotal",
           "dueToday"
         ],
         "type": "object",
@@ -500,14 +610,32 @@
           "overdue": {
             "type": "array",
             "items": {
-              "$ref": "#/components/schemas/TaskResponse"
+              "$ref": "#/components/schemas/AgendaTaskItem"
             },
-            "description": "Overdue tasks, oldest due first: still open, or completed within the day. Not due on the day itself."
+            "description": "Up to 20 overdue tasks, open first then completed within the day; each group is ordered by local due date, instant and id."
+          },
+          "overdueTotal": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "description": "Number of overdue tasks, including those completed today.",
+            "format": "int32"
+          },
+          "overdueOpenTotal": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "description": "Number of open overdue tasks.",
+            "format": "int32"
           },
           "dueToday": {
             "type": "array",
             "items": {
-              "$ref": "#/components/schemas/TaskResponse"
+              "$ref": "#/components/schemas/AgendaTaskItem"
             },
             "description": "Tasks due on the day (open or completed): timed ones by due instant, then date-only ones by title."
           }
@@ -538,6 +666,7 @@
         "required": [
           "id",
           "title",
+          "hasNotes",
           "startDate",
           "endDate"
         ],
@@ -559,12 +688,9 @@
             ],
             "description": "Location, or `null` if none."
           },
-          "notes": {
-            "type": [
-              "null",
-              "string"
-            ],
-            "description": "Notes, or `null` if none."
+          "hasNotes": {
+            "type": "boolean",
+            "description": "Whether the event has notes."
           },
           "startDate": {
             "type": "string",
@@ -929,6 +1055,29 @@
           }
         }
       },
+      "TaskPage": {
+        "required": [
+          "items"
+        ],
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/TaskResponse"
+            },
+            "description": "The page's tasks, in the view's order."
+          },
+          "nextCursor": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "Pass as `cursor` for the next page; `null` on the last page."
+          }
+        },
+        "description": "One page of a task list view."
+      },
       "TaskResponse": {
         "required": [
           "id",
@@ -992,6 +1141,7 @@
         "required": [
           "id",
           "title",
+          "hasNotes",
           "start",
           "end",
           "timeZone",
@@ -1016,12 +1166,9 @@
             ],
             "description": "Location, or `null` if none."
           },
-          "notes": {
-            "type": [
-              "null",
-              "string"
-            ],
-            "description": "Notes, or `null` if none."
+          "hasNotes": {
+            "type": "boolean",
+            "description": "Whether the event has notes."
           },
           "start": {
             "type": "string",
@@ -1055,7 +1202,9 @@
           "window",
           "allDayEvents",
           "days",
-          "overdue"
+          "overdue",
+          "overdueTotal",
+          "overdueOpenTotal"
         ],
         "type": "object",
         "properties": {
@@ -1092,9 +1241,27 @@
               "array"
             ],
             "items": {
-              "$ref": "#/components/schemas/TaskResponse"
+              "$ref": "#/components/schemas/AgendaTaskItem"
             },
-            "description": "Tasks overdue as of `today` (still open, or completed within today) that were due before the week's\nMonday, oldest due first. Tasks due within the week are in their day instead. `null` when the whole\nweek is before `today`."
+            "description": "Tasks overdue as of `today` (still open, or completed within today) that were due before the week's\nMonday, capped at 20 and ordered open first, then completed today, by local due date, instant and id within\neach group. Tasks due within the week are in their day instead. `null` when the whole\nweek is before `today`."
+          },
+          "overdueTotal": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "description": "Number of overdue tasks, including those completed today.",
+            "format": "int32"
+          },
+          "overdueOpenTotal": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "description": "Number of open overdue tasks.",
+            "format": "int32"
           }
         },
         "description": "The ISO week (Monday to Sunday) containing the requested date, from a single snapshot."

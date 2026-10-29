@@ -1,12 +1,14 @@
 import type { Schemas } from '@calendar/api-client';
 
+import { Notes } from '../agenda/Notes.tsx';
+import { dateTimeFormat } from '../agenda/dayTime.ts';
 import { addDays } from './weekDates.ts';
 import type { AllDayLayout } from './gridLayout.ts';
 
 type AllDayEvent = Schemas['AllDayEventItem'];
 
 function formatDates(event: AllDayEvent, locale: string | undefined): string {
-  const format = new Intl.DateTimeFormat(locale, {
+  const format = dateTimeFormat(locale, {
     timeZone: 'UTC',
     day: 'numeric',
     month: 'short',
@@ -45,6 +47,7 @@ export function AllDayBand({
           >
             {continuesBefore && <span aria-hidden="true">◀ </span>}
             <span className="week-bar-title">{event.title}</span>
+            {event.hasNotes && <Notes id={event.id} kind="event" />}
             <span className="visually-hidden">
               {`, ${formatDates(event, locale)}`}
               {continuesBefore && ', continues from the previous week'}

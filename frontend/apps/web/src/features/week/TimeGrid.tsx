@@ -1,9 +1,11 @@
 import type { Schemas } from '@calendar/api-client';
 import { Link } from '@tanstack/react-router';
-import { useLayoutEffect, useRef, type CSSProperties } from 'react';
+import { memo, useLayoutEffect, useMemo, useRef, type CSSProperties } from 'react';
 
-import { formatDate } from '../agenda/dayTime.ts';
+import { dateTimeFormat, formatDate } from '../agenda/dayTime.ts';
+import { Notes } from '../agenda/Notes.tsx';
 import { EventTimes } from '../agenda/EventTimes.tsx';
+import { useNow } from '../agenda/useNow.ts';
 import { AllDayBand } from './AllDayBand.tsx';
 import {
   bandHeight,
@@ -14,10 +16,11 @@ import {
   layoutDay,
   MINUTES_PER_DAY,
   minuteToPx,
+  wallClockMinutes,
   type Span,
 } from './gridLayout.ts';
 import { TaskStrip, type TaskToggleProps } from './TaskStrip.tsx';
-import { dayHeadingParts } from './weekDates.ts';
+import { dayHeadingParts, isInWeek } from './weekDates.ts';
 
 type WeekAgenda = Schemas['WeekAgendaResponse'];
 type AgendaDay = Schemas['AgendaDay'];
@@ -25,7 +28,7 @@ type AgendaDay = Schemas['AgendaDay'];
 const HOURS = Array.from({ length: 24 }, (_, hour) => hour);
 
 function hourLabel(hour: number, locale: string | undefined): string {
-  return new Intl.DateTimeFormat(locale, {
+  return dateTimeFormat(locale, {
     timeZone: 'UTC',
     hour: '2-digit',
     minute: '2-digit',
@@ -45,8 +48,6 @@ interface TimeGridProps extends TaskToggleProps {
   agenda: WeekAgenda;
   /** The viewer's local date. */
   today: string;
-  /** Minutes since local midnight now, only when the week shown contains today. */
-  nowMinute: number | undefined;
 }
 
 /**
@@ -54,21 +55,29 @@ interface TimeGridProps extends TaskToggleProps {
  * strips stay at the top while the 24 hours scroll beneath them. Each day is a labelled section
  * holding its tasks and an ordered list of its events; their positions are presentational.
  */
-export function TimeGrid({ agenda, today, nowMinute, ...taskProps }: TimeGridProps) {
+export function TimeGrid({ agenda, today, ...taskProps }: TimeGridProps) {
   const scroller = useRef<HTMLDivElement>(null);
   const scrolledWeek = useRef<string | null>(null);
   const { weekStart } = agenda;
+  const currentWeek = isInWeek(today, weekStart);
 
   // Open each week at 07:00, or an hour before now in the current week; later clock ticks and
   // refetches leave the scroll position alone.
   useLayoutEffect(() => {
     if (scroller.current && scrolledWeek.current !== weekStart) {
-      scroller.current.scrollTop = minuteToPx(initialScrollMinute(nowMinute));
+      scroller.current.scrollTop = minuteToPx(
+        initialScrollMinute(
+          currentWeek ? wallClockMinutes(Date.now(), taskProps.timeZone) : undefined,
+        ),
+      );
       scrolledWeek.current = weekStart;
     }
-  }, [weekStart, nowMinute]);
+  }, [weekStart, currentWeek, taskProps.timeZone]);
 
-  const band = layoutAllDay(agenda.allDayEvents, weekStart);
+  const band = useMemo(
+    () => layoutAllDay(agenda.allDayEvents, weekStart),
+    [agenda.allDayEvents, weekStart],
+  );
   const gridStyle = {
     '--band-h': bandHeight(band.lanes),
     '--day-h': `${String(24 * HOUR_HEIGHT_PX)}px`,
@@ -110,8 +119,7 @@ export function TimeGrid({ agenda, today, nowMinute, ...taskProps }: TimeGridPro
             isToday={day.date === today}
             // In the current week, open tasks on days before today are overdue; the Overdue panel
             // only holds tasks due before the week.
-            overdue={nowMinute !== undefined && day.date < today}
-            nowMinute={day.date === today ? nowMinute : undefined}
+            overdue={currentWeek && day.date < today}
             {...taskProps}
           />
         ))}
@@ -120,12 +128,11 @@ export function TimeGrid({ agenda, today, nowMinute, ...taskProps }: TimeGridPro
   );
 }
 
-function DayColumn({
+const DayColumn = memo(function DayColumn({
   day,
   column,
   isToday,
   overdue,
-  nowMinute,
   ...taskProps
 }: TaskToggleProps & {
   day: AgendaDay;
@@ -134,8 +141,6 @@ function DayColumn({
   isToday: boolean;
   /** Mark the day's open tasks as Overdue. */
   overdue: boolean;
-  /** Where to draw the "now" line; only set on today's column. */
-  nowMinute: number | undefined;
 }) {
   const { timeZone, locale } = taskProps;
   // The section is named by the full date; the heading link shows (and is named by) "Mon 26",
@@ -144,7 +149,10 @@ function DayColumn({
   const { weekday, day: dayOfMonth } = dayHeadingParts(day.date, locale);
   const fullDate = formatDate(day.date, locale);
   const skipped = isSkippedDay(day.window);
-  const layout = layoutDay(day.events, day.window, timeZone);
+  const layout = useMemo(
+    () => layoutDay(day.events, day.window, timeZone),
+    [day.events, day.window, timeZone],
+  );
   const place = { gridColumn: String(column) };
 
   return (
@@ -187,6 +195,7 @@ function DayColumn({
                     />
                   </span>{' '}
                   <span className="week-event-title">{event.title}</span>
+                  {event.hasNotes && <Notes id={event.id} kind="event" />}
                 </li>
               ))}
             </ol>
@@ -203,14 +212,20 @@ function DayColumn({
             +{chip.count} more
           </Link>
         ))}
-        {nowMinute !== undefined && !skipped && (
-          <div
-            className="week-now"
-            aria-hidden="true"
-            style={{ top: `${String(minuteToPx(Math.min(nowMinute, MINUTES_PER_DAY)))}px` }}
-          />
-        )}
+        {isToday && !skipped && <NowLine timeZone={timeZone} />}
       </div>
     </section>
+  );
+});
+
+function NowLine({ timeZone }: { timeZone: string }) {
+  const now = useNow();
+  const nowMinute = wallClockMinutes(now, timeZone);
+  return (
+    <div
+      className="week-now"
+      aria-hidden="true"
+      style={{ top: `${String(minuteToPx(Math.min(nowMinute, MINUTES_PER_DAY)))}px` }}
+    />
   );
 }

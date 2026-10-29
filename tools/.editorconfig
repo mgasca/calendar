@@ -101,6 +101,9 @@ dotnet_diagnostic.CA1851.severity = warning
 dotnet_diagnostic.CA1307.severity = warning
 dotnet_diagnostic.CA1309.severity = warning
 
+# Every built-in performance rule (CA18xx and friends), including ones that are off by default
+dotnet_analyzer_diagnostic.category-Performance.severity = warning
+
 # Layout (ADR-0036): StyleCop runs only SA1501 (no single-line statements, e.g. `if (y) { Foo(); }`)
 # and SA1116/SA1117 (a wrapped parameter or argument list starts on a new line, one per line);
 # Sonar S103 caps lines at 140 characters (the limit is set in SonarLint.xml).

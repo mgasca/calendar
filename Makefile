@@ -135,17 +135,17 @@ smoke-image: ## Check a running image at localhost:8080 (or BASE_URL)
 	  echo "$$route: $$code"; \
 	done
 
-infra-what-if: ## Preview infrastructure (ENV=staging|production, PHASE=foundation|full)
+infra-what-if: ## Preview infrastructure (ENV=staging|production, PHASE=foundation|full, ARGS="--allow-ip CIDR")
 	@./tools/doctor/doctor.sh --infra
-	dotnet run tools/infra/infra.cs -- what-if $(ENV) --phase $(or $(PHASE),full)
+	dotnet run tools/infra/infra.cs -- what-if $(ENV) --phase $(or $(PHASE),full) $(ARGS)
 
-infra-deploy: ## Deploy infrastructure (ENV=staging|production, PHASE=foundation|full)
+infra-deploy: ## Deploy infrastructure (ENV=staging|production, PHASE=foundation|full, ARGS="--allow-ip CIDR")
 	@./tools/doctor/doctor.sh --infra
-	dotnet run tools/infra/infra.cs -- deploy $(ENV) --phase $(or $(PHASE),full)
+	dotnet run tools/infra/infra.cs -- deploy $(ENV) --phase $(or $(PHASE),full) $(ARGS)
 
-infra-secret-init: ## Owner creates the Postgres password (ENV=staging|production, ARGS=--force)
+infra-secret-init: ## Owner creates the Postgres password (ENV=staging|production)
 	@./tools/doctor/doctor.sh --infra
-	dotnet run tools/infra/infra.cs -- secret init-postgres-password $(ENV) $(ARGS)
+	dotnet run tools/infra/infra.cs -- secret init-postgres-password $(ENV)
 
 infra-db-stop: ## Stop staging PostgreSQL
 	@./tools/doctor/doctor.sh --infra

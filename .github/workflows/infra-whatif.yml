@@ -53,6 +53,7 @@ jobs:
       AZURE_BICEP_USE_BINARY_FROM_PATH: "false"
       AZURE_DEPLOYER_CLIENT_ID: ${{ vars.AZURE_CLIENT_ID }}
       INFRA_PHASE: ${{ inputs.phase }}
+      AZURE_ALLOWED_IPS: ${{ vars.AZURE_ALLOWED_IPS }}
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-dotnet@v6

@@ -20,6 +20,17 @@ public sealed class DoctorTests : IDisposable
     {
       File.CreateSymbolicLink(Path.Combine(_bin, command), "/usr/bin/" + command);
     }
+    WriteExecutable("dotnet", "echo 10.0.403");
+    WriteExecutable("node", "echo v24.0.0");
+    WriteExecutable("pnpm", "exit 0");
+    WriteExecutable("docker", "exit 0");
+  }
+
+  private void WriteExecutable(string name, string body)
+  {
+    var path = Path.Combine(_bin, name);
+    File.WriteAllText(path, "#!/bin/sh\n" + body + "\n");
+    if (!OperatingSystem.IsWindows()) { File.SetUnixFileMode(path, UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute); }
   }
 
   public void Dispose() => Directory.Delete(_bin, true);
@@ -33,26 +44,35 @@ public sealed class DoctorTests : IDisposable
     text.ShouldContain("Install Azure CLI");
   }
 
-  [Fact]
-  public async Task MismatchedAzureAndBicepVersionsFailWithInstallHints()
+  [Theory]
+  [InlineData("2.91.0", "", false, "Bicep version 'unavailable'")]
+  [InlineData("0.1.0", "0.48.1", false, "Azure CLI version '0.1.0'")]
+  [InlineData("2.91.0", "0.1.0", false, "Bicep version '0.1.0'")]
+  [InlineData("2.91.0", "0.48.1", true, "Toolchain OK")]
+  public async Task InfraVersionsAreCheckedIndependently(string azure, string bicep, bool success, string expected)
   {
-    var az = Path.Combine(_bin, "az");
-    await File.WriteAllTextAsync(az, "#!/bin/sh\ncase \"$1\" in version) echo 0.1.0;; bicep) echo 'Bicep CLI version 0.1.0 (fake)';; esac\n", TestContext.Current.CancellationToken);
-    if (!OperatingSystem.IsWindows()) { File.SetUnixFileMode(az, UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute); }
+    var bicepCommand = string.IsNullOrEmpty(bicep) ? "exit 1" : $"echo 'Bicep CLI version {bicep} (fake)'";
+    WriteExecutable("az", $"case \"$1\" in version) echo {azure};; bicep) {bicepCommand};; esac");
     var (code, text) = await RunDoctor();
-    code.ShouldNotBe(0);
-    text.ShouldContain("Azure CLI version '0.1.0'");
-    text.ShouldContain("Bicep version '0.1.0'");
-    text.ShouldContain("az bicep install --version");
+    (code == 0).ShouldBe(success);
+    text.ShouldContain(expected);
+  }
+
+  [Fact]
+  public async Task OrdinaryDoctorDoesNotRequireAzure()
+  {
+    var (code, text) = await RunDoctor(infra: false);
+    code.ShouldBe(0);
+    text.ShouldNotContain("Azure CLI not found");
   }
 
   private static string SourcePath([System.Runtime.CompilerServices.CallerFilePath] string path = "") => path;
 
-  private async Task<(int, string)> RunDoctor()
+  private async Task<(int, string)> RunDoctor(bool infra = true)
   {
     var info = new ProcessStartInfo("/bin/bash") { RedirectStandardOutput = true, RedirectStandardError = true };
     info.ArgumentList.Add(Path.GetFullPath(Path.Combine(Path.GetDirectoryName(SourcePath())!, "../doctor.sh")));
-    info.ArgumentList.Add("--infra");
+    if (infra) { info.ArgumentList.Add("--infra"); }
     info.Environment["PATH"] = _bin;
     using var process = Process.Start(info) ?? throw new InvalidOperationException();
     var output = await process.StandardOutput.ReadToEndAsync();

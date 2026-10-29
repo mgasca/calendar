@@ -12,11 +12,11 @@ The Azure deployment must supply PostgreSQL credentials and Google sign-in confi
 
 ## Decision Drivers
 
-* **D1 Secret access**: limit access and avoid long-lived Azure credentials in deployment automation.
-* **D2 Rotation and audit**: support coordinated updates and trace access and changes.
-* **D3 Cost**: keep recurring costs proportionate to a few users.
-* **D4 Operational simplicity**: keep the first Azure deployment understandable and supportable.
-* **D5 Environment isolation**: prevent staging credentials from granting production access.
+* **D1 Cost**: keep recurring costs proportionate to a few users.
+* **D2 Operational simplicity**: keep the first Azure deployment understandable and supportable.
+* **D3 Environment isolation**: prevent staging credentials from granting production access.
+* **D4 Secret access**: limit access and avoid long-lived Azure credentials in deployment automation.
+* **D5 Rotation and audit**: support coordinated updates and trace access and changes.
 
 ## Considered Options
 
@@ -26,15 +26,15 @@ The Azure deployment must supply PostgreSQL credentials and Google sign-in confi
 
 ## Decision Outcome
 
-Chosen option: "Key Vault references with a user-assigned managed identity", because it provides scoped identity-based access (D1), versioned secrets and audit (D2), and separate vaults (D5), while adding manageable cost and operational work (D3, D4).
+Chosen option: "Key Vault references with a user-assigned managed identity", because it provides scoped identity-based access (D4), versioned secrets and audit (D5), and separate vaults (D3), while adding manageable cost and operational work (D1, D2).
 
 | Driver | **Key Vault references (chosen)** | Container Apps secrets | CI-injected environment variables |
 | --- | :---: | :---: | :---: |
-| D1 Secret access | ★★★ | ★★☆ | ★☆☆ |
-| D2 Rotation and audit | ★★★ | ★★☆ | ★☆☆ |
-| D3 Cost | ★★☆ | ★★★ | ★★★ |
-| D4 Operational simplicity | ★★☆ | ★★★ | ★★☆ |
-| D5 Environment isolation | ★★★ | ★★☆ | ★★☆ |
+| D1 Cost | ★★☆ | ★★★ | ★★★ |
+| D2 Operational simplicity | ★★☆ | ★★★ | ★★☆ |
+| D3 Environment isolation | ★★★ | ★★☆ | ★★☆ |
+| D4 Secret access | ★★★ | ★★☆ | ★☆☆ |
+| D5 Rotation and audit | ★★★ | ★★☆ | ★☆☆ |
 
 ### Implementation conventions
 
@@ -57,27 +57,27 @@ Review the infrastructure and deployment changes for separate vaults, secret-sco
 
 ### Key Vault references with a user-assigned managed identity
 
-* Good, because **D1 Secret access**: managed identity removes an application-held Azure credential and RBAC restricts vault reads.
-* Good, because **D2 Rotation and audit**: secret versions and vault audit events support rotation and investigation.
-* Good, because **D5 Environment isolation**: separate vaults and identities bound permissions by environment.
-* Bad, because **D3 Cost**: vault operations and diagnostic ingestion or retention can incur charges.
-* Bad, because **D4 Operational simplicity**: identity, role propagation, diagnostics and coordinated rotation need setup and troubleshooting.
+* Good, because **D4 Secret access**: managed identity removes an application-held Azure credential and RBAC restricts vault reads.
+* Good, because **D5 Rotation and audit**: secret versions and vault audit events support rotation and investigation.
+* Good, because **D3 Environment isolation**: separate vaults and identities bound permissions by environment.
+* Bad, because **D1 Cost**: vault operations and diagnostic ingestion or retention can incur charges.
+* Bad, because **D2 Operational simplicity**: identity, role propagation, diagnostics and coordinated rotation need setup and troubleshooting.
 
 ### Container Apps secrets populated directly
 
-* Good, because **D3 Cost**: no extra vault operations are needed.
-* Good, because **D4 Operational simplicity**: secrets are configured directly on the app.
-* Neutral, because **D1 Secret access**: Azure controls access, but deployment operators must supply the secret values.
-* Bad, because **D2 Rotation and audit**: updates require restarting revisions or deploying a new one, and there is no separate vault audit trail or versioned source.
-* Neutral, because **D5 Environment isolation**: separate apps and scoped permissions can isolate values, but secret administration is tied to app access.
+* Good, because **D1 Cost**: no extra vault operations are needed.
+* Good, because **D2 Operational simplicity**: secrets are configured directly on the app.
+* Neutral, because **D4 Secret access**: Azure controls access, but deployment operators must supply the secret values.
+* Bad, because **D5 Rotation and audit**: updates require restarting revisions or deploying a new one, and there is no separate vault audit trail or versioned source.
+* Neutral, because **D3 Environment isolation**: separate apps and scoped permissions can isolate values, but secret administration is tied to app access.
 
 ### CI-injected plain environment variables
 
-* Good, because **D3 Cost**: no vault operations are needed.
-* Neutral, because **D4 Operational simplicity**: injection is familiar, but secure CI storage and rotation must still be maintained.
-* Bad, because **D1 Secret access**: plain application configuration and pipeline handling broaden opportunities for disclosure.
-* Bad, because **D2 Rotation and audit**: changes require a deployment and the value has no vault version or vault access audit.
-* Neutral, because **D5 Environment isolation**: separate CI environments and scoped permissions can isolate values but must be configured correctly.
+* Good, because **D1 Cost**: no vault operations are needed.
+* Neutral, because **D2 Operational simplicity**: injection is familiar, but secure CI storage and rotation must still be maintained.
+* Bad, because **D4 Secret access**: plain application configuration and pipeline handling broaden opportunities for disclosure.
+* Bad, because **D5 Rotation and audit**: changes require a deployment and the value has no vault version or vault access audit.
+* Neutral, because **D3 Environment isolation**: separate CI environments and scoped permissions can isolate values but must be configured correctly.
 
 ## More Information
 

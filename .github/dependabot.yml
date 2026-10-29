@@ -19,7 +19,7 @@ updates:
       day: monday
     labels: [dependencies, backend]
 
-  # The postgres image pinned in compose.yaml (also the version Testcontainers runs).
+  # Dockerfile base images and the postgres image pinned in compose.yaml.
   - package-ecosystem: docker
     directory: /
     schedule:

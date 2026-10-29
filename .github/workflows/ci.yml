@@ -137,11 +137,55 @@ jobs:
       - name: ADRs follow conventions
         run: make adr-check
 
+  image:
+    name: Container image
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    services:
+      postgres:
+        image: postgres:18.6-alpine
+        env:
+          POSTGRES_PASSWORD: smoke-password
+          POSTGRES_DB: calendar
+        ports: [5432:5432]
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 10
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/cache@v5
+        with:
+          path: /tmp/calendar-buildx-cache
+          key: image-${{ runner.os }}-${{ github.sha }}
+          restore-keys: image-${{ runner.os }}-
+      - name: Build image with Buildx cache
+        run: |
+          docker buildx create --use
+          docker buildx build --load --cache-from type=local,src=/tmp/calendar-buildx-cache --cache-to type=local,dest=/tmp/calendar-buildx-cache-new,mode=max \
+            --build-arg NODE_VERSION="$(cat frontend/.node-version)" -t calendar:local .
+          rm -rf /tmp/calendar-buildx-cache
+          mv /tmp/calendar-buildx-cache-new /tmp/calendar-buildx-cache
+      - name: Run image and smoke test
+        env:
+          ConnectionStrings__Calendar: Host=127.0.0.1;Port=5432;Database=calendar;Username=postgres;Password=smoke-password
+        run: |
+          docker run -d --name calendar-smoke --network host -e ConnectionStrings__Calendar calendar:local
+          for _ in $(seq 1 30); do
+            if curl -fsS http://localhost:8080/api/health >/dev/null; then break; fi
+            sleep 1
+          done
+          make smoke-image
+      - name: Container logs
+        if: ${{ failure() }}
+        run: docker logs calendar-smoke
+
   # Single stable check for branch protection, so adding/renaming jobs doesn't require ruleset changes.
   result:
     name: CI result
     if: ${{ always() }}
-    needs: [backend, frontend, tooling]
+    needs: [backend, frontend, tooling, image]
     runs-on: ubuntu-latest
     steps:
       - name: All jobs succeeded

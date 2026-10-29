@@ -23,6 +23,7 @@ External audience permits Google accounts outside a Workspace organization to si
    - `https://www.googleapis.com/auth/userinfo.profile`
 
    Verify the Data Access list contains only those three scopes. The API uses Google's server-side authentication-code handler and asks for the user's verified email; it does not call other Google APIs. Google classifies non-sensitive scopes as not requiring OAuth app verification. App/brand verification may still be needed to display app branding, and Google Workspace administrators or Advanced Protection can separately restrict access.
+
 4. On **Audience**, use the publishing control to publish the app to **In production**. The current Google help says the status becomes In production after selecting **Publish app**. Verify the status reads **In production**. If the console presents additional review steps, check Google's Verification Center and current [verification requirements](https://support.google.com/cloud/answer/13464321); do not add extra scopes or submit an unnecessary verification request. Google says verification is required for sensitive or restricted scopes; these three basic sign-in scopes are non-sensitive.
 
 Google Auth Platform help currently names the top-level areas **Branding**, **Audience**, **Clients**, **Data Access**, and **Verification Center**. Google's documentation confirms the publishing status and verification rules, but this runbook cannot exercise a live console account, so field-level labels beyond those stated are not asserted.
@@ -125,13 +126,13 @@ Record pass/fail and date for each environment. The repository agent cannot perf
 
 ## Troubleshooting and routine changes
 
-| Symptom | Check |
-| --- | --- |
-| `redirect_uri_mismatch` | Compare the deployed FQDN, `https` scheme, exact callback path and the single URI on the matching environment's Web application client. Check the environment uses its own client ID. |
-| Google says access is blocked or app is in testing | Verify Audience is External and publishing status is In production. Check the requested scopes are only `openid`, `userinfo.email`, and `userinfo.profile`; check Workspace administrator restrictions. |
-| User returns to `/signin?error=access_denied` | Confirm the account email is verified and appears exactly in an enabled `allowed-email-N` secret in that environment. Check the indexed entries have no gaps. |
-| Callback fails or Google credential error | Check that the staging/production client ID and matching secret are stored in the same environment's app vault and referenced by its active revision. Check the secret is enabled and allow up to 30 minutes for a version refresh; redeploy to force a revision update. |
-| New revision reports failed secret resolution | Check the app identity's Key Vault Secrets User role on the app vault, enabled secret names, and RBAC propagation. Re-run `make infra-deploy ENV=<env> PHASE=full` after correcting the cause. |
+| Symptom                                            | Check                                                                                                                                                                                                                                                                    |
+| -------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `redirect_uri_mismatch`                            | Compare the deployed FQDN, `https` scheme, exact callback path and the single URI on the matching environment's Web application client. Check the environment uses its own client ID.                                                                                    |
+| Google says access is blocked or app is in testing | Verify Audience is External and publishing status is In production. Check the requested scopes are only `openid`, `userinfo.email`, and `userinfo.profile`; check Workspace administrator restrictions.                                                                  |
+| User returns to `/signin?error=access_denied`      | Confirm the account email is verified and appears exactly in an enabled `allowed-email-N` secret in that environment. Check the indexed entries have no gaps.                                                                                                            |
+| Callback fails or Google credential error          | Check that the staging/production client ID and matching secret are stored in the same environment's app vault and referenced by its active revision. Check the secret is enabled and allow up to 30 minutes for a version refresh; redeploy to force a revision update. |
+| New revision reports failed secret resolution      | Check the app identity's Key Vault Secrets User role on the app vault, enabled secret names, and RBAC propagation. Re-run `make infra-deploy ENV=<env> PHASE=full` after correcting the cause.                                                                           |
 
 ### Rotate a Google client secret
 

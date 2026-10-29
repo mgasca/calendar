@@ -16,3 +16,6 @@ resource insights 'Microsoft.Insights/components@2020-02-02' = {
 }
 output workspaceId string = workspace.id
 output workspaceCustomerId string = workspace.properties.customerId
+
+output connectionString string = insights.properties.ConnectionString
+output insightsId string = insights.id

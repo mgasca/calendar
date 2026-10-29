@@ -3,6 +3,15 @@
 // keyVaultSecretNames (existing secret names only), and allowedFirewallIps.
 // Foundation uses an empty secure password; full deployment reads it from Key Vault.
 param environment string
+param alertEmail string
+param enableAvailabilityTest bool = false
+@allowed([300, 600, 900])
+param availabilityFrequencySeconds int = 900
+param monthlyBudgetAmount int
+param budgetStartDate string = ''
+param serverErrorThreshold int = 3
+param serverErrorWindowMinutes int = 15
+param serverErrorEvaluationMinutes int = 5
 param location string = resourceGroup().location
 param deployerPrincipalId string = ''
 param deployDatabaseAndApp bool = false
@@ -53,6 +62,7 @@ module app 'modules/app.bicep' = if (deployDatabaseAndApp) {
     suffix: suffix
     tags: tags
     workspaceId: monitoring.outputs.workspaceId
+    appInsightsConnectionString: monitoring.outputs.connectionString
     workspaceCustomerId: monitoring.outputs.workspaceCustomerId
     registryLoginServer: foundation.outputs.registryLoginServer
     identityId: foundation.outputs.identityId
@@ -63,6 +73,26 @@ module app 'modules/app.bicep' = if (deployDatabaseAndApp) {
     maxReplicas: maxReplicas
     targetPort: isPlaceholder ? 80 : targetPort
     enableHealthProbes: !isPlaceholder
+  }
+}
+
+module alerts 'modules/monitoring-alerts.bicep' = if (deployDatabaseAndApp) {
+  name: 'monitoring-alerts'
+  params: {
+    location: location
+    suffix: suffix
+    tags: tags
+    alertEmail: alertEmail
+    appId: app!.outputs.appId
+    appFqdn: app!.outputs.fqdn
+    insightsId: monitoring.outputs.insightsId
+    enableAvailabilityTest: enableAvailabilityTest
+    availabilityFrequencySeconds: availabilityFrequencySeconds
+    serverErrorThreshold: serverErrorThreshold
+    serverErrorWindowMinutes: serverErrorWindowMinutes
+    serverErrorEvaluationMinutes: serverErrorEvaluationMinutes
+    budgetAmount: monthlyBudgetAmount
+    budgetStartDate: budgetStartDate
   }
 }
 

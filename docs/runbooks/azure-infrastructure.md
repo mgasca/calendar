@@ -4,12 +4,64 @@ Each UK South environment has its own Log Analytics workspace, workspace-based A
 
 ## Initial deployment
 
-Complete [Azure bootstrap](azure-bootstrap.md), including provider registration and its capacity query. Confirm the selected Burstable SKUs are available to this subscription: staging `Standard_B1ms` is the smallest documented SKU, production `Standard_B2s` is a small SKU. Neither has been verified against this subscription. Check global resource name availability and quotas.
+Complete [Azure bootstrap](azure-bootstrap.md), including provider registration and its capacity query. Both staging and production use `Standard_B1ms`, the smallest documented Burstable SKU. Its availability in each environment is unverified for this subscription. Check global resource name availability and quotas. To change a SKU later, update `postgresSku` in the relevant `infra/parameters/*.bicepparam`, review a full what-if, and deploy after confirming capacity and cost.
 
-1. Deploy the foundation with `deployDatabaseAndApp=false`, passing the deployment service principal's **object ID** as `deployerPrincipalId`. It creates both vaults and role assignments but no database or app. The deployment outputs `appKeyVaultName` and `opsKeyVaultName` identify them. Wait for RBAC propagation; if access fails, wait and retry, allowing about 10 minutes.
-2. An owner with permission to assign roles grants their own user **Key Vault Secrets Officer** on each vault. This is a separate human assignment; the deployment identity does not receive write access. Wait for propagation.
-3. With the owner's Azure login, run the tooling command `secret init-postgres-password <env>`. It generates a password locally and stores `postgres-admin-password` in the ops vault without printing it. Do not put the value in a shell argument, parameter file, log or repository.
-4. Deploy with `deployDatabaseAndApp=true`. The deployment tool reads the password from the ops vault and passes it as the secure `postgresAdministratorPassword` parameter without logging it. Preview with what-if before applying. Repeat the sequence independently for production.
+The following commands set up **staging**; repeat with `production` and that environment's deployment client ID after staging is verified. The Make targets require [PR #113](https://github.com/mgasca/calendar/pull/113) to be merged. Sign in with `az login`, select the intended subscription as in the bootstrap runbook, and run commands from the repository root. The owner needs permission to assign roles on each vault and permission to read the deployment service principal in Microsoft Graph.
+
+1. Check tools and identify the deployer. Set this to the staging deployment identity's **client ID** from the bootstrap's `STAGING_CLIENT_ID` or the staging GitHub environment's `AZURE_CLIENT_ID` variable. The tool looks up that service principal's object ID through Microsoft Graph and passes it as `deployerPrincipalId`; it does not use the signed-in owner's object ID for that role.
+
+   ```bash
+   make doctor ARGS=--infra
+   export AZURE_DEPLOYER_CLIENT_ID='<staging-deployment-client-id>'
+   az rest --method get --url "https://graph.microsoft.com/v1.0/servicePrincipals(appId='$AZURE_DEPLOYER_CLIENT_ID')" --query '{clientId:appId,objectId:id}' -o json
+   ```
+
+   Verify the toolchain check succeeds and the returned client ID and object ID belong to the staging deployment identity.
+
+2. Preview and deploy the **foundation**: the shared building blocks are Log Analytics, Application Insights, the registry, both vaults, the managed identity and role grants. This phase does not create the database or app. It comes first because the ops vault must exist before the owner can store the database password.
+
+   ```bash
+   make infra-what-if ENV=staging PHASE=foundation
+   make infra-deploy ENV=staging PHASE=foundation
+   az deployment group show --resource-group rg-calendar-staging --name calendar-foundation --query '{state:properties.provisioningState,appVault:properties.outputs.appKeyVaultName.value,opsVault:properties.outputs.opsKeyVaultName.value}' -o json
+   ```
+
+   Review the preview before deploying. Verify the deployment state is `Succeeded` and both distinct vault names appear. Role creation and permission propagation are separate: wait and retry access failures, allowing about 10 minutes.
+
+3. Grant your signed-in owner identity **Key Vault Secrets Officer** on both vaults. This permits the owner to initialize the password and later application secrets; the deployment identity remains read-only. The role assignment requires permission to grant roles at each vault.
+
+   ```bash
+   app_vault=$(az deployment group show -g rg-calendar-staging -n calendar-foundation --query properties.outputs.appKeyVaultName.value -o tsv)
+   ops_vault=$(az deployment group show -g rg-calendar-staging -n calendar-foundation --query properties.outputs.opsKeyVaultName.value -o tsv)
+   owner_id=$(az ad signed-in-user show --query id -o tsv)
+   for vault in "$app_vault" "$ops_vault"; do
+     vault_id=$(az keyvault show -g rg-calendar-staging -n "$vault" --query id -o tsv)
+     az role assignment create --assignee-object-id "$owner_id" --assignee-principal-type User --role 'Key Vault Secrets Officer' --scope "$vault_id"
+     az role assignment list --assignee "$owner_id" --scope "$vault_id" --query "[?roleDefinitionName=='Key Vault Secrets Officer'].{role:roleDefinitionName,scope:scope}" -o json
+   done
+   ```
+
+   Verify each list contains the intended role and vault scope. Allow time for RBAC propagation before using the vaults.
+
+4. Initialize the password in the ops vault using the owner's login, then check its name without displaying its value.
+
+   ```bash
+   make infra-secret-init ENV=staging
+   az keyvault secret show --vault-name "$ops_vault" --name postgres-admin-password --query name -o tsv
+   ```
+
+   Verify the output is `postgres-admin-password`. The tool generates the value locally, does not print it, and refuses to overwrite an existing password; rotation requires a coordinated manual change. Do not put secret values in shell arguments, parameter files, logs or the repository.
+
+5. Preview and deploy the full phase. Replace `<your-public-ip-or-cidr>` with the owner's actual IPv4 address or CIDR; this gives the owner access for later database work. The app's outbound addresses are added separately by Bicep.
+
+   ```bash
+   make infra-what-if ENV=staging PHASE=full ARGS="--allow-ip <your-public-ip-or-cidr>"
+   make infra-deploy ENV=staging PHASE=full ARGS="--allow-ip <your-public-ip-or-cidr>"
+   az postgres flexible-server list --resource-group rg-calendar-staging --query '[].{name:name,state:state,sku:sku.name}' -o json
+   az containerapp list --resource-group rg-calendar-staging --query '[].{name:name,state:properties.provisioningState,fqdn:properties.configuration.ingress.fqdn}' -o json
+   ```
+
+   Review the preview, then verify the database and Container App exist, the SKU is `Standard_B1ms`, and provisioning succeeds. Check the placeholder's HTTPS URL and repeat the full what-if to inspect drift. Full deployment reads the ops password securely; first deployment has no app secrets until S6 and S9 add them. Repeat these steps for production with the production client ID, `ENV=production`, and `rg-calendar-production` in the Azure CLI commands.
 
 The secure parameter is used instead of a checked-in `az.getSecret()` reference: foundation must work before the vault and secret exist, while the subscription-specific vault ID is not known in the parameter files. Microsoft documents [secure deployment parameters and Key Vault references](https://learn.microsoft.com/azure/azure-resource-manager/templates/key-vault-parameter); the tool must use a protected, non-logging transport. The vault also enables template deployment for future use. Full-phase what-if and deployment need the existing password and live verification.
 
@@ -29,8 +81,8 @@ Use the tooling's staging database start and stop commands, or run `az postgres 
 
 ## Estimated monthly costs
 
-Illustrative USD retail rates queried from the [Microsoft retail prices API](https://prices.azure.com/api/retail/prices) for UK South on 2026-10-29; rates exclude tax, discounts and currency conversion. The exact meters are: Container Registry **Basic Registry Unit** $0.1666/day; PostgreSQL Flexible Server Burstable BS Series Compute **B1MS** $0.019/hour and **B2S** $0.076/hour; Flex Server Storage **Storage Data Stored** $0.133/GB-month; Flexible Server Backup Storage **Backup Storage LRS Data Stored** $0.10/GB-month; Log Analytics **Analytics Logs Data Ingestion** $2.88/GB (also a $0 free tier meter); Key Vault **Operations** $0.03/10,000 operations. These are observed retail prices, not a quote. Adding the second vault adds no fixed vault charge under these assumptions; its assumed 10,000 operations add $0.03 per environment.
+Illustrative USD retail rates queried from the [Microsoft retail prices API](https://prices.azure.com/api/retail/prices) for UK South on 2026-10-29; rates exclude tax, discounts and currency conversion. The exact meters are: Container Registry **Basic Registry Unit** $0.1666/day; PostgreSQL Flexible Server Burstable BS Series Compute **B1MS** $0.019/hour; Flex Server Storage **Storage Data Stored** $0.133/GB-month; Flexible Server Backup Storage **Backup Storage LRS Data Stored** $0.10/GB-month; Log Analytics **Analytics Logs Data Ingestion** $2.88/GB (also a $0 free tier meter); Key Vault **Operations** $0.03/10,000 operations. These are observed retail prices, not a quote. Adding the second vault adds no fixed vault charge under these assumptions; its assumed 10,000 operations add $0.03 per environment.
 
-Assume 730 hours of compute, 30 registry days, 32 GB storage, backup usage no greater than the included provisioned storage, 1 GB ingested within the applicable free allowance, 20,000 vault operations (10,000 per vault), and Container Apps usage within the subscription's shared free grant. Under those assumptions staging is approximately **$23.18/month**, production **$64.79/month**, and both **$87.98/month**. The staging estimate assumes it runs continuously; every stopped hour saves about $0.019 in compute until automatic restart. Backup overage, extra log ingestion/retention, request or compute overages, network, taxes and other services add cost. Verify applicable allowances, actual usage and invoices: the estimate is not a spending cap. Container Apps grant assumptions are detailed in [ADR-0029](../decisions/0029-azure-container-apps-compute-platform.md).
+Assume 730 hours of compute, 30 registry days, 32 GB storage, backup usage no greater than the included provisioned storage, 1 GB ingested within the applicable free allowance, 20,000 vault operations (10,000 per vault), and Container Apps usage within the subscription's shared free grant. Per environment, the calculation is $13.87 compute + $5.00 registry + $4.26 storage + $0.06 vault operations (rounded components). Using unrounded components, staging is approximately **$23.18/month**, production **$23.18/month**, and both **$46.37/month**. The staging estimate assumes it runs continuously; every stopped hour saves about $0.019 in compute until automatic restart. Backup overage, extra log ingestion/retention, request or compute overages, network, taxes and other services add cost. Verify applicable allowances, actual usage and invoices: the estimate is not a spending cap. Container Apps grant assumptions are detailed in [ADR-0029](../decisions/0029-azure-container-apps-compute-platform.md).
 
 Nothing has been deployed or previewed against the subscription yet. The owner must run both phase what-ifs and deployments, repeat the full what-if to check drift, verify RBAC propagation, image pulls, secret resolution, health probes, network access and PostgreSQL TLS, and review costs and quotas in Azure.

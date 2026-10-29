@@ -1,0 +1,12 @@
+.git
+.mj
+.plan
+.env
+.env.*
+**/node_modules
+**/bin
+**/obj
+**/dist
+**/coverage
+**/TestResults
+**/test-results

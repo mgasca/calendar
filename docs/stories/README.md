@@ -20,6 +20,6 @@ Front matter: `status` (`planned`, `in-progress` or `implemented`), `date` (`YYY
 | [0002](0002-week-view.md) | Week view: plan and track the whole week in one place | implemented |
 | [0003](0003-add-todo-tasks.md) | Add todo tasks | implemented |
 | [0004](0004-add-event-entries.md) | Add event entries so I know when my appointments are | implemented |
-| [0005](0005-google-sign-in.md) | Google sign-in | in-progress |
+| [0005](0005-google-sign-in.md) | Google sign-in | implemented |
 | [0006](0006-modal-dialogs-for-adding.md) | Add tasks and events in a modal dialog | implemented |
 | [XXXX](XXXX-create-events-and-tasks-from-week-view.md) | Create events and tasks from the week view | planned |

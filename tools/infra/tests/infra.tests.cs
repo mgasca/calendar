@@ -2,6 +2,8 @@
 #:package xunit.v3.mtp-v2@4.0.2
 #:package Shouldly@4.3.0
 #:include ../Infrastructure.cs
+#:include ../Database.cs
+#:package Npgsql@10.0.3
 
 using Shouldly;
 using Xunit;

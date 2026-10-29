@@ -39,7 +39,7 @@ public sealed class AzureProcess : IAzureProcess
 }
 
 /// <summary>Infrastructure command orchestration.</summary>
-public static class Infra
+public static partial class Infra
 {
   private const string PasswordName = "postgres-admin-password";
 
@@ -49,6 +49,7 @@ public static class Infra
     try
     {
       SweepStaleFiles();
+      if (args.Length > 0 && (args[0] == "migrate" || (args[0] == "db" && args.Length > 1 && args[1] == "init-roles"))) { return await DatabaseCommand(args, az, output); }
       if (args.Length < 2) { throw new ArgumentException("Usage: deploy|what-if ENV [--phase foundation|full], db start|stop staging, or secret init-postgres-password ENV"); }
       if (args[0] == "db")
       {
@@ -126,6 +127,11 @@ public static class Infra
         if (args[0] == "what-if") { await output.WriteLineAsync(SafePreview(result, secretValue)); }
       });
       return 0;
+    }
+    catch (Npgsql.NpgsqlException)
+    {
+      await error.WriteLineAsync("PostgreSQL operation failed; check connectivity, permissions and server state.");
+      return 1;
     }
     catch (Exception ex) when (ex is ArgumentException or InvalidOperationException or IOException or JsonException)
     {
@@ -212,7 +218,7 @@ public static class Infra
         else if (obj[key] is JsonNode child) { Redact(child); }
       }
     }
-    else if (node is JsonArray array) { foreach (var child in array) { if (child is not null) { Redact(child); } } }
+    else if (node is JsonArray array) { foreach (var child in array.OfType<JsonNode>()) { Redact(child); } }
   }
 
   private static bool IsSensitiveName(string name) => name.Contains("secret", StringComparison.OrdinalIgnoreCase) || name.Contains("password", StringComparison.OrdinalIgnoreCase) || name.Contains("credential", StringComparison.OrdinalIgnoreCase) || name.Contains("token", StringComparison.OrdinalIgnoreCase);
@@ -231,9 +237,9 @@ public static class Infra
 
   private static void SweepStaleFiles()
   {
-    foreach (var path in Directory.EnumerateFiles(RuntimeDirectory(), "calendar-infra-*"))
+    foreach (var path in Directory.EnumerateFiles(RuntimeDirectory(), "calendar-infra-*").Where(path => File.GetLastWriteTimeUtc(path) < DateTime.UtcNow.AddHours(-24)))
     {
-      if (File.GetLastWriteTimeUtc(path) < DateTime.UtcNow.AddHours(-24)) { File.Delete(path); }
+      File.Delete(path);
     }
   }
 

@@ -13,7 +13,10 @@ internal static class AuthEndpoints
   {
     app.MapGet("/api/auth/login", (string? returnUrl) => googleConfigured
       ? Results.Challenge(new AuthenticationProperties { RedirectUri = ApiAuthentication.LocalReturnUrl(returnUrl) }, [GoogleDefaults.AuthenticationScheme])
-      : Results.StatusCode(StatusCodes.Status503ServiceUnavailable)).AllowAnonymous().ExcludeFromDescription();
+      : Results.Problem(
+        statusCode: StatusCodes.Status503ServiceUnavailable,
+        title: "Google sign-in is not configured.",
+        detail: "Set Auth__Google__ClientId and Auth__Google__ClientSecret for the API, then restart it. See the README, 'Google sign-in'.")).AllowAnonymous().ExcludeFromDescription();
     app.MapGet("/api/auth/me", Results<Ok<AuthUserResponse>, UnauthorizedHttpResult> (ClaimsPrincipal user) =>
       user.Identity?.IsAuthenticated == true
         ? TypedResults.Ok(new AuthUserResponse(user.Identity.Name ?? "", user.FindFirstValue(ClaimTypes.Email) ?? "", user.FindFirstValue("picture")))

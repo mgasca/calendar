@@ -87,6 +87,22 @@ public sealed class AuthenticationTests(WebApplicationFactory<Program> factory) 
   }
 
   [Fact]
+  public async Task LoginExplainsWhenGoogleIsNotConfigured()
+  {
+    using var host = factory.WithWebHostBuilder(builder =>
+    {
+      builder.UseSetting("Auth:Google:ClientId", "");
+      builder.UseSetting("Auth:Google:ClientSecret", "");
+    });
+    using var client = host.CreateClient();
+    using var response = await client.GetAsync(new Uri("/api/auth/login", UriKind.Relative), TestContext.Current.CancellationToken);
+    response.StatusCode.ShouldBe(HttpStatusCode.ServiceUnavailable);
+    var body = await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
+    body.ShouldContain("Google sign-in is not configured.");
+    body.ShouldContain("Auth__Google__ClientId");
+  }
+
+  [Fact]
   public async Task CrossOriginRequestHasNoCorsHeaders()
   {
     using var client = factory.CreateClient();

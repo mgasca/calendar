@@ -21,7 +21,13 @@ builder.Services.AddOpenApi(options => options.AddSchemaTransformer((schema, _, 
 }));
 builder.Services.AddProblemDetails();
 builder.Services.Configure<ForwardedHeadersOptions>(options =>
-  options.ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto | ForwardedHeaders.XForwardedHost);
+{
+  options.ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto | ForwardedHeaders.XForwardedHost;
+  // The container is reachable only through the trusted Container Apps ingress (ADR-0027).
+  options.KnownIPNetworks.Clear();
+  options.KnownProxies.Clear();
+  options.ForwardLimit = 1;
+});
 var auth = builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
     .AddCookie(options =>
     {
@@ -95,6 +101,23 @@ if (!app.Environment.IsDevelopment())
   app.UseHsts();
   app.UseHttpsRedirection();
 }
+app.UseWhen(context => !context.Request.Path.StartsWithSegments("/api"), branch =>
+  branch.UseStaticFiles(new StaticFileOptions
+  {
+    OnPrepareResponse = context =>
+    {
+      var path = context.Context.Request.Path.Value ?? "";
+      if (path.Equals("/index.html", StringComparison.OrdinalIgnoreCase))
+      {
+        context.Context.Response.Headers.CacheControl = "no-cache";
+      }
+      else if (System.Text.RegularExpressions.Regex.IsMatch(path, @"^/assets/[^/]+-[A-Za-z0-9_-]{8}\.[^/]+$", System.Text.RegularExpressions.RegexOptions.CultureInvariant, TimeSpan.FromSeconds(1)))
+      {
+        context.Context.Response.Headers.CacheControl = "public, max-age=31536000, immutable";
+      }
+    }
+  }));
+app.UseRouting();
 app.UseExceptionHandler();
 app.UseStatusCodePages();
 app.UseAuthentication();
@@ -110,6 +133,18 @@ app.MapAuthEndpoints(!string.IsNullOrWhiteSpace(clientId) && !string.IsNullOrWhi
 app.MapEventEndpoints();
 app.MapTaskEndpoints();
 app.MapAgendaEndpoints();
+
+app.MapFallback("/api/{**path}", () => Results.NotFound()).AllowAnonymous();
+app.MapFallback("{*path}", (HttpContext context, IWebHostEnvironment environment) =>
+{
+  var index = environment.WebRootFileProvider.GetFileInfo("index.html");
+  if (Path.HasExtension(context.Request.Path.Value) || !index.Exists)
+  {
+    return Results.NotFound();
+  }
+  context.Response.Headers.CacheControl = "no-cache";
+  return Results.File(index.CreateReadStream(), "text/html");
+}).AllowAnonymous();
 
 await app.RunAsync();
 

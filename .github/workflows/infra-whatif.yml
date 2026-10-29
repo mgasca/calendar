@@ -1,0 +1,82 @@
+name: Infrastructure preview
+on:
+  pull_request:
+    paths:
+      - "infra/**"
+      - "tools/infra/**"
+      - "tools/azure-versions.env"
+      - ".github/workflows/infra-whatif.yml"
+  workflow_dispatch:
+    inputs:
+      phase:
+        description: "foundation before the owner initializes secrets; full afterwards"
+        type: choice
+        options: [foundation, full]
+        default: foundation
+        required: true
+permissions:
+  contents: read
+jobs:
+  bicep:
+    runs-on: ubuntu-24.04
+    env:
+      AZURE_BICEP_USE_BINARY_FROM_PATH: "false"
+    steps:
+      - uses: actions/checkout@v7
+      - name: Install pinned Azure CLI and Bicep
+        run: |
+          source tools/azure-versions.env
+          sudo apt-get update -qq
+          sudo apt-get install -y --allow-downgrades "azure-cli=${AZURE_CLI_VERSION}-1~noble"
+          az bicep install --version "v${BICEP_VERSION}"
+          test "$(az version --query '"azure-cli"' -o tsv)" = "$AZURE_CLI_VERSION"
+          az bicep version | grep -F "Bicep CLI version $BICEP_VERSION "
+      - name: Lint and build
+        run: |
+          az bicep lint --file infra/main.bicep
+          az bicep build --file infra/main.bicep --stdout > /dev/null
+          az bicep build-params --file infra/parameters/staging.bicepparam --stdout > /dev/null
+          az bicep build-params --file infra/parameters/production.bicepparam --stdout > /dev/null
+  what-if:
+    if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main'
+    needs: bicep
+    runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      matrix:
+        environment: [staging, production]
+    environment: ${{ matrix.environment }}
+    permissions:
+      contents: read
+      id-token: write
+    env:
+      AZURE_BICEP_USE_BINARY_FROM_PATH: "false"
+      AZURE_DEPLOYER_CLIENT_ID: ${{ vars.AZURE_CLIENT_ID }}
+      INFRA_PHASE: ${{ inputs.phase }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-dotnet@v6
+        with:
+          dotnet-version: 10.0.x
+      - name: Install pinned Azure CLI and Bicep
+        run: |
+          source tools/azure-versions.env
+          sudo apt-get update -qq
+          sudo apt-get install -y --allow-downgrades "azure-cli=${AZURE_CLI_VERSION}-1~noble"
+          az bicep install --version "v${BICEP_VERSION}"
+          test "$(az version --query '"azure-cli"' -o tsv)" = "$AZURE_CLI_VERSION"
+          az bicep version | grep -F "Bicep CLI version $BICEP_VERSION "
+      - uses: azure/login@a641126d1b8aa4d1fa005f4f92df94a3a4c4c906 # v3.1.0
+        with:
+          client-id: ${{ vars.AZURE_CLIENT_ID }}
+          tenant-id: ${{ vars.AZURE_TENANT_ID }}
+          subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+      - name: Preview changes
+        env:
+          INFRA_ENVIRONMENT: ${{ matrix.environment }}
+        run: |
+          {
+            printf '## %s (%s)\n\n```\n' "$INFRA_ENVIRONMENT" "$INFRA_PHASE"
+            dotnet run tools/infra/infra.cs -- what-if "$INFRA_ENVIRONMENT" --phase "$INFRA_PHASE"
+            printf '\n```\n'
+          } >> "$GITHUB_STEP_SUMMARY"

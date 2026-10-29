@@ -1,5 +1,5 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { useRef, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 
 import { api } from '../../api/client.ts';
 import { ModalDialog } from '../../components/ModalDialog.tsx';
@@ -22,7 +22,11 @@ export function TaskForm({
   const [occurrence, setOccurrence] = useState('');
   const [priority, setPriority] = useState('medium');
   const [notes, setNotes] = useState('');
-  const candidates = kind === 'time' ? deadlineInstants(`${date}T${time}`) : [];
+  const deadlineValue = `${date}T${time}`;
+  const candidates = useMemo(
+    () => (kind === 'time' ? deadlineInstants(deadlineValue) : []),
+    [kind, deadlineValue],
+  );
   const save = useMutation({
     mutationFn: async () => {
       if (!title.trim()) throw new Error('Enter a title.');

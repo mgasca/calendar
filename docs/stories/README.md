@@ -12,7 +12,7 @@ Each story records:
 * **Implementation notes**: where the code lives, the API surface, testing, lessons learned, known issues and follow-ups.
 * **User guide**: how to use the feature, written for end users. These sections will be mined to generate user documentation.
 
-Front matter: `status` (`planned`, `in-progress` or `implemented`), `date`, `pr` and `adrs`.
+Front matter: `status` (`planned`, `in-progress` or `implemented`), `date` (`YYYY-MM-DD`), `adrs` and, once delivered, `pr`. Quote the ADR numbers in `adrs` (`["0004", "0016"]`): YAML reads a bare `0016` as a different number.
 
 | Story | Title | Status |
 | --- | --- | --- |
@@ -22,4 +22,4 @@ Front matter: `status` (`planned`, `in-progress` or `implemented`), `date`, `pr`
 | [0004](0004-add-event-entries.md) | Add event entries so I know when my appointments are | implemented |
 | [0005](0005-google-sign-in.md) | Google sign-in | in-progress |
 | [0006](0006-modal-dialogs-for-adding.md) | Add tasks and events in a modal dialog | implemented |
-| [XXXX](XXXX-create-events-and-tasks-from-week-view.md) | Create events and tasks from the week view (unnumbered until scheduled) | planned |
+| [XXXX](XXXX-create-events-and-tasks-from-week-view.md) | Create events and tasks from the week view | planned |

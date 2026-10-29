@@ -6,6 +6,20 @@ namespace Calendar.Api.Tests;
 /// <summary>The database enforces the invariants itself, not only the domain code.</summary>
 public sealed class SchemaTests(PostgresFixture postgres) : ApiTestBase(postgres)
 {
+  [Theory]
+  [InlineData("ix_tasks_open_due_date", "due_date")]
+  [InlineData("ix_tasks_open_due_at", "due_at")]
+  public async Task OpenTaskDueIndex_ExcludesCompletedAndUndatedTasks(string indexName, string column)
+  {
+    await using var db = Postgres.Database.CreateMigratorContext();
+    var definition = await db.Database.SqlQuery<string>(
+        $"SELECT indexdef AS \"Value\" FROM pg_indexes WHERE tablename = 'tasks' AND indexname = {indexName}").SingleAsync(Ct);
+
+    definition.ShouldContain($"({column})");
+    definition.ShouldContain($"({column} IS NOT NULL)");
+    definition.ShouldContain("(completed_at IS NULL)");
+  }
+
   [Fact]
   public async Task Task_WithBothDueValues_IsRejected()
   {
@@ -53,6 +67,24 @@ public sealed class SchemaTests(PostgresFixture postgres) : ApiTestBase(postgres
 
     var spans = await db.Database.SqlQueryRaw<string>("SELECT COALESCE(span::text, 'NULL') AS \"Value\" FROM events ORDER BY is_all_day").ToListAsync(Ct);
     spans.ShouldBe(["[\"2026-10-26 10:00:00+00\",\"2026-10-26 11:00:00+00\")", "NULL"]);
+  }
+
+  [Fact]
+  public async Task EventDateSpan_IsAPartialGistIndexedGeneratedRange_OnlyForAllDayEvents()
+  {
+    await using var db = Postgres.Database.CreateMigratorContext();
+
+    var gist = await db.Database.SqlQueryRaw<string>(
+        "SELECT indexdef AS \"Value\" FROM pg_indexes WHERE tablename = 'events' AND indexname = 'ix_events_date_span'").SingleAsync(Ct);
+    gist.ShouldContain("USING gist (date_span) WHERE is_all_day");
+
+    await db.Database.ExecuteSqlRawAsync(
+        "INSERT INTO events (id, title, is_all_day, starts_at, ends_at, time_zone_id) VALUES (gen_random_uuid(), 'timed', false, '2026-10-26T10:00Z', '2026-10-26T11:00Z', 'UTC')", Ct);
+    await db.Database.ExecuteSqlRawAsync(
+        "INSERT INTO events (id, title, is_all_day, start_date, end_date) VALUES (gen_random_uuid(), 'days', true, '2026-10-26', '2026-10-28')", Ct);
+
+    var spans = await db.Database.SqlQueryRaw<string>("SELECT COALESCE(date_span::text, 'NULL') AS \"Value\" FROM events ORDER BY is_all_day").ToListAsync(Ct);
+    spans.ShouldBe(["NULL", "[2026-10-26,2026-10-28)"]);
   }
 
   [Fact]

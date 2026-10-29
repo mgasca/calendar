@@ -15,13 +15,13 @@ SHELL_TOOLS := tools/doctor/doctor.sh
 COMPOSE := docker compose
 DB_ENV  := set -a && . ./.env && set +a
 
-.PHONY: db-up db-down db-reset db-migrate db-seed db-psql help doctor setup build test lint tooling tool-versions adr-check format check contracts dev-api dev-web dev-docs build-docs preview-docs clean
+.PHONY: infra-what-if infra-deploy infra-secret-init infra-db-stop infra-db-start db-up db-down db-reset db-migrate db-seed db-psql help doctor setup build test lint tooling tool-versions adr-check format check contracts dev-api dev-web dev-docs build-docs preview-docs clean
 
 help: ## List targets
 	@grep -hE '^[a-zA-Z_-]+:.*?## ' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "  %-12s %s\n", $$1, $$2}'
 
-doctor: ## Check that dotnet, node and pnpm match the pinned versions
-	@./tools/doctor/doctor.sh
+doctor: ## Check the toolchain (ARGS=--infra also checks Azure CLI and Bicep)
+	@./tools/doctor/doctor.sh $(ARGS)
 
 setup: doctor ## Restore .NET packages, install frontend dependencies, configure git blame
 	git config blame.ignoreRevsFile .git-blame-ignore-revs
@@ -134,3 +134,23 @@ smoke-image: ## Check a running image at localhost:8080 (or BASE_URL)
 	    *) echo "Unexpected response $$code for $$route" >&2; exit 1;; esac; \
 	  echo "$$route: $$code"; \
 	done
+
+infra-what-if: ## Preview infrastructure (ENV=staging|production, PHASE=foundation|full, ARGS="--allow-ip CIDR")
+	@./tools/doctor/doctor.sh --infra
+	dotnet run tools/infra/infra.cs -- what-if $(ENV) --phase $(or $(PHASE),full) $(ARGS)
+
+infra-deploy: ## Deploy infrastructure (ENV=staging|production, PHASE=foundation|full, ARGS="--allow-ip CIDR")
+	@./tools/doctor/doctor.sh --infra
+	dotnet run tools/infra/infra.cs -- deploy $(ENV) --phase $(or $(PHASE),full) $(ARGS)
+
+infra-secret-init: ## Owner creates the Postgres password (ENV=staging|production)
+	@./tools/doctor/doctor.sh --infra
+	dotnet run tools/infra/infra.cs -- secret init-postgres-password $(ENV)
+
+infra-db-stop: ## Stop staging PostgreSQL
+	@./tools/doctor/doctor.sh --infra
+	dotnet run tools/infra/infra.cs -- db stop staging
+
+infra-db-start: ## Start staging PostgreSQL
+	@./tools/doctor/doctor.sh --infra
+	dotnet run tools/infra/infra.cs -- db start staging

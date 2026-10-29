@@ -54,6 +54,7 @@ public sealed class HostingTests(WebApplicationFactory<Program> factory) : IClas
     using var host = factory.WithWebHostBuilder(builder =>
     {
       builder.UseEnvironment("Development");
+      builder.UseSetting("ConnectionStrings:Calendar", "");
       builder.UseSetting("Auth:Google:ClientId", "test-client");
       builder.UseSetting("Auth:Google:ClientSecret", "test-secret");
       builder.ConfigureTestServices(services => services.AddAuthentication(options => options.DefaultAuthenticateScheme = "Test")

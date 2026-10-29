@@ -142,9 +142,18 @@
 </ul>
 <h3 id="consequences">Consequences</h3>
 <ul>
-<li>Good, because browser tokens stay server-side and access requires an allowed verified email.</li>
-<li>Bad, because deployments must configure Google credentials, trusted proxies and HTTPS correctly.</li>
-<li>Neutral, because ownership isolation and non-browser bearer authentication remain follow-ups.</li>
+<li>
+<p>Good, because browser tokens stay server-side and access requires an allowed verified email.</p>
+</li>
+<li>
+<p>Bad, because deployments must configure Google credentials, trusted proxies and HTTPS correctly.</p>
+</li>
+<li>
+<p>Neutral, because ownership isolation and non-browser bearer authentication remain follow-ups.</p>
+</li>
+<li>
+<p>Neutral, because a configured development-only seed key permits the local seeder to authenticate via <code>X-Dev-Seed-Key</code>; it is unavailable outside Development and does not change CORS. Use a unique secret of at least 32 characters.</p>
+</li>
 </ul>
 <h3 id="confirmation">Confirmation</h3>
 <p>API and web tests cover anonymous 401 responses, allowed and denied accounts, session lifecycle and return paths; deployment checks cover forwarded headers, cookie attributes and the absence of CORS headers. Code review checks the follow-up triggers in the README and PR template.</p>

@@ -15,7 +15,7 @@ SHELL_TOOLS := tools/doctor/doctor.sh
 COMPOSE := docker compose
 DB_ENV  := set -a && . ./.env && set +a
 
-.PHONY: infra-what-if infra-deploy infra-secret-init infra-db-stop infra-db-start db-up db-down db-reset db-migrate db-seed db-psql help doctor setup build test lint tooling tool-versions adr-check format check contracts dev-api dev-web dev-docs build-docs preview-docs clean
+.PHONY: infra-init-roles infra-migrate infra-what-if infra-deploy infra-secret-init infra-db-stop infra-db-start db-up db-down db-reset db-migrate db-seed db-psql help doctor setup build test lint tooling tool-versions adr-check format check contracts dev-api dev-web dev-docs build-docs preview-docs clean
 
 help: ## List targets
 	@grep -hE '^[a-zA-Z_-]+:.*?## ' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "  %-12s %s\n", $$1, $$2}'
@@ -154,3 +154,9 @@ infra-db-stop: ## Stop staging PostgreSQL
 infra-db-start: ## Start staging PostgreSQL
 	@./tools/doctor/doctor.sh --infra
 	dotnet run tools/infra/infra.cs -- db start staging
+
+infra-init-roles: ## Initialize database roles (ENV=staging|production, ARGS="--client-ip IPv4")
+	dotnet run tools/infra/infra.cs -- db init-roles $(ENV) $(ARGS)
+
+infra-migrate: ## Apply database migrations (ENV=staging|production, ARGS="--client-ip IPv4")
+	dotnet run tools/infra/infra.cs -- migrate $(ENV) $(ARGS)

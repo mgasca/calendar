@@ -59,6 +59,26 @@ public sealed class DatabaseTests
   }
 
   [Fact]
+  public void GrantsIncludeIdempotentSchemaPrivileges()
+  {
+    Infra.GrantsSql.ShouldContain("REVOKE CREATE ON SCHEMA public FROM PUBLIC;");
+    Infra.GrantsSql.ShouldContain("GRANT USAGE, CREATE ON SCHEMA public TO calendar_migrator;");
+    Infra.GrantsSql.ShouldContain("GRANT USAGE ON SCHEMA public TO calendar_app;");
+    Infra.GrantsSql.ShouldNotContain("ALTER SCHEMA public OWNER");
+  }
+
+  [Fact]
+  public async Task SecretStorageUsesPrivateFileAndNeverArguments()
+  {
+    var azure = new FakeAzure();
+    await Infra.StoreSecret(azure, "ops-vault", "calendar-app-password", "secret-value");
+    azure.FileContents.ShouldBe("secret-value");
+    azure.Calls.SelectMany(x => x).ShouldNotContain("secret-value");
+    File.Exists(azure.FilePath).ShouldBeFalse();
+    azure.FileMode.ShouldBe(UnixFileMode.UserRead | UnixFileMode.UserWrite);
+  }
+
+  [Fact]
   public async Task FirewallIsRemovedAfterFailure()
   {
     var azure = new FakeAzure();
@@ -66,12 +86,29 @@ public sealed class DatabaseTests
     azure.Calls.Count.ShouldBe(2);
     azure.Calls[0].ShouldContain("create");
     azure.Calls[1].ShouldContain("delete");
+    azure.Calls[0].ShouldContain("--server-name");
+    azure.Calls[1].ShouldContain("--server-name");
+    azure.Calls[0][Array.IndexOf(azure.Calls[0], "--name") + 1].ShouldBe(azure.Calls[1][Array.IndexOf(azure.Calls[1], "--name") + 1]);
     azure.Calls.SelectMany(x => x).ShouldNotContain("secret-value");
   }
 
   private sealed class FakeAzure : IAzureProcess
   {
     public List<string[]> Calls { get; } = [];
-    public Task<string> RunAsync(params string[] args) { Calls.Add(args); return Task.FromResult(""); }
+    public string FileContents { get; private set; } = "";
+    public string FilePath { get; private set; } = "";
+    public UnixFileMode FileMode { get; private set; }
+    public Task<string> RunAsync(params string[] args)
+    {
+      Calls.Add(args);
+      var index = Array.IndexOf(args, "--file");
+      if (index >= 0)
+      {
+        FilePath = args[index + 1];
+        FileContents = File.ReadAllText(FilePath);
+        if (!OperatingSystem.IsWindows()) { FileMode = File.GetUnixFileMode(FilePath); }
+      }
+      return Task.FromResult("");
+    }
   }
 }

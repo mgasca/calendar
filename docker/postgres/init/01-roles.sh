@@ -10,10 +10,13 @@ psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" --dbname "$POSTGRES_DB" \
 CREATE ROLE calendar_migrator LOGIN PASSWORD :'migrator_password';
 CREATE ROLE calendar_app LOGIN PASSWORD :'app_password';
 
--- The migrator owns the database and, as its owner, can create objects in schema public (PostgreSQL 15+).
+-- The migrator owns the database. Grant schema access explicitly for parity with Azure.
 ALTER DATABASE :"dbname" OWNER TO calendar_migrator;
 REVOKE ALL ON DATABASE :"dbname" FROM PUBLIC;
+GRANT CONNECT ON DATABASE :"dbname" TO CURRENT_USER;
 GRANT CONNECT ON DATABASE :"dbname" TO calendar_app;
+REVOKE CREATE ON SCHEMA public FROM PUBLIC;
+GRANT USAGE, CREATE ON SCHEMA public TO calendar_migrator;
 GRANT USAGE ON SCHEMA public TO calendar_app;
 
 -- Tables and sequences the migrator creates later automatically give the app role DML only.

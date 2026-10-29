@@ -27,13 +27,14 @@ public static partial class Infra
 #pragma warning restore S1075
     }
     else { throw new ArgumentException("Use --client-ip IPv4."); }
-    if (!IPAddress.TryParse(ip, out var address) || address.AddressFamily != AddressFamily.InterNetwork) { throw new ArgumentException("Client IP must be an IPv4 address."); }
+    if (!IPAddress.TryParse(ip, out var address) || address.AddressFamily != AddressFamily.InterNetwork || address.Equals(IPAddress.Any)) { throw new ArgumentException("Client IP must be an IPv4 address."); }
     var server = await ResourceName(az, env, "Microsoft.DBforPostgreSQL/flexibleServers");
     var group = $"rg-calendar-{env}";
     var ops = await VaultName(az, env, "opsKeyVaultName");
     if (!init)
     {
       await RunLocal("dotnet", ["tool", "restore"], "backend", null);
+      await RunLocal("dotnet", ["restore", "src/Calendar.Infrastructure"], "backend", null);
       await RunLocal("dotnet", ["ef", "migrations", "bundle", "--self-contained", "--target-runtime", "linux-x64", "--project", "src/Calendar.Infrastructure", "--output", Path.Combine(Path.GetTempPath(), "calendar-bundle-" + Guid.NewGuid().ToString("N"))], "backend", null, async bundle =>
       {
         await PrepareServer(az, env, group, server);
@@ -68,8 +69,7 @@ public static partial class Infra
         CheckConnectionSecret(await ReadSecret(az, appVault, "calendar-connection-string"), expected);
       }
       else { await StoreSecret(az, appVault, "calendar-connection-string", expected); }
-      await using var grants = new NpgsqlCommand("ALTER DATABASE calendar OWNER TO calendar_migrator; REVOKE ALL ON DATABASE calendar FROM PUBLIC; GRANT CONNECT ON DATABASE calendar TO calendar_app; GRANT USAGE ON SCHEMA public TO calendar_app; ALTER DEFAULT PRIVILEGES FOR ROLE calendar_migrator IN SCHEMA public GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO calendar_app; ALTER DEFAULT PRIVILEGES FOR ROLE calendar_migrator IN SCHEMA public GRANT USAGE, SELECT ON SEQUENCES TO calendar_app;", connection);
-      await grants.ExecuteNonQueryAsync();
+      await ApplyGrants(connection);
       await output.WriteLineAsync("Role grants applied.");
     });
     return 0;
@@ -89,16 +89,26 @@ public static partial class Infra
         try { await using var verify = new NpgsqlConnection(Connection(host, role, password)); await verify.OpenAsync(); return true; }
         catch (Exception ex) when (ex is NpgsqlException or IOException) { return false; }
       },
-      async password =>
-      {
-        await using var format = new NpgsqlCommand("SELECT format('CREATE ROLE %I LOGIN PASSWORD %L', @role, @password)", connection);
-        format.Parameters.AddWithValue("role", role);
-        format.Parameters.AddWithValue("password", password);
-        var sql = (string)(await format.ExecuteScalarAsync() ?? throw new InvalidOperationException("Unable to create role."));
-        await using var create = new NpgsqlCommand(sql, connection);
-        await create.ExecuteNonQueryAsync();
-      },
+      password => CreateRole(connection, role, password),
       message => output.WriteLineAsync($"{role}: {message}"));
+  }
+
+  internal static async Task CreateRole(NpgsqlConnection connection, string role, string password)
+  {
+    await using var format = new NpgsqlCommand("SELECT format('CREATE ROLE %I LOGIN PASSWORD %L', @role, @password)", connection);
+    format.Parameters.AddWithValue("role", role);
+    format.Parameters.AddWithValue("password", password);
+    var sql = (string)(await format.ExecuteScalarAsync() ?? throw new InvalidOperationException("Unable to create role."));
+    await using var create = new NpgsqlCommand(sql, connection);
+    await create.ExecuteNonQueryAsync();
+  }
+
+  internal const string GrantsSql = "ALTER DATABASE calendar OWNER TO calendar_migrator; REVOKE ALL ON DATABASE calendar FROM PUBLIC; GRANT CONNECT ON DATABASE calendar TO CURRENT_USER; GRANT CONNECT ON DATABASE calendar TO calendar_app; REVOKE CREATE ON SCHEMA public FROM PUBLIC; GRANT USAGE, CREATE ON SCHEMA public TO calendar_migrator; GRANT USAGE ON SCHEMA public TO calendar_app; ALTER DEFAULT PRIVILEGES FOR ROLE calendar_migrator IN SCHEMA public GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO calendar_app; ALTER DEFAULT PRIVILEGES FOR ROLE calendar_migrator IN SCHEMA public GRANT USAGE, SELECT ON SEQUENCES TO calendar_app;";
+
+  internal static async Task ApplyGrants(NpgsqlConnection connection)
+  {
+    await using var grants = new NpgsqlCommand(GrantsSql, connection);
+    await grants.ExecuteNonQueryAsync();
   }
 
   internal static async Task<string> ReconcileRole(bool exists, bool hasSecret, Func<Task> store, Func<Task<string>> read, Func<string, Task<bool>> verify, Func<string, Task> create, Func<string, Task> report)
@@ -122,7 +132,7 @@ public static partial class Infra
 
   private static string Connection(string host, string role, string password) => new NpgsqlConnectionStringBuilder { Host = host, Database = "calendar", Username = role, Password = password, SslMode = SslMode.VerifyFull }.ConnectionString;
   private static Task<string> ReadSecret(IAzureProcess az, string vault, string name) => az.RunAsync("keyvault", "secret", "show", "--vault-name", vault, "--name", name, "--query", "value", "-o", "tsv");
-  private static Task StoreSecret(IAzureProcess az, string vault, string name, string value) => WithPrivateFile(value, async path => { await az.RunAsync("keyvault", "secret", "set", "--vault-name", vault, "--name", name, "--file", path, "--output", "none"); });
+  internal static Task StoreSecret(IAzureProcess az, string vault, string name, string value) => WithPrivateFile(value, async path => { await az.RunAsync("keyvault", "secret", "set", "--vault-name", vault, "--name", name, "--file", path, "--output", "none"); });
   private static Task<string> ServerHost(IAzureProcess az, string group, string server) => az.RunAsync("postgres", "flexible-server", "show", "--resource-group", group, "--name", server, "--query", "fullyQualifiedDomainName", "-o", "tsv");
 
   private static async Task PrepareServer(IAzureProcess az, string env, string group, string server)
@@ -138,10 +148,10 @@ public static partial class Infra
     var rule = "calendar-migration-" + Guid.NewGuid().ToString("N");
     try
     {
-      await az.RunAsync("postgres", "flexible-server", "firewall-rule", "create", "--resource-group", group, "--name", server, "--rule-name", rule, "--start-ip-address", ip, "--end-ip-address", ip, "--output", "none");
+      await az.RunAsync("postgres", "flexible-server", "firewall-rule", "create", "--resource-group", group, "--server-name", server, "--name", rule, "--start-ip-address", ip, "--end-ip-address", ip, "--output", "none");
       await action();
     }
-    finally { await az.RunAsync("postgres", "flexible-server", "firewall-rule", "delete", "--resource-group", group, "--name", server, "--rule-name", rule, "--yes", "--output", "none"); }
+    finally { await az.RunAsync("postgres", "flexible-server", "firewall-rule", "delete", "--resource-group", group, "--server-name", server, "--name", rule, "--yes", "--output", "none"); }
   }
 
   private static async Task RunLocal(string command, string[] args, string directory, string? connection, Func<string, Task>? after = null)

@@ -15,7 +15,7 @@ SHELL_TOOLS := tools/doctor/doctor.sh
 COMPOSE := docker compose
 DB_ENV  := set -a && . ./.env && set +a
 
-.PHONY: infra-init-roles infra-migrate infra-what-if infra-deploy infra-secret-init infra-db-stop infra-db-start db-up db-down db-reset db-migrate db-seed db-psql help doctor setup build test lint tooling tool-versions adr-check format check contracts dev-api dev-web dev-docs build-docs preview-docs clean
+.PHONY: infra-integration infra-init-roles infra-migrate infra-what-if infra-deploy infra-secret-init infra-db-stop infra-db-start db-up db-down db-reset db-migrate db-seed db-psql help doctor setup build test lint tooling tool-versions adr-check format check contracts dev-api dev-web dev-docs build-docs preview-docs clean
 
 help: ## List targets
 	@grep -hE '^[a-zA-Z_-]+:.*?## ' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "  %-12s %s\n", $$1, $$2}'
@@ -51,6 +51,9 @@ tooling: ## Test and lint repo tooling (skill scripts, tools/)
 	@if command -v shellcheck >/dev/null 2>&1; then echo "shellcheck $(SHELL_TOOLS)"; shellcheck $(SHELL_TOOLS); \
 	elif [ -n "$$CI" ]; then echo "shellcheck is required in CI" >&2; exit 1; \
 	else echo "shellcheck not installed: skipped locally (CI runs it)"; fi
+
+infra-integration: ## Check the Azure role SQL against a real PostgreSQL (needs Docker)
+	dotnet run tools/infra/integration/database.cs
 
 tool-versions: ## Check tooling package pins match backend/Directory.Packages.props (ARGS=--fix to update)
 	dotnet run tools/tool-versions/tool-versions.cs -- $(ARGS)

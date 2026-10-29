@@ -31,10 +31,10 @@ public sealed class RoleAgreementTests
     await using var first = new NpgsqlConnection(reference.GetConnectionString());
     await using var second = new NpgsqlConnection(candidate.GetConnectionString());
     await first.OpenAsync(TestContext.Current.CancellationToken); await second.OpenAsync(TestContext.Current.CancellationToken);
-    await Infra.CreateRole(second, "calendar_migrator", "migrator-password");
-    await Infra.CreateRole(second, "calendar_app", "app-password");
-    await Infra.ApplyGrants(second);
-    await Infra.ApplyGrants(second);
+    await Infra.CreateRole(second, "calendar_migrator", "migrator-password", TestContext.Current.CancellationToken);
+    await Infra.CreateRole(second, "calendar_app", "app-password", TestContext.Current.CancellationToken);
+    await Infra.ApplyGrants(second, TestContext.Current.CancellationToken);
+    await Infra.ApplyGrants(second, TestContext.Current.CancellationToken);
     const string snapshot = "SELECT (SELECT rolcanlogin::text || ',' || rolsuper::text || ',' || rolcreatedb::text || ',' || rolcreaterole::text || ',' || rolinherit::text || ',' || rolreplication::text || ',' || rolbypassrls::text FROM pg_roles WHERE rolname = 'calendar_migrator') || '|' || (SELECT rolcanlogin::text || ',' || rolsuper::text || ',' || rolcreatedb::text || ',' || rolcreaterole::text || ',' || rolinherit::text || ',' || rolreplication::text || ',' || rolbypassrls::text FROM pg_roles WHERE rolname = 'calendar_app') || '|' || (SELECT pg_get_userbyid(datdba) || ':' || datacl::text FROM pg_database WHERE datname='calendar') || '|' || coalesce((SELECT string_agg(defaclobjtype::text || ':' || defaclacl::text, ',' ORDER BY defaclobjtype) FROM pg_default_acl), '') || '|' || has_database_privilege('calendar_app','calendar','CONNECT')::text || '|' || has_schema_privilege('calendar_app','public','USAGE')::text || '|' || coalesce((SELECT nspacl::text FROM pg_namespace WHERE nspname='public'), '')";
     await using var a = new NpgsqlCommand(snapshot, first);
     await using var b = new NpgsqlCommand(snapshot, second);

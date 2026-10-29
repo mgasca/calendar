@@ -38,3 +38,4 @@ Every record lists its **decision drivers**, rates each option against them in a
 | [0026](0026-client-side-routing-with-tanstack-router.md) | Client-side routing with TanStack Router and code-based route definitions | accepted |
 | [0027](0027-google-oidc-bff-session.md) | Google OpenID Connect with a backend-for-frontend cookie session | accepted |
 | [0028](0028-publish-user-stories-on-the-documentation-site.md) | Publish user stories on the documentation site alongside the ADR log | proposed |
+| [0029](0029-azure-container-apps-compute-platform.md) | Use Azure Container Apps as the compute platform | proposed |

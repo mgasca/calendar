@@ -37,7 +37,7 @@ Single tests:
 - **Dependencies**: NuGet Central Package Management (`backend/Directory.Packages.props`) with `packages.lock.json` per project (CI restores with `--locked-mode`, so commit lock file changes). Warnings are errors; Roslyn analyzers + SonarAnalyzer are enforced at build time.
 - **Frontend**: `frontend/apps/web` (feature folders such as `features/day`, `week`, `tasks`, `agenda`; TanStack Router (ADR-0026) and TanStack Query; Vitest + Testing Library + MSW), `frontend/apps/docs` (Astro Starlight ADR site), `frontend/packages/api-client`. TypeScript is pinned to 6.0 and ESLint to 9 (ADR-0010).
 - **Repo tooling** (ADR-0017): scripts are .NET 10 *file-based apps* (`dotnet run x.cs`), located in `.claude/skills/<skill>/` or `tools/<name>/`, each folder with its own analyzers, `.editorconfig` and xUnit tests. The only exception is `tools/doctor/doctor.sh` (shellcheck). Don't write new tooling in Python/Node/shell.
-- **ADRs**: MADR 4.0 with decision drivers, a star-rating table and driver-tagged pros/cons; the index in `docs/decisions/README.md` is validated by `make adr-check`. To write one, use the `adr-draft` skill.
+- **ADRs**: MADR 4.0 with decision drivers, a star-rating table and driver-tagged pros/cons; the index in `docs/decisions/README.md` is validated by `make adr-check`. To write one, use the `adr-draft` skill. **Decision status is independent of delivery**: an ADR becomes `accepted` when the user approves the decision, in that same PR before it merges, and never waits for the implementation, build or rollout. Delivery is tracked in issues and PRs, not in the ADR status.
 
 ## Frontend practices (lessons from the performance review, issues #42–#49)
 

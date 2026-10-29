@@ -5,6 +5,7 @@ Decisions are recorded in [MADR 4.0](https://adr.github.io/madr/) format. To add
 Every record lists its **decision drivers**, rates each option against them in a table (drivers as rows, options as columns, ★★★ to ☆☆☆), and gives pros and cons for every option in terms of those drivers. See [ADR-0000](0000-use-markdown-architectural-decision-records.md) for the conventions.
 
 - **Drafting with an AI agent:** the [`adr-draft`](../../.claude/skills/adr-draft/SKILL.md) skill walks through the whole process: drivers, research, writing, validation and the review PR.
+- **Status:** `proposed` while the decision is under review, `accepted` as soon as the user approves it (set in the same PR, before it merges), then `superseded by [ADR-NNNN](NNNN-….md)` if replaced. Status records whether a decision was **taken**, not whether it has been **delivered**: never wait for the implementation, build or rollout before accepting. Track delivery in issues and PRs.
 - **Validation:** `make adr-check` (also part of `make lint` and CI) checks structure, rating tables, driver coverage, links and this index.
 
 | ADR | Title | Status |
@@ -38,3 +39,10 @@ Every record lists its **decision drivers**, rates each option against them in a
 | [0026](0026-client-side-routing-with-tanstack-router.md) | Client-side routing with TanStack Router and code-based route definitions | accepted |
 | [0027](0027-google-oidc-bff-session.md) | Google OpenID Connect with a backend-for-frontend cookie session | accepted |
 | [0028](0028-publish-user-stories-on-the-documentation-site.md) | Publish user stories on the documentation site alongside the ADR log | proposed |
+| [0029](0029-azure-container-apps-compute-platform.md) | Use Azure Container Apps as the compute platform | proposed |
+| [0030](0030-single-container-for-api-and-spa.md) | Single container for the API and SPA | proposed |
+| [0031](0031-azure-postgresql-flexible-server.md) | Azure Database for PostgreSQL Flexible Server with public access and firewall rules | proposed |
+| [0032](0032-azure-key-vault-for-secrets.md) | Azure Key Vault for secrets via managed identity | proposed |
+| [0033](0033-bicep-for-infrastructure-as-code.md) | Bicep for Azure infrastructure as code | proposed |
+| [0034](0034-github-actions-oidc-deployment.md) | Deploy with GitHub Actions and OIDC federation | proposed |
+| [0035](0035-separate-staging-and-production-environments.md) | Separate staging and production environments | proposed |

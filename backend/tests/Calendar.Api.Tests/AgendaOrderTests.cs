@@ -15,7 +15,7 @@ public sealed class AgendaOrderTests
     DateTimeOffset[] instants = [new(2026, 3, 8, 6, 30, 0, TimeSpan.Zero), new(2026, 3, 8, 7, 30, 0, TimeSpan.Zero), new(2026, 11, 1, 5, 30, 0, TimeSpan.Zero), new(2026, 11, 1, 6, 30, 0, TimeSpan.Zero)];
     string[] titles = ["alpha", "ALPHA", "Beta", "beta"];
     string[] priorities = ["high", "medium", "low", "other"];
-    var tasks = new List<TaskResponse>();
+    var tasks = new List<AgendaTaskItem>();
     var allDay = new List<AllDayEventItem>();
     var timed = new List<TimedEventItem>();
     for (var i = 0; i < 2000; i++)
@@ -25,29 +25,24 @@ public sealed class AgendaOrderTests
       var date = dates[random.Next(dates.Length)];
       var instant = instants[random.Next(instants.Length)];
       var dateOnly = random.Next(2) == 0;
-      tasks.Add(new TaskResponse { Id = id, Title = title, Priority = priorities[random.Next(priorities.Length)], DueDate = dateOnly ? date : null, DueAt = dateOnly ? null : instant, IsCompleted = false });
-      allDay.Add(new AllDayEventItem { Id = id, Title = title, StartDate = date, EndDate = date.AddDays(1) });
-      timed.Add(new TimedEventItem { Id = id, Title = title, Start = instant, End = instant.AddHours(1), TimeZone = zone.Id, StartsBeforeDay = false, EndsAfterDay = false });
+      tasks.Add(new AgendaTaskItem { Id = id, Title = title, Priority = priorities[random.Next(priorities.Length)], DueDate = dateOnly ? date : null, DueAt = dateOnly ? null : instant, IsCompleted = false, HasNotes = false });
+      allDay.Add(new AllDayEventItem { Id = id, Title = title, StartDate = date, EndDate = date.AddDays(1), HasNotes = false });
+      timed.Add(new TimedEventItem { Id = id, Title = title, Start = instant, End = instant.AddHours(1), TimeZone = zone.Id, StartsBeforeDay = false, EndsAfterDay = false, HasNotes = false });
     }
 
     // The reference orders are the comparers as they were before short-circuiting (issue #54).
-    tasks.Order(AgendaOrder.DueTasks).ShouldBe(tasks.Order(Comparer<TaskResponse>.Create(OriginalDue)));
-    AgendaOrder.OverdueTasks(tasks, zone).ShouldBe(
-        tasks.Order(Comparer<TaskResponse>.Create((a, b) => FirstDifference(LocalDate(a, zone).CompareTo(LocalDate(b, zone)), OriginalDue(a, b)))));
+    tasks.Order(AgendaOrder.DueTasks).ShouldBe(tasks.Order(Comparer<AgendaTaskItem>.Create(OriginalDue)));
     allDay.Order(AgendaOrder.AllDayEvents).ShouldBe(
         allDay.Order(Comparer<AllDayEventItem>.Create((a, b) => FirstDifference(a.StartDate.CompareTo(b.StartDate), StringComparer.OrdinalIgnoreCase.Compare(a.Title, b.Title), a.Id.CompareTo(b.Id)))));
     timed.Order(AgendaOrder.TimedEvents).ShouldBe(
         timed.Order(Comparer<TimedEventItem>.Create((a, b) => FirstDifference(a.Start.CompareTo(b.Start), StringComparer.OrdinalIgnoreCase.Compare(a.Title, b.Title), a.Id.CompareTo(b.Id)))));
   }
 
-  private static int OriginalDue(TaskResponse a, TaskResponse b) => FirstDifference(
+  private static int OriginalDue(AgendaTaskItem a, AgendaTaskItem b) => FirstDifference(
       (a.DueAt is null).CompareTo(b.DueAt is null), Nullable.Compare(a.DueAt, b.DueAt),
       Rank(a.Priority).CompareTo(Rank(b.Priority)), StringComparer.OrdinalIgnoreCase.Compare(a.Title, b.Title), a.Id.CompareTo(b.Id));
 
   private static int Rank(string priority) => priority switch { "high" => 0, "medium" => 1, "low" => 2, _ => 3 };
-
-  private static DateOnly LocalDate(TaskResponse task, TimeZoneInfo zone) =>
-      task.DueDate ?? DateOnly.FromDateTime(TimeZoneInfo.ConvertTime(task.DueAt!.Value, zone).DateTime);
 
   private static int FirstDifference(params ReadOnlySpan<int> comparisons)
   {

@@ -44,7 +44,14 @@ describe('event creation', () => {
   });
   it('reuses deadline candidates while unrelated fields change', () => {
     const calculate = vi.spyOn(deadline, 'deadlineInstants');
-    renderWithProviders(<EventForm date="2026-10-29" timeZone="UTC" onClose={vi.fn()} />);
+    renderWithProviders(
+      <EventForm
+        date="2026-10-29"
+        timeZone="UTC"
+        initialValues={{ start: '2026-10-29T09:00', end: '2026-10-29T10:00' }}
+        onClose={vi.fn()}
+      />,
+    );
     const callsAfterRender = calculate.mock.calls.length;
     fireEvent.change(screen.getByLabelText('Title'), { target: { value: 'Meeting' } });
     fireEvent.change(screen.getByLabelText('Notes'), { target: { value: 'Bring notes' } });

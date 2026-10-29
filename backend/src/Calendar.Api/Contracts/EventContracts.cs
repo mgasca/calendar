@@ -86,8 +86,8 @@ public sealed record AllDayEventItem
   /// <summary>Location, or <c>null</c> if none.</summary>
   public string? Location { get; init; }
 
-  /// <summary>Notes, or <c>null</c> if none.</summary>
-  public string? Notes { get; init; }
+  /// <summary>Whether the event has notes.</summary>
+  public required bool HasNotes { get; init; }
 
   /// <summary>First date of the event.</summary>
   public required DateOnly StartDate { get; init; }
@@ -101,7 +101,7 @@ public sealed record AllDayEventItem
     Id = e.Id,
     Title = e.Title,
     Location = e.Location,
-    Notes = e.Notes,
+    HasNotes = e.Notes != null,
     StartDate = e.StartDate!.Value,
     EndDate = e.EndDate!.Value,
   };
@@ -119,8 +119,8 @@ public sealed record TimedEventItem
   /// <summary>Location, or <c>null</c> if none.</summary>
   public string? Location { get; init; }
 
-  /// <summary>Notes, or <c>null</c> if none.</summary>
-  public string? Notes { get; init; }
+  /// <summary>Whether the event has notes.</summary>
+  public required bool HasNotes { get; init; }
 
   /// <summary>Inclusive start instant.</summary>
   public required DateTimeOffset Start { get; init; }
@@ -147,7 +147,7 @@ public sealed record TimedEventItem
     Id = e.Id,
     Title = e.Title,
     Location = e.Location,
-    Notes = e.Notes,
+    HasNotes = e.Notes != null,
     Start = e.Start!.Value,
     End = e.End!.Value,
     TimeZone = e.TimeZoneId!,

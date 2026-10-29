@@ -16,6 +16,7 @@ import {
   type TimedEvent,
 } from '../agenda/dayTime.ts';
 import { AgendaError } from '../agenda/agendaQuery.ts';
+import { Notes } from '../agenda/Notes.tsx';
 import { EventTimes } from '../agenda/EventTimes.tsx';
 import { TaskItem, TaskToggleError } from '../agenda/TaskItem.tsx';
 import { useNow, useToday } from '../agenda/useNow.ts';
@@ -84,8 +85,8 @@ export function DayView({ date, timeZone: zoneOverride, locale }: DayViewProps) 
   const isToday = shownDate === today;
   const { allDayEvents, events } = agenda.data;
   const allTasks = [...tasks.overdue, ...tasks.dueToday];
-  const openTasks = allTasks.filter((t) => !t.isCompleted).length;
-  const openOverdue = tasks.overdue.filter((t) => !t.isCompleted).length;
+  const openOverdue = Number(agenda.data.tasks.overdueOpenTotal);
+  const openTasks = openOverdue + tasks.dueToday.filter((t) => !t.isCompleted).length;
   const isEmpty = allDayEvents.length + events.length + allTasks.length === 0;
 
   const onToggle = (task: AgendaTask) => {
@@ -147,6 +148,7 @@ export function DayView({ date, timeZone: zoneOverride, locale }: DayViewProps) 
                 <span className="item-title">{event.title}</span>
                 <AllDayDetail event={event} day={shownDate} />
                 <Location value={event.location} />
+                {event.hasNotes && <Notes id={event.id} kind="event" />}
               </li>
             ))}
           </ul>
@@ -170,6 +172,9 @@ export function DayView({ date, timeZone: zoneOverride, locale }: DayViewProps) 
           {tasks.overdue.length > 0 && (
             <div>
               <h3 id="overdue-heading">Overdue</h3>
+              {Number(agenda.data.tasks.overdueTotal) > 20 && (
+                <p>Showing 20 of {agenda.data.tasks.overdueTotal}</p>
+              )}
               <ul className="items" aria-labelledby="overdue-heading">
                 {tasks.overdue.map((task) => (
                   <TaskItem
@@ -290,6 +295,7 @@ function Schedule({
             <span className="item-title">{event.title}</span>
             {label && <span className={`badge badge-${status}`}>{label}</span>}
             <Location value={event.location} />
+            {event.hasNotes && <Notes id={event.id} kind="event" />}
           </li>
         );
       })}

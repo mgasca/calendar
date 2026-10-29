@@ -12,7 +12,7 @@ import { minuteToPx } from './gridLayout.ts';
 import { WeekView } from './WeekView.tsx';
 
 type WeekAgenda = Schemas['WeekAgendaResponse'];
-type Task = Schemas['TaskResponse'];
+type Task = Schemas['AgendaTaskItem'];
 type TimedEvent = Schemas['TimedEventItem'];
 
 // 10:30 in Madrid (CET, UTC+1) on Wednesday 28 October 2026; the week starts on Monday the 26th.
@@ -31,6 +31,7 @@ function timed(id: string, date: string, from: string, to: string, rest: Partial
     timeZone: ZONE,
     startsBeforeDay: false,
     endsAfterDay: false,
+    hasNotes: false,
     ...rest,
   };
 }
@@ -39,6 +40,7 @@ const task = (id: string, dueDate: string, rest: Partial<Task> = {}): Task => ({
   id,
   title: id,
   dueDate,
+  hasNotes: false,
   isCompleted: false,
   ...rest,
 });
@@ -51,8 +53,14 @@ function busyWeek(): WeekAgenda {
     throw new Error('A week has seven days');
   }
   week.allDayEvents = [
-    { id: 'a1', title: 'Conference', startDate: '2026-10-22', endDate: '2026-10-28' },
-    { id: 'a2', title: 'Holiday', startDate: '2026-10-30', endDate: '2026-10-31' },
+    {
+      id: 'a1',
+      title: 'Conference',
+      hasNotes: false,
+      startDate: '2026-10-22',
+      endDate: '2026-10-28',
+    },
+    { id: 'a2', title: 'Holiday', hasNotes: false, startDate: '2026-10-30', endDate: '2026-10-31' },
   ];
   mon.events = [timed('Standup', '2026-10-26', '09:00', '09:30')];
   // Dinner runs from 21:00 on Tuesday to 01:30 on Wednesday, so it is on both days.
@@ -66,12 +74,18 @@ function busyWeek(): WeekAgenda {
     timed('Design review', '2026-10-28', '11:00', '12:00'),
   ];
   mon.tasks = [
-    task('Pay rent', '2026-10-26', { isCompleted: true, completedAt: '2026-10-26T08:00:00Z' }),
+    task('Pay rent', '2026-10-26', {
+      hasNotes: false,
+      isCompleted: true,
+      completedAt: '2026-10-26T08:00:00Z',
+    }),
     task('Call bank', '2026-10-26'),
   ];
   wed.tasks = [task('Send report', TODAY, { dueDate: null, dueAt: '2026-10-28T15:00:00Z' })];
   thu.tasks = [task('Book flights', '2026-10-29')];
   week.overdue = [task('File expenses', '2026-10-20')];
+  week.overdueTotal = 1;
+  week.overdueOpenTotal = 1;
   return week;
 }
 
@@ -229,7 +243,7 @@ describe('week routes', () => {
           window: { start: madridMidnight(TODAY), end: madridMidnight('2026-10-29') },
           allDayEvents: [],
           events: [],
-          tasks: { overdue: [], dueToday: [] },
+          tasks: { overdueTotal: 0, overdueOpenTotal: 0, overdue: [], dueToday: [] },
         }),
       ),
     );
@@ -493,7 +507,12 @@ describe('WeekView', () => {
             window: { start: madridMidnight(date), end: madridMidnight('2026-10-30') },
             allDayEvents: [],
             events: [],
-            tasks: { overdue: [], dueToday: [task('Book flights', date)] },
+            tasks: {
+              overdueTotal: 0,
+              overdueOpenTotal: 0,
+              overdue: [],
+              dueToday: [task('Book flights', date)],
+            },
           });
         }),
       );
@@ -544,13 +563,30 @@ describe('WeekView', () => {
     const withOverdue = (date: string, today: string) => {
       const week = emptyWeek(date, today);
       if (week.overdue) {
+        week.overdueTotal = 2;
+        week.overdueOpenTotal = 1;
         week.overdue = [
           task('File expenses', '2026-10-20'),
-          task('Renew passport', '2026-10-28', { isCompleted: true, completedAt: NOW }),
+          task('Renew passport', '2026-10-28', {
+            hasNotes: false,
+            isCompleted: true,
+            completedAt: NOW,
+          }),
         ];
       }
       return week;
     };
+
+    it('shows the total when the overdue list is capped', async () => {
+      serveWeeks((date, today) => {
+        const week = withOverdue(date, today);
+        week.overdueTotal = 25;
+        return week;
+      });
+      renderApp('/week/2026-10-26');
+      const panel = await screen.findByRole('region', { name: 'Overdue (25)' });
+      expect(within(panel).getByText('Showing 20 of 25')).toBeInTheDocument();
+    });
 
     it('lists tasks due before the week in the current week, open ones first, with how late', async () => {
       serveWeeks(withOverdue);

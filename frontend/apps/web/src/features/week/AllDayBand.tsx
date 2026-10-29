@@ -1,5 +1,6 @@
 import type { Schemas } from '@calendar/api-client';
 
+import { Notes } from '../agenda/Notes.tsx';
 import { dateTimeFormat } from '../agenda/dayTime.ts';
 import { addDays } from './weekDates.ts';
 import type { AllDayLayout } from './gridLayout.ts';
@@ -46,6 +47,7 @@ export function AllDayBand({
           >
             {continuesBefore && <span aria-hidden="true">◀ </span>}
             <span className="week-bar-title">{event.title}</span>
+            {event.hasNotes && <Notes id={event.id} kind="event" />}
             <span className="visually-hidden">
               {`, ${formatDates(event, locale)}`}
               {continuesBefore && ', continues from the previous week'}

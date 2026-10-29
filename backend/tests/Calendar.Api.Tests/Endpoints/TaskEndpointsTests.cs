@@ -55,7 +55,7 @@ public sealed class TaskEndpointsTests(PostgresFixture postgres) : ApiTestBase(p
     var listed = await ListAsync("upcoming&today=2026-10-26&timeZone=Europe/London");
     listed.Items.ShouldContain(created);
     var agenda = await Client.GetFromJsonAsync<DayAgendaResponse>(new Uri("/api/agenda/day?date=2026-10-26&timeZone=Europe/London", UriKind.Relative), Ct);
-    agenda.ShouldNotBeNull().Tasks.DueToday.ShouldContain(created);
+    agenda.ShouldNotBeNull().Tasks.DueToday.ShouldContain(t => t.Id == created.Id && t.HasNotes);
   }
 
   [Fact]

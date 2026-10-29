@@ -3,6 +3,7 @@ import { Link } from '@tanstack/react-router';
 import { memo, useLayoutEffect, useMemo, useRef, type CSSProperties } from 'react';
 
 import { dateTimeFormat, formatDate } from '../agenda/dayTime.ts';
+import { Notes } from '../agenda/Notes.tsx';
 import { EventTimes } from '../agenda/EventTimes.tsx';
 import { useNow } from '../agenda/useNow.ts';
 import { AllDayBand } from './AllDayBand.tsx';
@@ -194,6 +195,7 @@ const DayColumn = memo(function DayColumn({
                     />
                   </span>{' '}
                   <span className="week-event-title">{event.title}</span>
+                  {event.hasNotes && <Notes id={event.id} kind="event" />}
                 </li>
               ))}
             </ol>

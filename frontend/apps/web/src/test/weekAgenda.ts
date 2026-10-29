@@ -30,6 +30,8 @@ export function emptyWeek(date: string, today: string): WeekAgenda {
       events: [],
       tasks: [],
     })),
+    overdueTotal: 0,
+    overdueOpenTotal: 0,
     overdue: addDays(weekStart, 6) < today ? null : [],
   };
 }

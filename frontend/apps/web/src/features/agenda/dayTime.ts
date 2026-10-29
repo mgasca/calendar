@@ -1,7 +1,7 @@
 import type { Schemas } from '@calendar/api-client';
 
 export type TimedEvent = Schemas['TimedEventItem'];
-export type AgendaTask = Schemas['TaskResponse'];
+export type AgendaTask = Schemas['AgendaTaskItem'];
 
 const dateTimeFormatters = new Map<string, Intl.DateTimeFormat>();
 
@@ -92,7 +92,11 @@ export function eventStatuses(
 }
 
 /** How late an overdue task is, e.g. "Overdue by 3 days" or "Due yesterday". */
-export function describeOverdue(task: AgendaTask, today: string, timeZone: string): string {
+export function describeOverdue(
+  task: AgendaTask | Schemas['TaskResponse'],
+  today: string,
+  timeZone: string,
+): string {
   const dueDate = task.dueDate ?? (task.dueAt ? localDate(Date.parse(task.dueAt), timeZone) : null);
   if (!dueDate) {
     return 'Overdue';
@@ -105,7 +109,7 @@ export function describeOverdue(task: AgendaTask, today: string, timeZone: strin
 }
 
 /** A timed task due earlier today that is still open. */
-export function isPastDue(task: AgendaTask, nowMs: number): boolean {
+export function isPastDue(task: AgendaTask | Schemas['TaskResponse'], nowMs: number): boolean {
   return !task.isCompleted && !!task.dueAt && Date.parse(task.dueAt) <= nowMs;
 }
 

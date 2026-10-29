@@ -35,17 +35,9 @@ internal static class AgendaOrder
   });
 
   /// <summary>Tasks due on a day: timed ones by due instant first, then date-only ones; then priority, title, and id.</summary>
-  public static readonly IComparer<TaskResponse> DueTasks = Comparer<TaskResponse>.Create(CompareDue);
+  public static readonly IComparer<AgendaTaskItem> DueTasks = Comparer<AgendaTaskItem>.Create(CompareDue);
 
-  /// <summary>
-  /// Overdue tasks, oldest due first: by due date (a due instant counts on its local date in
-  /// <paramref name="zone"/>), then as <see cref="DueTasks"/>, so on the same date timed ones come first. Each
-  /// task's local date is computed once, not on every comparison.
-  /// </summary>
-  public static IEnumerable<TaskResponse> OverdueTasks(IEnumerable<TaskResponse> tasks, TimeZoneInfo zone) =>
-      tasks.OrderBy(task => DueLocalDate(task, zone)).ThenBy(task => task, DueTasks);
-
-  private static int CompareDue(TaskResponse a, TaskResponse b)
+  private static int CompareDue(AgendaTaskItem a, AgendaTaskItem b)
   {
     var comparison = (a.DueAt is null).CompareTo(b.DueAt is null);
     if (comparison != 0)
@@ -74,6 +66,4 @@ internal static class AgendaOrder
     _ => 3,
   };
 
-  private static DateOnly DueLocalDate(TaskResponse task, TimeZoneInfo zone) =>
-      task.DueDate ?? DateOnly.FromDateTime(TimeZoneInfo.ConvertTime(task.DueAt!.Value, zone).DateTime);
 }

@@ -55,6 +55,8 @@ internal static class AgendaEndpoints
       Tasks = new AgendaTasks
       {
         Overdue = snapshot.Overdue ?? [],
+        OverdueTotal = snapshot.OverdueTotal,
+        OverdueOpenTotal = snapshot.OverdueOpenTotal,
         DueToday = only.Tasks,
       },
     });
@@ -97,6 +99,8 @@ internal static class AgendaEndpoints
         Tasks = d.Tasks,
       })],
       Overdue = snapshot.Overdue,
+      OverdueTotal = snapshot.OverdueTotal,
+      OverdueOpenTotal = snapshot.OverdueOpenTotal,
     });
   }
 

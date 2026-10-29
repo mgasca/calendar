@@ -9,16 +9,18 @@ import type { TaskToggleProps } from './TaskStrip.tsx';
 export function OverduePanel({
   tasks,
   today,
+  total,
   timeZone,
   locale,
   disabled,
   onToggle,
-}: TaskToggleProps & { tasks: readonly AgendaTask[]; today: string }) {
+}: TaskToggleProps & { tasks: readonly AgendaTask[]; today: string; total: number }) {
   return (
     <section aria-labelledby="week-overdue-heading" className="week-overdue">
       <h2 id="week-overdue-heading">
-        Overdue <span className="count">({tasks.length})</span>
+        Overdue <span className="count">({total})</span>
       </h2>
+      {total > 20 && <p>Showing 20 of {total}</p>}
       <ul className="items">
         {openFirst(tasks).map((task) => (
           <TaskItem

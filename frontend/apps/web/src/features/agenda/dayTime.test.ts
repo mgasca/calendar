@@ -37,11 +37,13 @@ const event = (id: string, start: string, end: string): TimedEvent => ({
   timeZone: 'Europe/Madrid',
   startsBeforeDay: false,
   endsAfterDay: false,
+  hasNotes: false,
 });
 
 const task = (overrides: Partial<AgendaTask>): AgendaTask => ({
   id: 't',
   title: 'Task',
+  hasNotes: false,
   isCompleted: false,
   ...overrides,
 });
@@ -177,9 +179,9 @@ describe('isPastDue', () => {
   });
 
   it('is false for completed or date-only tasks', () => {
-    expect(isPastDue({ ...due, isCompleted: true }, Date.parse('2026-10-26T12:00:00Z'))).toBe(
-      false,
-    );
+    expect(
+      isPastDue({ ...due, hasNotes: false, isCompleted: true }, Date.parse('2026-10-26T12:00:00Z')),
+    ).toBe(false);
     expect(isPastDue(task({ dueDate: '2026-10-26' }), Date.parse('2026-10-26T12:00:00Z'))).toBe(
       false,
     );
@@ -189,9 +191,9 @@ describe('isPastDue', () => {
 describe('openFirst', () => {
   it('moves completed tasks after open ones, preserving order within each group', () => {
     const tasks = [
-      task({ id: 'a', isCompleted: true }),
+      task({ id: 'a', hasNotes: false, isCompleted: true }),
       task({ id: 'b' }),
-      task({ id: 'c', isCompleted: true }),
+      task({ id: 'c', hasNotes: false, isCompleted: true }),
       task({ id: 'd' }),
     ];
 

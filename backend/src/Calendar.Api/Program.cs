@@ -4,6 +4,7 @@ using Calendar.Infrastructure;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.OpenApi;
 
@@ -28,6 +29,11 @@ builder.Services.Configure<ForwardedHeadersOptions>(options =>
   options.KnownProxies.Clear();
   options.ForwardLimit = 1;
 });
+// Health and development hosts may start without a database connection string.
+if (!string.IsNullOrWhiteSpace(builder.Configuration.GetConnectionString(DependencyInjection.ConnectionStringName)))
+{
+  builder.Services.AddDataProtection().SetApplicationName("Calendar").PersistKeysToDbContext<CalendarDbContext>();
+}
 var auth = builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
     .AddCookie(options =>
     {

@@ -171,3 +171,7 @@ deployment secrets, and configure allowed Google email addresses as indexed envi
 `Auth__AllowedEmails__0`, `Auth__AllowedEmails__1`, and so on. Register the public HTTPS callback
 `https://<host>/api/auth/callback/google` with Google. The API trusts one forwarded hop from the
 Container Apps ingress; the container must only be reachable through that ingress.
+
+ASP.NET Data Protection keys are stored unencrypted in the calendar database so sessions survive
+restarts and revisions. Apply migrations separately as `calendar_migrator` before starting a new
+revision; the application never applies them. Restrict database access and backups accordingly.

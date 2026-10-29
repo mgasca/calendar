@@ -162,3 +162,16 @@ Set `Auth__Google__ClientId`, `Auth__Google__ClientSecret` and indexed entries s
 | Dependency updates | Dependabot (`nuget`, `docker`) | Dependabot (`npm`) |
 
 **Repo tooling** (skill scripts in `.claude/skills/<skill>/`, other tools in `tools/<name>/`) uses .NET 10 file-based apps with folder-local analyzers and xUnit tests ([ADR-0017](docs/decisions/0017-dotnet-file-based-apps-for-repo-tooling.md)). The only exception is the bootstrap check `tools/doctor/doctor.sh`, which is shell linted with shellcheck.
+
+### Production environment configuration
+
+Set `ConnectionStrings__Calendar` to the PostgreSQL connection string for the least-privilege
+`calendar_app` role. Supply `Auth__Google__ClientId` and `Auth__Google__ClientSecret` from
+deployment secrets, and configure allowed Google email addresses as indexed environment variables
+`Auth__AllowedEmails__0`, `Auth__AllowedEmails__1`, and so on. Register the public HTTPS callback
+`https://<host>/api/auth/callback/google` with Google. The API trusts one forwarded hop from the
+Container Apps ingress; the container must only be reachable through that ingress.
+
+ASP.NET Data Protection keys are stored unencrypted in the calendar database so sessions survive
+restarts and revisions. Apply migrations separately as `calendar_migrator` before starting a new
+revision; the application never applies them. Restrict database access and backups accordingly.

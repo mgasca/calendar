@@ -8,7 +8,8 @@ import {
   storySlug,
   storyStatusCategory,
 } from './adr';
-import { readDocuments, readLog } from './docs-loader';
+import { readdir } from 'node:fs/promises';
+import { readDocuments, readLog, storiesDirectory } from './docs-loader';
 const file = '0001-test.md';
 const row = '| [0001](0001-test.md) | Test `code` | proposed |';
 const log = `| ADR | Title | Status |\n| --- | --- | --- |\n${row}`;
@@ -111,15 +112,14 @@ describe('canonical story index', () => {
   });
   it('reads every repository story and both indexes together', async () => {
     const { story } = await readDocuments();
-    expect(story.records.map((record) => record.number)).toEqual([
-      '0001',
-      '0002',
-      '0003',
-      '0004',
-      '0005',
-      '0006',
-      'XXXX',
-    ]);
+    const files = (await readdir(storiesDirectory))
+      .filter((name) => /^(\d{4}|XXXX)-.+\.md$/.test(name))
+      .sort();
+    expect(files.length).toBeGreaterThan(0);
+    expect(story.records.map((record) => record.file).sort()).toEqual(files);
+    expect(story.records.map((record) => record.number)).toEqual(
+      story.records.map((record) => record.file.slice(0, 4)),
+    );
   });
 });
 

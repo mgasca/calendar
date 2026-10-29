@@ -15,12 +15,17 @@ namespace Calendar.Infrastructure.Queries;
 /// </summary>
 public static class AgendaQueries
 {
-  /// <summary>All-day events covering the window's date: <c>StartDate &lt;= Date &lt; EndDate</c>.</summary>
+  /// <summary>
+  /// All-day events covering the window's date: <c>StartDate &lt;= Date &lt; EndDate</c>, as the generated
+  /// <c>[start_date, end_date)</c> date range containing it (GiST-backed <c>@&gt;</c>).
+  /// </summary>
   public static IQueryable<CalendarEvent> AllDayOn(this IQueryable<CalendarEvent> events, DayWindow window)
   {
     ArgumentNullException.ThrowIfNull(events);
     var date = window.Date;
-    return events.Where(e => e.IsAllDay && e.StartDate <= date && e.EndDate > date);
+    return events.Where(e =>
+        e.IsAllDay
+        && NpgsqlRangeDbFunctionsExtensions.Contains(EF.Property<NpgsqlRange<DateOnly>?>(e, CalendarEventConfiguration.DateSpanProperty)!.Value, date));
   }
 
   /// <summary>
@@ -57,14 +62,17 @@ public static class AgendaQueries
 
   /// <summary>
   /// All-day events covering at least one date of the range: <c>StartDate &lt; range.EndDate &amp;&amp; EndDate &gt;
-  /// range.StartDate</c> (both ends exclusive). The range form of <see cref="AllDayOn"/>.
+  /// range.StartDate</c> (both ends exclusive), as the generated date range overlapping the range's dates
+  /// (GiST-backed <c>&amp;&amp;</c>). The range form of <see cref="AllDayOn"/>.
   /// </summary>
   public static IQueryable<CalendarEvent> AllDayOverlapping(this IQueryable<CalendarEvent> events, DateRangeWindow range)
   {
     ArgumentNullException.ThrowIfNull(events);
     ArgumentNullException.ThrowIfNull(range);
-    var (startDate, endDate) = (range.StartDate, range.EndDate);
-    return events.Where(e => e.IsAllDay && e.StartDate < endDate && e.EndDate > startDate);
+    var dates = new NpgsqlRange<DateOnly>(range.StartDate, true, range.EndDate, false);
+    return events.Where(e =>
+        e.IsAllDay
+        && NpgsqlRangeDbFunctionsExtensions.Overlaps(EF.Property<NpgsqlRange<DateOnly>?>(e, CalendarEventConfiguration.DateSpanProperty)!.Value, dates));
   }
 
   /// <summary>

@@ -10,6 +10,9 @@ internal sealed class CalendarEventConfiguration : IEntityTypeConfiguration<Cale
   /// <summary>Shadow property: generated <c>tstzrange</c> of a timed event's span, <c>NULL</c> for all-day events.</summary>
   public const string SpanProperty = "Span";
 
+  /// <summary>Shadow property: generated <c>daterange</c> of an all-day event's dates, <c>NULL</c> for timed events.</summary>
+  public const string DateSpanProperty = "DateSpan";
+
   public void Configure(EntityTypeBuilder<CalendarEvent> builder)
   {
     builder.ToTable("events", table =>
@@ -45,8 +48,13 @@ internal sealed class CalendarEventConfiguration : IEntityTypeConfiguration<Cale
         .HasComputedColumnSql("CASE WHEN is_all_day THEN NULL ELSE tstzrange(starts_at, ends_at, '[)') END", stored: true);
     builder.HasIndex(SpanProperty).HasDatabaseName("ix_events_span").HasMethod("gist");
 
-    // All-day events: StartDate <= day < EndDate.
-    builder.HasIndex(e => new { e.StartDate, e.EndDate }).HasDatabaseName("ix_events_all_day_dates").HasFilter("is_all_day");
+    // All-day events get the same treatment with a half-open daterange [start_date, end_date): a B-tree on the
+    // two dates cannot narrow an overlap, since "start_date < range end" matches every past event.
+    builder.Property<NpgsqlRange<DateOnly>?>(DateSpanProperty)
+        .HasColumnName("date_span")
+        .HasColumnType("daterange")
+        .HasComputedColumnSql("CASE WHEN is_all_day THEN daterange(start_date, end_date, '[)') END", stored: true);
+    builder.HasIndex(DateSpanProperty).HasDatabaseName("ix_events_date_span").HasMethod("gist").HasFilter("is_all_day");
 
     builder.Property<uint>("xmin").HasColumnType("xid").ValueGeneratedOnAddOrUpdate().IsConcurrencyToken();
   }

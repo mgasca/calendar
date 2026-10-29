@@ -70,6 +70,24 @@ public sealed class SchemaTests(PostgresFixture postgres) : ApiTestBase(postgres
   }
 
   [Fact]
+  public async Task EventDateSpan_IsAPartialGistIndexedGeneratedRange_OnlyForAllDayEvents()
+  {
+    await using var db = Postgres.Database.CreateMigratorContext();
+
+    var gist = await db.Database.SqlQueryRaw<string>(
+        "SELECT indexdef AS \"Value\" FROM pg_indexes WHERE tablename = 'events' AND indexname = 'ix_events_date_span'").SingleAsync(Ct);
+    gist.ShouldContain("USING gist (date_span) WHERE is_all_day");
+
+    await db.Database.ExecuteSqlRawAsync(
+        "INSERT INTO events (id, title, is_all_day, starts_at, ends_at, time_zone_id) VALUES (gen_random_uuid(), 'timed', false, '2026-10-26T10:00Z', '2026-10-26T11:00Z', 'UTC')", Ct);
+    await db.Database.ExecuteSqlRawAsync(
+        "INSERT INTO events (id, title, is_all_day, start_date, end_date) VALUES (gen_random_uuid(), 'days', true, '2026-10-26', '2026-10-28')", Ct);
+
+    var spans = await db.Database.SqlQueryRaw<string>("SELECT COALESCE(date_span::text, 'NULL') AS \"Value\" FROM events ORDER BY is_all_day").ToListAsync(Ct);
+    spans.ShouldBe(["NULL", "[2026-10-26,2026-10-28)"]);
+  }
+
+  [Fact]
   public async Task AppRole_CannotChangeTheSchema()
   {
     await using var db = Postgres.Database.CreateAppContext();

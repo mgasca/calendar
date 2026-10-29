@@ -39,10 +39,10 @@ Every record lists its **decision drivers**, rates each option against them in a
 | [0026](0026-client-side-routing-with-tanstack-router.md) | Client-side routing with TanStack Router and code-based route definitions | accepted |
 | [0027](0027-google-oidc-bff-session.md) | Google OpenID Connect with a backend-for-frontend cookie session | accepted |
 | [0028](0028-publish-user-stories-on-the-documentation-site.md) | Publish user stories on the documentation site alongside the ADR log | proposed |
-| [0029](0029-azure-container-apps-compute-platform.md) | Use Azure Container Apps as the compute platform | proposed |
-| [0030](0030-single-container-for-api-and-spa.md) | Single container for the API and SPA | proposed |
-| [0031](0031-azure-postgresql-flexible-server.md) | Azure Database for PostgreSQL Flexible Server with public access and firewall rules | proposed |
-| [0032](0032-azure-key-vault-for-secrets.md) | Azure Key Vault for secrets via managed identity | proposed |
-| [0033](0033-bicep-for-infrastructure-as-code.md) | Bicep for Azure infrastructure as code | proposed |
-| [0034](0034-github-actions-oidc-deployment.md) | Deploy with GitHub Actions and OIDC federation | proposed |
-| [0035](0035-separate-staging-and-production-environments.md) | Separate staging and production environments | proposed |
+| [0029](0029-azure-container-apps-compute-platform.md) | Use Azure Container Apps as the compute platform | accepted |
+| [0030](0030-single-container-for-api-and-spa.md) | Single container for the API and SPA | accepted |
+| [0031](0031-azure-postgresql-flexible-server.md) | Azure Database for PostgreSQL Flexible Server with public access and firewall rules | accepted |
+| [0032](0032-azure-key-vault-for-secrets.md) | Azure Key Vault for secrets via managed identity | accepted |
+| [0033](0033-bicep-for-infrastructure-as-code.md) | Bicep for Azure infrastructure as code | accepted |
+| [0034](0034-github-actions-oidc-deployment.md) | Deploy with GitHub Actions and OIDC federation | accepted |
+| [0035](0035-separate-staging-and-production-environments.md) | Separate staging and production environments | accepted |

@@ -1,5 +1,5 @@
 ---
-status: proposed
+status: accepted
 date: 2026-10-29
 decision-makers: mgasca, Claude (AI assistant)
 ---
@@ -8,7 +8,7 @@ decision-makers: mgasca, Claude (AI assistant)
 
 ## Context and Problem Statement
 
-The Azure deployment must supply PostgreSQL credentials and Google sign-in configuration without putting values in the public repository. [ADR-0027](0027-google-oidc-bff-session.md) establishes the cookie-based Google sign-in, and [ADR-0015](0015-ef-core-data-access.md) separates application and migration database roles. Given the Container Apps deployment proposed in [ADR-0029](0029-azure-container-apps-compute-platform.md), where should these values be stored and how should the application receive them?
+The Azure deployment must supply PostgreSQL credentials and Google sign-in configuration without putting values in the public repository. [ADR-0027](0027-google-oidc-bff-session.md) establishes the cookie-based Google sign-in, and [ADR-0015](0015-ef-core-data-access.md) separates application and migration database roles. Given the Container Apps deployment chosen in [ADR-0029](0029-azure-container-apps-compute-platform.md), where should these values be stored and how should the application receive them?
 
 ## Decision Drivers
 

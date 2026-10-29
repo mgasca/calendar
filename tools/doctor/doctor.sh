@@ -54,6 +54,30 @@ else
   ok "Docker $(docker version --format '{{.Server.Version}}' 2>/dev/null) (daemon reachable)"
 fi
 
+# Azure tools are deployment prerequisites; local-only development can skip them.
+if [ "${1:-}" = "--infra" ]; then
+  export AZURE_BICEP_USE_BINARY_FROM_PATH=false
+  # This checked-in manifest contains only version assignments.
+  # shellcheck disable=SC1091
+  . "$root/tools/azure-versions.env"
+  if ! command -v az >/dev/null 2>&1; then
+    fail "Azure CLI not found" "Install Azure CLI $AZURE_CLI_VERSION: https://learn.microsoft.com/cli/azure/install-azure-cli"
+  else
+    have_az="$(az version --query '"azure-cli"' -o tsv 2>/dev/null || true)"
+    if [ "$have_az" = "$AZURE_CLI_VERSION" ]; then
+      ok "Azure CLI $have_az"
+    else
+      fail "Azure CLI version '${have_az:-unavailable}', expected $AZURE_CLI_VERSION" "Install Azure CLI $AZURE_CLI_VERSION: https://learn.microsoft.com/cli/azure/install-azure-cli"
+    fi
+    have_bicep="$(az bicep version 2>/dev/null | sed -n 's/^Bicep CLI version \([0-9][0-9.]*\).*/\1/p' || true)"
+    if [ "$have_bicep" = "$BICEP_VERSION" ]; then
+      ok "Bicep $have_bicep"
+    else
+      fail "Bicep version '${have_bicep:-unavailable}', expected $BICEP_VERSION" "Run 'az bicep install --version v$BICEP_VERSION' and 'az config set bicep.use_binary_from_path=false'"
+    fi
+  fi
+fi
+
 if [ "$problems" -gt 0 ]; then
   echo "Found $problems problem(s). See the README 'Prerequisites' section."
   exit 1

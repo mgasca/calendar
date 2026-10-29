@@ -76,7 +76,7 @@ db-migrate: ## Apply EF Core migrations to the local database as calendar_migrat
 	dotnet ef database update --project src/Calendar.Infrastructure
 
 db-seed: ## Seed a running API with a sample day (ARGS="--date YYYY-MM-DD --time-zone ID --api-url URL"; additive)
-	dotnet run tools/seed-dev/seed-dev.cs -- $(ARGS)
+	@if [ -f .env ]; then $(DB_ENV); fi; dotnet run tools/seed-dev/seed-dev.cs -- $(ARGS)
 
 db-psql: ## Open psql on the local database as calendar_migrator
 	@$(DB_ENV) && $(COMPOSE) exec -e PGPASSWORD="$$CALENDAR_MIGRATOR_PASSWORD" postgres psql -U calendar_migrator -d "$$POSTGRES_DB"
@@ -92,7 +92,11 @@ contracts: ## Regenerate OpenAPI contract and TypeScript client
 
 check: lint test ## Everything CI runs
 
-dev-api: ## Run the API on http://localhost:5041
+dev-api: ## Run the API on http://localhost:5041 (loads .env, e.g. the Google sign-in settings)
+	@if [ -f .env ]; then $(DB_ENV); else echo "No .env found: copy .env.example to .env"; fi; \
+	if [ -z "$$Auth__Google__ClientId" ] || [ -z "$$Auth__Google__ClientSecret" ]; then \
+		echo "Warning: Auth__Google__ClientId/ClientSecret are not set in .env, so 'Sign in with Google' will return 503 (see README)."; \
+	fi; \
 	$(DOTNET) watch --project src/Calendar.Api
 
 dev-web: ## Run the web UI (proxies /api to the API)

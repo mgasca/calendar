@@ -84,3 +84,19 @@ public sealed record Created(Guid Id);
 [JsonSerializable(typeof(TaskSeed))]
 [JsonSerializable(typeof(Created))]
 public sealed partial class SeedJson : JsonSerializerContext;
+
+/// <summary>Authentication setup and diagnostics for requests to the local API.</summary>
+public static class SeedAuthentication
+{
+  /// <summary>Adds the configured key to every request.</summary>
+  public static void Configure(HttpClient client, string? key)
+  {
+    if (!string.IsNullOrWhiteSpace(key))
+    {
+      client.DefaultRequestHeaders.Add("X-Dev-Seed-Key", key);
+    }
+  }
+
+  /// <summary>Explains how to resolve an authentication failure.</summary>
+  public const string UnauthorizedMessage = "Seed authentication failed (401). Set Auth__DevSeedKey in .env or pass --seed-key, and run the API in Development with the same key.";
+}

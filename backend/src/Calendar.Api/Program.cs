@@ -62,7 +62,25 @@ if (!string.IsNullOrWhiteSpace(clientId) && !string.IsNullOrWhiteSpace(clientSec
     };
   });
 }
-builder.Services.AddAuthorization(options => options.FallbackPolicy = new AuthorizationPolicyBuilder().RequireAuthenticatedUser().Build());
+var seedKey = builder.Configuration["Auth:DevSeedKey"];
+var seedEnabled = builder.Environment.IsDevelopment() && !string.IsNullOrWhiteSpace(seedKey);
+if (seedEnabled)
+{
+  if (seedKey!.Length < DevSeedAuthenticationHandler.MinimumKeyLength)
+  {
+    throw new InvalidOperationException("Auth:DevSeedKey must be at least 32 characters.");
+  }
+  auth.AddScheme<AuthenticationSchemeOptions, DevSeedAuthenticationHandler>(DevSeedAuthenticationHandler.SchemeName, _ => { });
+}
+builder.Services.AddAuthorization(options =>
+{
+  var policy = new AuthorizationPolicyBuilder();
+  if (seedEnabled)
+  {
+    policy.AddAuthenticationSchemes(CookieAuthenticationDefaults.AuthenticationScheme, DevSeedAuthenticationHandler.SchemeName);
+  }
+  options.FallbackPolicy = policy.RequireAuthenticatedUser().Build();
+});
 builder.Services.AddSingleton(TimeProvider.System);
 // Binding failures throw in every environment and BadRequestExceptionHandler turns them into 400 problem details.
 builder.Services.Configure<RouteHandlerOptions>(options => options.ThrowOnBadRequest = true);

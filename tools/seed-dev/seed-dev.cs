@@ -17,6 +17,7 @@ using SeedDev;
 #pragma warning disable S1075 // the dev API address is the documented default (make dev-api)
 var apiUrl = "http://localhost:5041";
 #pragma warning restore S1075
+string? seedKey = Environment.GetEnvironmentVariable("Auth__DevSeedKey");
 string? zoneId = null;
 DateOnly? date = null;
 var pending = new Queue<string>(args);
@@ -24,6 +25,9 @@ while (pending.TryDequeue(out var arg))
 {
   switch (arg)
   {
+    case "--seed-key" when pending.Count > 0:
+      seedKey = pending.Dequeue();
+      break;
     case "--api-url" when pending.Count > 0:
       apiUrl = pending.Dequeue();
       break;
@@ -35,7 +39,7 @@ while (pending.TryDequeue(out var arg))
       pending.Dequeue();
       break;
     default:
-      await Console.Error.WriteLineAsync($"unknown or invalid argument: {arg}\nusage: seed-dev [--api-url URL] [--time-zone IANA_ID] [--date YYYY-MM-DD]");
+      await Console.Error.WriteLineAsync($"unknown or invalid argument: {arg}\nusage: seed-dev [--seed-key KEY] [--api-url URL] [--time-zone IANA_ID] [--date YYYY-MM-DD]");
       return 2;
   }
 }
@@ -57,6 +61,8 @@ var plan = SeedPlan.Build(date.Value, zone);
 
 const string BaseSlash = "/"; // HttpClient needs a trailing slash to resolve relative paths
 using var http = new HttpClient { BaseAddress = new Uri(apiUrl.TrimEnd('/') + BaseSlash), Timeout = TimeSpan.FromSeconds(30) };
+
+SeedAuthentication.Configure(http, seedKey);
 
 try
 {
@@ -101,6 +107,10 @@ static async Task<Created> EnsureCreatedAsync(HttpResponseMessage response, stri
 {
   if (!response.IsSuccessStatusCode)
   {
+    if (response.StatusCode == System.Net.HttpStatusCode.Unauthorized)
+    {
+      throw new InvalidOperationException(SeedAuthentication.UnauthorizedMessage);
+    }
     throw new InvalidOperationException($"API rejected {what}: {(int)response.StatusCode} {await response.Content.ReadAsStringAsync()}");
   }
   return await response.Content.ReadFromJsonAsync(SeedJson.Default.Created) ?? throw new InvalidOperationException($"empty response for {what}");

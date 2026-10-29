@@ -20,6 +20,16 @@ public sealed class SeedPlanTests
       (SeedPlan.At(Day, TimeOnly.MinValue, zone), SeedPlan.At(Day.AddDays(1), TimeOnly.MinValue, zone));
 
   [Fact]
+  public void SeedKeyIsSentOnRequests()
+  {
+    using var client = new HttpClient();
+    SeedAuthentication.Configure(client, "test-key");
+    client.DefaultRequestHeaders.GetValues("X-Dev-Seed-Key").Single().ShouldBe("test-key");
+    SeedAuthentication.UnauthorizedMessage.ShouldContain("Development");
+    SeedAuthentication.UnauthorizedMessage.ShouldContain("Auth__DevSeedKey");
+  }
+
+  [Fact]
   public void Timed_events_carry_the_zone_and_a_valid_range()
   {
     var timed = SeedPlan.Build(Day, Berlin).Events.Where(e => e.AllDay is null).ToList();

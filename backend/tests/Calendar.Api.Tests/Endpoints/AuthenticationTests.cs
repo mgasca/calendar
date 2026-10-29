@@ -1,6 +1,7 @@
 using System.Net;
 using Calendar.Api.Endpoints;
 using Microsoft.AspNetCore.Authentication;
+using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.AspNetCore.TestHost;
 using Microsoft.Extensions.DependencyInjection;
@@ -9,6 +10,31 @@ namespace Calendar.Api.Tests.Endpoints;
 
 public sealed class AuthenticationTests(WebApplicationFactory<Program> factory) : IClassFixture<WebApplicationFactory<Program>>
 {
+  [Theory]
+  [InlineData("Development", "12345678901234567890123456789012", "12345678901234567890123456789012", HttpStatusCode.OK)]
+  [InlineData("Development", "12345678901234567890123456789012", "wrong", HttpStatusCode.Unauthorized)]
+  [InlineData("Development", "12345678901234567890123456789012", null, HttpStatusCode.Unauthorized)]
+  [InlineData("Development", "", "12345678901234567890123456789012", HttpStatusCode.Unauthorized)]
+  [InlineData("Production", "12345678901234567890123456789012", "12345678901234567890123456789012", HttpStatusCode.Unauthorized)]
+  public async Task SeedKeyOnlyAuthenticatesInDevelopment(string environment, string key, string? header, HttpStatusCode expected)
+  {
+    using var host = factory.WithWebHostBuilder(builder =>
+    {
+      builder.UseEnvironment(environment);
+      builder.UseSetting("Auth:DevSeedKey", key);
+    });
+    using var client = host.CreateClient();
+    using var request = new HttpRequestMessage(HttpMethod.Get, new Uri("/api/auth/me", UriKind.Relative));
+    if (header is not null)
+    {
+      request.Headers.Add("X-Dev-Seed-Key", header);
+    }
+    using var response = await client.SendAsync(request, TestContext.Current.CancellationToken);
+    response.StatusCode.ShouldBe(expected);
+    var schemes = host.Services.GetRequiredService<IAuthenticationSchemeProvider>();
+    (await schemes.GetSchemeAsync("DevSeed") is not null).ShouldBe(environment == "Development" && key.Length > 0);
+  }
+
   [Theory]
   [InlineData("/api/events/00000000-0000-0000-0000-000000000000")]
   [InlineData("/api/tasks")]
@@ -58,6 +84,22 @@ public sealed class AuthenticationTests(WebApplicationFactory<Program> factory) 
     using var response = await client.PostAsync(new Uri("/api/auth/logout", UriKind.Relative), null, TestContext.Current.CancellationToken);
     response.StatusCode.ShouldBe(HttpStatusCode.NoContent);
     response.Headers.GetValues("Set-Cookie").Single().ShouldContain("expires=");
+  }
+
+  [Fact]
+  public async Task LoginExplainsWhenGoogleIsNotConfigured()
+  {
+    using var host = factory.WithWebHostBuilder(builder =>
+    {
+      builder.UseSetting("Auth:Google:ClientId", "");
+      builder.UseSetting("Auth:Google:ClientSecret", "");
+    });
+    using var client = host.CreateClient();
+    using var response = await client.GetAsync(new Uri("/api/auth/login", UriKind.Relative), TestContext.Current.CancellationToken);
+    response.StatusCode.ShouldBe(HttpStatusCode.ServiceUnavailable);
+    var body = await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
+    body.ShouldContain("Google sign-in is not configured.");
+    body.ShouldContain("Auth__Google__ClientId");
   }
 
   [Fact]

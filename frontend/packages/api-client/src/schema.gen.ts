@@ -201,14 +201,55 @@ export interface components {
              */
             events: components["schemas"]["TimedEventItem"][];
             /** @description Tasks due on the day (open or completed): timed ones by due instant, then date-only ones by title. */
-            tasks: components["schemas"]["TaskResponse"][];
+            tasks: components["schemas"]["AgendaTaskItem"][];
+        };
+        /** @description A task in an agenda. */
+        AgendaTaskItem: {
+            /**
+             * Format: uuid
+             * @description Unique task id.
+             */
+            id: string;
+            /** @description Task title. */
+            title: string;
+            /** @description Priority level: low, medium, or high. */
+            priority?: string;
+            /** @description Whether the task has notes. */
+            hasNotes: boolean;
+            /**
+             * Format: date
+             * @description Floating due date, or `null` if the task has no date-only due.
+             */
+            dueDate?: null | string;
+            /**
+             * Format: date-time
+             * @description Due instant, or `null` if the task has no timed due.
+             */
+            dueAt?: null | string;
+            /**
+             * Format: date-time
+             * @description When the task was completed; `null` while it is open.
+             */
+            completedAt?: null | string;
+            /** @description `true` once the task has been completed. */
+            isCompleted: boolean;
         };
         /** @description Tasks relevant to the day, split into overdue and due-today groups. */
         AgendaTasks: {
-            /** @description Overdue tasks, oldest due first: still open, or completed within the day. Not due on the day itself. */
-            overdue: components["schemas"]["TaskResponse"][];
+            /** @description Up to 20 overdue tasks, open first then completed within the day; each group is ordered by local due date, instant and id. */
+            overdue: components["schemas"]["AgendaTaskItem"][];
+            /**
+             * Format: int32
+             * @description Number of overdue tasks, including those completed today.
+             */
+            overdueTotal: number | string;
+            /**
+             * Format: int32
+             * @description Number of open overdue tasks.
+             */
+            overdueOpenTotal: number | string;
             /** @description Tasks due on the day (open or completed): timed ones by due instant, then date-only ones by title. */
-            dueToday: components["schemas"]["TaskResponse"][];
+            dueToday: components["schemas"]["AgendaTaskItem"][];
         };
         /** @description The day as UTC instants, `[start, end)`; may be shorter or longer than 24 hours across DST changes. */
         AgendaWindow: {
@@ -234,8 +275,8 @@ export interface components {
             title: string;
             /** @description Location, or `null` if none. */
             location?: null | string;
-            /** @description Notes, or `null` if none. */
-            notes?: null | string;
+            /** @description Whether the event has notes. */
+            hasNotes: boolean;
             /**
              * Format: date
              * @description First date of the event.
@@ -434,8 +475,8 @@ export interface components {
             title: string;
             /** @description Location, or `null` if none. */
             location?: null | string;
-            /** @description Notes, or `null` if none. */
-            notes?: null | string;
+            /** @description Whether the event has notes. */
+            hasNotes: boolean;
             /**
              * Format: date-time
              * @description Inclusive start instant.
@@ -470,10 +511,21 @@ export interface components {
             days: components["schemas"]["AgendaDay"][];
             /**
              * @description Tasks overdue as of `today` (still open, or completed within today) that were due before the week's
-             *     Monday, oldest due first. Tasks due within the week are in their day instead. `null` when the whole
+             *     Monday, capped at 20 and ordered open first, then completed today, by local due date, instant and id within
+             *     each group. Tasks due within the week are in their day instead. `null` when the whole
              *     week is before `today`.
              */
-            overdue: null | components["schemas"]["TaskResponse"][];
+            overdue: null | components["schemas"]["AgendaTaskItem"][];
+            /**
+             * Format: int32
+             * @description Number of overdue tasks, including those completed today.
+             */
+            overdueTotal: number | string;
+            /**
+             * Format: int32
+             * @description Number of open overdue tasks.
+             */
+            overdueOpenTotal: number | string;
         };
     };
     responses: never;

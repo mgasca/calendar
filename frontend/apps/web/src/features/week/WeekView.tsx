@@ -150,7 +150,14 @@ export function WeekView({ weekStart, timeZone: zoneOverride, locale }: WeekView
 
       <div className={`week-body${overdue.length > 0 ? ' has-overdue' : ''}`}>
         <TimeGrid agenda={data} today={today} {...taskProps} />
-        {overdue.length > 0 && <OverduePanel tasks={overdue} today={today} {...taskProps} />}
+        {overdue.length > 0 && (
+          <OverduePanel
+            tasks={overdue}
+            today={today}
+            total={Number(data.overdueTotal)}
+            {...taskProps}
+          />
+        )}
       </div>
     </section>
   );

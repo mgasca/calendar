@@ -29,9 +29,10 @@ function agendaFor(date: string): Agenda {
         timeZone: ZONE,
         startsBeforeDay: false,
         endsAfterDay: false,
+        hasNotes: false,
       },
     ],
-    tasks: { overdue: [], dueToday: [] },
+    tasks: { overdueTotal: 0, overdueOpenTotal: 0, overdue: [], dueToday: [] },
   };
 }
 
@@ -197,7 +198,17 @@ describe('tasks', () => {
         return HttpResponse.json({
           ...agendaFor(date),
           events: [],
-          tasks: { overdue: [], dueToday: tasks.filter((t) => t.dueDate === date) },
+          tasks: {
+            overdueTotal: 0,
+            overdueOpenTotal: 0,
+            overdue: [],
+            dueToday: tasks
+              .filter((t) => t.dueDate === date)
+              .map(({ notes, ...task }) => ({
+                ...task,
+                hasNotes: !!notes,
+              })),
+          },
         });
       }),
       http.get('*/api/tasks', () => HttpResponse.json({ items: tasks, nextCursor: null })),

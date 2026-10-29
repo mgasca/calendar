@@ -21,7 +21,9 @@ const patchPages: TaskPatch<InfiniteData<TaskPage>> = (data, id, update) => ({
   ...data,
   pages: data.pages.map((page) => ({
     ...page,
-    items: page.items.map((task) => (task.id === id ? update(task) : task)),
+    items: page.items.map((task) =>
+      task.id === id ? { ...task, ...update({ ...task, hasNotes: !!task.notes }) } : task,
+    ),
   })),
 });
 

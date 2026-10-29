@@ -21,9 +21,18 @@ export const agendaKey = (date: string, timeZone: string) =>
 export const patchDayTasks: TaskPatch<DayAgenda> = (agenda, id, update) => {
   const apply = (tasks: AgendaTask[]) =>
     tasks.map((task) => (task.id === id ? update(task) : task));
+  const overdue = apply(agenda.tasks.overdue);
+  const before = agenda.tasks.overdue.find((task) => task.id === id);
+  const after = overdue.find((task) => task.id === id);
+  const change = before && after ? Number(!after.isCompleted) - Number(!before.isCompleted) : 0;
   return {
     ...agenda,
-    tasks: { overdue: apply(agenda.tasks.overdue), dueToday: apply(agenda.tasks.dueToday) },
+    tasks: {
+      ...agenda.tasks,
+      overdue,
+      overdueOpenTotal: Number(agenda.tasks.overdueOpenTotal) + change,
+      dueToday: apply(agenda.tasks.dueToday),
+    },
   };
 };
 

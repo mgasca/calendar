@@ -104,10 +104,14 @@ public static class TaskListQueries
                   && t.DueAt == null && t.Id.CompareTo(id) > 0));
     }
 
-    return tasks
-        .OrderBy(t => t.DueDate ?? DateOnly.FromDateTime(TimeZoneInfo.ConvertTimeBySystemTimeZoneId(t.DueAt!.Value.UtcDateTime, zone)))
+    return tasks.OrderByDated(zone);
+  }
+
+  /// <summary>Orders open tasks first, then by local due date, timed first, instant and id.</summary>
+  public static IOrderedQueryable<TodoTask> OrderByDated(this IQueryable<TodoTask> tasks, string zone) =>
+      tasks.OrderBy(t => t.CompletedAt != null)
+        .ThenBy(t => t.DueDate ?? DateOnly.FromDateTime(TimeZoneInfo.ConvertTimeBySystemTimeZoneId(t.DueAt!.Value.UtcDateTime, zone)))
         .ThenBy(t => t.DueAt == null)
         .ThenBy(t => t.DueAt)
         .ThenBy(t => t.Id);
-  }
 }

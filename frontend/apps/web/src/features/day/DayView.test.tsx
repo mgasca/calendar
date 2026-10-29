@@ -11,7 +11,7 @@ import { DayView } from './DayView.tsx';
 import { useToday } from '../agenda/useNow.ts';
 
 type Agenda = Schemas['DayAgendaResponse'];
-type Task = Schemas['TaskResponse'];
+type Task = Schemas['AgendaTaskItem'];
 
 const ZONE = 'Europe/Madrid';
 // 10:30 in Madrid (CET, UTC+1) on Monday 26 October 2026.
@@ -23,11 +23,18 @@ function buildAgenda(overrides: Partial<Agenda> = {}): Agenda {
     timeZone: ZONE,
     window: { start: '2026-10-25T23:00:00Z', end: '2026-10-26T23:00:00Z' },
     allDayEvents: [
-      { id: 'a1', title: 'Public holiday', startDate: '2026-10-26', endDate: '2026-10-27' },
+      {
+        id: 'a1',
+        title: 'Public holiday',
+        hasNotes: false,
+        startDate: '2026-10-26',
+        endDate: '2026-10-27',
+      },
       {
         id: 'a2',
         title: 'Conference',
         location: 'Valencia',
+        hasNotes: false,
         startDate: '2026-10-25',
         endDate: '2026-10-28',
       },
@@ -41,6 +48,7 @@ function buildAgenda(overrides: Partial<Agenda> = {}): Agenda {
         timeZone: ZONE,
         startsBeforeDay: true,
         endsAfterDay: false,
+        hasNotes: false,
       },
       {
         id: 'e1',
@@ -50,6 +58,7 @@ function buildAgenda(overrides: Partial<Agenda> = {}): Agenda {
         timeZone: ZONE,
         startsBeforeDay: false,
         endsAfterDay: false,
+        hasNotes: false,
       },
       {
         id: 'e2',
@@ -60,6 +69,7 @@ function buildAgenda(overrides: Partial<Agenda> = {}): Agenda {
         timeZone: ZONE,
         startsBeforeDay: false,
         endsAfterDay: false,
+        hasNotes: false,
       },
       {
         id: 'e3',
@@ -69,6 +79,7 @@ function buildAgenda(overrides: Partial<Agenda> = {}): Agenda {
         timeZone: ZONE,
         startsBeforeDay: false,
         endsAfterDay: false,
+        hasNotes: false,
       },
       {
         id: 'e4',
@@ -78,21 +89,49 @@ function buildAgenda(overrides: Partial<Agenda> = {}): Agenda {
         timeZone: ZONE,
         startsBeforeDay: false,
         endsAfterDay: true,
+        hasNotes: false,
       },
     ],
     tasks: {
+      overdueTotal: 2,
+      overdueOpenTotal: 2,
       overdue: [
-        { id: 't1', title: 'File expenses', dueDate: '2026-10-23', isCompleted: false },
-        { id: 't2', title: 'Call dentist', dueAt: '2026-10-25T10:00:00Z', isCompleted: false },
+        {
+          id: 't1',
+          title: 'File expenses',
+          dueDate: '2026-10-23',
+          hasNotes: false,
+          isCompleted: false,
+        },
+        {
+          id: 't2',
+          title: 'Call dentist',
+          dueAt: '2026-10-25T10:00:00Z',
+          hasNotes: false,
+          isCompleted: false,
+        },
       ],
       dueToday: [
-        { id: 't3', title: 'Send report', dueAt: '2026-10-26T08:00:00Z', isCompleted: false },
-        { id: 't4', title: 'Book flights', dueAt: '2026-10-26T15:00:00Z', isCompleted: false },
+        {
+          id: 't3',
+          title: 'Send report',
+          dueAt: '2026-10-26T08:00:00Z',
+          hasNotes: false,
+          isCompleted: false,
+        },
+        {
+          id: 't4',
+          title: 'Book flights',
+          dueAt: '2026-10-26T15:00:00Z',
+          hasNotes: false,
+          isCompleted: false,
+        },
         {
           id: 't5',
           title: 'Buy milk',
           dueDate: '2026-10-26',
           completedAt: '2026-10-26T07:00:00Z',
+          hasNotes: false,
           isCompleted: true,
         },
       ],
@@ -104,7 +143,7 @@ function buildAgenda(overrides: Partial<Agenda> = {}): Agenda {
 const emptyAgenda = buildAgenda({
   allDayEvents: [],
   events: [],
-  tasks: { overdue: [], dueToday: [] },
+  tasks: { overdueTotal: 0, overdueOpenTotal: 0, overdue: [], dueToday: [] },
 });
 
 /** Serves `agenda` and records each request URL. */
@@ -200,6 +239,25 @@ describe('DayView', () => {
       ).toBeInTheDocument();
     });
 
+    it('shows the full overdue counts when the list is capped', async () => {
+      const agenda = buildAgenda();
+      agenda.tasks.overdueTotal = 27;
+      agenda.tasks.overdueOpenTotal = 24;
+      serveAgenda(agenda);
+      await renderToday();
+      expect(await screen.findByText('Showing 20 of 27')).toBeInTheDocument();
+      expect(screen.getByText(/24 overdue/)).toBeInTheDocument();
+    });
+
+    it('does not show a cap message for 20 overdue tasks', async () => {
+      const agenda = buildAgenda();
+      agenda.tasks.overdueTotal = 20;
+      serveAgenda(agenda);
+      await renderToday();
+      await screen.findByRole('list', { name: 'Overdue' });
+      expect(screen.queryByText(/Showing 20 of/)).not.toBeInTheDocument();
+    });
+
     it('lists all-day events, with the day of a multi-day event', async () => {
       await renderToday();
 
@@ -208,6 +266,33 @@ describe('DayView', () => {
       expect(within(section).getByText('Public holiday')).toBeInTheDocument();
       expect(within(section).getByText('Day 2 of 3')).toBeInTheDocument();
       expect(within(section).getByText('Valencia')).toBeInTheDocument();
+    });
+
+    it('fetches event notes when opened', async () => {
+      let requests = 0;
+      server.use(
+        http.get('*/api/events/e1', () => {
+          requests++;
+          return HttpResponse.json({
+            id: 'e1',
+            title: 'Standup',
+            allDay: false,
+            notes: 'Bring agenda',
+          });
+        }),
+      );
+      const agenda = buildAgenda();
+      const event = agenda.events.find((item) => item.id === 'e1');
+      if (!event) throw new Error('Missing event');
+      event.hasNotes = true;
+      serveAgenda(agenda);
+      await renderToday();
+      await screen.findByText('Standup');
+      const item = itemFor('Standup');
+      expect(requests).toBe(0);
+      await userEvent.click(within(item).getByRole('button', { name: 'Notes' }));
+      expect(await within(item).findByText('Bring agenda')).toBeInTheDocument();
+      expect(requests).toBe(1);
     });
 
     it('lists timed events in local time ranges with time elements', async () => {
@@ -265,10 +350,24 @@ describe('DayView', () => {
       expect(screen.getByRole('checkbox', { name: 'Book flights' })).not.toBeChecked();
     });
 
-    it('shows a task’s priority and notes', async () => {
+    it('fetches task notes only when expanded', async () => {
+      let requests = 0;
+      server.use(
+        http.get('*/api/tasks/t6', () => {
+          requests++;
+          return HttpResponse.json({
+            id: 't6',
+            title: 'Pack bag',
+            isCompleted: false,
+            notes: 'Passport\nCharger',
+          });
+        }),
+      );
       serveAgenda(
         buildAgenda({
           tasks: {
+            overdueTotal: 0,
+            overdueOpenTotal: 0,
             overdue: [],
             dueToday: [
               {
@@ -276,7 +375,7 @@ describe('DayView', () => {
                 title: 'Pack bag',
                 dueDate: '2026-10-26',
                 priority: 'high',
-                notes: 'Passport\nCharger',
+                hasNotes: true,
                 isCompleted: false,
               },
             ],
@@ -287,9 +386,12 @@ describe('DayView', () => {
 
       await screen.findByRole('checkbox', { name: 'Pack bag' });
       expect(within(itemFor('Pack bag')).getByText('high priority')).toBeInTheDocument();
-      expect(within(itemFor('Pack bag')).getByText(/Passport/)).toHaveTextContent(
+      expect(requests).toBe(0);
+      await userEvent.click(within(itemFor('Pack bag')).getByRole('button', { name: 'Notes' }));
+      expect(await within(itemFor('Pack bag')).findByText(/Passport/)).toHaveTextContent(
         'Passport Charger',
       );
+      expect(requests).toBe(1);
     });
   });
 
@@ -299,6 +401,7 @@ describe('DayView', () => {
       const done = (id: string, title: string, rest: Partial<Task>): Task => ({
         id,
         title,
+        hasNotes: false,
         isCompleted: true,
         completedAt: MORNING,
         ...rest,
@@ -306,15 +409,41 @@ describe('DayView', () => {
       serveAgenda(
         buildAgenda({
           tasks: {
+            overdueTotal: 0,
+            overdueOpenTotal: 0,
             overdue: [
               done('o1', 'Overdue done', { dueDate: '2026-10-20' }),
-              { id: 'o2', title: 'Overdue oldest', dueDate: '2026-10-21', isCompleted: false },
-              { id: 'o3', title: 'Overdue newer', dueDate: '2026-10-24', isCompleted: false },
+              {
+                id: 'o2',
+                title: 'Overdue oldest',
+                dueDate: '2026-10-21',
+                hasNotes: false,
+                isCompleted: false,
+              },
+              {
+                id: 'o3',
+                title: 'Overdue newer',
+                dueDate: '2026-10-24',
+                hasNotes: false,
+                isCompleted: false,
+              },
             ],
             dueToday: [
               done('d1', 'Today done', { dueDate: '2026-10-26' }),
-              { id: 'd2', title: 'Today first', dueDate: '2026-10-26', isCompleted: false },
-              { id: 'd3', title: 'Today second', dueDate: '2026-10-26', isCompleted: false },
+              {
+                id: 'd2',
+                title: 'Today first',
+                dueDate: '2026-10-26',
+                hasNotes: false,
+                isCompleted: false,
+              },
+              {
+                id: 'd3',
+                title: 'Today second',
+                dueDate: '2026-10-26',
+                hasNotes: false,
+                isCompleted: false,
+              },
             ],
           },
         }),

@@ -35,14 +35,16 @@ public sealed class AgendaBucketingTests
         End = end,
         TimeZone = zoneId,
         StartsBeforeDay = false,
-        EndsAfterDay = false
+        EndsAfterDay = false,
+        HasNotes = false
       };
     }).ToArray();
-    var tasks = Enumerable.Range(0, 500).Select(i => new TaskResponse
+    var tasks = Enumerable.Range(0, 500).Select(i => new AgendaTaskItem
     {
       Id = Guid.NewGuid(),
       Title = $"Task {i % 8}",
       IsCompleted = false,
+      HasNotes = false,
       DueDate = i % 3 == 0 ? range.StartDate.AddDays(random.Next(-2, 9)) : null,
       DueAt = i % 3 != 0 ? instants[random.Next(instants.Length)] : null,
     }).ToArray();

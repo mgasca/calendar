@@ -49,7 +49,9 @@ public sealed class AgendaAgreementTests(PostgresFixture postgres) : ApiTestBase
     agenda.AllDayEvents.Select(e => e.Id).Order().ShouldBe(expectedAllDay.Order());
     agenda.Events.Select(e => e.Id).Order().ShouldBe(expectedTimed.Order());
     agenda.Tasks.DueToday.Select(t => t.Id).Order().ShouldBe(expectedDue.Order());
-    agenda.Tasks.Overdue.Select(t => t.Id).Order().ShouldBe(expectedOverdue.Order());
+    agenda.Tasks.Overdue.Count.ShouldBe(Math.Min(20, expectedOverdue.Count()));
+    agenda.Tasks.OverdueTotal.ShouldBe(expectedOverdue.Count());
+    agenda.Tasks.Overdue.Select(t => t.Id).ShouldAllBe(id => expectedOverdue.Contains(id));
 
     // The scenario must actually select and reject things, or the comparison proves nothing.
     if (window.Length > TimeSpan.Zero)

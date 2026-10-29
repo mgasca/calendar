@@ -26,12 +26,21 @@ const UNRELATED_KEY = ['health'] as const;
 
 const board = (): Board => ({
   columns: [
-    { name: 'Mon', tasks: [{ id: 't1', title: 'Send report', isCompleted: false }] },
+    {
+      name: 'Mon',
+      tasks: [{ id: 't1', title: 'Send report', hasNotes: false, isCompleted: false }],
+    },
     {
       name: 'Tue',
       tasks: [
-        { id: 't2', title: 'Buy milk', isCompleted: true, completedAt: '2026-10-26T07:00:00Z' },
-        { id: 't3', title: 'Book flights', isCompleted: false },
+        {
+          id: 't2',
+          title: 'Buy milk',
+          hasNotes: false,
+          isCompleted: true,
+          completedAt: '2026-10-26T07:00:00Z',
+        },
+        { id: 't3', title: 'Book flights', hasNotes: false, isCompleted: false },
       ],
     },
   ],
@@ -111,7 +120,7 @@ describe('useToggleTask', () => {
     await waitFor(() => {
       expect(result.current.isSuccess).toBe(true);
     });
-    expect(task('t2')).toMatchObject({ isCompleted: false, completedAt: null });
+    expect(task('t2')).toMatchObject({ hasNotes: false, isCompleted: false, completedAt: null });
   });
 
   it('invalidates every agenda query and the task list on settle, but nothing else', async () => {
@@ -168,7 +177,11 @@ describe('useToggleTask', () => {
     });
     expect(result.current.error).toBeInstanceOf(TaskUpdateError);
     expect((result.current.error as TaskUpdateError).status).toBe(409);
-    expect(task('t3')).toMatchObject({ isCompleted: false, title: 'Book flights' });
+    expect(task('t3')).toMatchObject({
+      hasNotes: false,
+      isCompleted: false,
+      title: 'Book flights',
+    });
     expect(task('t1')?.title).toBe('Send the report');
   });
 });
@@ -179,7 +192,7 @@ it('coalesces invalidation until all concurrent toggles settle', async () => {
   server.use(
     http.post('*/api/tasks/:id/:action', async ({ params }) => {
       await (params.id === 't1' ? first.gate : second.gate);
-      return HttpResponse.json({ id: params.id, title: 'x', isCompleted: true });
+      return HttpResponse.json({ id: params.id, title: 'x', hasNotes: false, isCompleted: true });
     }),
   );
   const { queryClient, result } = setup();

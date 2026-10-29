@@ -1,0 +1,77 @@
+#!/usr/bin/env -S dotnet run
+#:package xunit.v3.mtp-v2@4.0.2
+#:package Shouldly@4.3.0
+#:package Npgsql@10.0.3
+#:include ../Infrastructure.cs
+#:include ../Database.cs
+
+using Shouldly;
+using Xunit;
+namespace InfraTool.Tests;
+#pragma warning disable CS1591
+public sealed class DatabaseTests
+{
+  [Theory]
+  [InlineData(false, false, "store,read,create,report")]
+  [InlineData(false, true, "read,create,report")]
+  [InlineData(true, true, "read,verify,report")]
+  public async Task Reconcile(bool role, bool secret, string expected)
+  {
+    var steps = new List<string>();
+    var result = await Infra.ReconcileRole(role, secret,
+      () => { steps.Add("store"); return Task.CompletedTask; },
+      () => { steps.Add("read"); return Task.FromResult("password"); },
+      password => { password.ShouldBe("password"); steps.Add("verify"); return Task.FromResult(true); },
+      password => { password.ShouldBe("password"); steps.Add("create"); return Task.CompletedTask; },
+      _ => { steps.Add("report"); return Task.CompletedTask; });
+    result.ShouldBe("password");
+    string.Join(',', steps).ShouldBe(expected);
+  }
+
+  [Fact]
+  public async Task ExistingRoleWithoutSecretRefusesBeforeAnyAction()
+  {
+    var calls = 0;
+    await Should.ThrowAsync<InvalidOperationException>(() => Infra.ReconcileRole(true, false,
+      () => { calls++; return Task.CompletedTask; },
+      () => { calls++; return Task.FromResult("password"); },
+      _ => { calls++; return Task.FromResult(true); },
+      _ => { calls++; return Task.CompletedTask; },
+      _ => { calls++; return Task.CompletedTask; }));
+    calls.ShouldBe(0);
+  }
+
+  [Fact]
+  public async Task ExistingRoleWithWrongSecretRefuses()
+  {
+    var created = false;
+    await Should.ThrowAsync<InvalidOperationException>(() => Infra.ReconcileRole(true, true,
+      () => Task.CompletedTask, () => Task.FromResult("wrong"), _ => Task.FromResult(false),
+      _ => { created = true; return Task.CompletedTask; }, _ => Task.CompletedTask));
+    created.ShouldBeFalse();
+  }
+
+  [Fact]
+  public void ExistingConnectionStringMustMatch()
+  {
+    Infra.CheckConnectionSecret("expected", "expected");
+    Should.Throw<InvalidOperationException>(() => Infra.CheckConnectionSecret("different", "expected"));
+  }
+
+  [Fact]
+  public async Task FirewallIsRemovedAfterFailure()
+  {
+    var azure = new FakeAzure();
+    await Should.ThrowAsync<InvalidOperationException>(() => Infra.WithFirewall(azure, "rg", "server", "192.0.2.1", () => throw new InvalidOperationException("bundle failure")));
+    azure.Calls.Count.ShouldBe(2);
+    azure.Calls[0].ShouldContain("create");
+    azure.Calls[1].ShouldContain("delete");
+    azure.Calls.SelectMany(x => x).ShouldNotContain("secret-value");
+  }
+
+  private sealed class FakeAzure : IAzureProcess
+  {
+    public List<string[]> Calls { get; } = [];
+    public Task<string> RunAsync(params string[] args) { Calls.Add(args); return Task.FromResult(""); }
+  }
+}

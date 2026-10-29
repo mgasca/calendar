@@ -65,7 +65,7 @@ public static partial class Infra
       var appNames = await SecretNames(az, appVault, false);
       if (appNames.Contains("calendar-connection-string", StringComparer.OrdinalIgnoreCase))
       {
-        if (await ReadSecret(az, appVault, "calendar-connection-string") != expected) { throw new InvalidOperationException("Existing app connection string differs from the expected value. " + Recovery); }
+        CheckConnectionSecret(await ReadSecret(az, appVault, "calendar-connection-string"), expected);
       }
       else { await StoreSecret(az, appVault, "calendar-connection-string", expected); }
       await using var grants = new NpgsqlCommand("ALTER DATABASE calendar OWNER TO calendar_migrator; REVOKE ALL ON DATABASE calendar FROM PUBLIC; GRANT CONNECT ON DATABASE calendar TO calendar_app; GRANT USAGE ON SCHEMA public TO calendar_app; ALTER DEFAULT PRIVILEGES FOR ROLE calendar_migrator IN SCHEMA public GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO calendar_app; ALTER DEFAULT PRIVILEGES FOR ROLE calendar_migrator IN SCHEMA public GRANT USAGE, SELECT ON SEQUENCES TO calendar_app;", connection);
@@ -81,30 +81,43 @@ public static partial class Infra
     existsCommand.Parameters.AddWithValue("role", role);
     var exists = (bool)(await existsCommand.ExecuteScalarAsync() ?? false);
     var hasSecret = names.Contains(secret, StringComparer.OrdinalIgnoreCase);
+    return await ReconcileRole(exists, hasSecret,
+      () => StoreSecret(az, vault, secret, "Aa1!" + Convert.ToBase64String(RandomNumberGenerator.GetBytes(48))),
+      () => ReadSecret(az, vault, secret),
+      async password =>
+      {
+        try { await using var verify = new NpgsqlConnection(Connection(host, role, password)); await verify.OpenAsync(); return true; }
+        catch (Exception ex) when (ex is NpgsqlException or IOException) { return false; }
+      },
+      async password =>
+      {
+        await using var format = new NpgsqlCommand("SELECT format('CREATE ROLE %I LOGIN PASSWORD %L', @role, @password)", connection);
+        format.Parameters.AddWithValue("role", role);
+        format.Parameters.AddWithValue("password", password);
+        var sql = (string)(await format.ExecuteScalarAsync() ?? throw new InvalidOperationException("Unable to create role."));
+        await using var create = new NpgsqlCommand(sql, connection);
+        await create.ExecuteNonQueryAsync();
+      },
+      message => output.WriteLineAsync($"{role}: {message}"));
+  }
+
+  internal static async Task<string> ReconcileRole(bool exists, bool hasSecret, Func<Task> store, Func<Task<string>> read, Func<string, Task<bool>> verify, Func<string, Task> create, Func<string, Task> report)
+  {
     if (exists && !hasSecret) { throw new InvalidOperationException(Recovery); }
-    if (!hasSecret)
-    {
-      var generated = "Aa1!" + Convert.ToBase64String(RandomNumberGenerator.GetBytes(48));
-      await StoreSecret(az, vault, secret, generated);
-    }
-    var password = await ReadSecret(az, vault, secret);
+    if (!hasSecret) { await store(); }
+    var password = await read();
     if (exists)
     {
-      try { await using var verify = new NpgsqlConnection(Connection(host, role, password)); await verify.OpenAsync(); }
-      catch (Exception ex) when (ex is NpgsqlException or IOException) { throw new InvalidOperationException(Recovery); }
-      await output.WriteLineAsync($"{role}: existing credential verified.");
+      if (!await verify(password)) { throw new InvalidOperationException(Recovery); }
+      await report("existing credential verified.");
     }
-    else
-    {
-      await using var format = new NpgsqlCommand("SELECT format('CREATE ROLE %I LOGIN PASSWORD %L', @role, @password)", connection);
-      format.Parameters.AddWithValue("role", role);
-      format.Parameters.AddWithValue("password", password);
-      var sql = (string)(await format.ExecuteScalarAsync() ?? throw new InvalidOperationException("Unable to create role."));
-      await using var create = new NpgsqlCommand(sql, connection);
-      await create.ExecuteNonQueryAsync();
-      await output.WriteLineAsync($"{role}: created.");
-    }
+    else { await create(password); await report("created."); }
     return password;
+  }
+
+  internal static void CheckConnectionSecret(string actual, string expected)
+  {
+    if (actual != expected) { throw new InvalidOperationException("Existing app connection string differs from the expected value. " + Recovery); }
   }
 
   private static string Connection(string host, string role, string password) => new NpgsqlConnectionStringBuilder { Host = host, Database = "calendar", Username = role, Password = password, SslMode = SslMode.VerifyFull }.ConnectionString;
@@ -120,7 +133,7 @@ public static partial class Infra
     await az.RunAsync("postgres", "flexible-server", "wait", "--resource-group", group, "--name", server, "--custom", "state=='Ready'");
   }
 
-  private static async Task WithFirewall(IAzureProcess az, string group, string server, string ip, Func<Task> action)
+  internal static async Task WithFirewall(IAzureProcess az, string group, string server, string ip, Func<Task> action)
   {
     var rule = "calendar-migration-" + Guid.NewGuid().ToString("N");
     try

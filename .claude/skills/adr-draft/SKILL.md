@@ -169,9 +169,9 @@ Then tell the user, in plain language:
 ## After review
 
 - **Answers change the ADR:** update the drafts on the same branch, re-run the validator, and update the PR description with what changed. If the user asks for a split, `git rm` the combined file, renumber, and fix every link and the index.
-- **The user approves:** set `status: accepted` in the front matter **and** the index, in the same PR, *before* it merges. ADRs 0014–0016 were merged still marked `proposed`; don't repeat that.
+- **The user approves:** set `status: accepted` in the front matter **and** the index, in the same PR, *before* it merges. ADRs 0014–0016 were merged still marked `proposed`; don't repeat that. Taking a decision is disconnected from delivering it: accept as soon as the user approves the decision, and never hold `proposed` until the implementation, build or rollout exists. Whether it has been delivered is tracked by the implementation issues and PRs, not by the ADR status.
 - **Superseding an ADR:** the new ADR explains what changed. The old one becomes `status: superseded by [ADR-NNNN](NNNN-….md)`, and the index row is updated. Don't edit the old decision's substance.
-- **Implementation:** goes in a separate PR after the ADR is accepted. Its description links the ADR.
+- **Implementation:** goes in a separate PR, linked to the ADR, and does not change the ADR's status. An accepted ADR whose implementation is not built yet is normal. If implementation shows the decision was wrong, supersede it with a new ADR instead of leaving it `proposed`.
 
 ## Bundled tooling
 

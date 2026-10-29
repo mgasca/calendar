@@ -5,6 +5,7 @@ Decisions are recorded in [MADR 4.0](https://adr.github.io/madr/) format. To add
 Every record lists its **decision drivers**, rates each option against them in a table (drivers as rows, options as columns, ★★★ to ☆☆☆), and gives pros and cons for every option in terms of those drivers. See [ADR-0000](0000-use-markdown-architectural-decision-records.md) for the conventions.
 
 - **Drafting with an AI agent:** the [`adr-draft`](../../.claude/skills/adr-draft/SKILL.md) skill walks through the whole process: drivers, research, writing, validation and the review PR.
+- **Status:** `proposed` while the decision is under review, `accepted` as soon as the user approves it (set in the same PR, before it merges), then `superseded by [ADR-NNNN](NNNN-….md)` if replaced. Status records whether a decision was **taken**, not whether it has been **delivered**: never wait for the implementation, build or rollout before accepting. Track delivery in issues and PRs.
 - **Validation:** `make adr-check` (also part of `make lint` and CI) checks structure, rating tables, driver coverage, links and this index.
 
 | ADR | Title | Status |

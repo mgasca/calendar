@@ -1,3 +1,4 @@
+using Azure.Monitor.OpenTelemetry.AspNetCore;
 using Calendar.Api;
 using Calendar.Api.Endpoints;
 using Calendar.Infrastructure;
@@ -9,6 +10,13 @@ using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.OpenApi;
 
 var builder = WebApplication.CreateBuilder(args);
+
+if (!string.IsNullOrWhiteSpace(builder.Configuration["APPLICATIONINSIGHTS_CONNECTION_STRING"]))
+{
+  Environment.SetEnvironmentVariable("OTEL_DOTNET_EXPERIMENTAL_ASPNETCORE_DISABLE_URL_QUERY_REDACTION", "false");
+  Environment.SetEnvironmentVariable("OTEL_DOTNET_EXPERIMENTAL_HTTPCLIENT_DISABLE_URL_QUERY_REDACTION", "false");
+  builder.Services.AddOpenTelemetry().UseAzureMonitor();
+}
 
 builder.Services.AddOpenApi(options => options.AddSchemaTransformer((schema, _, _) =>
 {

@@ -1,6 +1,7 @@
 param location string
 param suffix string
 param tags object
+param appInsightsConnectionString string
 param workspaceId string
 param workspaceCustomerId string
 param registryLoginServer string
@@ -54,7 +55,7 @@ resource app 'Microsoft.App/containerApps@2026-07-01' = {
         name: 'calendar'
         image: containerImage
         resources: { cpu: json('0.25'), memory: '0.5Gi' }
-        env: concat(fixedEnv, emailEnv)
+        env: concat(fixedEnv, emailEnv, [{ name: 'APPLICATIONINSIGHTS_CONNECTION_STRING', value: appInsightsConnectionString }])
         probes: enableHealthProbes ? [
           { type: 'Startup', httpGet: { path: '/api/health', port: targetPort }, initialDelaySeconds: 1, periodSeconds: 5, failureThreshold: 60 }
           { type: 'Liveness', httpGet: { path: '/api/health', port: targetPort }, periodSeconds: 10, failureThreshold: 3 }
@@ -67,3 +68,6 @@ resource app 'Microsoft.App/containerApps@2026-07-01' = {
 }
 
 output outboundIps array = app.properties.outboundIpAddresses
+
+output appId string = app.id
+output fqdn string = app.properties.configuration.ingress.fqdn

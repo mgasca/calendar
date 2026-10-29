@@ -83,6 +83,8 @@ public static class Infra
         else { throw new ArgumentException("Use --phase foundation|full and repeatable --allow-ip CIDR."); }
       }
       if (phase != "foundation" && phase != "full") { throw new ArgumentException("Invalid phase; use foundation or full."); }
+      var alertEmail = Environment.GetEnvironmentVariable("AZURE_ALERT_EMAIL");
+      if (phase == "full" && string.IsNullOrWhiteSpace(alertEmail)) { throw new ArgumentException("Set AZURE_ALERT_EMAIL for full deployments and previews."); }
       foreach (var ip in allowedIps) { ValidateIp(ip); }
       var clientId = Environment.GetEnvironmentVariable("AZURE_DEPLOYER_CLIENT_ID");
       if (!Guid.TryParse(clientId, out var clientGuid)) { throw new ArgumentException("Set AZURE_DEPLOYER_CLIENT_ID to the environment's deployment identity client ID (GUID)."); }
@@ -91,6 +93,7 @@ public static class Infra
       var json = await az.RunAsync("bicep", "build-params", "--file", $"infra/parameters/{args[1]}.bicepparam", "--stdout");
       var compiled = JsonNode.Parse(json)?["parametersJson"]?.GetValue<string>() ?? throw new InvalidOperationException("Invalid Bicep compiler output.");
       var parameters = JsonNode.Parse(compiled)?["parameters"]?.AsObject() ?? throw new InvalidOperationException("Invalid compiled parameters.");
+      parameters["alertEmail"] = new JsonObject { ["value"] = alertEmail ?? "" };
       parameters["deployDatabaseAndApp"] = new JsonObject { ["value"] = phase == "full" };
       parameters["allowedFirewallIps"] = new JsonObject { ["value"] = new JsonArray(allowedIps.Distinct(StringComparer.Ordinal).Order(StringComparer.Ordinal).Select(n => (JsonNode?)IpRange(n)).ToArray()) };
       parameters["deployerPrincipalId"] = new JsonObject { ["value"] = principalId };
@@ -106,6 +109,7 @@ public static class Infra
       string? secretValue = null;
       if (phase == "full")
       {
+        parameters["budgetStartDate"] = new JsonObject { ["value"] = await BudgetStartDate(az, args[1]) };
         var vault = await VaultName(az, args[1], "opsKeyVaultName");
         var names = await SecretNames(az, vault, false);
         if (!names.Contains(PasswordName, StringComparer.OrdinalIgnoreCase)) { throw new InvalidOperationException("Postgres password missing; owner must run secret init-postgres-password first."); }
@@ -131,6 +135,26 @@ public static class Infra
     {
       await error.WriteLineAsync(ex.Message);
       return 1;
+    }
+  }
+
+  private static async Task<string> BudgetStartDate(IAzureProcess az, string env)
+  {
+    try
+    {
+      var json = await az.RunAsync("consumption", "budget", "list", "--resource-group", $"rg-calendar-{env}", "--query", "[?name=='calendar-monthly'].id", "-o", "json");
+      var ids = JsonNode.Parse(json)?.AsArray() ?? throw new InvalidOperationException();
+      if (ids.Count == 0) { return DateTime.UtcNow.ToString("yyyy-MM-01'T'00:00:00'Z'", System.Globalization.CultureInfo.InvariantCulture); }
+      if (ids.Count != 1) { throw new InvalidOperationException(); }
+      var id = ids[0]?.GetValue<string>();
+      if (string.IsNullOrWhiteSpace(id)) { throw new InvalidOperationException(); }
+      var value = await az.RunAsync("resource", "show", "--ids", id, "--api-version", "2023-05-01", "--query", "properties.timePeriod.startDate", "-o", "tsv");
+      if (!DateTimeOffset.TryParse(value, System.Globalization.CultureInfo.InvariantCulture, System.Globalization.DateTimeStyles.AssumeUniversal, out var date) || date.Offset != TimeSpan.Zero || date.Day != 1 || date.TimeOfDay != TimeSpan.Zero) { throw new InvalidOperationException(); }
+      return date.ToString("yyyy-MM-dd'T'HH:mm:ss'Z'", System.Globalization.CultureInfo.InvariantCulture);
+    }
+    catch (Exception ex) when (ex is InvalidOperationException or JsonException or FormatException)
+    {
+      throw new InvalidOperationException("Could not read the existing calendar-monthly budget start date; check Azure access and budget state.", ex);
     }
   }
 

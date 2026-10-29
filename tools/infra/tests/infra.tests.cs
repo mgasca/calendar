@@ -39,6 +39,7 @@ public sealed class InfraTests
   public async Task FullPreviewKeepsPasswordOffArgumentsAndOutput()
   {
     Environment.SetEnvironmentVariable("AZURE_DEPLOYER_CLIENT_ID", "00000000-0000-0000-0000-000000000001");
+    Environment.SetEnvironmentVariable("AZURE_ALERT_EMAIL", "alerts@example.test");
     try
     {
       var az = new FakeAzure { Existing = true };
@@ -49,6 +50,7 @@ public sealed class InfraTests
       output.ToString().ShouldNotContain("transformed-secret");
       output.ToString().ShouldNotContain("encoded-value");
       az.FileContents.ShouldContain("secret-value");
+      az.FileContents.ShouldContain("alerts@example.test");
       az.FileContents.ShouldContain("calendar-connection-string");
       az.FileContents.ShouldContain("allowed-email-2");
       az.FileContents.ShouldContain("\"keyVaultSecretNames\":{\"value\":[\"allowed-email-2\",\"calendar-connection-string\"]}");
@@ -58,7 +60,37 @@ public sealed class InfraTests
       az.Calls.Any(c => c.Contains("app-vault") && c.Contains("list")).ShouldBeTrue();
       File.Exists(az.FilePath).ShouldBeFalse();
     }
-    finally { Environment.SetEnvironmentVariable("AZURE_DEPLOYER_CLIENT_ID", null); }
+    finally { Environment.SetEnvironmentVariable("AZURE_DEPLOYER_CLIENT_ID", null); Environment.SetEnvironmentVariable("AZURE_ALERT_EMAIL", null); }
+  }
+
+  [Fact]
+  public async Task MissingAlertEmailRejectsFullPreview()
+  {
+    Environment.SetEnvironmentVariable("AZURE_ALERT_EMAIL", null);
+    var error = new StringWriter();
+    (await Infra.RunAsync(["what-if", "staging"], new FakeAzure(), new StringWriter(), error)).ShouldBe(1);
+    error.ToString().ShouldContain("AZURE_ALERT_EMAIL");
+  }
+
+  [Fact]
+  public async Task BudgetStartDateIsStableAndInvalidDatesFail()
+  {
+    Environment.SetEnvironmentVariable("AZURE_DEPLOYER_CLIENT_ID", "00000000-0000-0000-0000-000000000001");
+    Environment.SetEnvironmentVariable("AZURE_ALERT_EMAIL", "alerts@example.test");
+    try
+    {
+      var existing = new FakeAzure { Existing = true, BudgetId = "budget-id", BudgetDate = "2026-01-01T00:00:00Z" };
+      (await Infra.RunAsync(["what-if", "staging"], existing, new StringWriter(), new StringWriter())).ShouldBe(0);
+      existing.FileContents.ShouldContain("2026-01-01T00:00:00Z");
+      var absent = new FakeAzure { Existing = true };
+      (await Infra.RunAsync(["what-if", "staging"], absent, new StringWriter(), new StringWriter())).ShouldBe(0);
+      absent.FileContents.ShouldContain(DateTime.UtcNow.ToString("yyyy-MM-01'T'00:00:00'Z'", System.Globalization.CultureInfo.InvariantCulture));
+      var error = new StringWriter();
+      var malformed = new FakeAzure { Existing = true, BudgetId = "budget-id", BudgetDate = "invalid" };
+      (await Infra.RunAsync(["what-if", "staging"], malformed, new StringWriter(), error)).ShouldBe(1);
+      error.ToString().ShouldContain("budget start date");
+    }
+    finally { Environment.SetEnvironmentVariable("AZURE_DEPLOYER_CLIENT_ID", null); Environment.SetEnvironmentVariable("AZURE_ALERT_EMAIL", null); }
   }
 
   [Fact]
@@ -117,6 +149,8 @@ public sealed class InfraTests
   private sealed class FakeAzure : IAzureProcess
   {
     public bool Existing { get; init; }
+    public string? BudgetId { get; init; }
+    public string BudgetDate { get; init; } = "";
     public List<string[]> Calls { get; } = [];
     public string FileContents { get; private set; } = "";
     public string FilePath { get; private set; } = "";
@@ -124,6 +158,8 @@ public sealed class InfraTests
     public Task<string> RunAsync(params string[] args)
     {
       Calls.Add(args);
+      if (args.Contains("consumption") && args.Contains("list")) { return Task.FromResult(BudgetId is null ? "[]" : "[\"budget-id\"]"); }
+      if (args.Contains("resource") && args.Contains("--ids")) { return Task.FromResult(BudgetDate); }
       if (args.Contains("resource")) { return Task.FromResult("[\"vault\"]"); }
       if (args.Contains("list"))
       {

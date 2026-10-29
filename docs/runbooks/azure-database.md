@@ -70,3 +70,14 @@ CREATE TABLE public.t();
 If initialization reports a PostgreSQL permissions failure, the administrator may lack rights to revoke `CREATE` from `PUBLIC` because Azure owns `public` as `azure_pg_admin`. PostgreSQL can report `permission denied for schema public` or `must be owner of schema public`. Inspect the failure as administrator. An **unverified fallback**, subject to Azure allowing the operation, is to run `ALTER SCHEMA public OWNER TO calendar_migrator;` as administrator, rerun initialization, and repeat both checks. This changes schema ownership and requires owner review before use.
 
 To run the role agreement integration test locally, start Docker and run `dotnet run tools/infra/integration/database.cs` from the repository root. It compares the tool grants to the local initialization script and checks migrator, app, and unprivileged-role access.
+
+## Temporary firewall rules and concurrent operators
+
+Run only one initializer per environment at a time, and do not run initialization concurrently with a migration for the same server. Each command removes leftover `calendar-migration-*` rules on that server before starting, so concurrent commands could remove each other's access. After writing a secret, initialization checks its latest value and the role state again, but these checks are not a distributed lock. If concurrent initialization is reported, stop the other operator and inspect the vault and roles before retrying.
+
+SIGINT and SIGTERM request cooperative cancellation and the tool waits for firewall cleanup. SIGKILL, runner loss, and other abrupt termination can still leave a rule behind. Before manually sweeping, ensure no initialization or migration is running. List and delete only the stale rules shown by these commands, replacing the placeholders with actual resource names:
+
+```sh
+az postgres flexible-server firewall-rule list --resource-group <resource-group> --server-name <server-name> --query "[?starts_with(name, 'calendar-migration-')].name" -o tsv
+az postgres flexible-server firewall-rule delete --resource-group <resource-group> --server-name <server-name> --name <stale-rule-name> --yes
+```

@@ -14,13 +14,19 @@ public interface IAzureProcess
 {
   /// <summary>Runs az, returning output only on success.</summary>
   Task<string> RunAsync(params string[] args);
+  /// <summary>Runs cleanup independently of cancellation.</summary>
+  Task<string> RunCleanupAsync(params string[] args) => RunAsync(args);
 }
 
 /// <summary>Runs Azure CLI without shell interpolation.</summary>
-public sealed class AzureProcess : IAzureProcess
+public sealed class AzureProcess(CancellationToken cancellationToken = default) : IAzureProcess
 {
   /// <inheritdoc />
-  public async Task<string> RunAsync(params string[] args)
+  public Task<string> RunAsync(params string[] args) => ExecuteAsync(args, cancellationToken);
+  /// <inheritdoc />
+  public Task<string> RunCleanupAsync(params string[] args) => ExecuteAsync(args, CancellationToken.None);
+
+  private static async Task<string> ExecuteAsync(string[] args, CancellationToken token)
   {
 #pragma warning disable S4036 // az is deliberately resolved from the user toolchain PATH.
     var info = new ProcessStartInfo("az") { RedirectStandardOutput = true, RedirectStandardError = true };
@@ -28,9 +34,10 @@ public sealed class AzureProcess : IAzureProcess
     info.Environment["AZURE_BICEP_USE_BINARY_FROM_PATH"] = "false";
     foreach (var arg in args) { info.ArgumentList.Add(arg); }
     using var process = Process.Start(info) ?? throw new InvalidOperationException("Unable to start az.");
-    var stdout = process.StandardOutput.ReadToEndAsync();
-    var stderr = process.StandardError.ReadToEndAsync();
-    await process.WaitForExitAsync();
+    var stdout = process.StandardOutput.ReadToEndAsync(CancellationToken.None);
+    var stderr = process.StandardError.ReadToEndAsync(CancellationToken.None);
+    try { await process.WaitForExitAsync(token); }
+    catch (OperationCanceledException) { if (!process.HasExited) { process.Kill(true); await process.WaitForExitAsync(CancellationToken.None); } throw; }
     var output = await stdout;
     _ = await stderr; // Azure error output can contain sensitive input: never relay it.
     if (process.ExitCode != 0) { throw new InvalidOperationException($"Azure CLI failed (exit {process.ExitCode}); check access and parameters."); }
@@ -44,12 +51,15 @@ public static partial class Infra
   private const string PasswordName = "postgres-admin-password";
 
   /// <summary>Executes a command using an injected Azure CLI.</summary>
-  public static async Task<int> RunAsync(string[] args, IAzureProcess az, TextWriter output, TextWriter error)
+  public static Task<int> RunAsync(string[] args, IAzureProcess az, TextWriter output, TextWriter error) => RunAsync(args, az, output, error, CancellationToken.None);
+
+  /// <summary>Executes a command with cancellation.</summary>
+  public static async Task<int> RunAsync(string[] args, IAzureProcess az, TextWriter output, TextWriter error, CancellationToken cancellationToken)
   {
     try
     {
       SweepStaleFiles();
-      if (args.Length > 0 && (args[0] == "migrate" || (args[0] == "db" && args.Length > 1 && args[1] == "init-roles"))) { return await DatabaseCommand(args, az, output); }
+      if (args.Length > 0 && (args[0] == "migrate" || (args[0] == "db" && args.Length > 1 && args[1] == "init-roles"))) { return await DatabaseCommand(args, az, output, cancellationToken); }
       if (args.Length < 2) { throw new ArgumentException("Usage: deploy|what-if ENV [--phase foundation|full], db start|stop staging, or secret init-postgres-password ENV"); }
       if (args[0] == "db")
       {
@@ -66,6 +76,7 @@ public static partial class Infra
         var names = await SecretNames(az, vault, false);
         if (names.Contains(PasswordName, StringComparer.OrdinalIgnoreCase)) { throw new InvalidOperationException("Password already exists; coordinated manual rotation is required."); }
         var password = "Aa1!" + Convert.ToBase64String(RandomNumberGenerator.GetBytes(48));
+        await MaskSecret(output, password);
         await WithPrivateFile(password, async path => { await az.RunAsync("keyvault", "secret", "set", "--vault-name", vault, "--name", PasswordName, "--file", path, "--output", "none"); });
         await output.WriteLineAsync("PostgreSQL password stored in Key Vault.");
         return 0;
@@ -111,6 +122,7 @@ public static partial class Infra
         var names = await SecretNames(az, vault, false);
         if (!names.Contains(PasswordName, StringComparer.OrdinalIgnoreCase)) { throw new InvalidOperationException("Postgres password missing; owner must run secret init-postgres-password first."); }
         var password = await az.RunAsync("keyvault", "secret", "show", "--vault-name", vault, "--name", PasswordName, "--query", "value", "-o", "tsv");
+        await MaskSecret(output, password);
         secretValue = password;
         parameters["postgresAdministratorPassword"] = new JsonObject { ["value"] = password };
         var appVault = await VaultName(az, args[1], "appKeyVaultName");
@@ -128,19 +140,28 @@ public static partial class Infra
       });
       return 0;
     }
+    catch (OperationCanceledException ex) when (cancellationToken.IsCancellationRequested)
+    {
+      await error.WriteLineAsync("Operation cancelled.");
+      if (ex.Data["FirewallCleanup"] is string cleanup) { await error.WriteLineAsync(cleanup); }
+      return 1;
+    }
     catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException)
     {
       await error.WriteLineAsync("Unable to detect public IP; pass --client-ip IPv4.");
+      if (ex.Data["FirewallCleanup"] is string cleanup) { await error.WriteLineAsync(cleanup); }
       return 1;
     }
-    catch (Npgsql.NpgsqlException)
+    catch (Npgsql.NpgsqlException ex)
     {
       await error.WriteLineAsync("PostgreSQL operation failed; check connectivity, permissions and server state.");
+      if (ex.Data["FirewallCleanup"] is string cleanup) { await error.WriteLineAsync(cleanup); }
       return 1;
     }
     catch (Exception ex) when (ex is ArgumentException or InvalidOperationException or IOException or JsonException)
     {
       await error.WriteLineAsync(ex.Message);
+      if (ex.Data["FirewallCleanup"] is string cleanup) { await error.WriteLineAsync(cleanup); }
       return 1;
     }
   }

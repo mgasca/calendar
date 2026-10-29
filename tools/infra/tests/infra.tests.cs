@@ -19,11 +19,11 @@ public sealed class InfraTests
     var az = new FakeAzure();
     var output = new StringWriter();
     var error = new StringWriter();
-    (await Infra.RunAsync(["secret", "init-postgres-password", "staging"], az, output, error)).ShouldBe(0);
+    (await Infra.RunAsync(["secret", "init-postgres-password", "staging"], az, output, error, TestContext.Current.CancellationToken)).ShouldBe(0);
     az.FileContents.ShouldNotBeNullOrEmpty();
     az.Calls.Any(c => c.Contains("ops-vault") && c.Contains("set")).ShouldBeTrue();
     az.Calls.SelectMany(x => x).ShouldNotContain(az.FileContents);
-    output.ToString().ShouldNotContain(az.FileContents);
+    WithoutMasks(output.ToString()).ShouldNotContain(az.FileContents);
     error.ToString().ShouldNotContain(az.FileContents);
     File.Exists(az.FilePath).ShouldBeFalse();
   }
@@ -32,9 +32,9 @@ public sealed class InfraTests
   public async Task ExistingPasswordCannotBeOverwritten()
   {
     var az = new FakeAzure { Existing = true };
-    (await Infra.RunAsync(["secret", "init-postgres-password", "staging"], az, new StringWriter(), new StringWriter())).ShouldBe(1);
+    (await Infra.RunAsync(["secret", "init-postgres-password", "staging"], az, new StringWriter(), new StringWriter(), TestContext.Current.CancellationToken)).ShouldBe(1);
     az.Calls.Any(c => c.Contains("set")).ShouldBeFalse();
-    (await Infra.RunAsync(["secret", "init-postgres-password", "staging", "--force"], az, new StringWriter(), new StringWriter())).ShouldBe(1);
+    (await Infra.RunAsync(["secret", "init-postgres-password", "staging", "--force"], az, new StringWriter(), new StringWriter(), TestContext.Current.CancellationToken)).ShouldBe(1);
   }
 
   [Fact]
@@ -45,9 +45,9 @@ public sealed class InfraTests
     {
       var az = new FakeAzure { Existing = true };
       var output = new StringWriter();
-      (await Infra.RunAsync(["what-if", "staging"], az, output, new StringWriter())).ShouldBe(0);
+      (await Infra.RunAsync(["what-if", "staging"], az, output, new StringWriter(), TestContext.Current.CancellationToken)).ShouldBe(0);
       az.Calls.SelectMany(x => x).ShouldNotContain("secret-value");
-      output.ToString().ShouldNotContain("secret-value");
+      WithoutMasks(output.ToString()).ShouldNotContain("secret-value");
       output.ToString().ShouldNotContain("transformed-secret");
       output.ToString().ShouldNotContain("encoded-value");
       az.FileContents.ShouldContain("secret-value");
@@ -70,7 +70,7 @@ public sealed class InfraTests
     try
     {
       var az = new FakeAzure();
-      (await Infra.RunAsync(["what-if", "staging", "--phase", "foundation"], az, new StringWriter(), new StringWriter())).ShouldBe(0);
+      (await Infra.RunAsync(["what-if", "staging", "--phase", "foundation"], az, new StringWriter(), new StringWriter(), TestContext.Current.CancellationToken)).ShouldBe(0);
       az.Calls.Any(c => c.Contains("keyvault")).ShouldBeFalse();
       az.FileContents.ShouldContain("\"deployDatabaseAndApp\":{\"value\":false}");
     }
@@ -85,11 +85,11 @@ public sealed class InfraTests
     try
     {
       var az = new FakeAzure();
-      (await Infra.RunAsync(["what-if", "staging", "--phase", "foundation", "--allow-ip", "203.0.113.0/24"], az, new StringWriter(), new StringWriter())).ShouldBe(0);
+      (await Infra.RunAsync(["what-if", "staging", "--phase", "foundation", "--allow-ip", "203.0.113.0/24"], az, new StringWriter(), new StringWriter(), TestContext.Current.CancellationToken)).ShouldBe(0);
       az.FileContents.ShouldContain("203.0.113.0");
       az.FileContents.ShouldContain("203.0.113.255");
       az.FileContents.ShouldContain("192.0.2.2");
-      (await Infra.RunAsync(["what-if", "staging", "--allow-ip", "1.2.3.4/33"], az, new StringWriter(), new StringWriter())).ShouldBe(1);
+      (await Infra.RunAsync(["what-if", "staging", "--allow-ip", "1.2.3.4/33"], az, new StringWriter(), new StringWriter(), TestContext.Current.CancellationToken)).ShouldBe(1);
     }
     finally { Environment.SetEnvironmentVariable("AZURE_DEPLOYER_CLIENT_ID", null); Environment.SetEnvironmentVariable("AZURE_ALLOWED_IPS", null); }
   }
@@ -109,12 +109,14 @@ public sealed class InfraTests
       await File.WriteAllTextAsync(stale, "stale", TestContext.Current.CancellationToken);
       await File.WriteAllTextAsync(fresh, "fresh", TestContext.Current.CancellationToken);
       File.SetLastWriteTimeUtc(stale, DateTime.UtcNow.AddDays(-2));
-      await Infra.RunAsync([], new FakeAzure(), new StringWriter(), new StringWriter());
+      await Infra.RunAsync([], new FakeAzure(), new StringWriter(), new StringWriter(), TestContext.Current.CancellationToken);
       File.Exists(stale).ShouldBeFalse();
       File.Exists(fresh).ShouldBeTrue();
     }
     finally { Environment.SetEnvironmentVariable("XDG_RUNTIME_DIR", previous); Directory.Delete(root, true); }
   }
+
+  private static string WithoutMasks(string output) => string.Join('\n', output.Split('\n').Where(line => !line.StartsWith("::add-mask::", StringComparison.Ordinal)));
 
   private sealed class FakeAzure : IAzureProcess
   {

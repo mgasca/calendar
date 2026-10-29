@@ -175,3 +175,11 @@ Container Apps ingress; the container must only be reachable through that ingres
 ASP.NET Data Protection keys are stored unencrypted in the calendar database so sessions survive
 restarts and revisions. Apply migrations separately as `calendar_migrator` before starting a new
 revision; the application never applies them. Restrict database access and backups accordingly.
+
+### Local container image
+
+Run `make image` to build `calendar:local` and `calendar:<short-git-sha>` using the Node major in `frontend/.node-version` and the pnpm version in `frontend/package.json`. The .NET SDK and runtime use the .NET 10 image family; `backend/global.json` selects the SDK. The image listens on port **8080**, which is also the Azure Container Apps target port.
+
+Run `make db-up db-migrate` first, then `make run-image`. On Linux/WSL this uses host networking to reach the loopback-only PostgreSQL port with the `calendar_app` role; port 8080 must be free and is exposed on the host network interfaces. It loads `.env` and passes the connection string through the environment. The image defaults to Production; use `make run-image IMAGE_ENV=Development` to enable development-only behavior. Production Google sign-in requires real `Auth__Google__ClientId`, `Auth__Google__ClientSecret` and `Auth__AllowedEmails__0` settings in `.env`, otherwise only anonymous endpoints are available.
+
+In another terminal, run `make smoke-image` (optionally set `BASE_URL`) to check the SPA root, `/week` deep link, `/api/health`, unknown API 404 and anonymous protected API 401. The runtime image has no healthcheck because it does not include an HTTP client; external platforms can probe `/api/health`.

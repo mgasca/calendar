@@ -115,3 +115,22 @@ preview-docs: ## Preview the built documentation site locally
 clean: ## Remove build outputs
 	$(DOTNET) clean
 	find $(FRONTEND) -name dist -type d -prune -not -path '*/node_modules/*' -exec rm -rf {} +
+
+image: ## Build calendar:local and calendar:<git-sha> using the pinned Node major
+	docker build --build-arg NODE_VERSION=$$(cat frontend/.node-version) -t calendar:local -t calendar:$$(git rev-parse --short HEAD) .
+
+run-image: ## Run on host port 8080 using local Postgres and .env (IMAGE_ENV defaults to Production)
+	@$(DB_ENV) && export ConnectionStrings__Calendar="Host=127.0.0.1;Port=5432;Database=$$POSTGRES_DB;Username=calendar_app;Password=$$CALENDAR_APP_PASSWORD" && \
+	export ASPNETCORE_ENVIRONMENT="$(or $(IMAGE_ENV),Production)" && \
+	docker run --rm --network host --env-file .env -e ConnectionStrings__Calendar -e ASPNETCORE_ENVIRONMENT calendar:local
+
+smoke-image: ## Check a running image at localhost:8080 (or BASE_URL)
+	@base="$${BASE_URL:-http://localhost:8080}"; tmp=$$(mktemp -d); trap 'rm -rf "$$tmp"' EXIT; \
+	for route in / /week /api/health /api/unknown /api/tasks; do \
+	  code=$$(curl -sS -o "$$tmp/body" -w '%{http_code}' "$$base$$route") || exit 1; \
+	  case "$$route:$$code" in /:200) grep -qi '<!doctype html' "$$tmp/body" && cp "$$tmp/body" "$$tmp/index" || exit 1;; \
+	    /week:200) cmp -s "$$tmp/index" "$$tmp/body" || exit 1;; \
+	    /api/health:200|/api/unknown:404|/api/tasks:401) ;; \
+	    *) echo "Unexpected response $$code for $$route" >&2; exit 1;; esac; \
+	  echo "$$route: $$code"; \
+	done

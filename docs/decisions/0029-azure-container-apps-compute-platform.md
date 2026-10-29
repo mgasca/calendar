@@ -8,7 +8,9 @@ decision-makers: mgasca, Claude (AI assistant)
 
 ## Context and Problem Statement
 
-Calendar needs internet-facing staging and production deployments for one or a few users, with low cost and an Azure newcomer operating them. The Google sign-in BFF and same-origin browser session are already defined by [ADR-0027](0027-google-oidc-bff-session.md). Which Azure compute platform should run the application?
+Calendar needs internet-facing staging and production deployments for one or a few users, with low cost and a cloud newcomer operating them. The Google sign-in BFF and same-origin browser session are already defined by [ADR-0027](0027-google-oidc-bff-session.md). Which compute platform and service should run the application?
+
+The owner has already chosen Azure as the deployment provider outside this decision. AWS alternatives are compared for context but do not meet that constraint.
 
 ## Decision Drivers
 
@@ -22,17 +24,19 @@ Calendar needs internet-facing staging and production deployments for one or a f
 * Azure Container Apps Consumption
 * Azure App Service for containers
 * Azure Kubernetes Service (AKS)
+* Amazon ECS on AWS Fargate
+* Amazon Lightsail container services
 
 ## Decision Outcome
 
-Chosen option: "Azure Container Apps Consumption", because scale-to-zero suits sparse traffic (D1), while managed container hosting and built-in HTTPS ingress limit operational work (D2, D3) and support the application image (D4).
+Chosen option: "Azure Container Apps Consumption", because it satisfies the owner's Azure constraint and scale-to-zero suits sparse traffic (D1), while managed container hosting and built-in HTTPS ingress limit operational work (D2, D3) and support the application image (D4). AWS options are excluded by the provider constraint even where they score well.
 
-| Driver | **Container Apps (chosen)** | App Service | AKS |
-| --- | :---: | :---: | :---: |
-| D1 Low cost | ★★★ | ★★☆ | ★☆☆ |
-| D2 Operational simplicity | ★★★ | ★★★ | ★☆☆ |
-| D3 HTTPS ingress | ★★★ | ★★★ | ★☆☆ |
-| D4 Container fit | ★★★ | ★★☆ | ★★★ |
+| Driver | **Container Apps (chosen)** | App Service | AKS | ECS Fargate | Lightsail containers |
+| --- | :---: | :---: | :---: | :---: | :---: |
+| D1 Low cost | ★★★ | ★★☆ | ★☆☆ | ★★☆ | ★★☆ |
+| D2 Operational simplicity | ★★★ | ★★★ | ★☆☆ | ★★☆ | ★★★ |
+| D3 HTTPS ingress | ★★★ | ★★★ | ★☆☆ | ★★☆ | ★★★ |
+| D4 Container fit | ★★★ | ★★☆ | ★★★ | ★★★ | ★★☆ |
 
 ### Deployment conventions
 
@@ -85,6 +89,24 @@ Review infrastructure for UK South, the Consumption profile, ACR Basic, minimum 
 * Bad, because **D3 HTTPS ingress**: internet ingress and TLS need additional configuration and components.
 * Good, because **D4 Container fit**: Kubernetes supports container scheduling and scaling for complex workloads.
 
+### Amazon ECS on AWS Fargate
+
+* Good, because **D1 Low cost**: Fargate bills task resources by duration and ECS can scale tasks to zero with an appropriate demand metric. [Fargate pricing](https://aws.amazon.com/fargate/pricing/) and [ECS scaling](https://docs.aws.amazon.com/AmazonECS/latest/developerguide/service-auto-scaling.html) describe the details.
+* Bad, because **D1 Low cost**: an Application Load Balancer and other supporting resources incur separate charges even when no task runs; scaling back from zero needs an appropriate metric and is not automatic HTTP wake-up.
+* Good, because **D2 Operational simplicity**: AWS manages the underlying Fargate compute, although ECS networking, scaling, and load-balancer configuration still need care.
+* Good, because **D3 HTTPS ingress**: an Application Load Balancer supports HTTPS, but it requires separate provisioning and certificate configuration ([ECS load balancing](https://docs.aws.amazon.com/AmazonECS/latest/developerguide/service-load-balancing.html)).
+* Good, because **D4 Container fit**: ECS runs container images as scalable Fargate tasks.
+
+### Amazon Lightsail container services
+
+* Bad, because **D1 Low cost**: the service is charged while enabled or disabled, so idle services do not scale to zero cost; [AWS](https://docs.aws.amazon.com/lightsail/latest/userguide/amazon-lightsail-container-services.html) describes hourly and capacity-based billing.
+* Good, because **D2 Operational simplicity**: managed container capacity and built-in load balancing require little infrastructure management.
+* Good, because **D3 HTTPS ingress**: the service provides a default HTTPS endpoint and redirects HTTP to HTTPS ([AWS FAQ](https://docs.aws.amazon.com/lightsail/latest/userguide/amazon-lightsail-faq-containers.html)).
+* Good, because **D4 Container fit**: it runs Linux container images and permits changing capacity.
+* Bad, because **D4 Container fit**: capacity changes are configured by the operator and private external registries are not supported; custom images can be pushed to Lightsail.
+
 ## More Information
 
 Microsoft lists UK South for [Container Apps Express](https://learn.microsoft.com/en-us/azure/container-apps/express-overview), but availability of the selected standard environment and specific PostgreSQL Burstable SKU in this subscription remains unverified. Microsoft documents [Burstable PostgreSQL tiers](https://learn.microsoft.com/en-us/azure/postgresql/compute-storage/concepts-compute), including their CPU-credit constraints and production support limitations; the database ADR owns that choice. Regional capacity, pricing and features can change.
+
+AWS documents [Lightsail in London](https://docs.aws.amazon.com/lightsail/latest/userguide/understanding-regions-and-availability-zones-in-amazon-lightsail.html); specific container-service capacity and Fargate availability in a particular account and London region remain unverified. AWS has [closed App Runner to new customers](https://docs.aws.amazon.com/apprunner/latest/dg/apprunner-availability-change.html), so it is not a viable new-customer option; AWS recommends ECS Express Mode as a migration alternative.

@@ -12,9 +12,9 @@ Calendar's Azure deployment serves a small number of allow-listed users with Goo
 
 ## Decision Drivers
 
-* **D1 Production data safety**: testing and migrations must not expose or alter real user data.
-* **D2 Failure isolation**: staging changes and outages should not affect production resources.
-* **D3 Cost**: minimize recurring charges for a small, intermittently used application.
+* **D1 Cost**: minimize recurring charges for a small, intermittently used application.
+* **D2 Production data safety**: testing and migrations must not expose or alter real user data.
+* **D3 Failure isolation**: staging changes and outages should not affect production resources.
 * **D4 Release confidence**: exercise a representative deployment, authentication and migration before production.
 * **D5 Operational simplicity**: keep setup and ongoing management understandable for an owner new to Azure.
 
@@ -27,13 +27,13 @@ Calendar's Azure deployment serves a small number of allow-listed users with Goo
 
 ## Decision Outcome
 
-Chosen option: "Separate staging and production resources", because D1 and D2 outweigh its extra D3 cost, and a representative staging deployment improves D4.
+Chosen option: "Separate staging and production resources", because the D1 cost is mitigated by stopping staging when idle, while D2 and D3 protect production and a representative staging deployment improves D4.
 
 | Driver | **Separate resources (chosen)** | Shared server | Production-data preview | Production only |
 | --- | :---: | :---: | :---: | :---: |
-| D1 Production data safety | ★★★ | ★★☆ | ☆☆☆ | ☆☆☆ |
-| D2 Failure isolation | ★★★ | ★☆☆ | ☆☆☆ | ☆☆☆ |
-| D3 Cost | ★☆☆ | ★★☆ | ★★★ | ★★★ |
+| D1 Cost | ★☆☆ | ★★☆ | ★★★ | ★★★ |
+| D2 Production data safety | ★★★ | ★★☆ | ☆☆☆ | ☆☆☆ |
+| D3 Failure isolation | ★★★ | ★☆☆ | ☆☆☆ | ☆☆☆ |
 | D4 Release confidence | ★★★ | ★★☆ | ★☆☆ | ☆☆☆ |
 | D5 Operational simplicity | ★☆☆ | ★★☆ | ★★☆ | ★★★ |
 
@@ -58,34 +58,34 @@ Chosen option: "Separate staging and production resources", because D1 and D2 ou
 
 ### Separate staging and production resources
 
-* Good, because **D1 Production data safety**: staging uses separate synthetic data and credentials.
-* Good, because **D2 Failure isolation**: staging database and resource changes do not directly change production resources.
-* Bad, because **D3 Cost**: a second server and resources incur charges even when some compute is stopped.
+* Good, because **D2 Production data safety**: staging uses separate synthetic data and credentials.
+* Good, because **D3 Failure isolation**: staging database and resource changes do not directly change production resources.
+* Bad, because **D1 Cost**: a second server and resources incur charges even when some compute is stopped.
 * Good, because **D4 Release confidence**: the same architecture and migration path can be exercised before production.
 * Bad, because **D5 Operational simplicity**: two sets of resources, access and OAuth configuration must be managed.
 
 ### Separate databases on a shared PostgreSQL server
 
-* Good, because **D3 Cost**: one server avoids a second server's compute and storage overhead.
+* Good, because **D1 Cost**: one server avoids a second server's compute and storage overhead.
 * Good, because **D5 Operational simplicity**: one server needs less infrastructure administration.
-* Bad, because **D1 Production data safety**: database separation and credentials help, but server-wide privileged access crosses the boundary.
-* Bad, because **D2 Failure isolation**: server outages, resource contention and server-level changes affect both databases; stopping staging compute also stops production.
+* Bad, because **D2 Production data safety**: database separation and credentials help, but server-wide privileged access crosses the boundary.
+* Bad, because **D3 Failure isolation**: server outages, resource contention and server-level changes affect both databases; stopping staging compute also stops production.
 * Bad, because **D4 Release confidence**: database-level migrations can be tested, but server configuration changes cannot be isolated.
 
 ### Preview a revision against production data
 
-* Good, because **D3 Cost**: avoids a second database server and supporting environment.
+* Good, because **D1 Cost**: avoids a second database server and supporting environment.
 * Good, because **D5 Operational simplicity**: revision routing uses the existing application and server.
-* Bad, because **D1 Production data safety**: test traffic and migrations can read or alter real user data.
-* Bad, because **D2 Failure isolation**: revisions share production dependencies and application-level settings.
+* Bad, because **D2 Production data safety**: test traffic and migrations can read or alter real user data.
+* Bad, because **D3 Failure isolation**: revisions share production dependencies and application-level settings.
 * Bad, because **D4 Release confidence**: testing a revision cannot safely rehearse destructive migrations independently.
 
 ### Production only
 
-* Good, because **D3 Cost**: only one environment is provisioned.
+* Good, because **D1 Cost**: only one environment is provisioned.
 * Good, because **D5 Operational simplicity**: only one set of resources and credentials is managed.
-* Bad, because **D1 Production data safety**: testing and migrations directly affect real data.
-* Bad, because **D2 Failure isolation**: there is no separate place to contain release failures.
+* Bad, because **D2 Production data safety**: testing and migrations directly affect real data.
+* Bad, because **D3 Failure isolation**: there is no separate place to contain release failures.
 * Bad, because **D4 Release confidence**: no representative pre-production deployment or migration rehearsal exists.
 
 ## More Information

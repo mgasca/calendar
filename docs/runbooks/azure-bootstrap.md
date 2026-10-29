@@ -30,11 +30,13 @@ done
 for provider in Microsoft.App Microsoft.ContainerRegistry Microsoft.DBforPostgreSQL Microsoft.KeyVault Microsoft.OperationalInsights Microsoft.Insights; do
   az provider show --namespace "$provider" --query '{provider:namespace,state:registrationState}' -o json
 done
-az containerapp list-usages --location uksouth -o table
-az postgres flexible-server list-skus --location uksouth -o json
+az containerapp list-usages --location uksouth -o json \
+  | jq -r '(if type == "object" then .value else . end)[] | select(.name.localizedValue | test("Consumption")) | [.name.localizedValue, .currentValue, .limit] | @tsv'
+az postgres flexible-server list-skus --location uksouth -o json \
+  | jq -r '(if type == "object" then .value else . end)[] | (.supportedServerEditions // .supportedFlexibleServerEditions // [])[] | select(.name == "Burstable") | .supportedServerSkus[] | [.name, .vCores, .supportedMemoryPerVcoreMb, ((.supportedZones // []) | join(","))] | @tsv'
 ```
 
-Verify each state is `Registered` (repeat the second loop until it is). Inspect Container Apps quotas and the available PostgreSQL Burstable SKUs; confirm enough capacity for both environments before S5. Check the Azure portal's regional service availability and subscription quota pages too; a listed SKU does not guarantee allocation. Request quota increases through Azure support when needed.
+Verify each state is `Registered` (repeat the second loop until it is). A good result is a few tab-separated lines: the Consumption core quota with its used and limit values, then one line per Burstable PostgreSQL SKU (name, vCores, memory per vCore in MB, zones). If either command prints nothing, the CLI output layout may have changed: run it without the `jq` filter and check the field names. Inspect available capacity and confirm enough capacity for both environments before S5. Check the Azure portal's regional service availability and subscription quota pages too; a listed SKU does not guarantee allocation. Request quota increases through Azure support when needed.
 
 ## Create the resource groups and identities
 

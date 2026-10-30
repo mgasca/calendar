@@ -39,8 +39,8 @@ public sealed class AzureProcess(CancellationToken cancellationToken = default) 
     try { await process.WaitForExitAsync(token); }
     catch (OperationCanceledException) { if (!process.HasExited) { process.Kill(true); await process.WaitForExitAsync(CancellationToken.None); } throw; }
     var output = await stdout;
-    _ = await stderr; // Azure error output can contain sensitive input: never relay it.
-    if (process.ExitCode != 0) { throw new InvalidOperationException($"Azure CLI failed (exit {process.ExitCode}); check access and parameters."); }
+    var errors = await stderr;
+    if (process.ExitCode != 0) { throw new AzureFailureException(process.ExitCode, output, errors); }
     return output.Trim();
   }
 }
@@ -56,8 +56,14 @@ public static partial class Infra
   /// <summary>Executes a command with cancellation.</summary>
   public static async Task<int> RunAsync(string[] args, IAzureProcess az, TextWriter output, TextWriter error, CancellationToken cancellationToken)
   {
+    var diagnostics = new Diagnostics(az, output);
+    Diagnostics.Current.Value = diagnostics;
+    az = diagnostics.Wrap();
     try
     {
+      var flags = args.ToList();
+      diagnostics.Verbose = flags.Remove("--verbose") || Environment.GetEnvironmentVariable("INFRA_VERBOSE") == "1";
+      args = flags.ToArray();
       SweepStaleFiles();
       if (args.Length > 0 && (args[0] == "migrate" || (args[0] == "db" && args.Length > 1 && args[1] == "init-roles"))) { return await DatabaseCommand(args, az, output, cancellationToken); }
       if (args.Length < 2) { throw new ArgumentException("Usage: deploy|what-if ENV [--phase foundation|full], db start|stop staging, or secret init-postgres-password ENV"); }
@@ -139,6 +145,11 @@ public static partial class Infra
         if (args[0] == "what-if") { await output.WriteLineAsync(SafePreview(result, secretValue)); }
       });
       return 0;
+    }
+    catch (AzureFailureException ex)
+    {
+      await diagnostics.Report(ex, error);
+      return 1;
     }
     catch (OperationCanceledException ex) when (cancellationToken.IsCancellationRequested)
     {
@@ -267,6 +278,16 @@ public static partial class Infra
     {
       File.Delete(path);
     }
+  }
+
+  internal static async Task<string> WriteTranscript(string data)
+  {
+    if (OperatingSystem.IsWindows()) { throw new InvalidOperationException("Infrastructure tooling requires Linux or WSL."); }
+    var path = Path.Combine(RuntimeDirectory(), "calendar-infra-transcript-" + Guid.NewGuid().ToString("N"));
+    using var file = new FileStream(path, new FileStreamOptions { Mode = FileMode.CreateNew, Access = FileAccess.Write, UnixCreateMode = UnixFileMode.UserRead | UnixFileMode.UserWrite });
+    using var writer = new StreamWriter(file);
+    await writer.WriteAsync(data);
+    return path;
   }
 
   private static async Task WithPrivateFile(string data, Func<string, Task> action)

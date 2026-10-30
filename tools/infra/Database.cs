@@ -158,6 +158,7 @@ public static partial class Infra
   private static string Connection(string host, string role, string password) => new NpgsqlConnectionStringBuilder { Host = host, Database = "calendar", Username = role, Password = password, SslMode = SslMode.VerifyFull }.ConnectionString;
   internal static async Task MaskSecret(TextWriter output, string value)
   {
+    Diagnostics.Current.Value?.Mask(value);
     if (Environment.GetEnvironmentVariable("GITHUB_ACTIONS") == "true")
     {
       await output.WriteLineAsync("::add-mask::" + value.Replace("%", "%25", StringComparison.Ordinal).Replace("\r", "%0D", StringComparison.Ordinal).Replace("\n", "%0A", StringComparison.Ordinal));

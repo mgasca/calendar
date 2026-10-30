@@ -22,10 +22,12 @@ public static class AgendaQueries
   public static IQueryable<CalendarEvent> AllDayOn(this IQueryable<CalendarEvent> events, DayWindow window)
   {
     ArgumentNullException.ThrowIfNull(events);
-    var date = window.Date;
+    DateOnly date = window.Date;
     return events.Where(e =>
         e.IsAllDay
-        && NpgsqlRangeDbFunctionsExtensions.Contains(EF.Property<NpgsqlRange<DateOnly>?>(e, CalendarEventConfiguration.DateSpanProperty)!.Value, date));
+        && NpgsqlRangeDbFunctionsExtensions.Contains(
+          EF.Property<NpgsqlRange<DateOnly>?>(e, CalendarEventConfiguration.DateSpanProperty)!.Value,
+          date));
   }
 
   /// <summary>
@@ -43,7 +45,7 @@ public static class AgendaQueries
   public static IQueryable<TodoTask> DueOn(this IQueryable<TodoTask> tasks, DayWindow window)
   {
     ArgumentNullException.ThrowIfNull(tasks);
-    var (date, start, end) = (window.Date, window.Start, window.End);
+    (DateOnly date, DateTimeOffset start, DateTimeOffset end) = (window.Date, window.Start, window.End);
     return tasks.Where(t => t.DueDate == date || (t.DueAt >= start && t.DueAt < end));
   }
 
@@ -51,11 +53,11 @@ public static class AgendaQueries
   public static IQueryable<TodoTask> OverdueFor(this IQueryable<TodoTask> tasks, DayWindow window)
   {
     ArgumentNullException.ThrowIfNull(tasks);
-    var (date, start, end) = (window.Date, window.Start, window.End);
+    (DateOnly date, DateTimeOffset start, DateTimeOffset end) = (window.Date, window.Start, window.End);
 
     // Two disjoint branches (UNION ALL) rather than one OR, so open tasks are read from the open-task due
     // indexes and today's completions from the completed-at index, never the whole completed history.
-    var pastDue = tasks.Where(t => t.DueDate < date || t.DueAt < start);
+    IQueryable<TodoTask> pastDue = tasks.Where(t => t.DueDate < date || t.DueAt < start);
     return pastDue.Where(t => t.CompletedAt == null)
         .Concat(pastDue.Where(t => t.CompletedAt >= start && t.CompletedAt < end));
   }
@@ -72,7 +74,9 @@ public static class AgendaQueries
     var dates = new NpgsqlRange<DateOnly>(range.StartDate, true, range.EndDate, false);
     return events.Where(e =>
         e.IsAllDay
-        && NpgsqlRangeDbFunctionsExtensions.Overlaps(EF.Property<NpgsqlRange<DateOnly>?>(e, CalendarEventConfiguration.DateSpanProperty)!.Value, dates));
+        && NpgsqlRangeDbFunctionsExtensions.Overlaps(
+          EF.Property<NpgsqlRange<DateOnly>?>(e, CalendarEventConfiguration.DateSpanProperty)!.Value,
+          dates));
   }
 
   /// <summary>
@@ -95,7 +99,8 @@ public static class AgendaQueries
   {
     ArgumentNullException.ThrowIfNull(tasks);
     ArgumentNullException.ThrowIfNull(range);
-    var (startDate, endDate, start, end) = (range.StartDate, range.EndDate, range.Start, range.End);
+    (DateOnly startDate, DateOnly endDate, DateTimeOffset start, DateTimeOffset end) =
+      (range.StartDate, range.EndDate, range.Start, range.End);
     return tasks.Where(t => (t.DueDate >= startDate && t.DueDate < endDate) || (t.DueAt >= start && t.DueAt < end));
   }
 
@@ -107,7 +112,7 @@ public static class AgendaQueries
   {
     ArgumentNullException.ThrowIfNull(tasks);
     ArgumentNullException.ThrowIfNull(range);
-    var (startDate, start) = (range.StartDate, range.Start);
+    (DateOnly startDate, DateTimeOffset start) = (range.StartDate, range.Start);
     return tasks.Where(t => t.DueDate < startDate || t.DueAt < start);
   }
 
@@ -121,6 +126,8 @@ public static class AgendaQueries
     var windowRange = new NpgsqlRange<DateTimeOffset>(start, true, end, false);
     return events.Where(e =>
         !e.IsAllDay
-        && NpgsqlRangeDbFunctionsExtensions.Overlaps(EF.Property<NpgsqlRange<DateTimeOffset>?>(e, CalendarEventConfiguration.SpanProperty)!.Value, windowRange));
+        && NpgsqlRangeDbFunctionsExtensions.Overlaps(
+          EF.Property<NpgsqlRange<DateTimeOffset>?>(e, CalendarEventConfiguration.SpanProperty)!.Value,
+          windowRange));
   }
 }

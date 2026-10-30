@@ -66,7 +66,7 @@ internal sealed class FieldErrors
       return null;
     }
 
-    if (TimeZones.TryFindIana(timeZone, out var zone))
+    if (TimeZones.TryFindIana(timeZone, out TimeZoneInfo? zone))
     {
       return zone;
     }

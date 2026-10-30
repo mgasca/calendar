@@ -60,7 +60,10 @@ public sealed class InfraTests
       az.Calls.Any(c => c.Contains("app-vault") && c.Contains("list")).ShouldBeTrue();
       File.Exists(az.FilePath).ShouldBeFalse();
     }
-    finally { Environment.SetEnvironmentVariable("AZURE_DEPLOYER_CLIENT_ID", null); }
+    finally
+    {
+      Environment.SetEnvironmentVariable("AZURE_DEPLOYER_CLIENT_ID", null);
+    }
   }
 
   [Fact]
@@ -74,7 +77,10 @@ public sealed class InfraTests
       az.Calls.Any(c => c.Contains("keyvault")).ShouldBeFalse();
       az.FileContents.ShouldContain("\"deployDatabaseAndApp\":{\"value\":false}");
     }
-    finally { Environment.SetEnvironmentVariable("AZURE_DEPLOYER_CLIENT_ID", null); }
+    finally
+    {
+      Environment.SetEnvironmentVariable("AZURE_DEPLOYER_CLIENT_ID", null);
+    }
   }
 
   [Fact]
@@ -91,7 +97,11 @@ public sealed class InfraTests
       az.FileContents.ShouldContain("192.0.2.2");
       (await Infra.RunAsync(["what-if", "staging", "--allow-ip", "1.2.3.4/33"], az, new StringWriter(), new StringWriter(), TestContext.Current.CancellationToken)).ShouldBe(1);
     }
-    finally { Environment.SetEnvironmentVariable("AZURE_DEPLOYER_CLIENT_ID", null); Environment.SetEnvironmentVariable("AZURE_ALLOWED_IPS", null); }
+    finally
+    {
+      Environment.SetEnvironmentVariable("AZURE_DEPLOYER_CLIENT_ID", null);
+      Environment.SetEnvironmentVariable("AZURE_ALLOWED_IPS", null);
+    }
   }
 
   [Fact]
@@ -103,7 +113,10 @@ public sealed class InfraTests
     try
     {
       var directory = Path.Combine(root, "calendar-infra-private");
-      if (!OperatingSystem.IsWindows()) { Directory.CreateDirectory(directory, UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute); }
+      if (!OperatingSystem.IsWindows())
+      {
+        Directory.CreateDirectory(directory, UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute);
+      }
       var stale = Path.Combine(directory, "calendar-infra-old");
       var fresh = Path.Combine(directory, "calendar-infra-fresh");
       await File.WriteAllTextAsync(stale, "stale", TestContext.Current.CancellationToken);
@@ -113,7 +126,11 @@ public sealed class InfraTests
       File.Exists(stale).ShouldBeFalse();
       File.Exists(fresh).ShouldBeTrue();
     }
-    finally { Environment.SetEnvironmentVariable("XDG_RUNTIME_DIR", previous); Directory.Delete(root, true); }
+    finally
+    {
+      Environment.SetEnvironmentVariable("XDG_RUNTIME_DIR", previous);
+      Directory.Delete(root, true);
+    }
   }
 
   private static string WithoutMasks(string output) => string.Join('\n', output.Split('\n').Where(line => !line.StartsWith("::add-mask::", StringComparison.Ordinal)));
@@ -128,23 +145,48 @@ public sealed class InfraTests
     public Task<string> RunAsync(params string[] args)
     {
       Calls.Add(args);
-      if (args.Contains("resource")) { return Task.FromResult("[\"vault\"]"); }
+      if (args.Contains("resource"))
+      {
+        return Task.FromResult("[\"vault\"]");
+      }
       if (args.Contains("list"))
       {
-        if (args.Contains("ops-vault")) { return Task.FromResult(Existing ? "[{\"id\":\"https://vault/secrets/postgres-admin-password\",\"enabled\":true}]" : "[]"); }
-        return Task.FromResult("[{\"id\":\"https://vault/secrets/postgres-admin-password\",\"enabled\":true},{\"id\":\"https://vault/secrets/google-client-secret\",\"enabled\":false},{\"id\":\"https://vault/secrets/calendar-connection-string\",\"enabled\":true},{\"id\":\"https://vault/secrets/allowed-email-2\",\"enabled\":true}]");
+        if (args.Contains("ops-vault"))
+        {
+          return Task.FromResult(Existing ? "[{\"id\":\"https://vault/secrets/postgres-admin-password\",\"enabled\":true}]" : "[]");
+        }
+        return Task.FromResult(
+          "[{\"id\":\"https://vault/secrets/postgres-admin-password\",\"enabled\":true},"
+          + "{\"id\":\"https://vault/secrets/google-client-secret\",\"enabled\":false},"
+          + "{\"id\":\"https://vault/secrets/calendar-connection-string\",\"enabled\":true},"
+          + "{\"id\":\"https://vault/secrets/allowed-email-2\",\"enabled\":true}]");
       }
-      if (args.Contains("deployment") && args.Contains("show")) { return Task.FromResult(args.Any(a => a.Contains("opsKeyVaultName", StringComparison.Ordinal)) ? "ops-vault" : "app-vault"); }
-      if (args.Contains("show") && args.Contains("keyvault")) { return Task.FromResult("secret-value"); }
-      if (args.Contains("rest")) { return Task.FromResult("00000000-0000-0000-0000-000000000002"); }
-      if (args.Contains("build-params")) { return Task.FromResult("{\"parametersJson\":\"{\\\"parameters\\\":{}}\"}"); }
+      if (args.Contains("deployment") && args.Contains("show"))
+      {
+        return Task.FromResult(args.Any(a => a.Contains("opsKeyVaultName", StringComparison.Ordinal)) ? "ops-vault" : "app-vault");
+      }
+      if (args.Contains("show") && args.Contains("keyvault"))
+      {
+        return Task.FromResult("secret-value");
+      }
+      if (args.Contains("rest"))
+      {
+        return Task.FromResult("00000000-0000-0000-0000-000000000002");
+      }
+      if (args.Contains("build-params"))
+      {
+        return Task.FromResult("{\"parametersJson\":\"{\\\"parameters\\\":{}}\"}");
+      }
       var fileArg = Array.FindIndex(args, x => x == "--file" || x == "--parameters");
       if (fileArg >= 0)
       {
         FilePath = args[fileArg + 1].TrimStart('@');
         FileContents = File.ReadAllText(FilePath);
       }
-      return Task.FromResult(args.Contains("what-if") ? "{\"preview\":\"secret-value\",\"password\":\"transformed-secret\",\"changes\":[{\"path\":\"properties.postgresAdministratorPassword\",\"after\":\"encoded-value\"}]}" : "");
+      return Task.FromResult(args.Contains("what-if")
+        ? "{\"preview\":\"secret-value\",\"password\":\"transformed-secret\","
+          + "\"changes\":[{\"path\":\"properties.postgresAdministratorPassword\",\"after\":\"encoded-value\"}]}"
+        : "");
     }
   }
 }

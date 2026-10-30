@@ -24,7 +24,7 @@ The Today view already supports task completion and reopening; creation previous
 * Complete and reopen from both calendar and list. Preserve today's existing completion visibility rules (ADR-0021).
 * Existing single-user mode (ADR-0019). Authentication was added by [story 0005](0005-google-sign-in.md); editor permission checks and per-user privacy remain follow-ups.
 * Reminders are a follow-up story. The intended design lets each editor choose in-app, email, or neither; delivery timing and preference storage remain to be designed.
-* Editing and deleting tasks are outside this story.
+* Editing and deleting tasks are outside this story. Deletion is added by [story 0007](0007-overdue-triage-and-task-deletion.md).
 
 ### Acceptance criteria
 

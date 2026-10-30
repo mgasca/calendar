@@ -26,9 +26,12 @@ public sealed record SeedPlan(IReadOnlyList<EventSeed> Events, IReadOnlyList<Tas
   {
     var tz = zone.Id;
     EventSeed Timed(string title, int dayOffset, string start, int endDayOffset, string end, string? location = null) =>
-        new(title, Start: At(date.AddDays(dayOffset), TimeOnly.Parse(start, System.Globalization.CultureInfo.InvariantCulture), zone),
-            End: At(date.AddDays(endDayOffset), TimeOnly.Parse(end, System.Globalization.CultureInfo.InvariantCulture), zone),
-            TimeZone: tz, Location: location);
+        new(
+          title,
+          Start: At(date.AddDays(dayOffset), TimeOnly.Parse(start, System.Globalization.CultureInfo.InvariantCulture), zone),
+          End: At(date.AddDays(endDayOffset), TimeOnly.Parse(end, System.Globalization.CultureInfo.InvariantCulture), zone),
+          TimeZone: tz,
+          Location: location);
 
     EventSeed[] events =
     [
@@ -98,5 +101,7 @@ public static class SeedAuthentication
   }
 
   /// <summary>Explains how to resolve an authentication failure.</summary>
-  public const string UnauthorizedMessage = "Seed authentication failed (401). Set Auth__DevSeedKey in .env or pass --seed-key, and run the API in Development with the same key.";
+  public const string UnauthorizedMessage =
+    "Seed authentication failed (401). Set Auth__DevSeedKey in .env or pass --seed-key, "
+    + "and run the API in Development with the same key.";
 }

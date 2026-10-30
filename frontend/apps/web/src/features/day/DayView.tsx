@@ -173,7 +173,9 @@ export function DayView({ date, timeZone: zoneOverride, locale }: DayViewProps) 
             <div>
               <h3 id="overdue-heading">Overdue</h3>
               {Number(agenda.data.tasks.overdueTotal) > 20 && (
-                <p>Showing 20 of {agenda.data.tasks.overdueTotal}</p>
+                <p>
+                  <Link to="/triage">View all {agenda.data.tasks.overdueTotal} overdue</Link>
+                </p>
               )}
               <ul className="items" aria-labelledby="overdue-heading">
                 {tasks.overdue.map((task) => (

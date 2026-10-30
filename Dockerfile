@@ -14,7 +14,8 @@ RUN pnpm --filter @calendar/web build
 FROM mcr.microsoft.com/dotnet/sdk:10.0@sha256:de4fe90a98845d75910b9769662465c84de1a934665c431279d1382b2bddc02b AS build
 WORKDIR /src/backend
 COPY .editorconfig /src/.editorconfig
-COPY backend/global.json backend/Directory.Build.props backend/Directory.Packages.props backend/NuGet.config ./
+COPY backend/global.json backend/Directory.Build.props backend/Directory.Packages.props backend/NuGet.config backend/SonarLint.xml ./
+COPY backend/src/Directory.Build.props backend/src/BannedSymbols.txt src/
 COPY backend/src/Calendar.Api/*.csproj backend/src/Calendar.Api/packages.lock.json src/Calendar.Api/
 COPY backend/src/Calendar.Domain/*.csproj backend/src/Calendar.Domain/packages.lock.json src/Calendar.Domain/
 COPY backend/src/Calendar.Infrastructure/*.csproj backend/src/Calendar.Infrastructure/packages.lock.json src/Calendar.Infrastructure/

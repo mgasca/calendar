@@ -1,3 +1,4 @@
+using System.Text.Json;
 using Calendar.Api;
 using Calendar.Api.Endpoints;
 using Calendar.Infrastructure;
@@ -6,9 +7,10 @@ using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.HttpOverrides;
+using Microsoft.Extensions.FileProviders;
 using Microsoft.OpenApi;
 
-var builder = WebApplication.CreateBuilder(args);
+WebApplicationBuilder builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddOpenApi(options => options.AddSchemaTransformer((schema, _, _) =>
 {
@@ -34,7 +36,7 @@ if (!string.IsNullOrWhiteSpace(builder.Configuration.GetConnectionString(Depende
 {
   builder.Services.AddDataProtection().SetApplicationName("Calendar").PersistKeysToDbContext<CalendarDbContext>();
 }
-var auth = builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
+AuthenticationBuilder auth = builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
     .AddCookie(options =>
     {
       options.Cookie.HttpOnly = true;
@@ -57,7 +59,8 @@ if (!string.IsNullOrWhiteSpace(clientId) && !string.IsNullOrWhiteSpace(clientSec
     options.ClaimActions.MapJsonKey("picture", "picture");
     options.Events.OnCreatingTicket = context =>
     {
-      var verified = context.User.TryGetProperty("email_verified", out var value) && value.ValueKind == System.Text.Json.JsonValueKind.True;
+      var verified = context.User.TryGetProperty("email_verified", out JsonElement value)
+        && value.ValueKind == System.Text.Json.JsonValueKind.True;
       var email = context.Principal?.FindFirst(System.Security.Claims.ClaimTypes.Email)?.Value;
       var allowed = builder.Configuration.GetSection("Auth:AllowedEmails").Get<string[]>() ?? [];
       if (!ApiAuthentication.IsAllowed(email, verified, allowed))
@@ -99,7 +102,7 @@ builder.Services.Configure<RouteHandlerOptions>(options => options.ThrowOnBadReq
 builder.Services.AddExceptionHandler<BadRequestExceptionHandler>();
 builder.Services.AddCalendarInfrastructure(builder.Configuration);
 
-var app = builder.Build();
+WebApplication app = builder.Build();
 
 app.UseForwardedHeaders();
 if (!app.Environment.IsDevelopment())
@@ -107,7 +110,7 @@ if (!app.Environment.IsDevelopment())
   app.UseHsts();
   app.UseHttpsRedirection();
 }
-app.UseWhen(context => !context.Request.Path.StartsWithSegments("/api"), branch =>
+app.UseWhen(context => !context.Request.Path.StartsWithSegments("/api", StringComparison.OrdinalIgnoreCase), branch =>
   branch.UseStaticFiles(new StaticFileOptions
   {
     OnPrepareResponse = context =>
@@ -117,7 +120,11 @@ app.UseWhen(context => !context.Request.Path.StartsWithSegments("/api"), branch 
       {
         context.Context.Response.Headers.CacheControl = "no-cache";
       }
-      else if (System.Text.RegularExpressions.Regex.IsMatch(path, @"^/assets/[^/]+-[A-Za-z0-9_-]{8}\.[^/]+$", System.Text.RegularExpressions.RegexOptions.CultureInvariant, TimeSpan.FromSeconds(1)))
+      else if (System.Text.RegularExpressions.Regex.IsMatch(
+        path,
+        @"^/assets/[^/]+-[A-Za-z0-9_-]{8}\.[^/]+$",
+        System.Text.RegularExpressions.RegexOptions.CultureInvariant,
+        TimeSpan.FromSeconds(1)))
       {
         context.Context.Response.Headers.CacheControl = "public, max-age=31536000, immutable";
       }
@@ -143,7 +150,7 @@ app.MapAgendaEndpoints();
 app.MapFallback("/api/{**path}", () => Results.NotFound()).AllowAnonymous();
 app.MapFallback("{*path}", (HttpContext context, IWebHostEnvironment environment) =>
 {
-  var index = environment.WebRootFileProvider.GetFileInfo("index.html");
+  IFileInfo index = environment.WebRootFileProvider.GetFileInfo("index.html");
   if (Path.HasExtension(context.Request.Path.Value) || !index.Exists)
   {
     return Results.NotFound();

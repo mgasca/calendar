@@ -13,10 +13,15 @@ public sealed record CreateEventRequest
   /// <summary>Event title; required, at most 200 characters after trimming.</summary>
   public required string Title { get; init; }
 
-  /// <summary><c>true</c> for an all-day event (<c>startDate</c>/<c>endDate</c>), <c>false</c> for a timed one (<c>start</c>/<c>end</c>/<c>timeZone</c>).</summary>
+  /// <summary>
+  /// <c>true</c> for an all-day event (<c>startDate</c>/<c>endDate</c>),
+  /// <c>false</c> for a timed one (<c>start</c>/<c>end</c>/<c>timeZone</c>).
+  /// </summary>
   public bool AllDay { get; init; }
 
-  /// <summary>Timed events: inclusive start instant, RFC 3339 with an explicit offset (e.g. 2026-10-26T14:00:00Z); <c>null</c> for all-day events.</summary>
+  /// <summary>
+  /// Timed events: inclusive start instant, RFC 3339 with an explicit offset (e.g. 2026-10-26T14:00:00Z); <c>null</c> for all-day events.
+  /// </summary>
   [JsonConverter(typeof(ExplicitOffsetConverter))]
   public DateTimeOffset? Start { get; init; }
 
@@ -30,7 +35,10 @@ public sealed record CreateEventRequest
   /// <summary>All-day events: first date (YYYY-MM-DD); <c>null</c> for timed events.</summary>
   public DateOnly? StartDate { get; init; }
 
-  /// <summary>All-day events: exclusive end date (YYYY-MM-DD), after <c>startDate</c>; a one-day event on the 26th ends on the 27th. <c>null</c> for timed events.</summary>
+  /// <summary>
+  /// All-day events: exclusive end date (YYYY-MM-DD), after <c>startDate</c>; a one-day event on the 26th ends on the 27th.
+  /// <c>null</c> for timed events.
+  /// </summary>
   public DateOnly? EndDate { get; init; }
 
   /// <summary>Optional location, at most 200 characters.</summary>

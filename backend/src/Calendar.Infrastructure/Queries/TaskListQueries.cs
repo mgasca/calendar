@@ -39,7 +39,11 @@ public static class TaskListQueries
   /// uses), and timed tasks sort on their local date in <paramref name="zone"/>.
   /// </summary>
   public static IQueryable<TodoTask> ForView(
-      this IQueryable<TodoTask> tasks, TaskListView view, DayWindow? today, TimeZoneInfo? zone, TaskListKey? after)
+      this IQueryable<TodoTask> tasks,
+      TaskListView view,
+      DayWindow? today,
+      TimeZoneInfo? zone,
+      TaskListKey? after)
   {
     ArgumentNullException.ThrowIfNull(tasks);
     return view switch
@@ -52,13 +56,27 @@ public static class TaskListQueries
   }
 
   /// <summary>The key of a task, from which the page after it continues in <paramref name="view"/>.</summary>
-  public static TaskListKey KeyOf(TaskListView view, Guid id, DateOnly? dueDate, DateTimeOffset? dueAt, DateTimeOffset? completedAt, TimeZoneInfo? zone) =>
+  public static TaskListKey KeyOf(
+    TaskListView view,
+    Guid id,
+    DateOnly? dueDate,
+    DateTimeOffset? dueAt,
+    DateTimeOffset? completedAt,
+    TimeZoneInfo? zone) =>
       view switch
       {
         TaskListView.Completed => new(id, null, completedAt),
         TaskListView.NoDeadline => new(id, null, null),
         _ => new(id, dueDate ?? DateOnly.FromDateTime(TimeZoneInfo.ConvertTime(dueAt!.Value, zone!).DateTime), dueAt),
       };
+
+  /// <summary>Open overdue tasks using the list's shared OR predicate, backed by both partial due indexes.</summary>
+  public static IQueryable<TodoTask> OpenOverdueFor(this IQueryable<TodoTask> tasks, DayWindow today)
+  {
+    ArgumentNullException.ThrowIfNull(tasks);
+    (DateOnly date, DateTimeOffset start) = (today.Date, today.Start);
+    return tasks.Where(t => t.CompletedAt == null && (t.DueDate < date || t.DueAt < start));
+  }
 
   private static IQueryable<TodoTask> Completed(IQueryable<TodoTask> tasks, TaskListKey? after)
   {
@@ -84,9 +102,9 @@ public static class TaskListQueries
 
   private static IQueryable<TodoTask> Dated(IQueryable<TodoTask> tasks, bool overdue, DayWindow today, string zone, TaskListKey? after)
   {
-    var (date, start) = (today.Date, today.Start);
+    (DateOnly date, DateTimeOffset start) = (today.Date, today.Start);
     tasks = overdue
-        ? tasks.Where(t => t.CompletedAt == null && (t.DueDate < date || t.DueAt < start))
+        ? tasks.OpenOverdueFor(today)
         : tasks.Where(t => t.CompletedAt == null && (t.DueDate >= date || t.DueAt >= start));
 
     // The local due date (a date-only task's own date, or a timed task's instant AT TIME ZONE in SQL) leads both
@@ -96,11 +114,13 @@ public static class TaskListQueries
       tasks = afterAt is { } at
           ? tasks.Where(t =>
               (t.DueDate ?? DateOnly.FromDateTime(TimeZoneInfo.ConvertTimeBySystemTimeZoneId(t.DueAt!.Value.UtcDateTime, zone))) > afterDate
-              || ((t.DueDate ?? DateOnly.FromDateTime(TimeZoneInfo.ConvertTimeBySystemTimeZoneId(t.DueAt!.Value.UtcDateTime, zone))) == afterDate
+              || ((t.DueDate ?? DateOnly.FromDateTime(TimeZoneInfo.ConvertTimeBySystemTimeZoneId(t.DueAt!.Value.UtcDateTime, zone)))
+                  == afterDate
                   && (t.DueAt == null || t.DueAt > at || (t.DueAt == at && t.Id.CompareTo(id) > 0))))
           : tasks.Where(t =>
               (t.DueDate ?? DateOnly.FromDateTime(TimeZoneInfo.ConvertTimeBySystemTimeZoneId(t.DueAt!.Value.UtcDateTime, zone))) > afterDate
-              || ((t.DueDate ?? DateOnly.FromDateTime(TimeZoneInfo.ConvertTimeBySystemTimeZoneId(t.DueAt!.Value.UtcDateTime, zone))) == afterDate
+              || ((t.DueDate ?? DateOnly.FromDateTime(TimeZoneInfo.ConvertTimeBySystemTimeZoneId(t.DueAt!.Value.UtcDateTime, zone)))
+                  == afterDate
                   && t.DueAt == null && t.Id.CompareTo(id) > 0));
     }
 

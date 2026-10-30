@@ -2,6 +2,7 @@ using System.Net.Http.Json;
 using Calendar.Api.Contracts;
 using Calendar.Domain.Events;
 using Calendar.Domain.Tasks;
+using Calendar.Infrastructure;
 using Microsoft.Extensions.Time.Testing;
 
 namespace Calendar.Api.Tests;
@@ -45,7 +46,7 @@ public abstract class ApiTestBase(PostgresFixture postgres) : IAsyncLifetime
   /// <summary>Inserts rows directly (as the schema owner), bypassing the API, to arrange exact states.</summary>
   protected async Task SeedAsync(IEnumerable<CalendarEvent>? events = null, IEnumerable<TodoTask>? tasks = null)
   {
-    await using var db = Postgres.Database.CreateMigratorContext();
+    await using CalendarDbContext db = Postgres.Database.CreateMigratorContext();
     db.Events.AddRange(events ?? []);
     db.Tasks.AddRange(tasks ?? []);
     await db.SaveChangesAsync(Ct);
@@ -60,16 +61,18 @@ public abstract class ApiTestBase(PostgresFixture postgres) : IAsyncLifetime
 
   protected async Task<DayAgendaResponse> GetAgendaAsync(string date, string zone)
   {
-    using var response = await Client.GetAsync(
-        new Uri($"/api/agenda/day?date={date}&timeZone={Uri.EscapeDataString(zone)}", UriKind.Relative), Ct);
+    using HttpResponseMessage response = await Client.GetAsync(
+        new Uri($"/api/agenda/day?date={date}&timeZone={Uri.EscapeDataString(zone)}", UriKind.Relative),
+        Ct);
     response.EnsureSuccessStatusCode();
     return (await response.Content.ReadFromJsonAsync<DayAgendaResponse>(Ct))!;
   }
 
   protected async Task<WeekAgendaResponse> GetWeekAgendaAsync(string date, string zone, string today)
   {
-    using var response = await Client.GetAsync(
-        new Uri($"/api/agenda/week?date={date}&timeZone={Uri.EscapeDataString(zone)}&today={today}", UriKind.Relative), Ct);
+    using HttpResponseMessage response = await Client.GetAsync(
+        new Uri($"/api/agenda/week?date={date}&timeZone={Uri.EscapeDataString(zone)}&today={today}", UriKind.Relative),
+        Ct);
     response.EnsureSuccessStatusCode();
     return (await response.Content.ReadFromJsonAsync<WeekAgendaResponse>(Ct))!;
   }

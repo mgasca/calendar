@@ -41,7 +41,12 @@ public sealed class TodoTask
   /// <param name="dueAt">Due instant (normalized to UTC), or <c>null</c>.</param>
   /// <param name="priority">Priority level; defaults to medium.</param>
   /// <param name="notes">Optional task notes.</param>
-  public static TodoTask Create(string title, DateOnly? dueDate = null, DateTimeOffset? dueAt = null, string priority = "medium", string? notes = null)
+  public static TodoTask Create(
+    string title,
+    DateOnly? dueDate = null,
+    DateTimeOffset? dueAt = null,
+    string priority = "medium",
+    string? notes = null)
   {
     var normalizedTitle = Validation.NormalizeTitle(title, nameof(title));
     if (dueDate is not null && dueAt is not null)
@@ -68,8 +73,53 @@ public sealed class TodoTask
   }
 
   /// <summary>Marks the task complete. Idempotent: an already completed task keeps its first completion time.</summary>
-  public void Complete(DateTimeOffset now) => CompletedAt ??= now.ToUniversalTime();
+  public void Complete(DateTimeOffset now) => CompletedAt ??= NormalizeCompletionTime(now);
+
+  /// <summary>Normalizes completion timestamps the same way for entity and set-based updates.</summary>
+  public static DateTimeOffset NormalizeCompletionTime(DateTimeOffset completedAt) => completedAt.ToUniversalTime();
 
   /// <summary>Marks the task open again. Idempotent.</summary>
   public void Reopen() => CompletedAt = null;
+
+  /// <summary>Replaces the deadline of an open task with a floating date.</summary>
+  public void SetDueDate(DateOnly dueDate)
+  {
+    RequireOpen();
+    (DueDate, DueAt) = ForDueDate(dueDate);
+  }
+
+  /// <summary>Replaces the deadline of an open task with an instant normalized to UTC.</summary>
+  public void SetDueAt(DateTimeOffset dueAt)
+  {
+    RequireOpen();
+    (DueDate, DueAt) = ForDueInstant(dueAt);
+  }
+
+  /// <summary>Normalizes deadline instants the same way for entity and set-based updates.</summary>
+  public static DateTimeOffset NormalizeDueAt(DateTimeOffset dueAt) => dueAt.ToUniversalTime();
+
+  /// <summary>Returns the mutually exclusive deadline columns for a floating date.</summary>
+  public static (DateOnly? DueDate, DateTimeOffset? DueAt) ForDueDate(DateOnly dueDate) => (dueDate, null);
+
+  /// <summary>Returns the mutually exclusive deadline columns for an instant, normalized to UTC.</summary>
+  public static (DateOnly? DueDate, DateTimeOffset? DueAt) ForDueInstant(DateTimeOffset dueAt) =>
+      (null, NormalizeDueAt(dueAt));
+
+  /// <summary>Clears the deadline of an open task.</summary>
+  public void ClearDeadline()
+  {
+    RequireOpen();
+    (DueDate, DueAt) = WithoutDeadline();
+  }
+
+  /// <summary>Returns empty values for both mutually exclusive deadline columns.</summary>
+  public static (DateOnly? DueDate, DateTimeOffset? DueAt) WithoutDeadline() => (null, null);
+
+  private void RequireOpen()
+  {
+    if (IsCompleted)
+    {
+      throw new InvalidOperationException("A completed task's deadline cannot be changed.");
+    }
+  }
 }

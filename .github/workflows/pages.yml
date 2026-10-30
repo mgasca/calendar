@@ -35,7 +35,7 @@ jobs:
     steps:
       - name: Validate source run and current revision
         id: source
-        uses: actions/github-script@d746ffe35508b1917358783b479e04febd2b8f71 # v9.0.0
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
         with:
           script: |
             const repo = context.repo;
@@ -79,7 +79,7 @@ jobs:
       - name: Assemble retained production and preview snapshot
         if: steps.source.outputs.mode != ''
         id: snapshot
-        uses: actions/github-script@d746ffe35508b1917358783b479e04febd2b8f71 # v9.0.0
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
         env:
           MODE: ${{ steps.source.outputs.mode }}
           PR_NUMBER: ${{ steps.source.outputs.pr }}
@@ -166,16 +166,16 @@ jobs:
             core.setOutput('ready', 'true');
       - name: Upload combined site
         if: steps.snapshot.outputs.ready == 'true'
-        uses: actions/upload-pages-artifact@7b1f4a764d45c48632c6b24a0339c27f5614fb0b # v4
+        uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9 # v5.0.0
         with:
           path: published
       - name: Deploy production and previews
         if: steps.snapshot.outputs.ready == 'true'
         id: deployment
-        uses: actions/deploy-pages@d6db90164ac5ed86f2b6aed7e0febac5b3c0c03e # v4
+        uses: actions/deploy-pages@368f82528645a54fb793d4d04e342629a3f51346 # v5.0.1
       - name: Link published preview
         if: steps.source.outputs.mode == 'preview' && steps.deployment.outcome == 'success'
-        uses: actions/github-script@d746ffe35508b1917358783b479e04febd2b8f71 # v9.0.0
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
         env:
           SITE_URL: ${{ steps.deployment.outputs.page_url }}
           PR_NUMBER: ${{ steps.source.outputs.pr }}

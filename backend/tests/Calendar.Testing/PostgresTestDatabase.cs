@@ -38,7 +38,7 @@ public sealed class PostgresTestDatabase : IAsyncDisposable
   {
     await _container.StartAsync(cancellationToken);
 
-    await using (var migrator = CreateMigratorContext())
+    await using (CalendarDbContext migrator = CreateMigratorContext())
     {
       await migrator.Database.MigrateAsync(cancellationToken);
     }
@@ -52,7 +52,8 @@ public sealed class PostgresTestDatabase : IAsyncDisposable
 
     // Respawn refuses an empty schema, which is the case until the first entities are mapped.
     await using var count = new NpgsqlCommand(
-        "SELECT count(*) FROM pg_tables WHERE schemaname = 'public' AND tablename <> '__EFMigrationsHistory'", connection);
+        "SELECT count(*) FROM pg_tables WHERE schemaname = 'public' AND tablename <> '__EFMigrationsHistory'",
+        connection);
     if ((long)(await count.ExecuteScalarAsync(cancellationToken))! == 0)
     {
       return;

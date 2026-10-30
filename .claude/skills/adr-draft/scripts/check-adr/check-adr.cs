@@ -51,7 +51,7 @@ if (!Directory.Exists(decisions))
   return 2;
 }
 
-var files = AdrValidator.AdrFiles(decisions);
+IReadOnlyDictionary<string, string> files = AdrValidator.AdrFiles(decisions);
 if (nextNumber)
 {
   Console.WriteLine(AdrValidator.NextNumber(decisions));
@@ -87,7 +87,7 @@ foreach (var error in AdrValidator.CheckRepository(decisions))
 
 foreach (var target in targets)
 {
-  var result = AdrValidator.CheckFile(target, files, indexText);
+  AdrFileResult result = AdrValidator.CheckFile(target, files, indexText);
   Console.WriteLine($"{(result.Ok ? "OK  " : "FAIL")} {result.FileName}");
   foreach (var error in result.Errors)
   {

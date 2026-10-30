@@ -1,5 +1,5 @@
 import type { Schemas } from '@calendar/api-client';
-import { act, fireEvent, screen, within } from '@testing-library/react';
+import { act, fireEvent, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { http, HttpResponse } from 'msw';
 import { Profiler } from 'react';
@@ -585,7 +585,43 @@ describe('WeekView', () => {
       });
       renderApp('/week/2026-10-26');
       const panel = await screen.findByRole('region', { name: 'Overdue (25)' });
-      expect(within(panel).getByText('Showing 20 of 25')).toBeInTheDocument();
+      expect(within(panel).getByRole('link', { name: 'View all 25 overdue' })).toBeInTheDocument();
+    });
+
+    it('navigates from the overdue panel to triage', async () => {
+      serveWeeks((date, today) => {
+        const week = withOverdue(date, today);
+        week.overdueTotal = 25;
+        return week;
+      });
+      server.use(
+        http.get('*/api/tasks', () => HttpResponse.json({ items: [], total: 0, nextCursor: null })),
+      );
+      renderApp('/week/2026-10-26');
+      const user = userEvent.setup();
+      await user.click(await screen.findByRole('link', { name: 'View all 25 overdue' }));
+      expect(await screen.findByRole('heading', { name: 'Overdue tasks' })).toBeInTheDocument();
+    });
+
+    it('confirms deletion from the week overdue panel', async () => {
+      let deletes = 0;
+      serveWeeks(withOverdue);
+      server.use(
+        http.delete('*/api/tasks/*', () => {
+          deletes++;
+          return new HttpResponse(null, { status: 204 });
+        }),
+      );
+      renderApp('/week/2026-10-26');
+      const user = userEvent.setup();
+      await user.click(await screen.findByRole('button', { name: 'Delete File expenses' }));
+      await user.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Cancel' }));
+      expect(deletes).toBe(0);
+      await user.click(screen.getByRole('button', { name: 'Delete File expenses' }));
+      await user.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Delete' }));
+      await waitFor(() => {
+        expect(deletes).toBe(1);
+      });
     });
 
     it('lists tasks due before the week in the current week, open ones first, with how late', async () => {

@@ -37,13 +37,13 @@ if (!File.Exists(centralPath))
   return 2;
 }
 
-var central = VersionChecker.ReadCentralVersions(centralPath);
-var pins = VersionChecker.FindPins(root);
-var drifts = VersionChecker.FindDrift(pins, central);
+IReadOnlyDictionary<string, string> central = VersionChecker.ReadCentralVersions(centralPath);
+IReadOnlyList<PinnedPackage> pins = VersionChecker.FindPins(root);
+IReadOnlyList<VersionDrift> drifts = VersionChecker.FindDrift(pins, central);
 
-foreach (var pin in pins)
+foreach (PinnedPackage pin in pins)
 {
-  var drift = drifts.FirstOrDefault(d => d.Pin == pin);
+  VersionDrift? drift = drifts.FirstOrDefault(d => d.Pin == pin);
   var line = (drift, central.ContainsKey(pin.Package)) switch
   {
     (not null, _) => $"DRIFT {pin.Package} {pin.Version} in {pin.File}; backend has {drift.BackendVersion}",

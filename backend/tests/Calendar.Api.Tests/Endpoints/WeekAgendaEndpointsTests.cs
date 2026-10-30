@@ -1,6 +1,7 @@
 using System.Globalization;
 using System.Net;
 using System.Text.Json.Nodes;
+using Calendar.Api.Contracts;
 using Calendar.Domain.Events;
 using Calendar.Domain.Tasks;
 
@@ -31,21 +32,21 @@ public sealed class WeekAgendaEndpointsTests(PostgresFixture postgres) : ApiTest
   [InlineData("date=2026-10-28&timeZone=UTC&today=9999-12-31", "today")]
   public async Task GetWeekAgenda_InvalidInput_Returns400ValidationProblem(string query, string field)
   {
-    using var response = await Client.GetAsync(new Uri($"/api/agenda/week?{query}", UriKind.Relative), Ct);
+    using HttpResponseMessage response = await Client.GetAsync(new Uri($"/api/agenda/week?{query}", UriKind.Relative), Ct);
 
     response.StatusCode.ShouldBe(HttpStatusCode.BadRequest);
     response.Content.Headers.ContentType!.MediaType.ShouldBe("application/problem+json");
-    var errors = JsonNode.Parse(await response.Content.ReadAsStringAsync(Ct))!["errors"]!.AsObject();
+    JsonObject errors = JsonNode.Parse(await response.Content.ReadAsStringAsync(Ct))!["errors"]!.AsObject();
     errors.ContainsKey(field).ShouldBeTrue(errors.ToJsonString());
   }
 
   [Fact]
   public async Task GetWeekAgenda_NoParameters_ReportsEveryMissingOne()
   {
-    using var response = await Client.GetAsync(new Uri("/api/agenda/week", UriKind.Relative), Ct);
+    using HttpResponseMessage response = await Client.GetAsync(new Uri("/api/agenda/week", UriKind.Relative), Ct);
 
     response.StatusCode.ShouldBe(HttpStatusCode.BadRequest);
-    var errors = JsonNode.Parse(await response.Content.ReadAsStringAsync(Ct))!["errors"]!.AsObject();
+    JsonObject errors = JsonNode.Parse(await response.Content.ReadAsStringAsync(Ct))!["errors"]!.AsObject();
     errors.Select(e => e.Key).ShouldBe(["date", "timeZone", "today"], ignoreOrder: true);
   }
 
@@ -54,7 +55,7 @@ public sealed class WeekAgendaEndpointsTests(PostgresFixture postgres) : ApiTest
   [InlineData("date=2026-10-28&timeZone=UTC&today=2026-13-45")]
   public async Task GetWeekAgenda_UnparsableDate_Returns400(string query)
   {
-    using var response = await Client.GetAsync(new Uri($"/api/agenda/week?{query}", UriKind.Relative), Ct);
+    using HttpResponseMessage response = await Client.GetAsync(new Uri($"/api/agenda/week?{query}", UriKind.Relative), Ct);
 
     response.StatusCode.ShouldBe(HttpStatusCode.BadRequest);
     response.Content.Headers.ContentType!.MediaType.ShouldBe("application/problem+json");
@@ -71,7 +72,7 @@ public sealed class WeekAgendaEndpointsTests(PostgresFixture postgres) : ApiTest
   [Fact]
   public async Task GetWeekAgenda_Empty_ReturnsSevenDaysFromMonday_WithDstCorrectWindows()
   {
-    var week = await GetWeekAgendaAsync(Wednesday, NewYork, Wednesday);
+    WeekAgendaResponse week = await GetWeekAgendaAsync(Wednesday, NewYork, Wednesday);
 
     week.WeekStart.ShouldBe(D(Monday));
     week.TimeZone.ShouldBe(NewYork);
@@ -96,21 +97,30 @@ public sealed class WeekAgendaEndpointsTests(PostgresFixture postgres) : ApiTest
   public async Task GetWeekAgenda_UsesCamelCasePropertyNames_AndAlwaysWritesOverdue()
   {
     await SeedAsync(
-        [CalendarEvent.Create("E", Utc(2026, 10, 27, 14), Utc(2026, 10, 27, 15), NewYork), CalendarEvent.CreateAllDay("A", D(Monday), D("2026-10-27"))],
+        [
+          CalendarEvent.Create("E", Utc(2026, 10, 27, 14), Utc(2026, 10, 27, 15), NewYork),
+          CalendarEvent.CreateAllDay("A", D(Monday), D("2026-10-27")),
+        ],
         [TodoTask.Create("T", D(Wednesday))]);
 
-    var json = await Client.GetStringAsync(new Uri($"/api/agenda/week?date={Wednesday}&timeZone={NewYork}&today={Wednesday}", UriKind.Relative), Ct);
-    var past = await Client.GetStringAsync(new Uri($"/api/agenda/week?date=2026-10-19&timeZone={NewYork}&today={Wednesday}", UriKind.Relative), Ct);
+    var json = await Client.GetStringAsync(
+      new Uri($"/api/agenda/week?date={Wednesday}&timeZone={NewYork}&today={Wednesday}", UriKind.Relative),
+      Ct);
+    var past = await Client.GetStringAsync(
+      new Uri($"/api/agenda/week?date=2026-10-19&timeZone={NewYork}&today={Wednesday}", UriKind.Relative),
+      Ct);
 
-    var root = JsonNode.Parse(json)!.AsObject();
-    root.Select(p => p.Key).ShouldBe(["weekStart", "timeZone", "window", "allDayEvents", "days", "overdue", "overdueTotal", "overdueOpenTotal"], ignoreOrder: true);
+    JsonObject root = JsonNode.Parse(json)!.AsObject();
+    root.Select(p => p.Key).ShouldBe(
+      ["weekStart", "timeZone", "window", "allDayEvents", "days", "overdue", "overdueTotal", "overdueOpenTotal"],
+      ignoreOrder: true);
     root["weekStart"]!.GetValue<string>().ShouldBe(Monday);
     root["days"]!.AsArray().Count.ShouldBe(7);
     root["days"]![0]!.AsObject().Select(p => p.Key).ShouldBe(["date", "window", "events", "tasks"], ignoreOrder: true);
     root["days"]![1]!["events"]![0]!.AsObject().ContainsKey("endsAfterDay").ShouldBeTrue();
     root["days"]![2]!["tasks"]![0]!["title"]!.GetValue<string>().ShouldBe("T");
     root["allDayEvents"]![0]!["startDate"]!.GetValue<string>().ShouldBe(Monday);
-    var pastRoot = JsonNode.Parse(past)!.AsObject();
+    JsonObject pastRoot = JsonNode.Parse(past)!.AsObject();
     pastRoot.ContainsKey("overdue").ShouldBeTrue();
     pastRoot["overdue"].ShouldBeNull();
   }
@@ -125,7 +135,7 @@ public sealed class WeekAgendaEndpointsTests(PostgresFixture postgres) : ApiTest
   [InlineData("2026-11-01")]
   public async Task GetWeekAgenda_AnyDateOfTheWeek_SnapsToItsMonday(string date)
   {
-    var week = await GetWeekAgendaAsync(date, NewYork, Wednesday);
+    WeekAgendaResponse week = await GetWeekAgendaAsync(date, NewYork, Wednesday);
 
     week.WeekStart.ShouldBe(D(Monday));
     week.Days[0].Date.ShouldBe(D(Monday));
@@ -134,14 +144,15 @@ public sealed class WeekAgendaEndpointsTests(PostgresFixture postgres) : ApiTest
   [Fact]
   public async Task GetWeekAgenda_AcrossAYearBoundary_StartsInDecember()
   {
-    var week = await GetWeekAgendaAsync("2026-01-01", "UTC", "2026-01-01");
+    WeekAgendaResponse week = await GetWeekAgendaAsync("2026-01-01", "UTC", "2026-01-01");
 
     week.WeekStart.ShouldBe(D("2025-12-29"));
     week.Days[^1].Date.ShouldBe(D("2026-01-04"));
   }
 
   [Fact]
-  public async Task GetWeekAgenda_EchoesTheCanonicalZoneId() => (await GetWeekAgendaAsync(Wednesday, "US/Eastern", Wednesday)).TimeZone.ShouldBe(NewYork);
+  public async Task GetWeekAgenda_EchoesTheCanonicalZoneId() =>
+    (await GetWeekAgendaAsync(Wednesday, "US/Eastern", Wednesday)).TimeZone.ShouldBe(NewYork);
 
   // ---- events ----
 
@@ -159,14 +170,14 @@ public sealed class WeekAgendaEndpointsTests(PostgresFixture postgres) : ApiTest
         CalendarEvent.Create("last week", Utc(2026, 10, 25, 12), Utc(2026, 10, 26, 4), NewYork),
     ]);
 
-    var week = await GetWeekAgendaAsync(Wednesday, NewYork, Wednesday);
+    WeekAgendaResponse week = await GetWeekAgendaAsync(Wednesday, NewYork, Wednesday);
 
-    var monday = week.Days[0].Events.ShouldHaveSingleItem();
+    TimedEventItem monday = week.Days[0].Events.ShouldHaveSingleItem();
     monday.Title.ShouldBe("from last week");
     monday.StartsBeforeDay.ShouldBeTrue();
     monday.EndsAfterDay.ShouldBeFalse();
 
-    var tuesday = week.Days[1].Events.ShouldHaveSingleItem();
+    TimedEventItem tuesday = week.Days[1].Events.ShouldHaveSingleItem();
     tuesday.Title.ShouldBe("overnight Tue-Wed");
     (tuesday.StartsBeforeDay, tuesday.EndsAfterDay).ShouldBe((false, true));
 
@@ -196,9 +207,9 @@ public sealed class WeekAgendaEndpointsTests(PostgresFixture postgres) : ApiTest
         CalendarEvent.Create("timed", Utc(2026, 10, 27, 14), Utc(2026, 10, 27, 15), NewYork),
     ]);
 
-    var week = await GetWeekAgendaAsync(Wednesday, NewYork, Wednesday);
+    WeekAgendaResponse week = await GetWeekAgendaAsync(Wednesday, NewYork, Wednesday);
 
-    var twins = new[] { twinA, twinB }.OrderBy(e => e.Id).Select(e => e.Id);
+    IEnumerable<Guid> twins = new[] { twinA, twinB }.OrderBy(e => e.Id).Select(e => e.Id);
     string[] expected = ["trip from last week", "conference", "Twin", "twin", "into next week"];
     week.AllDayEvents.Select(e => e.Title).ShouldBe(expected, ignoreOrder: true);
     week.AllDayEvents.Select(e => e.Title).Take(2).ShouldBe(["trip from last week", "conference"]);
@@ -225,7 +236,7 @@ public sealed class WeekAgendaEndpointsTests(PostgresFixture postgres) : ApiTest
         TodoTask.Create("undated"),
     ]);
 
-    var week = await GetWeekAgendaAsync(Wednesday, NewYork, Wednesday);
+    WeekAgendaResponse week = await GetWeekAgendaAsync(Wednesday, NewYork, Wednesday);
 
     week.Days[0].Tasks.Select(t => t.Title).ShouldBe(["first instant"]);
     week.Days[2].Tasks.Select(t => t.Title).ShouldBe(["early", "late", "Alpha", "zeta"]);
@@ -245,7 +256,7 @@ public sealed class WeekAgendaEndpointsTests(PostgresFixture postgres) : ApiTest
         TodoTask.Create("older", D("2026-10-01")),
     ]);
 
-    var week = await GetWeekAgendaAsync("2026-10-14", NewYork, Wednesday);
+    WeekAgendaResponse week = await GetWeekAgendaAsync("2026-10-14", NewYork, Wednesday);
 
     week.WeekStart.ShouldBe(D("2026-10-12"));
     week.Days[2].Tasks.Select(t => (t.Title, t.IsCompleted)).ShouldBe([("done on time", true), ("never done", false)]);
@@ -262,7 +273,7 @@ public sealed class WeekAgendaEndpointsTests(PostgresFixture postgres) : ApiTest
   [InlineData("2026-10-26", "2026-10-19", false)] // a future week
   public async Task Overdue_IsNullOnlyWhenTheWholeWeekIsBeforeToday(string date, string today, bool isNull)
   {
-    var week = await GetWeekAgendaAsync(date, NewYork, today);
+    WeekAgendaResponse week = await GetWeekAgendaAsync(date, NewYork, today);
 
     (week.Overdue is null).ShouldBe(isNull);
   }
@@ -282,9 +293,9 @@ public sealed class WeekAgendaEndpointsTests(PostgresFixture postgres) : ApiTest
         TodoTask.Create("today, open", D(Wednesday)),
     ]);
 
-    var week = await GetWeekAgendaAsync(Wednesday, NewYork, Wednesday);
+    WeekAgendaResponse week = await GetWeekAgendaAsync(Wednesday, NewYork, Wednesday);
 
-    var overdue = week.Overdue.ShouldNotBeNull();
+    IReadOnlyList<AgendaTaskItem> overdue = week.Overdue.ShouldNotBeNull();
     overdue.Select(t => t.Title).ShouldBe(["last week, open", "timed Sunday night, open", "last week, done today"]);
     overdue.Single(t => t.Title == "last week, done today").IsCompleted.ShouldBeTrue();
     var inDays = week.Days.SelectMany(d => d.Tasks).Select(t => t.Id).ToList();
@@ -307,7 +318,7 @@ public sealed class WeekAgendaEndpointsTests(PostgresFixture postgres) : ApiTest
             TodoTask.Create("same instant high a", dueAt: Utc(2026, 10, 26, 12), priority: "high"),
         ]);
 
-    var week = await GetWeekAgendaAsync(Wednesday, NewYork, Wednesday);
+    WeekAgendaResponse week = await GetWeekAgendaAsync(Wednesday, NewYork, Wednesday);
 
     week.Overdue.ShouldNotBeNull().Select(t => t.Title).ShouldBe(["older low", "old high"]);
     week.Days[0].Tasks.Select(t => t.Title).ShouldBe(
@@ -330,7 +341,7 @@ public sealed class WeekAgendaEndpointsTests(PostgresFixture postgres) : ApiTest
         TodoTask.Create("in the week", D("2026-11-03")),
     ]);
 
-    var week = await GetWeekAgendaAsync("2026-11-04", NewYork, Wednesday);
+    WeekAgendaResponse week = await GetWeekAgendaAsync("2026-11-04", NewYork, Wednesday);
 
     week.WeekStart.ShouldBe(D("2026-11-02"));
     week.Overdue.ShouldNotBeNull().Select(t => t.Title).ShouldBe(
@@ -354,8 +365,8 @@ public sealed class WeekAgendaEndpointsTests(PostgresFixture postgres) : ApiTest
         CompletedTask("done before", D("2026-10-21"), Utc(2026, 10, 25, 15)),
     ]);
 
-    var week = await GetWeekAgendaAsync(Wednesday, NewYork, Monday);
-    var day = await GetAgendaAsync(Monday, NewYork);
+    WeekAgendaResponse week = await GetWeekAgendaAsync(Wednesday, NewYork, Monday);
+    DayAgendaResponse day = await GetAgendaAsync(Monday, NewYork);
 
     week.Overdue.ShouldNotBeNull().ShouldBe(day.Tasks.Overdue);
     week.Overdue.Count.ShouldBe(3);

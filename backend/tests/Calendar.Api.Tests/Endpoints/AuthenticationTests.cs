@@ -1,4 +1,5 @@
 using System.Net;
+using System.Net.Http.Json;
 using Calendar.Api.Endpoints;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Hosting;
@@ -18,20 +19,20 @@ public sealed class AuthenticationTests(WebApplicationFactory<Program> factory) 
   [InlineData("Production", "12345678901234567890123456789012", "12345678901234567890123456789012", HttpStatusCode.Unauthorized)]
   public async Task SeedKeyOnlyAuthenticatesInDevelopment(string environment, string key, string? header, HttpStatusCode expected)
   {
-    using var host = factory.WithWebHostBuilder(builder =>
+    using WebApplicationFactory<Program> host = factory.WithWebHostBuilder(builder =>
     {
       builder.UseEnvironment(environment);
       builder.UseSetting("Auth:DevSeedKey", key);
     });
-    using var client = host.CreateClient();
+    using HttpClient client = host.CreateClient();
     using var request = new HttpRequestMessage(HttpMethod.Get, new Uri("/api/auth/me", UriKind.Relative));
     if (header is not null)
     {
       request.Headers.Add("X-Dev-Seed-Key", header);
     }
-    using var response = await client.SendAsync(request, TestContext.Current.CancellationToken);
+    using HttpResponseMessage response = await client.SendAsync(request, TestContext.Current.CancellationToken);
     response.StatusCode.ShouldBe(expected);
-    var schemes = host.Services.GetRequiredService<IAuthenticationSchemeProvider>();
+    IAuthenticationSchemeProvider schemes = host.Services.GetRequiredService<IAuthenticationSchemeProvider>();
     (await schemes.GetSchemeAsync("DevSeed") is not null).ShouldBe(environment == "Development" && key.Length > 0);
   }
 
@@ -43,9 +44,25 @@ public sealed class AuthenticationTests(WebApplicationFactory<Program> factory) 
   [InlineData("/api/auth/me")]
   public async Task AnonymousRoutesReturnUnauthorized(string path)
   {
-    using var client = factory.CreateClient();
-    using var response = await client.GetAsync(new Uri(path, UriKind.Relative), TestContext.Current.CancellationToken);
+    using HttpClient client = factory.CreateClient();
+    using HttpResponseMessage response = await client.GetAsync(new Uri(path, UriKind.Relative), TestContext.Current.CancellationToken);
     response.StatusCode.ShouldBe(HttpStatusCode.Unauthorized);
+  }
+
+  [Fact]
+  public async Task AnonymousBulkAndDeleteRoutesReturnUnauthorized()
+  {
+    using HttpClient client = factory.CreateClient();
+    using HttpResponseMessage bulk = await client.PostAsJsonAsync(
+      new Uri("/api/tasks/bulk", UriKind.Relative),
+      new { action = "delete", ids = new[] { Guid.NewGuid() } },
+      TestContext.Current.CancellationToken);
+    using HttpResponseMessage delete = await client.DeleteAsync(
+      new Uri($"/api/tasks/{Guid.NewGuid()}", UriKind.Relative),
+      TestContext.Current.CancellationToken);
+
+    bulk.StatusCode.ShouldBe(HttpStatusCode.Unauthorized);
+    delete.StatusCode.ShouldBe(HttpStatusCode.Unauthorized);
   }
 
   [Theory]
@@ -53,8 +70,8 @@ public sealed class AuthenticationTests(WebApplicationFactory<Program> factory) 
   [InlineData("/openapi/v1.json")]
   public async Task PublicRoutesAreAccessible(string path)
   {
-    using var client = factory.CreateClient();
-    using var response = await client.GetAsync(new Uri(path, UriKind.Relative), TestContext.Current.CancellationToken);
+    using HttpClient client = factory.CreateClient();
+    using HttpResponseMessage response = await client.GetAsync(new Uri(path, UriKind.Relative), TestContext.Current.CancellationToken);
     response.StatusCode.ShouldBe(HttpStatusCode.OK);
   }
 
@@ -77,11 +94,14 @@ public sealed class AuthenticationTests(WebApplicationFactory<Program> factory) 
   [Fact]
   public async Task LogoutClearsCookie()
   {
-    using var authenticated = factory.WithWebHostBuilder(builder => builder.ConfigureTestServices(services =>
+    using WebApplicationFactory<Program> authenticated = factory.WithWebHostBuilder(builder => builder.ConfigureTestServices(services =>
       services.AddAuthentication(options => options.DefaultAuthenticateScheme = "Test")
         .AddScheme<AuthenticationSchemeOptions, FakeAuthenticationHandler>("Test", _ => { })));
-    using var client = authenticated.CreateClient();
-    using var response = await client.PostAsync(new Uri("/api/auth/logout", UriKind.Relative), null, TestContext.Current.CancellationToken);
+    using HttpClient client = authenticated.CreateClient();
+    using HttpResponseMessage response = await client.PostAsync(
+      new Uri("/api/auth/logout", UriKind.Relative),
+      null,
+      TestContext.Current.CancellationToken);
     response.StatusCode.ShouldBe(HttpStatusCode.NoContent);
     response.Headers.GetValues("Set-Cookie").Single().ShouldContain("expires=");
   }
@@ -89,13 +109,15 @@ public sealed class AuthenticationTests(WebApplicationFactory<Program> factory) 
   [Fact]
   public async Task LoginExplainsWhenGoogleIsNotConfigured()
   {
-    using var host = factory.WithWebHostBuilder(builder =>
+    using WebApplicationFactory<Program> host = factory.WithWebHostBuilder(builder =>
     {
       builder.UseSetting("Auth:Google:ClientId", "");
       builder.UseSetting("Auth:Google:ClientSecret", "");
     });
-    using var client = host.CreateClient();
-    using var response = await client.GetAsync(new Uri("/api/auth/login", UriKind.Relative), TestContext.Current.CancellationToken);
+    using HttpClient client = host.CreateClient();
+    using HttpResponseMessage response = await client.GetAsync(
+      new Uri("/api/auth/login", UriKind.Relative),
+      TestContext.Current.CancellationToken);
     response.StatusCode.ShouldBe(HttpStatusCode.ServiceUnavailable);
     var body = await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
     body.ShouldContain("Google sign-in is not configured.");
@@ -105,10 +127,10 @@ public sealed class AuthenticationTests(WebApplicationFactory<Program> factory) 
   [Fact]
   public async Task CrossOriginRequestHasNoCorsHeaders()
   {
-    using var client = factory.CreateClient();
+    using HttpClient client = factory.CreateClient();
     using var request = new HttpRequestMessage(HttpMethod.Get, new Uri("/api/health", UriKind.Relative));
     request.Headers.Add("Origin", "https://example.com");
-    using var response = await client.SendAsync(request, TestContext.Current.CancellationToken);
+    using HttpResponseMessage response = await client.SendAsync(request, TestContext.Current.CancellationToken);
     response.Headers.Contains("Access-Control-Allow-Origin").ShouldBeFalse();
   }
 }

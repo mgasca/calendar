@@ -5,7 +5,7 @@ import userEvent from '@testing-library/user-event';
 import { http, HttpResponse } from 'msw';
 import { Profiler } from 'react';
 
-import { renderInRouter } from '../../test/render.tsx';
+import { renderApp, renderInRouter } from '../../test/render.tsx';
 import { server } from '../../test/server.ts';
 import { DayView } from './DayView.tsx';
 import { useToday } from '../agenda/useNow.ts';
@@ -227,6 +227,45 @@ describe('DayView', () => {
       serveAgenda(buildAgenda());
     });
 
+    it('navigates from day overdue link to triage', async () => {
+      const agenda = buildAgenda();
+      agenda.tasks.overdueTotal = 27;
+      server.use(
+        http.get('*/api/agenda/day', () => HttpResponse.json(agenda)),
+        http.get('*/api/tasks', () => HttpResponse.json({ items: [], total: 0, nextCursor: null })),
+      );
+      renderApp('/');
+      const user = userEvent.setup();
+      await user.click(await screen.findByRole('link', { name: 'View all 27 overdue' }));
+      expect(await screen.findByRole('heading', { name: 'Overdue tasks' })).toBeInTheDocument();
+    });
+
+    it('confirms task deletion from the day agenda', async () => {
+      const agenda = buildAgenda();
+      const overdueTask = agenda.tasks.overdue[0];
+      if (!overdueTask) throw new Error('Fixture must include an overdue task.');
+      agenda.tasks.overdue = [overdueTask];
+      let deletes = 0;
+      server.use(
+        http.get('*/api/agenda/day', () => HttpResponse.json(agenda)),
+        http.delete(`*/api/tasks/${overdueTask.id}`, () => {
+          deletes++;
+          return new HttpResponse(null, { status: 204 });
+        }),
+      );
+      renderApp('/');
+      const user = userEvent.setup();
+      await user.click(await screen.findByRole('button', { name: `Delete ${overdueTask.title}` }));
+      await user.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Cancel' }));
+      expect(screen.getByText(overdueTask.title)).toBeInTheDocument();
+      expect(deletes).toBe(0);
+      await user.click(screen.getByRole('button', { name: `Delete ${overdueTask.title}` }));
+      await user.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Delete' }));
+      await eventually(() => {
+        expect(deletes).toBe(1);
+      });
+    });
+
     it('shows the human date and a summary of the day', async () => {
       await renderToday();
 
@@ -245,7 +284,7 @@ describe('DayView', () => {
       agenda.tasks.overdueOpenTotal = 24;
       serveAgenda(agenda);
       await renderToday();
-      expect(await screen.findByText('Showing 20 of 27')).toBeInTheDocument();
+      expect(await screen.findByRole('link', { name: 'View all 27 overdue' })).toBeInTheDocument();
       expect(screen.getByText(/24 overdue/)).toBeInTheDocument();
     });
 
@@ -255,7 +294,7 @@ describe('DayView', () => {
       serveAgenda(agenda);
       await renderToday();
       await screen.findByRole('list', { name: 'Overdue' });
-      expect(screen.queryByText(/Showing 20 of/)).not.toBeInTheDocument();
+      expect(screen.queryByRole('link', { name: /View all/ })).not.toBeInTheDocument();
     });
 
     it('lists all-day events, with the day of a multi-day event', async () => {

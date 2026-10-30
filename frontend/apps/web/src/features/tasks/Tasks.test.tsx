@@ -1,4 +1,4 @@
-import { fireEvent, screen, waitFor } from '@testing-library/react';
+import { fireEvent, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { http, HttpResponse } from 'msw';
 
@@ -158,6 +158,35 @@ it('completes and reopens undated tasks across list views', async () => {
   });
   await user.click(screen.getByRole('button', { name: 'No deadline' }));
   expect(screen.getByRole('checkbox', { name: 'Plan holiday' })).not.toBeChecked();
+});
+
+it('confirms My tasks deletion, canceling without a request', async () => {
+  let deletes = 0;
+  server.use(
+    http.get('/api/tasks', () =>
+      HttpResponse.json({
+        items: [
+          { id: 'task-delete', title: 'Old task', dueDate: '2026-10-27', isCompleted: false },
+        ],
+        nextCursor: null,
+      }),
+    ),
+    http.delete('/api/tasks/task-delete', () => {
+      deletes++;
+      return new HttpResponse(null, { status: 204 });
+    }),
+  );
+  renderWithProviders(<TaskList />);
+  const user = userEvent.setup();
+  await screen.findByText('Old task');
+  await user.click(screen.getByRole('button', { name: 'Delete' }));
+  await user.click(screen.getByRole('button', { name: 'Cancel' }));
+  expect(deletes).toBe(0);
+  await user.click(screen.getByRole('button', { name: 'Delete' }));
+  await user.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Delete' }));
+  await waitFor(() => {
+    expect(deletes).toBe(1);
+  });
 });
 
 it('rolls back an optimistic task completion and explains a 409 conflict', async () => {

@@ -91,6 +91,13 @@ const tasksRoute = createRoute({
   });
 });
 
+const triageRoute = createRoute({ getParentRoute: () => rootRoute, path: '/triage' }).lazy(
+  async () => {
+    const { Triage } = await import('./features/triage/Triage.tsx');
+    return createLazyRoute('/triage')({ component: Triage });
+  },
+);
+
 // `/week` is the current week: its Monday is computed from the local date now in the app's zone.
 const currentWeekRoute = createRoute({
   getParentRoute: () => rootRoute,
@@ -142,6 +149,7 @@ const routeTree = rootRoute.addChildren([
   currentWeekRoute,
   weekRoute,
   tasksRoute,
+  triageRoute,
 ]);
 
 export interface AppRouterOptions {

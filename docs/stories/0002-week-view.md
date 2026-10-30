@@ -38,7 +38,7 @@ The Today view can only show today. This story also makes any day viewable, so t
 * **Not in this story:**
   * Creating events and tasks from the week: story [XXXX](XXXX-create-events-and-tasks-from-week-view.md).
   * Dragging items to move or resize them.
-  * Editing or deleting existing items.
+  * Editing existing items. Task deletion was added by [story 0007](0007-overdue-triage-and-task-deletion.md).
   * Recurring events.
   * A configurable week start.
   * A month view.
@@ -177,7 +177,7 @@ Delivered as three stacked PRs, each green on `make check`:
 ### Follow-up stories
 
 * [XXXX](XXXX-create-events-and-tasks-from-week-view.md): create events and tasks from the week view, after the day-view create stories.
-* Editing, moving (including drag and drop) and deleting events and tasks.
+* Editing or moving (including drag and drop) events and tasks. Task deletion is available as described in [story 0007](0007-overdue-triage-and-task-deletion.md).
 * A month view on the range-ready internals. It supersedes ADR-0024 if it introduces a generic range endpoint.
 * A configurable first day of the week, once user preferences exist.
 * Serving the SPA from the API, with the fallback rules in ADR-0026.
@@ -218,7 +218,7 @@ Tick a task's checkbox to complete it, and untick it to reopen it, in a day's ta
 
 ### Current limitations
 
-* You can't yet create, edit, move or delete events and tasks in the app. Creating them is coming in a later release.
+* You can create tasks, but cannot edit them or create, edit or move events from the week view. Task deletion is available in the week agenda; see [story 0007](0007-overdue-triage-and-task-deletion.md).
 * The week always starts on Monday.
 * Recurring events aren't supported.
 * On a phone, the week grid scrolls sideways. Use the day view for a phone-sized layout.

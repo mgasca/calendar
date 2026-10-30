@@ -73,7 +73,7 @@ The secure parameter is used instead of a checked-in `az.getSecret()` reference:
 
 The `keyVaultSecretNames` list contains only existing, enabled app-vault secrets; Bicep also intersects it with the application allowlist. Versionless references use the app identity, which cannot read the ops vault. The names `calendar-connection-string`, `google-client-id`, `google-client-secret`, and `allowed-email-0`, `allowed-email-1`, etc. map to `ConnectionStrings__Calendar`, `Auth__Google__ClientId`, `Auth__Google__ClientSecret`, and `Auth__AllowedEmails__0`, `Auth__AllowedEmails__1`, etc. Add only names whose values have been populated. Changes to references and RBAC propagation must be checked live. For the first full deployment, only the ops password exists, so the initial placeholder uses an empty app-secret list.
 
-S6 must create `calendar_migrator` and `calendar_app`, establish schema ownership and least-privilege grants as in `docker/postgres/init/01-roles.sh`, run migrations separately, and store the app connection string using the app role. S9 must provision separate Google OAuth clients, credentials and allow-listed emails in each vault and configure redirect URIs. S7 must publish and promote the real image. S8 must wire Application Insights and alerts.
+S6 provides commands to initialize `calendar_migrator` and `calendar_app`, establish least-privilege grants, and run migrations separately; see the [database runbook](azure-database.md). S9 must provision separate Google OAuth clients, credentials and allow-listed emails in each vault and configure redirect URIs. S7 must publish and promote the real image. S8 must wire Application Insights and alerts.
 
 ## Staging database operations
 

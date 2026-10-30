@@ -226,14 +226,6 @@
         "resolved": "10.0.14",
         "contentHash": "1bbZqqCJTPba3inTADExbp/9PsGVyvGOX3zr6tFr7ySCgVkX9Lpw7BV0TizktNItd3SsbUu1sQfSAYm1GZMoNw=="
       },
-      "Npgsql": {
-        "type": "Transitive",
-        "resolved": "10.0.3",
-        "contentHash": "7nb5YzXuvWWJxB0J8DiyL3we+X4FOctZrt0fIBnucOIaIevFEEwGQVZKtiu9olXdlNAK1eNgqSral6r/jlhI4w==",
-        "dependencies": {
-          "Microsoft.Extensions.Logging.Abstractions": "10.0.0"
-        }
-      },
       "SharpZipLib": {
         "type": "Transitive",
         "resolved": "1.4.2",
@@ -334,6 +326,15 @@
           "Microsoft.Extensions.Caching.Memory": "10.0.14",
           "Microsoft.Extensions.Configuration.Abstractions": "10.0.14",
           "Microsoft.Extensions.Logging": "10.0.14"
+        }
+      },
+      "Npgsql": {
+        "type": "CentralTransitive",
+        "requested": "[10.0.3, )",
+        "resolved": "10.0.3",
+        "contentHash": "7nb5YzXuvWWJxB0J8DiyL3we+X4FOctZrt0fIBnucOIaIevFEEwGQVZKtiu9olXdlNAK1eNgqSral6r/jlhI4w==",
+        "dependencies": {
+          "Microsoft.Extensions.Logging.Abstractions": "10.0.0"
         }
       },
       "Npgsql.EntityFrameworkCore.PostgreSQL": {

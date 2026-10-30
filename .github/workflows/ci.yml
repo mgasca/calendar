@@ -132,6 +132,8 @@ jobs:
         run: command -v shellcheck || (sudo apt-get update -q && sudo apt-get install -yq shellcheck)
       - name: Test and lint tooling
         run: make tooling
+      - name: Azure role SQL matches the local init script (PostgreSQL in Docker)
+        run: make infra-integration
       - name: Tooling package pins match backend
         run: make tool-versions
       - name: ADRs follow conventions

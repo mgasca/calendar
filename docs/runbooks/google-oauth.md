@@ -33,10 +33,40 @@ Google Auth Platform help currently names the top-level areas **Branding**, **Au
 Each Google client must use that environment's actual HTTPS callback host. Get the fully qualified domain name (FQDN) from the deployed Container App:
 
 ```bash
+# Which environment you are configuring: staging or production.
 ENV=staging
+# The resource group created for that environment.
 RG="rg-calendar-$ENV"
-APP="ca-calendar-${ENV}"
-az containerapp show --resource-group "$RG" --name "$APP" --query 'properties.configuration.ingress.fqdn' -o tsv
+# Ask Azure for the name of this environment's app vault (the foundation deployment recorded it).
+APP_VAULT=$(az deployment group show --resource-group "$RG" --name calendar-foundation --query properties.outputs.appKeyVaultName.value -o tsv)
+
+# Ask for the Google client ID. -s hides what you type, so it is not shown on screen or kept in history.
+read -r -s -p 'Google client ID: ' secret_value; printf '\n'
+# Send the value to Key Vault as the secret "google-client-id". printf adds no trailing newline,
+# and --file /dev/stdin reads the value from this pipe, so it never appears on the command line.
+printf '%s' "$secret_value" | az keyvault secret set --vault-name "$APP_VAULT" --name google-client-id --file /dev/stdin --query name -o tsv
+# Remove the value from the shell's memory now that it is stored.
+unset secret_value
+
+# Same again for the Google client secret, stored as "google-client-secret".
+read -r -s -p 'Google client secret: ' secret_value; printf '\n'
+printf '%s' "$secret_value" | az keyvault secret set --vault-name "$APP_VAULT" --name google-client-secret --file /dev/stdin --query name -o tsv
+unset secret_value
+
+# Now the allow-list: one secret per email address allowed to sign in. Press Enter on a blank line to finish.
+read -r -s -p 'Allowed Google email (blank to finish): ' email; printf '\n'
+# The secrets are numbered allowed-email-0, allowed-email-1, ... and the numbers must have no gaps.
+index=0
+# Keep going until you enter a blank line.
+while [ -n "$email" ]; do
+  # Store this address as "allowed-email-<index>".
+  printf '%s' "$email" | az keyvault secret set --vault-name "$APP_VAULT" --name "allowed-email-$index" --file /dev/stdin --query name -o tsv
+  unset email
+  # Move to the next number and ask for the next address.
+  index=$((index + 1))
+  read -r -s -p 'Next allowed Google email (blank to finish): ' email; printf '\n'
+done
+unset email
 ```
 
 Verify the output is one hostname, with no scheme or path. Repeat with `ENV=production`. The callback URI is exactly `https://<that-fqdn>/api/auth/callback/google`.
@@ -54,9 +84,9 @@ For each environment:
 
 ## 5. Store values in each environment's app vault
 
-The owner needs **Key Vault Secrets Officer** on that environment's app vault. See [Azure infrastructure](azure-infrastructure.md#parameters-and-application-secrets) for vault roles and naming. Never pass a value with `--value`: it would be visible in command arguments/history. This pattern reads input silently, then writes exactly the bytes typed (no added newline) through stdin as a file.
+The owner needs **Key Vault Secrets Officer** on that environment's app vault. See [Azure infrastructure](azure-infrastructure.md#parameters-and-application-secrets) for vault roles and naming. Never pass a secret on the command line with `--value`: anyone who can list processes, and your shell history, would see it. The commands below avoid that by asking you to type or paste each value at a hidden prompt and sending it straight to Key Vault.
 
-First resolve the app-vault name from the environment's foundation deployment and prompt before writing each value:
+The script does three things. It looks up the name of this environment's app vault. For each value, it asks you to type or paste it (nothing is shown on screen and nothing is saved in your shell history). It then passes the value to Key Vault without it ever appearing in a command. Set `ENV` to the environment you are working on:
 
 ```bash
 ENV=staging

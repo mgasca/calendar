@@ -21,6 +21,9 @@ internal sealed class Diagnostics(IAzureProcess inner, TextWriter output, Func<T
   private readonly Func<TimeSpan, CancellationToken, Task> wait = delay ?? Task.Delay;
   private readonly List<string> secrets = [];
   private int step;
+  private bool appVault;
+  private readonly List<string> failures = [];
+  internal bool DeploymentMode { get; set; }
   internal bool Verbose { get; set; }
   internal int Retries { get; set; } = 2;
   internal void Mask(string value) { if (!string.IsNullOrEmpty(value)) { secrets.Add(value); } }
@@ -58,21 +61,21 @@ internal sealed class Diagnostics(IAzureProcess inner, TextWriter output, Func<T
   {
     var body = Sanitize($"stdout:\n{failure.Stdout}\nstderr:\n{failure.Stderr}");
     var operations = Sanitize(string.Join("\n", failure.Operations));
-    var transcript = Sanitize($"Step: {failure.Step}\nCommand: {failure.Command}\nExit code: {failure.ExitCode}\n{body}\n{operations}\n");
+    var transcript = Sanitize(string.Join("\n", failures) + $"\nStep: {failure.Step}\nCommand: {failure.Command}\nExit code: {failure.ExitCode}\n{body}\n{operations}\n");
     var hint = Classify(failure.Stdout + "\n" + failure.Stderr + "\n" + string.Join("\n", failure.Operations));
     if (hint is not null) { transcript += "Hint: " + hint.Advice + "\n"; }
     var path = await Infra.WriteTranscript(transcript);
     await error.WriteLineAsync($"{failure.Step}: {failure.Command} failed (exit {failure.ExitCode}).");
-    var lines = body.Split('\n');
-    var truncated = lines.Length > 60 || body.Length > 8192;
+    var display = body + (operations.Length > 0 ? "\n" + operations : "");
+    var lines = display.Split('\n');
+    var truncated = lines.Length > 60 || display.Length > 8192;
     if (!Verbose && truncated)
     {
-      body = string.Join('\n', lines.TakeLast(60));
-      if (body.Length > 8192) { body = body[^8192..]; }
+      display = string.Join('\n', lines.TakeLast(60));
+      if (display.Length > 8192) { display = display[^8192..]; }
       await error.WriteLineAsync("Output truncated to the last 60 lines / 8 KB; use --verbose for full sanitized output.");
     }
-    await error.WriteLineAsync(body);
-    if (operations.Length > 0) { await error.WriteLineAsync(operations); }
+    await error.WriteLineAsync(display);
     if (hint is not null) { await error.WriteLineAsync("Hint: " + hint.Advice); }
     await error.WriteLineAsync($"Sanitized transcript: {path}");
   }
@@ -116,7 +119,9 @@ internal sealed class Diagnostics(IAzureProcess inner, TextWriter output, Func<T
     {
       var path = CommandPath(args);
       var label = Label(args);
-      await output.WriteLineAsync($"[{++diagnostics.step}] {label}");
+      if (diagnostics.DeploymentMode && args.Contains("keyvault") && args.Contains("list")) { label = diagnostics.appVault ? "listing app-vault secrets" : "listing ops-vault secrets"; }
+      var progress = diagnostics.DeploymentMode ? Stage(args, diagnostics) + "/6" : (++diagnostics.step).ToString(System.Globalization.CultureInfo.InvariantCulture);
+      await output.WriteLineAsync($"[{progress}] {label}");
       var attempt = 0;
       while (true)
       {
@@ -137,12 +142,22 @@ internal sealed class Diagnostics(IAzureProcess inner, TextWriter output, Func<T
           }
           var hint = Classify(ex.Stdout + "\n" + ex.Stderr + "\n" + string.Join("\n", ex.Operations));
           if (cleanup || !deployment || attempt >= diagnostics.Retries || hint?.RetryReason is null) { throw; }
+          diagnostics.failures.Add($"Attempt {attempt + 1}: {path} exit {ex.ExitCode}\nstdout:\n{ex.Stdout}\nstderr:\n{ex.Stderr}\n{string.Join("\n", ex.Operations)}");
           var seconds = 60 * Math.Pow(2, Math.Min(attempt, 5));
           await output.WriteLineAsync($"Attempt {attempt + 2}/{diagnostics.Retries + 1} after {hint.RetryReason}; retrying in {seconds} s");
           await diagnostics.wait(TimeSpan.FromSeconds(seconds), diagnostics.token);
           attempt++;
         }
       }
+    }
+    private static string Stage(string[] args, Diagnostics diagnostics)
+    {
+      if (args.Contains("rest")) { return "1"; }
+      if (args.Contains("build-params")) { return "2"; }
+      if (args.Contains("deployment") && args.Contains("show")) { diagnostics.appVault = args.Any(a => a.Contains("appKeyVaultName", StringComparison.Ordinal)); return diagnostics.appVault ? "5" : "3"; }
+      if (args.Contains("keyvault") && args.Contains("show")) { return "4"; }
+      if (args.Contains("keyvault") && args.Contains("list")) { return diagnostics.appVault ? "5" : "4"; }
+      return "6";
     }
     private static string CommandPath(string[] args)
     {
@@ -153,7 +168,7 @@ internal sealed class Diagnostics(IAzureProcess inner, TextWriter output, Func<T
     {
       if (args.Contains("build-params")) { return "compiling parameters"; }
       if (args.Contains("deployment") && (args.Contains("create") || args.Contains("what-if"))) { return args.Contains("what-if") ? "previewing deployment" : "creating deployment"; }
-      if (args.Contains("keyvault") && args.Contains("show")) { return "reading vault secret"; }
+      if (args.Contains("keyvault") && args.Contains("show")) { return args.Contains("postgres-admin-password") ? "reading the ops vault password" : "reading vault secret"; }
       if (args.Contains("keyvault") && args.Contains("list")) { return "listing vault secrets"; }
       if (args.Contains("keyvault") && args.Contains("set")) { return "storing vault secret"; }
       return "running " + CommandPath(args);

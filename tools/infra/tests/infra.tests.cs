@@ -173,11 +173,14 @@ public sealed class InfraTests
   [Fact]
   public async Task NestedOperationsAreCollectedAndSanitized()
   {
-    var az = new ScriptedAzure { OperationResponses = new Dictionary<string, string>
+    var az = new ScriptedAzure
     {
-      ["main"] = "[{\"properties\":{\"targetResource\":{\"resourceType\":\"Microsoft.Resources/deployments\",\"resourceName\":\"app\"},\"statusMessage\":{\"error\":{\"code\":\"DeploymentFailed\",\"message\":\"failed\"}}}}]",
-      ["app"] = "[{\"properties\":{\"targetResource\":{\"resourceType\":\"Microsoft.App/containerApps\",\"resourceName\":\"web\"},\"statusMessage\":{\"error\":{\"code\":\"Bad\",\"message\":\"password=hidden\"}}}}]"
-    } };
+      OperationResponses = new Dictionary<string, string>
+      {
+        ["main"] = "[{\"properties\":{\"targetResource\":{\"resourceType\":\"Microsoft.Resources/deployments\",\"resourceName\":\"app\"},\"statusMessage\":{\"error\":{\"code\":\"DeploymentFailed\",\"message\":\"failed\"}}}}]",
+        ["app"] = "[{\"properties\":{\"targetResource\":{\"resourceType\":\"Microsoft.App/containerApps\",\"resourceName\":\"web\"},\"statusMessage\":{\"error\":{\"code\":\"Bad\",\"message\":\"password=hidden\"}}}}]"
+      }
+    };
     var diagnostics = new Diagnostics(az, new StringWriter());
     var failure = new AzureFailureException(1, "", "");
     await diagnostics.CollectOperations(failure, "group", "main");
@@ -205,6 +208,21 @@ public sealed class InfraTests
     else { await wrapped.RunAsync(args); waits.ShouldBe([TimeSpan.FromSeconds(60)]); output.ToString().ShouldContain("Attempt 2/3"); }
     az.Calls.Count(c => !c.Contains("operation")).ShouldBe(calls);
     output.ToString().ShouldContain(deployment ? "creating deployment" : "storing vault secret");
+  }
+
+  [Fact]
+  public async Task RetryWaitsFollowBackoffAndObserveCancellation()
+  {
+    var az = new ScriptedAzure { FailureMessage = "ServerIsBusy", Failures = 2 };
+    var waits = new List<TimeSpan>();
+    var diagnostics = new Diagnostics(az, new StringWriter(), (duration, _) => { waits.Add(duration); return Task.CompletedTask; });
+    await diagnostics.Wrap().RunAsync("deployment", "group", "create", "--resource-group", "group");
+    waits.ShouldBe([TimeSpan.FromSeconds(60), TimeSpan.FromSeconds(120)]);
+    using var cancellation = new CancellationTokenSource();
+    var blocking = new Diagnostics(new ScriptedAzure { FailureMessage = "ServerIsBusy", Failures = 1 }, new StringWriter(), (duration, token) => Task.Delay(duration, token), cancellation.Token);
+    var task = blocking.Wrap().RunAsync("deployment", "group", "create", "--resource-group", "group");
+    await cancellation.CancelAsync();
+    await Should.ThrowAsync<OperationCanceledException>(async () => await task);
   }
 
   private sealed class ScriptedAzure : IAzureProcess

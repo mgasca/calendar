@@ -99,6 +99,7 @@ public static partial class Infra
       }
       if (args[0] != "deploy" && args[0] != "what-if") { throw new ArgumentException("Unknown command."); }
       ValidateEnvironment(args[1]);
+      diagnostics.DeploymentMode = true;
       var phase = "full";
       var allowedIps = new List<string>();
       var configuredIps = Environment.GetEnvironmentVariable("AZURE_ALLOWED_IPS");

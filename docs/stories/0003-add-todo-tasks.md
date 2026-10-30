@@ -75,4 +75,4 @@ Choose **Add task** from the Today view to start with its displayed date, or ope
 
 Use **Upcoming**, **Overdue**, **Completed**, or **No deadline** to review tasks. Tick a task to complete it, or untick it to reopen it. In the calendar, choose a date to see that day's agenda; **Today** restores the live local day.
 
-Reminder delivery, shared calendars, permissions, task editing, and deletion are not available in this version.
+Reminder delivery, shared calendars, permissions and task editing are not available in this version. Task deletion is covered by [story 0007](0007-overdue-triage-and-task-deletion.md).

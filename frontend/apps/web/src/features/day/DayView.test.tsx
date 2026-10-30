@@ -248,18 +248,18 @@ describe('DayView', () => {
       let deletes = 0;
       server.use(
         http.get('*/api/agenda/day', () => HttpResponse.json(agenda)),
-        http.delete('*/api/tasks/t1', () => {
+        http.delete(`*/api/tasks/${overdueTask.id}`, () => {
           deletes++;
           return new HttpResponse(null, { status: 204 });
         }),
       );
       renderApp('/');
       const user = userEvent.setup();
-      await user.click(await screen.findByRole('button', { name: 'Delete File expenses' }));
+      await user.click(await screen.findByRole('button', { name: `Delete ${overdueTask.title}` }));
       await user.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Cancel' }));
-      expect(screen.getByText('File expenses')).toBeInTheDocument();
+      expect(screen.getByText(overdueTask.title)).toBeInTheDocument();
       expect(deletes).toBe(0);
-      await user.click(screen.getByRole('button', { name: 'Delete File expenses' }));
+      await user.click(screen.getByRole('button', { name: `Delete ${overdueTask.title}` }));
       await user.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Delete' }));
       await eventually(() => {
         expect(deletes).toBe(1);

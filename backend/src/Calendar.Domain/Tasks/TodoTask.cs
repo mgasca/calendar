@@ -77,4 +77,36 @@ public sealed class TodoTask
 
   /// <summary>Marks the task open again. Idempotent.</summary>
   public void Reopen() => CompletedAt = null;
+
+  /// <summary>Replaces the deadline of an open task with a floating date.</summary>
+  public void SetDueDate(DateOnly dueDate)
+  {
+    RequireOpen();
+    DueDate = dueDate;
+    DueAt = null;
+  }
+
+  /// <summary>Replaces the deadline of an open task with an instant normalized to UTC.</summary>
+  public void SetDueAt(DateTimeOffset dueAt)
+  {
+    RequireOpen();
+    DueDate = null;
+    DueAt = dueAt.ToUniversalTime();
+  }
+
+  /// <summary>Clears the deadline of an open task.</summary>
+  public void ClearDeadline()
+  {
+    RequireOpen();
+    DueDate = null;
+    DueAt = null;
+  }
+
+  private void RequireOpen()
+  {
+    if (IsCompleted)
+    {
+      throw new InvalidOperationException("A completed task's deadline cannot be changed.");
+    }
+  }
 }

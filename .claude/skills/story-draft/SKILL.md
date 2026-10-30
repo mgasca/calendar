@@ -15,8 +15,6 @@ Read only these parts at the start of every run; they win over anything restated
 - `README.md`: only the opening paragraphs before `## Layout`, so the story is described in the product's terms
 - One finished card as a model: `docs/stories/0007-*.md`; and for a planned one, `docs/stories/XXXX-*.md`. Read the `##` sections you are about to write, not the whole card
 
-Run `git fetch` and `git switch main && git pull --ff-only` first: the template and the story workflow changed recently, and a stale checkout will miss them.
-
 ## Pick the mode
 
 - **New card (PR 0):** the story is new or comes from an issue. Produce a docs-only PR with a `planned` card. Steps 1–7. A story that starts as an issue always begins this way.

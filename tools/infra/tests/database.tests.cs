@@ -4,7 +4,6 @@
 #:package Npgsql@10.0.3
 #:include ../Infrastructure.cs
 #:include ../Database.cs
-
 using Shouldly;
 using Xunit;
 namespace InfraTool.Tests;
@@ -18,7 +17,9 @@ public sealed class DatabaseTests
   public async Task Reconcile(bool role, bool secret, string expected)
   {
     var steps = new List<string>();
-    var result = await Infra.ReconcileRole(role, secret,
+    var result = await Infra.ReconcileRole(
+      role,
+      secret,
       () => { steps.Add("store"); return Task.FromResult("password"); },
       () => { steps.Add("read"); return Task.FromResult("password"); },
       password => { password.ShouldBe("password"); steps.Add("verify"); return Task.FromResult(true); },
@@ -32,7 +33,9 @@ public sealed class DatabaseTests
   public async Task ExistingRoleWithoutSecretRefusesBeforeAnyAction()
   {
     var calls = 0;
-    await Should.ThrowAsync<InvalidOperationException>(() => Infra.ReconcileRole(true, false,
+    await Should.ThrowAsync<InvalidOperationException>(() => Infra.ReconcileRole(
+      true,
+      false,
       () => { calls++; return Task.FromResult("password"); },
       () => { calls++; return Task.FromResult("password"); },
       _ => { calls++; return Task.FromResult(true); },
@@ -45,9 +48,14 @@ public sealed class DatabaseTests
   public async Task ExistingRoleWithWrongSecretRefuses()
   {
     var created = false;
-    await Should.ThrowAsync<InvalidOperationException>(() => Infra.ReconcileRole(true, true,
-      () => Task.FromResult("wrong"), () => Task.FromResult("wrong"), _ => Task.FromResult(false),
-      _ => { created = true; return Task.CompletedTask; }, _ => Task.CompletedTask));
+    await Should.ThrowAsync<InvalidOperationException>(() => Infra.ReconcileRole(
+      true,
+      true,
+      () => Task.FromResult("wrong"),
+      () => Task.FromResult("wrong"),
+      _ => Task.FromResult(false),
+      _ => { created = true; return Task.CompletedTask; },
+      _ => Task.CompletedTask));
     created.ShouldBeFalse();
   }
 
@@ -83,7 +91,13 @@ public sealed class DatabaseTests
   public async Task FirewallIsRemovedAfterFailure()
   {
     var azure = new FakeAzure();
-    await Should.ThrowAsync<InvalidOperationException>(() => Infra.WithFirewall(azure, "rg", "server", "192.0.2.1", () => throw new InvalidOperationException("bundle failure")));
+    await Should.ThrowAsync<InvalidOperationException>(() => Infra.WithFirewall(
+      azure,
+      "rg",
+      "server",
+      "192.0.2.1",
+      () => throw new InvalidOperationException("bundle failure")
+    ));
     azure.Calls.Count.ShouldBe(2);
     azure.Calls[0].ShouldContain("create");
     azure.Calls[1].ShouldContain("delete");
@@ -97,7 +111,13 @@ public sealed class DatabaseTests
   public async Task FailedFirewallCleanupReportsRuleForManualRemoval()
   {
     var azure = new FakeAzure { FailDelete = true };
-    var error = await Should.ThrowAsync<InvalidOperationException>(() => Infra.WithFirewall(azure, "rg", "server", "192.0.2.1", () => Task.CompletedTask));
+    InvalidOperationException error = await Should.ThrowAsync<InvalidOperationException>(() => Infra.WithFirewall(
+      azure,
+      "rg",
+      "server",
+      "192.0.2.1",
+      () => Task.CompletedTask
+    ));
     error.Message.ShouldContain("remove it manually");
     error.Message.ShouldContain(azure.Calls[1][Array.IndexOf(azure.Calls[1], "--name") + 1]);
   }
@@ -114,7 +134,12 @@ public sealed class DatabaseTests
   public async Task ConcurrentSecretChangeIsRejected()
   {
     var az = new FakeAzure { OverrideSecret = "changed" };
-    var error = await Should.ThrowAsync<InvalidOperationException>(() => Infra.StoreSecret(az, "ops", "password", "original"));
+    InvalidOperationException error = await Should.ThrowAsync<InvalidOperationException>(() => Infra.StoreSecret(
+      az,
+      "ops",
+      "password",
+      "original"
+    ));
     error.Message.ShouldContain("Concurrent initialization");
   }
 
@@ -122,7 +147,15 @@ public sealed class DatabaseTests
   public async Task ReconcileRejectsChangedSecretBeforeCreate()
   {
     var created = false;
-    await Should.ThrowAsync<InvalidOperationException>(() => Infra.ReconcileRole(false, false, () => Task.FromResult("original"), () => Task.FromResult("changed"), _ => Task.FromResult(true), _ => { created = true; return Task.CompletedTask; }, _ => Task.CompletedTask));
+    await Should.ThrowAsync<InvalidOperationException>(() => Infra.ReconcileRole(
+      false,
+      false,
+      () => Task.FromResult("original"),
+      () => Task.FromResult("changed"),
+      _ => Task.FromResult(true),
+      _ => { created = true; return Task.CompletedTask; },
+      _ => Task.CompletedTask
+    ));
     created.ShouldBeFalse();
   }
 
@@ -130,8 +163,16 @@ public sealed class DatabaseTests
   public async Task CreationRechecksRoleAndSecret()
   {
     await Infra.ConfirmCreationState(() => Task.FromResult(false), () => Task.FromResult("same"), "same");
-    await Should.ThrowAsync<InvalidOperationException>(() => Infra.ConfirmCreationState(() => Task.FromResult(true), () => Task.FromResult("same"), "same"));
-    await Should.ThrowAsync<InvalidOperationException>(() => Infra.ConfirmCreationState(() => Task.FromResult(false), () => Task.FromResult("changed"), "same"));
+    await Should.ThrowAsync<InvalidOperationException>(() => Infra.ConfirmCreationState(
+      () => Task.FromResult(true),
+      () => Task.FromResult("same"),
+      "same"
+    ));
+    await Should.ThrowAsync<InvalidOperationException>(() => Infra.ConfirmCreationState(
+      () => Task.FromResult(false),
+      () => Task.FromResult("changed"),
+      "same"
+    ));
   }
 
   [Fact]
@@ -145,7 +186,10 @@ public sealed class DatabaseTests
       await Infra.MaskSecret(output, "secret%\r\nvalue");
       output.ToString().ShouldBe("::add-mask::secret%25%0D%0Avalue" + Environment.NewLine);
     }
-    finally { Environment.SetEnvironmentVariable("GITHUB_ACTIONS", previous); }
+    finally
+    {
+      Environment.SetEnvironmentVariable("GITHUB_ACTIONS", previous);
+    }
   }
 
   [Fact]
@@ -163,14 +207,23 @@ public sealed class DatabaseTests
       lines.All(line => line == "::add-mask::secret-value").ShouldBeTrue();
       az.Calls.SelectMany(x => x).ShouldNotContain("secret-value");
     }
-    finally { Environment.SetEnvironmentVariable("GITHUB_ACTIONS", previous); }
+    finally
+    {
+      Environment.SetEnvironmentVariable("GITHUB_ACTIONS", previous);
+    }
   }
 
   [Fact]
   public async Task CleanupFailureDoesNotMaskOriginalError()
   {
     var az = new FakeAzure { FailDelete = true };
-    var error = await Should.ThrowAsync<InvalidOperationException>(() => Infra.WithFirewall(az, "rg", "server", "192.0.2.1", () => throw new InvalidOperationException("original")));
+    InvalidOperationException error = await Should.ThrowAsync<InvalidOperationException>(() => Infra.WithFirewall(
+      az,
+      "rg",
+      "server",
+      "192.0.2.1",
+      () => throw new InvalidOperationException("original")
+    ));
     error.Message.ShouldBe("original");
     error.Data["FirewallCleanup"].ShouldNotBeNull();
   }
@@ -179,7 +232,13 @@ public sealed class DatabaseTests
   public async Task CancellationStillRemovesFirewall()
   {
     var az = new FakeAzure();
-    await Should.ThrowAsync<OperationCanceledException>(() => Infra.WithFirewall(az, "rg", "server", "192.0.2.1", () => throw new OperationCanceledException()));
+    await Should.ThrowAsync<OperationCanceledException>(() => Infra.WithFirewall(
+      az,
+      "rg",
+      "server",
+      "192.0.2.1",
+      () => throw new OperationCanceledException()
+    ));
     az.Calls[^1].ShouldContain("delete");
   }
 
@@ -204,15 +263,27 @@ public sealed class DatabaseTests
     public Task<string> RunAsync(params string[] args)
     {
       Calls.Add(args);
-      if (args.Contains("list")) { return Task.FromResult(RuleList); }
-      if (args.Contains("show")) { return Task.FromResult(OverrideSecret ?? FileContents); }
-      if (FailDelete && args.Contains("delete")) { throw new InvalidOperationException("Azure failure"); }
+      if (args.Contains("list"))
+      {
+        return Task.FromResult(RuleList);
+      }
+      if (args.Contains("show"))
+      {
+        return Task.FromResult(OverrideSecret ?? FileContents);
+      }
+      if (FailDelete && args.Contains("delete"))
+      {
+        throw new InvalidOperationException("Azure failure");
+      }
       var index = Array.IndexOf(args, "--file");
       if (index >= 0)
       {
         FilePath = args[index + 1];
         FileContents = File.ReadAllText(FilePath);
-        if (!OperatingSystem.IsWindows()) { FileMode = File.GetUnixFileMode(FilePath); }
+        if (!OperatingSystem.IsWindows())
+        {
+          FileMode = File.GetUnixFileMode(FilePath);
+        }
       }
       return Task.FromResult("");
     }

@@ -32,12 +32,27 @@ public sealed class AzureProcess(CancellationToken cancellationToken = default) 
     var info = new ProcessStartInfo("az") { RedirectStandardOutput = true, RedirectStandardError = true };
 #pragma warning restore S4036
     info.Environment["AZURE_BICEP_USE_BINARY_FROM_PATH"] = "false";
-    foreach (var arg in args) { info.ArgumentList.Add(arg); }
-    using var process = Process.Start(info) ?? throw new InvalidOperationException("Unable to start az.");
-    var stdout = process.StandardOutput.ReadToEndAsync(CancellationToken.None);
-    var stderr = process.StandardError.ReadToEndAsync(CancellationToken.None);
-    try { await process.WaitForExitAsync(token); }
-    catch (OperationCanceledException) { if (!process.HasExited) { process.Kill(true); await process.WaitForExitAsync(CancellationToken.None); } throw; }
+    foreach (var arg in args)
+    {
+      info.ArgumentList.Add(arg);
+    }
+    using Process process = Process.Start(info) ?? throw new InvalidOperationException("Unable to start az.");
+    Task<string> stdout = process.StandardOutput.ReadToEndAsync(CancellationToken.None);
+    Task<string> stderr = process.StandardError.ReadToEndAsync(CancellationToken.None);
+    try
+    {
+      await process.WaitForExitAsync(token);
+    }
+    catch (OperationCanceledException)
+    {
+      if (!process.HasExited)
+      {
+        process.Kill(true);
+        await process.WaitForExitAsync(CancellationToken.None);
+      }
+
+      throw;
+    }
     var output = await stdout;
     _ = await stderr; // Azure error output can contain sensitive input: never relay it.
     if (process.ExitCode != 0)
@@ -54,16 +69,34 @@ public static partial class Infra
   private const string PasswordName = "postgres-admin-password";
 
   /// <summary>Executes a command using an injected Azure CLI.</summary>
-  public static Task<int> RunAsync(string[] args, IAzureProcess az, TextWriter output, TextWriter error) => RunAsync(args, az, output, error, CancellationToken.None);
+  public static Task<int> RunAsync(
+    string[] args,
+    IAzureProcess az,
+    TextWriter output,
+    TextWriter error
+  ) => RunAsync(args, az, output, error, CancellationToken.None);
 
   /// <summary>Executes a command with cancellation.</summary>
-  public static async Task<int> RunAsync(string[] args, IAzureProcess az, TextWriter output, TextWriter error, CancellationToken cancellationToken)
+  public static async Task<int> RunAsync(
+    string[] args,
+    IAzureProcess az,
+    TextWriter output,
+    TextWriter error,
+    CancellationToken cancellationToken
+  )
   {
     try
     {
       SweepStaleFiles();
-      if (args.Length > 0 && (args[0] == "migrate" || (args[0] == "db" && args.Length > 1 && args[1] == "init-roles"))) { return await DatabaseCommand(args, az, output, cancellationToken); }
-      if (args.Length < 2) { throw new ArgumentException("Usage: deploy|what-if ENV [--phase foundation|full], db start|stop staging, or secret init-postgres-password ENV"); }
+      if (args.Length > 0 && (args[0] == "migrate" || (args[0] == "db" && args.Length > 1 && args[1] == "init-roles")))
+      {
+        return await DatabaseCommand(args, az, output, cancellationToken);
+      }
+      if (args.Length < 2)
+      {
+        throw new ArgumentException(
+          "Usage: deploy|what-if ENV [--phase foundation|full], db start|stop staging, or secret init-postgres-password ENV");
+      }
       if (args[0] == "db")
       {
         if (args.Length != 3 || (args[1] != "start" && args[1] != "stop") || args[2] != "staging")
@@ -98,7 +131,22 @@ public static partial class Infra
         }
         var password = "Aa1!" + Convert.ToBase64String(RandomNumberGenerator.GetBytes(48));
         await MaskSecret(output, password);
-        await WithPrivateFile(password, async path => { await az.RunAsync("keyvault", "secret", "set", "--vault-name", vault, "--name", PasswordName, "--file", path, "--output", "none"); });
+        await WithPrivateFile(password, async path =>
+        {
+          await az.RunAsync(
+            "keyvault",
+            "secret",
+            "set",
+            "--vault-name",
+            vault,
+            "--name",
+            PasswordName,
+            "--file",
+            path,
+            "--output",
+            "none"
+          );
+        });
         await output.WriteLineAsync("PostgreSQL password stored in Key Vault.");
         return 0;
       }
@@ -183,8 +231,23 @@ public static partial class Infra
       {
         var vault = await VaultName(az, args[1], "opsKeyVaultName");
         var names = await SecretNames(az, vault, false);
-        if (!names.Contains(PasswordName, StringComparer.OrdinalIgnoreCase)) { throw new InvalidOperationException("Postgres password missing; owner must run secret init-postgres-password first."); }
-        var password = await az.RunAsync("keyvault", "secret", "show", "--vault-name", vault, "--name", PasswordName, "--query", "value", "-o", "tsv");
+        if (!names.Contains(PasswordName, StringComparer.OrdinalIgnoreCase))
+        {
+          throw new InvalidOperationException("Postgres password missing; owner must run secret init-postgres-password first.");
+        }
+        var password = await az.RunAsync(
+          "keyvault",
+          "secret",
+          "show",
+          "--vault-name",
+          vault,
+          "--name",
+          PasswordName,
+          "--query",
+          "value",
+          "-o",
+          "tsv"
+        );
         await MaskSecret(output, password);
         secretValue = password;
         parameters["postgresAdministratorPassword"] = new JsonObject { ["value"] = password };
@@ -223,25 +286,37 @@ public static partial class Infra
     catch (OperationCanceledException ex) when (cancellationToken.IsCancellationRequested)
     {
       await error.WriteLineAsync("Operation cancelled.");
-      if (ex.Data["FirewallCleanup"] is string cleanup) { await error.WriteLineAsync(cleanup); }
+      if (ex.Data["FirewallCleanup"] is string cleanup)
+      {
+        await error.WriteLineAsync(cleanup);
+      }
       return 1;
     }
     catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException)
     {
       await error.WriteLineAsync("Unable to detect public IP; pass --client-ip IPv4.");
-      if (ex.Data["FirewallCleanup"] is string cleanup) { await error.WriteLineAsync(cleanup); }
+      if (ex.Data["FirewallCleanup"] is string cleanup)
+      {
+        await error.WriteLineAsync(cleanup);
+      }
       return 1;
     }
     catch (Npgsql.NpgsqlException ex)
     {
       await error.WriteLineAsync("PostgreSQL operation failed; check connectivity, permissions and server state.");
-      if (ex.Data["FirewallCleanup"] is string cleanup) { await error.WriteLineAsync(cleanup); }
+      if (ex.Data["FirewallCleanup"] is string cleanup)
+      {
+        await error.WriteLineAsync(cleanup);
+      }
       return 1;
     }
     catch (Exception ex) when (ex is ArgumentException or InvalidOperationException or IOException or JsonException)
     {
       await error.WriteLineAsync(ex.Message);
-      if (ex.Data["FirewallCleanup"] is string cleanup) { await error.WriteLineAsync(cleanup); }
+      if (ex.Data["FirewallCleanup"] is string cleanup)
+      {
+        await error.WriteLineAsync(cleanup);
+      }
       return 1;
     }
   }
@@ -386,7 +461,6 @@ public static partial class Infra
         Redact(child);
       }
     }
-    else if (node is JsonArray array) { foreach (var child in array.OfType<JsonNode>()) { Redact(child); } }
   }
 
   private static bool IsSensitiveName(string name) =>
@@ -416,7 +490,9 @@ public static partial class Infra
 
   private static void SweepStaleFiles()
   {
-    foreach (var path in Directory.EnumerateFiles(RuntimeDirectory(), "calendar-infra-*").Where(path => File.GetLastWriteTimeUtc(path) < DateTime.UtcNow.AddHours(-24)))
+    DateTime cutoff = DateTime.UtcNow.AddHours(-24);
+    foreach (var path in Directory.EnumerateFiles(RuntimeDirectory(), "calendar-infra-*")
+      .Where(p => File.GetLastWriteTimeUtc(p) < cutoff))
     {
       File.Delete(path);
     }

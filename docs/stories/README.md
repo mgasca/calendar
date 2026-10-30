@@ -29,5 +29,5 @@ Front matter: `status` (`planned`, `in-progress` or `implemented`), `date` (`YYY
 | [0005](0005-google-sign-in.md) | Google sign-in | implemented |
 | [0006](0006-modal-dialogs-for-adding.md) | Add tasks and events in a modal dialog | implemented |
 | [0007](0007-overdue-triage-and-task-deletion.md) | Overdue triage and task deletion | implemented |
-| [0008](0008-review-runbooks-for-clarity-and-simplicity.md) | Review the runbooks for clarity and simplicity | in-progress |
+| [0008](0008-review-runbooks-for-clarity-and-simplicity.md) | Review the runbooks for clarity and simplicity | implemented |
 | [XXXX](XXXX-create-events-and-tasks-from-week-view.md) | Create events and tasks from the week view | planned |

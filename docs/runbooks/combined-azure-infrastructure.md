@@ -1,14 +1,51 @@
 # Azure infrastructure
 
-Each UK South environment has its own Log Analytics workspace, workspace-based Application Insights, Basic ACR, two Standard RBAC Key Vaults (app and ops), user-assigned identity, PostgreSQL Flexible Server and Container Apps environment and app. Tags identify the app and environment. The workload identity has AcrPull and Key Vault Secrets User on the app vault only; the deployment identity has Key Vault Secrets User on both vaults. Both vaults send audit events to Log Analytics. Resources are isolated by environment; use synthetic data in staging.
+This runbook creates the Azure resources for staging, then for production, in the UK South region. Each environment has its own resources. Use only synthetic (made-up) data in staging.
+
+## What gets created
+
+Each environment gets these resources. Tags on each resource name the app and the environment.
+
+| Resource | What it is for |
+| --- | --- |
+| Log Analytics workspace | Stores operational logs, including vault audit events. |
+| Application Insights (workspace-based) | Collects telemetry from the running app. |
+| Azure Container Registry (Basic) | Stores container images: the packaged app. |
+| Two Key Vaults (Standard, RBAC) | Store secrets. The **app vault** holds the app's secrets. The **ops vault** holds the database administrator and role passwords. |
+| User-assigned managed identity | The identity the running app uses. Azure manages it, so the app holds no Azure password. |
+| PostgreSQL Flexible Server | The managed database. |
+| Container Apps environment and app | Runs the app's image. |
+
+Access uses Azure role-based access control (RBAC): a role granted on a scope, such as one vault.
+
+- The app's identity has **AcrPull** (read images) and **Key Vault Secrets User** (read secrets) on the app vault only.
+- The deployment identity has **Key Vault Secrets User** on both vaults.
+
+See [ADR-0032](../decisions/0032-azure-key-vault-for-secrets.md) for secrets, [ADR-0033](../decisions/0033-bicep-for-infrastructure-as-code.md) for Bicep and [ADR-0034](../decisions/0034-github-actions-oidc-deployment.md) for the deployment identity.
+
+## Terms
+
+- **Bicep**: the language of the files in `infra/`. They describe the resources you want; Azure Resource Manager (ARM) creates or updates them. The `make infra-*` commands wrap the repository's deployment tool.
+- **What-if**: ARM's preview of the changes a deployment would make. It can be incomplete or noisy, so read it; a clean preview does not guarantee the result.
+- **Phase**: the deployment runs in two phases. **Foundation** creates everything except the database and the app. **Full** adds them.
+- **SKU**: a size and price tier. Both environments use `Standard_B1ms`, the smallest documented Burstable PostgreSQL SKU.
+- **Service principal**: the directory entry for an application identity. Its **client ID** names the application; its **object ID** names the entry.
+- **Drift**: a difference between the deployed resources and the Bicep files.
+
+## Before you start
+
+- Complete [Azure bootstrap](azure-bootstrap.md), including provider registration and the capacity query. The bootstrap creates the resource groups and the deployment identities.
+- Check that the global resource names are free and that the subscription quotas are enough. `Standard_B1ms` availability is not verified for this subscription; a listed SKU is not a guarantee.
+- Sign in with `az login` and select the subscription, as in the bootstrap runbook.
+- Your signed-in account needs permission to deploy to the resource group, to assign roles on each vault, and to read the deployment service principal in Microsoft Graph (Microsoft's directory API).
+- Use Bash, from the repository root, on a trusted machine. Keep **one shell** open for all the steps: later steps use variables set in earlier ones.
+- These commands create resources that cost money. See [Estimated monthly costs](#estimated-monthly-costs).
 
 ## Initial deployment
 
-Complete [Azure bootstrap](azure-bootstrap.md), including provider registration and its capacity query. Both staging and production use `Standard_B1ms`, the smallest documented Burstable SKU. Its availability in each environment is unverified for this subscription. Check global resource name availability and quotas. To change a SKU later, update `postgresSku` in the relevant `infra/parameters/*.bicepparam`, review a full what-if, and deploy after confirming capacity and cost.
+These steps set up **staging**. When staging works, repeat them for production: use the production deployment client ID, `ENV=production`, and `rg-calendar-production` in the `az` commands.
 
-The following commands set up **staging**; repeat with `production` and that environment's deployment client ID after staging is verified. The Make targets require [PR #113](https://github.com/mgasca/calendar/pull/113) to be merged. Sign in with `az login`, select the intended subscription as in the bootstrap runbook, and run commands from the repository root. The owner needs permission to assign roles on each vault and permission to read the deployment service principal in Microsoft Graph.
-
-1. Check tools and identify the deployer. Set this to the staging deployment identity's **client ID** from the bootstrap's `STAGING_CLIENT_ID` or the staging GitHub environment's `AZURE_CLIENT_ID` variable. The tool looks up that service principal's object ID through Microsoft Graph and passes it as `deployerPrincipalId`; it does not use the signed-in owner's object ID for that role.
+1. **Check the tools and the deployment identity.** Use the staging deployment identity's client ID: `STAGING_CLIENT_ID` from the bootstrap, or the `AZURE_CLIENT_ID` variable of the staging GitHub environment.
 
    ```bash
    make doctor ARGS=--infra
@@ -16,19 +53,24 @@ The following commands set up **staging**; repeat with `production` and that env
    az rest --method get --url "https://graph.microsoft.com/v1.0/servicePrincipals(appId='$AZURE_DEPLOYER_CLIENT_ID')" --query '{clientId:appId,objectId:id}' -o json
    ```
 
-   Verify the toolchain check succeeds and the returned client ID and object ID belong to the staging deployment identity.
+   `make doctor` must pass; if it fails, follow its install hints. The `az rest` output must show the staging deployment identity. The tool passes that object ID, not yours, to Bicep as `deployerPrincipalId`.
 
-2. Preview and deploy the **foundation**: the shared building blocks are Log Analytics, Application Insights, the registry, both vaults, the managed identity and role grants. This phase does not create the database or app. It comes first because the ops vault must exist before the owner can store the database password.
+2. **Preview the foundation, then deploy it.** The ops vault must exist before you can store the database password, so the foundation comes first.
 
    ```bash
    make infra-what-if ENV=staging PHASE=foundation
+   ```
+
+   Read the preview. Deploy only if every change is expected.
+
+   ```bash
    make infra-deploy ENV=staging PHASE=foundation
    az deployment group show --resource-group rg-calendar-staging --name calendar-foundation --query '{state:properties.provisioningState,appVault:properties.outputs.appKeyVaultName.value,opsVault:properties.outputs.opsKeyVaultName.value}' -o json
    ```
 
-   Review the preview before deploying. Verify the deployment state is `Succeeded` and both distinct vault names appear. Role creation and permission propagation are separate: wait and retry access failures, allowing about 10 minutes.
+   Expect `"state": "Succeeded"` and two different vault names. New role assignments can take about 10 minutes to work; if access fails, wait and retry.
 
-3. Grant your signed-in owner identity **Key Vault Secrets Officer** on both vaults. This permits the owner to initialize the password and later application secrets; the deployment identity remains read-only. The role assignment requires permission to grant roles at each vault.
+3. **Give yourself Key Vault Secrets Officer on both vaults**, so you can create the password now and the app secrets later. The deployment identity stays read-only.
 
    ```bash
    app_vault=$(az deployment group show -g rg-calendar-staging -n calendar-foundation --query properties.outputs.appKeyVaultName.value -o tsv)
@@ -41,48 +83,131 @@ The following commands set up **staging**; repeat with `production` and that env
    done
    ```
 
-   Verify each list contains the intended role and vault scope. Allow time for RBAC propagation before using the vaults.
+   Each list must show the role on that vault. Wait for the role to take effect before you use the vaults.
 
-4. Initialize the password in the ops vault using the owner's login, then check its name without displaying its value.
+4. **Create the database administrator password in the ops vault**, then check that it exists without showing its value.
 
    ```bash
    make infra-secret-init ENV=staging
    az keyvault secret show --vault-name "$ops_vault" --name postgres-admin-password --query name -o tsv
    ```
 
-   Verify the output is `postgres-admin-password`. The tool generates the value locally, does not print it, and refuses to overwrite an existing password; rotation requires a coordinated manual change. Do not put secret values in shell arguments, parameter files, logs or the repository.
+   Expect `postgres-admin-password`. The tool generates the password on your machine and never prints it. It refuses to overwrite an existing password; changing it needs a planned manual change. Never put secret values in shell arguments, parameter files, logs or the repository.
 
-5. Preview and deploy the full phase. Replace `<your-public-ip-or-cidr>` with the owner's actual IPv4 address or CIDR; this gives the owner access for later database work. The app's outbound addresses are added separately by Bicep.
+5. **Preview the full phase, then deploy it.** Replace `<your-public-ip-or-cidr>` with your public IPv4 address (for example `203.0.113.7/32`) or range. This lets you reach the database for later work. Bicep adds the app's own outbound addresses.
 
    ```bash
    make infra-what-if ENV=staging PHASE=full ARGS="--allow-ip <your-public-ip-or-cidr>"
+   ```
+
+   Read the preview. Deploy only if every change is expected.
+
+   ```bash
    make infra-deploy ENV=staging PHASE=full ARGS="--allow-ip <your-public-ip-or-cidr>"
    az postgres flexible-server list --resource-group rg-calendar-staging --query '[].{name:name,state:state,sku:sku.name}' -o json
    az containerapp list --resource-group rg-calendar-staging --query '[].{name:name,state:properties.provisioningState,fqdn:properties.configuration.ingress.fqdn}' -o json
    ```
 
-   Review the preview, then verify the database and Container App exist, the SKU is `Standard_B1ms`, and provisioning succeeds. Check the placeholder's HTTPS URL and repeat the full what-if to inspect drift. Full deployment reads the ops password securely; first deployment has no app secrets until S6 and S9 add them. Repeat these steps for production with the production client ID, `ENV=production`, and `rg-calendar-production` in the Azure CLI commands.
+   Expect one database with SKU `Standard_B1ms` and one Container App, both provisioned. Open `https://<fqdn>` from the app list and check that the placeholder page responds.
 
-The secure parameter is used instead of a checked-in `az.getSecret()` reference: foundation must work before the vault and secret exist, while the subscription-specific vault ID is not known in the parameter files. Microsoft documents [secure deployment parameters and Key Vault references](https://learn.microsoft.com/azure/azure-resource-manager/templates/key-vault-parameter); the tool must use a protected, non-logging transport. The vault also enables template deployment for future use. Full-phase what-if and deployment need the existing password and live verification.
+6. **Check for drift.** Run the full what-if from step 5 again, with the same address. Investigate any change it still shows.
+
+The first full deployment has no app secrets yet. The [database runbook](azure-database.md), which comes next, adds the connection string; Google sign-in adds the rest later.
+
+### Why the password is a secure parameter
+
+The tool reads the ops-vault password and passes it to Bicep as a secure parameter, over a transport that does not log it. A checked-in `az.getSecret()` reference cannot work here: the foundation must deploy before the vault and secret exist, and the parameter files do not know the subscription-specific vault ID. See Microsoft's [secure deployment parameters and Key Vault references](https://learn.microsoft.com/azure/azure-resource-manager/templates/key-vault-parameter). The vault also allows template deployment, for future use.
 
 ## Parameters and application secrets
 
-`infra/main.bicep` is resource-group scoped. The checked-in parameter files contain the environment, SKU and default Azure-services firewall setting. The deployment tool supplies `deployerPrincipalId`, `deployDatabaseAndApp`, `postgresAdministratorPassword`, `containerImage`, `keyVaultSecretNames`, and `allowedFirewallIps` as needed. Firewall entries are objects with `startIpAddress` and `endIpAddress`; `allowAzureServices` defaults to false. The Azure-services rule permits connections from Azure broadly, not just this subscription. The database module runs after the Container App and adds its reported outbound IPs to the database firewall; this has no circular dependency because the initial placeholder does not depend on PostgreSQL. These IPs can change over time: inspect the current app properties and redeploy the infrastructure when they change. Supply migration runner and operator IPs separately; never commit them to this public repository.
+`infra/main.bicep` deploys to one resource group. The checked-in parameter files (`infra/parameters/*.bicepparam`) set the environment, the SKU and the Azure-services firewall setting. The deployment tool supplies `deployerPrincipalId`, `deployDatabaseAndApp`, `postgresAdministratorPassword`, `containerImage`, `keyVaultSecretNames` and `allowedFirewallIps` as needed.
 
-`minReplicas` and `maxReplicas` default to 0 and 1. The public hello-world placeholder automatically uses port 80 without custom probes; any other image uses `targetPort` (default 8080) and startup, liveness and readiness probes at `/api/health`. Issue #75 and ADR-0030 do not specify the image port, so S3 must confirm that its Dockerfile listens on 8080 or pass the matching port. Measure cold-start time before increasing the minimum. The app uses 0.25 vCPU and 0.5 GiB and HTTPS-only external ingress.
+**Changing the SKU:** edit `postgresSku` in the environment's `.bicepparam` file, review a full what-if, and deploy only after you confirm capacity and cost.
 
-The `keyVaultSecretNames` list contains only existing, enabled app-vault secrets; Bicep also intersects it with the application allowlist. Versionless references use the app identity, which cannot read the ops vault. The names `calendar-connection-string`, `google-client-id`, `google-client-secret`, and `allowed-email-0`, `allowed-email-1`, etc. map to `ConnectionStrings__Calendar`, `Auth__Google__ClientId`, `Auth__Google__ClientSecret`, and `Auth__AllowedEmails__0`, `Auth__AllowedEmails__1`, etc. Add only names whose values have been populated. Changes to references and RBAC propagation must be checked live. For the first full deployment, only the ops password exists, so the initial placeholder uses an empty app-secret list.
+**Database firewall:**
 
-S6 provides commands to initialize `calendar_migrator` and `calendar_app`, establish least-privilege grants, and run migrations separately; see the [database runbook](azure-database.md). S9 must provision separate Google OAuth clients, credentials and allow-listed emails in each vault and configure redirect URIs. S7 must publish and promote the real image. S8 must wire Application Insights and alerts.
+- Firewall entries are objects with `startIpAddress` and `endIpAddress`.
+- `allowAzureServices` defaults to false. If enabled, it lets in connections from any Azure customer, not just this subscription.
+- The database module runs after the Container App and adds the app's outbound IPs. This is not circular, because the placeholder app does not use PostgreSQL.
+- The app's outbound IPs can change. When they do, redeploy the infrastructure.
+- Supply migration-runner and operator IPs at deploy time. Never commit IP addresses to this public repository.
+
+**Container App:**
+
+- `minReplicas` is 0 and `maxReplicas` is 1 by default. Measure cold-start time before you raise the minimum.
+- The app uses 0.25 vCPU and 0.5 GiB, with HTTPS-only external ingress.
+- The public hello-world placeholder uses port 80 and no custom probes. Any other image uses `targetPort` (default 8080), with startup, liveness and readiness probes on `/api/health`. Issue #75 and ADR-0030 do not specify the image port, so story S3 must confirm that its Dockerfile listens on 8080, or pass the matching port.
+
+**App secrets:** the app reads secrets through versionless Key Vault references (always the current version), using its own identity, which cannot read the ops vault. `keyVaultSecretNames` lists only app-vault secrets that exist, are enabled and have values; Bicep also limits it to this allowlist:
+
+| App-vault secret | App setting |
+| --- | --- |
+| `calendar-connection-string` | `ConnectionStrings__Calendar` |
+| `google-client-id` | `Auth__Google__ClientId` |
+| `google-client-secret` | `Auth__Google__ClientSecret` |
+| `allowed-email-0`, `allowed-email-1`, … | `Auth__AllowedEmails__0`, `Auth__AllowedEmails__1`, … |
+
+After you change the references or role assignments, check in Azure that the app can read them. The first full deployment uses an empty list, because only the ops password exists then.
+
+**Later delivery stories** (S3 and S6–S9 are story labels, not commands):
+
+- S6: database roles, least-privilege grants and migrations; see the [database runbook](azure-database.md).
+- S7: publish and promote the real image.
+- S8: wire Application Insights and alerts.
+- S9: separate Google OAuth clients, credentials and allowed emails in each vault, and the redirect URIs.
 
 ## Staging database operations
 
-Use the tooling's staging database start and stop commands, or run `az postgres flexible-server stop --resource-group rg-calendar-staging --name <server-name>` and replace `stop` with `start` before migrations, deployment or testing. Confirm state in Azure before continuing. Stopping makes staging unavailable; storage and excess backup storage remain billable. Azure automatically starts a stopped server after seven days and no new backups are taken while stopped. Monitor state and stop it again when appropriate. Burstable servers consume CPU credits above baseline; prolonged load can exhaust credits and degrade availability. Monitor credits, alert on low balance, and choose a larger SKU or tier if needed. See [compute guidance](https://learn.microsoft.com/azure/postgresql/flexible-server/concepts-compute-storage) and [stop and start](https://learn.microsoft.com/azure/postgresql/configure-maintain/how-to-stop-server).
+Stop the staging database when it is not in use, to save compute cost:
+
+```bash
+make infra-db-stop
+```
+
+Start it again before migrations, deployments or testing:
+
+```bash
+make infra-db-start
+```
+
+You can also use `az postgres flexible-server stop --resource-group rg-calendar-staging --name <server-name>`, and `start` in place of `stop`. Get `<server-name>` from the `az postgres flexible-server list` command in step 5.
+
+After either command, run the list command again and wait until it reports the new state.
+
+While it is stopped:
+
+- Staging is unavailable.
+- Storage and extra backup storage are still billed.
+- Azure takes no new backups.
+- Azure starts it again automatically after seven days. Check its state and stop it again if needed.
+
+Burstable servers use CPU credits when they run above their baseline. Long periods of load can use up the credits and slow the server. Monitor the credits, alert on a low balance, and move to a larger SKU or tier if needed. See [compute guidance](https://learn.microsoft.com/azure/postgresql/flexible-server/concepts-compute-storage) and [stop and start](https://learn.microsoft.com/azure/postgresql/configure-maintain/how-to-stop-server).
 
 ## Estimated monthly costs
 
-Illustrative USD retail rates queried from the [Microsoft retail prices API](https://prices.azure.com/api/retail/prices) for UK South on 2026-10-29; rates exclude tax, discounts and currency conversion. The exact meters are: Container Registry **Basic Registry Unit** $0.1666/day; PostgreSQL Flexible Server Burstable BS Series Compute **B1MS** $0.019/hour; Flex Server Storage **Storage Data Stored** $0.133/GB-month; Flexible Server Backup Storage **Backup Storage LRS Data Stored** $0.10/GB-month; Log Analytics **Analytics Logs Data Ingestion** $2.88/GB (also a $0 free tier meter); Key Vault **Operations** $0.03/10,000 operations. These are observed retail prices, not a quote. Adding the second vault adds no fixed vault charge under these assumptions; its assumed 10,000 operations add $0.03 per environment.
+These are example USD retail prices from the [Microsoft retail prices API](https://prices.azure.com/api/retail/prices) for UK South on 2026-10-29. They exclude tax, discounts and currency conversion. They are not a quote and not a spending cap.
 
-Assume 730 hours of compute, 30 registry days, 32 GB storage, backup usage no greater than the included provisioned storage, 1 GB ingested within the applicable free allowance, 20,000 vault operations (10,000 per vault), and Container Apps usage within the subscription's shared free grant. Per environment, the calculation is $13.87 compute + $5.00 registry + $4.26 storage + $0.06 vault operations (rounded components). Using unrounded components, staging is approximately **$23.18/month**, production **$23.18/month**, and both **$46.37/month**. The staging estimate assumes it runs continuously; every stopped hour saves about $0.019 in compute until automatic restart. Backup overage, extra log ingestion/retention, request or compute overages, network, taxes and other services add cost. Verify applicable allowances, actual usage and invoices: the estimate is not a spending cap. Container Apps grant assumptions are detailed in [ADR-0029](../decisions/0029-azure-container-apps-compute-platform.md).
+| Service | Meter | Price |
+| --- | --- | --- |
+| Container Registry | Basic Registry Unit | $0.1666/day |
+| PostgreSQL Flexible Server | Burstable BS Series Compute B1MS | $0.019/hour |
+| PostgreSQL Flexible Server | Storage Data Stored | $0.133/GB-month |
+| PostgreSQL Flexible Server | Backup Storage LRS Data Stored | $0.10/GB-month |
+| Log Analytics | Analytics Logs Data Ingestion | $2.88/GB (a $0 free-tier meter also exists) |
+| Key Vault | Operations | $0.03/10,000 operations |
 
-Nothing has been deployed or previewed against the subscription yet. The owner must run both phase what-ifs and deployments, repeat the full what-if to check drift, verify RBAC propagation, image pulls, secret resolution, health probes, network access and PostgreSQL TLS, and review costs and quotas in Azure.
+Assumptions per environment: 730 compute hours, 30 registry days, 32 GB storage, backups within the included storage, 1 GB of logs within the free allowance, 20,000 vault operations (10,000 per vault), and Container Apps usage within the subscription's shared free grant ([ADR-0029](../decisions/0029-azure-container-apps-compute-platform.md)). The second vault adds no fixed charge, only its operations ($0.03).
+
+| Item | Per environment |
+| --- | --- |
+| Compute | $13.87 |
+| Registry | $5.00 |
+| Storage | $4.26 |
+| Vault operations | $0.06 |
+| **Total** (from unrounded parts) | **$23.18/month** |
+
+Staging and production together cost about **$46.37/month**. The staging figure assumes it runs all month; each stopped hour saves about $0.019 until Azure restarts it. Backup overage, extra log ingestion or retention, request or compute overages, network, taxes and other services add cost. Check the allowances, actual usage and invoices in Azure.
+
+## Not yet verified live
+
+When this runbook was written, nothing had been deployed or previewed against the subscription. On the first run, the owner must also check: role propagation, image pulls, secret resolution, health probes, network access, PostgreSQL TLS, and costs and quotas in Azure.

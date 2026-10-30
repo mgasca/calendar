@@ -1,4 +1,7 @@
 import { Notes } from './Notes.tsx';
+import { useState } from 'react';
+import { ConfirmDialog } from '../../components/ConfirmDialog.tsx';
+import { useDeleteTask } from './useDeleteTask.ts';
 import { formatTime, type AgendaTask } from './dayTime.ts';
 import { TaskUpdateError, useTaskTogglePending } from './useToggleTask.ts';
 
@@ -27,6 +30,8 @@ export function TaskItem({
   disabled,
   onToggle,
 }: TaskItemProps) {
+  const [confirmDelete, setConfirmDelete] = useState(false);
+  const deletion = useDeleteTask();
   const pending = useTaskTogglePending(task.id);
   const metaId = `task-meta-${task.id}`;
   const showMeta = !!detail || (!!dueAt && !!timeZone) || pastDue;
@@ -48,6 +53,32 @@ export function TaskItem({
       </label>
       {task.priority && <span className="badge">{task.priority} priority</span>}
       {task.hasNotes && <Notes id={task.id} kind="task" />}
+      <button
+        type="button"
+        aria-label={`Delete ${task.title}`}
+        disabled={deletion.isPending}
+        onClick={() => {
+          setConfirmDelete(true);
+        }}
+      >
+        Delete
+      </button>
+      {confirmDelete && (
+        <ConfirmDialog
+          count={1}
+          pending={deletion.isPending}
+          onCancel={() => {
+            setConfirmDelete(false);
+          }}
+          onConfirm={() => {
+            deletion.mutate(task.id, {
+              onSuccess: () => {
+                setConfirmDelete(false);
+              },
+            });
+          }}
+        />
+      )}
       {showMeta && (
         <span id={metaId} className="item-meta">
           {detail && !task.isCompleted && <strong className="flag">{detail}</strong>}

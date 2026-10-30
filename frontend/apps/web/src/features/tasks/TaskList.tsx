@@ -1,6 +1,8 @@
 import type { Schemas } from '@calendar/api-client';
 import { useInfiniteQuery, type InfiniteData } from '@tanstack/react-query';
 import { useState } from 'react';
+import { ConfirmDialog } from '../../components/ConfirmDialog.tsx';
+import { useDeleteTask } from '../agenda/useDeleteTask.ts';
 
 import { viewParam, views, type View } from './taskViews.ts';
 import { api } from '../../api/client.ts';
@@ -62,6 +64,8 @@ export function TaskList() {
     refetchInterval: 300_000,
   });
   const toggle = useToggleTask(queryKey, patchPages);
+  const deletion = useDeleteTask();
+  const [deleteId, setDeleteId] = useState<string | null>(null);
   const visible = tasks.data?.pages.flatMap((page) => page.items) ?? [];
   return (
     <section aria-labelledby="personal-tasks-heading">
@@ -121,9 +125,34 @@ export function TaskList() {
               {view === 'Upcoming' && task.dueAt && <PastDue task={task} />}
             </span>
             {task.notes && <p className="task-notes">{task.notes}</p>}
+            <button
+              type="button"
+              disabled={deletion.isPending}
+              onClick={() => {
+                setDeleteId(task.id);
+              }}
+            >
+              Delete
+            </button>
           </li>
         ))}
       </ul>
+      {deleteId && (
+        <ConfirmDialog
+          count={1}
+          pending={deletion.isPending}
+          onCancel={() => {
+            setDeleteId(null);
+          }}
+          onConfirm={() => {
+            deletion.mutate(deleteId, {
+              onSuccess: () => {
+                setDeleteId(null);
+              },
+            });
+          }}
+        />
+      )}
       {tasks.hasNextPage && (
         <button
           type="button"

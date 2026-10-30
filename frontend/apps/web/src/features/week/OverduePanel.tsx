@@ -1,5 +1,6 @@
 import { describeOverdue, openFirst, type AgendaTask } from '../agenda/dayTime.ts';
 import { TaskItem } from '../agenda/TaskItem.tsx';
+import { Link } from '@tanstack/react-router';
 import type { TaskToggleProps } from './TaskStrip.tsx';
 
 /**
@@ -20,7 +21,11 @@ export function OverduePanel({
       <h2 id="week-overdue-heading">
         Overdue <span className="count">({total})</span>
       </h2>
-      {total > 20 && <p>Showing 20 of {total}</p>}
+      {total > 20 && (
+        <p>
+          <Link to="/triage">View all {total} overdue</Link>
+        </p>
+      )}
       <ul className="items">
         {openFirst(tasks).map((task) => (
           <TaskItem

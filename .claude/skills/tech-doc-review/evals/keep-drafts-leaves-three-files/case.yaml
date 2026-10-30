@@ -1,0 +1,7 @@
+schema_version: "1.1"
+name: keep-drafts-leaves-three-files
+expected_outcome: |
+  In keep-drafts mode, the skill leaves the original sample-runbook.md unchanged
+  and adds clear-, simple- and combined- drafts beside it. It makes no commit that
+  replaces the original or deletes a draft. Its summary says the branch is not
+  ready to merge until the user picks one version.

@@ -2,11 +2,26 @@ using System.Net;
 using System.Net.Http.Json;
 using System.Text.Json.Nodes;
 using Calendar.Api.Contracts;
+using Calendar.Api.Endpoints;
+using Calendar.Domain.Tasks;
+using Calendar.Infrastructure;
+using Microsoft.EntityFrameworkCore;
 
 namespace Calendar.Api.Tests.Endpoints;
 
 public sealed class TaskEndpointsTests(PostgresFixture postgres) : ApiTestBase(postgres)
 {
+  [Theory]
+  [InlineData("40001")]
+  [InlineData("40P01")]
+  public void SerializationAndDeadlockErrors_AreRecognizedThroughDbUpdateException(string sqlState)
+  {
+    var postgresException = new Npgsql.PostgresException("database conflict", "ERROR", "ERROR", sqlState);
+    var exception = new DbUpdateException("update failed", postgresException);
+
+    TaskEndpoints.IsSerializationOrDeadlock(exception).ShouldBeTrue();
+  }
+
   private static readonly Uri Tasks = new("/api/tasks", UriKind.Relative);
 
   private async Task<TaskResponse> CreateAsync(object payload)
@@ -20,6 +35,26 @@ public sealed class TaskEndpointsTests(PostgresFixture postgres) : ApiTestBase(p
   {
     TaskPage? page = await Client.GetFromJsonAsync<TaskPage>(new Uri($"/api/tasks?view={query}", UriKind.Relative), Ct);
     return page.ShouldNotBeNull();
+  }
+
+  private async Task<(TodoTask Task, uint Xmin)> ReadTaskAndXminAsync(Guid id)
+  {
+    await using CalendarDbContext db = Postgres.Database.CreateAppContext();
+    TodoTask task = await db.Tasks.SingleAsync(candidate => candidate.Id == id, Ct);
+    return (task, db.Entry(task).Property<uint>("xmin").CurrentValue);
+  }
+
+  private static void AddDeadline(Dictionary<string, object?> payload, string? dueDate, string? dueAt)
+  {
+    if (dueDate is not null)
+    {
+      payload["dueDate"] = dueDate;
+    }
+
+    if (dueAt is not null)
+    {
+      payload["dueAt"] = dueAt;
+    }
   }
 
   /// <summary>Reads a whole view page by page, following each cursor.</summary>
@@ -261,6 +296,46 @@ public sealed class TaskEndpointsTests(PostgresFixture postgres) : ApiTestBase(p
     page.NextCursor.ShouldBeNull();
   }
 
+  [Fact]
+  public async Task ListTasks_OverdueTotalMatchesBulkFilterForDstWindow()
+  {
+    await CreateAsync(new { title = "Floating overdue", dueDate = "2026-10-31" });
+    await CreateAsync(new { title = "Instant overdue", dueAt = "2026-10-31T20:00:00Z" });
+    await CreateAsync(new { title = "Due today", dueDate = "2026-11-01" });
+    TaskResponse completed = await CreateAsync(new { title = "Completed overdue", dueDate = "2026-10-20" });
+    await PostActionAsync(completed.Id, "complete");
+
+    TaskPage first = await ListAsync("overdue&today=2026-11-01&timeZone=America/New_York&limit=1");
+    TaskPage second = await ListAsync(
+      $"overdue&today=2026-11-01&timeZone=America/New_York&limit=1&cursor={Uri.EscapeDataString(first.NextCursor!)}");
+    first.Total.ShouldBe((int?)2);
+    second.Total.ShouldBeNull();
+
+    using HttpResponseMessage response = await Client.PostAsJsonAsync(
+      new Uri("/api/tasks/bulk", UriKind.Relative),
+      new
+      {
+        action = "delete",
+        filter = new { view = "overdue", today = "2026-11-01", timeZone = "America/New_York", expectedTotal = first.Total },
+      },
+      Ct);
+    response.StatusCode.ShouldBe(HttpStatusCode.OK);
+    (await response.Content.ReadFromJsonAsync<BulkTaskResponse>(Ct))!.Applied.ShouldBe(first.Total!.Value);
+  }
+
+  [Fact]
+  public async Task BulkTasks_NumericUnknownAction_Returns400()
+  {
+    TaskResponse task = await CreateAsync(new { title = "Keep" });
+    using HttpResponseMessage response = await Client.PostAsJsonAsync(
+      new Uri("/api/tasks/bulk", UriKind.Relative),
+      new { action = 99, ids = new[] { task.Id } },
+      Ct);
+
+    response.StatusCode.ShouldBe(HttpStatusCode.BadRequest);
+    (await Client.GetAsync(new Uri($"/api/tasks/{task.Id}", UriKind.Relative), Ct)).StatusCode.ShouldBe(HttpStatusCode.OK);
+  }
+
   public static TheoryData<string, string, string> InvalidListQueries => new()
     {
         { "missing view", "", "view" },
@@ -294,5 +369,364 @@ public sealed class TaskEndpointsTests(PostgresFixture postgres) : ApiTestBase(p
     using HttpResponseMessage response = await Client.GetAsync(new Uri($"/api/tasks?view=completed&cursor={cursor}", UriKind.Relative), Ct);
 
     response.StatusCode.ShouldBe(HttpStatusCode.BadRequest);
+  }
+
+  [Fact]
+  public async Task BulkTasks_AppliesActionsAndReportsSkippedAndMissingIds()
+  {
+    TaskResponse open = await CreateAsync(new { title = "Open", dueDate = "2026-10-20" });
+    TaskResponse completed = await CreateAsync(new { title = "Done" });
+    await PostActionAsync(completed.Id, "complete");
+    var missing = Guid.NewGuid();
+
+    using HttpResponseMessage response = await Client.PostAsJsonAsync(
+      new Uri("/api/tasks/bulk", UriKind.Relative),
+      new { action = "setDueDate", ids = new[] { open.Id, completed.Id, missing }, dueDate = "2026-10-27" },
+      Ct);
+
+    response.StatusCode.ShouldBe(HttpStatusCode.OK);
+    BulkTaskResponse result = (await response.Content.ReadFromJsonAsync<BulkTaskResponse>(Ct))!;
+    result.Applied.ShouldBe(1);
+    result.Skipped.ShouldBe(1);
+    result.NotFound.ShouldBe(1);
+    result.Results.Select(item => item.Outcome).ShouldBe(["applied", "skipped", "notFound"]);
+    (await Client.GetFromJsonAsync<TaskResponse>(new Uri($"/api/tasks/{open.Id}", UriKind.Relative), Ct))!
+      .DueDate.ShouldBe(new DateOnly(2026, 10, 27));
+  }
+
+  [Fact]
+  public async Task BulkTasks_CompleteIsIdempotentAndFilterCountGuardsChanges()
+  {
+    TaskResponse overdue = await CreateAsync(new { title = "Overdue", dueDate = "2026-10-20" });
+    await PostActionAsync(overdue.Id, "complete");
+    using HttpResponseMessage completeResponse = await Client.PostAsJsonAsync(
+      new Uri("/api/tasks/bulk", UriKind.Relative),
+      new { action = "complete", ids = new[] { overdue.Id } },
+      Ct);
+    completeResponse.StatusCode.ShouldBe(HttpStatusCode.OK);
+    (await completeResponse.Content.ReadFromJsonAsync<BulkTaskResponse>(Ct))!.Applied.ShouldBe(1);
+
+    using HttpResponseMessage conflict = await Client.PostAsJsonAsync(
+      new Uri("/api/tasks/bulk", UriKind.Relative),
+      new
+      {
+        action = "delete",
+        filter = new { view = "overdue", today = "2026-10-26", timeZone = "Europe/London", expectedTotal = 1 },
+      },
+      Ct);
+    conflict.StatusCode.ShouldBe(HttpStatusCode.Conflict);
+    (await Client.GetAsync(new Uri($"/api/tasks/{overdue.Id}", UriKind.Relative), Ct)).StatusCode.ShouldBe(HttpStatusCode.OK);
+  }
+
+  [Fact]
+  public async Task BulkTasks_IdTarget_CanSetInstantClearDeadlineAndDelete()
+  {
+    TaskResponse task = await CreateAsync(new { title = "Edit", dueDate = "2026-10-20" });
+    using HttpResponseMessage setInstant = await Client.PostAsJsonAsync(
+      new Uri("/api/tasks/bulk", UriKind.Relative),
+      new { action = "setDueInstant", ids = new[] { task.Id }, dueAt = "2026-10-27T09:30:00-04:00" },
+      Ct);
+    setInstant.StatusCode.ShouldBe(HttpStatusCode.OK);
+    (await Client.GetFromJsonAsync<TaskResponse>(new Uri($"/api/tasks/{task.Id}", UriKind.Relative), Ct))!
+      .DueAt.ShouldBe(Utc(2026, 10, 27, 13, 30));
+
+    using HttpResponseMessage clear = await Client.PostAsJsonAsync(
+      new Uri("/api/tasks/bulk", UriKind.Relative),
+      new { action = "clearDeadline", ids = new[] { task.Id } },
+      Ct);
+    clear.StatusCode.ShouldBe(HttpStatusCode.OK);
+    (await Client.GetFromJsonAsync<TaskResponse>(new Uri($"/api/tasks/{task.Id}", UriKind.Relative), Ct))!
+      .DueDate.ShouldBeNull();
+    (await Client.GetFromJsonAsync<TaskResponse>(new Uri($"/api/tasks/{task.Id}", UriKind.Relative), Ct))!
+      .DueAt.ShouldBeNull();
+
+    using HttpResponseMessage delete = await Client.PostAsJsonAsync(
+      new Uri("/api/tasks/bulk", UriKind.Relative),
+      new { action = "delete", ids = new[] { task.Id } },
+      Ct);
+    delete.StatusCode.ShouldBe(HttpStatusCode.OK);
+    (await Client.GetAsync(new Uri($"/api/tasks/{task.Id}", UriKind.Relative), Ct)).StatusCode.ShouldBe(HttpStatusCode.NotFound);
+  }
+
+  [Fact]
+  public async Task BulkTasks_FilterTarget_AppliesActionsAndUpdatesAgendaOverdueCounts()
+  {
+    TaskResponse completed = await CreateAsync(new { title = "Complete", dueDate = "2026-10-20" });
+    await ApplyToOverdueAsync("complete");
+    await CreateAsync(new { title = "Date", dueDate = "2026-10-20" });
+    await ApplyToOverdueAsync("setDueDate", dueDate: "2026-10-27");
+    await CreateAsync(new { title = "Instant", dueDate = "2026-10-20" });
+    await ApplyToOverdueAsync("setDueInstant", dueAt: "2026-10-27T12:00:00Z");
+    await CreateAsync(new { title = "Clear", dueDate = "2026-10-20" });
+    await ApplyToOverdueAsync("clearDeadline");
+    await CreateAsync(new { title = "Delete", dueDate = "2026-10-20" });
+    await ApplyToOverdueAsync("delete");
+
+    (await ListAsync("overdue&today=2026-10-26&timeZone=Europe/London")).Items.ShouldBeEmpty();
+    DayAgendaResponse? agenda = await Client.GetFromJsonAsync<DayAgendaResponse>(
+      new Uri("/api/agenda/day?date=2026-10-26&timeZone=Europe/London", UriKind.Relative),
+      Ct);
+    agenda.ShouldNotBeNull().Tasks.OverdueOpenTotal.ShouldBe(0);
+    agenda.Tasks.OverdueTotal.ShouldBe(1);
+    agenda.Tasks.Overdue.Select(item => item.Id).ShouldBe([completed.Id]);
+
+    async Task ApplyToOverdueAsync(string action, string? dueDate = null, string? dueAt = null)
+    {
+      var payload = new Dictionary<string, object?>
+      {
+        ["action"] = action,
+        ["filter"] = new { view = "overdue", today = "2026-10-26", timeZone = "Europe/London", expectedTotal = 1 },
+      };
+      if (dueDate is not null)
+      {
+        payload["dueDate"] = dueDate;
+      }
+
+      if (dueAt is not null)
+      {
+        payload["dueAt"] = dueAt;
+      }
+
+      using HttpResponseMessage response = await Client.PostAsJsonAsync(new Uri("/api/tasks/bulk", UriKind.Relative), payload, Ct);
+      response.StatusCode.ShouldBe(HttpStatusCode.OK);
+      BulkTaskResponse result = (await response.Content.ReadFromJsonAsync<BulkTaskResponse>(Ct))!;
+      result.Applied.ShouldBe(1);
+      result.Skipped.ShouldBe(0);
+      result.NotFound.ShouldBe(0);
+      result.Results.ShouldBeEmpty();
+    }
+  }
+
+  [Fact]
+  public async Task BulkTasks_FilterTarget_MatchesPerIdRowsForEveryAction()
+  {
+    await AssertAgreementAsync("complete");
+    await AssertAgreementAsync("setDueDate", dueDate: "2026-10-27");
+    await AssertAgreementAsync("setDueInstant", dueAt: "2026-10-27T09:30:00-04:00");
+    await AssertAgreementAsync("clearDeadline");
+    await AssertAgreementAsync("delete");
+
+    async Task AssertAgreementAsync(string action, string? dueDate = null, string? dueAt = null)
+    {
+      TaskResponse byId = await CreateAsync(
+        new { title = "Matching task", priority = "high", notes = "same", dueDate = "2026-10-20" });
+      TaskResponse byFilter = await CreateAsync(
+        new { title = "Matching task", priority = "high", notes = "same", dueDate = "2026-10-20" });
+      (TodoTask Task, uint Xmin) beforeId = await ReadTaskAndXminAsync(byId.Id);
+      (TodoTask Task, uint Xmin) beforeFilter = await ReadTaskAndXminAsync(byFilter.Id);
+
+      var idPayload = new Dictionary<string, object?>
+      {
+        ["action"] = action,
+        ["ids"] = new[] { byId.Id },
+      };
+      AddDeadline(idPayload, dueDate, dueAt);
+      using HttpResponseMessage idResponse = await Client.PostAsJsonAsync(
+        new Uri("/api/tasks/bulk", UriKind.Relative),
+        idPayload,
+        Ct);
+      idResponse.StatusCode.ShouldBe(HttpStatusCode.OK);
+      BulkTaskResponse perId = (await idResponse.Content.ReadFromJsonAsync<BulkTaskResponse>(Ct))!;
+      perId.Applied.ShouldBe(1);
+      perId.Skipped.ShouldBe(0);
+      perId.NotFound.ShouldBe(0);
+      perId.Results.Single().Outcome.ShouldBe("applied");
+
+      var filterPayload = new Dictionary<string, object?>
+      {
+        ["action"] = action,
+        ["filter"] = new
+        {
+          view = "overdue",
+          today = "2026-10-26",
+          timeZone = "Europe/London",
+          expectedTotal = 1,
+        },
+      };
+      AddDeadline(filterPayload, dueDate, dueAt);
+      using HttpResponseMessage filterResponse = await Client.PostAsJsonAsync(
+        new Uri("/api/tasks/bulk", UriKind.Relative),
+        filterPayload,
+        Ct);
+      filterResponse.StatusCode.ShouldBe(HttpStatusCode.OK);
+      BulkTaskResponse setBased = (await filterResponse.Content.ReadFromJsonAsync<BulkTaskResponse>(Ct))!;
+      setBased.Applied.ShouldBe(1);
+      setBased.Skipped.ShouldBe(0);
+      setBased.NotFound.ShouldBe(0);
+      setBased.Results.ShouldBeEmpty();
+
+      if (action == "delete")
+      {
+        (await Client.GetAsync(new Uri($"/api/tasks/{byId.Id}", UriKind.Relative), Ct)).StatusCode.ShouldBe(HttpStatusCode.NotFound);
+        (await Client.GetAsync(new Uri($"/api/tasks/{byFilter.Id}", UriKind.Relative), Ct)).StatusCode.ShouldBe(HttpStatusCode.NotFound);
+        return;
+      }
+
+      (TodoTask Task, uint Xmin) afterId = await ReadTaskAndXminAsync(byId.Id);
+      (TodoTask Task, uint Xmin) afterFilter = await ReadTaskAndXminAsync(byFilter.Id);
+      new
+      {
+        afterId.Task.Title,
+        afterId.Task.Priority,
+        afterId.Task.Notes,
+        afterId.Task.CompletedAt,
+        afterId.Task.DueDate,
+        afterId.Task.DueAt,
+      }.ShouldBe(new
+      {
+        afterFilter.Task.Title,
+        afterFilter.Task.Priority,
+        afterFilter.Task.Notes,
+        afterFilter.Task.CompletedAt,
+        afterFilter.Task.DueDate,
+        afterFilter.Task.DueAt,
+      });
+      afterId.Xmin.ShouldNotBe(beforeId.Xmin);
+      afterFilter.Xmin.ShouldNotBe(beforeFilter.Xmin);
+    }
+
+  }
+
+  [Fact]
+  public async Task BulkTasks_FilterTarget_NoOpDeadlineChangesDoNotUpdateRows()
+  {
+    await AssertNoOpAsync("setDueDate", dueDate: "2026-10-20");
+    await AssertNoOpAsync("setDueInstant", dueAt: "2026-10-20T09:30:00Z");
+
+    async Task AssertNoOpAsync(string action, string? dueDate = null, string? dueAt = null)
+    {
+      TaskResponse byId = await CreateAsync(new
+      {
+        title = "No-op deadline",
+        dueDate = dueAt is null ? dueDate : null,
+        dueAt,
+      });
+      var idPayload = new Dictionary<string, object?>
+      {
+        ["action"] = action,
+        ["ids"] = new[] { byId.Id },
+      };
+      AddDeadline(idPayload, dueDate, dueAt);
+      (TodoTask Task, uint Xmin) beforeId = await ReadTaskAndXminAsync(byId.Id);
+      using HttpResponseMessage idResponse = await Client.PostAsJsonAsync(
+        new Uri("/api/tasks/bulk", UriKind.Relative),
+        idPayload,
+        Ct);
+      idResponse.StatusCode.ShouldBe(HttpStatusCode.OK);
+      (await idResponse.Content.ReadFromJsonAsync<BulkTaskResponse>(Ct))!.Applied.ShouldBe(1);
+      (await ReadTaskAndXminAsync(byId.Id)).Xmin.ShouldBe(beforeId.Xmin);
+      await PostActionAsync(byId.Id, "complete");
+
+      TaskResponse byFilter = await CreateAsync(new
+      {
+        title = "No-op deadline",
+        dueDate = dueAt is null ? dueDate : null,
+        dueAt,
+      });
+      (TodoTask Task, uint Xmin) beforeFilter = await ReadTaskAndXminAsync(byFilter.Id);
+      var filterPayload = new Dictionary<string, object?>
+      {
+        ["action"] = action,
+        ["filter"] = new
+        {
+          view = "overdue",
+          today = "2026-10-26",
+          timeZone = "Europe/London",
+          expectedTotal = 1,
+        },
+      };
+      AddDeadline(filterPayload, dueDate, dueAt);
+      using HttpResponseMessage filterResponse = await Client.PostAsJsonAsync(
+        new Uri("/api/tasks/bulk", UriKind.Relative),
+        filterPayload,
+        Ct);
+      filterResponse.StatusCode.ShouldBe(HttpStatusCode.OK);
+      BulkTaskResponse setBased = (await filterResponse.Content.ReadFromJsonAsync<BulkTaskResponse>(Ct))!;
+      setBased.Applied.ShouldBe(0);
+      setBased.Skipped.ShouldBe(0);
+      setBased.NotFound.ShouldBe(0);
+      setBased.Results.ShouldBeEmpty();
+
+      (TodoTask Task, uint Xmin) afterFilter = await ReadTaskAndXminAsync(byFilter.Id);
+      afterFilter.Xmin.ShouldBe(beforeFilter.Xmin);
+      new
+      {
+        afterFilter.Task.CompletedAt,
+        afterFilter.Task.DueDate,
+        afterFilter.Task.DueAt,
+      }.ShouldBe(new
+      {
+        beforeFilter.Task.CompletedAt,
+        beforeFilter.Task.DueDate,
+        beforeFilter.Task.DueAt,
+      });
+      await PostActionAsync(byFilter.Id, "complete");
+    }
+  }
+
+  public static TheoryData<object, string> InvalidBulkRequests => new()
+  {
+    { new { action = "delete" }, "target" },
+    {
+      new
+      {
+        action = "delete",
+        ids = Array.Empty<Guid>(),
+        filter = new
+        {
+          view = "overdue",
+          today = "2026-10-26",
+          timeZone = "Europe/London",
+          expectedTotal = 0,
+        },
+      },
+      "target"
+    },
+    { new { action = "delete", ids = Array.Empty<Guid>() }, "ids" },
+    { new { action = "setDueDate", ids = new[] { Guid.NewGuid() } }, "dueDate" },
+    { new { action = "complete", ids = new[] { Guid.NewGuid() }, dueDate = "2026-10-27" }, "dueDate" },
+    {
+      new
+      {
+        action = "delete",
+        filter = new
+        {
+          view = "overdue",
+          today = "2026-10-26",
+          timeZone = "Mars/Base",
+          expectedTotal = -1,
+        },
+      },
+      "filter.timeZone"
+    },
+  };
+
+  [Theory]
+  [MemberData(nameof(InvalidBulkRequests))]
+  public async Task BulkTasks_InvalidRequest_ReturnsValidationProblem(object payload, string field)
+  {
+    using HttpResponseMessage response = await Client.PostAsJsonAsync(new Uri("/api/tasks/bulk", UriKind.Relative), payload, Ct);
+
+    response.StatusCode.ShouldBe(HttpStatusCode.BadRequest);
+    response.Content.Headers.ContentType!.MediaType.ShouldBe("application/problem+json");
+    JsonObject errors = JsonNode.Parse(await response.Content.ReadAsStringAsync(Ct))!["errors"]!.AsObject();
+    errors.ContainsKey(field).ShouldBeTrue(errors.ToJsonString());
+  }
+
+  [Theory]
+  [InlineData(false)]
+  [InlineData(true)]
+  public async Task Delete_RemovesOpenAndCompletedTasks(bool completed)
+  {
+    TaskResponse task = await CreateAsync(new { title = "Remove" });
+    if (completed)
+    {
+      await PostActionAsync(task.Id, "complete");
+    }
+
+    using HttpResponseMessage response = await Client.DeleteAsync(new Uri($"/api/tasks/{task.Id}", UriKind.Relative), Ct);
+
+    response.StatusCode.ShouldBe(HttpStatusCode.NoContent);
+    (await Client.GetAsync(new Uri($"/api/tasks/{task.Id}", UriKind.Relative), Ct)).StatusCode.ShouldBe(HttpStatusCode.NotFound);
   }
 }

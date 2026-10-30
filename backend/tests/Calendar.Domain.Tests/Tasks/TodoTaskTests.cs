@@ -117,4 +117,32 @@ public sealed class TodoTaskTests
 
     task.CompletedAt.ShouldBe(Now.AddHours(1));
   }
+
+  [Fact]
+  public void DeadlineChanges_ReplaceOrClearOpenTaskDeadline()
+  {
+    var task = TodoTask.Create("A", dueDate: new DateOnly(2026, 10, 25));
+    DateTimeOffset dueAt = new(2026, 10, 26, 9, 0, 0, TimeSpan.FromHours(-4));
+
+    task.SetDueAt(dueAt);
+    task.DueDate.ShouldBeNull();
+    task.DueAt.ShouldBe(Now.AddHours(1));
+    task.SetDueDate(new DateOnly(2026, 10, 27));
+    task.DueDate.ShouldBe(new DateOnly(2026, 10, 27));
+    task.DueAt.ShouldBeNull();
+    task.ClearDeadline();
+    task.DueDate.ShouldBeNull();
+    task.DueAt.ShouldBeNull();
+  }
+
+  [Fact]
+  public void DeadlineChanges_OnCompletedTask_Throw()
+  {
+    var task = TodoTask.Create("A");
+    task.Complete(Now);
+
+    Should.Throw<InvalidOperationException>(() => task.SetDueDate(new DateOnly(2026, 10, 27)));
+    Should.Throw<InvalidOperationException>(() => task.SetDueAt(Now));
+    Should.Throw<InvalidOperationException>(task.ClearDeadline);
+  }
 }

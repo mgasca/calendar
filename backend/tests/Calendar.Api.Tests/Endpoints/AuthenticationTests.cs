@@ -1,4 +1,5 @@
 using System.Net;
+using System.Net.Http.Json;
 using Calendar.Api.Endpoints;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Hosting;
@@ -46,6 +47,22 @@ public sealed class AuthenticationTests(WebApplicationFactory<Program> factory) 
     using HttpClient client = factory.CreateClient();
     using HttpResponseMessage response = await client.GetAsync(new Uri(path, UriKind.Relative), TestContext.Current.CancellationToken);
     response.StatusCode.ShouldBe(HttpStatusCode.Unauthorized);
+  }
+
+  [Fact]
+  public async Task AnonymousBulkAndDeleteRoutesReturnUnauthorized()
+  {
+    using HttpClient client = factory.CreateClient();
+    using HttpResponseMessage bulk = await client.PostAsJsonAsync(
+      new Uri("/api/tasks/bulk", UriKind.Relative),
+      new { action = "delete", ids = new[] { Guid.NewGuid() } },
+      TestContext.Current.CancellationToken);
+    using HttpResponseMessage delete = await client.DeleteAsync(
+      new Uri($"/api/tasks/{Guid.NewGuid()}", UriKind.Relative),
+      TestContext.Current.CancellationToken);
+
+    bulk.StatusCode.ShouldBe(HttpStatusCode.Unauthorized);
+    delete.StatusCode.ShouldBe(HttpStatusCode.Unauthorized);
   }
 
   [Theory]

@@ -290,6 +290,88 @@
             }
           }
         }
+      },
+      "delete": {
+        "tags": [
+          "Tasks"
+        ],
+        "operationId": "DeleteTask",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/tasks/bulk": {
+      "post": {
+        "tags": [
+          "Tasks"
+        ],
+        "operationId": "BulkTasks",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BulkTaskRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BulkTaskResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
       }
     },
     "/api/tasks/{id}/complete": {
@@ -727,6 +809,132 @@
           }
         }
       },
+      "BulkTaskAction": {
+        "enum": [
+          "complete",
+          "setDueDate",
+          "setDueInstant",
+          "clearDeadline",
+          "delete"
+        ],
+        "description": "Supported bulk task actions."
+      },
+      "BulkTaskItemResult": {
+        "required": [
+          "id",
+          "outcome"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Task id.",
+            "format": "uuid"
+          },
+          "outcome": {
+            "type": "string",
+            "description": "applied, skipped or notFound."
+          }
+        },
+        "description": "Outcome for one requested task."
+      },
+      "BulkTaskRequest": {
+        "required": [
+          "action"
+        ],
+        "type": "object",
+        "properties": {
+          "action": {
+            "description": "Action to apply.",
+            "$ref": "#/components/schemas/BulkTaskAction"
+          },
+          "ids": {
+            "type": [
+              "null",
+              "array"
+            ],
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "description": "Explicit task ids; mutually exclusive with OverdueTaskFilter? BulkTaskRequest.Filter."
+          },
+          "filter": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "description": "Overdue filter target; mutually exclusive with IReadOnlyList&lt;Guid&gt;? BulkTaskRequest.Ids.",
+                "$ref": "#/components/schemas/OverdueTaskFilter"
+              }
+            ]
+          },
+          "dueDate": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "New floating deadline, required for setDueDate.",
+            "format": "date"
+          },
+          "dueAt": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "New deadline instant, required for setDueInstant.",
+            "format": "date-time"
+          }
+        },
+        "description": "Apply one action to explicit task ids or a guarded overdue filter. Explicit ids return per-task results;\nfilter targets return no per-task results and use the aggregate counts."
+      },
+      "BulkTaskResponse": {
+        "required": [
+          "results",
+          "applied",
+          "skipped",
+          "notFound"
+        ],
+        "type": "object",
+        "properties": {
+          "results": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/BulkTaskItemResult"
+            },
+            "description": "One outcome per distinct explicit id; empty for a filter target."
+          },
+          "applied": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "description": "Number of applied actions, or rows changed/deleted for a filter target.",
+            "format": "int32"
+          },
+          "skipped": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "description": "Number of skipped actions.",
+            "format": "int32"
+          },
+          "notFound": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "description": "Number of ids that were not found.",
+            "format": "int32"
+          }
+        },
+        "description": "Bulk action outcomes and totals. Explicit-id targets return one result per distinct id; filter targets return\nan empty results array, with int BulkTaskResponse.Applied equal to the number of rows changed or deleted."
+      },
       "CreateEventRequest": {
         "required": [
           "title"
@@ -1017,6 +1225,40 @@
           }
         }
       },
+      "OverdueTaskFilter": {
+        "required": [
+          "view",
+          "today",
+          "timeZone",
+          "expectedTotal"
+        ],
+        "type": "object",
+        "properties": {
+          "view": {
+            "type": "string",
+            "description": "The only supported filtered view."
+          },
+          "today": {
+            "type": "string",
+            "description": "Client's current date.",
+            "format": "date"
+          },
+          "timeZone": {
+            "type": "string",
+            "description": "Client's IANA time zone."
+          },
+          "expectedTotal": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "description": "Expected number of matching overdue tasks.",
+            "format": "int32"
+          }
+        },
+        "description": "Guarded overdue query and the count the client observed."
+      },
       "ProblemDetails": {
         "type": "object",
         "properties": {
@@ -1074,6 +1316,16 @@
               "string"
             ],
             "description": "Pass as `cursor` for the next page; `null` on the last page."
+          },
+          "total": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "null",
+              "integer",
+              "string"
+            ],
+            "description": "Total open overdue tasks, provided on the first overdue page only.",
+            "format": "int32"
           }
         },
         "description": "One page of a task list view."

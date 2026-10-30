@@ -70,6 +70,14 @@ public static class TaskListQueries
         _ => new(id, dueDate ?? DateOnly.FromDateTime(TimeZoneInfo.ConvertTime(dueAt!.Value, zone!).DateTime), dueAt),
       };
 
+  /// <summary>Open overdue tasks using the list's shared OR predicate, backed by both partial due indexes.</summary>
+  public static IQueryable<TodoTask> OpenOverdueFor(this IQueryable<TodoTask> tasks, DayWindow today)
+  {
+    ArgumentNullException.ThrowIfNull(tasks);
+    (DateOnly date, DateTimeOffset start) = (today.Date, today.Start);
+    return tasks.Where(t => t.CompletedAt == null && (t.DueDate < date || t.DueAt < start));
+  }
+
   private static IQueryable<TodoTask> Completed(IQueryable<TodoTask> tasks, TaskListKey? after)
   {
     tasks = tasks.Where(t => t.CompletedAt != null);
@@ -96,7 +104,7 @@ public static class TaskListQueries
   {
     (DateOnly date, DateTimeOffset start) = (today.Date, today.Start);
     tasks = overdue
-        ? tasks.Where(t => t.CompletedAt == null && (t.DueDate < date || t.DueAt < start))
+        ? tasks.OpenOverdueFor(today)
         : tasks.Where(t => t.CompletedAt == null && (t.DueDate >= date || t.DueAt >= start));
 
     // The local due date (a date-only task's own date, or a timed task's instant AT TIME ZONE in SQL) leads both

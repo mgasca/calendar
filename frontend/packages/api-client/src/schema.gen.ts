@@ -110,6 +110,22 @@ export interface paths {
         get: operations["GetTask"];
         put?: never;
         post?: never;
+        delete: operations["DeleteTask"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/tasks/bulk": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["BulkTasks"];
         delete?: never;
         options?: never;
         head?: never;
@@ -294,6 +310,65 @@ export interface components {
             pictureUrl: null | string;
         };
         /**
+         * @description Supported bulk task actions.
+         * @enum {unknown}
+         */
+        BulkTaskAction: "complete" | "setDueDate" | "setDueInstant" | "clearDeadline" | "delete";
+        /** @description Outcome for one requested task. */
+        BulkTaskItemResult: {
+            /**
+             * Format: uuid
+             * @description Task id.
+             */
+            id: string;
+            /** @description applied, skipped or notFound. */
+            outcome: string;
+        };
+        /**
+         * @description Apply one action to explicit task ids or a guarded overdue filter. Explicit ids return per-task results;
+         *     filter targets return no per-task results and use the aggregate counts.
+         */
+        BulkTaskRequest: {
+            /** @description Action to apply. */
+            action: components["schemas"]["BulkTaskAction"];
+            /** @description Explicit task ids; mutually exclusive with OverdueTaskFilter? BulkTaskRequest.Filter. */
+            ids?: null | string[];
+            filter?: null | components["schemas"]["OverdueTaskFilter"];
+            /**
+             * Format: date
+             * @description New floating deadline, required for setDueDate.
+             */
+            dueDate?: null | string;
+            /**
+             * Format: date-time
+             * @description New deadline instant, required for setDueInstant.
+             */
+            dueAt?: null | string;
+        };
+        /**
+         * @description Bulk action outcomes and totals. Explicit-id targets return one result per distinct id; filter targets return
+         *     an empty results array, with int BulkTaskResponse.Applied equal to the number of rows changed or deleted.
+         */
+        BulkTaskResponse: {
+            /** @description One outcome per distinct explicit id; empty for a filter target. */
+            results: components["schemas"]["BulkTaskItemResult"][];
+            /**
+             * Format: int32
+             * @description Number of applied actions, or rows changed/deleted for a filter target.
+             */
+            applied: number | string;
+            /**
+             * Format: int32
+             * @description Number of skipped actions.
+             */
+            skipped: number | string;
+            /**
+             * Format: int32
+             * @description Number of ids that were not found.
+             */
+            notFound: number | string;
+        };
+        /**
          * @description Create an event. Discriminated by `allDay`: a timed event needs `start`, `end` and
          *     `timeZone`; an all-day event needs `startDate` and `endDate` (end exclusive) and no timed fields.
          */
@@ -422,6 +497,23 @@ export interface components {
                 [key: string]: string[];
             };
         };
+        /** @description Guarded overdue query and the count the client observed. */
+        OverdueTaskFilter: {
+            /** @description The only supported filtered view. */
+            view: string;
+            /**
+             * Format: date
+             * @description Client's current date.
+             */
+            today: string;
+            /** @description Client's IANA time zone. */
+            timeZone: string;
+            /**
+             * Format: int32
+             * @description Expected number of matching overdue tasks.
+             */
+            expectedTotal: number | string;
+        };
         ProblemDetails: {
             type?: null | string;
             title?: null | string;
@@ -436,6 +528,11 @@ export interface components {
             items: components["schemas"]["TaskResponse"][];
             /** @description Pass as `cursor` for the next page; `null` on the last page. */
             nextCursor?: null | string;
+            /**
+             * Format: int32
+             * @description Total open overdue tasks, provided on the first overdue page only.
+             */
+            total?: null | number | string;
         };
         /** @description A task as stored. */
         TaskResponse: {
@@ -752,6 +849,77 @@ export interface operations {
             };
             /** @description Not Found */
             404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    DeleteTask: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    BulkTasks: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["BulkTaskRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BulkTaskResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Conflict */
+            409: {
                 headers: {
                     [name: string]: unknown;
                 };

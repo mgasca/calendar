@@ -7,6 +7,25 @@ description: Draft a new Architecture Decision Record (ADR) in docs/decisions fo
 
 Produce a **proposed** ADR that a reviewer can approve with confidence. The rating table shows at a glance *why* the chosen option won; the pros and cons give the detail.
 
+## Terms
+
+- **ADR** (Architecture Decision Record): a short Markdown file in `docs/decisions` that records one decision, the options considered and the reasons for the choice.
+- **MADR**: the Markdown ADR format this repo uses. Its sections are listed in step 6.
+- **Decision driver**: a requirement or concern that the options are judged against. Drivers are numbered `D1`, `D2`, and so on.
+- **Validator**: the script `check-adr.cs` (see "Bundled tooling"). It checks the ADR format. It does not judge whether your ratings are fair.
+- **Superseded**: an old ADR that a newer ADR replaces.
+- **Review PR**: a GitHub pull request that holds the draft until the user approves it.
+
+## What you need before you start
+
+- A clone of the repo with a clean working tree, so you can create a branch in step 9.
+- The .NET 10 SDK (for the validator).
+- `git` and `gh` (the GitHub CLI), signed in to the repo's GitHub account, to open the PR.
+- `make`. Run all commands from the repo root.
+- A clear request from the user: which decision to record, or which ADR to split, revise or supersede.
+
+## Sources of truth
+
 The sources of truth are in the repo. Read them at the start of every run, because they win over anything restated here:
 
 - `docs/decisions/0000-use-markdown-architectural-decision-records.md`: conventions and the star scale
@@ -18,9 +37,13 @@ The sources of truth are in the repo. Read them at the start of every run, becau
 ### 1. Ground yourself
 
 - Read the three files above.
-- `grep -ril <topic> docs/decisions` to find related ADRs; read them. A new ADR must not silently contradict an accepted one. If it changes an earlier decision, it **supersedes** it (see "After review").
-- Look at the code and config the decision touches, so the context and implementation notes are accurate.
-- Get the next number: `make adr-check ARGS=--next-number` or `dotnet run .claude/skills/adr-draft/scripts/check-adr/check-adr.cs -- --next-number`.
+- Run `grep -ril <topic> docs/decisions` to find related ADRs, then read them. A new ADR must not silently contradict an accepted one. If it changes an earlier decision, it **supersedes** it (see "After review").
+- Look at the code and config that the decision touches, so the context and implementation notes are accurate.
+- Get the next ADR number with one of these commands:
+  - `make adr-check ARGS=--next-number`
+  - `dotnet run .claude/skills/adr-draft/scripts/check-adr/check-adr.cs -- --next-number`
+
+  Success: the command prints the next free number, for example `0042`. If it fails, check that the .NET 10 SDK is installed (see "Bundled tooling"). The first run compiles the script and takes about 30 s.
 
 ### 2. Scope: one decision per ADR
 
@@ -28,9 +51,9 @@ If the request covers several linked decisions, propose separate, cross-linked A
 
 ### 3. Decision drivers
 
-Drivers are what the options are judged against. Derive them from the user's stated requirements and the project context below, numbered `D1…Dn`, each as `* **Dn Short name**: what matters and why`. Aim for 4–7.
+Drivers are what the options are judged against. Derive them from the user's stated requirements and from the project context below. Number them `D1…Dn`. Write each as `* **Dn Short name**: what matters and why`. Aim for 4–7.
 
-**If a driver is uncertain, or the answer would change the ratings, ask before writing.** Use AskUserQuestion with up to 4 questions, each with concrete options and a recommended one. Don't invent preferences about budget, team skills, hosting, platforms or risk tolerance.
+**If a driver is uncertain, or the answer would change the ratings, ask before writing.** Use the AskUserQuestion tool with up to 4 questions. Give each question concrete options and mark one as recommended. Don't invent preferences about budget, team skills, hosting, platforms or risk tolerance.
 
 Project context recorded in earlier ADRs. Re-check it, because it may have changed:
 
@@ -43,7 +66,7 @@ Project context recorded in earlier ADRs. Re-check it, because it may have chang
 
 ### 4. Research and verify facts
 
-Never state versions, support windows, licences or limits from memory. Check them:
+Never state versions, support windows, licences or limits from memory. Check them with the commands below. Success: each command returns the current value for the package, tag or page.
 
 | Fact | How |
 | --- | --- |
@@ -53,16 +76,16 @@ Never state versions, support windows, licences or limits from memory. Check the
 | Container image tags | `https://hub.docker.com/v2/repositories/library/<image>/tags?name=<filter>` |
 | Support policy, licence | Vendor docs via WebSearch/WebFetch, quoting the source |
 
-Record versions "at the time of writing" under More Information. **Don't quote prices** unless verified from the vendor's own page; describe cost relatively instead (e.g. "paid, per-committer"). An earlier draft wrongly said .NET STS releases get 18 months of support; they get 24. Verify.
+Record versions "at the time of writing" under More Information. **Don't quote prices** unless you verified them on the vendor's own page. Describe cost relatively instead (for example "paid, per-committer"). An earlier draft wrongly said .NET STS releases get 18 months of support; they get 24. Verify.
 
 ### 5. Options
 
-- List realistic alternatives, usually 3–5, including the status quo or "do nothing" when it's viable.
-- An option the user wants kept as a fallback stays in the table and gets its own subsection in Decision Outcome, saying when it would be used and what keeps it viable.
+- List realistic alternatives, usually 3–5. Include the status quo or "do nothing" when it is viable.
+- If the user wants an option kept as a fallback, keep it in the table. Give it its own subsection in Decision Outcome that says when it would be used and what keeps it viable.
 
 ### 6. Write the ADR
 
-Copy `adr-template.md` to `docs/decisions/NNNN-lowercase-kebab-title.md`. Use the Write tool, not shell heredocs: unquoted heredocs mangle backticks and `$`.
+Copy `adr-template.md` to `docs/decisions/NNNN-lowercase-kebab-title.md`, where `NNNN` is the number from step 1. Use the Write tool, not shell heredocs: unquoted heredocs mangle backticks and `$`.
 
 **Front matter**
 
@@ -70,10 +93,10 @@ Copy `adr-template.md` to `docs/decisions/NNNN-lowercase-kebab-title.md`. Use th
 - `date:` today's absolute date
 - `decision-makers:` the user's handle and `Claude (AI assistant)`. Match existing ADRs.
 
-**Sections, in this order** (the validator enforces it)
+**Sections, in this order** (the validator enforces the order)
 
 1. `# Title`: names the problem and the solution.
-2. `## Context and Problem Statement`: 2–4 sentences ending in the question being decided. Link related ADRs.
+2. `## Context and Problem Statement`: 2–4 sentences that end in the question being decided. Link related ADRs.
 3. `## Decision Drivers`
 4. `## Considered Options`: one bullet per option.
 5. `## Decision Outcome`, containing:
@@ -86,30 +109,35 @@ Copy `adr-template.md` to `docs/decisions/NNNN-lowercase-kebab-title.md`. Use th
      | D1 Short name | ★★★ | ★★☆ | ☆☆☆ |
      ```
 
-     Drivers are rows and options are columns. The chosen option is the **first** option column, in bold, ending with `(chosen)`. Every driver appears in the table. Only `★★★` (fully meets), `★★☆` (mostly), `★☆☆` (partially) and `☆☆☆` (does not meet) are allowed. Ratings are relative to the other options.
+     Rules for the table:
+     - Drivers are rows and options are columns.
+     - The chosen option is the **first** option column, in bold, and its name ends with `(chosen)`.
+     - Every driver appears in the table.
+     - Only these four ratings are allowed: `★★★` (fully meets), `★★☆` (mostly), `★☆☆` (partially) and `☆☆☆` (does not meet).
+     - Ratings are relative to the other options.
    - Optional implementation plan or conventions: concrete packages, files, Make targets, CI changes and security measures. Use subheadings and short bullets, not dense paragraphs.
    - `### Consequences`: Good, Bad and Neutral bullets. Be honest about the chosen option's costs.
-   - `### Confirmation`: concrete, checkable enforcement (CI job, test, analyzer, review rule).
-6. `## Pros and Cons of the Options`: a `### <Option>` subsection for **every** considered option, in the same order. Every bullet is `* Good|Bad|Neutral, because **Dn Name**: argument`. Every driver is argued at least once, and every star rating that isn't obvious is justified by a bullet.
+   - `### Confirmation`: concrete, checkable enforcement (a CI job, test, analyzer or review rule).
+6. `## Pros and Cons of the Options`: a `### <Option>` subsection for **every** considered option, in the same order as in Considered Options. Every bullet has the form `* Good|Bad|Neutral, because **Dn Name**: argument`. Argue every driver at least once. Justify every star rating that isn't obvious with a bullet.
 7. `## More Information` (optional): related ADRs, versions checked, **open questions for the reviewer**, and when to revisit.
 
 **Cross-references**
 
-Every `ADR-NNNN` mention is a relative Markdown link: `[ADR-0014](0014-postgresql-database-engine.md)`. Run the validator with `--fix-links` to convert any bare mentions.
+Every `ADR-NNNN` mention must be a relative Markdown link, for example `[ADR-0014](0014-postgresql-database-engine.md)`. Step 8 shows how to convert bare mentions with `--fix-links`.
 
 **Revisit triggers**
 
-If the decision defers something until an event happens (e.g. "adopt Aspire when a second backing service is added"), record the trigger in the ADR **and** wherever a future contributor will look. Possible places:
+A revisit trigger is an event that should reopen a deferred decision (for example "adopt Aspire when a second backing service is added"). If the decision defers something until such an event, record the trigger in the ADR **and** wherever a future contributor will look. Possible places:
 
-- `.github/pull_request_template.md` checklist
+- the checklist in `.github/pull_request_template.md`
 - `README.md`
-- a comment in the relevant config file (e.g. `compose.yaml`)
+- a comment in the relevant config file (for example `compose.yaml`)
 
 Say in the ADR where the trigger is recorded.
 
 ### 7. Index
 
-Add a row to `docs/decisions/README.md`. Its title must equal the H1 and its status must match the front matter:
+Add a row to `docs/decisions/README.md`. Its title must equal the ADR's H1 (the `# Title` line), and its status must match the front matter:
 
 ```markdown
 | [NNNN](NNNN-title.md) | <H1 title> | proposed |
@@ -117,11 +145,15 @@ Add a row to `docs/decisions/README.md`. Its title must equal the H1 and its sta
 
 ### 8. Validate
 
+Run this from the repo root:
+
 ```sh
 dotnet run .claude/skills/adr-draft/scripts/check-adr/check-adr.cs -- --fix-links
 ```
 
-It checks every ADR plus repo-level rules:
+`--fix-links` rewrites bare `ADR-NNNN` mentions into links in the ADR files, so check `git diff` afterwards.
+
+The validator checks every ADR plus repo-level rules:
 
 - contiguous numbering
 - front matter
@@ -133,11 +165,13 @@ It checks every ADR plus repo-level rules:
 - bare or broken links
 - index title and status
 
-Fix every failure; don't hand off a failing ADR. The validator can't judge whether the ratings are fair. Re-read the table against the pros/cons yourself.
+Success: the command ends without errors. On failure it prints which ADR and rule failed. Fix every failure and run it again; don't hand off a failing ADR.
+
+The validator can't judge whether the ratings are fair. Re-read the table against the pros and cons yourself.
 
 ### 9. Deliver for review
 
-`main` is protected (PR plus the green `CI result` check required), so never push to it.
+`main` is protected (a PR plus the green `CI result` check are required), so never push to it. Write the PR body to a file first (it is the `<file>` below).
 
 ```sh
 git switch main && git pull --ff-only
@@ -148,6 +182,8 @@ git push -u origin docs/adr-NNNN-short-slug
 gh pr create --base main --title "ADR-NNNN (proposed): <title>" --body-file <file>
 ```
 
+Success: `gh pr create` prints the URL of the new PR. If `git pull --ff-only` fails, your local `main` has diverged; stop and ask the user.
+
 The PR body has:
 
 - a summary of the recommendation
@@ -155,9 +191,9 @@ The PR body has:
 - the open questions for the reviewer
 - a checklist
 
-Don't merge it; merging is the user's call.
+Don't merge the PR; merging is the user's call.
 
-If `gh pr edit` fails on an old `gh` (Projects-classic error), use `gh api -X PATCH repos/<owner>/<repo>/pulls/<n> -f title=… -F body=@file`.
+If `gh pr edit` fails on an old `gh` (a Projects-classic error), use `gh api -X PATCH repos/<owner>/<repo>/pulls/<n> -f title=… -F body=@file`.
 
 Then tell the user, in plain language:
 
@@ -168,14 +204,14 @@ Then tell the user, in plain language:
 
 ## After review
 
-- **Answers change the ADR:** update the drafts on the same branch, re-run the validator, and update the PR description with what changed. If the user asks for a split, `git rm` the combined file, renumber, and fix every link and the index.
-- **The user approves:** set `status: accepted` in the front matter **and** the index, in the same PR, *before* it merges. ADRs 0014–0016 were merged still marked `proposed`; don't repeat that. Taking a decision is disconnected from delivering it: accept as soon as the user approves the decision, and never hold `proposed` until the implementation, build or rollout exists. Whether it has been delivered is tracked by the implementation issues and PRs, not by the ADR status.
-- **Superseding an ADR:** the new ADR explains what changed. The old one becomes `status: superseded by [ADR-NNNN](NNNN-….md)`, and the index row is updated. Don't edit the old decision's substance.
+- **Answers change the ADR:** update the drafts on the same branch, run the validator again, and update the PR description with what changed. If the user asks for a split, `git rm` the combined file, renumber, and fix every link and the index.
+- **The user approves:** set `status: accepted` in the front matter **and** in the index, in the same PR, *before* it merges. ADRs 0014–0016 were merged still marked `proposed`; don't repeat that. Taking a decision is separate from delivering it. Accept as soon as the user approves the decision, and never hold `proposed` until the implementation, build or rollout exists. The implementation issues and PRs track whether it has been delivered, not the ADR status.
+- **Superseding an ADR:** the new ADR explains what changed. The old one becomes `status: superseded by [ADR-NNNN](NNNN-….md)`, and you update its index row. Don't edit the old decision's substance.
 - **Implementation:** goes in a separate PR, linked to the ADR, and does not change the ADR's status. An accepted ADR whose implementation is not built yet is normal. If implementation shows the decision was wrong, supersede it with a new ADR instead of leaving it `proposed`.
 
 ## Bundled tooling
 
-The validator is a .NET 10 file-based app, and the skill folder carries everything it needs ([ADR-0017](../../../docs/decisions/0017-dotnet-file-based-apps-for-repo-tooling.md)):
+The validator is a .NET 10 file-based app (a single `.cs` file that `dotnet run` compiles and runs without a project file). The skill folder carries everything it needs ([ADR-0017](../../../docs/decisions/0017-dotnet-file-based-apps-for-repo-tooling.md)):
 
 ```text
 Directory.Build.props, .editorconfig, NuGet.config   # analyzers, warnings as errors, style, package sources
@@ -186,5 +222,5 @@ tests/fixtures/valid/                                 # minimal valid ADR set th
 ```
 
 - **Requirement:** the .NET 10 SDK. The first run on a machine compiles for about 30 s; after that, runs take under a second.
-- **Changing a rule:** edit `AdrValidator.cs`, add or adjust an `[InlineData]` case in the tests, then run `make tooling` (tests and whitespace check) and `make adr-check`.
-- **Package versions** in `Directory.Build.props` and the `#:package` directives are pinned exactly. Dependabot can't see them (verified, ADR-0017). In this repo, `make tool-versions` fails when they drift from `backend/Directory.Packages.props`, and `make tool-versions ARGS=--fix` updates them. In other repos, bump them by hand.
+- **Changing a rule:** edit `AdrValidator.cs`, add or adjust an `[InlineData]` case in the tests, then run `make tooling` (tests and whitespace check) and `make adr-check`. Success: both commands finish without errors.
+- **Package versions** in `Directory.Build.props` and the `#:package` directives are pinned exactly. Dependabot (the tool that opens dependency-update PRs) can't see them (verified, ADR-0017). In this repo, `make tool-versions` fails when they drift from `backend/Directory.Packages.props`, and `make tool-versions ARGS=--fix` updates them. In other repos, bump them by hand.

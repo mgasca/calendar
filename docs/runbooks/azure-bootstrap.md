@@ -1,10 +1,30 @@
 # Azure bootstrap
 
-This walkthrough creates two isolated deployment identities and proves GitHub can obtain short-lived Azure credentials. Run in Bash from a trusted machine with GitHub CLI (`gh`), `jq`, and the [Azure CLI](https://learn.microsoft.com/cli/azure/install-azure-cli) installed. Sign in to `gh` with repository administrator access. Replace angle-bracket placeholders; do not commit your values. Run the commands in order in the same shell. Azure operations require subscription access; app registration and service principal creation also require appropriate Entra directory rights. Ask a directory administrator if these operations are forbidden. Creating role assignments requires `Microsoft.Authorization/roleAssignments/write` at each resource group.
+This runbook prepares Azure and GitHub for deployments. It creates one deployment identity each for staging and production, and proves that GitHub can get short-lived Azure credentials without a stored password. It does not deploy the app. The design is in [ADR-0034](../decisions/0034-github-actions-oidc-deployment.md). When you finish, continue with [Azure infrastructure](azure-infrastructure.md).
 
-## Sign in and select the subscription
+## Terms
 
-This prevents commands from targeting the wrong tenant or subscription and sets the planned region.
+- **Tenant**: a Microsoft Entra directory, which holds identities. **Subscription**: the Azure account that holds resources and billing.
+- **Resource group**: a named container for resources. Permissions granted on it apply only to its resources.
+- **App registration**: an application identity in Entra. Its **service principal** is the entry in the tenant that receives Azure permissions. The **client ID** (`appId`) names the app; the service principal's **object ID** is what role assignments use.
+- **Federated credential**: a trust rule on an app registration. It lets Entra exchange a GitHub Actions token (OIDC) for short-lived Azure access. Entra checks three values exactly: the **issuer** (GitHub), the **audience** (the Azure token exchange) and the **subject** (this repository and one GitHub environment).
+- **GitHub environment**: a named deployment target (`staging`, `production`) with its own variables and protection rules.
+
+## Before you start
+
+- Use a trusted machine with Bash, GitHub CLI (`gh`), `jq` and the [Azure CLI](https://learn.microsoft.com/cli/azure/install-azure-cli) (`az`).
+- Sign in to `gh` with repository administrator access. If `gh auth status` shows you are not signed in, run `gh auth login`.
+- In Azure you need access to the subscription and permission to register resource providers on it.
+- In Entra you need rights to create and change app registrations and service principals. If Entra forbids this, ask a directory administrator.
+- You need `Microsoft.Authorization/roleAssignments/write` on each resource group.
+- Choose the production reviewer: a GitHub user with read access to the repository.
+- Run every block in order, in **one Bash shell**. Later blocks use variables set by earlier ones, such as `TENANT_ID`.
+- Replace each `<placeholder>`, without the angle brackets. Do not commit your values.
+- If a command fails, stop. Read the error and check what was already created before you retry.
+
+## 1. Sign in and select the subscription
+
+This makes sure every later command targets the right tenant and subscription, in UK South.
 
 ```bash
 az version
@@ -17,11 +37,11 @@ az account show --query '{subscription:id,tenant:tenantId,name:name}' -o json
 TENANT_ID=$(az account show --query tenantId -o tsv)
 ```
 
-Verify the displayed subscription and tenant are the intended ones; `az configure --list-defaults` should show `uksouth`.
+Check that the subscription and tenant shown are the intended ones. Then run `az configure --list-defaults` and check that it shows `uksouth`.
 
-## Register providers and check capacity
+## 2. Register providers and check capacity
 
-Registration enables the required Azure services. It may require subscription-level provider registration permission and can take time.
+A resource provider makes an Azure service available to the subscription. Registration can take a few minutes. The last two commands show the Container Apps core quota and the Burstable PostgreSQL sizes in UK South. They only report capacity; they do not reserve it.
 
 ```bash
 for provider in Microsoft.App Microsoft.ContainerRegistry Microsoft.DBforPostgreSQL Microsoft.KeyVault Microsoft.OperationalInsights Microsoft.Insights; do
@@ -36,11 +56,19 @@ az postgres flexible-server list-skus --location uksouth -o json \
   | jq -r '(if type == "object" then .value else . end)[] | (.supportedServerEditions // .supportedFlexibleServerEditions // [])[] | select(.name == "Burstable") | .supportedServerSkus[] | [.name, .vCores, .supportedMemoryPerVcoreMb, ((.supportedZones // []) | join(","))] | @tsv'
 ```
 
-Verify each state is `Registered` (repeat the second loop until it is). A good result is a few tab-separated lines: the Consumption core quota with its used and limit values, then one line per Burstable PostgreSQL SKU (name, vCores, memory per vCore in MB, zones). If either command prints nothing, the CLI output layout may have changed: run it without the `jq` filter and check the field names. Inspect available capacity and confirm enough capacity for both environments before S5. Check the Azure portal's regional service availability and subscription quota pages too; a listed SKU does not guarantee allocation. Request quota increases through Azure support when needed.
+Expect:
 
-## Create the resource groups and identities
+- Every provider state is `Registered`. If not, wait and run the second loop again.
+- A line with the Consumption core quota: name, used, limit.
+- One line per Burstable PostgreSQL size: name, vCores, memory per vCore in MB, zones.
 
-The resource groups establish the isolation boundary. Each app registration and its service principal represent one environment; no client secret is created. App registration and service principal creation require Entra directory rights.
+If a capacity command prints nothing, the CLI output format may have changed: run it without the `jq` part and compare the field names.
+
+Make sure there is enough capacity for both environments before you deploy the infrastructure. Also check regional availability and quotas in the Azure portal; a listed size does not guarantee that Azure can allocate it. To raise a quota, ask Azure support.
+
+## 3. Create the resource groups and identities
+
+Each environment gets its own resource group, app registration and service principal. This keeps staging and production apart. No client secret (stored password) is created.
 
 ```bash
 for env in staging production; do
@@ -51,7 +79,7 @@ for env in staging production; do
 done
 ```
 
-Save the printed IDs in your shell for subsequent commands (use the values just created):
+Copy the two printed client IDs into this block, then run it:
 
 ```bash
 STAGING_CLIENT_ID='<staging-client-id>'
@@ -64,11 +92,13 @@ az ad sp show --id "$STAGING_CLIENT_ID" --query '{appId:appId,id:id}'
 az ad sp show --id "$PRODUCTION_CLIENT_ID" --query '{appId:appId,id:id}'
 ```
 
-Verify both groups are in UK South, IDs differ, both service principals exist, and password credentials are empty. If a partial run fails, inspect existing registrations before retrying to avoid duplicates.
+Expect both groups in `uksouth`, two different client IDs, two service principals, and `credentials` empty (`[]`) on both apps. Keep the client IDs: later runbooks and teardown need them. If an earlier run failed partway, check for existing `calendar-deploy-*` registrations before you retry, to avoid duplicates.
 
-## Federate GitHub environments
+## 4. Federate the GitHub environments
 
-Entra checks issuer, audience and subject exactly. Inspect the repository configuration first; immutable subjects include owner and repository IDs. If the response specifies custom claim keys or a format you cannot determine, stop and inspect an actual token's subject without printing the token. The following handles the default and immutable default formats only.
+This adds one federated credential per app, so only jobs in the matching GitHub environment can sign in as it.
+
+The subject format depends on the repository's OIDC settings. The first command prints them. The block supports the default format and the immutable default format (which includes the owner and repository IDs). If the settings use custom claim keys or a format you cannot work out, the block stops: inspect the subject of a real token, without printing the token itself.
 
 ```bash
 gh api repos/mgasca/calendar/actions/oidc/customization/sub
@@ -84,11 +114,14 @@ done
 rm /tmp/calendar-federated-credential.json
 ```
 
-Verify each app has exactly one credential with its own exact subject, issuer and audience. These operations require rights to modify the app registrations. See [Azure CLI federated credentials](https://learn.microsoft.com/cli/azure/ad/app/federated-credential) and [GitHub subject formats](https://docs.github.com/en/actions/reference/security/oidc).
+Expect exactly one credential per app. Its subject ends in `:environment:staging` or `:environment:production` to match the app, and its issuer and audience match the block. See [Azure CLI federated credentials](https://learn.microsoft.com/cli/azure/ad/app/federated-credential) and [GitHub subject formats](https://docs.github.com/en/actions/reference/security/oidc).
 
-## Grant resource-group roles
+## 5. Grant the resource-group roles
 
-Contributor permits deployments. The conditional Role Based Access Control Administrator grant permits creating or deleting assignments only for AcrPull and Key Vault Secrets User, needed by later infrastructure. The condition follows [Microsoft's write and delete example](https://learn.microsoft.com/azure/role-based-access-control/delegate-role-assignments-examples); it does not limit the recipient principal. Do not grant these roles at subscription scope.
+Each identity gets two roles, on its own resource group only. Never grant them on the subscription.
+
+- **Contributor** lets it deploy resources.
+- **Role Based Access Control Administrator**, with a condition, lets it create and delete role assignments only for **AcrPull** and **Key Vault Secrets User**, which the infrastructure needs. The condition limits the roles, not who receives them. It follows [Microsoft's write and delete example](https://learn.microsoft.com/azure/role-based-access-control/delegate-role-assignments-examples).
 
 ```bash
 CONDITION="((!(ActionMatches{'Microsoft.Authorization/roleAssignments/write'})) OR (@Request[Microsoft.Authorization/roleAssignments:RoleDefinitionId] ForAnyOfAnyValues:GuidEquals {7f951dda-4ed3-4680-a7ca-43fe172d538d, 4633458b-17de-408a-b874-0445c86b69e6})) AND ((!(ActionMatches{'Microsoft.Authorization/roleAssignments/delete'})) OR (@Resource[Microsoft.Authorization/roleAssignments:RoleDefinitionId] ForAnyOfAnyValues:GuidEquals {7f951dda-4ed3-4680-a7ca-43fe172d538d, 4633458b-17de-408a-b874-0445c86b69e6}))"
@@ -102,11 +135,15 @@ for env in staging production; do
 done
 ```
 
-Verify each identity has only the two intended assignments on its own group, the second includes the full condition and version `2.0`, and there are no inherited subscription grants. Role propagation may take several minutes.
+Expect, for each identity, exactly these two assignments on its own group, the second with the full condition and `conditionVersion` `2.0`, and nothing inherited from the subscription. New roles can take several minutes to take effect.
 
-## Configure GitHub environments
+## 6. Configure the GitHub environments
 
-Both environments restrict deployments to `main`; production requires a reviewer and disallows administrator bypass. The reviewer must have repository read access. Self-review remains enabled so a single owner can approve; turn it off only after ensuring another eligible reviewer exists. These commands require repository admin rights and configure new environments; inspect existing settings first to avoid overwriting them.
+Both environments allow deployments only from `main`. Production also needs approval from the reviewer, and administrators cannot bypass it. Self-review stays allowed, so a single owner can approve; turn it off only when another eligible reviewer exists.
+
+The branch rule is separate from the federated credential: the token subject names the environment, not the branch.
+
+These commands overwrite environment settings. The first `gh api` command lists the existing environments; check them before you continue. To find the reviewer's numeric ID, run `gh api users/<github-username> --jq .id`.
 
 ```bash
 REVIEWER_ID='<github-user-numeric-id>'
@@ -123,9 +160,9 @@ for env in staging production; do
 done
 ```
 
-Verify exactly one branch policy, `main`, on each environment; production has the intended reviewer, `prevent_self_review: false`, and `can_admins_bypass: false`. Remove any pre-existing extra policies explicitly. See [environment API](https://docs.github.com/en/rest/deployments/environments) and [branch policy API](https://docs.github.com/en/rest/deployments/branch-policies).
+Expect exactly one branch policy, `main`, on each environment. Production must show the reviewer, `prevent_self_review: false` and `can_admins_bypass: false`. Delete any other branch policies that were already there. See the [environment API](https://docs.github.com/en/rest/deployments/environments) and the [branch policy API](https://docs.github.com/en/rest/deployments/branch-policies).
 
-Set environment variables (these identifiers are not secrets). The CLI creates or updates each variable.
+Next, set the environment variables that tell each job which identity, tenant, subscription and resource group to use. These IDs are not secrets, so they are variables, not GitHub secrets. `gh variable set` creates or updates each one.
 
 ```bash
 for env in staging production; do
@@ -138,26 +175,46 @@ for env in staging production; do
 done
 ```
 
-Verify all four values in each environment match the intended IDs and group. They are environment variables, not GitHub secrets.
+Expect four variables per environment, with that environment's client ID and resource group.
 
-## Verify the workflow
+## 7. Test the sign-in from GitHub
 
-Once this workflow has merged to `main`, dispatch it there. It performs a no-op what-if, not a deployment. Production must wait for its reviewer after staging succeeds.
+The `azure-oidc-check.yml` workflow signs in to Azure from each environment and runs a no-op what-if (a preview of changes). It does not deploy anything. Start it from `main` and find the run:
 
 ```bash
 gh workflow run azure-oidc-check.yml --repo mgasca/calendar --ref main
 gh run list --repo mgasca/calendar --workflow azure-oidc-check.yml --limit 5
 ```
 
-Open the run in GitHub, verify staging passed, approve the pending production job as the configured reviewer, and verify production passes. Check repository and environment secrets contain no Azure credentials. This owner-run verification is required for acceptance.
+1. In GitHub, open **Actions** and select the new run.
+2. Check that the staging job passes.
+3. The production job waits for approval. As the reviewer, approve it.
+4. Check that the production job passes.
+5. Check that the repository and environment **secrets** hold no Azure credentials.
 
-## Troubleshooting, rotation and teardown
+If a job fails, or the production job runs without waiting for approval, stop and investigate; see [Troubleshooting](#troubleshooting). The owner must complete this test for the bootstrap to be accepted.
 
-For `AADSTS70021`, compare the exact subject, issuer and audience on the app with the issued token's claims and the current `gh api repos/mgasca/calendar/actions/oidc/customization/sub` output. Do not print or share the bearer token. Check environment spelling and immutable IDs; renames, transfers or claim customization can change the subject. Check tenant, client ID, branch policy and role propagation for other failures.
+## Troubleshooting
 
-To rotate an identity, create a replacement app and service principal, federate and grant it as above, update that environment's client ID variable, run the check, then remove the old grants and registration. Never add a client secret.
+**`AADSTS70021` (no matching federated credential):** compare the subject, issuer and audience on the app with the claims in the issued token, and with the current output of `gh api repos/mgasca/calendar/actions/oidc/customization/sub`. Never print or share the token itself. Check the environment name's spelling. Renaming or transferring the repository, or changing its claim settings, can change the subject.
 
-To tear down, first confirm the resources and data can be deleted. Deleting a group deletes all its resources. After removing workloads, remove role assignments and app registrations using their saved IDs; remove the GitHub environments only when no workflows depend on them:
+**Other sign-in failures:** check the tenant, the client ID variable, the branch policy and whether the roles have finished propagating.
+
+## Rotate an identity
+
+1. Create a replacement app registration and service principal (step 3).
+2. Federate it (step 4) and grant its roles (step 5).
+3. Update that environment's `AZURE_CLIENT_ID` variable (step 6).
+4. Run the test (step 7).
+5. Remove the old identity's role assignments and app registration.
+
+Never add a client secret.
+
+## Tear down
+
+**Deleting a resource group deletes every resource and all data in it.** First make sure that this is intended. Remove the workloads first, and remove a GitHub environment only when no workflow depends on it.
+
+The block below tears down staging. For production, set `env=production` and `client_id=$PRODUCTION_CLIENT_ID` instead.
 
 ```bash
 # Repeat for each environment after confirming deletion is intended:
@@ -172,4 +229,8 @@ gh api -X DELETE "repos/mgasca/calendar/environments/$env"
 az group exists --name "rg-calendar-$env"
 ```
 
-Verify the group no longer exists, the app and service principal are gone, and the environment is absent. Deletion may take time and requires appropriate Azure and Entra rights.
+Deletion can take a while. Expect:
+
+- `az group exists` prints `false`.
+- `az ad app show --id "$client_id"` and `az ad sp show --id "$client_id"` both report that the object does not exist. Deleting the app also deletes its service principal.
+- `gh api repos/mgasca/calendar/environments` no longer lists the environment.

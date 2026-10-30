@@ -4,6 +4,7 @@
 #:package Npgsql@10.0.3
 #:package Testcontainers.PostgreSql@4.16.0
 #:include ../Infrastructure.cs
+#:include ../Diagnostics.cs
 #:include ../Database.cs
 
 using Npgsql;

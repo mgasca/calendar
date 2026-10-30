@@ -3,6 +3,7 @@
 #:package Shouldly@4.3.0
 #:package Npgsql@10.0.3
 #:include ../Infrastructure.cs
+#:include ../Diagnostics.cs
 #:include ../Database.cs
 
 using Shouldly;

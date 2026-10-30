@@ -20,6 +20,8 @@ If the vault and PostgreSQL disagree, stop deployments and coordinate recovery w
 
 Schedule a maintenance window and stop migrations and application traffic as appropriate. Generate the replacement secret securely, update the role through a protected administrator connection, then update its ops-vault secret. For the app role, update the app-vault connection string to the same password and refresh or redeploy the app so its connection pools and secret reference use the new value. For the migrator, ensure no migration is running before changing its password and vault secret. The database and vault updates are not atomic: during the interval between them connections can fail. Verify role authentication and the app or migration workflow after the change. Never expose the password in command arguments or logs.
 
+Azure CLI failures include a sanitized report and a private transcript; see [deployment troubleshooting](azure-infrastructure.md#troubleshooting-deployment-failures). Secret and firewall creation are not automatically retried.
+
 ## Migration failure and rollback
 
 Migrations are forward-only; use expand/contract changes so old and new application revisions remain compatible across the deployment. Record the printed UTC restore point before a production migration. A failed bundle leaves the existing application revision serving, but earlier migrations may already have committed. EF normally wraps each PostgreSQL migration in a transaction where supported; operations outside transactions and failures between migrations can leave partial progress. Inspect migration history and database state, resolve the cause, and apply a reviewed forward fix; do not assume that stopping the deployment restored the database.

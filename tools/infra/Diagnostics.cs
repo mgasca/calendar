@@ -141,7 +141,8 @@ internal sealed class Diagnostics(IAzureProcess inner, TextWriter output, Func<T
             }
           }
           var hint = Classify(ex.Stdout + "\n" + ex.Stderr + "\n" + string.Join("\n", ex.Operations));
-          if (cleanup || !deployment || attempt >= diagnostics.Retries || hint?.RetryReason is null) { throw; }
+          var readOnly = args.Length >= 2 && ((args[0] == "rest" && args.Contains("get")) || (args[0] == "bicep" && args[1] == "build-params") || ((args[0] == "resource" || args[0] == "keyvault" || args[0] == "deployment" || args[0] == "postgres") && (args.Contains("show") || args.Contains("list"))));
+          if (cleanup || (!deployment && !readOnly) || attempt >= diagnostics.Retries || hint?.RetryReason is null) { throw; }
           diagnostics.failures.Add($"Attempt {attempt + 1}: {path} exit {ex.ExitCode}\nstdout:\n{ex.Stdout}\nstderr:\n{ex.Stderr}\n{string.Join("\n", ex.Operations)}");
           var seconds = 60 * Math.Pow(2, Math.Min(attempt, 5));
           await output.WriteLineAsync($"Attempt {attempt + 2}/{diagnostics.Retries + 1} after {hint.RetryReason}; retrying in {seconds} s");

@@ -211,6 +211,15 @@ public sealed class InfraTests
   }
 
   [Fact]
+  public async Task ReadOnlyCallsMayRetryTransientFailures()
+  {
+    var az = new ScriptedAzure { FailureMessage = "HTTP 429", Failures = 1 };
+    var diagnostics = new Diagnostics(az, new StringWriter(), (_, _) => Task.CompletedTask);
+    await diagnostics.Wrap().RunAsync("keyvault", "secret", "list", "--vault-name", "vault");
+    az.Calls.Count.ShouldBe(2);
+  }
+
+  [Fact]
   public async Task RetryWaitsFollowBackoffAndObserveCancellation()
   {
     var az = new ScriptedAzure { FailureMessage = "ServerIsBusy", Failures = 2 };

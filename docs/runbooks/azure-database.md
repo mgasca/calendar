@@ -4,7 +4,31 @@ Perform these steps separately for staging and production, using the correct Azu
 
 ## First-time setup
 
-1. Complete the foundation and full infrastructure deployments in [Azure infrastructure](azure-infrastructure.md). Grant the operator Key Vault Secrets Officer on both vaults.
+1. Complete the foundation and full infrastructure deployments in [Azure infrastructure](azure-infrastructure.md). Then make sure the **operator**, meaning your own signed-in Azure user (not the deployment identity), has **Key Vault Secrets Officer** on both vaults of the environment. That role lets you write the database passwords and the app connection string. If you followed step 3 of the infrastructure runbook you already granted it: run the check below, and only run the grant if the check shows nothing.
+
+   ```bash
+   # Which environment you are setting up: staging or production.
+   ENV=staging
+   # The resource group created for that environment.
+   RG="rg-calendar-$ENV"
+   # The two vault names were recorded as outputs of the foundation deployment.
+   app_vault=$(az deployment group show -g "$RG" -n calendar-foundation --query properties.outputs.appKeyVaultName.value -o tsv)
+   ops_vault=$(az deployment group show -g "$RG" -n calendar-foundation --query properties.outputs.opsKeyVaultName.value -o tsv)
+   # The object ID of the user you are signed in as with `az login`.
+   owner_id=$(az ad signed-in-user show --query id -o tsv)
+
+   for vault in "$app_vault" "$ops_vault"; do
+     # The full Azure resource ID of this vault, which is the scope the role applies to.
+     vault_id=$(az keyvault show -g "$RG" -n "$vault" --query id -o tsv)
+     # CHECK: list your Key Vault Secrets Officer assignment on this vault. Empty output [] means you do not have it yet.
+     az role assignment list --assignee "$owner_id" --scope "$vault_id" --query "[?roleDefinitionName=='Key Vault Secrets Officer'].{role:roleDefinitionName,scope:scope}" -o json
+     # GRANT: only if the list above was empty. This needs permission to assign roles on the vault (Owner or User Access Administrator).
+     # az role assignment create --assignee-object-id "$owner_id" --assignee-principal-type User --role 'Key Vault Secrets Officer' --scope "$vault_id"
+   done
+   ```
+
+   Each vault should list one assignment. A new assignment can take up to about 10 minutes to take effect, so if the next step fails with a permission error, wait and retry. Repeat the whole step for production with `ENV=production`.
+
 2. Run `make infra-init-roles ENV=staging ARGS="--client-ip <public-ipv4>"` from the operator's machine. The command temporarily permits that address through the PostgreSQL firewall. Use the public egress address actually used to reach Azure. If `--client-ip` is omitted, the tool asks `https://api.ipify.org` for the public IPv4 address; use the override when that service is unavailable or its route differs from the database route.
 3. Dispatch the migration workflow from `main` for staging. Confirm it succeeds before proceeding.
 4. Deploy the app with its app-vault connection string and check that it connects as `calendar_app`. With a connection as that role, attempt `CREATE TABLE public.permission_probe (id integer)` and confirm PostgreSQL denies permission. If it unexpectedly succeeds, remove the probe using an administrator and investigate the grants before allowing traffic.

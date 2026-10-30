@@ -33,6 +33,36 @@ Google Auth Platform help currently names the top-level areas **Branding**, **Au
 Each Google client must use that environment's actual HTTPS callback host. Get the fully qualified domain name (FQDN) from the deployed Container App:
 
 ```bash
+# Which environment you are looking up: staging or production.
+ENV=staging
+# The resource group created for that environment.
+RG="rg-calendar-$ENV"
+# The name of that environment's Container App.
+APP="ca-calendar-${ENV}"
+# Ask Azure for the app's public hostname (FQDN) and print just that one value.
+az containerapp show --resource-group "$RG" --name "$APP" --query 'properties.configuration.ingress.fqdn' -o tsv
+```
+
+Verify the output is one hostname, with no scheme or path. Repeat with `ENV=production`. The callback URI is exactly `https://<that-fqdn>/api/auth/callback/google`.
+
+## 4. Create the two OAuth clients
+
+Separate clients make the production credential and callback independent from staging. This application uses ASP.NET Core's server-side Google authorization code flow; the API constructs the callback at `/api/auth/callback/google`, and the browser does not run Google's JavaScript client. Therefore no **Authorized JavaScript origins** are needed.
+
+For each environment:
+
+1. In Google Auth Platform, open **Clients**, choose **Create client** (the current help identifies Clients as the OAuth clients area), and choose **Web application** as the application type. The exact create button wording may vary in the live console.
+2. Give the client a clear name such as `Calendar staging` or `Calendar production`.
+3. In **Authorized redirect URIs**, add exactly one URI: `https://<environment-fqdn>/api/auth/callback/google`. Leave **Authorized JavaScript origins** empty. Create the client.
+4. Save the displayed client ID and client secret into a secure password manager for the corresponding environment. Do not put either in the repository, a ticket, chat, a command argument or shell history. Verify the client type is Web application and it has exactly one redirect URI matching the deployed FQDN, scheme, path and case.
+
+## 5. Store values in each environment's app vault
+
+The owner needs **Key Vault Secrets Officer** on that environment's app vault. See [Azure infrastructure](azure-infrastructure.md#parameters-and-application-secrets) for vault roles and naming. Never pass a secret on the command line with `--value`: anyone who can list processes, and your shell history, would see it. The commands below avoid that by asking you to type or paste each value at a hidden prompt and sending it straight to Key Vault.
+
+The script does three things. It looks up the name of this environment's app vault. For each value, it asks you to type or paste it (nothing is shown on screen and nothing is saved in your shell history). It then passes the value to Key Vault without it ever appearing in a command. Set `ENV` to the environment you are working on:
+
+```bash
 # Which environment you are configuring: staging or production.
 ENV=staging
 # The resource group created for that environment.
@@ -69,49 +99,11 @@ done
 unset email
 ```
 
-Verify the output is one hostname, with no scheme or path. Repeat with `ENV=production`. The callback URI is exactly `https://<that-fqdn>/api/auth/callback/google`.
-
-## 4. Create the two OAuth clients
-
-Separate clients make the production credential and callback independent from staging. This application uses ASP.NET Core's server-side Google authorization code flow; the API constructs the callback at `/api/auth/callback/google`, and the browser does not run Google's JavaScript client. Therefore no **Authorized JavaScript origins** are needed.
-
-For each environment:
-
-1. In Google Auth Platform, open **Clients**, choose **Create client** (the current help identifies Clients as the OAuth clients area), and choose **Web application** as the application type. The exact create button wording may vary in the live console.
-2. Give the client a clear name such as `Calendar staging` or `Calendar production`.
-3. In **Authorized redirect URIs**, add exactly one URI: `https://<environment-fqdn>/api/auth/callback/google`. Leave **Authorized JavaScript origins** empty. Create the client.
-4. Save the displayed client ID and client secret into a secure password manager for the corresponding environment. Do not put either in the repository, a ticket, chat, a command argument or shell history. Verify the client type is Web application and it has exactly one redirect URI matching the deployed FQDN, scheme, path and case.
-
-## 5. Store values in each environment's app vault
-
-The owner needs **Key Vault Secrets Officer** on that environment's app vault. See [Azure infrastructure](azure-infrastructure.md#parameters-and-application-secrets) for vault roles and naming. Never pass a secret on the command line with `--value`: anyone who can list processes, and your shell history, would see it. The commands below avoid that by asking you to type or paste each value at a hidden prompt and sending it straight to Key Vault.
-
-The script does three things. It looks up the name of this environment's app vault. For each value, it asks you to type or paste it (nothing is shown on screen and nothing is saved in your shell history). It then passes the value to Key Vault without it ever appearing in a command. Set `ENV` to the environment you are working on:
-
-```bash
-ENV=staging
-RG="rg-calendar-$ENV"
-APP_VAULT=$(az deployment group show --resource-group "$RG" --name calendar-foundation --query properties.outputs.appKeyVaultName.value -o tsv)
-read -r -s -p 'Google client ID: ' secret_value; printf '\n'
-printf '%s' "$secret_value" | az keyvault secret set --vault-name "$APP_VAULT" --name google-client-id --file /dev/stdin --query name -o tsv
-unset secret_value
-read -r -s -p 'Google client secret: ' secret_value; printf '\n'
-printf '%s' "$secret_value" | az keyvault secret set --vault-name "$APP_VAULT" --name google-client-secret --file /dev/stdin --query name -o tsv
-unset secret_value
-read -r -s -p 'Allowed Google email (blank to finish): ' email; printf '\n'
-index=0
-while [ -n "$email" ]; do
-  printf '%s' "$email" | az keyvault secret set --vault-name "$APP_VAULT" --name "allowed-email-$index" --file /dev/stdin --query name -o tsv
-  unset email
-  index=$((index + 1))
-  read -r -s -p 'Next allowed Google email (blank to finish): ' email; printf '\n'
-done
-unset email
-```
-
 Repeat for `ENV=production`, entering that environment's client values and allowed verified email(s). Review the allow-list carefully; the indexed names must be contiguous from zero. The `printf '%s'` is intentional: unlike `echo` or a here-string, it adds no trailing newline. Azure CLI documents `--file` as the secret source and permits `/dev/stdin` on Linux, but this exact CLI/platform combination has not been exercised against a live vault here. Before relying on the values, verify names and enabled attributes without requesting values:
 
 ```bash
+# Check each secret we stored, one at a time. This shows only its name, whether it is enabled, and when it
+# was last updated. It never shows the secret's value. Add allowed-email-1, -2, ... to the list as needed.
 for name in google-client-id google-client-secret allowed-email-0; do
   az keyvault secret show --vault-name "$APP_VAULT" --name "$name" --query '{name:name,enabled:attributes.enabled,updated:attributes.updated}' -o json
 done
@@ -124,6 +116,8 @@ Add one show command per additional `allowed-email-N`. Verify each output has th
 The S5 deployment tool discovers enabled app-vault secret names and supplies them to Bicep. Bicep maps the three fixed names and each `allowed-email-N` to the corresponding application configuration key. Deploy after storing values:
 
 ```bash
+# Re-run the full deployment for each environment. The tool finds the enabled secrets in the app vault and
+# gives the Container App a reference to each one.
 make infra-deploy ENV=staging PHASE=full
 make infra-deploy ENV=production PHASE=full
 ```
@@ -131,10 +125,15 @@ make infra-deploy ENV=production PHASE=full
 Check the new revision for each Container App:
 
 ```bash
+# Which environment you are checking: staging or production.
 ENV=staging
+# The resource group and Container App name for that environment.
 RG="rg-calendar-$ENV"
 APP="ca-calendar-${ENV}"
+# List the app's revisions (versions). The newest should be active and its provisioning state Succeeded.
 az containerapp revision list --resource-group "$RG" --name "$APP" --query '[].{name:name,active:properties.active,provisioningState:properties.provisioningState,runningState:properties.runningState}' -o json
+# Show the app's public hostname, the secrets it references in Key Vault, and which environment variables
+# read from them. This prints names and vault URLs only, never secret values.
 az containerapp show --resource-group "$RG" --name "$APP" --query '{fqdn:properties.configuration.ingress.fqdn,secrets:properties.configuration.secrets[].{name:name,keyVaultUrl:keyVaultUrl},template:properties.template.containers[].env[].{name:name,secretRef:secretRef}}' -o json
 ```
 
@@ -173,6 +172,7 @@ In Google Auth Platform > Clients, open the relevant environment's client and cr
 Identify the exact `allowed-email-N` entry in the environment's app vault, then delete that secret (without showing its value):
 
 ```bash
+# Delete one allow-list entry from the app vault (here the second email). Then redeploy so the app drops it.
 az keyvault secret delete --vault-name "$APP_VAULT" --name allowed-email-1 --query name -o tsv
 ```
 

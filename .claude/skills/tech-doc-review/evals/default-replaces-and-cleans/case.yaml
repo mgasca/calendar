@@ -1,0 +1,8 @@
+schema_version: "1.1"
+name: default-replaces-and-cleans
+expected_outcome: |
+  In the default finalize mode, the skill leaves sample-runbook.md holding the
+  combined draft, deletes the clear- and simple- drafts, and makes three commits
+  in order: an unchanged copy under the new names, the drafts, and the
+  replacement. Every command in the original survives unchanged, and nothing is
+  pushed.

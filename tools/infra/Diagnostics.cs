@@ -14,12 +14,15 @@ public sealed class AzureFailureException(int exitCode, string stdout, string st
   internal List<string> Operations { get; } = [];
 }
 
-internal sealed class Diagnostics(IAzureProcess inner, TextWriter output)
+internal sealed class Diagnostics(IAzureProcess inner, TextWriter output, Func<TimeSpan, CancellationToken, Task>? delay = null, CancellationToken cancellationToken = default)
 {
   internal static readonly AsyncLocal<Diagnostics?> Current = new();
+  private readonly CancellationToken token = cancellationToken;
+  private readonly Func<TimeSpan, CancellationToken, Task> wait = delay ?? Task.Delay;
   private readonly List<string> secrets = [];
   private int step;
   internal bool Verbose { get; set; }
+  internal int Retries { get; set; } = 2;
   internal void Mask(string value) { if (!string.IsNullOrEmpty(value)) { secrets.Add(value); } }
 
   internal string Sanitize(string text)
@@ -114,8 +117,32 @@ internal sealed class Diagnostics(IAzureProcess inner, TextWriter output)
       var path = CommandPath(args);
       var label = Label(args);
       await output.WriteLineAsync($"[{++diagnostics.step}] {label}");
-      try { return cleanup ? await inner.RunCleanupAsync(args) : await inner.RunAsync(args); }
-      catch (AzureFailureException ex) { ex.Command = path; ex.Step = label; throw; }
+      var attempt = 0;
+      while (true)
+      {
+        try { return cleanup ? await inner.RunCleanupAsync(args) : await inner.RunAsync(args); }
+        catch (AzureFailureException ex)
+        {
+          ex.Command = path;
+          ex.Step = label;
+          var deployment = args.Length >= 3 && args[0] == "deployment" && args[1] == "group" && args[2] is "create" or "what-if";
+          if (deployment)
+          {
+            var groupIndex = Array.IndexOf(args, "--resource-group");
+            var nameIndex = Array.IndexOf(args, "--name");
+            if (groupIndex >= 0 && groupIndex + 1 < args.Length)
+            {
+              await diagnostics.CollectOperations(ex, args[groupIndex + 1], nameIndex >= 0 && nameIndex + 1 < args.Length ? args[nameIndex + 1] : "main");
+            }
+          }
+          var hint = Classify(ex.Stdout + "\n" + ex.Stderr + "\n" + string.Join("\n", ex.Operations));
+          if (cleanup || !deployment || attempt >= diagnostics.Retries || hint?.RetryReason is null) { throw; }
+          var seconds = 60 * Math.Pow(2, Math.Min(attempt, 5));
+          await output.WriteLineAsync($"Attempt {attempt + 2}/{diagnostics.Retries + 1} after {hint.RetryReason}; retrying in {seconds} s");
+          await diagnostics.wait(TimeSpan.FromSeconds(seconds), diagnostics.token);
+          attempt++;
+        }
+      }
     }
     private static string CommandPath(string[] args)
     {

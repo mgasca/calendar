@@ -56,13 +56,23 @@ public static partial class Infra
   /// <summary>Executes a command with cancellation.</summary>
   public static async Task<int> RunAsync(string[] args, IAzureProcess az, TextWriter output, TextWriter error, CancellationToken cancellationToken)
   {
-    var diagnostics = new Diagnostics(az, output);
+    var diagnostics = new Diagnostics(az, output, cancellationToken: cancellationToken);
     Diagnostics.Current.Value = diagnostics;
     az = diagnostics.Wrap();
     try
     {
       var flags = args.ToList();
       diagnostics.Verbose = flags.Remove("--verbose") || Environment.GetEnvironmentVariable("INFRA_VERBOSE") == "1";
+      var retries = Environment.GetEnvironmentVariable("INFRA_RETRIES") ?? "2";
+      var retryIndex = flags.IndexOf("--retries");
+      if (retryIndex >= 0)
+      {
+        if (retryIndex + 1 >= flags.Count) { throw new ArgumentException("--retries requires a non-negative integer."); }
+        retries = flags[retryIndex + 1];
+        flags.RemoveRange(retryIndex, 2);
+      }
+      if (!int.TryParse(retries, out var count) || count < 0 || count > 20) { throw new ArgumentException("Retries must be between 0 and 20."); }
+      diagnostics.Retries = count;
       args = flags.ToArray();
       SweepStaleFiles();
       if (args.Length > 0 && (args[0] == "migrate" || (args[0] == "db" && args.Length > 1 && args[1] == "init-roles"))) { return await DatabaseCommand(args, az, output, cancellationToken); }
@@ -141,16 +151,8 @@ public static partial class Infra
         var command = new List<string> { "deployment", "group", args[0] == "deploy" ? "create" : "what-if", "--resource-group", $"rg-calendar-{args[1]}", "--template-file", "infra/main.bicep", "--parameters", "@" + path, "--no-prompt" };
         if (phase == "foundation") { command.AddRange(["--name", "calendar-foundation"]); }
         if (args[0] == "what-if") { command.AddRange(["--no-pretty-print", "-o", "json"]); }
-        try
-        {
-          var result = await az.RunAsync(command.ToArray());
-          if (args[0] == "what-if") { await output.WriteLineAsync(SafePreview(result, secretValue)); }
-        }
-        catch (AzureFailureException failure)
-        {
-          await diagnostics.CollectOperations(failure, $"rg-calendar-{args[1]}", phase == "foundation" ? "calendar-foundation" : "main");
-          throw;
-        }
+        var result = await az.RunAsync(command.ToArray());
+        if (args[0] == "what-if") { await output.WriteLineAsync(SafePreview(result, secretValue)); }
       });
       return 0;
     }

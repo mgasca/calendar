@@ -324,7 +324,10 @@ export interface components {
             /** @description applied, skipped or notFound. */
             outcome: string;
         };
-        /** @description Apply one action to explicit task ids or a guarded overdue filter. */
+        /**
+         * @description Apply one action to explicit task ids or a guarded overdue filter. Explicit ids return per-task results;
+         *     filter targets return no per-task results and use the aggregate counts.
+         */
         BulkTaskRequest: {
             /** @description Action to apply. */
             action: components["schemas"]["BulkTaskAction"];
@@ -342,13 +345,16 @@ export interface components {
              */
             dueAt?: null | string;
         };
-        /** @description Per-task outcomes and totals for a bulk action. */
+        /**
+         * @description Bulk action outcomes and totals. Explicit-id targets return one result per distinct id; filter targets return
+         *     an empty results array, with int BulkTaskResponse.Applied equal to the number of rows changed or deleted.
+         */
         BulkTaskResponse: {
-            /** @description One outcome per distinct requested id. */
+            /** @description One outcome per distinct explicit id; empty for a filter target. */
             results: components["schemas"]["BulkTaskItemResult"][];
             /**
              * Format: int32
-             * @description Number of applied actions.
+             * @description Number of applied actions, or rows changed/deleted for a filter target.
              */
             applied: number | string;
             /**
@@ -522,6 +528,11 @@ export interface components {
             items: components["schemas"]["TaskResponse"][];
             /** @description Pass as `cursor` for the next page; `null` on the last page. */
             nextCursor?: null | string;
+            /**
+             * Format: int32
+             * @description Total open overdue tasks, provided on the first overdue page only.
+             */
+            total?: null | number | string;
         };
         /** @description A task as stored. */
         TaskResponse: {

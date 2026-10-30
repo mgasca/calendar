@@ -73,7 +73,10 @@ public sealed class TodoTask
   }
 
   /// <summary>Marks the task complete. Idempotent: an already completed task keeps its first completion time.</summary>
-  public void Complete(DateTimeOffset now) => CompletedAt ??= now.ToUniversalTime();
+  public void Complete(DateTimeOffset now) => CompletedAt ??= NormalizeCompletionTime(now);
+
+  /// <summary>Normalizes completion timestamps the same way for entity and set-based updates.</summary>
+  public static DateTimeOffset NormalizeCompletionTime(DateTimeOffset completedAt) => completedAt.ToUniversalTime();
 
   /// <summary>Marks the task open again. Idempotent.</summary>
   public void Reopen() => CompletedAt = null;
@@ -82,25 +85,35 @@ public sealed class TodoTask
   public void SetDueDate(DateOnly dueDate)
   {
     RequireOpen();
-    DueDate = dueDate;
-    DueAt = null;
+    (DueDate, DueAt) = ForDueDate(dueDate);
   }
 
   /// <summary>Replaces the deadline of an open task with an instant normalized to UTC.</summary>
   public void SetDueAt(DateTimeOffset dueAt)
   {
     RequireOpen();
-    DueDate = null;
-    DueAt = dueAt.ToUniversalTime();
+    (DueDate, DueAt) = ForDueInstant(dueAt);
   }
+
+  /// <summary>Normalizes deadline instants the same way for entity and set-based updates.</summary>
+  public static DateTimeOffset NormalizeDueAt(DateTimeOffset dueAt) => dueAt.ToUniversalTime();
+
+  /// <summary>Returns the mutually exclusive deadline columns for a floating date.</summary>
+  public static (DateOnly? DueDate, DateTimeOffset? DueAt) ForDueDate(DateOnly dueDate) => (dueDate, null);
+
+  /// <summary>Returns the mutually exclusive deadline columns for an instant, normalized to UTC.</summary>
+  public static (DateOnly? DueDate, DateTimeOffset? DueAt) ForDueInstant(DateTimeOffset dueAt) =>
+      (null, NormalizeDueAt(dueAt));
 
   /// <summary>Clears the deadline of an open task.</summary>
   public void ClearDeadline()
   {
     RequireOpen();
-    DueDate = null;
-    DueAt = null;
+    (DueDate, DueAt) = WithoutDeadline();
   }
+
+  /// <summary>Returns empty values for both mutually exclusive deadline columns.</summary>
+  public static (DateOnly? DueDate, DateTimeOffset? DueAt) WithoutDeadline() => (null, null);
 
   private void RequireOpen()
   {

@@ -135,7 +135,10 @@ internal static class TaskEndpoints
       next = TaskListCursor.Encode(selected, TaskListQueries.KeyOf(selected, last.Id, last.DueDate, last.DueAt, last.CompletedAt, zone));
     }
 
-    return TypedResults.Ok(new TaskPage { Items = items, NextCursor = next });
+    int? total = selected == TaskListView.Overdue && after is null
+        ? await db.Tasks.AsNoTracking().OpenOverdueFor(window!.Value).CountAsync(cancellationToken)
+        : null;
+    return TypedResults.Ok(new TaskPage { Items = items, NextCursor = next, Total = total });
   }
 
   private static async Task<Results<Ok<TaskResponse>, ProblemHttpResult>> GetAsync(
@@ -162,7 +165,14 @@ internal static class TaskEndpoints
     }
 
     db.Tasks.Remove(task);
-    await db.SaveChangesAsync(cancellationToken);
+    try
+    {
+      await db.SaveChangesAsync(cancellationToken);
+    }
+    catch (DbUpdateConcurrencyException)
+    {
+      return NotFound();
+    }
     return TypedResults.NoContent();
   }
 
@@ -173,6 +183,7 @@ internal static class TaskEndpoints
       CancellationToken cancellationToken)
   {
     var errors = new FieldErrors();
+    errors.Require(Enum.IsDefined(request.Action), "action", "Action is not supported.");
     errors.Require((request.Ids is null) != (request.Filter is null), "target", "Provide exactly one of ids or filter.");
     errors.Forbid(
       request.DueDate is not null && request.Action != BulkTaskAction.SetDueDate,
@@ -209,25 +220,35 @@ internal static class TaskEndpoints
       errors.Require(filter.ExpectedTotal >= 0, "filter.expectedTotal", "expectedTotal cannot be negative.");
       if (!errors.Any && zone is not null)
       {
-        IDbContextTransaction transaction = await db.Database.BeginTransactionAsync(
+        await using IDbContextTransaction transaction = await db.Database.BeginTransactionAsync(
           System.Data.IsolationLevel.Serializable,
           cancellationToken);
-        var window = DayWindow.Create(filter.Today, zone);
-        ids = await db.Tasks.AsNoTracking()
-          .OpenOverdueFor(window)
-          .Select(task => task.Id)
-          .ToListAsync(cancellationToken);
-        if (ids.Count != filter.ExpectedTotal)
+        try
         {
-          await transaction.RollbackAsync(cancellationToken);
-          return TypedResults.Problem(
-              statusCode: StatusCodes.Status409Conflict,
-              title: "The overdue task count changed. Review the updated count and try again.");
-        }
+          var window = DayWindow.Create(filter.Today, zone);
+          var matching = await db.Tasks.AsNoTracking()
+            .OpenOverdueFor(window)
+            .CountAsync(cancellationToken);
+          if (matching != filter.ExpectedTotal)
+          {
+            await transaction.RollbackAsync(cancellationToken);
+            return ChangedConflict();
+          }
 
-        BulkTaskResponse result = await ApplyBulkAsync(ids, request, db, time, cancellationToken);
-        await transaction.CommitAsync(cancellationToken);
-        return TypedResults.Ok(result);
+          var applied = await ApplyFilteredAsync(window, request, db, time, cancellationToken);
+          await transaction.CommitAsync(cancellationToken);
+          return TypedResults.Ok(new BulkTaskResponse
+          {
+            Results = [],
+            Applied = applied,
+            Skipped = 0,
+            NotFound = 0,
+          });
+        }
+        catch (Exception exception) when (IsSerializationOrDeadlock(exception))
+        {
+          return ChangedConflict();
+        }
       }
     }
 
@@ -237,6 +258,58 @@ internal static class TaskEndpoints
     }
 
     return TypedResults.Ok(await ApplyBulkAsync(ids, request, db, time, cancellationToken));
+  }
+
+  private static Task<int> ApplyFilteredAsync(
+      DayWindow window,
+      BulkTaskRequest request,
+      CalendarDbContext db,
+      TimeProvider time,
+      CancellationToken cancellationToken)
+  {
+    IQueryable<TodoTask> overdue = db.Tasks.OpenOverdueFor(window);
+    return request.Action switch
+    {
+      BulkTaskAction.Complete => overdue.ExecuteUpdateAsync(
+        setters => setters.SetProperty(
+          task => task.CompletedAt,
+          TodoTask.NormalizeCompletionTime(time.GetUtcNow())),
+        cancellationToken),
+      BulkTaskAction.SetDueDate => SetFilteredDeadlineAsync(
+        overdue,
+        TodoTask.ForDueDate(request.DueDate!.Value),
+        cancellationToken),
+      BulkTaskAction.SetDueInstant => SetFilteredDeadlineAsync(
+        overdue,
+        TodoTask.ForDueInstant(request.DueAt!.Value),
+        cancellationToken),
+      BulkTaskAction.ClearDeadline => SetFilteredDeadlineAsync(
+        overdue,
+        TodoTask.WithoutDeadline(),
+        cancellationToken),
+      BulkTaskAction.Delete => overdue.ExecuteDeleteAsync(cancellationToken),
+      _ => throw new ArgumentOutOfRangeException(nameof(request), "Action is not supported."),
+    };
+  }
+
+  private static Task<int> SetFilteredDeadlineAsync(
+      IQueryable<TodoTask> overdue,
+      (DateOnly? DueDate, DateTimeOffset? DueAt) deadline,
+      CancellationToken cancellationToken)
+  {
+    overdue = deadline switch
+    {
+      { DueDate: { } date, DueAt: null } => overdue.Where(task => task.DueDate != date || task.DueAt != null),
+      { DueDate: null, DueAt: { } dueAt } => overdue.Where(task => task.DueDate != null || task.DueAt != dueAt),
+      { DueDate: null, DueAt: null } => overdue.Where(task => task.DueDate != null || task.DueAt != null),
+      _ => throw new ArgumentException("A deadline cannot contain both a date and an instant.", nameof(deadline)),
+    };
+
+    return overdue.ExecuteUpdateAsync(
+        setters => setters
+          .SetProperty(task => task.DueDate, deadline.DueDate)
+          .SetProperty(task => task.DueAt, deadline.DueAt),
+        cancellationToken);
   }
 
   private static async Task<BulkTaskResponse> ApplyBulkAsync(
@@ -274,6 +347,8 @@ internal static class TaskEndpoints
           case BulkTaskAction.Delete:
             db.Tasks.Remove(task);
             break;
+          default:
+            throw new ArgumentOutOfRangeException(nameof(request), "Action is not supported.");
         }
 
         pending.Add(id);
@@ -324,6 +399,24 @@ internal static class TaskEndpoints
       NotFound = orderedResults.Count(result => result.Outcome == "notFound"),
     };
   }
+
+  internal static bool IsSerializationOrDeadlock(Exception exception)
+  {
+    for (Exception? current = exception; current is not null; current = current.InnerException)
+    {
+      if (current is Npgsql.PostgresException postgres
+          && postgres.SqlState is Npgsql.PostgresErrorCodes.SerializationFailure or Npgsql.PostgresErrorCodes.DeadlockDetected)
+      {
+        return true;
+      }
+    }
+
+    return false;
+  }
+
+  private static ProblemHttpResult ChangedConflict() => TypedResults.Problem(
+      statusCode: StatusCodes.Status409Conflict,
+      title: "The overdue task count changed. Review the updated count and try again.");
 
   private static Task<Results<Ok<TaskResponse>, ProblemHttpResult>> CompleteAsync(
       Guid id,

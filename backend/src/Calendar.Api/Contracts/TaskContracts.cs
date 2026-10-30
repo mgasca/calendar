@@ -120,9 +120,15 @@ public sealed record TaskPage
 
   /// <summary>Pass as <c>cursor</c> for the next page; <c>null</c> on the last page.</summary>
   public string? NextCursor { get; init; }
+
+  /// <summary>Total open overdue tasks, provided on the first overdue page only.</summary>
+  public int? Total { get; init; }
 }
 
-/// <summary>Apply one action to explicit task ids or a guarded overdue filter.</summary>
+/// <summary>
+/// Apply one action to explicit task ids or a guarded overdue filter. Explicit ids return per-task results;
+/// filter targets return no per-task results and use the aggregate counts.
+/// </summary>
 public sealed record BulkTaskRequest
 {
   /// <summary>Action to apply.</summary>
@@ -193,13 +199,16 @@ public sealed record BulkTaskItemResult
   public required string Outcome { get; init; }
 }
 
-/// <summary>Per-task outcomes and totals for a bulk action.</summary>
+/// <summary>
+/// Bulk action outcomes and totals. Explicit-id targets return one result per distinct id; filter targets return
+/// an empty results array, with <see cref="Applied"/> equal to the number of rows changed or deleted.
+/// </summary>
 public sealed record BulkTaskResponse
 {
-  /// <summary>One outcome per distinct requested id.</summary>
+  /// <summary>One outcome per distinct explicit id; empty for a filter target.</summary>
   public required IReadOnlyList<BulkTaskItemResult> Results { get; init; }
 
-  /// <summary>Number of applied actions.</summary>
+  /// <summary>Number of applied actions, or rows changed/deleted for a filter target.</summary>
   public required int Applied { get; init; }
 
   /// <summary>Number of skipped actions.</summary>

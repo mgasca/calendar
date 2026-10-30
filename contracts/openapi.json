@@ -887,7 +887,7 @@
             "format": "date-time"
           }
         },
-        "description": "Apply one action to explicit task ids or a guarded overdue filter."
+        "description": "Apply one action to explicit task ids or a guarded overdue filter. Explicit ids return per-task results;\nfilter targets return no per-task results and use the aggregate counts."
       },
       "BulkTaskResponse": {
         "required": [
@@ -903,7 +903,7 @@
             "items": {
               "$ref": "#/components/schemas/BulkTaskItemResult"
             },
-            "description": "One outcome per distinct requested id."
+            "description": "One outcome per distinct explicit id; empty for a filter target."
           },
           "applied": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
@@ -911,7 +911,7 @@
               "integer",
               "string"
             ],
-            "description": "Number of applied actions.",
+            "description": "Number of applied actions, or rows changed/deleted for a filter target.",
             "format": "int32"
           },
           "skipped": {
@@ -933,7 +933,7 @@
             "format": "int32"
           }
         },
-        "description": "Per-task outcomes and totals for a bulk action."
+        "description": "Bulk action outcomes and totals. Explicit-id targets return one result per distinct id; filter targets return\nan empty results array, with int BulkTaskResponse.Applied equal to the number of rows changed or deleted."
       },
       "CreateEventRequest": {
         "required": [
@@ -1316,6 +1316,16 @@
               "string"
             ],
             "description": "Pass as `cursor` for the next page; `null` on the last page."
+          },
+          "total": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "null",
+              "integer",
+              "string"
+            ],
+            "description": "Total open overdue tasks, provided on the first overdue page only.",
+            "format": "int32"
           }
         },
         "description": "One page of a task list view."

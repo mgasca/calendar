@@ -30,4 +30,5 @@ Front matter: `status` (`planned`, `in-progress` or `implemented`), `date` (`YYY
 | [0006](0006-modal-dialogs-for-adding.md) | Add tasks and events in a modal dialog | implemented |
 | [0007](0007-overdue-triage-and-task-deletion.md) | Overdue triage and task deletion | implemented |
 | [0008](0008-review-runbooks-for-clarity-and-simplicity.md) | Review the runbooks for clarity and simplicity | implemented |
+| [0009](0009-review-drafting-skills-for-clarity-and-simplicity.md) | Review the adr-draft and story-draft skills for clarity and simplicity | planned |
 | [XXXX](XXXX-create-events-and-tasks-from-week-view.md) | Create events and tasks from the week view | planned |

@@ -2,7 +2,11 @@
 status: in-progress
 date: 2026-10-30
 issue: https://github.com/mgasca/calendar/issues/132
-pr: []
+pr:
+  - https://github.com/mgasca/calendar/pull/133
+  - https://github.com/mgasca/calendar/pull/134
+  - https://github.com/mgasca/calendar/pull/135
+  - https://github.com/mgasca/calendar/pull/136
 adrs: ["0033", "0034"]
 ---
 
@@ -12,7 +16,7 @@ adrs: ["0033", "0034"]
 
 > As an operator who may be new to Azure, I need runbooks that are clear and simple to follow, so that I can deploy and maintain the app without guessing or asking for help.
 
-Tracked in issue #132.
+Tracked in issue #132. Review PRs: [#134](https://github.com/mgasca/calendar/pull/134) (database), [#135](https://github.com/mgasca/calendar/pull/135) (infrastructure), [#136](https://github.com/mgasca/calendar/pull/136) (bootstrap).
 
 ## Background
 

@@ -2,6 +2,10 @@ name: Feature request
 description: Suggest an idea or improvement
 labels: [enhancement]
 body:
+  - type: markdown
+    attributes:
+      value: |
+        Issues help us manage the work. Once a request is picked up as a story, its first PR adds a story card to `docs/stories/`, and that card becomes the long-lived source of truth.
   - type: textarea
     id: problem
     attributes:

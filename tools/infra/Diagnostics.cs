@@ -34,11 +34,30 @@ internal sealed class Diagnostics(IAzureProcess inner, TextWriter output)
     return text;
   }
 
+  internal sealed record Hint(string Pattern, string Advice, string? RetryReason = null);
+  private static readonly Hint[] Hints =
+  [
+    new(@"(?is)(unable to get value using.{0,100}managed identity|key.?vault.{0,100}managed identity)", "The app identity may lack Key Vault Secrets User, or the grant may still be propagating; check the vault scope and wait up to 10 minutes before retrying.", "Key Vault identity access may be propagating"),
+    new(@"(?is)(authorizationfailed.{0,300}(role.?assignment|propagat)|role.?assignment.{0,300}authorizationfailed)", "A recent role grant may still be propagating; check its scope and wait up to 10 minutes before retrying.", "role assignment may be propagating"),
+    new(@"(?i)authorizationfailed", "Check the deployment identity's permissions and role assignment scope; a recent grant may take up to 10 minutes to propagate."),
+    new(@"(?i)(serverisbusy|too many requests|throttl|\b429\b|\b5\d\d\b|server.{0,40}not.{0,15}ready)", "Azure may be temporarily busy; check server state and retry after a delay.", "Azure may be temporarily busy"),
+    new(@"(?i)(invalidtemplate|validationfailed|validation error)", "Check the template and parameters reported by Azure, then correct the validation error."),
+    new(@"(?i)(quotaexceeded|regionisofferrestricted|skunotavailable)", "Check subscription quota, region access and SKU availability before retrying."),
+    new(@"(?i)(already exists|already taken|name.{0,20}unavailable|vaultalreadyexists|registrynameinvalid)", "The resource name may already be taken; check the name and choose an available one."),
+    new(@"(?i)(firewall|client ip address)", "Check the server firewall rules and the client or application IP address."),
+    new(@"(?i)(not logged in|az login|expired.{0,20}token|authenticationfailed|aadsts)", "The Azure login may be missing or expired; run az login and select the correct subscription."),
+    new(@"(?i)(conflict|stopped server|server.{0,20}stopped)", "Check the resource state and resolve any conflicting operation or start the stopped server before retrying.")
+  ];
+
+  internal static Hint? Classify(string text) => Hints.FirstOrDefault(h => Regex.IsMatch(text, h.Pattern, RegexOptions.CultureInvariant, TimeSpan.FromSeconds(1)));
+
   internal async Task Report(AzureFailureException failure, TextWriter error)
   {
     var body = Sanitize($"stdout:\n{failure.Stdout}\nstderr:\n{failure.Stderr}");
     var operations = Sanitize(string.Join("\n", failure.Operations));
     var transcript = Sanitize($"Step: {failure.Step}\nCommand: {failure.Command}\nExit code: {failure.ExitCode}\n{body}\n{operations}\n");
+    var hint = Classify(failure.Stdout + "\n" + failure.Stderr + "\n" + string.Join("\n", failure.Operations));
+    if (hint is not null) { transcript += "Hint: " + hint.Advice + "\n"; }
     var path = await Infra.WriteTranscript(transcript);
     await error.WriteLineAsync($"{failure.Step}: {failure.Command} failed (exit {failure.ExitCode}).");
     var lines = body.Split('\n');
@@ -51,6 +70,7 @@ internal sealed class Diagnostics(IAzureProcess inner, TextWriter output)
     }
     await error.WriteLineAsync(body);
     if (operations.Length > 0) { await error.WriteLineAsync(operations); }
+    if (hint is not null) { await error.WriteLineAsync("Hint: " + hint.Advice); }
     await error.WriteLineAsync($"Sanitized transcript: {path}");
   }
 

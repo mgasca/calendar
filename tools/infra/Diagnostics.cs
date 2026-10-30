@@ -1,4 +1,5 @@
 using System.Text.RegularExpressions;
+using System.Text.Json.Nodes;
 
 namespace InfraTool;
 
@@ -10,6 +11,7 @@ public sealed class AzureFailureException(int exitCode, string stdout, string st
   internal string Stderr { get; } = stderr;
   internal string Command { get; set; } = "az";
   internal string Step { get; set; } = "running Azure CLI";
+  internal List<string> Operations { get; } = [];
 }
 
 internal sealed class Diagnostics(IAzureProcess inner, TextWriter output)
@@ -35,7 +37,8 @@ internal sealed class Diagnostics(IAzureProcess inner, TextWriter output)
   internal async Task Report(AzureFailureException failure, TextWriter error)
   {
     var body = Sanitize($"stdout:\n{failure.Stdout}\nstderr:\n{failure.Stderr}");
-    var transcript = Sanitize($"Step: {failure.Step}\nCommand: {failure.Command}\nExit code: {failure.ExitCode}\n{body}\n");
+    var operations = Sanitize(string.Join("\n", failure.Operations));
+    var transcript = Sanitize($"Step: {failure.Step}\nCommand: {failure.Command}\nExit code: {failure.ExitCode}\n{body}\n{operations}\n");
     var path = await Infra.WriteTranscript(transcript);
     await error.WriteLineAsync($"{failure.Step}: {failure.Command} failed (exit {failure.ExitCode}).");
     var lines = body.Split('\n');
@@ -47,7 +50,37 @@ internal sealed class Diagnostics(IAzureProcess inner, TextWriter output)
       await error.WriteLineAsync("Output truncated to the last 60 lines / 8 KB; use --verbose for full sanitized output.");
     }
     await error.WriteLineAsync(body);
+    if (operations.Length > 0) { await error.WriteLineAsync(operations); }
     await error.WriteLineAsync($"Sanitized transcript: {path}");
+  }
+
+  internal async Task CollectOperations(AzureFailureException failure, string group, string deployment)
+  {
+    var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+    await Visit(deployment, 0);
+    async Task Visit(string name, int depth)
+    {
+      if (depth > 2 || !seen.Add(name)) { return; }
+      try
+      {
+        var json = await inner.RunAsync("deployment", "operation", "group", "list", "--resource-group", group, "--name", name, "--query", "[?properties.provisioningState=='Failed']", "-o", "json");
+        var operations = JsonNode.Parse(json)?.AsArray() ?? [];
+        foreach (var operation in operations)
+        {
+          var properties = operation?["properties"];
+          var resource = properties?["targetResource"];
+          var type = resource?["resourceType"]?.ToString() ?? "unknown resource";
+          var resourceName = resource?["resourceName"]?.ToString() ?? "unknown";
+          var error = properties?["statusMessage"]?["error"];
+          failure.Operations.Add($"Failed operation: {type}/{resourceName}: {error?["code"]} {error?["message"]}");
+          if (type.Equals("Microsoft.Resources/deployments", StringComparison.OrdinalIgnoreCase)) { await Visit(resourceName, depth + 1); }
+        }
+      }
+      catch (Exception ex) when (ex is AzureFailureException or System.Text.Json.JsonException or InvalidOperationException)
+      {
+        failure.Operations.Add("Could not retrieve deployment operations; the deployment may not have reached Azure.");
+      }
+    }
   }
 
   internal IAzureProcess Wrap() => new ReportingAzure(this, inner, output);

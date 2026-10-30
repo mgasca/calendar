@@ -141,8 +141,16 @@ public static partial class Infra
         var command = new List<string> { "deployment", "group", args[0] == "deploy" ? "create" : "what-if", "--resource-group", $"rg-calendar-{args[1]}", "--template-file", "infra/main.bicep", "--parameters", "@" + path, "--no-prompt" };
         if (phase == "foundation") { command.AddRange(["--name", "calendar-foundation"]); }
         if (args[0] == "what-if") { command.AddRange(["--no-pretty-print", "-o", "json"]); }
-        var result = await az.RunAsync(command.ToArray());
-        if (args[0] == "what-if") { await output.WriteLineAsync(SafePreview(result, secretValue)); }
+        try
+        {
+          var result = await az.RunAsync(command.ToArray());
+          if (args[0] == "what-if") { await output.WriteLineAsync(SafePreview(result, secretValue)); }
+        }
+        catch (AzureFailureException failure)
+        {
+          await diagnostics.CollectOperations(failure, $"rg-calendar-{args[1]}", phase == "foundation" ? "calendar-foundation" : "main");
+          throw;
+        }
       });
       return 0;
     }

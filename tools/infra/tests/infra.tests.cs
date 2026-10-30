@@ -117,6 +117,115 @@ public sealed class InfraTests
     finally { Environment.SetEnvironmentVariable("XDG_RUNTIME_DIR", previous); Directory.Delete(root, true); }
   }
 
+  [Fact]
+  public async Task FailureIsSanitizedTruncatedAndWrittenPrivately()
+  {
+    var diagnostics = new Diagnostics(new ScriptedAzure(), new StringWriter());
+    diagnostics.Mask("known-value");
+    var failure = new AzureFailureException(7, string.Join('\n', Enumerable.Repeat("filler", 80)), "known-value password=hidden Bearer abc123 jwt eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIxMjM0NTY3ODkwIn0.abcdefghijklmnop long AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA https://x/path?sv=2020&sig=signed");
+    failure.Command = "az deployment group create";
+    failure.Step = "creating deployment";
+    var error = new StringWriter();
+    await diagnostics.Report(failure, error);
+    var report = error.ToString();
+    report.ShouldContain("creating deployment: az deployment group create failed (exit 7)");
+    report.ShouldContain("truncated");
+    var path = report.Split("Sanitized transcript: ")[1].Trim();
+    try
+    {
+      var transcript = await File.ReadAllTextAsync(path, TestContext.Current.CancellationToken);
+      foreach (var secret in new[] { "known-value", "hidden", "abc123", "eyJhbGciOiJIUzI1NiJ9", "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA", "signed" })
+      {
+        report.ShouldNotContain(secret);
+        transcript.ShouldNotContain(secret);
+      }
+      if (!OperatingSystem.IsWindows()) { File.GetUnixFileMode(path).ShouldBe(UnixFileMode.UserRead | UnixFileMode.UserWrite); }
+      diagnostics.Verbose = true;
+      var verbose = new StringWriter();
+      await diagnostics.Report(failure, verbose);
+      verbose.ToString().ShouldNotContain("truncated");
+      File.Delete(verbose.ToString().Split("Sanitized transcript: ")[1].Trim());
+    }
+    finally { File.Delete(path); }
+  }
+
+  [Theory]
+  [InlineData("AuthorizationFailed role assignment", "role grant", true)]
+  [InlineData("Unable to get value using Managed identity", "Secrets User", true)]
+  [InlineData("ServerIsBusy", "temporarily busy", true)]
+  [InlineData("HTTP 429", "temporarily busy", true)]
+  [InlineData("InvalidTemplate", "template", false)]
+  [InlineData("QuotaExceeded", "quota", false)]
+  [InlineData("RegionIsOfferRestricted", "quota", false)]
+  [InlineData("SkuNotAvailable", "quota", false)]
+  [InlineData("name already taken", "name", false)]
+  [InlineData("firewall rule", "firewall", false)]
+  [InlineData("not logged in", "az login", false)]
+  [InlineData("Conflict", "conflicting", false)]
+  public void FailureHintsAreClassified(string message, string expected, bool retry)
+  {
+    var hint = Diagnostics.Classify(message);
+    hint.ShouldNotBeNull();
+    hint.Advice.ShouldContain(expected);
+    (hint.RetryReason is not null).ShouldBe(retry);
+  }
+
+  [Fact]
+  public async Task NestedOperationsAreCollectedAndSanitized()
+  {
+    var az = new ScriptedAzure { OperationResponses = new Dictionary<string, string>
+    {
+      ["main"] = "[{\"properties\":{\"targetResource\":{\"resourceType\":\"Microsoft.Resources/deployments\",\"resourceName\":\"app\"},\"statusMessage\":{\"error\":{\"code\":\"DeploymentFailed\",\"message\":\"failed\"}}}}]",
+      ["app"] = "[{\"properties\":{\"targetResource\":{\"resourceType\":\"Microsoft.App/containerApps\",\"resourceName\":\"web\"},\"statusMessage\":{\"error\":{\"code\":\"Bad\",\"message\":\"password=hidden\"}}}}]"
+    } };
+    var diagnostics = new Diagnostics(az, new StringWriter());
+    var failure = new AzureFailureException(1, "", "");
+    await diagnostics.CollectOperations(failure, "group", "main");
+    failure.Operations.Count.ShouldBe(2);
+    diagnostics.Sanitize(string.Join('\n', failure.Operations)).ShouldContain("Microsoft.App/containerApps/web: Bad");
+    diagnostics.Sanitize(string.Join('\n', failure.Operations)).ShouldNotContain("hidden");
+    az.Calls.Count.ShouldBe(2);
+    az.Calls[0].ShouldContain("[?properties.provisioningState=='Failed']");
+  }
+
+  [Theory]
+  [InlineData("ServerIsBusy", 2, true, 2)]
+  [InlineData("InvalidTemplate", 2, true, 1)]
+  [InlineData("ServerIsBusy", 0, true, 1)]
+  [InlineData("ServerIsBusy", 2, false, 1)]
+  public async Task RetriesOnlySafeTransientDeployments(string message, int retries, bool deployment, int calls)
+  {
+    var az = new ScriptedAzure { FailureMessage = message, Failures = 1 };
+    var output = new StringWriter();
+    var waits = new List<TimeSpan>();
+    var diagnostics = new Diagnostics(az, output, (duration, _) => { waits.Add(duration); return Task.CompletedTask; }) { Retries = retries };
+    var wrapped = diagnostics.Wrap();
+    var args = deployment ? new[] { "deployment", "group", "create", "--resource-group", "group" } : new[] { "keyvault", "secret", "set" };
+    if (calls == 1) { await Should.ThrowAsync<AzureFailureException>(async () => await wrapped.RunAsync(args)); }
+    else { await wrapped.RunAsync(args); waits.ShouldBe([TimeSpan.FromSeconds(60)]); output.ToString().ShouldContain("Attempt 2/3"); }
+    az.Calls.Count(c => !c.Contains("operation")).ShouldBe(calls);
+    output.ToString().ShouldContain(deployment ? "creating deployment" : "storing vault secret");
+  }
+
+  private sealed class ScriptedAzure : IAzureProcess
+  {
+    public string FailureMessage { get; init; } = "";
+    public int Failures { get; set; }
+    public Dictionary<string, string> OperationResponses { get; init; } = [];
+    public List<string[]> Calls { get; } = [];
+    public Task<string> RunAsync(params string[] args)
+    {
+      Calls.Add(args);
+      if (args.Contains("operation"))
+      {
+        var index = Array.IndexOf(args, "--name");
+        return Task.FromResult(OperationResponses.GetValueOrDefault(args[index + 1], "[]"));
+      }
+      if (Failures-- > 0) { throw new AzureFailureException(1, "", FailureMessage); }
+      return Task.FromResult("");
+    }
+  }
+
   private static string WithoutMasks(string output) => string.Join('\n', output.Split('\n').Where(line => !line.StartsWith("::add-mask::", StringComparison.Ordinal)));
 
   private sealed class FakeAzure : IAzureProcess

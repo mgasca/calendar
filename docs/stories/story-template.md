@@ -46,13 +46,46 @@ Why the story exists and what it builds on.
 
 ## Design decisions
 
-* [ADR-NNNN](../decisions/NNNN-title.md): why it matters here.
-* Smaller decisions that don't warrant an ADR.
+### Architecture Decision Records
+
+| ADR | Decision | Why it matters for this story |
+| --- | --- | --- |
+| [NNNN](../decisions/NNNN-title.md) | The decision in a few words | How it constrains this story |
+
+No new ADR is expected. <!-- Or name the decision that needs one, and draft it with the adr-draft skill. -->
+
+### Other decisions (not ADR-worthy)
+
+* **Name:** a small choice and its reason. <!-- Hard to reverse, shared across stories, or a new dependency? Write an ADR instead. -->
 
 ## Implementation notes
 
-To be filled in when delivered: where the code lives, API surface, testing, measurements, lessons learned, known issues and follow-ups.
+*Planned. This section is completed as the story is built.*
+
+<!-- When delivered, replace the italic line and keep the subsections that apply. -->
+
+### Where things live
+
+| Area | Location |
+| --- | --- |
+| Area | `path/to/code` |
+
+### API
+
+New or changed endpoints and status codes, or "No changes."
+
+### Testing
+
+* The layers and cases that matter. <!-- Link tests from the acceptance criteria too. -->
+
+### Lessons learned, known issues and follow-ups
+
+* Measurements (say whether measured or inferred), limits, and deferred scope with the story or issue that owns it.
 
 ## User guide
 
-To be written when delivered: how to use the feature, written for end users.
+*Planned behaviour. This section is finalised when the story is implemented.*
+
+### The task the user performs
+
+Steps and outcomes in end-user language: UI labels in **bold**, no code paths.

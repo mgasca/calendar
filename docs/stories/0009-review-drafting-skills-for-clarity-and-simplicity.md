@@ -2,7 +2,8 @@
 status: planned
 date: 2026-10-30
 issue: https://github.com/mgasca/calendar/issues/139
-pr: []
+pr:
+  - https://github.com/mgasca/calendar/pull/140
 adrs: ["0017"]
 ---
 
@@ -12,7 +13,7 @@ adrs: ["0017"]
 
 > As a maintainer who relies on the drafting skills, I need the `adr-draft` and `story-draft` skills to be clear and simple to follow, so that an agent or a person can draft an ADR or a story card correctly without guessing or reading text that changes nothing they do.
 
-Tracked in issue #139.
+Tracked in issue #139. Card PR: [#140](https://github.com/mgasca/calendar/pull/140).
 
 ## Background
 

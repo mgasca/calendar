@@ -1,6 +1,7 @@
 ---
 status: implemented
 date: 2026-10-29
+issue: https://github.com/mgasca/calendar/issues/56
 pr:
   - https://github.com/mgasca/calendar/pull/124
   - https://github.com/mgasca/calendar/pull/125

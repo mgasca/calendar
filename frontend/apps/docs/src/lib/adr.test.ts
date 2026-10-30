@@ -23,6 +23,7 @@ const storySource = [
   '---',
   'status: implemented',
   'date: 2026-10-28',
+  'issue: https://github.com/mgasca/calendar/issues/7',
   'pr: ["https://github.com/mgasca/calendar/pull/1"]',
   'adrs: ["0001"]',
   '---',
@@ -75,6 +76,7 @@ describe('canonical story index', () => {
         title: 'Test story',
         status: 'implemented',
         date: '2026-10-28',
+        issue: 'https://github.com/mgasca/calendar/issues/7',
         pr: ['https://github.com/mgasca/calendar/pull/1'],
         adrs: ['0001'],
         body: '\n\n## Story\n\nBody',
@@ -115,6 +117,11 @@ describe('canonical story index', () => {
     [
       'bad pull request',
       storySource.replace('https://github.com/mgasca/calendar/pull/1', 'x'),
+      storySources(),
+    ],
+    [
+      'bad issue',
+      storySource.replace('https://github.com/mgasca/calendar/issues/7', 'x'),
       storySources(),
     ],
     [

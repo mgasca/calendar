@@ -121,6 +121,9 @@ export function docsLoader(): Loader {
               [
                 `**Status:** ${record.status}`,
                 `**Date:** ${record.date}`,
+                record.issue
+                  ? `[Issue #${record.issue.slice(record.issue.lastIndexOf('/') + 1)}](${record.issue})`
+                  : '',
                 ...record.pr.map((url) => `[PR #${url.slice(url.lastIndexOf('/') + 1)}](${url})`),
               ]
                 .filter(Boolean)

@@ -1,6 +1,7 @@
 ---
 status: planned
 date: YYYY-MM-DD
+issue: https://github.com/mgasca/calendar/issues/N
 pr: []
 adrs: []
 ---
@@ -14,6 +15,7 @@ scheduled) and add a row to the index in README.md. Delete these comments.
 Front matter:
 * status: planned, in-progress or implemented. Must match the index row.
 * date: YYYY-MM-DD, the day the card was created.
+* issue: URL of the GitHub issue the story started from. Delete the line if the story did not start as an issue.
 * pr: a LIST of pull request URLs, in delivery order. A story generally takes more than one PR
   (the card, the code, the card update), so write `pr: []` while there are none and add each PR as
   it is opened, e.g. a block list of URLs.

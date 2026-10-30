@@ -18,7 +18,7 @@ Each story records:
 
 Start from [story-template.md](story-template.md).
 
-Front matter: `status` (`planned`, `in-progress` or `implemented`), `date` (`YYYY-MM-DD`), `adrs` and `pr`. `pr` is a list of pull request URLs in delivery order (`[]` until there is one), because a story generally takes several PRs. Quote the ADR numbers in `adrs` (`["0004", "0016"]`): YAML reads a bare `0016` as a different number.
+Front matter: `status` (`planned`, `in-progress` or `implemented`), `date` (`YYYY-MM-DD`), `issue` (the GitHub issue URL, when the story started as one), `adrs` and `pr`. `pr` is a list of pull request URLs in delivery order (`[]` until there is one), because a story generally takes several PRs. Quote the ADR numbers in `adrs` (`["0004", "0016"]`): YAML reads a bare `0016` as a different number.
 
 | Story | Title | Status |
 | --- | --- | --- |

@@ -164,8 +164,8 @@ describe('canonical story index', () => {
     }
   });
   it('keeps the story template in the structure that cards follow', async () => {
-    const template = await readFile(new URL('story-template.md', storiesDirectory), 'utf8');
-    const text = template.replace(/<!--[\s\S]*?-->/g, '');
+    // Comments need no stripping: none of their lines starts with a heading marker.
+    const text = await readFile(new URL('story-template.md', storiesDirectory), 'utf8');
     const front = /^---\n([\s\S]*?)\n---/.exec(text)?.[1] ?? '';
     expect(front.split('\n').map((line) => line.split(':')[0])).toEqual([
       'status',

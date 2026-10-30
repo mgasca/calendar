@@ -8,7 +8,7 @@ import {
   storySlug,
   storyStatusCategory,
 } from './adr';
-import { readdir } from 'node:fs/promises';
+import { readdir, readFile } from 'node:fs/promises';
 import { readDocuments, readLog, storiesDirectory } from './docs-loader';
 const file = '0001-test.md';
 const row = '| [0001](0001-test.md) | Test `code` | proposed |';
@@ -145,6 +145,53 @@ describe('canonical story index', () => {
     expect(story.records.map((record) => record.number)).toEqual(
       story.records.map((record) => record.file.slice(0, 4)),
     );
+  });
+  it('gives every repository story the five required sections in order, allowing extras', async () => {
+    const { story } = await readDocuments();
+    const required = [
+      '## Story',
+      '## Background',
+      '## Design decisions',
+      '## Implementation notes',
+      '## User guide',
+    ];
+    for (const record of story.records) {
+      const body = record.body.replace(/^```[\s\S]*?^```/gm, '');
+      const sections = (body.match(/^## .+$/gm) ?? []).filter((heading) =>
+        required.includes(heading),
+      );
+      expect({ file: record.file, sections }).toEqual({ file: record.file, sections: required });
+    }
+  });
+  it('keeps the story template in the structure that cards follow', async () => {
+    const template = await readFile(new URL('story-template.md', storiesDirectory), 'utf8');
+    const text = template.replace(/<!--[\s\S]*?-->/g, '');
+    const front = /^---\n([\s\S]*?)\n---/.exec(text)?.[1] ?? '';
+    expect(front.split('\n').map((line) => line.split(':')[0])).toEqual([
+      'status',
+      'date',
+      'issue',
+      'pr',
+      'adrs',
+    ]);
+    expect(text.match(/^#{2,3} .+$/gm)).toEqual([
+      '## Story',
+      '## Background',
+      '### Agreed scope',
+      '### Not in this story',
+      '### Acceptance criteria',
+      '## Design decisions',
+      '### Architecture Decision Records',
+      '### Other decisions (not ADR-worthy)',
+      '## Implementation notes',
+      '### Where things live',
+      '### API',
+      '### Testing',
+      '### Lessons learned, known issues and follow-ups',
+      '## User guide',
+      '### The task the user performs',
+    ]);
+    expect(text).toContain('| ADR | Decision | Why it matters for this story |');
   });
 });
 

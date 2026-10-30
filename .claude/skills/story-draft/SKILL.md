@@ -7,13 +7,13 @@ description: Draft or update a user story card in docs/stories for review, follo
 
 A story card is the long-lived record of a feature: what was asked, what was agreed, how it was decided and built, and how a user uses it. GitHub issues drive day-to-day execution; the card in `docs/stories/` is the durable truth ("PR 0" adds it, a later PR completes it). Write the card so a reviewer can approve the scope before any code exists, and so a future reader can trust it after delivery.
 
-Read these at the start of every run; they win over anything restated here:
+Read only these parts at the start of every run; they win over anything restated here:
 
-- `docs/stories/README.md`: file naming, sections, front matter, the index table
-- `docs/stories/story-template.md`: the skeleton to copy, with the front matter rules in its comment
-- `AGENTS.md`, especially "Stories and issues": the PR 0 workflow, plus the architecture and ADR conventions the card must not contradict
-- `README.md`: product summary, so the story is described in the product's terms
-- `docs/stories/0007-*.md` (most recent, implemented) and the `XXXX-*.md` planned card, as the best examples of a finished and a planned card
+- `docs/stories/README.md`: the whole file (it is short): naming, "Source of truth", sections, front matter, the index table
+- `docs/stories/story-template.md`: the whole file; the skeleton to copy, with the front matter rules in its leading comment
+- `AGENTS.md`: the "Stories and issues" section (PR 0 workflow), and in "Architecture" only the **Backend**, **Frontend** and **ADRs** bullets, for the conventions the card must not contradict. Skip the practices sections unless the story touches them
+- `README.md`: only the opening paragraphs before `## Layout`, so the story is described in the product's terms
+- One finished card as a model: `docs/stories/0007-*.md`; and for a planned one, `docs/stories/XXXX-*.md`. Read the `##` sections you are about to write, not the whole card
 
 Run `git fetch` and `git switch main && git pull --ff-only` first: the template and the story workflow changed recently, and a stale checkout will miss them.
 

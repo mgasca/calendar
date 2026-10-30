@@ -35,7 +35,7 @@ internal sealed class Diagnostics(IAzureProcess inner, TextWriter output, Func<T
     text = Regex.Replace(text, """(?i)(["']?(?:[\w.-]*(?:password|secret|token|credential|connection[-_ ]?string|key)[\w.-]*)["']?\s*[:=]\s*)(?:"[^"\r\n]*"|'[^'\r\n]*'|[^\s,;&}\r\n]+)""", "$1[redacted]", RegexOptions.CultureInvariant, timeout);
     text = Regex.Replace(text, @"(?i)\bBearer\s+[^\s,;]+", "Bearer [redacted]", RegexOptions.CultureInvariant, timeout);
     text = Regex.Replace(text, @"\b[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}\b", "[redacted]", RegexOptions.CultureInvariant, timeout);
-    text = Regex.Replace(text, @"\b[A-Za-z0-9+/=_-]{40,}\b", "[redacted]", RegexOptions.CultureInvariant, timeout);
+    text = Regex.Replace(text, @"\b[A-Za-z0-9+=_-]{40,}\b", "[redacted]", RegexOptions.CultureInvariant, timeout);
     text = Regex.Replace(text, """\?[^\s"']*(?:sig|se|sp|sv)=[^\s"']*""", "?[redacted]", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant, timeout);
     return text;
   }

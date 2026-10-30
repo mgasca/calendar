@@ -171,6 +171,15 @@ public sealed class InfraTests
   }
 
   [Fact]
+  public void ResourceScopesStayReadableWhileLongTokensAreRedacted()
+  {
+    var diagnostics = new Diagnostics(new ScriptedAzure(), new StringWriter());
+    const string scope = "over scope '/subscriptions/8f1c2d3e-1111-2222-3333-444455556666/resourceGroups/rg-calendar-staging/providers/Microsoft.KeyVault/vaults/kv-cal-app-ab12cd'";
+    diagnostics.Sanitize(scope).ShouldBe(scope);
+    diagnostics.Sanitize("blob QWxhZGRpbjpvcGVuIHNlc2FtZVF3ZXJ0eVVpb3BBc2RmZ2hqa2w= end").ShouldNotContain("QWxhZGRpbjpvcGVu");
+  }
+
+  [Fact]
   public async Task NestedOperationsAreCollectedAndSanitized()
   {
     var az = new ScriptedAzure

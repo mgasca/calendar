@@ -23,7 +23,8 @@ const storySource = [
   '---',
   'status: implemented',
   'date: 2026-10-28',
-  'pr: https://github.com/mgasca/calendar/pull/1',
+  'issue: https://github.com/mgasca/calendar/issues/7',
+  'pr: ["https://github.com/mgasca/calendar/pull/1"]',
   'adrs: ["0001"]',
   '---',
   '# 0002 Test story',
@@ -75,11 +76,22 @@ describe('canonical story index', () => {
         title: 'Test story',
         status: 'implemented',
         date: '2026-10-28',
-        pr: 'https://github.com/mgasca/calendar/pull/1',
+        issue: 'https://github.com/mgasca/calendar/issues/7',
+        pr: ['https://github.com/mgasca/calendar/pull/1'],
         adrs: ['0001'],
         body: '\n\n## Story\n\nBody',
       },
     ]);
+  });
+  it('keeps several pull requests in order and defaults to none', () => {
+    const urls = [
+      'https://github.com/mgasca/calendar/pull/1',
+      'https://github.com/mgasca/calendar/pull/2',
+    ];
+    const several = storySource.replace(/^pr: .*$/m, `pr: ["${urls.join('", "')}"]`);
+    expect(parseStories(storyIndex, new Map([[storyFile, several]]), adrs)[0]?.pr).toEqual(urls);
+    const none = storySource.replace(/^pr: .*\n/m, '');
+    expect(parseStories(storyIndex, new Map([[storyFile, none]]), adrs)[0]?.pr).toEqual([]);
   });
   it('accepts an unnumbered planned story', () => {
     const planned = storySource.replace('implemented', 'planned');
@@ -105,6 +117,19 @@ describe('canonical story index', () => {
     [
       'bad pull request',
       storySource.replace('https://github.com/mgasca/calendar/pull/1', 'x'),
+      storySources(),
+    ],
+    [
+      'bad issue',
+      storySource.replace('https://github.com/mgasca/calendar/issues/7', 'x'),
+      storySources(),
+    ],
+    [
+      'scalar pull request',
+      storySource.replace(
+        '["https://github.com/mgasca/calendar/pull/1"]',
+        'https://github.com/mgasca/calendar/pull/1',
+      ),
       storySources(),
     ],
   ])('rejects %s', (_label, index, files) => {

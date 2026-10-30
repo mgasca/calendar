@@ -107,7 +107,8 @@ describe('published user stories', () => {
       expect(html).toMatch(new RegExp(`<h1[^>]*>${record.number} · `));
       expect(html).toContain(`<strong>Status:</strong> ${record.status}`);
       expect(html).toContain(`<strong>Date:</strong> ${record.date}`);
-      if (record.pr) expect(html).toContain(`href="${record.pr}"`);
+      if (record.issue) expect(html).toContain(`href="${record.issue}"`);
+      for (const url of record.pr) expect(html).toContain(`href="${url}"`);
       for (const adr of record.adrs) {
         expect(html).toContain(`href="${base}adr/${adr}/"`);
       }

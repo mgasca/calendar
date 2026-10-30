@@ -1,7 +1,10 @@
 ---
 status: implemented
 date: 2026-10-28
-pr: https://github.com/mgasca/calendar/pull/40
+issue: https://github.com/mgasca/calendar/issues/39
+pr:
+  - https://github.com/mgasca/calendar/pull/41
+  - https://github.com/mgasca/calendar/pull/40
 adrs: ["0021", "0026"]
 ---
 

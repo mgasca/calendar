@@ -96,8 +96,10 @@ export interface Story {
   title: string;
   status: string;
   date: string;
-  /** Pull request that delivered the story, once it has one. */
-  pr?: string | undefined;
+  /** GitHub issue the story started from, if it started as one. */
+  issue?: string | undefined;
+  /** Pull requests that delivered the story, in delivery order; empty until there is one. */
+  pr: string[];
   /** ADR numbers this story relies on, as listed in its front matter. */
   adrs: string[];
   body: string;
@@ -144,9 +146,17 @@ export function parseStories(
     if (typeof date !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(date)) {
       throw new Error(`Story date must be YYYY-MM-DD: ${file}`);
     }
-    const pr = typeof metadata.pr === 'string' ? metadata.pr : undefined;
-    if (metadata.pr !== undefined && (pr === undefined || !URL.canParse(pr))) {
-      throw new Error(`Story pr must be a URL: ${file}`);
+    const issue = metadata.issue;
+    if (
+      issue !== undefined &&
+      (typeof issue !== 'string' ||
+        !/^https:\/\/github\.com\/[^/]+\/[^/]+\/issues\/\d+$/.test(issue))
+    ) {
+      throw new Error(`Story issue must be a GitHub issue URL: ${file}`);
+    }
+    const pr = metadata.pr ?? [];
+    if (!isStringArray(pr) || !pr.every((url) => URL.canParse(url))) {
+      throw new Error(`Story pr must be a list of URLs: ${file}`);
     }
     if (!isStringArray(metadata.adrs)) {
       throw new Error(`Story adrs must be quoted ADR numbers, e.g. ["0004"]: ${file}`);
@@ -154,7 +164,7 @@ export function parseStories(
     for (const adr of metadata.adrs) {
       if (!adrs.has(adr)) throw new Error(`Story references unknown ADR ${adr}: ${file}`);
     }
-    return { number, file, title, status, date, pr, adrs: metadata.adrs, body };
+    return { number, file, title, status, date, issue, pr, adrs: metadata.adrs, body };
   });
   if (!records.length) throw new Error('Story index is empty');
   for (const file of sources.keys()) {

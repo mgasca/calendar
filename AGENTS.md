@@ -39,6 +39,16 @@ Single tests:
 - **Repo tooling** (ADR-0017): scripts are .NET 10 *file-based apps* (`dotnet run x.cs`), located in `.claude/skills/<skill>/` or `tools/<name>/`, each folder with its own analyzers, `.editorconfig` and xUnit tests. The only exception is `tools/doctor/doctor.sh` (shellcheck). Don't write new tooling in Python/Node/shell.
 - **ADRs**: MADR 4.0 with decision drivers, a star-rating table and driver-tagged pros/cons; the index in `docs/decisions/README.md` is validated by `make adr-check`. To write one, use the `adr-draft` skill. **Decision status is independent of delivery**: an ADR becomes `accepted` when the user approves the decision, in that same PR before it merges, and never waits for the implementation, build or rollout. Delivery is tracked in issues and PRs, not in the ADR status.
 
+## Stories and issues
+
+- **The card is the source of truth.** GitHub issues help people manage and drive the work; the long-lived truth about a story is its card in `docs/stories/` (see `docs/stories/README.md` and `story-template.md`). Don't leave decisions, scope or learnings only on an issue.
+- **A story that starts as an issue always begins with PR 0**: a docs-only PR that adds the card, written from the issue plus any extra input from the people involved (scope, acceptance criteria, answered questions). It references the issue (`Refs #N`) and doesn't close it. Take the next story number after fetching, and add the row to the stories index.
+- **A later PR updates the card** with what was built and learned: status, the `pr` list, test links per acceptance criterion (saying honestly what isn't directly tested), implementation notes, measurements and the user guide. It can be a card-only PR or part of another PR, but the story isn't done until its card is. The PR that completes the story carries `Closes #N`.
+- **`issue` in the card's front matter points at the GitHub issue** the story started from (omit it only when there was no issue). Link the card from the issue too.
+- **`pr` in the card's front matter is a list** of pull request URLs in delivery order (`[]` until there is one), because a story generally takes several PRs.
+- Order for a typical story: PR 0 (card) → backend → frontend → card update, each branch based on fresh `origin/main` (or stacked until its base merges).
+- Never hard-code the set of stories in tests; derive it from `docs/stories/` (see `adr.test.ts`).
+
 ## Frontend practices (lessons from the performance review, issues #42–#49)
 
 - **Date formatting**: don't build an `Intl.DateTimeFormat` per call or per item, because construction costs far more than formatting. Use the cached `dateTimeFormat(locale, options)` in `features/agenda/dayTime.ts`. Never construct one inside a sort comparator.

@@ -48,6 +48,13 @@ describe('canonical ADR log', () => {
       },
     ]);
   });
+  it('does not read GFM syntax in titles, because only the index tables use GFM', () => {
+    // A document body is parsed without GFM to halve the load cost, so `~~code~~` stays literal
+    // while the index cell (parsed with GFM) drops the marks, and the two titles no longer match.
+    const struck = source.replace('# Test `code`', '# Test ~~code~~');
+    const index = log.replace('Test `code`', 'Test ~~code~~');
+    expect(() => parseLog(index, new Map([[file, struck]]))).toThrow();
+  });
   it.each([
     ['missing table', 'hello', sources()],
     ['duplicate', `${log}\n${row}`, sources()],

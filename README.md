@@ -115,7 +115,7 @@ The privileged publisher downloads only static artifacts, rejects non-regular an
 
 | Service | Dev / test provisioning | Production | ADR |
 | --- | --- | --- | --- |
-| PostgreSQL 18 | Docker Compose (localhost only) / Testcontainers | Managed PostgreSQL (fallback: SQLite on a persistent volume with Litestream) | [0014](docs/decisions/0014-postgresql-database-engine.md), [0016](docs/decisions/0016-local-database-provisioning.md) |
+| PostgreSQL 18 | Docker Compose (localhost only) / Testcontainers | Azure Database for PostgreSQL Flexible Server | [0014](docs/decisions/0014-postgresql-database-engine.md), [0031](docs/decisions/0031-azure-postgresql-flexible-server.md), [0037](docs/decisions/0037-postgresql-only-no-sqlite-fallback.md), [0016](docs/decisions/0016-local-database-provisioning.md) |
 
 ### Local database
 

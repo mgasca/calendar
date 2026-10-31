@@ -24,7 +24,7 @@ Every record lists its **decision drivers**, rates each option against them in a
 | [0011](0011-make-as-top-level-task-runner.md) | GNU Make as a thin top-level task runner | accepted |
 | [0012](0012-ci-and-dependency-updates.md) | GitHub Actions CI, security scanning and Dependabot | accepted |
 | [0013](0013-public-repository-for-github-security-features.md) | Public GitHub repository to enable branch rules and security scanning | accepted |
-| [0014](0014-postgresql-database-engine.md) | PostgreSQL as the database engine, with SQLite on a volume as a budget fallback | accepted |
+| [0014](0014-postgresql-database-engine.md) | PostgreSQL as the database engine, with SQLite on a volume as a budget fallback | superseded by [ADR-0037](0037-postgresql-only-no-sqlite-fallback.md) |
 | [0015](0015-ef-core-data-access.md) | EF Core 10 with code-first migrations for data access | accepted |
 | [0016](0016-local-database-provisioning.md) | Docker Compose for local databases and Testcontainers for tests; adopt .NET Aspire later | accepted |
 | [0017](0017-dotnet-file-based-apps-for-repo-tooling.md) | .NET 10 file-based apps for all repo tooling scripts, in their skill folder or `tools/<name>/` | accepted |
@@ -47,3 +47,4 @@ Every record lists its **decision drivers**, rates each option against them in a
 | [0034](0034-github-actions-oidc-deployment.md) | Deploy with GitHub Actions and OIDC federation | accepted |
 | [0035](0035-separate-staging-and-production-environments.md) | Separate staging and production environments | accepted |
 | [0036](0036-csharp-layout-rules-with-stylecop-and-sonar.md) | C# layout rules enforced with a StyleCop subset and Sonar's line-length rule | accepted |
+| [0037](0037-postgresql-only-no-sqlite-fallback.md) | PostgreSQL only: drop the SQLite budget fallback | proposed |

@@ -1,5 +1,5 @@
 ---
-status: accepted
+status: superseded by [ADR-0037](0037-postgresql-only-no-sqlite-fallback.md)
 date: 2026-10-26
 decision-makers: mgasca, Claude (AI assistant)
 ---

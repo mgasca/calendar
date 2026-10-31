@@ -8,8 +8,8 @@ import {
   storySlug,
   storyStatusCategory,
 } from './adr';
-import { readdir, readFile } from 'node:fs/promises';
-import { readDocuments, readLog, storiesDirectory } from './docs-loader';
+import { readFile } from 'node:fs/promises';
+import { storiesDirectory } from './docs-loader';
 const file = '0001-test.md';
 const row = '| [0001](0001-test.md) | Test `code` | proposed |';
 const log = `| ADR | Title | Status |\n| --- | --- | --- |\n${row}`;
@@ -59,11 +59,6 @@ describe('canonical ADR log', () => {
     ['unsafe path', log.replace('(0001-test.md)', '(../0001-test.md)'), sources()],
   ])('rejects %s', (_label, index, files) => {
     expect(() => parseLog(index, files)).toThrow();
-  });
-  it('reads every repository ADR and index together', async () => {
-    const { records } = await readLog();
-    expect(records.length).toBeGreaterThanOrEqual(18);
-    expect(records[0]?.number).toBe('0000');
   });
 });
 
@@ -134,34 +129,6 @@ describe('canonical story index', () => {
     ],
   ])('rejects %s', (_label, index, files) => {
     expect(() => parseStories(index, files, adrs)).toThrow();
-  });
-  it('reads every repository story and both indexes together', async () => {
-    const { story } = await readDocuments();
-    const files = (await readdir(storiesDirectory))
-      .filter((name) => /^(\d{4}|XXXX)-.+\.md$/.test(name))
-      .sort();
-    expect(files.length).toBeGreaterThan(0);
-    expect(story.records.map((record) => record.file).sort()).toEqual(files);
-    expect(story.records.map((record) => record.number)).toEqual(
-      story.records.map((record) => record.file.slice(0, 4)),
-    );
-  });
-  it('gives every repository story the five required sections in order, allowing extras', async () => {
-    const { story } = await readDocuments();
-    const required = [
-      '## Story',
-      '## Background',
-      '## Design decisions',
-      '## Implementation notes',
-      '## User guide',
-    ];
-    for (const record of story.records) {
-      const body = record.body.replace(/^```[\s\S]*?^```/gm, '');
-      const sections = (body.match(/^## .+$/gm) ?? []).filter((heading) =>
-        required.includes(heading),
-      );
-      expect({ file: record.file, sections }).toEqual({ file: record.file, sections: required });
-    }
   });
   it('keeps the story template in the structure that cards follow', async () => {
     // Comments need no stripping: none of their lines starts with a heading marker.

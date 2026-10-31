@@ -28,7 +28,7 @@ Read only these parts at the start of every run; they win over anything restated
 - If the story comes from an issue, read it **and all its comments** (`gh issue view N --comments`): approvals and changes of direction arrive there.
 - Read the neighbouring stories (`ls docs/stories`) and grep for the topic. State how this story relates to earlier ones: what it reuses, what it leaves to them, and what it must come after. Cards are linked by number, e.g. `[0004](0004-add-event-entries.md)`.
 - Skim the code the story touches so "what exists today" is accurate. Don't write the implementation; the card describes behaviour and agreed scope.
-- Find relevant ADRs (`grep -ril <topic> docs/decisions`, and the index). Common ones: 0018 time representation, 0020 agenda read models, 0021 client-supplied `today`/`timeZone`, 0026 routing, 0027 auth. A story must not contradict an accepted ADR; if it needs to, that is an ADR (use `adr-draft`), not a story detail.
+- Find relevant ADRs (`grep -ril <topic> docs/decisions`, and the index). Read every `accepted` ADR that touches the topic. A story must not contradict an accepted ADR; if it needs to, that is an ADR (use `adr-draft`), not a story detail.
 
 ### 2. Settle the open questions before writing
 

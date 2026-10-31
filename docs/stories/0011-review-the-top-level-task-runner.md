@@ -2,7 +2,8 @@
 status: planned
 date: 2026-10-31
 issue: https://github.com/mgasca/calendar/issues/153
-pr: []
+pr:
+  - https://github.com/mgasca/calendar/pull/159
 adrs: ["0011", "0017"]
 ---
 
@@ -12,7 +13,7 @@ adrs: ["0011", "0017"]
 
 > As a contributor who works on the repo every day (a person or an AI agent), I need a top-level task runner that is modern and fit for purpose, so that I learn and use a tool that suits the job instead of one I only put up with.
 
-Tracked in issue #153.
+Tracked in issue #153. Card PR: [#159](https://github.com/mgasca/calendar/pull/159).
 
 ## Background
 

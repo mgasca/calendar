@@ -47,4 +47,4 @@ Every record lists its **decision drivers**, rates each option against them in a
 | [0034](0034-github-actions-oidc-deployment.md) | Deploy with GitHub Actions and OIDC federation | accepted |
 | [0035](0035-separate-staging-and-production-environments.md) | Separate staging and production environments | accepted |
 | [0036](0036-csharp-layout-rules-with-stylecop-and-sonar.md) | C# layout rules enforced with a StyleCop subset and Sonar's line-length rule | accepted |
-| [0037](0037-postgresql-only-no-sqlite-fallback.md) | PostgreSQL only: drop the SQLite budget fallback | proposed |
+| [0037](0037-postgresql-only-no-sqlite-fallback.md) | PostgreSQL only: drop the SQLite budget fallback | accepted |

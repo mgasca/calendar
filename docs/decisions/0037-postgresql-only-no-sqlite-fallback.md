@@ -1,5 +1,5 @@
 ---
-status: proposed
+status: accepted
 date: 2026-10-31
 decision-makers: mgasca, Claude (AI assistant)
 ---
@@ -89,5 +89,5 @@ There is no pre-agreed fallback. If managed PostgreSQL cost is no longer accepta
 ## More Information
 
 * Related: [ADR-0014](0014-postgresql-database-engine.md) (superseded), [ADR-0015](0015-ef-core-data-access.md), [ADR-0016](0016-local-database-provisioning.md), [ADR-0031](0031-azure-postgresql-flexible-server.md).
-* Open question for the owner: confirm that managed PostgreSQL cost is accepted, with no pre-agreed fallback. Issue #145 asks for this explicitly.
+* The owner confirmed on PR #146 that managed PostgreSQL cost is accepted, with no pre-agreed fallback.
 * Revisit when the monthly database cost is no longer acceptable. The trigger is recorded here only; the PR template no longer carries a database-cost item.

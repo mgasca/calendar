@@ -43,42 +43,92 @@ See [ADR-0032](../decisions/0032-azure-key-vault-for-secrets.md) for secrets, [A
 
 ## Initial deployment
 
-These steps set up **staging**. When staging works, repeat them for production: use the production deployment client ID, `ENV=production`, and `rg-calendar-production` in the `az` commands.
+Do the steps for one environment at a time. Start with staging. When staging works, run the setup block again with `ENV=production` and repeat the steps.
 
-1. **Check the tools and the deployment identity.** Use the staging deployment identity's client ID: `STAGING_CLIENT_ID` from the bootstrap, or the `AZURE_CLIENT_ID` variable of the staging GitHub environment.
+### Set up your shell
+
+Run this block first, in the Bash shell you will use for all the steps. Replace the three values in angle brackets. After that, every command in the steps below can be copied and run as it is. If you open a new shell, run this block again.
+
+```bash
+# Check that you are signed in to the right Azure subscription. If this fails, run `az login` first.
+az account show --query '{subscription:name,id:id}' -o table
+
+# The environment to set up: staging or production. Change this to production for the second pass.
+ENV=staging
+# The resource group that the bootstrap created for this environment.
+RG="rg-calendar-$ENV"
+
+# The client IDs of the two deployment identities. You noted them in the bootstrap runbook
+# (STAGING_CLIENT_ID and PRODUCTION_CLIENT_ID), and they are the AZURE_CLIENT_ID variables of the GitHub environments.
+STAGING_CLIENT_ID='<staging-client-id>'
+PRODUCTION_CLIENT_ID='<production-client-id>'
+# Pick the one for this environment. The deployment tool reads AZURE_DEPLOYER_CLIENT_ID.
+if [ "$ENV" = staging ]; then
+  export AZURE_DEPLOYER_CLIENT_ID="$STAGING_CLIENT_ID"
+else
+  export AZURE_DEPLOYER_CLIENT_ID="$PRODUCTION_CLIENT_ID"
+fi
+
+# Your public IPv4 address, as seen from Azure. Use one address or a range, for example 203.0.113.7/32.
+# To look it up: curl -s https://api.ipify.org (a third-party service; it learns your address).
+PUBLIC_IP='<your-public-ipv4-address>'
+
+# Your own object ID: the unique ID of the user signed in with `az login`. Step 3 needs it.
+owner_id=$(az ad signed-in-user show --query id -o tsv)
+
+# Print what you set. Check it before you go on.
+echo "ENV=$ENV RG=$RG PUBLIC_IP=$PUBLIC_IP AZURE_DEPLOYER_CLIENT_ID=$AZURE_DEPLOYER_CLIENT_ID"
+```
+
+Keep `ENV` as a plain shell variable, as shown. Do not `export` it: some shells read an exported `ENV` as the name of a startup file. The `make` commands below get it on their command line instead.
+
+### Steps
+
+1. **Check the tools and the deployment identity.**
 
    ```bash
+   # Check the pinned versions of the Azure CLI and Bicep. This must pass.
    make doctor ARGS=--infra
-   export AZURE_DEPLOYER_CLIENT_ID='<staging-deployment-client-id>'
+   # Look up the deployment identity in Microsoft Graph. The output must show this environment's identity.
    az rest --method get --url "https://graph.microsoft.com/v1.0/servicePrincipals(appId='$AZURE_DEPLOYER_CLIENT_ID')" --query '{clientId:appId,objectId:id}' -o json
    ```
 
-   `make doctor` must pass; if it fails, follow its install hints. The `az rest` output must show the staging deployment identity. The tool passes that object ID, not yours, to Bicep as `deployerPrincipalId`.
+   If `make doctor` fails, follow its install hints. The tool passes the object ID in the output, not yours, to Bicep as `deployerPrincipalId`.
 
 2. **Preview the foundation, then deploy it.** The ops vault must exist before you can store the database password, so the foundation comes first.
 
    ```bash
-   make infra-what-if ENV=staging PHASE=foundation
+   # Preview the changes. Read the output. Go on only if every change is expected.
+   make infra-what-if ENV="$ENV" PHASE=foundation
    ```
 
-   Read the preview. Deploy only if every change is expected.
-
    ```bash
-   make infra-deploy ENV=staging PHASE=foundation
-   az deployment group show --resource-group rg-calendar-staging --name calendar-foundation --query '{state:properties.provisioningState,appVault:properties.outputs.appKeyVaultName.value,opsVault:properties.outputs.opsKeyVaultName.value}' -o json
+   # Deploy the foundation.
+   make infra-deploy ENV="$ENV" PHASE=foundation
+   # Show the result and the names of the two vaults.
+   az deployment group show --resource-group "$RG" --name calendar-foundation --query '{state:properties.provisioningState,appVault:properties.outputs.appKeyVaultName.value,opsVault:properties.outputs.opsKeyVaultName.value}' -o json
    ```
 
    Expect `"state": "Succeeded"` and two different vault names. New role assignments can take about 10 minutes to work; if access fails, wait and retry.
 
+   Now save the vault names. The next steps use them. If you open a new shell later, run the setup block and then this block again.
+
+   ```bash
+   # The foundation deployment recorded the vault names as outputs. Read them back.
+   app_vault=$(az deployment group show -g "$RG" -n calendar-foundation --query properties.outputs.appKeyVaultName.value -o tsv)
+   ops_vault=$(az deployment group show -g "$RG" -n calendar-foundation --query properties.outputs.opsKeyVaultName.value -o tsv)
+   echo "app_vault=$app_vault ops_vault=$ops_vault"
+   ```
+
 3. **Give yourself Key Vault Secrets Officer on both vaults**, so you can create the password now and the app secrets later. The deployment identity stays read-only.
 
    ```bash
-   app_vault=$(az deployment group show -g rg-calendar-staging -n calendar-foundation --query properties.outputs.appKeyVaultName.value -o tsv)
-   ops_vault=$(az deployment group show -g rg-calendar-staging -n calendar-foundation --query properties.outputs.opsKeyVaultName.value -o tsv)
-   owner_id=$(az ad signed-in-user show --query id -o tsv)
    for vault in "$app_vault" "$ops_vault"; do
-     vault_id=$(az keyvault show -g rg-calendar-staging -n "$vault" --query id -o tsv)
+     # The full Azure ID of this vault. The role applies to this vault only.
+     vault_id=$(az keyvault show -g "$RG" -n "$vault" --query id -o tsv)
+     # Grant the role to yourself.
      az role assignment create --assignee-object-id "$owner_id" --assignee-principal-type User --role 'Key Vault Secrets Officer' --scope "$vault_id"
+     # List your assignment on this vault to check it.
      az role assignment list --assignee "$owner_id" --scope "$vault_id" --query "[?roleDefinitionName=='Key Vault Secrets Officer'].{role:roleDefinitionName,scope:scope}" -o json
    done
    ```
@@ -88,29 +138,44 @@ These steps set up **staging**. When staging works, repeat them for production: 
 4. **Create the database administrator password in the ops vault**, then check that it exists without showing its value.
 
    ```bash
-   make infra-secret-init ENV=staging
+   # Generate the password on your machine and store it in the ops vault. It is never printed.
+   make infra-secret-init ENV="$ENV"
+   # Check that the secret exists. This prints its name only.
    az keyvault secret show --vault-name "$ops_vault" --name postgres-admin-password --query name -o tsv
    ```
 
    Expect `postgres-admin-password`. The tool generates the password on your machine and never prints it. It refuses to overwrite an existing password; changing it needs a planned manual change. Never put secret values in shell arguments, parameter files, logs or the repository.
 
-5. **Preview the full phase, then deploy it.** Replace `<your-public-ip-or-cidr>` with your public IPv4 address (for example `203.0.113.7/32`) or range. This lets you reach the database for later work. Bicep adds the app's own outbound addresses.
+5. **Preview the full phase, then deploy it.** `--allow-ip` lets your address reach the database for later work. Bicep adds the app's own outbound addresses.
 
    ```bash
-   make infra-what-if ENV=staging PHASE=full ARGS="--allow-ip <your-public-ip-or-cidr>"
+   # Preview the changes. Read the output. Go on only if every change is expected.
+   make infra-what-if ENV="$ENV" PHASE=full ARGS="--allow-ip $PUBLIC_IP"
    ```
-
-   Read the preview. Deploy only if every change is expected.
 
    ```bash
-   make infra-deploy ENV=staging PHASE=full ARGS="--allow-ip <your-public-ip-or-cidr>"
-   az postgres flexible-server list --resource-group rg-calendar-staging --query '[].{name:name,state:state,sku:sku.name}' -o json
-   az containerapp list --resource-group rg-calendar-staging --query '[].{name:name,state:properties.provisioningState,fqdn:properties.configuration.ingress.fqdn}' -o json
+   # Deploy the database and the Container App.
+   make infra-deploy ENV="$ENV" PHASE=full ARGS="--allow-ip $PUBLIC_IP"
+   # List the database. Expect one server with SKU Standard_B1ms.
+   az postgres flexible-server list --resource-group "$RG" --query '[].{name:name,state:state,sku:sku.name}' -o json
+   # List the Container App and its public hostname (FQDN). Expect one app, provisioned.
+   az containerapp list --resource-group "$RG" --query '[].{name:name,state:properties.provisioningState,fqdn:properties.configuration.ingress.fqdn}' -o json
    ```
 
-   Expect one database with SKU `Standard_B1ms` and one Container App, both provisioned. Open `https://<fqdn>` from the app list and check that the placeholder page responds.
+   Check that the placeholder page responds:
 
-6. **Check for drift.** Run the full what-if from step 5 again, with the same address. Investigate any change it still shows.
+   ```bash
+   # Read the app's hostname.
+   FQDN=$(az containerapp list --resource-group "$RG" --query '[0].properties.configuration.ingress.fqdn' -o tsv)
+   # Request the page and print the HTTP status. Expect 200.
+   curl -sS -o /dev/null -w '%{http_code}\n' "https://$FQDN"
+   ```
+
+6. **Check for drift.** Run the full preview again, with the same address. It should show no changes. Investigate any change it still shows.
+
+   ```bash
+   make infra-what-if ENV="$ENV" PHASE=full ARGS="--allow-ip $PUBLIC_IP"
+   ```
 
 The first full deployment has no app secrets yet. The [database runbook](azure-database.md), which comes next, adds the connection string; Google sign-in adds the rest later.
 
@@ -158,21 +223,37 @@ After you change the references or role assignments, check in Azure that the app
 
 ## Staging database operations
 
+These commands are for staging only. Run this block first. It sets the same variables as the [setup block](#set-up-your-shell), for staging, so you can use it in a new shell without the full setup.
+
+```bash
+# These commands are for staging.
+ENV=staging
+# The staging resource group.
+RG="rg-calendar-$ENV"
+# The name of the staging database server. The group has one server.
+SERVER_NAME=$(az postgres flexible-server list -g "$RG" --query '[0].name' -o tsv)
+echo "SERVER_NAME=$SERVER_NAME"
+```
+
 Stop the staging database when it is not in use, to save compute cost:
 
 ```bash
+# Stop the server. Azure stops billing for compute after it has stopped.
 make infra-db-stop
+# Show the state. Run it again until it reports Stopped.
+az postgres flexible-server show -g "$RG" -n "$SERVER_NAME" --query state -o tsv
 ```
 
 Start it again before migrations, deployments or testing:
 
 ```bash
+# Start the server.
 make infra-db-start
+# Show the state. Run it again until it reports Ready.
+az postgres flexible-server show -g "$RG" -n "$SERVER_NAME" --query state -o tsv
 ```
 
-You can also use `az postgres flexible-server stop --resource-group rg-calendar-staging --name <server-name>`, and `start` in place of `stop`. Get `<server-name>` from the `az postgres flexible-server list` command in step 5.
-
-After either command, run the list command again and wait until it reports the new state.
+The `az postgres flexible-server stop` and `start` commands do the same as the `make` targets.
 
 While it is stopped:
 

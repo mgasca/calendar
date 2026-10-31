@@ -96,3 +96,7 @@ Chosen option: "EF Core 10 (Npgsql provider) with code-first migrations". It is 
 * Good, because **D4 Repeatable schema deployment**: EF Core migrations still own the schema.
 * Bad, because **D1 Productivity & AI-agent proficiency**: two data access styles to learn and keep consistent before any query needs it.
 * Bad, because **D2 Type safety** and **D5 Provider portability**: the Dapper half has the same weaknesses as Dapper alone.
+
+## More Information
+
+* [ADR-0037](0037-postgresql-only-no-sqlite-fallback.md) drops the SQLite fallback, so driver D5 (provider portability) no longer applies. The decision above is unchanged.

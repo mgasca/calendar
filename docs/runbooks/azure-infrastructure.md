@@ -70,20 +70,7 @@ These steps set up **staging**. When staging works, repeat them for production: 
 
    Expect `"state": "Succeeded"` and two different vault names. New role assignments can take about 10 minutes to work; if access fails, wait and retry.
 
-3. **Give yourself Key Vault Secrets Officer on both vaults**, so you can create the password now and the app secrets later. The deployment identity stays read-only.
-
-   ```bash
-   app_vault=$(az deployment group show -g rg-calendar-staging -n calendar-foundation --query properties.outputs.appKeyVaultName.value -o tsv)
-   ops_vault=$(az deployment group show -g rg-calendar-staging -n calendar-foundation --query properties.outputs.opsKeyVaultName.value -o tsv)
-   owner_id=$(az ad signed-in-user show --query id -o tsv)
-   for vault in "$app_vault" "$ops_vault"; do
-     vault_id=$(az keyvault show -g rg-calendar-staging -n "$vault" --query id -o tsv)
-     az role assignment create --assignee-object-id "$owner_id" --assignee-principal-type User --role 'Key Vault Secrets Officer' --scope "$vault_id"
-     az role assignment list --assignee "$owner_id" --scope "$vault_id" --query "[?roleDefinitionName=='Key Vault Secrets Officer'].{role:roleDefinitionName,scope:scope}" -o json
-   done
-   ```
-
-   Each list must show the role on that vault. Wait for the role to take effect before you use the vaults.
+3. **Give yourself Key Vault Secrets Officer on both vaults**, so you can create the password now and the app secrets later. The deployment identity stays read-only. Follow [Give yourself Key Vault Secrets Officer](#give-yourself-key-vault-secrets-officer) with `ENV=staging`. It also sets `$app_vault` and `$ops_vault`, which the next step uses.
 
 4. **Create the database administrator password in the ops vault**, then check that it exists without showing its value.
 
@@ -117,6 +104,73 @@ The first full deployment has no app secrets yet. The [database runbook](azure-d
 ### Why the password is a secure parameter
 
 The tool reads the ops-vault password and passes it to Bicep as a secure parameter, over a transport that does not log it. A checked-in `az.getSecret()` reference cannot work here: the foundation must deploy before the vault and secret exist, and the parameter files do not know the subscription-specific vault ID. See Microsoft's [secure deployment parameters and Key Vault references](https://learn.microsoft.com/azure/azure-resource-manager/templates/key-vault-parameter). The vault also allows template deployment, for future use.
+
+## Give yourself Key Vault Secrets Officer
+
+Several steps write secrets: the database passwords, the app's connection string and the Google sign-in values. Writing a secret needs the **Key Vault Secrets Officer** role on the vault. The role lets you create, read, update and delete secrets in that vault. The deployment identity only reads secrets, on purpose, so it cannot grant you this role or write the secrets for you.
+
+"You" is the person signed in with `az login` as a user. Grant the role on each of the environment's two vaults (the app vault and the ops vault). Do not grant it on the whole subscription.
+
+**Before you start.** To grant a role you need a role that can assign roles: **Owner**, **User Access Administrator** or **Role Based Access Control Administrator**, on the vault, its resource group or the subscription. The person who created the subscription usually has Owner. To check, run this and look for one of those names:
+
+```bash
+# Your own object ID: the unique ID of the user signed in with `az login`.
+owner_id=$(az ad signed-in-user show --query id -o tsv)
+# List the roles you hold, including roles inherited from the subscription or resource group.
+az role assignment list --assignee "$owner_id" --include-inherited --query "[].{role:roleDefinitionName,scope:scope}" -o table
+```
+
+If none of the three roles appears, ask the subscription owner to run the grant below, or to give you one of those roles first.
+
+**Grant the role.** Set `ENV` to the environment you are working on, then run the block. It grants the role only where you do not have it yet, so you can run it again safely.
+
+```bash
+# The environment to set up: staging or production.
+ENV=staging
+# The resource group created for that environment.
+RG="rg-calendar-$ENV"
+# The foundation deployment recorded the two vault names as outputs. Read them back.
+app_vault=$(az deployment group show -g "$RG" -n calendar-foundation --query properties.outputs.appKeyVaultName.value -o tsv)
+ops_vault=$(az deployment group show -g "$RG" -n calendar-foundation --query properties.outputs.opsKeyVaultName.value -o tsv)
+# Your own object ID, as above.
+owner_id=$(az ad signed-in-user show --query id -o tsv)
+
+for vault in "$app_vault" "$ops_vault"; do
+  # The full Azure ID of this vault. The role is granted on this scope, so it applies to this vault only.
+  vault_id=$(az keyvault show -g "$RG" -n "$vault" --query id -o tsv)
+  # Count the Key Vault Secrets Officer assignments you already have on this vault.
+  existing=$(az role assignment list --assignee "$owner_id" --scope "$vault_id" --query "[?roleDefinitionName=='Key Vault Secrets Officer'] | length(@)" -o tsv)
+  if [ "$existing" = "0" ]; then
+    # You do not have the role yet: grant it.
+    az role assignment create --assignee-object-id "$owner_id" --assignee-principal-type User --role 'Key Vault Secrets Officer' --scope "$vault_id"
+  else
+    echo "$vault: you already have the role."
+  fi
+done
+```
+
+If you prefer the Azure portal: open the vault, choose **Access control (IAM)**, then **Add** > **Add role assignment**. Pick the role **Key Vault Secrets Officer**, choose **User**, select yourself, and save. Do this on both vaults.
+
+**Check that it works.** A new role can take about 10 minutes to take effect. Listing the secret names needs the role, so this command is a good test. It prints names only, never values. An empty list is fine for a new vault; an error such as `Forbidden` means the role is not active yet.
+
+```bash
+for vault in "$app_vault" "$ops_vault"; do
+  # Print the vault name, then the names of the secrets in it.
+  echo "== $vault"
+  az keyvault secret list --vault-name "$vault" --query "[].name" -o tsv
+done
+```
+
+If the error continues after 10 minutes, sign out and in again with `az logout` and `az login`, which refreshes your access token, and retry.
+
+**Take the role away** when you no longer need it (the same block, with `delete`):
+
+```bash
+for vault in "$app_vault" "$ops_vault"; do
+  # Remove your Key Vault Secrets Officer assignment from this vault.
+  az role assignment delete --assignee "$owner_id" --role 'Key Vault Secrets Officer' --scope "$(az keyvault show -g "$RG" -n "$vault" --query id -o tsv)"
+done
+```
 
 ## Parameters and application secrets
 

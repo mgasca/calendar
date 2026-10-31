@@ -18,7 +18,7 @@ See also [ADR-0031](../decisions/0031-azure-postgresql-flexible-server.md) and [
 - Use a trusted machine with the repository, the tools the infrastructure runbook lists, Azure CLI (`az`) and a recent `psql`. Run `make` commands from the repository root.
 - Sign in with `az login` and select the subscription, as in [Azure bootstrap](azure-bootstrap.md). Check `az account show` before each environment.
 - Make sure the server is running. Staging can be stopped to save cost; see [Azure infrastructure](azure-infrastructure.md).
-- You need **Key Vault Secrets Officer** on both vaults and permission to manage the server's firewall rules. You also need access to run GitHub Actions workflows. Production migrations need approval in the protected GitHub environment.
+- You need **Key Vault Secrets Officer** on both vaults. To check, or to grant it, follow [Give yourself Key Vault Secrets Officer](azure-infrastructure.md#give-yourself-key-vault-secrets-officer). You also need permission to manage the server's firewall rules. You also need access to run GitHub Actions workflows. Production migrations need approval in the protected GitHub environment.
 - Note the environment's resource group, server name and FQDN, and the public IPv4 address your machine uses to reach Azure. Replace each `<placeholder>` below, without the angle brackets. To get the FQDN:
 
   ```sh

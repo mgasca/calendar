@@ -66,6 +66,8 @@ Follow `references/publish.md`. It covers the commit order, the PR body, and the
 
 Tell the user, per document: the PR link (or branch name in a dry run), the mode, the command-check result, the trade-offs the combined reviewer chose that a human should look at first, and anything not verified. Close each child after reading its report.
 
+In `keep-drafts` mode, also say plainly that the branch is not ready to merge: the user must choose one version, and only one document may remain under the original name before merge. Say this in a dry run too. The PR body carries the same warning, but a dry run has no PR body, so this report is the only place the user would see it.
+
 ## Why the steps are split this way
 
 - **Two drafts in parallel, then one combiner.** A single reviewer tends to lean one way. Separate reviewers, each told to optimise one goal, give the combiner two real options to weigh.

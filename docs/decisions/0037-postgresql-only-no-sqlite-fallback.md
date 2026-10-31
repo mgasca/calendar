@@ -12,11 +12,10 @@ decision-makers: mgasca, Claude (AI assistant)
 
 ## Decision Drivers
 
-* **D1 Honest constraints**: the documented plan matches what the system can actually do, so no ADR promises an option that cannot be used.
-* **D2 Use of PostgreSQL features**: Infrastructure may use ranges, GiST, partial indexes and similar features freely when measurements justify them (see `AGENTS.md`, backend practices).
-* **D3 Review overhead**: contributors and reviewers carry no recurring checklist cost for a path that is not used.
-* **D4 Production cost**: running cost at small scale stays under control, and there is a plan if it does not.
-* **D5 Production security and durability**: database authentication, least-privilege roles, TLS, backups and point-in-time restore ([ADR-0031](0031-azure-postgresql-flexible-server.md)).
+* **D1 Operational simplicity**: one engine, one migration set and one query dialect to build, test and run, with no second path that must be kept viable. Infrastructure can use PostgreSQL features (ranges, GiST, partial indexes) freely (see `AGENTS.md`, backend practices).
+* **D2 Review overhead**: contributors and reviewers carry no recurring checklist cost for a path that is not used.
+* **D3 Production cost**: running cost at small scale stays under control, and there is a plan if it does not.
+* **D4 Production security and durability**: database authentication, least-privilege roles, TLS, backups and point-in-time restore ([ADR-0031](0031-azure-postgresql-flexible-server.md)).
 
 ## Considered Options
 
@@ -26,15 +25,14 @@ decision-makers: mgasca, Claude (AI assistant)
 
 ## Decision Outcome
 
-Chosen option: "PostgreSQL only (supersede [ADR-0014](0014-postgresql-database-engine.md), drop the fallback)", because the fallback was never exercised and is no longer adoptable (D1), it taxes every PostgreSQL-specific change (D2, D3), and production already runs on managed PostgreSQL with the security and backup properties we want (D5). The cost risk (D4) is accepted; see Consequences.
+Chosen option: "PostgreSQL only (supersede [ADR-0014](0014-postgresql-database-engine.md), drop the fallback)", because the fallback was never exercised and is no longer adoptable, so one engine is simpler to build and run (D1), it taxes every PostgreSQL-specific change (D2), and production already runs on managed PostgreSQL with the security and backup properties we want (D4). The cost risk (D3) is accepted; see Consequences.
 
 | Driver | **PostgreSQL only (chosen)** | Keep SQLite fallback | Self-hosted PostgreSQL fallback |
 | --- | :---: | :---: | :---: |
-| D1 Honest constraints | ★★★ | ★☆☆ | ★★☆ |
-| D2 Use of PostgreSQL features | ★★★ | ★☆☆ | ★★★ |
-| D3 Review overhead | ★★★ | ★☆☆ | ★★★ |
-| D4 Production cost | ★★☆ | ★★★ | ★★☆ |
-| D5 Production security and durability | ★★★ | ★☆☆ | ★★☆ |
+| D1 Operational simplicity | ★★★ | ★☆☆ | ★★☆ |
+| D2 Review overhead | ★★★ | ★☆☆ | ★★★ |
+| D3 Production cost | ★★☆ | ★★★ | ★★☆ |
+| D4 Production security and durability | ★★★ | ★☆☆ | ★★☆ |
 
 ### What changes
 
@@ -65,26 +63,26 @@ There is no pre-agreed fallback. If managed PostgreSQL cost is no longer accepta
 
 ### PostgreSQL only (supersede [ADR-0014](0014-postgresql-database-engine.md), drop the fallback)
 
-* Good, because **D1 Honest constraints**: records what the code and infrastructure already are.
-* Good, because **D2 Use of PostgreSQL features**: removes the pressure to avoid or isolate features.
-* Good, because **D3 Review overhead**: removes one checklist item from every relevant PR.
-* Good, because **D5 Production security and durability**: managed PostgreSQL gives roles, TLS, backups and PITR.
-* Bad, because **D4 Production cost**: a paid server per environment, with no cheaper agreed path.
+* Good, because **D1 Operational simplicity**: one engine, one migration set and one query dialect; PostgreSQL features are used freely in Infrastructure.
+* Good, because **D1 Operational simplicity**: matches what the code and infrastructure already are, with no unbuilt second path to keep viable.
+* Good, because **D2 Review overhead**: removes one checklist item from every relevant PR.
+* Good, because **D4 Production security and durability**: managed PostgreSQL gives roles, TLS, backups and PITR.
+* Bad, because **D3 Production cost**: a paid server per environment, with no cheaper agreed path.
 
 ### Keep the SQLite fallback as in [ADR-0014](0014-postgresql-database-engine.md)
 
-* Good, because **D4 Production cost**: nominally the cheapest production path (a volume and object storage).
-* Bad, because **D1 Honest constraints**: it cannot be adopted without rewriting queries, as [ADR-0015](0015-ef-core-data-access.md) already admits.
-* Bad, because **D2 Use of PostgreSQL features**: each new feature needs a SQLite equivalent or degradation note.
-* Bad, because **D3 Review overhead**: a recurring checklist item for a path that was never used.
-* Bad, because **D5 Production security and durability**: no database authentication or roles, a single writer, and backup relies on Litestream.
+* Good, because **D3 Production cost**: nominally the cheapest production path (a volume and object storage).
+* Bad, because **D1 Operational simplicity**: it cannot be adopted without rewriting queries, as [ADR-0015](0015-ef-core-data-access.md) already admits, so it is a second path that only looks viable.
+* Bad, because **D1 Operational simplicity**: each new PostgreSQL feature needs a SQLite equivalent or degradation note.
+* Bad, because **D2 Review overhead**: a recurring checklist item for a path that was never used.
+* Bad, because **D4 Production security and durability**: no database authentication or roles, a single writer, and backup relies on Litestream.
 
 ### PostgreSQL only, with a self-hosted PostgreSQL container as the cost fallback
 
-* Good, because **D2 Use of PostgreSQL features** and **D3 Review overhead**: same engine, so no extra rules.
-* Neutral, because **D1 Honest constraints**: adoptable, but not built or tested, so it is still a promise.
-* Neutral, because **D4 Production cost**: possibly cheaper than managed, but it adds our own operating time.
-* Bad, because **D5 Production security and durability**: we would own patching, backups and restore testing.
+* Good, because **D1 Operational simplicity** and **D2 Review overhead**: same engine, so no extra rules.
+* Neutral, because **D1 Operational simplicity**: adoptable, but not built or tested, so it is still a promise and one more thing to operate.
+* Neutral, because **D3 Production cost**: possibly cheaper than managed, but it adds our own operating time.
+* Bad, because **D4 Production security and durability**: we would own patching, backups and restore testing.
 
 ## More Information
 

@@ -44,7 +44,7 @@ You need the repo checked out, and `gh` signed in if the story comes from an iss
 - If the story comes from an issue, read the issue and **all its comments** (`gh issue view N --comments`). Approvals and changes of direction arrive in the comments.
 - Read the neighbouring stories (`ls docs/stories`) and grep for the topic. State how this story relates to earlier ones: what it reuses, what it leaves to them, and what it must come after. Link cards by number, for example `[0004](0004-add-event-entries.md)`.
 - Skim the code that the story touches, so that "what exists today" is accurate. Do not write the implementation. The card describes behaviour and agreed scope.
-- Find the relevant ADRs (`grep -ril <topic> docs/decisions`, and the index). Common ones are 0018 time representation, 0020 agenda read models, 0021 client-supplied `today`/`timeZone`, 0026 routing, and 0027 auth. A story must not contradict an accepted ADR. If it must, that change is an ADR (use `adr-draft`), not a story detail.
+- Find the relevant ADRs (`grep -ril <topic> docs/decisions`, and the index). Read every `accepted` ADR that touches the topic. A story must not contradict an accepted ADR. If it must, that change is an ADR (use `adr-draft`), not a story detail.
 
 You are done when you can say what exists today, how the story relates to earlier stories, and which ADRs apply.
 

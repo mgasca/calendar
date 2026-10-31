@@ -2,7 +2,8 @@
 status: planned
 date: 2026-10-31
 issue: https://github.com/mgasca/calendar/issues/157
-pr: []
+pr:
+  - https://github.com/mgasca/calendar/pull/158
 adrs: ["0000", "0022", "0023", "0025", "0028"]
 ---
 
@@ -12,7 +13,7 @@ adrs: ["0000", "0022", "0023", "0025", "0028"]
 
 > As the maintainer, I need every ADR that has merged to `main` to carry a decided status, so that the decision log shows which decisions were taken instead of leaving shipped decisions `proposed`.
 
-Tracked in issue #157.
+Tracked in issue #157. Card PR: [#158](https://github.com/mgasca/calendar/pull/158).
 
 ## Background
 

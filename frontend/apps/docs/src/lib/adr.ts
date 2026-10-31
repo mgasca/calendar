@@ -8,6 +8,9 @@ import { visit } from 'unist-util-visit';
 import type { Definition, Root, Table } from 'mdast';
 
 const parser = unified().use(remarkParse).use(remarkGfm);
+// Document bodies are parsed only to find the title. GFM is for the index tables and roughly
+// doubles the parse cost (docs/benchmarks/0001-docs-parse.md).
+const titleParser = unified().use(remarkParse);
 export const repository = 'https://github.com/mgasca/calendar';
 export interface Adr {
   number: string;
@@ -20,7 +23,7 @@ export interface Adr {
 /** Reads a document's front matter, its single title and the article beneath the title. */
 function parseDocument(source: string, file: string) {
   const parsed = matter(source);
-  const headings = parser
+  const headings = titleParser
     .parse(parsed.content)
     .children.filter((node) => node.type === 'heading' && node.depth === 1);
   const heading = headings[0];

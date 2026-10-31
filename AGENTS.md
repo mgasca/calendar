@@ -18,6 +18,7 @@ This file provides guidance to AI coding agents (Claude Code, Codex, Cursor, etc
 - `make tooling` / `make adr-check` — test/lint repo tooling; validate ADRs (`ARGS=--fix-links`, `ARGS=--next-number`)
 - `make db-up` / `db-migrate` / `db-seed` / `db-psql` / `db-reset` / `db-down` — local PostgreSQL via Docker Compose (`compose.yaml`, `.env` from `.env.example`). Migrations are applied only by `db-migrate`, as `calendar_migrator`, never by the app (ADR-0015).
 - `make dev-docs` / `build-docs` — the ADR documentation site (`frontend/apps/docs`)
+- `make bench-docs` — run the docs benchmark by hand; results are recorded in `docs/benchmarks/` (see its README). Never part of `make test` or CI.
 
 Single tests:
 - Backend (run from `backend/` so `global.json` applies; uses Microsoft.Testing.Platform, xUnit v3): `dotnet test --project tests/Calendar.Domain.Tests --filter-method "*MethodName*"` (or `--filter-class`)

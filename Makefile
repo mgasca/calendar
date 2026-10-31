@@ -15,7 +15,7 @@ SHELL_TOOLS := tools/doctor/doctor.sh
 COMPOSE := docker compose
 DB_ENV  := set -a && . ./.env && set +a
 
-.PHONY: infra-integration infra-init-roles infra-migrate infra-what-if infra-deploy infra-secret-init infra-db-stop infra-db-start db-up db-down db-reset db-migrate db-seed db-psql help doctor setup build test lint tooling tool-versions adr-check format check contracts dev-api dev-web dev-docs build-docs preview-docs clean
+.PHONY: infra-integration infra-init-roles infra-migrate infra-what-if infra-deploy infra-secret-init infra-db-stop infra-db-start db-up db-down db-reset db-migrate db-seed db-psql help doctor setup build test lint tooling tool-versions adr-check format check contracts dev-api dev-web dev-docs build-docs preview-docs bench-docs clean
 
 help: ## List targets
 	@grep -hE '^[a-zA-Z_-]+:.*?## ' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "  %-12s %s\n", $$1, $$2}'
@@ -114,6 +114,9 @@ build-docs: ## Build and verify the static documentation site (optional DOCS_SIT
 
 preview-docs: ## Preview the built documentation site locally
 	$(PNPM) --filter @calendar/docs preview
+
+bench-docs: ## Benchmark ADR/story loading (run by hand; record results in docs/benchmarks/)
+	$(PNPM) --filter @calendar/docs bench
 
 clean: ## Remove build outputs
 	$(DOTNET) clean

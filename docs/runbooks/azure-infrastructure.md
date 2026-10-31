@@ -47,7 +47,7 @@ Do the steps for one environment at a time. Start with staging. When staging wor
 
 ### Set up your shell
 
-Run this block first, in the Bash shell you will use for all the steps. Replace the three values in angle brackets. After that, every command in the steps below can be copied and run as it is. If you open a new shell, run this block again.
+Run this block first, in the Bash shell you will use for all the steps. Replace the two client IDs in angle brackets, once. The block finds your public IP address itself. After that, every command in the steps below can be copied and run as it is. If you open a new shell, run this block again.
 
 ```bash
 # Check that you are signed in to the right Azure subscription. If this fails, run `az login` first.
@@ -69,9 +69,14 @@ else
   export AZURE_DEPLOYER_CLIENT_ID="$PRODUCTION_CLIENT_ID"
 fi
 
-# Your public IPv4 address, as seen from Azure. Use one address or a range, for example 203.0.113.7/32.
-# To look it up: curl -s https://api.ipify.org (a third-party service; it learns your address).
-PUBLIC_IP='<your-public-ipv4-address>'
+# Your public IPv4 address, as the internet sees it. api.ipify.org is a third-party service: it learns your address
+# when you ask. -4 forces IPv4, -f fails on an HTTP error and --max-time stops a slow request after 10 seconds.
+PUBLIC_IP=$(curl -4 -fsS --max-time 10 https://api.ipify.org)
+# This warns if the address is empty or has other characters than digits, dots and a slash. Then set PUBLIC_IP by hand
+# (one address, or a range such as 203.0.113.7/32).
+case "$PUBLIC_IP" in
+  *[!0-9./]* | "" ) echo "Could not detect your public IPv4 address. Set PUBLIC_IP by hand." >&2 ;;
+esac
 
 # Your own object ID: the unique ID of the user signed in with `az login`. Step 3 needs it.
 owner_id=$(az ad signed-in-user show --query id -o tsv)

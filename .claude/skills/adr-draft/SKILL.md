@@ -48,7 +48,7 @@ The repo holds the sources of truth. Read them at the start of every run. They w
 
 ### 2. Scope: one decision per ADR
 
-If the request covers several linked decisions, propose separate ADRs that link to each other. For example, "data store" became engine (0014), data access (0015) and provisioning (0016). Older ADRs with several tables (0004, 0007, 0008, 0009, 0012) came before this rule. Do not copy their shape.
+If the request covers several linked decisions, propose separate ADRs that link to each other. For example, "data store" became engine (0014), data access (0015) and provisioning (0016). Older ADRs with several tables came before this rule. Do not copy their shape.
 
 ### 3. Decision drivers
 
@@ -56,14 +56,11 @@ Derive the drivers from the user's requirements and from the project context bel
 
 **If a driver is uncertain, or the answer would change the ratings, ask before you write.** Use the AskUserQuestion tool with up to 4 questions. Give each question concrete options and mark one as recommended. Do not invent preferences about budget, team skills, hosting, platforms or risk tolerance.
 
-Earlier ADRs record this project context. Check it again, because it can change:
+Project context is not restated here to avoid staleness. Build it at run time:
 
-- AI agents write most of the code, so favour mainstream, well-documented, strongly typed tools ([ADR-0003](../../../docs/decisions/0003-react-vite-typescript-web-ui.md)).
-- Future clients are mobile, desktop, CLI and third-party integrations. They consume `contracts/openapi.json` ([ADR-0001](../../../docs/decisions/0001-monorepo-layout.md), [ADR-0004](../../../docs/decisions/0004-openapi-contract-and-generated-client.md)).
-- Development happens on Linux/WSL only, with Docker available ([ADR-0011](../../../docs/decisions/0011-make-as-top-level-task-runner.md)).
-- The app deploys as a single container in which the API serves the SPA ([ADR-0002](../../../docs/decisions/0002-dotnet-10-minimal-api-backend.md)).
-- The repo is public on GitHub with rulesets, CodeQL and Dependabot ([ADR-0012](../../../docs/decisions/0012-ci-and-dependency-updates.md), [ADR-0013](../../../docs/decisions/0013-public-repository-for-github-security-features.md)).
-- The project is cost-conscious. The target is managed PostgreSQL. The budget fallback is SQLite on a volume ([ADR-0014](../../../docs/decisions/0014-postgresql-database-engine.md)).
+- Read `AGENTS.md` for standing constraints (e.g. platform, tooling, architecture, cost and security choices).
+- From the index, read every ADR with status `accepted` that touches the topic. Skip `proposed`, `rejected` and `superseded` ones, and follow a `superseded by` link to the current ADR.
+- Treat what you find as a constraint or a driver. Do not invent constraints from memory.
 
 ### 4. Research and verify facts
 

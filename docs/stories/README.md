@@ -33,4 +33,5 @@ Front matter: `status` (`planned`, `in-progress` or `implemented`), `date` (`YYY
 | [0009](0009-review-drafting-skills-for-clarity-and-simplicity.md) | Review the adr-draft and story-draft skills for clarity and simplicity | planned |
 | [0010](0010-sweep-pending-adrs-to-a-decided-status.md) | Sweep pending ADRs to a decided status | planned |
 | [0011](0011-review-the-top-level-task-runner.md) | Review the top-level task runner | planned |
+| [0013](0013-backend-performance-review-closeout.md) | Close out the backend performance review | implemented |
 | [XXXX](XXXX-create-events-and-tasks-from-week-view.md) | Create events and tasks from the week view | planned |

@@ -35,9 +35,9 @@ New UIs go under `frontend/apps/` (TypeScript) or a new top-level directory for 
 | Node | `frontend/.node-version` | 24; use a version manager, since Ubuntu's apt `nodejs` is too old and lacks Corepack |
 | pnpm | `packageManager` in `frontend/package.json` | Provided by Corepack (bundled with Node 24); don't install it globally |
 | Docker | n/a | Engine running and reachable; needed for the local database and for integration tests (Testcontainers) |
-| GNU Make | n/a | Optional; it only wraps the native commands |
+| just | `.just-version` | The task runner ([ADR-0038](docs/decisions/0038-just-as-the-top-level-task-runner.md)); it only wraps the native commands. Ubuntu's apt package is older than the pinned version, so download the release binary from <https://github.com/casey/just/releases> and put `just` on your `PATH` |
 
-Run `just doctor` (also run by `just setup`) to check all of these.
+Run `./tools/doctor/doctor.sh` to check all of these. `just doctor` and `just setup` run the same script once `just` is installed, which is why the first run goes through the script directly.
 
 ### One-time setup on Linux / WSL
 
@@ -53,7 +53,9 @@ echo 'eval "$(fnm env --use-on-cd --version-file-strategy=recursive --corepack-e
 exec bash                      # reload the shell
 cd calendar/frontend && fnm install && corepack enable pnpm
 
-just doctor                    # everything should be ✓
+# just: download the release named in .just-version from the link above, then put it on PATH
+
+./tools/doctor/doctor.sh       # everything should be ✓
 ```
 
 ## Common tasks

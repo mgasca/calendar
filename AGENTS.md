@@ -17,6 +17,7 @@ This file provides guidance to AI coding agents (Claude Code, Codex, Cursor, etc
 - `just contracts` — rebuild the API and regenerate `contracts/openapi.json` and the TS client. **Commit the result**; CI fails if the contract is stale.
 - `just tooling` / `just adr-check` — test/lint repo tooling; validate ADRs (for example `just adr-check --fix-links` or `just adr-check --next-number`)
 - `just db-up` / `db-migrate` / `db-seed` / `db-psql` / `db-reset` / `db-down` — local PostgreSQL via Docker Compose (`compose.yaml`, `.env` from `.env.example`). Migrations are applied only by `db-migrate`, as `calendar_migrator`, never by the app (ADR-0015).
+- Several recipes in one command (`just db-up db-migrate`) work only when none of them takes arguments: `just tool-versions adr-check` passes `adr-check` to `tool-versions` as an argument. Run them as separate commands.
 - `just dev-docs` / `build-docs` — the ADR documentation site (`frontend/apps/docs`)
 - `just bench-docs` — run the docs benchmark by hand; results are recorded in `docs/benchmarks/` (see its README). Never part of `just test` or CI.
 

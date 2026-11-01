@@ -1,5 +1,5 @@
 ---
-status: in-progress
+status: implemented
 date: 2026-10-31
 issue: https://github.com/mgasca/calendar/issues/153
 pr:
@@ -8,6 +8,7 @@ pr:
   - https://github.com/mgasca/calendar/pull/169
   - https://github.com/mgasca/calendar/pull/170
   - https://github.com/mgasca/calendar/pull/171
+  - https://github.com/mgasca/calendar/pull/172
 adrs: ["0011", "0017", "0038"]
 ---
 
@@ -50,7 +51,7 @@ An earlier analysis (a previous agent session, recorded in a comment on the issu
 
 ### Not in this story
 
-* **Migrating the repo to a new runner.** If the ADR chooses to change, the migration (the new task file, CI, `make doctor`, `AGENTS.md`, `README.md`, the runbooks, the skills and the story cards) is planned in this card's follow-ups and delivered in its own PRs, after the ADR is accepted.
+* **Migrating the repo to a new runner in the same PR as the decision.** The migration (the new task file, CI, the doctor check, the docs and the skills) was delivered as its own PRs after the ADR was accepted. See the delivery list under Implementation notes.
 * **The configuration of the native tools** (`dotnet`, `pnpm`, `docker compose`). The issue puts this out of scope.
 * **Native Windows support.** Linux and WSL remain the supported platforms.
 * **Rewriting the logic-heavy recipes,** unless the decision is to keep Make and move them into file-based apps. That work is then a follow-up PR, not part of this card.
@@ -58,12 +59,19 @@ An earlier analysis (a previous agent session, recorded in a comment on the issu
 ### Acceptance criteria
 
 1. **Given** the five questions on the issue, **when** the decision is recorded, **then** each question has an answer in the issue thread or in the ADR, and every number comes from the repo on the day it was measured.
+   *Met, checked by reading.* The drivers (question 1) are in [ADR-0038](../decisions/0038-just-as-the-top-level-task-runner.md). The re-rating against the current Makefile (question 2) is in the [step 2 comment](https://github.com/mgasca/calendar/issues/153#issuecomment-6550533504). The cost of a change (question 3) is in the ADR's implementation plan and consequences. The other options and the prototype (questions 4 and 5) are in the ADR and the [prototype results comment](https://github.com/mgasca/calendar/issues/153#issuecomment-6550846071). No automated test covers this.
 2. **Given** the new drivers (Modern and fit for purpose, Thin over native tools, Discoverability, Expressiveness), **when** the options are compared, **then** each option is rated per driver with a short reason, and any claim about `just` that was not tested is marked as untested.
+   *Met, checked by reading.* The rating table, the pros and cons, and the "What was measured" list (measured, inferred, untested) are in [ADR-0038](../decisions/0038-just-as-the-top-level-task-runner.md).
 3. **Given** the cost of a change, **when** the ADR is read, **then** it counts the CI call sites and the files that name a `make` target, and says how a migration would keep CI and the docs working while it runs.
-4. **Given** the outcome is a change of runner, **when** the ADR is drafted, **then** it supersedes ADR-0011 through the `adr-draft` skill and passes `make adr-check`. If the outcome is to keep Make, the reason is recorded on the issue and in this card.
+   *Met.* The ADR's consequences and implementation plan give the counts (6 CI call sites, about 50 files). The migration then ran in the order the plan described, and CI stayed green at each step: the `justfile` and the `make` targets existed side by side until CI and the docs called `just`, and a temporary CI check kept the two in parity ([#169](https://github.com/mgasca/calendar/pull/169)).
+4. **Given** the outcome is a change of runner, **when** the ADR is drafted, **then** it supersedes ADR-0011 through the `adr-draft` skill and passes `just adr-check`. If the outcome is to keep Make, the reason is recorded on the issue and in this card.
+   *Met, tested in CI.* The ADR PR ([#164](https://github.com/mgasca/calendar/pull/164)) passed the ADR validator in the CI `Tooling` job, and `just adr-check` runs in that job on every later PR ([#170](https://github.com/mgasca/calendar/pull/170) onward). ADR-0011 is `superseded by` ADR-0038 in its front matter and in the index.
 5. **Given** the ADR PR, **when** the maintainer approves the decision, **then** the ADR is `accepted` in that same PR before it merges, and not earlier.
+   *Met, checked on the PR.* The maintainer approved with "approved as stands" on [#164](https://github.com/mgasca/calendar/pull/164). The status change to `accepted` and the supersession of ADR-0011 are in that PR's commit "ADR-0038 accepted; ADR-0011 superseded". It was `proposed` until then. No automated test checks the order.
 6. **Given** the story is delivered, **when** I read this card, **then** its status is `implemented`, its `pr` list holds every PR, and each criterion above is linked to its evidence or says it was checked by hand.
-7. **Given** the change is complete, **when** I run `make check`, **then** it passes.
+   *Met, by this card.* The docs tests check the front matter and the index row.
+7. **Given** the change is complete, **when** I run `just check`, **then** it passes.
+   *Not directly tested.* `just check` as one command was not run end to end, because the agent's sandbox has neither the .NET SDK nor Docker. Its parts run in CI on every PR: Backend, Frontend, Tooling (`just tooling`, `just infra-integration`, `just tool-versions`, `just adr-check`) and Container image (`just smoke-image`). All were green on [#170](https://github.com/mgasca/calendar/pull/170) and later. The recipes `lint`, `check`, `format`, `contracts` and the local-only ones (`dev-api`, `db-migrate`, `db-up`, `run-image`) were checked only by `just --dry-run`, which shows the commands they would run.
 
 ## Design decisions
 
@@ -71,7 +79,7 @@ An earlier analysis (a previous agent session, recorded in a comment on the issu
 
 | ADR | Decision | Why it matters for this story |
 | --- | --- | --- |
-| [0011](../decisions/0011-make-as-top-level-task-runner.md) | GNU Make as a thin top-level task runner | The decision under review. Its drivers D1 and D2 no longer apply. |
+| [0011](../decisions/0011-make-as-top-level-task-runner.md) | GNU Make as a thin top-level task runner | The decision under review. Its drivers D1 and D2 no longer apply. Now superseded by ADR-0038. |
 | [0017](../decisions/0017-dotnet-file-based-apps-for-repo-tooling.md) | .NET file-based apps for all repo tooling | Offers a way to keep Make and move logic out of it. Its own driver "no new toolchain" argues against adding `just`, so a new ADR has to address it. |
 | [0038](../decisions/0038-just-as-the-top-level-task-runner.md) | `just` as the top-level task runner, replacing GNU Make | The decision this story produces. Accepted by the maintainer on its PR, it supersedes ADR-0011. |
 
@@ -90,32 +98,27 @@ The new ADR was drafted with the `adr-draft` skill, using the measured and infer
 
 ## Implementation notes
 
-*In progress. This section is completed as the story is built.*
+### Delivery
 
-### Delivery plan
+The decision and the migration were delivered as a stack of PRs, each branched from the one before it until its base merged:
 
-Each PR branches from fresh `origin/main`. The migration PRs start only after ADR-0038 is accepted.
-
-1. **Card (PR 0):** [#159](https://github.com/mgasca/calendar/pull/159), merged.
-2. **ADR:** [#164](https://github.com/mgasca/calendar/pull/164). The maintainer approved it as it stands, so ADR-0038 is `accepted` and ADR-0011 is `superseded` in that PR, before it merges.
-3. **Migration, now that the ADR is accepted (proposed split):**
-   * a `justfile` with every Makefile target at parity, the `.just-version` file and the doctor check;
-   * CI switched to `just` (the 6 call sites, with `just` installed at the pinned version);
-   * every `make <target>` command in the docs rewritten to `just` (README, `AGENTS.md`, `CLAUDE.md`, runbooks, skills, story cards, ADRs other than ADR-0011);
-   * the Makefile removed;
-   * the card update with test links and lessons learned, carrying `Closes #153`.
+1. **Card (PR 0):** [#159](https://github.com/mgasca/calendar/pull/159).
+2. **ADR and card updates:** [#164](https://github.com/mgasca/calendar/pull/164). ADR-0038 `accepted`, ADR-0011 `superseded`.
+3. **The `justfile`:** [#169](https://github.com/mgasca/calendar/pull/169). All 35 Makefile targets, `.just-version`, the doctor check and its tests, and the CI steps that install `just`.
+4. **CI call sites:** [#170](https://github.com/mgasca/calendar/pull/170). The 6 `make` calls in `ci.yml` and `migrate.yml` became `just`.
+5. **Docs rewrite:** [#171](https://github.com/mgasca/calendar/pull/171). Every `make <target>` command became `just`, except in ADR-0011.
+6. **Makefile removal and this card update:** the PR listed last in `pr` above. It deletes the Makefile and the temporary parity check, adds `just` to the README prerequisites, and carries `Closes #153`.
 
 ### Where things live
 
 | Area | Location |
 | --- | --- |
-| The decision under review | `docs/decisions/0011-make-as-top-level-task-runner.md` |
-| The new decision, if any | `docs/decisions/` (next free number) |
-| The current task runner | `Makefile` |
-| CI entry points | `.github/workflows/ci.yml`, `.github/workflows/migrate.yml` |
-| Toolchain check | `tools/doctor/doctor.sh` |
-| Contributor and agent guidance | `AGENTS.md`, `CLAUDE.md`, `README.md` |
-| Runbooks | `docs/runbooks/` |
+| The decision | `docs/decisions/0038-just-as-the-top-level-task-runner.md`; ADR-0011 is superseded |
+| The task runner | `justfile` (35 recipes plus a default that lists them) |
+| The minimum `just` version | `.just-version`, read by `tools/doctor/doctor.sh` and by CI |
+| Toolchain check | `tools/doctor/doctor.sh`, with tests in `tools/doctor/tests/doctor.tests.cs` |
+| CI | `.github/workflows/ci.yml` and `.github/workflows/migrate.yml` install `just` with `extractions/setup-just`, pinned by commit |
+| Contributor and agent guidance | `README.md` (prerequisites, common tasks), `AGENTS.md` (commands) |
 
 ### API
 
@@ -123,19 +126,35 @@ No changes.
 
 ### Testing
 
-* The docs tests check this card's front matter and its index row (`frontend/apps/docs`).
-* `make adr-check` validates the ADR and its index row.
-* A migration, if there is one, needs its own tests plan: at least that every target CI calls still runs, and that `make check` or its replacement reproduces CI locally.
+* **Docs tests** (`frontend/apps/docs`): this card's front matter and its index row, and every ADR and story file. 62 tests.
+* **ADR validator:** `just adr-check` in the CI `Tooling` job.
+* **Doctor tests:** two new tests in `tools/doctor/tests/doctor.tests.cs`: a missing `just` fails with an install hint, and a `just` older than `.just-version` fails. The harness runs `doctor.sh` with a restricted `PATH`, so it now provides a fake `just` and links `sort` and `head`.
+* **Recipes run for real in CI** on [#170](https://github.com/mgasca/calendar/pull/170): `just tooling`, `just infra-integration`, `just tool-versions`, `just adr-check` and `just smoke-image` (against the built image with a PostgreSQL service).
+* **Checked only with `--dry-run`:** the other recipes, as listed under criterion 7.
+* **Not exercised before merge:** the `just infra-migrate` step in `migrate.yml`, which runs only from `main` by manual dispatch against Azure.
 
 ### Lessons learned, known issues and follow-ups
 
-* Filled in on delivery. Measurements are marked measured or inferred.
-* Findings so far, from the issue thread: `.ONESHELL:` was tested on a scratch Makefile. It allows multi-line recipes without `\`, but it breaks the `DOTNET := cd backend && dotnet` pattern (the second `cd backend` fails) and it applies to the whole Makefile. It is not a cheap fix.
+* **Measured in the prototype:** no `$$` and no `\` continuations in the `justfile`; arguments pass through; a missing required argument stops with a usage message, where `make infra-migrate` without `ENV=` ran the tool with an empty value.
+* **`.ONESHELL:` is not a cheap fix for Make** (measured on a scratch Makefile): it allows multi-line recipes, but it breaks the `DOTNET := cd backend && dotnet` pattern and applies to the whole file.
+* **Porting trap (inferred from shell semantics):** in a shebang recipe with `set -e`, `grep ... && cp ...` does not stop the script when `grep` fails. The Makefile's `|| exit 1` was kept.
+* **Several recipes in one command:** `just db-up db-migrate` runs both, but `just tool-versions adr-check` passes `adr-check` to `tool-versions` as an argument, because that recipe takes variable arguments (measured with `--dry-run`). `AGENTS.md` says so.
+* **The doctor tests' restricted `PATH`** failed on the first push of the `justfile` PR, because the new `just` check needed a `just`, `sort` and `head`. Found by CI, not locally.
+* **Output:** `just` prints recipe lines to stderr, where `make` printed them to stdout. The `migrate.yml` step summary therefore holds only the tool's own output.
+* **Installing `just`:** Ubuntu's `apt` package (1.45.0 at the time of writing) is older than the pinned 1.59.0. Contributors download the release binary; CI uses `extractions/setup-just`.
+* **`just --fmt --check` is still marked unstable in 1.59.0.** Revisit when it is stable.
+* **Left as written on purpose:** statements in ADR-0001, ADR-0017, ADR-0023, ADR-0033 and story 0008 that cite ADR-0011's own decision, because rewriting them would misattribute the history. The maintainer can rule on them in [#171](https://github.com/mgasca/calendar/pull/171).
+* **Open follow-ups:** the first run of `migrate.yml` from `main` with `just`; a `Task` prototype if anyone wants one (ADR-0038 rates it from documentation only); the revisit trigger in ADR-0038 (`just` no longer maintained, or its CI install cost turns out higher than measured).
 
 ## User guide
 
-*Planned behaviour. This section is finalised when the story is implemented.*
-
 ### Running a task as a contributor
 
-Until a decision is taken, nothing changes: run `make help` to list the tasks and `make check` to run everything CI runs. If the decision changes the tool, this section will name the new command and say how to install it.
+1. Install `just` at the version in `.just-version`: download the release for your platform from <https://github.com/casey/just/releases> and put `just` on your `PATH`. Ubuntu's `apt` package is too old.
+2. Check your toolchain with `./tools/doctor/doctor.sh`. After `just` is installed, `just doctor` runs the same script.
+3. Run `just` with no arguments to list the recipes and what they do.
+4. Common recipes: `just setup` (first time), `just dev-api` and `just dev-web` (run the app), `just test`, `just lint`, `just check` (everything CI runs) and `just format`.
+5. Arguments follow the recipe name: for example `just infra-migrate staging --client-ip <ipv4>` or `just run-image Development`. The recipe's comment in the list shows what it takes.
+6. To run several recipes in one command, use it only for recipes that take no arguments (`just db-up db-migrate`). Otherwise run them separately.
+
+The old `make` commands no longer exist.

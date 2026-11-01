@@ -1,17 +1,18 @@
 ---
-status: planned
+status: in-progress
 date: 2026-10-31
 issue: https://github.com/mgasca/calendar/issues/153
 pr:
   - https://github.com/mgasca/calendar/pull/159
-adrs: ["0011", "0017"]
+  - https://github.com/mgasca/calendar/pull/164
+adrs: ["0011", "0017", "0038"]
 ---
 
 # 0011 Review the top-level task runner
 
 ## Story
 
-> As a contributor who works on the repo every day (a person or an AI agent), I need a top-level task runner that is modern and fit for purpose, so that I learn and use a tool that suits the job instead of one I only put up with.
+> As a contributor, whether a person or another agent, I need a top-level task runner that is modern and fit for purpose, so that I learn and use a tool that suits the job instead of one I only put up with.
 
 Tracked in issue #153. Card PR: [#159](https://github.com/mgasca/calendar/pull/159).
 
@@ -69,8 +70,9 @@ An earlier analysis (a previous agent session, recorded in a comment on the issu
 | --- | --- | --- |
 | [0011](../decisions/0011-make-as-top-level-task-runner.md) | GNU Make as a thin top-level task runner | The decision under review. Its drivers D1 and D2 no longer apply. |
 | [0017](../decisions/0017-dotnet-file-based-apps-for-repo-tooling.md) | .NET file-based apps for all repo tooling | Offers a way to keep Make and move logic out of it. Its own driver "no new toolchain" argues against adding `just`, so a new ADR has to address it. |
+| [0038](../decisions/0038-just-as-the-top-level-task-runner.md) | `just` as the top-level task runner, replacing GNU Make | The decision this story produces. Accepted by the maintainer on its PR, it supersedes ADR-0011. |
 
-A new ADR is expected if the outcome is to change runner. It supersedes ADR-0011 and is drafted with the `adr-draft` skill.
+The new ADR was drafted with the `adr-draft` skill, using the measured and inferred results of the prototype from the issue.
 
 ### Other decisions (not ADR-worthy)
 
@@ -78,10 +80,27 @@ A new ADR is expected if the outcome is to change runner. It supersedes ADR-0011
 * **Renumbering the drivers is left to the ADR:** this card uses the new numbering D1–D4 to keep the text short.
 * **The earlier analysis is input, not a conclusion:** its recommendation was made under the old drivers and without testing `just`.
 * **The prototype is throwaway:** it is not merged, so it does not need the analyzers and tests that ADR-0017 requires of repo tooling.
+* **No `Task` prototype for now:** decided by the maintainer on the ADR PR. ADR-0038 says `Task` is rated from documentation alone and is untested.
+* **No Makefile shim:** decided by the maintainer on the ADR PR. The Makefile is removed as soon as CI and the docs call `just`, because the only people and agents working in the repo are the maintainer's.
+* **One version file for `just`:** decided by the maintainer on the ADR PR. A `.just-version` file at the repo root is read by `tools/doctor/doctor.sh` and by CI, like `frontend/.node-version`.
+* **Every `make <target>` command is rewritten, except in ADR-0011:** decided by the maintainer on the ADR PR. The docs PR changes the commands in the README, `AGENTS.md`, the runbooks, the skills, the story cards (all sections) and the other ADRs. ADR-0011 is left as written because it is the superseded record. Passages that talk about GNU Make as a tool, such as ADR-0038's comparison of the options, stay.
 
 ## Implementation notes
 
-*Planned. This section is completed as the story is built.*
+*In progress. This section is completed as the story is built.*
+
+### Delivery plan
+
+Each PR branches from fresh `origin/main`. The migration PRs start only after ADR-0038 is accepted.
+
+1. **Card (PR 0):** [#159](https://github.com/mgasca/calendar/pull/159), merged.
+2. **ADR:** [#164](https://github.com/mgasca/calendar/pull/164). The maintainer approved it as it stands, so ADR-0038 is `accepted` and ADR-0011 is `superseded` in that PR, before it merges.
+3. **Migration, now that the ADR is accepted (proposed split):**
+   * a `justfile` with every Makefile target at parity, the `.just-version` file and the doctor check;
+   * CI switched to `just` (the 6 call sites, with `just` installed at the pinned version);
+   * every `make <target>` command in the docs rewritten to `just` (README, `AGENTS.md`, `CLAUDE.md`, runbooks, skills, story cards, ADRs other than ADR-0011);
+   * the Makefile removed;
+   * the card update with test links and lessons learned, carrying `Closes #153`.
 
 ### Where things live
 

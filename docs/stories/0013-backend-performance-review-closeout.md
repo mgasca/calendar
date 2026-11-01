@@ -13,7 +13,7 @@ adrs: ["0015", "0020", "0021"]
 
 > As the maintainer, I need the backend performance review recorded as finished, so that its tracking issue shows the real state and can be closed.
 
-Tracked in issue #86. This card records work that was already delivered, so the card PR closes the issue.
+Tracked in issue #86 and delivered by the card PR ([#167](https://github.com/mgasca/calendar/pull/167)). This card records work that was already delivered, so the card PR closes the issue.
 
 ## Background
 

@@ -11,7 +11,7 @@ import { parseLog, parseStories } from '../src/lib/adr';
 import { decisionsDirectory, readDocuments, storiesDirectory } from '../src/lib/docs-loader';
 
 // Benchmark 0001: what loading the ADRs and stories costs, and where it goes.
-// Run with `make bench-docs`; set BENCH_OUT=<file> to also write the Markdown table to a file.
+// Run with `just bench-docs`; set BENCH_OUT=<file> to also write the Markdown table to a file.
 // Record results in docs/benchmarks/ (see its README for what to note).
 
 function readSources(directory: URL, pattern: RegExp) {

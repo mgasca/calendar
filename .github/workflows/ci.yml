@@ -45,7 +45,7 @@ jobs:
       - name: OpenAPI contract is up to date
         run: |
           git diff --exit-code -- ../contracts || {
-            echo "::error::contracts/openapi.json is stale. Run 'make contracts' and commit the result."
+            echo "::error::contracts/openapi.json is stale. Run 'just contracts' and commit the result."
             exit 1
           }
       - uses: actions/upload-artifact@v7
@@ -142,16 +142,14 @@ jobs:
           just --unstable --fmt --check
           diff <(grep -hoE '^[a-zA-Z][a-zA-Z0-9_-]*:' Makefile | tr -d ':' | grep -vx help | sort) \
                <(just --summary | tr ' ' '\n' | grep -vx default | sort)
-      - name: ADRs follow conventions (through just)
-        run: just adr-check
       - name: Test and lint tooling
-        run: make tooling
+        run: just tooling
       - name: Azure role SQL matches the local init script (PostgreSQL in Docker)
-        run: make infra-integration
+        run: just infra-integration
       - name: Tooling package pins match backend
-        run: make tool-versions
+        run: just tool-versions
       - name: ADRs follow conventions
-        run: make adr-check
+        run: just adr-check
 
   image:
     name: Container image
@@ -183,6 +181,12 @@ jobs:
             --build-arg NODE_VERSION="$(cat frontend/.node-version)" -t calendar:local .
           rm -rf /tmp/calendar-buildx-cache
           mv /tmp/calendar-buildx-cache-new /tmp/calendar-buildx-cache
+      - name: Read the pinned just version
+        id: just-version
+        run: echo "version=$(tr -d '[:space:]v' < .just-version)" >> "$GITHUB_OUTPUT"
+      - uses: extractions/setup-just@53165ef7e734c5c07cb06b3c8e7b647c5aa16db3 # v4.0.0
+        with:
+          just-version: ${{ steps.just-version.outputs.version }}
       - name: Run image and smoke test
         env:
           ConnectionStrings__Calendar: Host=127.0.0.1;Port=5432;Database=calendar;Username=postgres;Password=smoke-password
@@ -192,7 +196,7 @@ jobs:
             if curl -fsS http://localhost:8080/api/health >/dev/null; then break; fi
             sleep 1
           done
-          make smoke-image
+          just smoke-image
       - name: Container logs
         if: ${{ failure() }}
         run: docker logs calendar-smoke

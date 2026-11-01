@@ -55,7 +55,7 @@ There is no pre-agreed fallback. If managed PostgreSQL cost is no longer accepta
 
 ### Confirmation
 
-* `make adr-check` validates the supersession: [ADR-0014](0014-postgresql-database-engine.md) status and the index row.
+* `just adr-check` validates the supersession: [ADR-0014](0014-postgresql-database-engine.md) status and the index row.
 * `grep -ri sqlite` finds no live instruction to keep a fallback, only historical text in superseded ADRs.
 * The PR template no longer asks for a SQLite impact note.
 

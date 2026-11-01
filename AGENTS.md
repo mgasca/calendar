@@ -8,17 +8,17 @@ This file provides guidance to AI coding agents (Claude Code, Codex, Cursor, etc
 
 ## Commands
 
-`make` is a thin wrapper over native tooling (`make help` lists targets). Linux/WSL only.
+`just` is a thin task runner over native tooling (`just` with no arguments lists the recipes; the minimum version is in `.just-version`). Linux/WSL only.
 
-- `make setup` — `doctor` + restore .NET packages + `pnpm install --frozen-lockfile`
-- `make dev-api` (http://localhost:5041) / `make dev-web` (proxies `/api` to the API)
-- `make test` — backend + frontend tests; `make lint` — analyzers, `dotnet format --verify-no-changes`, ESLint, tsc, tooling, ADR check; `make check` — everything CI runs
-- `make format` — auto-format everything
-- `make contracts` — rebuild the API and regenerate `contracts/openapi.json` and the TS client. **Commit the result**; CI fails if the contract is stale.
-- `make tooling` / `make adr-check` — test/lint repo tooling; validate ADRs (`ARGS=--fix-links`, `ARGS=--next-number`)
-- `make db-up` / `db-migrate` / `db-seed` / `db-psql` / `db-reset` / `db-down` — local PostgreSQL via Docker Compose (`compose.yaml`, `.env` from `.env.example`). Migrations are applied only by `db-migrate`, as `calendar_migrator`, never by the app (ADR-0015).
-- `make dev-docs` / `build-docs` — the ADR documentation site (`frontend/apps/docs`)
-- `make bench-docs` — run the docs benchmark by hand; results are recorded in `docs/benchmarks/` (see its README). Never part of `make test` or CI.
+- `just setup` — `doctor` + restore .NET packages + `pnpm install --frozen-lockfile`
+- `just dev-api` (http://localhost:5041) / `just dev-web` (proxies `/api` to the API)
+- `just test` — backend + frontend tests; `just lint` — analyzers, `dotnet format --verify-no-changes`, ESLint, tsc, tooling, ADR check; `just check` — everything CI runs
+- `just format` — auto-format everything
+- `just contracts` — rebuild the API and regenerate `contracts/openapi.json` and the TS client. **Commit the result**; CI fails if the contract is stale.
+- `just tooling` / `just adr-check` — test/lint repo tooling; validate ADRs (for example `just adr-check --fix-links` or `just adr-check --next-number`)
+- `just db-up` / `db-migrate` / `db-seed` / `db-psql` / `db-reset` / `db-down` — local PostgreSQL via Docker Compose (`compose.yaml`, `.env` from `.env.example`). Migrations are applied only by `db-migrate`, as `calendar_migrator`, never by the app (ADR-0015).
+- `just dev-docs` / `build-docs` — the ADR documentation site (`frontend/apps/docs`)
+- `just bench-docs` — run the docs benchmark by hand; results are recorded in `docs/benchmarks/` (see its README). Never part of `just test` or CI.
 
 Single tests:
 - Backend (run from `backend/` so `global.json` applies; uses Microsoft.Testing.Platform, xUnit v3): `dotnet test --project tests/Calendar.Domain.Tests --filter-method "*MethodName*"` (or `--filter-class`)
@@ -38,7 +38,7 @@ Single tests:
 - **Dependencies**: NuGet Central Package Management (`backend/Directory.Packages.props`) with `packages.lock.json` per project (CI restores with `--locked-mode`, so commit lock file changes). Warnings are errors; Roslyn analyzers + SonarAnalyzer are enforced at build time.
 - **Frontend**: `frontend/apps/web` (feature folders such as `features/day`, `week`, `tasks`, `agenda`; TanStack Router (ADR-0026) and TanStack Query; Vitest + Testing Library + MSW), `frontend/apps/docs` (Astro Starlight ADR site), `frontend/packages/api-client`. TypeScript is pinned to 6.0 and ESLint to 9 (ADR-0010).
 - **Repo tooling** (ADR-0017): scripts are .NET 10 *file-based apps* (`dotnet run x.cs`), located in `.claude/skills/<skill>/` or `tools/<name>/`, each folder with its own analyzers, `.editorconfig` and xUnit tests. The only exception is `tools/doctor/doctor.sh` (shellcheck). Don't write new tooling in Python/Node/shell.
-- **ADRs**: MADR 4.0 with decision drivers, a star-rating table and driver-tagged pros/cons; the index in `docs/decisions/README.md` is validated by `make adr-check`. To write one, use the `adr-draft` skill. **Decision status is independent of delivery**: an ADR becomes `accepted` when the user approves the decision, in that same PR before it merges, and never waits for the implementation, build or rollout. Delivery is tracked in issues and PRs, not in the ADR status.
+- **ADRs**: MADR 4.0 with decision drivers, a star-rating table and driver-tagged pros/cons; the index in `docs/decisions/README.md` is validated by `just adr-check`. To write one, use the `adr-draft` skill. **Decision status is independent of delivery**: an ADR becomes `accepted` when the user approves the decision, in that same PR before it merges, and never waits for the implementation, build or rollout. Delivery is tracked in issues and PRs, not in the ADR status.
 
 ## Stories and issues
 
@@ -91,7 +91,7 @@ Single tests:
   - IDE0005 flags an unused `using` after code moves.
   - S8969 flags a redundant `!`.
   - Layout (ADR-0036): SA1501 forbids single-line blocks such as `if (y) { Foo(); }`. SA1116/SA1117 require a wrapped parameter or argument list to start on a new line with one item per line. SA1117 still accepts all the items together on the continuation line, so don't write that either. `dotnet format` fixes these.
-  - S103 caps lines at 140 characters. Nothing fixes it automatically, so wrap long lines by hand. Split long strings with `+` and long `<summary>` text over several lines; a split summary adds a soft line break to the OpenAPI description, so run `make contracts`.
+  - S103 caps lines at 140 characters. Nothing fixes it automatically, so wrap long lines by hand. Split long strings with `+` and long `<summary>` text over several lines; a split summary adds a soft line break to the OpenAPI description, so run `just contracts`.
   - IDE0008 wants an explicit type unless the type is apparent or built in.
   - Every rule in the `Performance` category is a warning, including ones off by default. CA1848 requires `LoggerMessage` source-generated logging methods instead of `logger.LogX(...)` calls.
   - RS0030 bans `DateTime.Now`/`UtcNow`/`Today`, `DateTimeOffset.Now`/`UtcNow` and `TimeZoneInfo.Local` in `backend/src`. Use the injected `TimeProvider`.
@@ -122,4 +122,4 @@ Single tests:
 ## Notes
 
 - `.plan/` and `.env` are git-ignored scratch/local files.
-- Toolchain pins: .NET SDK from `backend/global.json`, Node from `frontend/.node-version`, pnpm via Corepack (`packageManager` in `frontend/package.json`; don't install globally). `make doctor` verifies them.
+- Toolchain pins: .NET SDK from `backend/global.json`, Node from `frontend/.node-version`, pnpm via Corepack (`packageManager` in `frontend/package.json`; don't install globally). `just doctor` verifies them.

@@ -67,10 +67,10 @@ Delivered in separate PRs after this ADR is accepted, tracked in story [0011](..
 
 1. Add a `justfile` with every Makefile target at parity. Keep the Makefile until step 3 has landed.
 2. Add a `.just-version` file at the repo root, like `frontend/.node-version`. Make `tools/doctor/doctor.sh` check for `just` at that version or newer, and install `just` in CI at that version, so the number lives in one place. `just doctor` cannot run when `just` is missing, so the README's first step runs `./tools/doctor/doctor.sh` directly.
-3. Switch the 6 CI call sites to `just`, and update `README.md`, `AGENTS.md`, `CLAUDE.md`, the runbooks, the `adr-draft` and `story-draft` skills and the user-guide parts of the story cards.
+3. Switch the 6 CI call sites to `just`, and update `README.md`, `AGENTS.md`, `CLAUDE.md`, the runbooks, the `adr-draft` and `story-draft` skills and the story cards.
 4. Remove the Makefile as soon as step 3 has landed. There is no shim: the only people and agents who work in this repo are the maintainer's, and a shim could not forward the `VAR=value` arguments of the 10 targets that take them without its own translation.
 
-Existing ADR text that mentions `make` is a historical record and is not rewritten.
+Every `make <target>` command is rewritten to `just`, in all of these files and in the other ADRs. [ADR-0011](0011-make-as-top-level-task-runner.md) is left as written, because it is the superseded record. Passages that talk about GNU Make as a tool, such as the comparison of the options above, stay.
 
 ### Consequences
 

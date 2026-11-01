@@ -45,7 +45,7 @@ else
   fail "pnpm not on PATH and corepack not available" "Install Node $want_node (bundles Corepack), then run 'corepack enable pnpm'"
 fi
 
-# Docker: needed for the local database (make db-up) and the Testcontainers-based tests (ADR-0016).
+# Docker: needed for the local database (just db-up) and the Testcontainers-based tests (ADR-0016).
 if ! command -v docker >/dev/null 2>&1; then
   fail "docker not found" "Install Docker Engine (or Docker Desktop with WSL integration): https://docs.docker.com/engine/install/"
 elif ! docker info >/dev/null 2>&1; then

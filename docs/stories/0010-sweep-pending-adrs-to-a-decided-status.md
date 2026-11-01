@@ -53,10 +53,10 @@ A first read of the code and workflows (`frontend/apps/docs`, `.github/workflows
 
 1. **Given** `main` after the last ADR PR has merged, **when** I search `docs/decisions/` for `status: proposed`, **then** no ADR matches. Checked by hand after the last ADR PR merged: the only `status: proposed` left in `docs/decisions/` is the example in `adr-template.md`. Not covered by an automated test.
 2. **Given** each of ADR 0022, 0023, 0025 and 0028, **when** its PR has merged, **then** its front matter status is the one the maintainer chose in its PR, and the ADR was not set to `accepted` without that approval. ADR PRs [#160](https://github.com/mgasca/calendar/pull/160) (0022), [#161](https://github.com/mgasca/calendar/pull/161) (0023), [#162](https://github.com/mgasca/calendar/pull/162) (0025) and [#163](https://github.com/mgasca/calendar/pull/163) (0028). Each was approved as `accepted` by the maintainer in a PR comment before it merged.
-3. **Given** each ADR and its row in `docs/decisions/README.md`, **when** I compare them, **then** the statuses are identical. Enforced by `make adr-check` and the docs tests in [`adr.test.ts`](../../frontend/apps/docs/src/lib/adr.test.ts), which compare each ADR file with the index.
-4. **Given** each ADR PR branch, **when** CI runs, **then** `make adr-check` and the docs tests pass. CI ran on every ADR PR; each merged only after its checks passed.
+3. **Given** each ADR and its row in `docs/decisions/README.md`, **when** I compare them, **then** the statuses are identical. Enforced by `just adr-check` and the docs tests in [`adr.test.ts`](../../frontend/apps/docs/src/lib/adr.test.ts), which compare each ADR file with the index.
+4. **Given** each ADR PR branch, **when** CI runs, **then** `just adr-check` and the docs tests pass. CI ran on every ADR PR; each merged only after its checks passed.
 5. **Given** the story is delivered, **when** I read this card, **then** its status is `implemented`, its `pr` list holds every PR, and each criterion above is linked to its check or says it is checked by hand. This card, in the final PR.
-6. **Given** the change is complete, **when** I run `make check`, **then** it passes. CI on the final PR.
+6. **Given** the change is complete, **when** I run `just check`, **then** it passes. CI on the final PR.
 
 ## Design decisions
 
@@ -85,7 +85,7 @@ No new ADR is expected.
 | --- | --- |
 | ADR status | `docs/decisions/0022-*.md`, `0023-*.md`, `0025-*.md`, `0028-*.md` (front matter `status`) |
 | ADR index | `docs/decisions/README.md` |
-| Validation | `make adr-check`, docs tests in `frontend/apps/docs` |
+| Validation | `just adr-check`, docs tests in `frontend/apps/docs` |
 
 ### API
 
@@ -93,7 +93,7 @@ No changes.
 
 ### Testing
 
-* `make adr-check` validates the ADR front matter against the index.
+* `just adr-check` validates the ADR front matter against the index.
 * The docs tests read the ADR corpus, so a mismatch between a file and its index row fails them.
 
 ### Lessons learned, known issues and follow-ups
@@ -101,7 +101,7 @@ No changes.
 * **Parallel ADR PRs conflict in the index.** The four PRs each edited adjacent rows of `docs/decisions/README.md`, so after the first merged the others needed their branch updated and one hit a conflict. Resolving it by hand dropped a row once; it was caught in review of the diff and restored. Update each branch from `main` and check the diff against `main` before pushing.
 * **Decisions happened in the PRs.** The maintainer asked for each status change to be a PR discussed in its comments rather than answered on the issue.
 * **`AGENTS.md` unchanged.** The open question of whether to add a line about sweeping `proposed` ADRs was not answered, so no docs change was made. A follow-up issue can add one.
-* **Verification limits.** The docs tests were run locally on Node 22 with the engine check bypassed (Node 24 is not installed in the agent environment); CI ran the real check. `make build-docs` was not run locally.
+* **Verification limits.** The docs tests were run locally on Node 22 with the engine check bypassed (Node 24 is not installed in the agent environment); CI ran the real check. `just build-docs` was not run locally.
 
 ## User guide
 

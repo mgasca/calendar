@@ -30,7 +30,7 @@ Tracked in issue #145 and delivered by the card PR ([#166](https://github.com/mg
 
 ### Acceptance criteria
 
-1. **Given** the issue asks for a superseding ADR, **when** I read the decisions, **then** [ADR-0037](../decisions/0037-postgresql-only-no-sqlite-fallback.md) is `accepted` and ADR-0014 is marked `superseded by` it. Delivered in PR [#146](https://github.com/mgasca/calendar/pull/146). Checked by hand on `main`; `make adr-check` validates the status and index.
+1. **Given** the issue asks for a superseding ADR, **when** I read the decisions, **then** [ADR-0037](../decisions/0037-postgresql-only-no-sqlite-fallback.md) is `accepted` and ADR-0014 is marked `superseded by` it. Delivered in PR [#146](https://github.com/mgasca/calendar/pull/146). Checked by hand on `main`; `just adr-check` validates the status and index.
 2. **Given** the PR template carried a SQLite-impact item, **when** I read `.github/pull_request_template.md`, **then** it no longer mentions SQLite. Checked by hand (a search of `.github/` finds no "sqlite").
 3. **Given** the README backing services table, **when** I read the PostgreSQL row (`README.md:118`), **then** it links ADR-0037. Checked by hand.
 4. **Given** the `adr-draft` skill named the fallback, **when** I read `.claude/skills/adr-draft/SKILL.md`, **then** no SQLite wording remains. Checked by hand (a search of the skill finds no "sqlite"). The remaining "fallback" wording on line 82 is generic guidance about options.
@@ -66,7 +66,7 @@ No changes.
 
 ### Testing
 
-* Docs only. `make adr-check` and the docs-site tests validate the ADR status and index. The follow-up edits were checked by reading and searching `origin/main`.
+* Docs only. `just adr-check` and the docs-site tests validate the ADR status and index. The follow-up edits were checked by reading and searching `origin/main`.
 
 ### Lessons learned, known issues and follow-ups
 

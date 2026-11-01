@@ -6,7 +6,7 @@ Every record lists its **decision drivers**, rates each option against them in a
 
 - **Drafting with an AI agent:** the [`adr-draft`](../../.claude/skills/adr-draft/SKILL.md) skill walks through the whole process: drivers, research, writing, validation and the review PR.
 - **Status:** `proposed` while the decision is under review, `accepted` as soon as the user approves it (set in the same PR, before it merges), then `superseded by [ADR-NNNN](NNNN-….md)` if replaced. Status records whether a decision was **taken**, not whether it has been **delivered**: never wait for the implementation, build or rollout before accepting. Track delivery in issues and PRs.
-- **Validation:** `make adr-check` (also part of `make lint` and CI) checks structure, rating tables, driver coverage, links and this index.
+- **Validation:** `just adr-check` (also part of `just lint` and CI) checks structure, rating tables, driver coverage, links and this index.
 
 | ADR | Title | Status |
 | --- | --- | --- |
@@ -21,7 +21,7 @@ Every record lists its **decision drivers**, rates each option against them in a
 | [0008](0008-frontend-testing-stack.md) | Vitest, Testing Library and MSW for frontend tests | accepted |
 | [0009](0009-static-analysis-and-formatting.md) | Static analysis and formatting enforced at build time | accepted |
 | [0010](0010-toolchain-version-pins.md) | Pin TypeScript 6.0 and ESLint 9 for ecosystem compatibility | accepted |
-| [0011](0011-make-as-top-level-task-runner.md) | GNU Make as a thin top-level task runner | accepted |
+| [0011](0011-make-as-top-level-task-runner.md) | GNU Make as a thin top-level task runner | superseded by [ADR-0038](0038-just-as-the-top-level-task-runner.md) |
 | [0012](0012-ci-and-dependency-updates.md) | GitHub Actions CI, security scanning and Dependabot | accepted |
 | [0013](0013-public-repository-for-github-security-features.md) | Public GitHub repository to enable branch rules and security scanning | accepted |
 | [0014](0014-postgresql-database-engine.md) | PostgreSQL as the database engine, with SQLite on a volume as a budget fallback | superseded by [ADR-0037](0037-postgresql-only-no-sqlite-fallback.md) |
@@ -48,3 +48,4 @@ Every record lists its **decision drivers**, rates each option against them in a
 | [0035](0035-separate-staging-and-production-environments.md) | Separate staging and production environments | accepted |
 | [0036](0036-csharp-layout-rules-with-stylecop-and-sonar.md) | C# layout rules enforced with a StyleCop subset and Sonar's line-length rule | accepted |
 | [0037](0037-postgresql-only-no-sqlite-fallback.md) | PostgreSQL only: drop the SQLite budget fallback | accepted |
+| [0038](0038-just-as-the-top-level-task-runner.md) | just as the top-level task runner, replacing GNU Make | accepted |

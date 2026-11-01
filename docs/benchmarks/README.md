@@ -8,7 +8,7 @@ Reference measurements for performance work. A benchmark here is a repeatable ha
 
 ## Running one
 
-`make bench-docs` runs the docs harness with [tinybench](https://github.com/tinylibs/tinybench) inside Vitest (`vitest.bench.config.ts`). Set `BENCH_OUT=<file>` to also write the Markdown table to a file. `make test`, `make check` and CI never run benchmarks.
+`just bench-docs` runs the docs harness with [tinybench](https://github.com/tinylibs/tinybench) inside Vitest (`vitest.bench.config.ts`). Set `BENCH_OUT=<file>` to also write the Markdown table to a file. `just test`, `just check` and CI never run benchmarks.
 
 ## Writing a record
 

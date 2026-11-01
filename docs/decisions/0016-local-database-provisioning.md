@@ -56,7 +56,7 @@ Chosen option: "Docker Compose for development, Testcontainers for tests". It is
   * An untracked `.env` holds them, with a committed `.env.example` of placeholders.
   * The API's dev connection string comes from `dotnet user-secrets` or the environment.
 * Make targets: `db-up`, `db-down`, `db-reset` (drop the volume), `db-migrate`, `db-psql`.
-* `make doctor` checks that Docker is available and running.
+* `just doctor` checks that Docker is available and running.
 
 **Tests**
 
@@ -74,7 +74,7 @@ Chosen option: "Docker Compose for development, Testcontainers for tests". It is
 
 ### Consequences
 
-* Good, because new contributors run `make db-up && make db-migrate`; nothing is installed on the host.
+* Good, because new contributors run `just db-up && just db-migrate`; nothing is installed on the host.
 * Good, because each test run gets a clean database, so tests are order-independent and parallel-safe across assemblies.
 * Bad, because Docker becomes a hard requirement for development and integration tests.
 * Bad, because integration test startup grows by ~2–5 s per test assembly (container start). Sharing one container per assembly keeps this small.
@@ -89,7 +89,7 @@ Chosen option: "Docker Compose for development, Testcontainers for tests". It is
 
 ### Docker Compose for development, Testcontainers for tests
 
-* Good, because **D1 Lightweight dev**: one YAML file and a `make` target; no new .NET projects or workloads.
+* Good, because **D1 Lightweight dev**: one YAML file and a `just` recipe; no new .NET projects or workloads.
 * Good, because **D2 Test fidelity & isolation**: Testcontainers starts a fresh, real PostgreSQL per test assembly, locally and in CI.
 * Good, because **D3 Dev/prod parity**: the same pinned image tag as production's major and minor version.
 * Good, because **D4 Security**: binds to localhost only, and credentials live in an untracked `.env`.

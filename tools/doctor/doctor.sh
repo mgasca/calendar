@@ -45,13 +45,26 @@ else
   fail "pnpm not on PATH and corepack not available" "Install Node $want_node (bundles Corepack), then run 'corepack enable pnpm'"
 fi
 
-# Docker: needed for the local database (make db-up) and the Testcontainers-based tests (ADR-0016).
+# Docker: needed for the local database (just db-up) and the Testcontainers-based tests (ADR-0016).
 if ! command -v docker >/dev/null 2>&1; then
   fail "docker not found" "Install Docker Engine (or Docker Desktop with WSL integration): https://docs.docker.com/engine/install/"
 elif ! docker info >/dev/null 2>&1; then
   fail "docker is installed but the daemon is not reachable" "Start Docker (e.g. 'sudo service docker start', or start Docker Desktop) and make sure your user may access the socket"
 else
   ok "Docker $(docker version --format '{{.Server.Version}}' 2>/dev/null) (daemon reachable)"
+fi
+
+# just: the task runner (ADR-0038). The minimum version is in .just-version.
+want_just="$(tr -d '[:space:]v' < "$root/.just-version")"
+if ! command -v just >/dev/null 2>&1; then
+  fail "just not found" "Install just $want_just or newer: https://just.systems/man/en/packages.html (Ubuntu's apt package is older; use the release binary or cargo)"
+else
+  have_just="$(just --version | sed -n 's/^just \([0-9][0-9.]*\).*/\1/p')"
+  if [ "$(printf '%s\n%s\n' "$want_just" "$have_just" | sort -V | head -n 1)" = "$want_just" ]; then
+    ok "just $have_just (.just-version wants $want_just or newer)"
+  else
+    fail "just $have_just, but .just-version wants $want_just or newer" "Install just $want_just or newer: https://just.systems/man/en/packages.html"
+  fi
 fi
 
 # Azure tools are deployment prerequisites; local-only development can skip them.

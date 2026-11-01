@@ -140,7 +140,7 @@
 <li>Neutral, because the stories are public once merged, as the ADRs already are.</li>
 </ul>
 <h3 id="confirmation">Confirmation</h3>
-<p><code>make adr-check</code> validates this record. The documentation tests cover story parsing and validation, link rewriting from both collections, and the published pages. The build verification crawls every generated page and fails on any broken internal link or anchor, and on any Markdown link left unrewritten. The build runs at the root path and at a project subpath.</p>
+<p><code>just adr-check</code> validates this record. The documentation tests cover story parsing and validation, link rewriting from both collections, and the published pages. The build verification crawls every generated page and fails on any broken internal link or anchor, and on any Markdown link left unrewritten. The build runs at the root path and at a project subpath.</p>
 <h2 id="pros-and-cons-of-the-options">Pros and Cons of the Options</h2>
 <h3 id="publish-stories-from-their-canonical-markdown-on-the-same-documentation-site">Publish stories from their canonical Markdown on the same documentation site</h3>
 <ul>

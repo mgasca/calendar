@@ -74,8 +74,8 @@
 <h2 id="context-and-problem-statement">Context and Problem Statement</h2>
 <p>The repo has two kinds of tooling scripts:</p>
 <ul>
-<li><strong>Skill-bundled tools</strong>, such as the <code>adr-draft</code> skill’s validator <code>check_adr.py</code>, which runs in <code>make lint</code> and in the CI <code>Docs</code> job (<a href="/calendar/pr-preview/pr-173/adr/0000/">ADR-0000</a>).</li>
-<li><strong>Repo-wide tools</strong>, such as <code>scripts/doctor.sh</code>, the toolchain check that <code>make setup</code> runs (<a href="/calendar/pr-preview/pr-173/adr/0011/">ADR-0011</a>).</li>
+<li><strong>Skill-bundled tools</strong>, such as the <code>adr-draft</code> skill’s validator <code>check_adr.py</code>, which runs in <code>just lint</code> and in the CI <code>Docs</code> job (<a href="/calendar/pr-preview/pr-173/adr/0000/">ADR-0000</a>).</li>
+<li><strong>Repo-wide tools</strong>, such as <code>scripts/doctor.sh</code>, the toolchain check that <code>just setup</code> runs (<a href="/calendar/pr-preview/pr-173/adr/0011/">ADR-0011</a>).</li>
 </ul>
 <p>Both were written without a recorded decision, in Python and Bash. That adds languages to a repo deliberately limited to C# and TypeScript (<a href="/calendar/pr-preview/pr-173/adr/0001/">ADR-0001</a>), and neither script meets the lint and test standards that apply to all other code (<a href="/calendar/pr-preview/pr-173/adr/0009/">ADR-0009</a>). More checkers and generators will follow.</p>
 <p>Which language and layout should <strong>all</strong> repo tooling scripts use, and where should they live, both inside skills and outside them?</p>
@@ -85,7 +85,7 @@
 <li><strong>D2 Same quality bar as product code</strong>: analyzers/lint, formatting checks and automated tests run locally and in CI. Required in review.</li>
 <li><strong>D3 No new toolchain</strong>: use only tools contributors already need (.NET SDK, Node/pnpm, Docker, Make; see <a href="/calendar/pr-preview/pr-173/adr/0011/">ADR-0011</a>).</li>
 <li><strong>D4 Stack consistency</strong>: stay within the repo’s two languages (<a href="/calendar/pr-preview/pr-173/adr/0001/">ADR-0001</a>).</li>
-<li><strong>D5 Fast feedback</strong>: quick enough to stay in <code>make lint</code>, agent loops and CI.</li>
+<li><strong>D5 Fast feedback</strong>: quick enough to stay in <code>just lint</code>, agent loops and CI.</li>
 <li><strong>D6 Text-processing ergonomics &#x26; AI-agent proficiency</strong>: concise to write for Markdown, regex and file work, and reliably written and fixed by agents.</li>
 </ul>
 <h2 id="considered-options">Considered Options</h2>
@@ -94,7 +94,7 @@
 <li>Python standard-library script in the tool’s folder, with <code>unittest</code>, ruff and mypy (status quo for the validator, plus a linter and type checker)</li>
 <li>TypeScript run directly by Node 24 in the tool’s folder, with <code>node:test</code>, <code>tsc</code> and ESLint</li>
 <li>.NET 10 file-based app in the tool’s folder that imports <code>backend/</code> build settings</li>
-<li>.NET console project and test project in the backend solution, invoked by skills and <code>make</code></li>
+<li>.NET console project and test project in the backend solution, invoked by skills and <code>just</code></li>
 <li>Bash, with shellcheck and bats (status quo for <code>doctor.sh</code>)</li>
 </ul>
 <h2 id="decision-outcome">Decision Outcome</h2>
@@ -174,7 +174,7 @@
 
 <table><thead><tr><th>Driver</th><th align="center"><strong>.NET file-based, folder-local settings (chosen)</strong></th><th align="center">Python stdlib + ruff/mypy</th><th align="center">TypeScript on Node 24</th><th align="center">.NET file-based, imports backend settings</th><th align="center">.NET projects in backend</th><th align="center">Bash</th></tr></thead><tbody><tr><td>D1 Self-contained tool folders</td><td align="center">★★☆</td><td align="center">★★☆</td><td align="center">★★☆</td><td align="center">☆☆☆</td><td align="center">☆☆☆</td><td align="center">★★★</td></tr><tr><td>D2 Same quality bar</td><td align="center">★★★</td><td align="center">★★☆</td><td align="center">★★☆</td><td align="center">★★★</td><td align="center">★★★</td><td align="center">★☆☆</td></tr><tr><td>D3 No new toolchain</td><td align="center">★★★</td><td align="center">★☆☆</td><td align="center">★★☆</td><td align="center">★★★</td><td align="center">★★★</td><td align="center">★☆☆</td></tr><tr><td>D4 Stack consistency</td><td align="center">★★★</td><td align="center">☆☆☆</td><td align="center">★★☆</td><td align="center">★★★</td><td align="center">★★★</td><td align="center">★☆☆</td></tr><tr><td>D5 Fast feedback</td><td align="center">★★☆</td><td align="center">★★★</td><td align="center">★★★</td><td align="center">★★☆</td><td align="center">★☆☆</td><td align="center">★★★</td></tr><tr><td>D6 Ergonomics &#x26; AI proficiency</td><td align="center">★★☆</td><td align="center">★★★</td><td align="center">★★★</td><td align="center">★★☆</td><td align="center">★★☆</td><td align="center">★☆☆</td></tr></tbody></table>
 <h3 id="exception-bootstrap-checks-stay-in-posix-shell">Exception: bootstrap checks stay in POSIX shell</h3>
-<p>A tool whose job is to diagnose a missing or broken toolchain can’t depend on that toolchain. <code>make doctor</code> must report “no .NET SDK”, and a .NET program can’t run to say so. Therefore:</p>
+<p>A tool whose job is to diagnose a missing or broken toolchain can’t depend on that toolchain. <code>just doctor</code> must report “no .NET SDK”, and a .NET program can’t run to say so. Therefore:</p>
 <ul>
 <li><strong>What qualifies:</strong> checks that run <em>before</em> the toolchain is guaranteed. Today that’s only <code>doctor</code>.</li>
 <li><strong>Language:</strong> POSIX/Bash, kept minimal, with no parsing logic beyond version comparison.</li>
@@ -246,12 +246,12 @@
 </ul>
 </li>
 <li><strong>Package versions:</strong> <code>#:package</code> directives pin exact versions. Each file-based app sits in its own directory, because restore writes <code>packages.lock.json</code> next to it.</li>
-<li><strong>Dependency updates:</strong> Dependabot does <strong>not</strong> read <code>#:package</code> directives or folder-local <code>Directory.Build.props</code> files (verified, see Evidence). Versions are therefore <strong>bumped manually</strong>, matched to <code>backend/Directory.Packages.props</code> whenever Dependabot updates the backend. <code>tools/tool-versions</code> enforces this: <code>make tool-versions</code> (in <code>make lint</code> and the CI <code>Tooling</code> job) fails when a tooling pin differs from the backend’s version, and <code>make tool-versions ARGS=--fix</code> rewrites the pins. Packages the backend doesn’t use are listed as <code>SKIP</code> and stay fully manual. There is deliberately no Dependabot entry for tool folders: it would run weekly and find nothing. Revisit if Dependabot adds support for file-based apps.</li>
+<li><strong>Dependency updates:</strong> Dependabot does <strong>not</strong> read <code>#:package</code> directives or folder-local <code>Directory.Build.props</code> files (verified, see Evidence). Versions are therefore <strong>bumped manually</strong>, matched to <code>backend/Directory.Packages.props</code> whenever Dependabot updates the backend. <code>tools/tool-versions</code> enforces this: <code>just tool-versions</code> (in <code>just lint</code> and the CI <code>Tooling</code> job) fails when a tooling pin differs from the backend’s version, and <code>just tool-versions --fix</code> rewrites the pins. Packages the backend doesn’t use are listed as <code>SKIP</code> and stay fully manual. There is deliberately no Dependabot entry for tool folders: it would run weekly and find nothing. Revisit if Dependabot adds support for file-based apps.</li>
 <li><strong>Minimum SDK:</strong> .NET <strong>10</strong>. A host repo whose <code>global.json</code> pins an older SDK can’t run a skill’s tools; each <code>SKILL.md</code> that bundles tools states this.</li>
 <li><strong>Invocation:</strong>
 <ul>
 <li><code>dotnet run &#x3C;path>/&#x3C;tool>.cs -- &#x3C;args></code>, or <code>./&#x3C;tool>.cs</code> thanks to the <code>#!</code> line.</li>
-<li><code>make</code> targets wrap each tool (e.g. <code>make adr-check</code>), and <code>make lint</code> runs every tool’s tests and the whitespace format checks.</li>
+<li><code>just</code> recipes wrap each tool (e.g. <code>just adr-check</code>), and <code>just lint</code> runs every tool’s tests and the whitespace format checks.</li>
 </ul>
 </li>
 <li><strong>CI:</strong> the <code>Docs</code> job becomes a <strong>Tooling</strong> job:
@@ -276,7 +276,7 @@
 <li>Good, because all tooling code apart from bootstrap shell is C# and passes the same analyzers and tests as product code, including the tools that enforce the conventions.</li>
 <li>Good, because skill folders stay portable: copy one into any repo with the .NET 10 SDK and <code>dotnet run</code> works, with its own quality settings.</li>
 <li>Good, because tests can unit-test tool logic (<code>#:include</code>), not just run tools as black boxes.</li>
-<li>Bad, because the first run on a fresh machine takes ~36 s and runs after an edit ~5 s, against 0.16 s for Python. Cached runs (0.7 s) are fine for <code>make lint</code> and agent loops.</li>
+<li>Bad, because the first run on a fresh machine takes ~36 s and runs after an edit ~5 s, against 0.16 s for Python. Cached runs (0.7 s) are fine for <code>just lint</code> and agent loops.</li>
 <li>Bad, because the quality settings are duplicated: one <code>Directory.Build.props</code> per skill plus one for <code>tools/</code>. This is the price of portability.</li>
 <li>Bad, because pinned tool versions need manual bumps: Dependabot can’t see them (verified).</li>
 <li>Bad, because the CI tooling job gets slower once it has to install .NET; it still runs in parallel with the backend job.</li>
@@ -305,7 +305,7 @@
 <li>Good, because <strong>D5 Fast feedback</strong>: 0.16 s per run.</li>
 <li>Good, because <strong>D6 Ergonomics &#x26; AI proficiency</strong>: concise text processing, and agents write Python fluently.</li>
 <li>Bad, because <strong>D2 Same quality bar</strong>: linting and type checking need ruff and mypy, which aren’t in the standard library and don’t travel with the folder.</li>
-<li>Bad, because <strong>D3 No new toolchain</strong>: adds Python tooling (e.g. uv, ruff, mypy) to the required setup and to <code>make doctor</code>.</li>
+<li>Bad, because <strong>D3 No new toolchain</strong>: adds Python tooling (e.g. uv, ruff, mypy) to the required setup and to <code>just doctor</code>.</li>
 <li>Bad, because <strong>D4 Stack consistency</strong>: a third language.</li>
 </ul>
 <h3 id="typescript-run-directly-by-node-24-with-nodetest-tsc-and-eslint">TypeScript run directly by Node 24, with <code>node:test</code>, <code>tsc</code> and ESLint</h3>

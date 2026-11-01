@@ -161,7 +161,7 @@
 </ul>
 </li>
 <li>Make targets: <code>db-up</code>, <code>db-down</code>, <code>db-reset</code> (drop the volume), <code>db-migrate</code>, <code>db-psql</code>.</li>
-<li><code>make doctor</code> checks that Docker is available and running.</li>
+<li><code>just doctor</code> checks that Docker is available and running.</li>
 </ul>
 <p><strong>Tests</strong></p>
 <ul>
@@ -182,7 +182,7 @@
 </ul>
 <h3 id="consequences">Consequences</h3>
 <ul>
-<li>Good, because new contributors run <code>make db-up &#x26;&#x26; make db-migrate</code>; nothing is installed on the host.</li>
+<li>Good, because new contributors run <code>just db-up &#x26;&#x26; just db-migrate</code>; nothing is installed on the host.</li>
 <li>Good, because each test run gets a clean database, so tests are order-independent and parallel-safe across assemblies.</li>
 <li>Bad, because Docker becomes a hard requirement for development and integration tests.</li>
 <li>Bad, because integration test startup grows by ~2–5 s per test assembly (container start). Sharing one container per assembly keeps this small.</li>
@@ -196,7 +196,7 @@
 <h2 id="pros-and-cons-of-the-options">Pros and Cons of the Options</h2>
 <h3 id="docker-compose-for-development-testcontainers-for-tests">Docker Compose for development, Testcontainers for tests</h3>
 <ul>
-<li>Good, because <strong>D1 Lightweight dev</strong>: one YAML file and a <code>make</code> target; no new .NET projects or workloads.</li>
+<li>Good, because <strong>D1 Lightweight dev</strong>: one YAML file and a <code>just</code> recipe; no new .NET projects or workloads.</li>
 <li>Good, because <strong>D2 Test fidelity &#x26; isolation</strong>: Testcontainers starts a fresh, real PostgreSQL per test assembly, locally and in CI.</li>
 <li>Good, because <strong>D3 Dev/prod parity</strong>: the same pinned image tag as production’s major and minor version.</li>
 <li>Good, because <strong>D4 Security</strong>: binds to localhost only, and credentials live in an untracked <code>.env</code>.</li>

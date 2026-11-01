@@ -75,7 +75,7 @@
 <ul>
 <li><strong>Drafting with an AI agent:</strong> the <a href="https://github.com/mgasca/calendar/blob/main/.claude/skills/adr-draft/SKILL.md"><code>adr-draft</code></a> skill walks through the whole process: drivers, research, writing, validation and the review PR.</li>
 <li><strong>Status:</strong> <code>proposed</code> while the decision is under review, <code>accepted</code> as soon as the user approves it (set in the same PR, before it merges), then <code>superseded by [ADR-NNNN](NNNN-….md)</code> if replaced. Status records whether a decision was <strong>taken</strong>, not whether it has been <strong>delivered</strong>: never wait for the implementation, build or rollout before accepting. Track delivery in issues and PRs.</li>
-<li><strong>Validation:</strong> <code>make adr-check</code> (also part of <code>make lint</code> and CI) checks structure, rating tables, driver coverage, links and this index.</li>
+<li><strong>Validation:</strong> <code>just adr-check</code> (also part of <code>just lint</code> and CI) checks structure, rating tables, driver coverage, links and this index.</li>
 </ul>
 
 

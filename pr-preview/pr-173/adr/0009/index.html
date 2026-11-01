@@ -197,10 +197,10 @@
 <ul>
 <li>Good, because whole bug classes (null derefs, floating promises, a11y violations) fail the build before review.</li>
 <li>Bad, because strict rules occasionally need targeted suppressions, which must include a reason.</li>
-<li>Bad, because type-aware ESLint is the slowest step in <code>make lint</code>. Revisit oxlint’s type-aware mode as it matures.</li>
+<li>Bad, because type-aware ESLint is the slowest step in <code>just lint</code>. Revisit oxlint’s type-aware mode as it matures.</li>
 </ul>
 <h3 id="confirmation">Confirmation</h3>
-<p><code>make lint</code> runs locally. CI runs the same checks as separate steps (<a href="/calendar/pr-preview/pr-173/adr/0012/">ADR-0012</a>). The .NET analyzers run on every <code>dotnet build</code>.</p>
+<p><code>just lint</code> runs locally. CI runs the same checks as separate steps (<a href="/calendar/pr-preview/pr-173/adr/0012/">ADR-0012</a>). The .NET analyzers run on every <code>dotnet build</code>.</p>
 <h2 id="pros-and-cons-of-the-options">Pros and Cons of the Options</h2>
 <h3 id="roslyn--sonaranalyzer--dotnet-format">Roslyn + SonarAnalyzer + dotnet format</h3>
 <ul>
@@ -232,7 +232,7 @@
 <ul>
 <li>Good, because <strong>D1 Bug-finding depth</strong>: type-aware rules (<code>no-floating-promises</code>, <code>no-unsafe-*</code>, <code>no-unnecessary-condition</code>) and jsx-a11y; for example, it caught an always-false error check.</li>
 <li>Good, because <strong>D4 No style debate</strong>: Prettier formats deterministically.</li>
-<li>Good, because <strong>D2 Local/CI parity</strong>: the same CLI and config in the editor, <code>make lint</code> and CI.</li>
+<li>Good, because <strong>D2 Local/CI parity</strong>: the same CLI and config in the editor, <code>just lint</code> and CI.</li>
 <li>Bad, because <strong>D3 Fast feedback</strong>: type-aware linting is slow on large codebases.</li>
 <li>Bad, because <strong>D5 Low setup</strong>: several plugins whose peer ranges must align (see <a href="/calendar/pr-preview/pr-173/adr/0010/">ADR-0010</a>).</li>
 </ul>

@@ -49,9 +49,9 @@ A first read of the code and workflows (`frontend/apps/docs`, `.github/workflows
 1. **Given** `main` after the last ADR PR has merged, **when** I search `docs/decisions/` for `status: proposed`, **then** no ADR matches.
 2. **Given** each of ADR 0022, 0023, 0025 and 0028, **when** its PR has merged, **then** its front matter status is the one the maintainer chose on the issue, and the ADR was not set to `accepted` without that approval.
 3. **Given** each ADR and its row in `docs/decisions/README.md`, **when** I compare them, **then** the statuses are identical.
-4. **Given** each ADR PR branch, **when** CI runs, **then** `make adr-check` and the docs tests pass.
+4. **Given** each ADR PR branch, **when** CI runs, **then** `just adr-check` and the docs tests pass.
 5. **Given** the story is delivered, **when** I read this card, **then** its status is `implemented`, its `pr` list holds every PR, and each criterion above is linked to its check or says it is checked by hand.
-6. **Given** the change is complete, **when** I run `make check`, **then** it passes.
+6. **Given** the change is complete, **when** I run `just check`, **then** it passes.
 
 ## Design decisions
 
@@ -82,7 +82,7 @@ No new ADR is expected.
 | --- | --- |
 | ADR status | `docs/decisions/0022-*.md`, `0023-*.md`, `0025-*.md`, `0028-*.md` (front matter `status`) |
 | ADR index | `docs/decisions/README.md` |
-| Validation | `make adr-check`, docs tests in `frontend/apps/docs` |
+| Validation | `just adr-check`, docs tests in `frontend/apps/docs` |
 
 ### API
 
@@ -90,7 +90,7 @@ No changes.
 
 ### Testing
 
-* `make adr-check` validates the ADR front matter against the index.
+* `just adr-check` validates the ADR front matter against the index.
 * The docs tests read the ADR corpus, so a mismatch between a file and its index row fails them.
 
 ### Lessons learned, known issues and follow-ups

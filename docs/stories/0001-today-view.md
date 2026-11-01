@@ -26,7 +26,7 @@ A morning planner wants one glance that answers three questions: *what's fixed i
   * Tasks without a due date never appear in the Today view.
 * **Task due value:** either a calendar date ("due Friday") or an exact date and time ("due Friday 17:00").
 * **Interaction:** tasks can be marked complete or reopened from the view.
-* **Data entry:** events and tasks are created through the API. For demos and development, `make db-seed` adds a realistic sample day. A create/edit UI is a later story.
+* **Data entry:** events and tasks are created through the API. For demos and development, `just db-seed` adds a realistic sample day. A create/edit UI is a later story.
 * **Whose "today":** the browser's time zone and local date.
 * **Users:** single user, no sign-in yet.
 
@@ -90,7 +90,7 @@ The story also implements these earlier, already-accepted ADRs for the first tim
 | Domain | `backend/src/Calendar.Domain/`: `Events/CalendarEvent.cs`, `Tasks/TodoTask.cs`, `Time/DayWindow.cs`, `Time/TimeZones.cs`, `Time/IanaAliases.cs`, `Agenda/DayInclusion.cs` |
 | Persistence | `backend/src/Calendar.Infrastructure/`: `CalendarDbContext`, `Configurations/`, `Queries/AgendaQueries.cs`, `Migrations/` |
 | API | `backend/src/Calendar.Api/`: `Endpoints/{Event,Task,Agenda}Endpoints.cs`, `Contracts/`, `RequestValidation.cs`, `BadRequestExceptionHandler.cs` |
-| Contract | `contracts/openapi.json` → `frontend/packages/api-client/src/schema.gen.ts` (`make contracts`) |
+| Contract | `contracts/openapi.json` → `frontend/packages/api-client/src/schema.gen.ts` (`just contracts`) |
 | Web UI | `frontend/apps/web/src/features/today/`: `TodayView.tsx`, `useDayAgenda.ts`, `useToggleTask.ts`, `useNow.ts`, `dayTime.ts` |
 | Local database | `compose.yaml`, `docker/postgres/init/01-roles.sh`, `.env.example` |
 | Seed tool | `tools/seed-dev/` |
@@ -121,7 +121,7 @@ Errors use `application/problem+json`: 400 with per-field `errors`, 404 and 409.
 * **Domain unit tests** cover daylight-saving days in New York, London, Santiago, Havana, Beirut, Asuncion, Coyhaique and Apia. They also cover a property test that consecutive days tile without gaps across all system zones, every inclusion boundary, and alias resolution.
 * **API integration tests** run against real PostgreSQL via Testcontainers. `AgendaAgreementTests` checks the SQL agenda against `DayInclusion` across eight zone/date scenarios.
 * **Frontend tests** (Vitest, Testing Library and MSW) cover each section and state, optimistic toggling with rollback and 409 handling, Now/Next markers, midnight rollover and periodic refetch.
-* **Final counts:** 248 backend and 48 frontend tests. `make check` and the GitHub CI on PR #11 are green.
+* **Final counts:** 248 backend and 48 frontend tests. `just check` and the GitHub CI on PR #11 are green.
 
 ### Lessons learned during the build
 
@@ -194,15 +194,15 @@ The view refreshes when you switch back to its window and every five minutes whi
 ### For developers: run it locally with sample data
 
 ```sh
-make db-up && make db-migrate       # start PostgreSQL and create the schema
+just db-up && just db-migrate       # start PostgreSQL and create the schema
 dotnet user-secrets set "ConnectionStrings:Calendar" \
   "Host=127.0.0.1;Port=5432;Database=calendar;Username=calendar_app;Password=<CALENDAR_APP_PASSWORD from .env>" \
   --project backend/src/Calendar.Api
-make dev-api                        # API on http://localhost:5041
-make db-seed                        # add a sample day for your local zone (additive)
-make dev-web                        # web UI; proxies /api to the API
+just dev-api                        # API on http://localhost:5041
+just db-seed                        # add a sample day for your local zone (additive)
+just dev-web                        # web UI; proxies /api to the API
 ```
 
-* **Seed options:** `make db-seed ARGS="--date 2026-10-26 --time-zone Europe/Berlin --api-url http://localhost:5041"`.
-* **Clean slate:** `make db-reset`, then `make db-migrate`.
+* **Seed options:** `just db-seed --date 2026-10-26 --time-zone Europe/Berlin --api-url http://localhost:5041`.
+* **Clean slate:** `just db-reset`, then `just db-migrate`.
 * **Sample data:** the seed adds six timed events (one overlapping pair, one from last night, one running into tomorrow), a birthday and a multi-day conference. It also adds tasks due today, overdue tasks (one already completed), and an undated task and a task due tomorrow, which correctly don't appear.

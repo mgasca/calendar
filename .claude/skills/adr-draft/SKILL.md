@@ -21,7 +21,7 @@ Write a **proposed** ADR that a reviewer can approve with confidence. The rating
 ## Before you start
 
 - A clone of the repo with a clean working tree, so you can create a branch in step 9.
-- The .NET 10 SDK, `make`, `git`, and `gh` (the GitHub CLI) signed in to the repo's GitHub account.
+- The .NET 10 SDK, `just`, `git`, and `gh` (the GitHub CLI) signed in to the repo's GitHub account.
 - A clear request from the user: which decision to record, or which ADR to split, revise or supersede.
 - Run all commands from the repo root.
 
@@ -41,7 +41,7 @@ The repo holds the sources of truth. Read them at the start of every run. They w
 - Run `grep -ril <topic> docs/decisions` to find related ADRs, and read them. A new ADR must not silently contradict an accepted ADR. If it changes an earlier decision, it **supersedes** that decision (see "After review").
 - Read the code and configuration that the decision touches, so the context and implementation notes are accurate.
 - Get the next number with one of these commands:
-  - `make adr-check ARGS=--next-number`
+  - `just adr-check --next-number`
   - `dotnet run .claude/skills/adr-draft/scripts/check-adr/check-adr.cs -- --next-number`
 
   Success: the command prints the next free number, for example `0042`. If it fails, check that the .NET 10 SDK is installed. The first run compiles the script and takes about 30 s.
@@ -218,5 +218,5 @@ tests/fixtures/valid/                                 # minimal valid ADR set th
 ```
 
 - **Requirement:** the .NET 10 SDK. The first run on a machine compiles for about 30 s. After that, runs take under a second.
-- **Changing a rule:** edit `AdrValidator.cs`, add or adjust an `[InlineData]` case in the tests, then run `make tooling` (tests and whitespace check) and `make adr-check`. Success: both commands finish without errors.
-- **Package versions** in `Directory.Build.props` and the `#:package` directives are pinned exactly. Dependabot (the tool that opens dependency-update PRs) cannot see them (verified, ADR-0017). In this repo, `make tool-versions` fails when they differ from `backend/Directory.Packages.props`, and `make tool-versions ARGS=--fix` updates them. In other repos, change them by hand.
+- **Changing a rule:** edit `AdrValidator.cs`, add or adjust an `[InlineData]` case in the tests, then run `just tooling` (tests and whitespace check) and `just adr-check`. Success: both commands finish without errors.
+- **Package versions** in `Directory.Build.props` and the `#:package` directives are pinned exactly. Dependabot (the tool that opens dependency-update PRs) cannot see them (verified, ADR-0017). In this repo, `just tool-versions` fails when they differ from `backend/Directory.Packages.props`, and `just tool-versions --fix` updates them. In other repos, change them by hand.

@@ -50,7 +50,7 @@ Chosen option: "EF Core 10 (Npgsql provider) with code-first migrations". It is 
   * CI fails if the model has unapplied changes (`dotnet ef migrations has-pending-model-changes`).
 * **Deployment:**
   * Production applies migrations with an idempotent **migration bundle** (`dotnet ef migrations bundle`) as a separate deploy step, connecting as `calendar_migrator`. They are **never** applied at app startup.
-  * Development and tests apply migrations explicitly (`make db-migrate`, test fixtures).
+  * Development and tests apply migrations explicitly (`just db-migrate`, test fixtures).
 * **Query hygiene:**
   * Read paths use projections and `AsNoTracking`.
   * EF Core command logging is enabled in Development.

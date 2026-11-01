@@ -130,6 +130,20 @@ jobs:
           dotnet-version: 10.0.x
       - name: Ensure shellcheck
         run: command -v shellcheck || (sudo apt-get update -q && sudo apt-get install -yq shellcheck)
+      - name: Read the pinned just version
+        id: just-version
+        run: echo "version=$(tr -d '[:space:]v' < .just-version)" >> "$GITHUB_OUTPUT"
+      - uses: extractions/setup-just@53165ef7e734c5c07cb06b3c8e7b647c5aa16db3 # v4.0.0
+        with:
+          just-version: ${{ steps.just-version.outputs.version }}
+      # Temporary while the Makefile still exists (ADR-0038): the justfile must offer every Makefile target.
+      - name: justfile is formatted and has every Makefile target
+        run: |
+          just --unstable --fmt --check
+          diff <(grep -hoE '^[a-zA-Z][a-zA-Z0-9_-]*:' Makefile | tr -d ':' | grep -vx help | sort) \
+               <(just --summary | tr ' ' '\n' | grep -vx default | sort)
+      - name: ADRs follow conventions (through just)
+        run: just adr-check
       - name: Test and lint tooling
         run: make tooling
       - name: Azure role SQL matches the local init script (PostgreSQL in Docker)

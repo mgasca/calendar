@@ -70,7 +70,7 @@ An earlier analysis (a previous agent session, recorded in a comment on the issu
 | --- | --- | --- |
 | [0011](../decisions/0011-make-as-top-level-task-runner.md) | GNU Make as a thin top-level task runner | The decision under review. Its drivers D1 and D2 no longer apply. |
 | [0017](../decisions/0017-dotnet-file-based-apps-for-repo-tooling.md) | .NET file-based apps for all repo tooling | Offers a way to keep Make and move logic out of it. Its own driver "no new toolchain" argues against adding `just`, so a new ADR has to address it. |
-| [0038](../decisions/0038-just-as-the-top-level-task-runner.md) | `just` as the top-level task runner, replacing GNU Make (proposed) | The decision this story produces. Once accepted it supersedes ADR-0011. |
+| [0038](../decisions/0038-just-as-the-top-level-task-runner.md) | `just` as the top-level task runner, replacing GNU Make | The decision this story produces. Accepted by the maintainer on its PR, it supersedes ADR-0011. |
 
 The new ADR was drafted with the `adr-draft` skill, using the measured and inferred results of the prototype from the issue.
 
@@ -94,8 +94,8 @@ The new ADR was drafted with the `adr-draft` skill, using the measured and infer
 Each PR branches from fresh `origin/main`. The migration PRs start only after ADR-0038 is accepted.
 
 1. **Card (PR 0):** [#159](https://github.com/mgasca/calendar/pull/159), merged.
-2. **ADR:** [#164](https://github.com/mgasca/calendar/pull/164), proposed. It becomes `accepted`, and ADR-0011 `superseded`, in that PR when the maintainer approves, before it merges.
-3. **Migration, after acceptance (proposed split):**
+2. **ADR:** [#164](https://github.com/mgasca/calendar/pull/164). The maintainer approved it as it stands, so ADR-0038 is `accepted` and ADR-0011 is `superseded` in that PR, before it merges.
+3. **Migration, now that the ADR is accepted (proposed split):**
    * a `justfile` with every Makefile target at parity, the `.just-version` file and the doctor check;
    * CI switched to `just` (the 6 call sites, with `just` installed at the pinned version) and the docs, runbooks and skills updated;
    * the Makefile removed;

@@ -21,7 +21,7 @@ Every record lists its **decision drivers**, rates each option against them in a
 | [0008](0008-frontend-testing-stack.md) | Vitest, Testing Library and MSW for frontend tests | accepted |
 | [0009](0009-static-analysis-and-formatting.md) | Static analysis and formatting enforced at build time | accepted |
 | [0010](0010-toolchain-version-pins.md) | Pin TypeScript 6.0 and ESLint 9 for ecosystem compatibility | accepted |
-| [0011](0011-make-as-top-level-task-runner.md) | GNU Make as a thin top-level task runner | accepted |
+| [0011](0011-make-as-top-level-task-runner.md) | GNU Make as a thin top-level task runner | superseded by [ADR-0038](0038-just-as-the-top-level-task-runner.md) |
 | [0012](0012-ci-and-dependency-updates.md) | GitHub Actions CI, security scanning and Dependabot | accepted |
 | [0013](0013-public-repository-for-github-security-features.md) | Public GitHub repository to enable branch rules and security scanning | accepted |
 | [0014](0014-postgresql-database-engine.md) | PostgreSQL as the database engine, with SQLite on a volume as a budget fallback | superseded by [ADR-0037](0037-postgresql-only-no-sqlite-fallback.md) |
@@ -48,4 +48,4 @@ Every record lists its **decision drivers**, rates each option against them in a
 | [0035](0035-separate-staging-and-production-environments.md) | Separate staging and production environments | accepted |
 | [0036](0036-csharp-layout-rules-with-stylecop-and-sonar.md) | C# layout rules enforced with a StyleCop subset and Sonar's line-length rule | accepted |
 | [0037](0037-postgresql-only-no-sqlite-fallback.md) | PostgreSQL only: drop the SQLite budget fallback | accepted |
-| [0038](0038-just-as-the-top-level-task-runner.md) | just as the top-level task runner, replacing GNU Make | proposed |
+| [0038](0038-just-as-the-top-level-task-runner.md) | just as the top-level task runner, replacing GNU Make | accepted |

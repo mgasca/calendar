@@ -13,7 +13,7 @@ adrs: ["0014", "0015", "0031", "0037"]
 
 > As the maintainer, I need the SQLite budget fallback dropped from the architecture records, so that the docs, the PR template and the code agree that PostgreSQL is the only engine.
 
-Tracked in issue #145. This card records work that was already delivered, so the card PR closes the issue.
+Tracked in issue #145 and delivered by the card PR ([#166](https://github.com/mgasca/calendar/pull/166)). This card records work that was already delivered, so the card PR closes the issue.
 
 ## Background
 

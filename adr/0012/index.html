@@ -214,7 +214,7 @@
 </ul>
 <h3 id="consequences">Consequences</h3>
 <ul>
-<li>Good, because CI runs the same commands as local development (<code>make check</code>).</li>
+<li>Good, because CI runs the same commands as local development (<code>just check</code>).</li>
 <li>Good, because adding or renaming CI jobs doesn’t require ruleset changes; only <code>CI result</code> is required.</li>
 <li>Bad, because Dependabot can’t group across ecosystems or schedule as flexibly as Renovate. Switch if update noise becomes a problem.</li>
 <li>Neutral: GitHub-owned actions on major tags trust GitHub’s tag hygiene. Pin them by SHA too if the threat model requires it.</li>

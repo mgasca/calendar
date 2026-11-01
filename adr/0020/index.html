@@ -170,7 +170,7 @@
 <h3 id="extending-to-week-and-month">Extending to week and month</h3>
 <ul>
 <li>Add sibling operations (<code>/api/agenda/week</code>, or a generic <code>/api/agenda?from&#x26;to&#x26;timeZone</code>) when a second view exists, reusing the item schemas and the projection code. The generic form will need explicit answers to what “overdue” means for a range, which is why it is not built now.</li>
-<li>Each new view is a new operation in the contract, so clients regenerate with <code>make contracts</code> and breaking changes show up as a diff (<a href="/calendar/adr/0004/">ADR-0004</a>).</li>
+<li>Each new view is a new operation in the contract, so clients regenerate with <code>just contracts</code> and breaking changes show up as a diff (<a href="/calendar/adr/0004/">ADR-0004</a>).</li>
 </ul>
 <h3 id="consequences">Consequences</h3>
 <ul>

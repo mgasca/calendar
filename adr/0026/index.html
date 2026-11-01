@@ -168,7 +168,7 @@
 </ul>
 <h3 id="consequences">Consequences</h3>
 <ul>
-<li>Good, because a wrong param or a link to a route that doesn’t exist fails <code>make lint</code> (<code>tsc</code>), not at runtime.</li>
+<li>Good, because a wrong param or a link to a route that doesn’t exist fails <code>just lint</code> (<code>tsc</code>), not at runtime.</li>
 <li>Good, because invalid URLs are rejected while matching, so views only ever receive valid dates.</li>
 <li>Good, because there is no generated route file to keep in sync and no Vite plugin, unlike file-based routing.</li>
 <li>Bad, because code-based routes need the <code>getParentRoute</code> and <code>addChildren</code> boilerplate, and route-level code splitting (<code>lazyRouteComponent</code>) is manual. That is acceptable for a handful of routes.</li>
@@ -178,8 +178,8 @@
 </ul>
 <h3 id="confirmation">Confirmation</h3>
 <ul>
-<li>Routing tests in <code>frontend/apps/web/src/App.test.tsx</code> render the app from a memory history and cover <code>/</code> as today, <code>/day/&#x3C;date></code>, an invalid date, an unknown path and the link back to today. They run in <code>make test</code> and CI.</li>
-<li><code>tsc</code> in <code>make lint</code> checks every <code>Link</code>, <code>useParams</code> and <code>navigate</code> against the registered route tree.</li>
+<li>Routing tests in <code>frontend/apps/web/src/App.test.tsx</code> render the app from a memory history and cover <code>/</code> as today, <code>/day/&#x3C;date></code>, an invalid date, an unknown path and the link back to today. They run in <code>just test</code> and CI.</li>
+<li><code>tsc</code> in <code>just lint</code> checks every <code>Link</code>, <code>useParams</code> and <code>navigate</code> against the registered route tree.</li>
 <li>Review rule: new routes are added in <code>router.tsx</code> with validated params; a PR that adds <code>@tanstack/router-plugin</code> or file-based routes needs a superseding ADR.</li>
 <li>When the API starts serving the SPA, its PR adds the fallback tests listed under <em>Deep links</em>.</li>
 </ul>

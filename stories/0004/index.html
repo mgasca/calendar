@@ -77,7 +77,7 @@
 <p>As a calendar editor I need to be able to add event entries so that I know when my appointments are.</p>
 </blockquote>
 <h2 id="background">Background</h2>
-<p>The API can already create events. <code>POST /api/events</code> validates timed and all-day events, stores them with an overlap index, and is in the generated client (<a href="/calendar/stories/0001/#api">0001</a>). The web app has no way to use it: the day view can show events, and since <a href="/calendar/stories/0003/">0003</a> it can add tasks, but the only way to add an event is <code>make db-seed</code> or a direct API call.</p>
+<p>The API can already create events. <code>POST /api/events</code> validates timed and all-day events, stores them with an overlap index, and is in the generated client (<a href="/calendar/stories/0001/#api">0001</a>). The web app has no way to use it: the day view can show events, and since <a href="/calendar/stories/0003/">0003</a> it can add tasks, but the only way to add an event is <code>just db-seed</code> or a direct API call.</p>
 <p>This story adds the event form to the day view, beside <strong>Add task</strong>, so an editor can add an appointment and see it on the right day. It is the event counterpart of 0003, and it follows the same patterns where it can.</p>
 <h3 id="scope">Scope</h3>
 <ul>

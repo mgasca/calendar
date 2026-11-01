@@ -171,10 +171,10 @@
 <h3 id="changes-beyond-wording">Changes beyond wording</h3>
 <p>These were checked against the repository, not only reworded:</p>
 <ul>
-<li><code>make infra-db-start</code> and <code>make infra-db-stop</code> are named in place of “the tooling’s start and stop commands” (checked against the <code>Makefile</code>).</li>
+<li><code>just infra-db-start</code> and <code>just infra-db-stop</code> are named in place of “the tooling’s start and stop commands” (checked against the <code>Makefile</code>).</li>
 <li>The “requires PR #113” lines were removed, because #113 is merged.</li>
 <li>The bootstrap’s “once this workflow has merged” was removed, because <code>azure-oidc-check.yml</code> is on <code>main</code>.</li>
-<li><code>az postgres flexible-server show</code> for the FQDN and the <code>make infra-init-roles</code> command were added as code blocks. Both were prose before.</li>
+<li><code>az postgres flexible-server show</code> for the FQDN and the <code>just infra-init-roles</code> command were added as code blocks. Both were prose before.</li>
 <li>The database runbook’s <code>Production restore point (UTC)</code> text was checked against <code>tools/infra/Database.cs</code>, and the workflow name and trigger against <code>migrate.yml</code>.</li>
 </ul>
 <h3 id="verification">Verification</h3>

@@ -106,9 +106,9 @@
 <li><strong>Given</strong> a skill under review, <strong>when</strong> its PR is opened, <strong>then</strong> the PR shows the original and the updated <code>SKILL.md</code> as a reviewable diff, and the PR description lists the trade-offs between clarity and simplicity and how each was resolved.</li>
 <li><strong>Given</strong> an updated <code>SKILL.md</code>, <strong>when</strong> it is compared with the original, <strong>then</strong> every rule, command, path and validation step in the original is still present, or the PR description lists it as removed with the reason.</li>
 <li><strong>Given</strong> an updated <code>SKILL.md</code>, <strong>when</strong> it is compared with the original, <strong>then</strong> it is not longer than the original unless the PR description explains each addition.</li>
-<li><strong>Given</strong> each updated skill, <strong>when</strong> it is used on a sample request (an ADR draft for <code>adr-draft</code>, a story card draft for <code>story-draft</code>), <strong>then</strong> the result passes the same validation as before (<code>make adr-check</code> for ADRs, the docs-site tests for story cards).</li>
+<li><strong>Given</strong> each updated skill, <strong>when</strong> it is used on a sample request (an ADR draft for <code>adr-draft</code>, a story card draft for <code>story-draft</code>), <strong>then</strong> the result passes the same validation as before (<code>just adr-check</code> for ADRs, the docs-site tests for story cards).</li>
 <li><strong>Given</strong> the <code>description</code> front matter of an updated skill, <strong>when</strong> it is read, <strong>then</strong> it still names the same triggering requests, or the PR description says what changed and why.</li>
-<li><strong>Given</strong> the change is complete, <strong>when</strong> I run <code>make check</code>, <strong>then</strong> it passes.</li>
+<li><strong>Given</strong> the change is complete, <strong>when</strong> I run <code>just check</code>, <strong>then</strong> it passes.</li>
 </ol>
 <h2 id="design-decisions">Design decisions</h2>
 <h3 id="architecture-decision-records">Architecture Decision Records</h3>
@@ -164,7 +164,7 @@
 <p>No changes.</p>
 <h3 id="testing">Testing</h3>
 <ul>
-<li>The docs-site tests (<code>corepack pnpm --dir frontend --filter @calendar/docs test</code>) and <code>make adr-check</code> still pass.</li>
+<li>The docs-site tests (<code>corepack pnpm --dir frontend --filter @calendar/docs test</code>) and <code>just adr-check</code> still pass.</li>
 <li>A sample ADR and a sample story card are drafted with each updated skill and validated (criterion 4). The samples are not committed.</li>
 <li>There is no automated test of the skill text itself; criteria 1, 2, 3 and 5 are checked by reading the diff.</li>
 </ul>

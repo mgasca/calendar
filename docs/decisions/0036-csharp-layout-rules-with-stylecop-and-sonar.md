@@ -19,7 +19,7 @@ decision-makers: mgasca, Claude (AI assistant)
 ## Decision Drivers
 
 * **D1 Rule coverage**: enforces all three rules: no single-line blocks, one item per line once a list wraps, and a 140-character limit.
-* **D2 Automatic fixes**: most code is written by AI agents, so `make format` should fix violations rather than leave them for hand edits.
+* **D2 Automatic fixes**: most code is written by AI agents, so `just format` should fix violations rather than leave them for hand edits.
 * **D3 Fits the existing toolchain**: runs inside `dotnet build` and `dotnet format`, configured in `.editorconfig`, the same locally and in CI ([ADR-0009](0009-static-analysis-and-formatting.md)), and works for the file-based tooling apps ([ADR-0017](0017-dotnet-file-based-apps-for-repo-tooling.md)).
 * **D4 Low maintenance**: few extra tools or packages, and those are maintained with usable releases.
 * **D5 Targeted change**: changes only the code that breaks these rules, leaving other formatting as it is.
@@ -47,7 +47,7 @@ Chosen option: "StyleCop.Analyzers limited to SA1501, SA1116 and SA1117, plus So
 
 **Packages**
 
-* `StyleCop.Analyzers` `1.3.151-beta`, referenced from `backend/Directory.Build.props` (version in `Directory.Packages.props`) and pinned in `tools/Directory.Build.props` and `.claude/skills/adr-draft/Directory.Build.props`. `make tool-versions` keeps the pins in step.
+* `StyleCop.Analyzers` `1.3.151-beta`, referenced from `backend/Directory.Build.props` (version in `Directory.Packages.props`) and pinned in `tools/Directory.Build.props` and `.claude/skills/adr-draft/Directory.Build.props`. `just tool-versions` keeps the pins in step.
 * SonarAnalyzer.CSharp is already referenced.
 
 **Rules** (in each of the three `.editorconfig` copies)
@@ -62,7 +62,7 @@ Chosen option: "StyleCop.Analyzers limited to SA1501, SA1116 and SA1117, plus So
 
 **Fixes**
 
-* `dotnet format` applies the SA1501, SA1116 and SA1117 code fixes, including in `make format`.
+* `dotnet format` applies the SA1501, SA1116 and SA1117 code fixes, including in `just format`.
 * Lines over 140 characters are wrapped by hand.
 
 ### Other rules adopted with this change
@@ -88,7 +88,7 @@ These rules came out of the same review and are configured in the same `.editorc
 
 ### Consequences
 
-* Good, because single-line blocks and lists that mix wrapped lines fail the build, and `make format` fixes most violations.
+* Good, because single-line blocks and lists that mix wrapped lines fail the build, and `just format` fixes most violations.
 * Good, because the rest of the formatting is unchanged. Short auto-properties and initializers stay on one line.
 * Good, because the clock bans enforce [ADR-0021](0021-client-supplied-date-and-time-zone-define-the-day.md) at compile time.
 * Bad, because S103 only reports long lines, so they are wrapped by hand. String literals and comments sometimes have to be split.
@@ -99,8 +99,8 @@ These rules came out of the same review and are configured in the same `.editorc
 
 ### Confirmation
 
-* The analyzers run in every `dotnet build`, with warnings as errors, in `make lint` and in CI.
-* The tooling apps run the same rules when `make tooling` builds them.
+* The analyzers run in every `dotnet build`, with warnings as errors, in `just lint` and in CI.
+* The tooling apps run the same rules when `just tooling` builds them.
 * `dotnet format --verify-no-changes` fails when a StyleCop code fix hasn't been applied.
 
 ## Pros and Cons of the Options
@@ -119,7 +119,7 @@ These rules came out of the same review and are configured in the same `.editorc
 
 * Good, because **D1 Rule coverage**: it never keeps a block with statements on one line, it breaks lists one item per line, and it wraps to `max_line_length` (read from `.editorconfig`).
 * Good, because **D2 Automatic fixes**: it rewraps long lines itself, so nothing is left to hand-edit except long strings and comments.
-* Bad, because **D3 Fits the existing toolchain**: it is a separate dotnet tool. It conflicts with `dotnet format` whitespace formatting, so `make format` and `make lint` would have to run it alongside `dotnet format style` and `dotnet format analyzers`.
+* Bad, because **D3 Fits the existing toolchain**: it is a separate dotnet tool. It conflicts with `dotnet format` whitespace formatting, so `just format` and `just lint` would have to run it alongside `dotnet format style` and `dotnet format analyzers`.
 * Neutral, because **D4 Low maintenance**: it is well maintained (1.3.0 at the time of writing), but it adds a tool to pin in the tool manifest.
 * Bad, because **D5 Targeted change**: it decides every whitespace choice and reformats every file. [ADR-0009](0009-static-analysis-and-formatting.md) rejected it for that reason.
 

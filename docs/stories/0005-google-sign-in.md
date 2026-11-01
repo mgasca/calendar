@@ -39,7 +39,7 @@ The internet-facing deployment trigger in [ADR-0019](../decisions/0019-single-us
 6. **Given** my session expires mid-use, **when** the next API call returns 401, **then** I am sent to sign-in and returned to where I was after signing in. [Expired session](../../frontend/apps/web/src/features/auth/auth.test.tsx) (`redirects on an expired session with the current URL`).
 7. **Given** the app runs behind an HTTPS proxy, **when** I sign in, **then** the cookie is `Secure`, `HttpOnly` and `SameSite`, and the OIDC redirect URI uses the public HTTPS origin. Configured in `backend/src/Calendar.Api/Program.cs` (`HttpOnly`, `SameSite=Lax`, `Secure` outside Development, forwarded headers). (Not covered by an automated test.)
 8. **Given** the API is running, **when** a request arrives from another origin, **then** no CORS headers permit it. [No CORS headers](../../backend/tests/Calendar.Api.Tests/Endpoints/AuthenticationTests.cs) (`CrossOriginRequestHasNoCorsHeaders`).
-9. **Given** the change is complete, **when** I run `make check`, **then** it passes, including the contract-freshness check. CI runs `make check` and fails on a stale `contracts/openapi.json` (`.github/workflows/ci.yml`).
+9. **Given** the change is complete, **when** I run `just check`, **then** it passes, including the contract-freshness check. CI runs `just check` and fails on a stale `contracts/openapi.json` (`.github/workflows/ci.yml`).
 
 
 ## Design decisions
@@ -48,7 +48,7 @@ The internet-facing deployment trigger in [ADR-0019](../decisions/0019-single-us
 
 ## Implementation notes
 
-The API provides `GET /api/auth/login?returnUrl`, `GET /api/auth/callback/google`, `GET /api/auth/me` and `POST /api/auth/logout`. The web sign-in route is `/signin`. Configure `Auth__Google__ClientId`, `Auth__Google__ClientSecret` and `Auth__AllowedEmails`. API tests use a fake authentication scheme; web tests cover sign-in and return paths. For local seeding, `make db-seed` authenticates with a Development-only key (`Auth__DevSeedKey`, see ADR-0027); `make dev-api` loads `.env`, and `GET /api/auth/login` explains a missing Google configuration with a 503. Known gaps: the Google round trip, the callback's denial path and the cookie/proxy settings have no automated tests; signing in with a real Google account was checked by hand only. Regenerate the contract with `make contracts` and run `make check`.
+The API provides `GET /api/auth/login?returnUrl`, `GET /api/auth/callback/google`, `GET /api/auth/me` and `POST /api/auth/logout`. The web sign-in route is `/signin`. Configure `Auth__Google__ClientId`, `Auth__Google__ClientSecret` and `Auth__AllowedEmails`. API tests use a fake authentication scheme; web tests cover sign-in and return paths. For local seeding, `just db-seed` authenticates with a Development-only key (`Auth__DevSeedKey`, see ADR-0027); `just dev-api` loads `.env`, and `GET /api/auth/login` explains a missing Google configuration with a 503. Known gaps: the Google round trip, the callback's denial path and the cookie/proxy settings have no automated tests; signing in with a real Google account was checked by hand only. Regenerate the contract with `just contracts` and run `just check`.
 
 ## User guide
 

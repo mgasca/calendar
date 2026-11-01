@@ -89,7 +89,7 @@ A docs test requires the five `##` sections in this order: Story, Background, De
 
 - Each criterion must map to at least one test later. A vague criterion ("works well") cannot be linked or failed. Write from the point of view of the user, but be exact about numbers, states and error behaviour.
 - Cover the happy path and the main failure or edge case (validation, empty state, stale data, and DST or time zone when time is involved). Cover keyboard and accessibility when the UI is new. Cover persistence and refresh when data changes.
-- End with the delivery criterion: `**Given** the change is complete, **when** I run `make check`, **then** it passes`. If the API changes, add "including the regenerated contract".
+- End with the delivery criterion: `**Given** the change is complete, **when** I run `just check`, **then** it passes`. If the API changes, add "including the regenerated contract".
 - While the card is `planned`, the criteria carry no test links. Add the links on completion.
 
 **`## Design decisions`**
@@ -128,7 +128,7 @@ corepack pnpm --dir frontend --filter @calendar/docs test
 
 It passes when the tests report no failures. A failure names the card and the rule it broke. Fix every failure and run it again.
 
-Before you deliver, also run `make build-docs` if the card links to other documents or code. It passes when the site builds with no broken-link errors.
+Before you deliver, also run `just build-docs` if the card links to other documents or code. It passes when the site builds with no broken-link errors.
 
 The parser cannot judge scope. Compare the acceptance criteria with the scope bullets. Make sure that no "not in this story" item reappears in the criteria.
 
@@ -175,7 +175,7 @@ Do this in the PR that delivers the story, or in a card-only PR. A story is not 
 2. **Scope and criteria:** change them only to record what was agreed and shipped. If scope was dropped, move it to "Not in this story" or to the follow-ups. Do not delete it silently.
 3. **Link every criterion to its tests.** Use a relative link to the file and line, or to the test name. Example: `[Redirect to sign-in](../../frontend/apps/web/src/features/auth/auth.test.tsx) (`redirects signed-out visitors…`)`. Make sure that each link points at a test that exists and asserts the criterion. If a criterion has no automatic test, say so plainly ("checked by hand", "not exercised in a real browser"). An honest gap is better than a clean-looking card.
 4. **Implementation notes:** write where the code lives (key files and symbols), the API surface (endpoints, status codes, contract regenerated), persistence and migrations, testing, and the delivery plan with the PRs. Add what future contributors need: lessons learned, measurements (state whether you measured or inferred them, and with what data), known issues and limits, and follow-up stories. For deferred scope, open an `XXXX` card or an issue. Do not leave it as a loose sentence.
-5. **User guide:** finalise it against the real UI labels and behaviour, including current limitations. If you can, run the app (`run` skill or `make dev-web`). If you cannot, derive the labels from the components and tests, and say so.
+5. **User guide:** finalise it against the real UI labels and behaviour, including current limitations. If you can, run the app (`run` skill or `just dev-web`). If you cannot, derive the labels from the components and tests, and say so.
 6. Validate as in step 6. Then deliver as in step 7, with the title `Story NNNN: implementation notes, test links and user guide`.
 
 ## Pitfalls seen in this repo

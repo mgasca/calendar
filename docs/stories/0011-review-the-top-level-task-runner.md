@@ -4,14 +4,14 @@ date: 2026-10-31
 issue: https://github.com/mgasca/calendar/issues/153
 pr:
   - https://github.com/mgasca/calendar/pull/159
-adrs: ["0011", "0017"]
+adrs: ["0011", "0017", "0038"]
 ---
 
 # 0011 Review the top-level task runner
 
 ## Story
 
-> As a contributor who works on the repo every day (a person or an AI agent), I need a top-level task runner that is modern and fit for purpose, so that I learn and use a tool that suits the job instead of one I only put up with.
+> As a contributor, whether a person or another agent, I need a top-level task runner that is modern and fit for purpose, so that I learn and use a tool that suits the job instead of one I only put up with.
 
 Tracked in issue #153. Card PR: [#159](https://github.com/mgasca/calendar/pull/159).
 
@@ -69,8 +69,9 @@ An earlier analysis (a previous agent session, recorded in a comment on the issu
 | --- | --- | --- |
 | [0011](../decisions/0011-make-as-top-level-task-runner.md) | GNU Make as a thin top-level task runner | The decision under review. Its drivers D1 and D2 no longer apply. |
 | [0017](../decisions/0017-dotnet-file-based-apps-for-repo-tooling.md) | .NET file-based apps for all repo tooling | Offers a way to keep Make and move logic out of it. Its own driver "no new toolchain" argues against adding `just`, so a new ADR has to address it. |
+| [0038](../decisions/0038-just-as-the-top-level-task-runner.md) | `just` as the top-level task runner, replacing GNU Make (proposed) | The decision this story produces. Once accepted it supersedes ADR-0011. |
 
-A new ADR is expected if the outcome is to change runner. It supersedes ADR-0011 and is drafted with the `adr-draft` skill.
+The new ADR was drafted with the `adr-draft` skill, using the measured and inferred results of the prototype from the issue.
 
 ### Other decisions (not ADR-worthy)
 

@@ -1,5 +1,5 @@
 ---
-status: planned
+status: in-progress
 date: 2026-10-31
 issue: https://github.com/mgasca/calendar/issues/153
 pr:
@@ -80,10 +80,26 @@ The new ADR was drafted with the `adr-draft` skill, using the measured and infer
 * **Renumbering the drivers is left to the ADR:** this card uses the new numbering D1–D4 to keep the text short.
 * **The earlier analysis is input, not a conclusion:** its recommendation was made under the old drivers and without testing `just`.
 * **The prototype is throwaway:** it is not merged, so it does not need the analyzers and tests that ADR-0017 requires of repo tooling.
+* **No `Task` prototype for now:** decided by the maintainer on the ADR PR. ADR-0038 says `Task` is rated from documentation alone and is untested.
+* **No Makefile shim:** decided by the maintainer on the ADR PR. The Makefile is removed as soon as CI and the docs call `just`, because the only people and agents working in the repo are the maintainer's.
+* **One version file for `just`:** decided by the maintainer on the ADR PR. A `.just-version` file at the repo root is read by `tools/doctor/doctor.sh` and by CI, like `frontend/.node-version`.
+* **Commands in old story cards (open):** the maintainer asked to "rewrite". Whether that means the User guide sections only, or every mention of `make` in the cards, is being clarified on the ADR PR. Accepted ADR text is not rewritten either way, because a changed decision is a new ADR that supersedes the old one.
 
 ## Implementation notes
 
-*Planned. This section is completed as the story is built.*
+*In progress. This section is completed as the story is built.*
+
+### Delivery plan
+
+Each PR branches from fresh `origin/main`. The migration PRs start only after ADR-0038 is accepted.
+
+1. **Card (PR 0):** [#159](https://github.com/mgasca/calendar/pull/159), merged.
+2. **ADR:** [#164](https://github.com/mgasca/calendar/pull/164), proposed. It becomes `accepted`, and ADR-0011 `superseded`, in that PR when the maintainer approves, before it merges.
+3. **Migration, after acceptance (proposed split):**
+   * a `justfile` with every Makefile target at parity, the `.just-version` file and the doctor check;
+   * CI switched to `just` (the 6 call sites, with `just` installed at the pinned version) and the docs, runbooks and skills updated;
+   * the Makefile removed;
+   * the card update with test links and lessons learned, carrying `Closes #153`.
 
 ### Where things live
 

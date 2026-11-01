@@ -66,7 +66,7 @@ A throwaway `justfile` with 11 recipes (the 6 targets CI calls and the logic-hea
 Delivered in separate PRs after this ADR is accepted, tracked in story [0011](../stories/0011-review-the-top-level-task-runner.md):
 
 1. Add a `justfile` with every Makefile target at parity. Keep the Makefile until step 3 has landed.
-2. Make `tools/doctor/doctor.sh` check for `just` at a minimum version, and install `just` in CI at a pinned version. `just doctor` cannot run when `just` is missing, so the README's first step runs `./tools/doctor/doctor.sh` directly.
+2. Add a `.just-version` file at the repo root, like `frontend/.node-version`. Make `tools/doctor/doctor.sh` check for `just` at that version or newer, and install `just` in CI at that version, so the number lives in one place. `just doctor` cannot run when `just` is missing, so the README's first step runs `./tools/doctor/doctor.sh` directly.
 3. Switch the 6 CI call sites to `just`, and update `README.md`, `AGENTS.md`, `CLAUDE.md`, the runbooks, the `adr-draft` and `story-draft` skills and the user-guide parts of the story cards.
 4. Remove the Makefile as soon as step 3 has landed. There is no shim: the only people and agents who work in this repo are the maintainer's, and a shim could not forward the `VAR=value` arguments of the 10 targets that take them without its own translation.
 
@@ -86,7 +86,7 @@ Existing ADR text that mentions `make` is a historical record and is not rewritt
 ### Confirmation
 
 * CI runs the same checks through `just` as it ran through `make`, and `just check` passes locally and in CI.
-* `tools/doctor/doctor.sh` fails when `just` is missing or older than the minimum version.
+* `tools/doctor/doctor.sh` fails when `just` is missing or older than the version in `.just-version`.
 * A CI step runs `just --list` and the `justfile` format check (`just --fmt --check`, which is still marked unstable in 1.59.0), so a recipe with a syntax error or a missing comment is caught.
 
 ## Pros and Cons of the Options

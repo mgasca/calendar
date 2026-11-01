@@ -101,7 +101,7 @@ Single tests:
 ## Testing notes
 
 - Run the frontend checks from `frontend/` as CI does: `corepack pnpm lint` (type-aware ESLint, which can take minutes, so don't kill it as hung), `typecheck`, `format:check`, `test`.
-- Vitest's 5 s timeout is tight for a few heavy tests, notably WeekView "back and forward restore the weeks" and the docs "reads every repository ADR". Under load they time out on any branch. Don't run several full suites in parallel. Before treating a timeout as a regression, rerun the file with `--maxWorkers=1` and compare against a branch without your change.
+- Vitest's default timeout is 5 s, and a full suite run in parallel with another can push a normal test past it. Don't run several full suites in parallel. Before treating a timeout as a regression, rerun the file with `--maxWorkers=1` and compare against a branch without your change. A test that genuinely needs more than 5 s should set an explicit timeout with a comment saying why, as the triage batch tests do.
 - Clock tests fake only `Date` by default (`useFakeClock` in `DayView.test.tsx`). Query staleness reads `Date.now()`, so `vi.setSystemTime` past 30 s makes data stale, for example to test a refetch on focus.
 - DST tests depend on the host's time-zone data. If they fail only in one environment, check `TZ` and tzdata before the code.
 - Frontend type errors:

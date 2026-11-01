@@ -145,8 +145,3 @@ Existing ADR text that mentions `make` is a historical record and is not rewritt
 * "Task" in the options is the `go-task` runner. "File-based apps" are the ones defined in [ADR-0017](0017-dotnet-file-based-apps-for-repo-tooling.md).
 * An earlier analysis recommended keeping Make. It was written under the previous drivers and did not test `just`, so it was used as historical input only.
 * Revisit if `just` stops being maintained or its install friction in CI turns out to cost more than the prototype suggested. This trigger is recorded in this ADR only. The implementation PR adds it to the `AGENTS.md` notes.
-* Open questions for the reviewer:
-  1. Should `Task` get a prototype before this is accepted, or is the `just` evidence enough?
-  2. After the migration, should the Makefile be removed at once or kept as a thin shim for a transition period?
-  3. Where should the minimum `just` version live, in `tools/doctor/doctor.sh` or in a version file read by both doctor and CI?
-  4. Should the user-guide parts of old story cards be updated to `just`, or left as written?

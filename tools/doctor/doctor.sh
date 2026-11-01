@@ -54,6 +54,19 @@ else
   ok "Docker $(docker version --format '{{.Server.Version}}' 2>/dev/null) (daemon reachable)"
 fi
 
+# just: the task runner (ADR-0038). The minimum version is in .just-version.
+want_just="$(tr -d '[:space:]v' < "$root/.just-version")"
+if ! command -v just >/dev/null 2>&1; then
+  fail "just not found" "Install just $want_just or newer: https://just.systems/man/en/packages.html (Ubuntu's apt package is older; use the release binary or cargo)"
+else
+  have_just="$(just --version | sed -n 's/^just \([0-9][0-9.]*\).*/\1/p')"
+  if [ "$(printf '%s\n%s\n' "$want_just" "$have_just" | sort -V | head -n 1)" = "$want_just" ]; then
+    ok "just $have_just (.just-version wants $want_just or newer)"
+  else
+    fail "just $have_just, but .just-version wants $want_just or newer" "Install just $want_just or newer: https://just.systems/man/en/packages.html"
+  fi
+fi
+
 # Azure tools are deployment prerequisites; local-only development can skip them.
 if [ "${1:-}" = "--infra" ]; then
   export AZURE_BICEP_USE_BINARY_FROM_PATH=false

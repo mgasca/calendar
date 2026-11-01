@@ -5,7 +5,7 @@ import userEvent from '@testing-library/user-event';
 import { http, HttpResponse } from 'msw';
 import { Profiler } from 'react';
 
-import { renderApp, renderInRouter } from '../../test/render.tsx';
+import { renderApp, renderInRouter, settle } from '../../test/render.tsx';
 import { server } from '../../test/server.ts';
 import { DayView } from './DayView.tsx';
 import { useToday } from '../agenda/useNow.ts';
@@ -584,12 +584,13 @@ describe('DayView', () => {
       useFakeClock('2026-10-27T09:30:00Z', { intervals: true });
       serveAgenda(buildAgenda());
       const onRender = vi.fn();
-      await renderInRouter(
+      const { queryClient } = await renderInRouter(
         <Profiler id="day" onRender={onRender}>
           <DayView date="2026-10-26" timeZone={ZONE} locale="en-GB" />
         </Profiler>,
       );
       await vi.waitFor(() => expect(screen.getByText('Design review')).toBeInTheDocument());
+      await settle(queryClient);
       onRender.mockClear();
       act(() => {
         vi.advanceTimersByTime(60_000);

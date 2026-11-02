@@ -86,7 +86,26 @@ Docs corpus tests and the built site check card structure, index agreement and l
 
 The epic records the audit evidence and all seven enhancement children. Delivery notes will be added per child. No child is complete merely because its instructions have been proposed.
 
+### Historical evidence: decision not to optimise grid layout (#199)
+
+The [original measurement on #48](https://github.com/mgasca/calendar/issues/48#issuecomment-6589857088) reports `layoutDay`, `layoutAllDay` and `eventSpan` at main revision `15cf7d3f`. A throwaway Vitest file timed fully overlapping items with one worker, Node 24.22.2 and a 12-core Intel Core 7 150U, with nothing else running. Each result was a median of 11 iterations (5 at 5,000 items); the ranges below are from two separate runs, not confidence intervals.
+
+| Items | Day: identical spans (ms) | Day: staggered starts (ms) | All-day: week-long bars (ms) | eventSpan alone (ms) |
+| --- | --- | --- | --- | --- |
+| 100 | 0.5 | 0.5 | 0.2–0.5 | 0.6 |
+| 1,000 | 6.6–7.6 | 7.3–8.9 | 4.3–4.5 | 4.3–5.2 |
+| 5,000 | 89–95 | 35–38 | 57–63 | 20–24 |
+
+These are **historical reported measurements**, not results reproduced for this story. The harness and raw samples were not retained; exact input generation, warm-up and timing boundaries cannot be independently checked from the report. The source described the time-zone conversion as more than half the 1,000-item cost. The separately measured `eventSpan` values suggest a substantial cost but are not an additive profile of each layout run.
+
+The issue closed without changing the algorithm. The source also noted memoization from #65: layout runs when events, window or zone change. This evidence supports the decision for the sampled workload; it does not establish that every real calendar stays below 5,000 items or that a browser frame completes within 16 ms. React, DOM, painting, device differences and interaction latency were not measured.
+
+**Reconsider when** users report sluggish dense calendars, supported workloads grow substantially, or memoization/time-zone processing changes. First reproduce with a retained harness on representative hardware and measure browser interaction separately. If slot assignment is then material, compare the proposed occupied-slot/free-index heaps against the existing lowest-free-slot behaviour and retain a control measurement. Follow the [benchmark conventions](../benchmarks/README.md) for new measurements; no algorithm or new benchmark harness was added here.
+
+**Validation:** manually compared this transcription with the linked issue comment and reviewed the limits above. Docs corpus/build checks validate structure and links, not the historical timings or future agent compliance.
+
 ## User guide
+
 
 *Planned behaviour. This section is finalised when the story is implemented.*
 

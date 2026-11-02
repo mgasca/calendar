@@ -61,11 +61,11 @@ if (drifts.Count == 0)
 if (fix)
 {
   var changed = VersionChecker.Fix(root, drifts);
-  Console.WriteLine($"Updated {changed} pin(s). Run 'make tooling' to refresh packages.lock.json files, then commit.");
+  Console.WriteLine($"Updated {changed} pin(s). Run 'just tooling' to refresh packages.lock.json files, then commit.");
   return 0;
 }
 
-Console.WriteLine($"{drifts.Count} pin(s) drifted from backend/Directory.Packages.props. Fix with: make tool-versions ARGS=--fix");
+Console.WriteLine($"{drifts.Count} pin(s) drifted from backend/Directory.Packages.props. Fix with: just tool-versions --fix");
 return 1;
 
 // The nearest ancestor of the working directory containing .git (a directory, or a file in worktrees).

@@ -17,7 +17,7 @@ adrs: ["0018", "0020"]
 
 ## Background
 
-So far, events and tasks can only be created through the API or `make db-seed` ([0001](0001-today-view.md)). With the week view ([0002](0002-week-view.md)) a planner can see the free time in the week, but can't use it without leaving the week.
+So far, events and tasks can only be created through the API or `just db-seed` ([0001](0001-today-view.md)). With the week view ([0002](0002-week-view.md)) a planner can see the free time in the week, but can't use it without leaving the week.
 
 Creating events and tasks **from the day view** is covered by other stories, which are delivered first:
 

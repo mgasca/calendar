@@ -79,7 +79,7 @@ Implementation:
 
 ### Consequences
 
-* Good, because CI runs the same commands as local development (`make check`).
+* Good, because CI runs the same commands as local development (`just check`).
 * Good, because adding or renaming CI jobs doesn't require ruleset changes; only `CI result` is required.
 * Bad, because Dependabot can't group across ecosystems or schedule as flexibly as Renovate. Switch if update noise becomes a problem.
 * Neutral: GitHub-owned actions on major tags trust GitHub's tag hygiene. Pin them by SHA too if the threat model requires it.

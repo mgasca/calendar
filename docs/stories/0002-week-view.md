@@ -107,7 +107,7 @@ The Today view can only show today. This story also makes any day viewable, so t
 | Persistence | `Calendar.Infrastructure/Queries/AgendaQueries.cs`: range forms `AllDayOverlapping`, `TimedOverlapping`, `DueWithin` beside the per-day predicates |
 | Agenda assembly | `Calendar.Api/Endpoints/AgendaBuilder.cs`: runs the range reads in one snapshot and buckets them into days with `DayInclusion`. `AgendaOrder.cs` and `RequestValidation.cs` hold the shared ordering and validation. Both `/day` (a one-day range) and `/week` (seven days) use it. |
 | API | `Calendar.Api/Endpoints/AgendaEndpoints.cs` (`GetWeekAgenda`), `Contracts/AgendaContracts.cs` (`WeekAgendaResponse`, `AgendaDay`) |
-| Contract | `contracts/openapi.json` and `frontend/packages/api-client/src/schema.gen.ts`, regenerated with `make contracts` |
+| Contract | `contracts/openapi.json` and `frontend/packages/api-client/src/schema.gen.ts`, regenerated with `just contracts` |
 | Web: routing | `frontend/apps/web/src/router.tsx` (routes `/`, `/day/$date`, `/week`, `/week/$weekStart`) and `App.tsx` (layout with the Today and Week links, not-found and invalid-date pages), per [ADR-0026](../decisions/0026-client-side-routing-with-tanstack-router.md) |
 | Web: shared | `features/agenda/`: `agendaQuery.ts` (key prefix, errors, retry), `useToggleTask.ts`, `TaskItem.tsx`, `EventTimes.tsx`, `dayTime.ts`, `useNow.ts` |
 | Web: day | `features/day/`: `DayView({ date })`, `TodayView`, `useDayAgenda.ts`. The day header links to its week. |
@@ -153,11 +153,11 @@ The Today view can only show today. This story also makes any day viewable, so t
 * **Frontend:**
   * Pure tests for `weekDates` (ISO weeks, arithmetic, locale-aware ranges across months and years) and `gridLayout` (wall-clock spans, midnight crossing, minimum height, overlap clusters, +N more, a 25-hour DST day, a skipped date, all-day lanes).
   * `WeekView` and routing tests, rendering the app from a memory history: redirects to Monday, navigation by links, keys and browser history, day links and the day view's week link, the Overdue panel in past, current and future weeks, task order and Overdue markers, optimistic ticking with rollback and day-cache invalidation, the empty, loading, error and skipped-date states, and the initial scroll.
-* **Final counts:** 321 backend tests and 151 web tests (plus 1 in `@calendar/api-client`). `make check` is green.
+* **Final counts:** 321 backend tests and 151 web tests (plus 1 in `@calendar/api-client`). `just check` is green.
 
 ### Delivery plan
 
-Delivered as three stacked PRs, each green on `make check`:
+Delivered as three stacked PRs, each green on `just check`:
 
 1. **Backend and [ADR-0024](../decisions/0024-week-agenda-endpoint-on-range-based-internals.md):** ([#18](https://github.com/mgasca/calendar/pull/18)) `DateRangeWindow`, the range queries and the shared builder (with the day endpoint moved onto it), then `GET /api/agenda/week` with endpoint and agreement tests, and the regenerated contract.
 2. **Routing and [ADR-0026](../decisions/0026-client-side-routing-with-tanstack-router.md):** ([#19](https://github.com/mgasca/calendar/pull/19)) TanStack Router. The Today view became the day view at `/` and `/day/:date`, and shared agenda code moved to `features/agenda`.
@@ -165,11 +165,11 @@ Delivered as three stacked PRs, each green on `make check`:
 
 ### Lessons learned during the build
 
-* The ADR numbers drafted in this story went stale when #16 merged first: 0022 and 0023 became 0024 and 0025, and the routing ADR moved again to 0026 when #21 took 0025. Run `make adr-check ARGS=--next-number` right before writing an ADR, not when planning it.
+* The ADR numbers drafted in this story went stale when #16 merged first: 0022 and 0023 became 0024 and 0025, and the routing ADR moved again to 0026 when #21 took 0025. Run `just adr-check --next-number` right before writing an ADR, not when planning it.
 * An agreement test between two outputs of the same builder can't catch a bug the builder shares with itself. It earns its place by catching multi-day bugs; the SQL itself is anchored by a test against an independent implementation.
 * TanStack Router signals not-found and redirects by throwing its own values. ESLint's `only-throw-error` rule allows `NotFoundError` and `Redirect` from `@tanstack/router-core`, and nothing else.
 * Routes render asynchronously, so component tests that need `Link` render inside a minimal router that is loaded before rendering (`renderInRouter`), and app tests wait with `findBy…`.
-* Vitest needed Testing Library's `asyncUtilTimeout` raised to 5 s for the first render of a file while `make check` runs everything in parallel, and `window.scrollTo` stubbed because jsdom doesn't implement it and the router's scroll restoration calls it.
+* Vitest needed Testing Library's `asyncUtilTimeout` raised to 5 s for the first render of a file while `just check` runs everything in parallel, and `window.scrollTo` stubbed because jsdom doesn't implement it and the router's scroll restoration calls it.
 * jsdom implements neither layout nor `contentEditable`: the grid uses a fixed hour height so scroll offsets can be asserted, and tests set the `contenteditable` attribute directly.
 
 ### Known issues

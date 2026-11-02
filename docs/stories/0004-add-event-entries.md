@@ -17,7 +17,7 @@ adrs: ["0018", "0019", "0020", "0021", "0026"]
 
 ## Background
 
-The API can already create events. `POST /api/events` validates timed and all-day events, stores them with an overlap index, and is in the generated client ([0001](0001-today-view.md#api)). The web app has no way to use it: the day view can show events, and since [0003](0003-add-todo-tasks.md) it can add tasks, but the only way to add an event is `make db-seed` or a direct API call.
+The API can already create events. `POST /api/events` validates timed and all-day events, stores them with an overlap index, and is in the generated client ([0001](0001-today-view.md#api)). The web app has no way to use it: the day view can show events, and since [0003](0003-add-todo-tasks.md) it can add tasks, but the only way to add an event is `just db-seed` or a direct API call.
 
 This story adds the event form to the day view, beside **Add task**, so an editor can add an appointment and see it on the right day. It is the event counterpart of 0003, and it follows the same patterns where it can.
 

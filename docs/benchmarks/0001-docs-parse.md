@@ -2,7 +2,7 @@
 
 - **Date:** 2026-10-31
 - **Issue:** [#151](https://github.com/mgasca/calendar/issues/151)
-- **Harness:** `frontend/apps/docs/benchmarks/parse.bench.ts` (`make bench-docs`)
+- **Harness:** `frontend/apps/docs/benchmarks/parse.bench.ts` (`just bench-docs`)
 - **Baseline commit:** `9f2a444` (main after #152)
 
 ## Question

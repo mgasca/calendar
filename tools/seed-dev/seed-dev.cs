@@ -2,10 +2,10 @@
 #:include SeedPlan.cs
 
 // Seeds a running local API with a realistic day of events and tasks so the Today view can be demoed.
-// Additive: it never deletes anything. For a clean slate run `make db-reset` and `make db-migrate` first.
+// Additive: it never deletes anything. For a clean slate run `just db-reset` and `just db-migrate` first.
 //
-//   make db-seed                                  seed today (local zone) via http://localhost:5041
-//   make db-seed ARGS="--date 2026-10-26 --time-zone Europe/Berlin --api-url http://localhost:5041"
+//   just db-seed                                  seed today (local zone) via http://localhost:5041
+//   just db-seed --date 2026-10-26 --time-zone Europe/Berlin --api-url http://localhost:5041
 //
 // Timed events and the timed task are anchored to local wall-clock times in the zone; every date-time is
 // sent with an explicit offset. The completed overdue task is completed "now", so it appears in the
@@ -14,7 +14,7 @@
 using System.Net.Http.Json;
 using SeedDev;
 
-#pragma warning disable S1075 // the dev API address is the documented default (make dev-api)
+#pragma warning disable S1075 // the dev API address is the documented default (just dev-api)
 var apiUrl = "http://localhost:5041";
 #pragma warning restore S1075
 var seedKey = Environment.GetEnvironmentVariable("Auth__DevSeedKey");
@@ -80,7 +80,7 @@ catch (Exception e) when (e is HttpRequestException or TaskCanceledException)
 {
   await Console.Error.WriteLineAsync($"""
         The API at {apiUrl} is not reachable ({e.Message}).
-        Start it first:  make db-up && make db-migrate && make dev-api
+        Start it first:  just db-up && just db-migrate && just dev-api
         (set the connection string as described in the README, "Local database").
         """);
   return 1;

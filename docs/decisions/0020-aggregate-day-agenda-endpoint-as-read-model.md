@@ -57,7 +57,7 @@ Chosen option: "A dedicated day-agenda endpoint beside resource endpoints", beca
 ### Extending to week and month
 
 * Add sibling operations (`/api/agenda/week`, or a generic `/api/agenda?from&to&timeZone`) when a second view exists, reusing the item schemas and the projection code. The generic form will need explicit answers to what "overdue" means for a range, which is why it is not built now.
-* Each new view is a new operation in the contract, so clients regenerate with `make contracts` and breaking changes show up as a diff ([ADR-0004](0004-openapi-contract-and-generated-client.md)).
+* Each new view is a new operation in the contract, so clients regenerate with `just contracts` and breaking changes show up as a diff ([ADR-0004](0004-openapi-contract-and-generated-client.md)).
 
 ### Consequences
 

@@ -92,10 +92,10 @@ Each runbook had two phase-1 drafts, one for clarity (`clear-`) and one for simp
 
 These were checked against the repository, not only reworded:
 
-* `make infra-db-start` and `make infra-db-stop` are named in place of "the tooling's start and stop commands" (checked against the `Makefile`).
+* `just infra-db-start` and `just infra-db-stop` are named in place of "the tooling's start and stop commands" (checked against the `Makefile`).
 * The "requires PR #113" lines were removed, because #113 is merged.
 * The bootstrap's "once this workflow has merged" was removed, because `azure-oidc-check.yml` is on `main`.
-* `az postgres flexible-server show` for the FQDN and the `make infra-init-roles` command were added as code blocks. Both were prose before.
+* `az postgres flexible-server show` for the FQDN and the `just infra-init-roles` command were added as code blocks. Both were prose before.
 * The database runbook's `Production restore point (UTC)` text was checked against `tools/infra/Database.cs`, and the workflow name and trigger against `migrate.yml`.
 
 ### Verification

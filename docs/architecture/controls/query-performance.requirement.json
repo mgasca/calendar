@@ -1,0 +1,18 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://mgasca.github.io/calendar/architecture/controls/query-performance.requirement.json",
+  "title": "Query performance requirement",
+  "description": "Index design and the evidence required for query changes (performance review, issues #50–#55).",
+  "type": "object",
+  "properties": {
+    "indexes": { "type": "array", "items": { "type": "string" } },
+    "overlap-strategy": { "type": "string" },
+    "overdue-strategy": { "type": "string" },
+    "pagination-strategy": { "type": "string" },
+    "evidence": { "type": "string", "description": "What a query or index change must show in its PR." },
+    "measured": { "type": "array", "items": { "type": "string" } },
+    "adrs": { "type": "array", "items": { "type": "string", "format": "uri" } }
+  },
+  "required": ["evidence"],
+  "additionalProperties": false
+}

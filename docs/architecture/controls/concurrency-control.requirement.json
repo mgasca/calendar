@@ -1,0 +1,25 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://mgasca.github.io/calendar/architecture/controls/concurrency-control.requirement.json",
+  "title": "Concurrency control requirement",
+  "description": "How concurrent writes to the same rows are detected and reported.",
+  "type": "object",
+  "properties": {
+    "strategy": { "type": "string" },
+    "token": { "type": "string" },
+    "conflict-status": { "type": "integer" },
+    "idempotent-operations": { "type": "array", "items": { "type": "string" } },
+    "bulk-filtered-writes": {
+      "type": "object",
+      "properties": {
+        "isolation-level": { "type": "string" },
+        "guard": { "type": "string" },
+        "on-mismatch": { "type": "string" }
+      }
+    },
+    "client-behaviour": { "type": "string" },
+    "adrs": { "type": "array", "items": { "type": "string", "format": "uri" } }
+  },
+  "required": ["strategy", "conflict-status"],
+  "additionalProperties": false
+}

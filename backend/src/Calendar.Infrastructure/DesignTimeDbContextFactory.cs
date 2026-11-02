@@ -5,7 +5,7 @@ namespace Calendar.Infrastructure;
 /// <summary>
 /// Used by <c>dotnet ef</c>. <c>migrations add</c> and <c>has-pending-model-changes</c> never connect, so the
 /// placeholder is enough; commands that do (<c>database update</c>, <c>migrations bundle</c>) take
-/// <c>CALENDAR_MIGRATOR_CONNECTION</c> (a <c>calendar_migrator</c> connection string, see <c>make db-migrate</c>).
+/// <c>CALENDAR_MIGRATOR_CONNECTION</c> (a <c>calendar_migrator</c> connection string, see <c>just db-migrate</c>).
 /// </summary>
 internal sealed class DesignTimeDbContextFactory : IDesignTimeDbContextFactory<CalendarDbContext>
 {

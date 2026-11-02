@@ -1,5 +1,5 @@
 ---
-status: accepted
+status: superseded by [ADR-0038](0038-just-as-the-top-level-task-runner.md)
 date: 2026-10-26
 decision-makers: mgasca, Claude (AI assistant)
 ---

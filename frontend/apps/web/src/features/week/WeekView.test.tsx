@@ -4,7 +4,7 @@ import userEvent from '@testing-library/user-event';
 import { http, HttpResponse } from 'msw';
 import { Profiler } from 'react';
 
-import { renderApp, renderInRouter } from '../../test/render.tsx';
+import { renderApp, renderInRouter, settle } from '../../test/render.tsx';
 import { server } from '../../test/server.ts';
 import { emptyWeek, madridMidnight, TEST_ZONE as ZONE } from '../../test/weekAgenda.ts';
 import { agendaKey } from '../day/useDayAgenda.ts';
@@ -150,12 +150,13 @@ describe('clock rendering', () => {
     vi.setSystemTime(new Date(NOW));
     serveBusyWeeks();
     const onRender = vi.fn();
-    await renderInRouter(
+    const { queryClient } = await renderInRouter(
       <Profiler id="week" onRender={onRender}>
         <WeekView weekStart="2026-10-19" timeZone={ZONE} locale="en-GB" />
       </Profiler>,
     );
     await vi.waitFor(() => expect(screen.getByText('Review on 2026-10-19')).toBeInTheDocument());
+    await settle(queryClient);
     onRender.mockClear();
     act(() => {
       vi.advanceTimersByTime(60_000);
@@ -167,8 +168,11 @@ describe('clock rendering', () => {
     vi.useFakeTimers({ toFake: ['Date', 'setInterval', 'clearInterval'] });
     vi.setSystemTime(new Date(NOW));
     serveBusyWeeks();
-    await renderInRouter(<WeekView weekStart={THIS_WEEK} timeZone={ZONE} locale="en-GB" />);
+    const { queryClient } = await renderInRouter(
+      <WeekView weekStart={THIS_WEEK} timeZone={ZONE} locale="en-GB" />,
+    );
     await vi.waitFor(() => expect(screen.getByText('Design review')).toBeInTheDocument());
+    await settle(queryClient);
     const line = document.querySelector('.week-now');
     expect(line).toHaveStyle({ top: `${String(minuteToPx(630))}px` });
     act(() => {

@@ -15,7 +15,7 @@ See also [ADR-0031](../decisions/0031-azure-postgresql-flexible-server.md) and [
 ## Before you start
 
 - Complete the foundation and full deployments in [Azure infrastructure](azure-infrastructure.md). They create the server and both vaults.
-- Use a trusted machine with the repository, the tools the infrastructure runbook lists, Azure CLI (`az`) and a recent `psql`. Run `make` commands from the repository root.
+- Use a trusted machine with the repository, the tools the infrastructure runbook lists, Azure CLI (`az`) and a recent `psql`. Run `just` commands from the repository root.
 - Sign in with `az login` and select the subscription, as in [Azure bootstrap](azure-bootstrap.md). Check `az account show` before each environment.
 - Make sure the server is running. Staging can be stopped to save cost; see [Azure infrastructure](azure-infrastructure.md).
 - You need **Key Vault Secrets Officer** on both vaults and permission to manage the server's firewall rules. You also need access to run GitHub Actions workflows. Production migrations need approval in the protected GitHub environment.
@@ -34,7 +34,7 @@ See also [ADR-0031](../decisions/0031-azure-postgresql-flexible-server.md) and [
 1. Create the roles and their permissions on staging:
 
    ```sh
-   make infra-init-roles ENV=staging ARGS="--client-ip <public-ipv4>"
+   just infra-init-roles staging --client-ip <public-ipv4>
    ```
 
    The command allows your address through the firewall for a short time. It reads the administrator password from the ops vault, creates or checks the roles and their permissions, then removes its firewall rule. If you omit `--client-ip`, the tool asks `https://api.ipify.org` for your address. Supply `--client-ip` if that service is unavailable or reaches Azure by a different route than the database.
@@ -43,7 +43,7 @@ See also [ADR-0031](../decisions/0031-azure-postgresql-flexible-server.md) and [
 2. Run the [live privilege checks](#check-schema-privileges-live). Both must give the expected result before you continue.
 3. Run the migration. In GitHub, open **Actions** > **Database migration** > **Run workflow**. Select the `main` branch and the `staging` environment. The migration job runs only from `main`. Wait for the run to succeed. If it fails, go to [Migration failure and rollback](#migration-failure-and-rollback).
 4. Deploy the app with the app-vault `calendar-connection-string`, as described in [Azure infrastructure](azure-infrastructure.md). Make sure the app is healthy and connects as `calendar_app`.
-5. Repeat steps 1–4 for production, with its subscription, resource group, server and `ENV=production`. Select `production` in the workflow and get the environment approval. Before it migrates, the workflow log prints `Production restore point (UTC): ...`. Record that time; you need it for a restore. Allow traffic only after the workflow, the privilege checks and the app all succeed.
+5. Repeat steps 1–4 for production, with its subscription, resource group, server, and `production` as the environment. Select `production` in the workflow and get the environment approval. Before it migrates, the workflow log prints `Production restore point (UTC): ...`. Record that time; you need it for a restore. Allow traffic only after the workflow, the privilege checks and the app all succeed.
 
 ## Check schema privileges live
 

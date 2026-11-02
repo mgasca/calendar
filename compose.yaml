@@ -1,4 +1,4 @@
-# Local backing services for development (ADR-0016). Start with `make db-up`.
+# Local backing services for development (ADR-0016). Start with `just db-up`.
 #
 # REVISIT TRIGGER: when a second backing service (Redis, a message queue, blob storage, an identity
 # provider, ...) is added, re-evaluate .NET Aspire in a new ADR that supersedes the provisioning part of
@@ -24,7 +24,7 @@ services:
       CALENDAR_APP_PASSWORD: ${CALENDAR_APP_PASSWORD:?copy .env.example to .env}
     volumes:
       - calendar-pgdata:/var/lib/postgresql
-      # Runs once, on first start of an empty volume (`make db-reset` to re-run it).
+      # Runs once, on first start of an empty volume (`just db-reset` to re-run it).
       # create_host_path: false — if the folder is missing (e.g. mid-checkout), fail instead of letting the
       # Docker daemon create it as an empty root-owned directory, which then blocks `git pull`.
       - type: bind

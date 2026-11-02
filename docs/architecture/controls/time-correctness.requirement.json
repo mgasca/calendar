@@ -1,0 +1,30 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://mgasca.github.io/calendar/architecture/controls/time-correctness.requirement.json",
+  "title": "Time, time-zone and DST correctness requirement",
+  "description": "How instants, floating dates, time zones and the current day are represented and who decides them (ADR-0018, ADR-0021).",
+  "type": "object",
+  "properties": {
+    "day-defined-by": { "type": "string", "description": "Which party decides what day it is." },
+    "required-parameters": { "type": "array", "items": { "type": "string" } },
+    "time-zone-ids": { "type": "string", "description": "Accepted time-zone identifier family." },
+    "rejected-time-zone-ids": { "type": "array", "items": { "type": "string" } },
+    "instants": { "type": "string", "description": "How instants are transmitted and stored." },
+    "floating-dates": { "type": "string" },
+    "date-range": { "type": "string" },
+    "dst": {
+      "type": "object",
+      "properties": {
+        "non-existent-local-time": { "type": "string" },
+        "ambiguous-local-time": { "type": "string" },
+        "skipped-date": { "type": "string" },
+        "day-window": { "type": "string" }
+      }
+    },
+    "server-clock": { "type": "string", "description": "How the server reads the clock when it must." },
+    "banned-apis": { "type": "array", "items": { "type": "string" } },
+    "adrs": { "type": "array", "items": { "type": "string", "format": "uri" } }
+  },
+  "required": ["day-defined-by", "time-zone-ids", "instants"],
+  "additionalProperties": false
+}

@@ -1,0 +1,19 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://mgasca.github.io/calendar/architecture/controls/quality-gates.requirement.json",
+  "title": "Build and quality gates requirement",
+  "description": "The checks a change must pass before it merges (ADR-0009, ADR-0012, ADR-0036).",
+  "type": "object",
+  "properties": {
+    "entry-point": { "type": "string", "description": "The one command that runs everything CI runs." },
+    "warnings-as-errors": { "type": "boolean" },
+    "backend-checks": { "type": "array", "items": { "type": "string" } },
+    "frontend-checks": { "type": "array", "items": { "type": "string" } },
+    "repository-checks": { "type": "array", "items": { "type": "string" } },
+    "security-scanning": { "type": "array", "items": { "type": "string" } },
+    "merge-gate": { "type": "string" },
+    "adrs": { "type": "array", "items": { "type": "string", "format": "uri" } }
+  },
+  "required": ["entry-point", "warnings-as-errors"],
+  "additionalProperties": false
+}

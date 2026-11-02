@@ -51,7 +51,7 @@ Chosen option: "Publish stories from their canonical Markdown on the same docume
 
 ### Confirmation
 
-`make adr-check` validates this record. The documentation tests cover story parsing and validation, link rewriting from both collections, and the published pages. The build verification crawls every generated page and fails on any broken internal link or anchor, and on any Markdown link left unrewritten. The build runs at the root path and at a project subpath.
+`just adr-check` validates this record. The documentation tests cover story parsing and validation, link rewriting from both collections, and the published pages. The build verification crawls every generated page and fails on any broken internal link or anchor, and on any Markdown link left unrewritten. The build runs at the root path and at a project subpath.
 
 ## Pros and Cons of the Options
 

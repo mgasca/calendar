@@ -49,9 +49,9 @@ None. The review should come after PR [#138](https://github.com/mgasca/calendar/
 1. **Given** a skill under review, **when** its PR is opened, **then** the PR shows the original and the updated `SKILL.md` as a reviewable diff, and the PR description lists the trade-offs between clarity and simplicity and how each was resolved.
 2. **Given** an updated `SKILL.md`, **when** it is compared with the original, **then** every rule, command, path and validation step in the original is still present, or the PR description lists it as removed with the reason.
 3. **Given** an updated `SKILL.md`, **when** it is compared with the original, **then** it is not longer than the original unless the PR description explains each addition.
-4. **Given** each updated skill, **when** it is used on a sample request (an ADR draft for `adr-draft`, a story card draft for `story-draft`), **then** the result passes the same validation as before (`make adr-check` for ADRs, the docs-site tests for story cards).
+4. **Given** each updated skill, **when** it is used on a sample request (an ADR draft for `adr-draft`, a story card draft for `story-draft`), **then** the result passes the same validation as before (`just adr-check` for ADRs, the docs-site tests for story cards).
 5. **Given** the `description` front matter of an updated skill, **when** it is read, **then** it still names the same triggering requests, or the PR description says what changed and why.
-6. **Given** the change is complete, **when** I run `make check`, **then** it passes.
+6. **Given** the change is complete, **when** I run `just check`, **then** it passes.
 
 ## Design decisions
 
@@ -87,7 +87,7 @@ No changes.
 
 ### Testing
 
-* The docs-site tests (`corepack pnpm --dir frontend --filter @calendar/docs test`) and `make adr-check` still pass.
+* The docs-site tests (`corepack pnpm --dir frontend --filter @calendar/docs test`) and `just adr-check` still pass.
 * A sample ADR and a sample story card are drafted with each updated skill and validated (criterion 4). The samples are not committed.
 * There is no automated test of the skill text itself; criteria 1, 2, 3 and 5 are checked by reading the diff.
 

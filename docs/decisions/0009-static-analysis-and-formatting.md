@@ -64,11 +64,11 @@ Implementation:
 
 * Good, because whole bug classes (null derefs, floating promises, a11y violations) fail the build before review.
 * Bad, because strict rules occasionally need targeted suppressions, which must include a reason.
-* Bad, because type-aware ESLint is the slowest step in `make lint`. Revisit oxlint's type-aware mode as it matures.
+* Bad, because type-aware ESLint is the slowest step in `just lint`. Revisit oxlint's type-aware mode as it matures.
 
 ### Confirmation
 
-`make lint` runs locally. CI runs the same checks as separate steps ([ADR-0012](0012-ci-and-dependency-updates.md)). The .NET analyzers run on every `dotnet build`.
+`just lint` runs locally. CI runs the same checks as separate steps ([ADR-0012](0012-ci-and-dependency-updates.md)). The .NET analyzers run on every `dotnet build`.
 
 ## Pros and Cons of the Options
 
@@ -102,7 +102,7 @@ Implementation:
 
 * Good, because **D1 Bug-finding depth**: type-aware rules (`no-floating-promises`, `no-unsafe-*`, `no-unnecessary-condition`) and jsx-a11y; for example, it caught an always-false error check.
 * Good, because **D4 No style debate**: Prettier formats deterministically.
-* Good, because **D2 Local/CI parity**: the same CLI and config in the editor, `make lint` and CI.
+* Good, because **D2 Local/CI parity**: the same CLI and config in the editor, `just lint` and CI.
 * Bad, because **D3 Fast feedback**: type-aware linting is slow on large codebases.
 * Bad, because **D5 Low setup**: several plugins whose peer ranges must align (see [ADR-0010](0010-toolchain-version-pins.md)).
 

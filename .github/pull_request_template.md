@@ -8,9 +8,9 @@
 
 ## Checklist
 
-- [ ] `make check` passes locally
+- [ ] `just check` passes locally
 - [ ] Tests added or updated for behavior changes
-- [ ] `contracts/openapi.json` regenerated (`make contracts`) if the API changed
+- [ ] `contracts/openapi.json` regenerated (`just contracts`) if the API changed
 - [ ] If this is part of a story: the card in `docs/stories/` exists (PR 0) and, when this PR completes the story, is updated (status, `pr` list, test links, implementation notes, user guide); `Closes #N` only on the completing PR
 - [ ] ADR added in `docs/decisions/` for significant architectural/tooling decisions (drivers, driver × option rating table, pros/cons per option)
 - [ ] If this adds a new backing service (cache, queue, blob storage, identity provider, …): re-evaluate .NET Aspire per [ADR-0016](../docs/decisions/0016-local-database-provisioning.md)

@@ -1,0 +1,1269 @@
+{
+  "$schema": "https://calm.finos.org/release/1.3/meta/calm.json",
+  "unique-id": "calendar-system",
+  "name": "Calendar",
+  "description": "A personal calendar: a .NET 10 minimal API and a React single-page app shipped in one container, backed by PostgreSQL, with Google sign-in for allow-listed people. The API serves events, tasks and day/week agendas; the web app shows day, week, task and overdue-triage views. Architecture decisions are recorded as ADRs in docs/decisions and published on the documentation site.",
+  "metadata": {
+    "version": "1.0.0",
+    "created": "2026-11-02",
+    "created-by": "Generated from the repository with the FINOS CALM skill",
+    "repository": "https://github.com/mgasca/calendar",
+    "documentation-site": "https://mgasca.github.io/calendar/",
+    "adr-url-pattern": "https://mgasca.github.io/calendar/adr/NNNN/ (stable numeric routes, ADR-0023); source at docs/decisions/NNNN-*.md",
+    "story-url-pattern": "https://mgasca.github.io/calendar/stories/NNNN/ (ADR-0028); source at docs/stories/NNNN-*.md",
+    "environments": ["local (Docker Compose)", "staging (Azure, UK South)", "production (Azure, UK South)"],
+    "views": {
+      "context": {
+        "title": "System context",
+        "description": "Who uses the calendar and which outside services it depends on. Everything inside the calendar system is drawn as one box, and the Azure resources of one environment as another; relationships between their parts are collapsed onto the boxes.",
+        "nodes": ["user", "operator", "calendar-system", "google-identity", "github-actions", "github-pages", "azure-resource-group"]
+      },
+      "containers": {
+        "title": "Containers and deployment",
+        "description": "The parts that run, where they run and how they connect: the single container image in the Container Apps environment of a per-environment resource group, the database, the migrator, the tooling around them and the documentation site.",
+        "nodes": ["user", "operator", "google-identity", "web-app", "api-client", "openapi-contract", "calendar-api", "calendar-container", "container-apps-environment", "calendar-db", "db-migrator", "infra-tool", "github-actions", "container-registry", "azure-key-vault-app", "azure-key-vault-ops", "log-analytics", "azure-resource-group", "decision-log", "docs-site", "github-pages"]
+      }
+    },
+    "adrs": [
+      { "id": "ADR-0000", "title": "Use Markdown Architectural Decision Records", "status": "accepted", "file": "docs/decisions/0000-use-markdown-architectural-decision-records.md", "url": "https://mgasca.github.io/calendar/adr/0000/" },
+      { "id": "ADR-0001", "title": "Single repository with per-stack top-level directories", "status": "accepted", "file": "docs/decisions/0001-monorepo-layout.md", "url": "https://mgasca.github.io/calendar/adr/0001/" },
+      { "id": "ADR-0002", "title": ".NET 10 LTS with ASP.NET Core Minimal APIs, Domain + Api projects", "status": "accepted", "file": "docs/decisions/0002-dotnet-10-minimal-api-backend.md", "url": "https://mgasca.github.io/calendar/adr/0002/" },
+      { "id": "ADR-0003", "title": "React + Vite + TypeScript SPA for the web UI", "status": "accepted", "file": "docs/decisions/0003-react-vite-typescript-web-ui.md", "url": "https://mgasca.github.io/calendar/adr/0003/" },
+      { "id": "ADR-0004", "title": "OpenAPI document as the API contract, with a generated TypeScript client", "status": "accepted", "file": "docs/decisions/0004-openapi-contract-and-generated-client.md", "url": "https://mgasca.github.io/calendar/adr/0004/" },
+      { "id": "ADR-0005", "title": "pnpm workspaces for frontend packages", "status": "accepted", "file": "docs/decisions/0005-pnpm-workspace-for-frontend.md", "url": "https://mgasca.github.io/calendar/adr/0005/" },
+      { "id": "ADR-0006", "title": "NuGet Central Package Management with lock files and source mapping", "status": "accepted", "file": "docs/decisions/0006-dotnet-dependency-management.md", "url": "https://mgasca.github.io/calendar/adr/0006/" },
+      { "id": "ADR-0007", "title": "xUnit v3 on Microsoft.Testing.Platform, Shouldly and NSubstitute for .NET tests", "status": "accepted", "file": "docs/decisions/0007-backend-testing-stack.md", "url": "https://mgasca.github.io/calendar/adr/0007/" },
+      { "id": "ADR-0008", "title": "Vitest, Testing Library and MSW for frontend tests", "status": "accepted", "file": "docs/decisions/0008-frontend-testing-stack.md", "url": "https://mgasca.github.io/calendar/adr/0008/" },
+      { "id": "ADR-0009", "title": "Static analysis and formatting enforced at build time", "status": "accepted", "file": "docs/decisions/0009-static-analysis-and-formatting.md", "url": "https://mgasca.github.io/calendar/adr/0009/" },
+      { "id": "ADR-0010", "title": "Pin TypeScript 6.0 and ESLint 9 for ecosystem compatibility", "status": "accepted", "file": "docs/decisions/0010-toolchain-version-pins.md", "url": "https://mgasca.github.io/calendar/adr/0010/" },
+      { "id": "ADR-0011", "title": "GNU Make as a thin top-level task runner", "status": "superseded", "superseded-by": "ADR-0038", "file": "docs/decisions/0011-make-as-top-level-task-runner.md", "url": "https://mgasca.github.io/calendar/adr/0011/" },
+      { "id": "ADR-0012", "title": "GitHub Actions CI, security scanning and Dependabot", "status": "accepted", "file": "docs/decisions/0012-ci-and-dependency-updates.md", "url": "https://mgasca.github.io/calendar/adr/0012/" },
+      { "id": "ADR-0013", "title": "Public GitHub repository to enable branch rules and security scanning", "status": "accepted", "file": "docs/decisions/0013-public-repository-for-github-security-features.md", "url": "https://mgasca.github.io/calendar/adr/0013/" },
+      { "id": "ADR-0014", "title": "PostgreSQL as the database engine, with SQLite on a volume as a budget fallback", "status": "superseded", "superseded-by": "ADR-0037", "file": "docs/decisions/0014-postgresql-database-engine.md", "url": "https://mgasca.github.io/calendar/adr/0014/", "note": "Only the SQLite fallback is withdrawn; the PostgreSQL conventions (roles, timestamptz, ranges) still stand." },
+      { "id": "ADR-0015", "title": "EF Core 10 with code-first migrations for data access", "status": "accepted", "file": "docs/decisions/0015-ef-core-data-access.md", "url": "https://mgasca.github.io/calendar/adr/0015/" },
+      { "id": "ADR-0016", "title": "Docker Compose for local databases and Testcontainers for tests; adopt .NET Aspire later", "status": "accepted", "file": "docs/decisions/0016-local-database-provisioning.md", "url": "https://mgasca.github.io/calendar/adr/0016/" },
+      { "id": "ADR-0017", "title": ".NET 10 file-based apps for all repo tooling scripts, in their skill folder or tools/<name>/", "status": "accepted", "file": "docs/decisions/0017-dotnet-file-based-apps-for-repo-tooling.md", "url": "https://mgasca.github.io/calendar/adr/0017/" },
+      { "id": "ADR-0018", "title": "UTC instants plus an IANA zone id and floating dates, using BCL time types instead of NodaTime", "status": "accepted", "file": "docs/decisions/0018-time-representation-and-bcl-date-time-types.md", "url": "https://mgasca.github.io/calendar/adr/0018/" },
+      { "id": "ADR-0019", "title": "Single-user mode with authentication deferred: no auth and no owner column yet", "status": "superseded", "superseded-by": "ADR-0027", "file": "docs/decisions/0019-single-user-mode-with-authentication-deferred.md", "url": "https://mgasca.github.io/calendar/adr/0019/" },
+      { "id": "ADR-0020", "title": "A dedicated day-agenda endpoint as the read model, beside resource endpoints for writes", "status": "accepted", "file": "docs/decisions/0020-aggregate-day-agenda-endpoint-as-read-model.md", "url": "https://mgasca.github.io/calendar/adr/0020/" },
+      { "id": "ADR-0021", "title": "The client's IANA time zone and local date define \"today\", with the server computing the day window", "status": "accepted", "file": "docs/decisions/0021-client-supplied-date-and-time-zone-define-the-day.md", "url": "https://mgasca.github.io/calendar/adr/0021/" },
+      { "id": "ADR-0022", "title": "Astro and Starlight for the developer documentation UI", "status": "accepted", "file": "docs/decisions/0022-astro-starlight-documentation-ui.md", "url": "https://mgasca.github.io/calendar/adr/0022/" },
+      { "id": "ADR-0023", "title": "Build the canonical ADR log as a static site and publish main to GitHub Pages", "status": "accepted", "file": "docs/decisions/0023-static-adr-log-publication.md", "url": "https://mgasca.github.io/calendar/adr/0023/" },
+      { "id": "ADR-0024", "title": "A sibling week-agenda endpoint as a read model, built on range-based internals", "status": "accepted", "file": "docs/decisions/0024-week-agenda-endpoint-on-range-based-internals.md", "url": "https://mgasca.github.io/calendar/adr/0024/" },
+      { "id": "ADR-0025", "title": "GitHub Pages pull-request previews alongside production using a retained static snapshot", "status": "accepted", "file": "docs/decisions/0025-github-pages-pr-previews.md", "url": "https://mgasca.github.io/calendar/adr/0025/" },
+      { "id": "ADR-0026", "title": "Client-side routing with TanStack Router and code-based route definitions", "status": "accepted", "file": "docs/decisions/0026-client-side-routing-with-tanstack-router.md", "url": "https://mgasca.github.io/calendar/adr/0026/" },
+      { "id": "ADR-0027", "title": "Google OpenID Connect with a backend-for-frontend cookie session", "status": "accepted", "file": "docs/decisions/0027-google-oidc-bff-session.md", "url": "https://mgasca.github.io/calendar/adr/0027/" },
+      { "id": "ADR-0028", "title": "Publish user stories on the documentation site alongside the ADR log", "status": "accepted", "file": "docs/decisions/0028-publish-user-stories-on-the-documentation-site.md", "url": "https://mgasca.github.io/calendar/adr/0028/" },
+      { "id": "ADR-0029", "title": "Use Azure Container Apps as the compute platform", "status": "accepted", "file": "docs/decisions/0029-azure-container-apps-compute-platform.md", "url": "https://mgasca.github.io/calendar/adr/0029/" },
+      { "id": "ADR-0030", "title": "Single container for the API and SPA", "status": "accepted", "file": "docs/decisions/0030-single-container-for-api-and-spa.md", "url": "https://mgasca.github.io/calendar/adr/0030/" },
+      { "id": "ADR-0031", "title": "Azure Database for PostgreSQL Flexible Server with public access and firewall rules", "status": "accepted", "file": "docs/decisions/0031-azure-postgresql-flexible-server.md", "url": "https://mgasca.github.io/calendar/adr/0031/" },
+      { "id": "ADR-0032", "title": "Azure Key Vault for secrets via managed identity", "status": "accepted", "file": "docs/decisions/0032-azure-key-vault-for-secrets.md", "url": "https://mgasca.github.io/calendar/adr/0032/" },
+      { "id": "ADR-0033", "title": "Bicep for Azure infrastructure as code", "status": "accepted", "file": "docs/decisions/0033-bicep-for-infrastructure-as-code.md", "url": "https://mgasca.github.io/calendar/adr/0033/" },
+      { "id": "ADR-0034", "title": "Deploy with GitHub Actions and OIDC federation", "status": "accepted", "file": "docs/decisions/0034-github-actions-oidc-deployment.md", "url": "https://mgasca.github.io/calendar/adr/0034/" },
+      { "id": "ADR-0035", "title": "Separate staging and production environments", "status": "accepted", "file": "docs/decisions/0035-separate-staging-and-production-environments.md", "url": "https://mgasca.github.io/calendar/adr/0035/" },
+      { "id": "ADR-0036", "title": "C# layout rules enforced with a StyleCop subset and Sonar's line-length rule", "status": "accepted", "file": "docs/decisions/0036-csharp-layout-rules-with-stylecop-and-sonar.md", "url": "https://mgasca.github.io/calendar/adr/0036/" },
+      { "id": "ADR-0037", "title": "PostgreSQL only: drop the SQLite budget fallback", "status": "accepted", "supersedes": "ADR-0014", "file": "docs/decisions/0037-postgresql-only-no-sqlite-fallback.md", "url": "https://mgasca.github.io/calendar/adr/0037/" },
+      { "id": "ADR-0038", "title": "just as the top-level task runner, replacing GNU Make", "status": "accepted", "supersedes": "ADR-0011", "file": "docs/decisions/0038-just-as-the-top-level-task-runner.md", "url": "https://mgasca.github.io/calendar/adr/0038/" },
+      { "id": "ADR-0039", "title": "Architecture model and visualization tooling for the documentation site", "status": "proposed", "file": "docs/decisions/0039-architecture-model-and-visualization-tooling.md", "url": "https://mgasca.github.io/calendar/adr/0039/" },
+      { "id": "ADR-0040", "title": "Derive the decision log from the ADR files instead of an index table", "status": "accepted", "file": "docs/decisions/0040-derive-the-decision-log-from-the-adr-files.md", "url": "https://mgasca.github.io/calendar/adr/0040/" }
+    ],
+    "stories": [
+      { "id": "0001", "title": "Today view", "status": "implemented", "url": "https://mgasca.github.io/calendar/stories/0001/" },
+      { "id": "0002", "title": "Week view", "status": "implemented", "url": "https://mgasca.github.io/calendar/stories/0002/" },
+      { "id": "0003", "title": "Add todo tasks", "status": "implemented", "url": "https://mgasca.github.io/calendar/stories/0003/" },
+      { "id": "0004", "title": "Add event entries", "status": "implemented", "url": "https://mgasca.github.io/calendar/stories/0004/" },
+      { "id": "0005", "title": "Google sign-in", "status": "implemented", "url": "https://mgasca.github.io/calendar/stories/0005/" },
+      { "id": "0006", "title": "Add tasks and events in a modal dialog", "status": "implemented", "url": "https://mgasca.github.io/calendar/stories/0006/" },
+      { "id": "0007", "title": "Overdue triage and task deletion", "status": "implemented", "url": "https://mgasca.github.io/calendar/stories/0007/" },
+      { "id": "0008", "title": "Review the runbooks for clarity and simplicity", "status": "implemented", "url": "https://mgasca.github.io/calendar/stories/0008/" },
+      { "id": "0009", "title": "Review the adr-draft and story-draft skills", "status": "planned", "url": "https://mgasca.github.io/calendar/stories/0009/" },
+      { "id": "0010", "title": "Sweep pending ADRs to a decided status", "status": "implemented", "url": "https://mgasca.github.io/calendar/stories/0010/" },
+      { "id": "0011", "title": "Review the top-level task runner", "status": "implemented", "url": "https://mgasca.github.io/calendar/stories/0011/" },
+      { "id": "XXXX", "title": "Create events and tasks from the week view", "status": "planned", "url": "https://mgasca.github.io/calendar/stories/create-events-and-tasks-from-week-view/" }
+    ]
+  },
+  "controls": {
+    "contract-first": {
+      "description": "The OpenAPI document is the contract between the backend and every UI. The API build writes it, CI fails when the committed copy is stale, and the TypeScript client is generated from it and never hand-edited (ADR-0004).",
+      "requirements": [
+        {
+          "requirement-url": "https://raw.githubusercontent.com/mgasca/calendar/main/docs/architecture/controls/contract-first.requirement.json",
+          "config": {
+            "contract": "contracts/openapi.json",
+            "format": "OpenAPI 3 (Microsoft.AspNetCore.OpenApi, code-first)",
+            "generated-by": "dotnet build src/Calendar.Api (just contracts)",
+            "regenerate-command": "just contracts",
+            "staleness-gate": "CI job Backend: 'OpenAPI contract is up to date' (git diff --exit-code on contracts/); the frontend typecheck fails on a contract break",
+            "consumers": ["frontend/packages/api-client (openapi-typescript + openapi-fetch, schema.gen.ts)", "frontend/apps/web"],
+            "hand-edits-allowed": false,
+            "adrs": ["https://mgasca.github.io/calendar/adr/0004/"]
+          }
+        }
+      ]
+    },
+    "quality-gates": {
+      "description": "Every change passes the same gates locally (just check) and in CI: analyzers with warnings as errors, formatting, type-aware lint, tests, the EF model/migrations check, the contract check, the tooling tests and the ADR conventions check. The single required status check on main is 'CI result' (ADR-0009, ADR-0012, ADR-0036).",
+      "requirements": [
+        {
+          "requirement-url": "https://raw.githubusercontent.com/mgasca/calendar/main/docs/architecture/controls/quality-gates.requirement.json",
+          "config": {
+            "entry-point": "just check (= just lint + just test)",
+            "warnings-as-errors": true,
+            "backend-checks": [
+              "Roslyn analyzers at latest-recommended + SonarAnalyzer.CSharp + StyleCop subset (SA1501, SA1116, SA1117) + S103 140-char lines",
+              "BannedApiAnalyzers: DateTime.Now/UtcNow/Today, DateTimeOffset.Now/UtcNow, TimeZoneInfo.Local banned in backend/src",
+              "dotnet format --verify-no-changes",
+              "dotnet restore --locked-mode",
+              "dotnet ef migrations has-pending-model-changes",
+              "xUnit v3 tests on Microsoft.Testing.Platform with coverage (API tests on Testcontainers PostgreSQL)"
+            ],
+            "frontend-checks": [
+              "ESLint 9 type-aware with jsx-a11y, --max-warnings=0",
+              "tsc -b (strict, noUncheckedIndexedAccess, exactOptionalPropertyTypes)",
+              "Prettier format:check",
+              "Vitest + Testing Library + MSW (unhandled requests fail tests)",
+              "Docs site build verified at the root path and at a project subpath"
+            ],
+            "repository-checks": [
+              "just tooling (tests and analyzers of every .NET file-based tool, shellcheck for doctor.sh)",
+              "just tool-versions (tool package pins match backend)",
+              "just adr-check (MADR front matter, section order, rating tables, driver coverage, links, index)",
+              "just --fmt --check",
+              "Container image build + smoke test against PostgreSQL in Docker",
+              "Azure role SQL matches the local init script"
+            ],
+            "security-scanning": [
+              "CodeQL security-extended (csharp, javascript-typescript, actions) on push, PR and weekly",
+              "Dependency review fails on moderate+ vulnerabilities",
+              "Dependabot for NuGet, npm, Docker and Actions",
+              "Secret scanning with push protection"
+            ],
+            "merge-gate": "Ruleset on main: PR required, 'CI result' must pass, no high+ CodeQL alerts, no force-push or deletion, squash/rebase only",
+            "adrs": [
+              "https://mgasca.github.io/calendar/adr/0009/",
+              "https://mgasca.github.io/calendar/adr/0012/",
+              "https://mgasca.github.io/calendar/adr/0013/",
+              "https://mgasca.github.io/calendar/adr/0017/",
+              "https://mgasca.github.io/calendar/adr/0036/",
+              "https://mgasca.github.io/calendar/adr/0038/"
+            ]
+          }
+        }
+      ]
+    },
+    "supply-chain-integrity": {
+      "description": "Builds are reproducible from pinned toolchains and lock files, base images and third-party actions are pinned by digest or SHA, dependency updates are automated, and deployment uses OIDC federation rather than long-lived credentials (ADR-0006, ADR-0010, ADR-0012, ADR-0034).",
+      "requirements": [
+        {
+          "requirement-url": "https://raw.githubusercontent.com/mgasca/calendar/main/docs/architecture/controls/supply-chain-integrity.requirement.json",
+          "config": {
+            "toolchain-pins": [
+              ".NET SDK 10.0.100 (backend/global.json, rollForward latestFeature)",
+              "Node 24 LTS (frontend/.node-version)",
+              "pnpm 12.15.0 via Corepack (packageManager in frontend/package.json)",
+              "just 1.59.0 (.just-version)",
+              "TypeScript ~6.0, ESLint ^9",
+              "Azure CLI and Bicep versions in tools/azure-versions.env, verified by just doctor"
+            ],
+            "lockfiles": ["backend/*/packages.lock.json (NuGet CPM + source mapping to nuget.org)", "frontend/pnpm-lock.yaml", "tools/*/packages.lock.json"],
+            "locked-restore": true,
+            "base-image-pinning": "Dockerfile pins node, dotnet/sdk and dotnet/aspnet images by sha256 digest; compose.yaml pins postgres:18.6-alpine (single source of truth for Testcontainers)",
+            "action-pinning": "GitHub-owned actions by major tag, third-party actions by commit SHA",
+            "dependency-updates": "Dependabot (nuget, npm, docker, github-actions)",
+            "deployment-credentials": "GitHub Actions OIDC federation to a per-environment Azure identity (issuer token.actions.githubusercontent.com, audience api://AzureADTokenExchange, subject repo:mgasca/calendar:environment:<env>); no stored Azure secrets",
+            "registry-admin-user": false,
+            "adrs": [
+              "https://mgasca.github.io/calendar/adr/0005/",
+              "https://mgasca.github.io/calendar/adr/0006/",
+              "https://mgasca.github.io/calendar/adr/0010/",
+              "https://mgasca.github.io/calendar/adr/0012/",
+              "https://mgasca.github.io/calendar/adr/0034/"
+            ]
+          }
+        }
+      ]
+    },
+    "environment-separation": {
+      "description": "Staging and production are separate Azure resource groups with their own Container App, PostgreSQL server, Key Vaults, Google OAuth client, allow-list and deployment identity. Staging holds synthetic data only (ADR-0035).",
+      "requirements": [
+        {
+          "requirement-url": "https://raw.githubusercontent.com/mgasca/calendar/main/docs/architecture/controls/environment-separation.requirement.json",
+          "config": {
+            "environments": ["staging", "production"],
+            "isolation-unit": "Azure resource group per environment with its own user-assigned identity, Container Apps environment, PostgreSQL Flexible Server, app and ops Key Vaults, Container Registry, Log Analytics workspace and Google OAuth client",
+            "parameter-files": ["infra/parameters/staging.bicepparam", "infra/parameters/production.bicepparam"],
+            "shared-resources": ["None at the Azure level; the GitHub repository and its workflows are shared"],
+            "promotion": "The same SHA-tagged image is deployed to staging first; production deployment requires reviewer approval of the GitHub 'production' environment (ADR-0034). Deployment is currently run with `just infra-deploy <env>` (tools/infra, Bicep); migrations with the 'Database migration' workflow.",
+            "adrs": ["https://mgasca.github.io/calendar/adr/0034/", "https://mgasca.github.io/calendar/adr/0035/"]
+          }
+        }
+      ]
+    }
+  },
+  "nodes": [
+    {
+      "unique-id": "user",
+      "node-type": "actor",
+      "name": "Calendar user",
+      "description": "A person whose verified Google email is on the allow-list. Uses the web app in a browser to see today and the week, add events and tasks, tick tasks off and triage overdue tasks.",
+      "metadata": { "adrs": ["ADR-0027"], "stories": ["0001", "0002", "0003", "0004", "0005", "0006", "0007"] }
+    },
+    {
+      "unique-id": "operator",
+      "node-type": "actor",
+      "name": "Maintainer / operator",
+      "description": "The repository owner who merges pull requests, deploys infrastructure with the infra tool, initialises secrets and roles, runs database migrations and approves production deployments.",
+      "metadata": { "adrs": ["ADR-0033", "ADR-0034", "ADR-0035"], "runbooks": ["docs/runbooks/azure-bootstrap.md", "docs/runbooks/azure-infrastructure.md", "docs/runbooks/azure-database.md"] }
+    },
+    {
+      "unique-id": "google-identity",
+      "node-type": "system",
+      "name": "Google Identity (OpenID Connect)",
+      "description": "External identity provider. The API runs the OpenID Connect authorization-code flow against it; the browser is redirected to Google to sign in and back to the API callback with a code.",
+      "interfaces": [
+        { "unique-id": "google-authorization-endpoint", "url": "https://accounts.google.com/o/oauth2/v2/auth", "protocol": "OpenID Connect authorization code" },
+        { "unique-id": "google-token-endpoint", "url": "https://oauth2.googleapis.com/token", "protocol": "OAuth 2.0 token exchange" }
+      ],
+      "metadata": { "ownership": "external", "adrs": ["ADR-0027"], "per-environment": "A separate OAuth client (client id, secret and redirect URI) per environment (ADR-0035)" }
+    },
+    {
+      "unique-id": "calendar-system",
+      "node-type": "system",
+      "name": "Calendar system",
+      "description": "The whole product: web app, API, generated client, contract, database, migrator and documentation site, all developed in the single repository mgasca/calendar.",
+      "metadata": { "adrs": ["ADR-0001", "ADR-0002", "ADR-0003", "ADR-0030"], "repository": "https://github.com/mgasca/calendar" }
+    },
+    {
+      "unique-id": "web-app",
+      "node-type": "webclient",
+      "name": "Calendar web app",
+      "description": "React 19 + Vite + TypeScript single-page app (frontend/apps/web). TanStack Router with code-based routes for /, /day/$date, /week, /week/$weekStart, /tasks, /triage and /signin; TanStack Query for server state. Reads the browser's IANA time zone and local date and sends them with every agenda request. Served as static files from the API container (same origin, no CORS).",
+      "interfaces": [
+        { "unique-id": "web-app-origin", "url": "https://<container-app>.azurecontainerapps.io/", "description": "Same origin as the API; in development Vite proxies /api to http://localhost:5041" },
+        { "unique-id": "web-app-routes", "routes": ["/", "/day/$date", "/week", "/week/$weekStart", "/tasks", "/triage", "/signin"] }
+      ],
+      "controls": {
+        "client-performance": {
+          "description": "Rules from the frontend performance review (issues #42–#49): cache server state for 30 s, refetch agendas every 5 minutes and on focus/visibility/midnight, update task toggles optimistically with per-task rollback, cache Intl formatters, subscribe to the clock only in the smallest component, and prove every performance fix with a test that fails without it.",
+          "requirements": [
+            {
+              "requirement-url": "https://raw.githubusercontent.com/mgasca/calendar/main/docs/architecture/controls/client-performance.requirement.json",
+              "config": {
+                "query-stale-time-ms": 30000,
+                "agenda-refetch-interval-ms": 300000,
+                "refetch-triggers": ["window focus", "visibility change", "local midnight rollover", "manual Refresh", "after every write (invalidate ['agenda'] and ['tasks'])"],
+                "optimistic-updates": "Task complete/reopen only (useToggleTask): patch the cached view, roll back only that task on failure, refetch once after the last in-flight toggle settles or immediately after an error. Event and task creation are not optimistic.",
+                "formatter-caching": "dateTimeFormat(locale, options) in features/agenda/dayTime.ts caches Intl.DateTimeFormat instances; never construct one in a comparator",
+                "clock-subscriptions": "useNow() only in components showing minute-sensitive state; useToday(zone) when only the date matters; one shared timer",
+                "code-splitting": "/tasks, /triage and /week/$weekStart routes are lazy (createLazyRoute); measured gain ~2% of the entry chunk; triage chunk 5.54 kB",
+                "static-asset-caching": { "index.html": "Cache-Control: no-cache", "/assets/*-<hash>.*": "Cache-Control: public, max-age=31536000, immutable" },
+                "evidence": "Every fix needs a test that fails without it (React Profiler render count, MSW request counter or vi.spyOn call count); say whether a finding is measured or inferred",
+                "adrs": ["https://mgasca.github.io/calendar/adr/0003/", "https://mgasca.github.io/calendar/adr/0026/", "https://mgasca.github.io/calendar/adr/0030/"]
+              }
+            }
+          ]
+        },
+        "accessibility": {
+          "description": "Accessibility and usability acceptance criteria shared by the story cards: keyboard operation, native modal dialogs with focus management, status messages for assistive tech, overdue conveyed in text as well as colour, and usable loading/empty/error states on a phone.",
+          "requirements": [
+            {
+              "requirement-url": "https://raw.githubusercontent.com/mgasca/calendar/main/docs/architecture/controls/accessibility.requirement.json",
+              "config": {
+                "keyboard": [
+                  "Week view: ← / → move a week, t goes to this week; ignored in fields, editable text or with a modifier",
+                  "Week grid is a focusable 'Week grid' region where arrows scroll",
+                  "Every control is reachable and operable by keyboard; duplicate submission is blocked while an action is pending"
+                ],
+                "dialogs": [
+                  "Native <dialog> via the shared ModalDialog component",
+                  "Focus moves to the first field on open, is trapped while open and returns to the opener on close",
+                  "Cancel/Escape close without a discard prompt; both do nothing while saving",
+                  "The dialog reopens fresh without previous values",
+                  "Deletion requires a ConfirmDialog stating the task count (hard delete, no undo)"
+                ],
+                "status-messages": "Confirmations use role=\"status\" (e.g. 'Dentist added for Thu 29 Oct' with a Show day link); form errors use a single role=\"alert\"",
+                "colour": "Overdue and past-due are conveyed in text as well as colour",
+                "landmarks": "Each day is a <section aria-labelledby>; hidden '+N more' events stay in the accessible list",
+                "theme": "Dark mode follows the system; plain CSS, no component library (adding one needs an ADR)",
+                "small-screens": "Day, task and triage views usable on a phone; the week grid scrolls sideways (no mobile layout yet)",
+                "adrs": ["https://mgasca.github.io/calendar/adr/0009/"]
+              }
+            }
+          ]
+        }
+      },
+      "metadata": {
+        "adrs": ["ADR-0003", "ADR-0005", "ADR-0008", "ADR-0010", "ADR-0021", "ADR-0026", "ADR-0030"],
+        "stories": ["0001", "0002", "0003", "0004", "0005", "0006", "0007", "XXXX"],
+        "runtime": "Browser; React 19, TanStack Router, TanStack Query, openapi-fetch",
+        "source": "frontend/apps/web",
+        "tests": "Vitest + Testing Library + MSW"
+      }
+    },
+    {
+      "unique-id": "api-client",
+      "node-type": "library",
+      "name": "@calendar/api-client",
+      "description": "TypeScript package (frontend/packages/api-client) generated from contracts/openapi.json with openapi-typescript; createApiClient wraps openapi-fetch with the typed paths. schema.gen.ts is never hand-edited. Shared by every TypeScript UI so that no UI depends on backend code.",
+      "interfaces": [
+        { "unique-id": "api-client-package", "package": "@calendar/api-client", "exports": ["createApiClient", "paths", "components", "Schemas"] }
+      ],
+      "metadata": { "adrs": ["ADR-0004", "ADR-0005"], "source": "frontend/packages/api-client" }
+    },
+    {
+      "unique-id": "openapi-contract",
+      "node-type": "data-asset",
+      "name": "OpenAPI contract",
+      "description": "contracts/openapi.json: the committed OpenAPI 3 document emitted by the API build. It is the single contract between the backend and every client; CI fails when it is stale.",
+      "interfaces": [
+        { "unique-id": "openapi-document", "path": "contracts/openapi.json", "operations": ["GET /api/health", "GET /api/auth/me", "POST /api/auth/logout", "POST /api/events", "GET /api/events/{id}", "GET /api/tasks", "POST /api/tasks", "GET /api/tasks/{id}", "DELETE /api/tasks/{id}", "POST /api/tasks/bulk", "POST /api/tasks/{id}/complete", "POST /api/tasks/{id}/reopen", "GET /api/agenda/day", "GET /api/agenda/week"] }
+      ],
+      "metadata": { "adrs": ["ADR-0004"], "regenerate": "just contracts" }
+    },
+    {
+      "unique-id": "calendar-api",
+      "node-type": "service",
+      "name": "Calendar API",
+      "description": "ASP.NET Core minimal API on .NET 10 (backend/src/Calendar.Api) with a framework-free Calendar.Domain (time-zone and day-inclusion rules) and Calendar.Infrastructure (EF Core 10 on Npgsql, SQL forms of the domain rules). Serves events, tasks, day and week agenda read models and Google sign-in with a cookie session; also serves the SPA's static files and index.html fallback. Every endpoint requires an authenticated user except health and sign-in.",
+      "interfaces": [
+        { "unique-id": "api-http", "port": 8080, "description": "Kestrel listens on http://+:8080 inside the container; TLS terminates at the Container Apps ingress" },
+        { "unique-id": "api-health", "path": "/api/health", "operations": ["GET /api/health"], "authentication": "anonymous" },
+        { "unique-id": "api-auth", "path": "/api/auth", "operations": ["GET /api/auth/login?returnUrl=", "GET /api/auth/callback/google", "GET /api/auth/me", "POST /api/auth/logout"], "authentication": "login and callback anonymous; me and logout require the session cookie" },
+        { "unique-id": "api-events", "path": "/api/events", "operations": ["POST /api/events", "GET /api/events/{id}"], "authentication": "session cookie" },
+        { "unique-id": "api-tasks", "path": "/api/tasks", "operations": ["GET /api/tasks?view=&today=&timeZone=&limit=&cursor=", "POST /api/tasks", "GET /api/tasks/{id}", "DELETE /api/tasks/{id}", "POST /api/tasks/bulk", "POST /api/tasks/{id}/complete", "POST /api/tasks/{id}/reopen"], "authentication": "session cookie" },
+        { "unique-id": "api-agenda", "path": "/api/agenda", "operations": ["GET /api/agenda/day?date=&timeZone=", "GET /api/agenda/week?date=&timeZone=&today="], "authentication": "session cookie" },
+        { "unique-id": "api-static-spa", "path": "/", "description": "Static files from wwwroot (the built SPA); unknown non-file, non-/api paths return index.html with 200 and Cache-Control: no-cache; unknown /api/* paths return 404", "authentication": "anonymous" },
+        { "unique-id": "api-container-image", "image": "crcalendar<suffix>.azurecr.io/calendar:<git-sha> (built from Dockerfile; mcr.microsoft.com/dotnet/aspnet:10.0 runtime, non-root APP_UID)" }
+      ],
+      "controls": {
+        "authentication": {
+          "description": "Google OpenID Connect with a backend-for-frontend cookie session (ADR-0027). The fallback authorization policy requires an authenticated user on every endpoint; only health, the sign-in endpoints and the SPA static files are anonymous. Only verified emails on the allow-list may sign in.",
+          "requirements": [
+            {
+              "requirement-url": "https://raw.githubusercontent.com/mgasca/calendar/main/docs/architecture/controls/authentication.requirement.json",
+              "config": {
+                "identity-provider": "Google OpenID Connect (Microsoft.AspNetCore.Authentication.Google), callback /api/auth/callback/google",
+                "pattern": "Backend-for-frontend: the API holds the OAuth client secret and issues a same-origin cookie; the browser never sees tokens",
+                "fallback-policy": "RequireAuthenticatedUser on every endpoint (AddAuthorization FallbackPolicy)",
+                "anonymous-endpoints": ["GET /api/health", "GET /api/auth/login", "GET /api/auth/callback/google", "SPA static files and index.html fallback", "OpenAPI document (Development only)"],
+                "allow-list": {
+                  "source": "Auth:AllowedEmails (Key Vault secrets allowed-email-N → Auth__AllowedEmails__N in Azure; user-secrets locally)",
+                  "requires-verified-email": true,
+                  "comparison": "case-insensitive exact match; failure redirects to /signin?error=access_denied without creating a session"
+                },
+                "session-cookie": {
+                  "http-only": true,
+                  "same-site": "Lax",
+                  "secure": "Always outside Development (SameAsRequest in Development)",
+                  "lifetime": "8 hours absolute",
+                  "sliding-expiration": false,
+                  "key-storage": "ASP.NET Data Protection key ring persisted in the database (data_protection_keys table), application name 'Calendar'"
+                },
+                "open-redirect-protection": "returnUrl must be a local absolute path (no //, no backslash, no control characters) on both server (ApiAuthentication.LocalReturnUrl) and client (safeReturnTo)",
+                "unauthenticated-api-response": "401 (or 403) for /api/* instead of a redirect; the client raises calendar:unauthorized and routes to /signin with the current URL",
+                "adrs": ["https://mgasca.github.io/calendar/adr/0027/", "https://mgasca.github.io/calendar/adr/0019/"]
+              }
+            }
+          ]
+        },
+        "time-correctness": {
+          "description": "The client's IANA time zone and local date define the day; the server never decides what day it is (ADR-0021). Instants are UTC DateTimeOffset with an end-exclusive span plus the IANA zone id, all-day values are end-exclusive floating dates, and DST gaps and overlaps are handled in one place (ADR-0018).",
+          "requirements": [
+            {
+              "requirement-url": "https://raw.githubusercontent.com/mgasca/calendar/main/docs/architecture/controls/time-correctness.requirement.json",
+              "config": {
+                "day-defined-by": "The client: every endpoint that judges overdue or upcoming takes today/date + timeZone, validated with FieldErrors.RequireDate / RequireTimeZone and marked required in OpenAPI (RequireQueryParameters)",
+                "required-parameters": ["GET /api/agenda/day: date, timeZone", "GET /api/agenda/week: date, timeZone, today", "GET /api/tasks?view=upcoming|overdue: today, timeZone", "POST /api/tasks/bulk filter: today, timeZone, expectedTotal"],
+                "time-zone-ids": "IANA only; legacy aliases mapped to canonical ids from tzdata's backward table (IanaAliases); '+' must be sent as %2B",
+                "rejected-time-zone-ids": ["Windows ids", "localtime", "unknown or hostile ids"],
+                "instants": "DateTimeOffset with an explicit offset (ExplicitOffsetConverter; missing offset → 400), normalised to UTC and stored as timestamptz; tasks have DueDate XOR DueAt (check constraint ck_tasks_due_date_xor_due_at)",
+                "floating-dates": "DateOnly stored as date; all-day events are [startDate, endDate) end-exclusive",
+                "date-range": "Years 1900–2200 (ADR-0024); anything else is 400 on the API and notFound in the router",
+                "dst": {
+                  "non-existent-local-time": "Rejected on the client (deadlineInstants / event form) and server",
+                  "ambiguous-local-time": "The user chooses the occurrence (UTC offset)",
+                  "skipped-date": "An empty day window (e.g. Pacific/Apia 2011-12-30); the week view shows a note",
+                  "day-window": "DayWindow: [local midnight D, local midnight D+1) as UTC; 23 h and 25 h days handled; a non-existent midnight starts at the first valid instant"
+                },
+                "server-clock": "Injected TimeProvider (TimeProvider.System in the app, FakeTimeProvider in tests), used only to stamp completedAt",
+                "banned-apis": ["DateTime.Now", "DateTime.UtcNow", "DateTime.Today", "DateTimeOffset.Now", "DateTimeOffset.UtcNow", "TimeZoneInfo.Local"],
+                "adrs": ["https://mgasca.github.io/calendar/adr/0018/", "https://mgasca.github.io/calendar/adr/0021/", "https://mgasca.github.io/calendar/adr/0024/", "https://mgasca.github.io/calendar/adr/0036/"]
+              }
+            }
+          ]
+        },
+        "read-consistency": {
+          "description": "Every agenda read (day or week) is one read-only REPEATABLE READ snapshot, so a task completed or an event added between its queries cannot appear in some lists and not others (ADR-0020). The week endpoint reuses the same range-based builder with the same fixed number of queries (ADR-0024).",
+          "requirements": [
+            {
+              "requirement-url": "https://raw.githubusercontent.com/mgasca/calendar/main/docs/architecture/controls/read-consistency.requirement.json",
+              "config": {
+                "isolation-level": "REPEATABLE READ",
+                "read-only": true,
+                "queries-per-read": "Four range queries (all-day events, timed events, due tasks, overdue tasks + two counts) whatever the range length; AsNoTracking projections, no N+1",
+                "single-rule-implementation": "Calendar.Domain.Agenda.DayInclusion decides per-day membership in memory; Calendar.Infrastructure.Queries holds the SQL forms; *AgreementTests prove they agree, and a week/day agreement test proves days[i] of a week equals the day agenda",
+                "adrs": ["https://mgasca.github.io/calendar/adr/0020/", "https://mgasca.github.io/calendar/adr/0024/"]
+              }
+            }
+          ]
+        },
+        "concurrency-control": {
+          "description": "Writes use optimistic concurrency on the PostgreSQL xmin system column (ADR-0015) and report conflicts as 409. Set-based bulk actions on 'all N overdue' run in a SERIALIZABLE transaction guarded by the client's expected count.",
+          "requirements": [
+            {
+              "requirement-url": "https://raw.githubusercontent.com/mgasca/calendar/main/docs/architecture/controls/concurrency-control.requirement.json",
+              "config": {
+                "strategy": "Optimistic",
+                "token": "xmin (xid) concurrency token on events and tasks",
+                "conflict-status": 409,
+                "idempotent-operations": ["POST /api/tasks/{id}/complete", "POST /api/tasks/{id}/reopen", "DELETE /api/tasks/{id} (404 treated as already deleted by the client)"],
+                "bulk-filtered-writes": {
+                  "isolation-level": "SERIALIZABLE",
+                  "guard": "The open-overdue count for the client's today/timeZone must equal filter.expectedTotal",
+                  "on-mismatch": "Roll back and return 409 'The overdue task count changed'; serialization failures and deadlocks also map to 409"
+                },
+                "client-behaviour": "A 409 on a toggle triggers a refetch; the triage view asks the user to review the new count and retry; per-id bulk results report applied, skipped or notFound",
+                "adrs": ["https://mgasca.github.io/calendar/adr/0015/"]
+              }
+            }
+          ]
+        },
+        "request-limits": {
+          "description": "All input is validated into RFC 9457 problem details with per-field errors; list endpoints use opaque keyset cursors with bounded page sizes; bulk requests are capped.",
+          "requirements": [
+            {
+              "requirement-url": "https://raw.githubusercontent.com/mgasca/calendar/main/docs/architecture/controls/request-limits.requirement.json",
+              "config": {
+                "error-format": "application/problem+json (RFC 9457); binding failures become 400 via BadRequestExceptionHandler",
+                "validation-status": 400,
+                "field-limits": { "title": "required, trimmed, ≤ 200 chars", "location": "≤ 200 chars", "notes": "≤ 4000 chars", "priority": "low | medium | high (default medium)", "event-end": "must be after start", "task-deadline": "due date XOR due instant" },
+                "pagination": { "style": "Keyset, every comparison in SQL, limit + 1 fetched to detect the next page", "default-limit": 50, "max-limit": 200, "cursor": "Opaque base64url JSON tied to its view", "malformed-cursor-status": 400 },
+                "bulk": { "max-ids": 500, "filter-views": ["overdue"] },
+                "agenda-overdue-limit": 20,
+                "adrs": ["https://mgasca.github.io/calendar/adr/0002/", "https://mgasca.github.io/calendar/adr/0020/"]
+              }
+            }
+          ]
+        },
+        "observability": {
+          "description": "The container exposes /api/health for startup, liveness and readiness probes; console logs and probe results go to the Log Analytics workspace, and Application Insights is provisioned in the same workspace.",
+          "requirements": [
+            {
+              "requirement-url": "https://raw.githubusercontent.com/mgasca/calendar/main/docs/architecture/controls/observability.requirement.json",
+              "config": {
+                "health-endpoint": "GET /api/health → { \"status\": \"ok\" } (anonymous; starts without a database connection string)",
+                "probes": [
+                  { "type": "Startup", "period-seconds": 5, "failure-threshold": 60, "initial-delay-seconds": 1 },
+                  { "type": "Liveness", "period-seconds": 10, "failure-threshold": 3 },
+                  { "type": "Readiness", "period-seconds": 5, "failure-threshold": 3 }
+                ],
+                "logs": "Container Apps appLogsConfiguration → Log Analytics workspace law-calendar-<suffix>",
+                "log-retention-days": 30,
+                "telemetry": "Application Insights appi-calendar-<suffix> (workspace-based)",
+                "audit-logs": ["Key Vault AuditEvent diagnostics for the app and ops vaults"],
+                "structured-logging": "CA1848 requires LoggerMessage source-generated logging methods",
+                "adrs": ["https://mgasca.github.io/calendar/adr/0029/", "https://mgasca.github.io/calendar/adr/0032/"]
+              }
+            }
+          ]
+        }
+      },
+      "metadata": {
+        "adrs": ["ADR-0002", "ADR-0004", "ADR-0006", "ADR-0007", "ADR-0009", "ADR-0015", "ADR-0018", "ADR-0020", "ADR-0021", "ADR-0024", "ADR-0027", "ADR-0030", "ADR-0036"],
+        "stories": ["0001", "0002", "0003", "0004", "0005", "0007"],
+        "runtime": ".NET 10 LTS, ASP.NET Core minimal API, EF Core 10 + Npgsql",
+        "projects": ["backend/src/Calendar.Domain", "backend/src/Calendar.Infrastructure", "backend/src/Calendar.Api"],
+        "tests": "xUnit v3 on Microsoft.Testing.Platform; API tests use WebApplicationFactory + FakeTimeProvider on Testcontainers PostgreSQL",
+        "resources": "0.25 vCPU / 0.5 GiB, min 0 / max 1 replica (Consumption)",
+        "dev-url": "http://localhost:5041",
+        "development-only": "X-Dev-Seed-Key header scheme (Auth:DevSeedKey ≥ 32 chars) lets just db-seed authenticate"
+      }
+    },
+    {
+      "unique-id": "calendar-db",
+      "node-type": "database",
+      "name": "Calendar database (PostgreSQL 18)",
+      "description": "The 'calendar' PostgreSQL database: events (with generated tstzrange/daterange spans and GiST indexes), tasks (partial B-tree indexes for due and open-overdue lookups) and the Data Protection key ring. Locally postgres:18.6-alpine in Docker Compose on 127.0.0.1:5432; in Azure a Flexible Server (Burstable Standard_B1ms, 32 GB, TLS required) per environment.",
+      "interfaces": [
+        { "unique-id": "db-port", "port": 5432, "host": "psql-calendar-<suffix>.postgres.database.azure.com (Azure) / 127.0.0.1 (local)" },
+        { "unique-id": "db-app-role", "role": "calendar_app", "privileges": "SELECT, INSERT, UPDATE, DELETE on tables; USAGE, SELECT on sequences; no DDL" },
+        { "unique-id": "db-migrator-role", "role": "calendar_migrator", "privileges": "Owns the database and schema; USAGE, CREATE on schema public; default privileges grant DML to calendar_app" }
+      ],
+      "controls": {
+        "data-durability": {
+          "description": "Managed backups with 7-day point-in-time retention in Azure, TLS-only transport, a narrow firewall, and database-level integrity constraints that mirror the domain rules (ADR-0014, ADR-0031).",
+          "requirements": [
+            {
+              "requirement-url": "https://raw.githubusercontent.com/mgasca/calendar/main/docs/architecture/controls/data-durability.requirement.json",
+              "config": {
+                "engine": "PostgreSQL 18 (image postgres:18.6-alpine locally and in Testcontainers; Azure Database for PostgreSQL Flexible Server, version 18, in Azure)",
+                "backup-retention-days": 7,
+                "geo-redundant-backup": false,
+                "storage": "32 GB; Burstable Standard_B1ms; staging is stopped when idle (no backups while stopped)",
+                "integrity-constraints": [
+                  "ck_tasks_title_not_blank: length(btrim(title)) > 0",
+                  "ck_tasks_priority: priority IN ('low','medium','high')",
+                  "ck_tasks_due_date_xor_due_at: due_date IS NULL OR due_at IS NULL",
+                  "Events: timed span tstzrange / all-day date_span daterange generated columns",
+                  "xmin concurrency tokens on events and tasks"
+                ],
+                "network-exposure": "Local: bound to 127.0.0.1 only. Azure: public network access with firewall rules for the Container App outbound IPs and allow-listed operator IPs; require_secure_transport=on; private networking deferred (#84)",
+                "adrs": ["https://mgasca.github.io/calendar/adr/0014/", "https://mgasca.github.io/calendar/adr/0016/", "https://mgasca.github.io/calendar/adr/0031/", "https://mgasca.github.io/calendar/adr/0035/", "https://mgasca.github.io/calendar/adr/0037/"]
+              }
+            }
+          ]
+        },
+        "query-performance": {
+          "description": "Index design from the backend performance review (issues #50–#55): partial indexes for open/dated tasks, GiST range indexes for overlap queries, disjoint UNION ALL branches so partial indexes apply, and measured EXPLAIN (ANALYZE, BUFFERS) plans in every query PR.",
+          "requirements": [
+            {
+              "requirement-url": "https://raw.githubusercontent.com/mgasca/calendar/main/docs/architecture/controls/query-performance.requirement.json",
+              "config": {
+                "indexes": [
+                  "ix_tasks_due_date WHERE due_date IS NOT NULL",
+                  "ix_tasks_due_at WHERE due_at IS NOT NULL",
+                  "ix_tasks_completed_at WHERE completed_at IS NOT NULL",
+                  "ix_tasks_open_due_date WHERE due_date IS NOT NULL AND completed_at IS NULL",
+                  "ix_tasks_open_due_at WHERE due_at IS NOT NULL AND completed_at IS NULL",
+                  "GiST on events.span (tstzrange) and events.date_span (daterange)"
+                ],
+                "overlap-strategy": "Generated half-open ranges queried with && / @> through NpgsqlRangeDbFunctionsExtensions, because a B-tree on (start, end) cannot narrow start < X AND end > Y",
+                "overdue-strategy": "Open and completed-within-today branches combined with EF Concat (UNION ALL) so each matches its own partial index (AgendaQueries.OverdueFor)",
+                "pagination-strategy": "Keyset pagination with hand-expanded seek predicates around nullable keys (TaskListQueries, TaskListCursor)",
+                "evidence": "Seed ~100k realistic rows in a throwaway Testcontainers test, ANALYZE, then EXPLAIN (ANALYZE, BUFFERS) on the SQL EF generates; put before/after plans in the PR; never commit the harness",
+                "measured": ["Bulk complete of 50k tasks: 1.5 s set-based vs 40 s one by one", "Bulk delete: 0.1 s vs 11 s"],
+                "adrs": ["https://mgasca.github.io/calendar/adr/0014/", "https://mgasca.github.io/calendar/adr/0015/"]
+              }
+            }
+          ]
+        }
+      },
+      "metadata": {
+        "adrs": ["ADR-0014", "ADR-0015", "ADR-0016", "ADR-0031", "ADR-0035", "ADR-0037"],
+        "schema-management": "EF Core code-first migrations in backend/src/Calendar.Infrastructure/Migrations, snake_case naming; applied only by the migrator, never by the app",
+        "local": "docker compose (compose.yaml), roles created by docker/postgres/init/01-roles.sh, credentials in untracked .env",
+        "azure": "infra/modules/database.bicep; roles created by `just infra-init-roles` with the same SQL (checked by CI)"
+      }
+    },
+    {
+      "unique-id": "db-migrator",
+      "node-type": "service",
+      "name": "Database migrator",
+      "description": "The only path that changes the schema: EF Core migrations applied as calendar_migrator. Locally `just db-migrate` (dotnet ef database update); in Azure `just infra-migrate <env>` builds an idempotent migration bundle and runs it, from the manually dispatched 'Database migration' GitHub Actions workflow. A failed bundle leaves the existing revision serving.",
+      "interfaces": [
+        { "unique-id": "migrator-command", "commands": ["just db-migrate", "just infra-migrate <env>", ".github/workflows/migrate.yml (workflow_dispatch, environment input)"] }
+      ],
+      "metadata": { "adrs": ["ADR-0015", "ADR-0031", "ADR-0034"], "source": "tools/infra/Database.cs, backend/src/Calendar.Infrastructure/Migrations" }
+    },
+    {
+      "unique-id": "infra-tool",
+      "node-type": "service",
+      "name": "Infrastructure tool",
+      "description": ".NET 10 file-based app (tools/infra) driven by just: `infra-what-if` and `infra-deploy <env> [foundation|full]` run the Bicep deployment with the Azure CLI, `infra-secret-init` stores the PostgreSQL admin password in the ops vault, `infra-init-roles` creates the database roles, `infra-db-stop/start` manage the staging server. Pinned Azure CLI and Bicep versions are verified by just doctor.",
+      "interfaces": [
+        { "unique-id": "infra-commands", "commands": ["just infra-what-if <env>", "just infra-deploy <env>", "just infra-secret-init <env>", "just infra-init-roles <env>", "just infra-db-stop", "just infra-db-start"] }
+      ],
+      "metadata": { "adrs": ["ADR-0017", "ADR-0033", "ADR-0034"], "source": "tools/infra, infra/main.bicep, infra/modules/*.bicep, infra/parameters/*.bicepparam" }
+    },
+    {
+      "unique-id": "github-actions",
+      "node-type": "service",
+      "name": "GitHub Actions (CI/CD)",
+      "description": "Workflows in .github/workflows: CI (backend, frontend, tooling, container image + smoke test, 'CI result'), CodeQL, dependency review, Infrastructure preview (Bicep what-if), Azure OIDC check, Database migration (manual, per environment, OIDC login) and Publish ADR site (trusted workflow_run publisher for production and PR previews).",
+      "interfaces": [
+        { "unique-id": "ci-workflows", "workflows": ["ci.yml", "codeql.yml", "dependency-review.yml", "infra-whatif.yml", "azure-oidc-check.yml", "migrate.yml", "pages.yml"] }
+      ],
+      "metadata": { "ownership": "platform", "adrs": ["ADR-0012", "ADR-0013", "ADR-0023", "ADR-0025", "ADR-0034"], "required-check": "CI result" }
+    },
+    {
+      "unique-id": "container-registry",
+      "node-type": "system",
+      "name": "Azure Container Registry",
+      "description": "crcalendar<suffix>, Basic SKU, admin user disabled. Holds the SHA-tagged calendar image; the Container App pulls with its user-assigned identity (AcrPull).",
+      "interfaces": [
+        { "unique-id": "registry-login-server", "host": "crcalendar<suffix>.azurecr.io", "port": 443 }
+      ],
+      "metadata": { "ownership": "platform", "adrs": ["ADR-0029", "ADR-0034"], "source": "infra/modules/foundation.bicep" }
+    },
+    {
+      "unique-id": "azure-key-vault-app",
+      "node-type": "system",
+      "name": "App Key Vault",
+      "description": "kv-app-<suffix>: RBAC-authorised Standard vault holding only what the running app needs: calendar-connection-string, google-client-id, google-client-secret and allowed-email-N. The Container App's user-assigned identity has Key Vault Secrets User on this vault only; Container Apps resolves the secrets by versionless URI into environment variables.",
+      "interfaces": [
+        { "unique-id": "app-vault-uri", "url": "https://kv-app-<suffix>.vault.azure.net/" }
+      ],
+      "controls": {
+        "secrets-management": {
+          "description": "Secrets live only in Azure Key Vault and reach the container as Key Vault references resolved through a user-assigned managed identity; nothing secret is in source, Bicep, parameters, logs or workflow output (ADR-0032, ADR-0033).",
+          "requirements": [
+            {
+              "requirement-url": "https://raw.githubusercontent.com/mgasca/calendar/main/docs/architecture/controls/secrets-management.requirement.json",
+              "config": {
+                "store": "Azure Key Vault (Standard, one app vault and one ops vault per environment)",
+                "vaults": [
+                  { "name": "kv-app-<suffix>", "purpose": "Runtime secrets of the Container App", "readers": ["id-calendar-<suffix> (Key Vault Secrets User)", "deployer principal (Key Vault Secrets User)"] },
+                  { "name": "kv-ops-<suffix>", "purpose": "PostgreSQL admin password, calendar-migrator-password, calendar-app-password", "readers": ["deployer principal (Key Vault Secrets User)"] }
+                ],
+                "access-model": "RBAC (enableRbacAuthorization: true, no access policies)",
+                "workload-identity": "User-assigned managed identity id-calendar-<suffix> (AcrPull on the registry, Key Vault Secrets User on the app vault)",
+                "delivery": "Container Apps secrets with keyVaultUrl (versionless) → env ConnectionStrings__Calendar, Auth__Google__ClientId, Auth__Google__ClientSecret, Auth__AllowedEmails__N; updates picked up within 30 minutes",
+                "allowed-secret-names": ["calendar-connection-string", "google-client-id", "google-client-secret", "allowed-email-<digits>"],
+                "secrets-in-repository": false,
+                "audit-logging": "AuditEvent diagnostics on both vaults to the Log Analytics workspace",
+                "adrs": ["https://mgasca.github.io/calendar/adr/0013/", "https://mgasca.github.io/calendar/adr/0032/", "https://mgasca.github.io/calendar/adr/0033/", "https://mgasca.github.io/calendar/adr/0035/"]
+              }
+            }
+          ]
+        }
+      },
+      "metadata": { "ownership": "platform", "adrs": ["ADR-0032", "ADR-0035"], "source": "infra/modules/foundation.bicep, infra/modules/app.bicep" }
+    },
+    {
+      "unique-id": "azure-key-vault-ops",
+      "node-type": "system",
+      "name": "Ops Key Vault",
+      "description": "kv-ops-<suffix>: RBAC-authorised vault for operational credentials the app never sees: the PostgreSQL administrator password, calendar-migrator-password and calendar-app-password. Read by the deployer identity (infra tool, migration workflow) only.",
+      "interfaces": [
+        { "unique-id": "ops-vault-uri", "url": "https://kv-ops-<suffix>.vault.azure.net/" }
+      ],
+      "metadata": { "ownership": "platform", "adrs": ["ADR-0032", "ADR-0035"], "source": "infra/modules/foundation.bicep, tools/infra/Database.cs" }
+    },
+    {
+      "unique-id": "log-analytics",
+      "node-type": "system",
+      "name": "Log Analytics + Application Insights",
+      "description": "law-calendar-<suffix> (PerGB2018, 30-day retention) receives Container Apps console logs and Key Vault audit events; appi-calendar-<suffix> is a workspace-based Application Insights resource.",
+      "interfaces": [
+        { "unique-id": "log-analytics-workspace", "workspace": "law-calendar-<suffix>", "retention-days": 30 }
+      ],
+      "metadata": { "ownership": "platform", "adrs": ["ADR-0029", "ADR-0032"], "source": "infra/modules/monitoring.bicep" }
+    },
+    {
+      "unique-id": "calendar-container",
+      "node-type": "container",
+      "name": "Calendar container image",
+      "description": "One image built by the multi-stage Dockerfile: the pnpm build of the SPA is copied into the API's wwwroot and published with the .NET 10 runtime image, running as a non-root user on port 8080. The same SHA-tagged image is promoted from staging to production (ADR-0030, ADR-0034).",
+      "interfaces": [
+        { "unique-id": "container-port", "port": 8080 }
+      ],
+      "metadata": { "ownership": "ours", "adrs": ["ADR-0018", "ADR-0021", "ADR-0030", "ADR-0034"], "notes": "The runtime image must include tzdata so named zones resolve (ADR-0018, ADR-0021); CI builds and smoke-tests the image against PostgreSQL" }
+    },
+    {
+      "unique-id": "container-apps-environment",
+      "node-type": "system",
+      "name": "Azure Container Apps environment",
+      "description": "cae-calendar-<suffix> on the Consumption workload profile hosting the single Container App ca-calendar-<suffix>: external HTTPS ingress (allowInsecure: false, transport auto) to target port 8080, single active revision, min 0 / max 1 replicas, startup/liveness/readiness probes on /api/health, logs to Log Analytics.",
+      "interfaces": [
+        { "unique-id": "container-app-ingress", "url": "https://ca-calendar-<suffix>.<region>.azurecontainerapps.io/", "tls": "Terminated by the platform ingress; X-Forwarded-* headers trusted with ForwardLimit 1" }
+      ],
+      "metadata": { "ownership": "platform", "adrs": ["ADR-0029", "ADR-0030", "ADR-0032", "ADR-0035"], "region": "UK South", "source": "infra/modules/app.bicep", "cost-model": "Free within the per-subscription Consumption grant; cold starts accepted (scale to zero)" }
+    },
+    {
+      "unique-id": "azure-resource-group",
+      "node-type": "system",
+      "name": "Azure resource group (per environment)",
+      "description": "One resource group per environment (staging, production) in UK South, deployed with Bicep (infra/main.bicep): monitoring, foundation (registry, vaults, identity, role assignments), database and app modules. Resource groups alone are not a security boundary: identities and role assignments are scoped per environment too.",
+      "interfaces": [
+        { "unique-id": "bicep-deployment", "template": "infra/main.bicep", "parameters": ["infra/parameters/staging.bicepparam", "infra/parameters/production.bicepparam"] }
+      ],
+      "metadata": { "ownership": "platform", "adrs": ["ADR-0029", "ADR-0033", "ADR-0035"], "region": "UK South", "tags": { "app": "calendar", "environment": "staging | production" } }
+    },
+    {
+      "unique-id": "decision-log",
+      "node-type": "data-asset",
+      "name": "Decision log, story cards, runbooks and benchmarks",
+      "description": "docs/decisions (MADR 4.0 ADRs with decision drivers, star-rating tables and driver-tagged pros/cons, indexed in README.md and validated by just adr-check) and docs/stories (story cards: the long-lived source of truth for each story). Both are the input of the documentation site, together with the runbooks in docs/runbooks (indexed in order in README.md) and the benchmark records in docs/benchmarks.",
+      "interfaces": [
+        { "unique-id": "adr-files", "path": "docs/decisions/NNNN-*.md" },
+        { "unique-id": "story-files", "path": "docs/stories/NNNN-*.md" },
+        { "unique-id": "runbook-files", "path": "docs/runbooks/*.md" },
+        { "unique-id": "benchmark-files", "path": "docs/benchmarks/NNNN-*.md" }
+      ],
+      "metadata": { "adrs": ["ADR-0000", "ADR-0028"], "validation": "just adr-check; frontend/apps/docs tests fail on broken links, anchors, unknown or duplicate ADRs, unlisted stories, runbooks or benchmarks, titles that differ from their index or a missing benchmark harness" }
+    },
+    {
+      "unique-id": "docs-site",
+      "node-type": "webclient",
+      "name": "Documentation site (Calendar · Docs)",
+      "description": "Astro Starlight site (frontend/apps/docs) built from the decision log, the story cards, the CALM model, the runbooks and the benchmark records; each ADR has the stable route adr/NNNN/, each story stories/NNNN/, each runbook runbooks/<name>/ and each benchmark record benchmarks/NNNN/. Production is published from main; pull requests from this repository get previews at pr-preview/pr-N/. The site holds no authentication or sensitive state.",
+      "interfaces": [
+        { "unique-id": "docs-site-url", "url": "https://mgasca.github.io/calendar/" },
+        { "unique-id": "docs-preview-url", "url": "https://mgasca.github.io/calendar/pr-preview/pr-<number>/" }
+      ],
+      "metadata": { "adrs": ["ADR-0022", "ADR-0023", "ADR-0025", "ADR-0028"], "source": "frontend/apps/docs", "build": "just build-docs (DOCS_SITE_URL sets site and base)" }
+    },
+    {
+      "unique-id": "github-pages",
+      "node-type": "system",
+      "name": "GitHub Pages",
+      "description": "Static hosting for the documentation site. A gh-pages state branch retains production at the root and previews under pr-preview/; only the trusted publish job (github-pages environment) has deploy permissions and publications are serialized.",
+      "interfaces": [
+        { "unique-id": "pages-origin", "url": "https://mgasca.github.io/calendar/" }
+      ],
+      "metadata": { "ownership": "platform", "adrs": ["ADR-0023", "ADR-0025"] }
+    }
+  ],
+  "relationships": [
+    {
+      "unique-id": "calendar-system-composition",
+      "description": "Is made up of",
+      "relationship-type": {
+        "composed-of": {
+          "container": "calendar-system",
+          "nodes": ["web-app", "api-client", "openapi-contract", "calendar-api", "calendar-db", "db-migrator", "infra-tool", "decision-log", "docs-site"]
+        }
+      },
+      "metadata": { "adrs": ["ADR-0001"] }
+    },
+    {
+      "unique-id": "user-uses-web-app",
+      "description": "Signs in and plans the day and week with",
+      "relationship-type": { "interacts": { "actor": "user", "nodes": ["web-app"] } },
+      "metadata": { "stories": ["0001", "0002", "0003", "0004", "0005", "0006", "0007"] }
+    },
+    {
+      "unique-id": "operator-operates-platform",
+      "description": "Merges changes, dispatches migrations and approves production through; deploys infrastructure and initialises secrets and roles with",
+      "relationship-type": { "interacts": { "actor": "operator", "nodes": ["github-actions", "infra-tool"] } },
+      "metadata": { "adrs": ["ADR-0033", "ADR-0034"] }
+    },
+    {
+      "unique-id": "web-app-calls-api",
+      "description": "Calls same-origin /api endpoints from the browser with the session cookie, through the generated client",
+      "relationship-type": {
+        "connects": {
+          "source": { "node": "web-app", "interfaces": ["web-app-origin"] },
+          "destination": { "node": "calendar-api", "interfaces": ["api-health", "api-auth", "api-events", "api-tasks", "api-agenda"] }
+        }
+      },
+      "protocol": "HTTPS",
+      "controls": {
+        "transport-security": {
+          "description": "Same-origin HTTPS only: the Container Apps ingress terminates TLS and refuses plain HTTP, the API adds HSTS and HTTPS redirection outside Development, trusts X-Forwarded-* only from the ingress, and sets no CORS headers (ADR-0027, ADR-0029, ADR-0030).",
+          "requirements": [
+            {
+              "requirement-url": "https://raw.githubusercontent.com/mgasca/calendar/main/docs/architecture/controls/transport-security.requirement.json",
+              "config": {
+                "tls-required": true,
+                "enforced-by": ["Container Apps ingress allowInsecure: false (HTTPS redirect at the platform)", "UseHsts + UseHttpsRedirection outside Development", "Cookie SecurePolicy Always outside Development"],
+                "hsts": true,
+                "https-redirection": true,
+                "development-exception": "Plain http://localhost:5041 behind the Vite proxy; cookie Secure = SameAsRequest",
+                "forwarded-headers": { "trusted-source": "Only the Container Apps ingress (KnownProxies and KnownIPNetworks cleared)", "forward-limit": 1, "headers": ["X-Forwarded-For", "X-Forwarded-Proto", "X-Forwarded-Host"] },
+                "cross-origin": "No CORS policy; the SPA is served from the same origin as /api",
+                "adrs": ["https://mgasca.github.io/calendar/adr/0003/", "https://mgasca.github.io/calendar/adr/0027/", "https://mgasca.github.io/calendar/adr/0029/", "https://mgasca.github.io/calendar/adr/0030/"]
+              }
+            }
+          ]
+        }
+      },
+      "metadata": { "adrs": ["ADR-0003", "ADR-0004", "ADR-0020", "ADR-0027", "ADR-0030"], "client": "frontend/apps/web/src/api/client.ts (raises calendar:unauthorized on any 401 except /api/auth/me)" }
+    },
+    {
+      "unique-id": "api-serves-spa",
+      "description": "Serves the built SPA (hashed immutable assets, index.html with no-cache) and the client-side routing fallback to",
+      "relationship-type": {
+        "connects": {
+          "source": { "node": "calendar-api", "interfaces": ["api-static-spa"] },
+          "destination": { "node": "web-app", "interfaces": ["web-app-routes"] }
+        }
+      },
+      "protocol": "HTTPS",
+      "metadata": { "adrs": ["ADR-0026", "ADR-0030"] }
+    },
+    {
+      "unique-id": "web-app-uses-api-client",
+      "description": "Imports the typed client and request/response types from",
+      "relationship-type": {
+        "connects": {
+          "source": { "node": "web-app" },
+          "destination": { "node": "api-client", "interfaces": ["api-client-package"] }
+        }
+      },
+      "metadata": { "adrs": ["ADR-0004", "ADR-0005"], "binding": "pnpm workspace:* dependency" }
+    },
+    {
+      "unique-id": "api-client-generated-from-contract",
+      "description": "Is generated (schema.gen.ts) from",
+      "relationship-type": {
+        "connects": {
+          "source": { "node": "api-client", "interfaces": ["api-client-package"] },
+          "destination": { "node": "openapi-contract", "interfaces": ["openapi-document"] }
+        }
+      },
+      "metadata": { "adrs": ["ADR-0004"], "generator": "openapi-typescript" }
+    },
+    {
+      "unique-id": "api-emits-contract",
+      "description": "Writes the OpenAPI document at build time to",
+      "relationship-type": {
+        "connects": {
+          "source": { "node": "calendar-api" },
+          "destination": { "node": "openapi-contract", "interfaces": ["openapi-document"] }
+        }
+      },
+      "metadata": { "adrs": ["ADR-0004"], "command": "just contracts" }
+    },
+    {
+      "unique-id": "browser-redirects-to-google",
+      "description": "Is redirected to for Google sign-in and back to the API callback with an authorization code",
+      "relationship-type": {
+        "connects": {
+          "source": { "node": "web-app", "interfaces": ["web-app-origin"] },
+          "destination": { "node": "google-identity", "interfaces": ["google-authorization-endpoint"] }
+        }
+      },
+      "protocol": "HTTPS",
+      "metadata": { "adrs": ["ADR-0027"], "stories": ["0005"] }
+    },
+    {
+      "unique-id": "api-exchanges-code-with-google",
+      "description": "Redeems the authorization code for the ID token and user claims (email, email_verified, picture) from",
+      "relationship-type": {
+        "connects": {
+          "source": { "node": "calendar-api", "interfaces": ["api-auth"] },
+          "destination": { "node": "google-identity", "interfaces": ["google-token-endpoint"] }
+        }
+      },
+      "protocol": "HTTPS",
+      "metadata": { "adrs": ["ADR-0027"], "stories": ["0005"], "secret": "Auth__Google__ClientSecret from the app Key Vault" }
+    },
+    {
+      "unique-id": "api-reads-writes-db",
+      "description": "Reads agendas and task lists from, and writes events and tasks to, as the least-privilege application role",
+      "relationship-type": {
+        "connects": {
+          "source": { "node": "calendar-api" },
+          "destination": { "node": "calendar-db", "interfaces": ["db-port", "db-app-role"] }
+        }
+      },
+      "protocol": "TCP",
+      "controls": {
+        "least-privilege-data-access": {
+          "description": "The app always connects as calendar_app, which can only read and write rows in the tables the migrator created. It cannot change the schema, and the app never applies migrations (ADR-0014, ADR-0015, ADR-0031).",
+          "requirements": [
+            {
+              "requirement-url": "https://raw.githubusercontent.com/mgasca/calendar/main/docs/architecture/controls/least-privilege-data-access.requirement.json",
+              "config": {
+                "role": "calendar_app",
+                "privileges": ["CONNECT on database calendar", "USAGE on schema public", "SELECT, INSERT, UPDATE, DELETE on tables (default privileges from calendar_migrator)", "USAGE, SELECT on sequences"],
+                "ddl-allowed": false,
+                "schema-owner": "calendar_migrator",
+                "migrations-applied-by": "db-migrator (just db-migrate locally, just infra-migrate / Database migration workflow in Azure); never at application startup",
+                "credential-source": "ConnectionStrings__Calendar from the app Key Vault (Azure) or dotnet user-secrets / env var (local); never in tracked appsettings",
+                "adrs": ["https://mgasca.github.io/calendar/adr/0014/", "https://mgasca.github.io/calendar/adr/0015/", "https://mgasca.github.io/calendar/adr/0016/", "https://mgasca.github.io/calendar/adr/0031/"]
+              }
+            }
+          ]
+        },
+        "transport-security": {
+          "description": "Database connections are TLS-only: the Flexible Server sets require_secure_transport=on and the connection string verifies the server certificate and hostname (ADR-0014, ADR-0031).",
+          "requirements": [
+            {
+              "requirement-url": "https://raw.githubusercontent.com/mgasca/calendar/main/docs/architecture/controls/transport-security.requirement.json",
+              "config": {
+                "tls-required": true,
+                "enforced-by": ["PostgreSQL configuration require_secure_transport = on (infra/modules/database.bicep)", "Npgsql SSL Mode=VerifyFull in the Azure connection string", "Firewall rules limited to the Container App outbound IPs and allow-listed operator IPs"],
+                "development-exception": "Local Docker Compose on 127.0.0.1 without TLS",
+                "adrs": ["https://mgasca.github.io/calendar/adr/0014/", "https://mgasca.github.io/calendar/adr/0031/"]
+              }
+            }
+          ]
+        }
+      },
+      "metadata": { "adrs": ["ADR-0014", "ADR-0015", "ADR-0020", "ADR-0031"], "driver": "Npgsql via EF Core 10; parameterized queries; AsNoTracking projections on read paths" }
+    },
+    {
+      "unique-id": "migrator-migrates-db",
+      "description": "Applies EF Core migrations to, as the schema-owning role",
+      "relationship-type": {
+        "connects": {
+          "source": { "node": "db-migrator", "interfaces": ["migrator-command"] },
+          "destination": { "node": "calendar-db", "interfaces": ["db-port", "db-migrator-role"] }
+        }
+      },
+      "protocol": "TCP",
+      "controls": {
+        "least-privilege-data-access": {
+          "description": "Only calendar_migrator owns the schema and runs DDL. Migrations run as a separate, idempotent step before traffic shifts, never inside the app (ADR-0015, ADR-0034).",
+          "requirements": [
+            {
+              "requirement-url": "https://raw.githubusercontent.com/mgasca/calendar/main/docs/architecture/controls/least-privilege-data-access.requirement.json",
+              "config": {
+                "role": "calendar_migrator",
+                "privileges": ["Owner of database calendar", "USAGE, CREATE on schema public", "ALTER DEFAULT PRIVILEGES granting DML on new tables and sequences to calendar_app"],
+                "ddl-allowed": true,
+                "schema-owner": "calendar_migrator",
+                "migrations-applied-by": "EF Core migration bundle run by the Database migration workflow (OIDC login, pinned Azure CLI, root certificates verified) or dotnet ef database update locally",
+                "credential-source": "calendar-migrator-password from the ops Key Vault (Azure) or CALENDAR_MIGRATOR_PASSWORD in the untracked .env (local)",
+                "adrs": ["https://mgasca.github.io/calendar/adr/0015/", "https://mgasca.github.io/calendar/adr/0031/", "https://mgasca.github.io/calendar/adr/0034/"]
+              }
+            }
+          ]
+        }
+      },
+      "metadata": { "adrs": ["ADR-0015", "ADR-0031", "ADR-0034"], "ci-gate": "dotnet ef migrations has-pending-model-changes; a test proves calendar_app cannot run DDL" }
+    },
+    {
+      "unique-id": "migrator-reads-ops-vault",
+      "description": "Reads the migrator credentials and the server host from",
+      "relationship-type": {
+        "connects": {
+          "source": { "node": "db-migrator" },
+          "destination": { "node": "azure-key-vault-ops", "interfaces": ["ops-vault-uri"] }
+        }
+      },
+      "protocol": "HTTPS",
+      "metadata": { "adrs": ["ADR-0032", "ADR-0034"], "identity": "Deployer principal via GitHub OIDC (Key Vault Secrets User on the ops vault)" }
+    },
+    {
+      "unique-id": "ci-runs-migrator",
+      "description": "Runs on manual dispatch for a chosen environment, after an OIDC login to Azure",
+      "relationship-type": {
+        "connects": {
+          "source": { "node": "github-actions", "interfaces": ["ci-workflows"] },
+          "destination": { "node": "db-migrator", "interfaces": ["migrator-command"] }
+        }
+      },
+      "metadata": { "adrs": ["ADR-0034"], "workflow": ".github/workflows/migrate.yml (concurrency group migrate-<env>, GitHub environment <env>)" }
+    },
+    {
+      "unique-id": "infra-tool-deploys-azure",
+      "description": "Previews (what-if) and applies the Bicep template for an environment to",
+      "relationship-type": {
+        "connects": {
+          "source": { "node": "infra-tool", "interfaces": ["infra-commands"] },
+          "destination": { "node": "azure-resource-group", "interfaces": ["bicep-deployment"] }
+        }
+      },
+      "protocol": "HTTPS",
+      "metadata": { "adrs": ["ADR-0033", "ADR-0034"], "notes": "Foundation phase first (registry, vaults, identity), full phase after the owner initialises the PostgreSQL password; CI runs what-if per environment (infra-whatif.yml)" }
+    },
+    {
+      "unique-id": "infra-tool-manages-ops-vault",
+      "description": "Stores the generated PostgreSQL admin, migrator and app passwords in, and reads them back from",
+      "relationship-type": {
+        "connects": {
+          "source": { "node": "infra-tool", "interfaces": ["infra-commands"] },
+          "destination": { "node": "azure-key-vault-ops", "interfaces": ["ops-vault-uri"] }
+        }
+      },
+      "protocol": "HTTPS",
+      "metadata": { "adrs": ["ADR-0032"] }
+    },
+    {
+      "unique-id": "infra-tool-initialises-db-roles",
+      "description": "Creates calendar_migrator and calendar_app with the same SQL as the local init script in",
+      "relationship-type": {
+        "connects": {
+          "source": { "node": "infra-tool", "interfaces": ["infra-commands"] },
+          "destination": { "node": "calendar-db", "interfaces": ["db-port"] }
+        }
+      },
+      "protocol": "TCP",
+      "metadata": { "adrs": ["ADR-0014", "ADR-0031"], "ci-check": "Azure role SQL matches docker/postgres/init/01-roles.sh" }
+    },
+    {
+      "unique-id": "ci-builds-image",
+      "description": "Builds from the Dockerfile and smoke-tests against PostgreSQL in Docker on every CI run; the SHA-tagged image is what gets deployed",
+      "relationship-type": {
+        "connects": {
+          "source": { "node": "github-actions", "interfaces": ["ci-workflows"] },
+          "destination": { "node": "calendar-container", "interfaces": ["container-port"] }
+        }
+      },
+      "metadata": { "adrs": ["ADR-0012", "ADR-0030", "ADR-0034"] }
+    },
+    {
+      "unique-id": "ci-publishes-docs",
+      "description": "Builds the verified adr-site artifact in CI and publishes production and PR previews through the trusted workflow_run publisher to",
+      "relationship-type": {
+        "connects": {
+          "source": { "node": "github-actions", "interfaces": ["ci-workflows"] },
+          "destination": { "node": "github-pages", "interfaces": ["pages-origin"] }
+        }
+      },
+      "protocol": "HTTPS",
+      "metadata": { "adrs": ["ADR-0023", "ADR-0025"], "safeguards": "The publisher never runs PR code; it validates the source run, revision and PR state and rejects fork-origin inputs" }
+    },
+    {
+      "unique-id": "docs-site-built-from-decision-log",
+      "description": "Is built from the ADR files, the stories, the runbooks, the benchmark records and their README indexes in",
+      "relationship-type": {
+        "connects": {
+          "source": { "node": "docs-site", "interfaces": ["docs-site-url"] },
+          "destination": { "node": "decision-log", "interfaces": ["adr-files", "story-files", "runbook-files", "benchmark-files"] }
+        }
+      },
+      "metadata": { "adrs": ["ADR-0022", "ADR-0023", "ADR-0028"] }
+    },
+    {
+      "unique-id": "container-apps-pulls-image",
+      "description": "Pulls the calendar image with the user-assigned identity (AcrPull) from",
+      "relationship-type": {
+        "connects": {
+          "source": { "node": "container-apps-environment" },
+          "destination": { "node": "container-registry", "interfaces": ["registry-login-server"] }
+        }
+      },
+      "protocol": "HTTPS",
+      "metadata": { "adrs": ["ADR-0029", "ADR-0034"] }
+    },
+    {
+      "unique-id": "container-apps-resolves-secrets",
+      "description": "Resolves Key Vault secret references into container environment variables with the user-assigned identity from",
+      "relationship-type": {
+        "connects": {
+          "source": { "node": "container-apps-environment" },
+          "destination": { "node": "azure-key-vault-app", "interfaces": ["app-vault-uri"] }
+        }
+      },
+      "protocol": "HTTPS",
+      "metadata": { "adrs": ["ADR-0032"] }
+    },
+    {
+      "unique-id": "api-logs-to-monitoring",
+      "description": "Streams console logs and probe results through the Container Apps environment to",
+      "relationship-type": {
+        "connects": {
+          "source": { "node": "calendar-api", "interfaces": ["api-health"] },
+          "destination": { "node": "log-analytics", "interfaces": ["log-analytics-workspace"] }
+        }
+      },
+      "metadata": { "adrs": ["ADR-0029"] }
+    },
+    {
+      "unique-id": "vaults-audit-to-monitoring",
+      "description": "Sends AuditEvent diagnostics to",
+      "relationship-type": {
+        "connects": {
+          "source": { "node": "azure-key-vault-app", "interfaces": ["app-vault-uri"] },
+          "destination": { "node": "log-analytics", "interfaces": ["log-analytics-workspace"] }
+        }
+      },
+      "metadata": { "adrs": ["ADR-0032"], "note": "The ops vault has the same diagnostic setting" }
+    },
+    {
+      "unique-id": "spa-and-api-in-container",
+      "description": "Ships together in the single container image: the API binary and the SPA bundle in its wwwroot",
+      "relationship-type": { "deployed-in": { "container": "calendar-container", "nodes": ["calendar-api", "web-app"] } },
+      "metadata": { "adrs": ["ADR-0030"] }
+    },
+    {
+      "unique-id": "container-in-container-apps",
+      "description": "Runs as the single Container App revision in",
+      "relationship-type": { "deployed-in": { "container": "container-apps-environment", "nodes": ["calendar-container"] } },
+      "metadata": { "adrs": ["ADR-0029"] }
+    },
+    {
+      "unique-id": "azure-resources-in-resource-group",
+      "description": "Are provisioned per environment by infra/main.bicep in",
+      "relationship-type": {
+        "deployed-in": {
+          "container": "azure-resource-group",
+          "nodes": ["container-apps-environment", "calendar-db", "container-registry", "azure-key-vault-app", "azure-key-vault-ops", "log-analytics"]
+        }
+      },
+      "metadata": { "adrs": ["ADR-0029", "ADR-0031", "ADR-0032", "ADR-0033", "ADR-0035"] }
+    },
+    {
+      "unique-id": "docs-site-on-github-pages",
+      "description": "Is hosted on",
+      "relationship-type": { "deployed-in": { "container": "github-pages", "nodes": ["docs-site"] } },
+      "metadata": { "adrs": ["ADR-0023", "ADR-0025"] }
+    }
+  ],
+  "flows": [
+    {
+      "unique-id": "sign-in-flow",
+      "name": "Google sign-in",
+      "description": "A signed-out person opens a deep link, signs in with Google, and comes back to the page they asked for with a same-origin session cookie. Only verified, allow-listed emails get a session (story 0005, ADR-0027).",
+      "requirement-url": "https://mgasca.github.io/calendar/stories/0005/",
+      "transitions": [
+        { "relationship-unique-id": "user-uses-web-app", "sequence-number": 1, "description": "The person opens a page such as /day/2026-10-29 in the browser" },
+        { "relationship-unique-id": "web-app-calls-api", "sequence-number": 2, "description": "The app calls GET /api/auth/me; a 401 means no session, so it routes to /signin keeping the deep link as returnTo" },
+        { "relationship-unique-id": "web-app-calls-api", "sequence-number": 3, "description": "'Sign in with Google' navigates to GET /api/auth/login?returnUrl=/day/2026-10-29 (503 if Google is not configured)" },
+        { "relationship-unique-id": "browser-redirects-to-google", "sequence-number": 4, "description": "The API answers with an OIDC challenge; the browser is redirected to Google's authorization endpoint and the person signs in" },
+        { "relationship-unique-id": "browser-redirects-to-google", "sequence-number": 5, "description": "Google redirects the browser back to /api/auth/callback/google with the authorization code", "direction": "destination-to-source" },
+        { "relationship-unique-id": "api-exchanges-code-with-google", "sequence-number": 6, "description": "The API redeems the code for the ID token and claims, then checks email_verified and the Auth:AllowedEmails allow-list" },
+        { "relationship-unique-id": "web-app-calls-api", "sequence-number": 7, "description": "On success the API sets the HttpOnly, SameSite=Lax, Secure session cookie (8 h) and redirects to the local returnUrl; on failure it redirects to /signin?error=access_denied without a session", "direction": "destination-to-source" },
+        { "relationship-unique-id": "web-app-calls-api", "sequence-number": 8, "description": "The app calls GET /api/auth/me again (200: name, email, picture) and renders the header and the requested page" }
+      ],
+      "controls": {
+        "authentication": {
+          "description": "The flow must leave no session for a non-allow-listed or unverified email and must never follow a non-local return URL.",
+          "requirements": [
+            {
+              "requirement-url": "https://raw.githubusercontent.com/mgasca/calendar/main/docs/architecture/controls/authentication.requirement.json",
+              "config": {
+                "identity-provider": "Google OpenID Connect",
+                "pattern": "Backend-for-frontend cookie session",
+                "fallback-policy": "RequireAuthenticatedUser",
+                "anonymous-endpoints": ["GET /api/auth/login", "GET /api/auth/callback/google"],
+                "allow-list": { "source": "Auth:AllowedEmails", "requires-verified-email": true },
+                "session-cookie": { "http-only": true, "same-site": "Lax", "secure": "Always outside Development", "lifetime": "8 hours", "sliding-expiration": false },
+                "open-redirect-protection": "returnUrl validated as a local path on server and client; /signin itself is never a return target",
+                "adrs": ["https://mgasca.github.io/calendar/adr/0027/"]
+              }
+            }
+          ]
+        }
+      },
+      "metadata": { "story": "0005", "adrs": ["ADR-0027", "ADR-0030"], "not-automated": "The real Google round trip, the denial redirect and the cookie/proxy settings are verified manually" }
+    },
+    {
+      "unique-id": "view-today-flow",
+      "name": "View today's agenda",
+      "description": "The Today view shows everything for the browser's local day in one place: all-day events, timed events in order, overdue tasks and tasks due today, read from one consistent snapshot and refreshed on focus, every five minutes and at local midnight (story 0001, ADR-0020, ADR-0021).",
+      "requirement-url": "https://mgasca.github.io/calendar/stories/0001/",
+      "transitions": [
+        { "relationship-unique-id": "user-uses-web-app", "sequence-number": 1, "description": "The person opens / (today) or /day/$date; the router validates the date (1900–2200) and useToday(zone) follows the clock" },
+        { "relationship-unique-id": "web-app-calls-api", "sequence-number": 2, "description": "useDayAgenda calls GET /api/agenda/day?date=YYYY-MM-DD&timeZone=Area/City with the browser's IANA zone ('+' encoded as %2B); cached data is shown meanwhile (keepPreviousData)" },
+        { "relationship-unique-id": "api-reads-writes-db", "sequence-number": 3, "description": "The API validates date and timeZone (400 problem details otherwise), computes the DST-correct DayWindow, opens one read-only REPEATABLE READ snapshot and runs the four range queries plus the overdue counts (overdue capped at 20)" },
+        { "relationship-unique-id": "api-reads-writes-db", "sequence-number": 4, "description": "Rows come back as AsNoTracking projections; AgendaBuilder buckets them into the day with DayInclusion and orders them (AgendaOrder)", "direction": "destination-to-source" },
+        { "relationship-unique-id": "web-app-calls-api", "sequence-number": 5, "description": "200 DayAgendaResponse { date, timeZone, window, allDayEvents, events, tasks { overdue, overdueTotal, overdueOpenTotal, dueToday } }", "direction": "destination-to-source" },
+        { "relationship-unique-id": "user-uses-web-app", "sequence-number": 6, "description": "The view renders in the viewer's zone with the now line, 'Past due' flags from the browser clock and 'View all N overdue'; it refetches on focus, every 5 minutes, at midnight and on manual Refresh, keeping the last data with a 'Couldn't refresh' notice on failure" }
+      ],
+      "controls": {
+        "read-consistency": {
+          "description": "One snapshot per agenda read so lists never disagree with each other.",
+          "requirements": [
+            {
+              "requirement-url": "https://raw.githubusercontent.com/mgasca/calendar/main/docs/architecture/controls/read-consistency.requirement.json",
+              "config": { "isolation-level": "REPEATABLE READ", "read-only": true, "queries-per-read": "Four range queries + two counts", "adrs": ["https://mgasca.github.io/calendar/adr/0020/"] }
+            }
+          ]
+        },
+        "time-correctness": {
+          "description": "The day shown is the client's local day in the client's zone; the server only computes the window.",
+          "requirements": [
+            {
+              "requirement-url": "https://raw.githubusercontent.com/mgasca/calendar/main/docs/architecture/controls/time-correctness.requirement.json",
+              "config": { "day-defined-by": "The client (date + timeZone query parameters)", "time-zone-ids": "IANA, aliases canonicalised", "instants": "UTC DateTimeOffset with explicit offsets; floating dates as DateOnly", "adrs": ["https://mgasca.github.io/calendar/adr/0018/", "https://mgasca.github.io/calendar/adr/0021/"] }
+            }
+          ]
+        }
+      },
+      "metadata": { "story": "0001", "adrs": ["ADR-0018", "ADR-0020", "ADR-0021"], "sibling": "The week view (story 0002, ADR-0024) follows the same flow with GET /api/agenda/week?date&timeZone&today and a seven-day range" }
+    },
+    {
+      "unique-id": "add-event-flow",
+      "name": "Add an event",
+      "description": "From the day page the person adds a timed or all-day event in a modal dialog; the API validates and stores it, and the agenda views refetch. There is no optimistic insert (story 0004, story 0006, ADR-0018).",
+      "requirement-url": "https://mgasca.github.io/calendar/stories/0004/",
+      "transitions": [
+        { "relationship-unique-id": "user-uses-web-app", "sequence-number": 1, "description": "'Add event' opens the native <dialog> prefilled with the viewed day (start at the next half hour or 09:00, end = start + 1 h); the browser zone is shown read-only; focus moves to the title" },
+        { "relationship-unique-id": "user-uses-web-app", "sequence-number": 2, "description": "Client validation mirrors the server (title required ≤ 200, end after start, lengths); the DST resolver rejects a non-existent local time and asks which occurrence for an ambiguous one; an all-day event's inclusive last day becomes an exclusive endDate" },
+        { "relationship-unique-id": "web-app-calls-api", "sequence-number": 3, "description": "POST /api/events with { title, allDay, start, end, timeZone | startDate, endDate, location, notes } (instants carry explicit offsets); the form is locked while saving" },
+        { "relationship-unique-id": "api-reads-writes-db", "sequence-number": 4, "description": "The API validates the timed/all-day field sets, builds CalendarEvent (UTC instants + IANA zone, or end-exclusive dates) and inserts it as calendar_app; the generated span/date_span columns index it for overlap queries" },
+        { "relationship-unique-id": "web-app-calls-api", "sequence-number": 5, "description": "201 Created with Location /api/events/{id} and the EventResponse; 400 problem details map to fields (title, start/startDate, end/endDate, location, notes), other errors show form-level and keep the form open", "direction": "destination-to-source" },
+        { "relationship-unique-id": "user-uses-web-app", "sequence-number": 6, "description": "The dialog closes, focus returns to 'Add event', a role=status message says e.g. 'Dentist added for Thu 29 Oct' with a Show day link, and the ['agenda'] queries are invalidated" },
+        { "relationship-unique-id": "web-app-calls-api", "sequence-number": 7, "description": "The visible day or week agenda refetches (GET /api/agenda/day or /week) and now shows the event" }
+      ],
+      "metadata": { "story": "0004", "adrs": ["ADR-0018", "ADR-0020", "ADR-0021", "ADR-0026"], "sibling": "Adding a task (stories 0003 and 0006) follows the same flow with POST /api/tasks { title, dueDate | dueAt, priority, notes }" }
+    },
+    {
+      "unique-id": "toggle-task-flow",
+      "name": "Tick a task off (optimistic)",
+      "description": "Ticking a task in any agenda or list updates the view immediately, calls the idempotent complete/reopen endpoint, rolls back only that task on failure, and refetches once after the last of a burst settles (stories 0001–0003, ADR-0015 concurrency).",
+      "requirement-url": "https://mgasca.github.io/calendar/stories/0001/",
+      "transitions": [
+        { "relationship-unique-id": "user-uses-web-app", "sequence-number": 1, "description": "The person ticks a task checkbox; that task is disabled while its own mutation is pending (useTaskTogglePending), not the whole list" },
+        { "relationship-unique-id": "user-uses-web-app", "sequence-number": 2, "description": "useToggleTask.onMutate counts the in-flight toggle, cancels the view's query and patches the cached agenda/list (isCompleted, completedAt, overdueOpenTotal) through the view's TaskPatch adapter" },
+        { "relationship-unique-id": "web-app-calls-api", "sequence-number": 3, "description": "POST /api/tasks/{id}/complete or POST /api/tasks/{id}/reopen" },
+        { "relationship-unique-id": "api-reads-writes-db", "sequence-number": 4, "description": "The API loads the task, applies the idempotent change (completedAt from the injected TimeProvider) and saves with the xmin concurrency token" },
+        { "relationship-unique-id": "web-app-calls-api", "sequence-number": 5, "description": "200 TaskResponse; 404 if the task is gone; 409 'The task was changed by another request' on a concurrency conflict", "direction": "destination-to-source" },
+        { "relationship-unique-id": "user-uses-web-app", "sequence-number": 6, "description": "On error only that task is restored from the saved previous value and a message is shown; onSettled invalidates ['agenda'] and ['tasks'] when the last in-flight toggle settles or immediately after an error, so every view (day, week, My tasks) reconciles with the server" }
+      ],
+      "controls": {
+        "concurrency-control": {
+          "description": "Conflicting toggles are detected by xmin and reconciled by a refetch rather than overwritten.",
+          "requirements": [
+            {
+              "requirement-url": "https://raw.githubusercontent.com/mgasca/calendar/main/docs/architecture/controls/concurrency-control.requirement.json",
+              "config": { "strategy": "Optimistic", "token": "xmin", "conflict-status": 409, "idempotent-operations": ["complete", "reopen"], "client-behaviour": "Per-task rollback, then invalidate agenda and task queries", "adrs": ["https://mgasca.github.io/calendar/adr/0015/"] }
+            }
+          ]
+        }
+      },
+      "metadata": { "stories": ["0001", "0002", "0003"], "adrs": ["ADR-0015", "ADR-0020"], "reference-implementation": "frontend/apps/web/src/features/agenda/useToggleTask.ts" }
+    },
+    {
+      "unique-id": "overdue-triage-flow",
+      "name": "Triage all overdue tasks",
+      "description": "From 'View all N overdue' the person pages through every open overdue task and applies a bulk action (complete, reschedule, clear deadline, delete) to selected ids or to 'all N overdue' as a guarded set-based update (story 0007).",
+      "requirement-url": "https://mgasca.github.io/calendar/stories/0007/",
+      "transitions": [
+        { "relationship-unique-id": "user-uses-web-app", "sequence-number": 1, "description": "The day view or the week's Overdue panel shows 'View all N overdue' (agendas cap the list at 20 plus the totals); the person opens the lazy-loaded /triage route" },
+        { "relationship-unique-id": "web-app-calls-api", "sequence-number": 2, "description": "GET /api/tasks?view=overdue&today=&timeZone=&limit= pages with opaque keyset cursors (limit 1–200, default 50); the first page carries the authoritative total" },
+        { "relationship-unique-id": "api-reads-writes-db", "sequence-number": 3, "description": "TaskListQueries.ForView runs the keyset seek in SQL (local due date, due instant, id), fetching limit + 1 rows, and counts open overdue tasks for the first page" },
+        { "relationship-unique-id": "web-app-calls-api", "sequence-number": 4, "description": "200 TaskPage { items, nextCursor, total }; rows show title, due value, priority and days overdue; notes load on demand (GET /api/tasks/{id})", "direction": "destination-to-source" },
+        { "relationship-unique-id": "user-uses-web-app", "sequence-number": 5, "description": "The person selects ticked rows, 'Select all loaded' or 'Select all N overdue', picks an action and, for delete, confirms in a ConfirmDialog stating the count; a reschedule applies the DST rules (reject non-existent times, choose an ambiguous occurrence)" },
+        { "relationship-unique-id": "web-app-calls-api", "sequence-number": 6, "description": "POST /api/tasks/bulk with { action, ids (chunks of ≤ 500) } or { action, filter: { view: overdue, today, timeZone, expectedTotal } }" },
+        { "relationship-unique-id": "api-reads-writes-db", "sequence-number": 7, "description": "Ids: load, apply per task (skipping deadline edits on completed tasks), save with xmin and report applied / skipped / notFound per id. Filter: SERIALIZABLE transaction, recount open overdue for today/timeZone, abort with 409 if it differs from expectedTotal, else ExecuteUpdate/ExecuteDelete set-based" },
+        { "relationship-unique-id": "web-app-calls-api", "sequence-number": 8, "description": "200 BulkTaskResponse { results[], applied, skipped, notFound } or 409 'The overdue task count changed' (also for serialization failures and deadlocks)", "direction": "destination-to-source" },
+        { "relationship-unique-id": "user-uses-web-app", "sequence-number": 9, "description": "The UI reports what was skipped, asks the person to review the new count on 409, and invalidates the agenda queries so overdue counts and lists update on return" }
+      ],
+      "controls": {
+        "concurrency-control": {
+          "description": "'All N overdue' must never act on a different set than the person saw.",
+          "requirements": [
+            {
+              "requirement-url": "https://raw.githubusercontent.com/mgasca/calendar/main/docs/architecture/controls/concurrency-control.requirement.json",
+              "config": { "strategy": "Optimistic per id; SERIALIZABLE + expected-count guard for filtered writes", "token": "xmin", "conflict-status": 409, "bulk-filtered-writes": { "isolation-level": "SERIALIZABLE", "guard": "count == filter.expectedTotal", "on-mismatch": "Roll back, 409, nothing changed" }, "adrs": ["https://mgasca.github.io/calendar/adr/0015/"] }
+            }
+          ]
+        },
+        "request-limits": {
+          "description": "Bulk and paging limits that bound a triage request.",
+          "requirements": [
+            {
+              "requirement-url": "https://raw.githubusercontent.com/mgasca/calendar/main/docs/architecture/controls/request-limits.requirement.json",
+              "config": { "error-format": "application/problem+json", "validation-status": 400, "pagination": { "style": "Keyset", "default-limit": 50, "max-limit": 200, "malformed-cursor-status": 400 }, "bulk": { "max-ids": 500, "filter-views": ["overdue"] }, "agenda-overdue-limit": 20 }
+            }
+          ]
+        }
+      },
+      "metadata": { "story": "0007", "adrs": ["ADR-0015", "ADR-0018", "ADR-0020", "ADR-0021", "ADR-0026"], "measured": "50k tasks: bulk complete 1.5 s vs 40 s one by one; bulk delete 0.1 s vs 11 s", "known-limitation": "The count guard cannot detect a same-count swap" }
+    },
+    {
+      "unique-id": "database-migration-flow",
+      "name": "Apply database migrations to an environment",
+      "description": "The operator dispatches the Database migration workflow for staging or production; it logs in to Azure with OIDC, reads the migrator credentials from the ops vault, builds an idempotent EF Core bundle and applies it as calendar_migrator, before any new app revision takes traffic (ADR-0015, ADR-0031, ADR-0034).",
+      "requirement-url": "https://mgasca.github.io/calendar/adr/0034/",
+      "transitions": [
+        { "relationship-unique-id": "operator-operates-platform", "sequence-number": 1, "description": "The operator dispatches 'Database migration' with the environment input (concurrency group migrate-<env>, GitHub environment <env> restricted to main)" },
+        { "relationship-unique-id": "ci-runs-migrator", "sequence-number": 2, "description": "The job verifies the PostgreSQL root certificates, installs the pinned Azure CLI, logs in with the federated identity (no stored secret) and runs just infra-migrate <env>" },
+        { "relationship-unique-id": "migrator-reads-ops-vault", "sequence-number": 3, "description": "The tool resolves the server host and reads calendar-migrator-password from the ops vault" },
+        { "relationship-unique-id": "migrator-migrates-db", "sequence-number": 4, "description": "dotnet ef migrations bundle builds an idempotent bundle, which runs against the environment's database as calendar_migrator over TLS; default privileges grant DML on any new table to calendar_app" },
+        { "relationship-unique-id": "ci-runs-migrator", "sequence-number": 5, "description": "The outcome is written to the job summary; a failed bundle stops promotion and the existing revision keeps serving", "direction": "destination-to-source" }
+      ],
+      "controls": {
+        "least-privilege-data-access": {
+          "description": "Schema changes happen only through this path and only as the schema owner.",
+          "requirements": [
+            {
+              "requirement-url": "https://raw.githubusercontent.com/mgasca/calendar/main/docs/architecture/controls/least-privilege-data-access.requirement.json",
+              "config": { "role": "calendar_migrator", "privileges": ["Owner of the database and schema"], "ddl-allowed": true, "migrations-applied-by": "This workflow (Azure) or just db-migrate (local); never the app", "adrs": ["https://mgasca.github.io/calendar/adr/0015/", "https://mgasca.github.io/calendar/adr/0034/"] }
+            }
+          ]
+        }
+      },
+      "metadata": { "adrs": ["ADR-0015", "ADR-0031", "ADR-0032", "ADR-0034", "ADR-0035"], "workflow": ".github/workflows/migrate.yml", "runbook": "docs/runbooks/azure-database.md" }
+    },
+    {
+      "unique-id": "publish-docs-flow",
+      "name": "Publish the decision log",
+      "description": "Merging to main (or opening a PR from this repository) builds the documentation site from the ADRs, story cards, architecture model, runbooks and benchmark records in CI and publishes it, or a PR preview, to GitHub Pages through a publisher that never runs untrusted code (ADR-0023, ADR-0025, ADR-0028).",
+      "requirement-url": "https://mgasca.github.io/calendar/adr/0023/",
+      "transitions": [
+        { "relationship-unique-id": "operator-operates-platform", "sequence-number": 1, "description": "A PR adds or changes an ADR, a story card, the architecture model, a runbook or a benchmark record (just adr-check and the docs tests pass locally) and is merged to main" },
+        { "relationship-unique-id": "docs-site-built-from-decision-log", "sequence-number": 2, "description": "The CI Frontend job builds the Astro Starlight site from docs/decisions, docs/stories, docs/architecture, docs/runbooks and docs/benchmarks, verifies it at the root path and at a project subpath, and uploads the adr-site artifact" },
+        { "relationship-unique-id": "ci-publishes-docs", "sequence-number": 3, "description": "After CI succeeds, the Publish ADR site workflow validates the source run, revision and PR state, downloads the exact artifact, assembles the retained production snapshot plus open-PR previews, and deploys with the github-pages environment" },
+        { "relationship-unique-id": "docs-site-on-github-pages", "sequence-number": 4, "description": "The site is live at https://mgasca.github.io/calendar/ with each ADR at adr/NNNN/, each story at stories/NNNN/, each runbook at runbooks/<name>/ and each benchmark record at benchmarks/NNNN/; a PR gets an 'ADR preview' check and a sticky comment linking to pr-preview/pr-<number>/" }
+      ],
+      "metadata": { "adrs": ["ADR-0000", "ADR-0022", "ADR-0023", "ADR-0025", "ADR-0028"], "stories": ["0010"], "workflows": [".github/workflows/ci.yml", ".github/workflows/pages.yml"] }
+    }
+  ]
+}

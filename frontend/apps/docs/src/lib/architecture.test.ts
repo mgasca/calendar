@@ -13,6 +13,7 @@ import {
   pageRoute,
   parseArchitecture,
   renderValue,
+  resolveOwnership,
   shortLabel,
 } from './architecture';
 
@@ -123,7 +124,13 @@ const model: TestModel = {
       metadata: { adrs: ['ADR-0001'] },
     },
     { 'unique-id': 'db', 'node-type': 'database', name: 'Db', description: 'Rows.' },
-    { 'unique-id': 'host', 'node-type': 'system', name: 'Host', description: 'Runs things.' },
+    {
+      'unique-id': 'host',
+      'node-type': 'system',
+      name: 'Host',
+      description: 'Runs things.',
+      metadata: { ownership: 'platform' },
+    },
   ],
   relationships: [
     {
@@ -142,6 +149,10 @@ const model: TestModel = {
     {
       'unique-id': 'host-runs',
       'relationship-type': { 'deployed-in': { container: 'host', nodes: ['app', 'db'] } },
+    },
+    {
+      'unique-id': 'host-parts',
+      'relationship-type': { 'composed-of': { container: 'host', nodes: ['app', 'db'] } },
     },
   ],
   flows: [
@@ -227,6 +238,14 @@ describe('architecture model', () => {
       'interacts',
       'connects',
       'deployed-in',
+      'composed-of',
+    ]);
+    // Declared ownership wins; actors are people; composition members are ours.
+    expect([...resolveOwnership(architecture)]).toEqual([
+      ['user', 'person'],
+      ['app', 'ours'],
+      ['db', 'ours'],
+      ['host', 'platform'],
     ]);
     expect(architecture.flows[0]?.transitions[1]).toEqual({
       relationship: 'app-db',
@@ -376,6 +395,20 @@ describe('architecture model', () => {
         delete node(copy, 'db').name;
       },
     ],
+    [
+      'an unknown ownership',
+      (copy) => {
+        node(copy, 'host').metadata = { ownership: 'mine' };
+      },
+    ],
+    [
+      'a node whose ownership is neither declared nor derivable',
+      (copy) => {
+        copy.relationships = copy.relationships.filter(
+          (item) => item['unique-id'] !== 'host-parts',
+        );
+      },
+    ],
   ])('rejects %s', (_label, mutate) => {
     expect(() => check(mutate)).toThrow();
   });
@@ -491,17 +524,32 @@ describe('architecture pages', () => {
   it('collapses the context diagram onto the view nodes and drops edges that leave the view', () => {
     const body = page('architecture').body;
     expect(body).toContain('flowchart LR');
-    expect(body).toContain('user([User])');
+    expect(body).toContain('classDef person fill:#fde68a,stroke:#b45309,color:#1f2937');
+    expect(body).toContain(
+      'classDef external fill:#e5e7eb,stroke:#6b7280,color:#1f2937,stroke-dasharray:4 2',
+    );
+    expect(body).toContain('user([User]):::person');
+    expect(body).toContain('app["App #40;web#41;"]:::ours');
     expect(body).toContain('user -->|"Uses"| app');
-    expect(body).not.toContain('db');
+    // The legend names only the ownerships on the diagram, with a swatch each.
+    expect(body).toContain('Legend: <span aria-hidden="true"');
+    expect(body).toContain('</span> Person · <span');
+    expect(body).toContain('</span> Built in this repository');
+    expect(body).not.toContain('Hosting and tooling we configure');
+    expect(body).toContain('| [User](pages/components/user.md) | actor | Person | A person. |');
+    // The database is outside the context view: no box, no edge, no table row.
+    expect(body).not.toContain('db[(');
+    expect(body).not.toContain('pages/components/db.md');
     expect(body).toContain('[ADR-0001](../decisions/0001-test.md)');
   });
 
   it('nests the container diagram by deployment and labels edges with the protocol', () => {
     const body = page('architecture/containers').body;
     expect(body).toContain('subgraph host["Host"]');
-    expect(body).toContain('db[(Db)]');
+    expect(body).toContain('style host fill:#ddd6fe,stroke:#6d28d9,color:#1f2937');
+    expect(body).toContain('db[(Db)]:::ours');
     expect(body).toContain('app -->|TCP| db');
+    expect(body).toContain('</span> Hosting and tooling we configure');
     expect(body).toContain(
       '| [App (web)](pages/components/app.md) | runs in | [Host](pages/components/host.md) |',
     );

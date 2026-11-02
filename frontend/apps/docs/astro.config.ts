@@ -22,6 +22,9 @@ export default defineConfig({
   site,
   base,
   trailingSlash: 'always',
+  // The site has no landing page of its own: the root opens the architecture overview. Astro does
+  // not prefix redirect targets with the base, so it is added here.
+  redirects: { '/': `${base}architecture/` },
   markdown: {
     processor: unified({
       remarkPlugins: [
@@ -47,7 +50,7 @@ export default defineConfig({
       social: [{ icon: 'github', label: 'GitHub', href: repository }],
       customCss: ['./src/styles/docs.css'],
       sidebar: [
-        { slug: 'index' },
+        { label: 'Architecture', items: architectureSidebar(flows) },
         {
           label: 'Architecture decisions',
           items: [{ autogenerate: { directory: '../../../docs/decisions' } }],
@@ -59,7 +62,6 @@ export default defineConfig({
             { autogenerate: { directory: '../../../docs/stories' } },
           ],
         },
-        { label: 'Architecture', items: architectureSidebar(flows) },
         {
           label: 'Runbooks',
           items: [

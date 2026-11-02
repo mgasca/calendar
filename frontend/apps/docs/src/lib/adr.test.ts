@@ -175,8 +175,8 @@ describe('canonical story index', () => {
 describe('deployment links', () => {
   const root = '/repo';
   const base = '/calendar/';
+  // The decision log index has no page, so it is absent here and resolves to the repository.
   const links = new Map([
-    ['docs/decisions/README.md', ''],
     ['docs/decisions/0001-test.md', 'adr/0001/'],
     ['docs/decisions/0003-test.md', 'adr/0003/'],
     ['docs/stories/README.md', 'stories/'],
@@ -188,7 +188,9 @@ describe('deployment links', () => {
     expect(rewrite(`./${file}#context`, 'docs/decisions/0003-test.md', prefix)).toBe(
       `${prefix}adr/0001/#context`,
     );
-    expect(rewrite('README.md', 'docs/decisions/0003-test.md', prefix)).toBe(prefix);
+    expect(rewrite('README.md', 'docs/decisions/0003-test.md', prefix)).toBe(
+      'https://github.com/mgasca/calendar/blob/main/docs/decisions/README.md',
+    );
     expect(
       rewrite('../stories/0002-test-story.md#story', 'docs/decisions/0003-test.md', prefix),
     ).toBe(`${prefix}stories/0002/#story`);

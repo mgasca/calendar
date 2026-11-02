@@ -124,8 +124,9 @@ export async function readDocuments() {
  */
 export async function documentRoutes() {
   const { adr, story, architecture, runbook, benchmark } = await readDocuments();
+  // The decision log index has no page of its own: the sidebar lists every ADR with its status,
+  // so a link to docs/decisions/README.md goes to the repository.
   const routes = new Map([
-    ['docs/decisions/README.md', ''],
     ['docs/stories/README.md', 'stories/'],
     ['docs/runbooks/README.md', 'runbooks/'],
     ['docs/benchmarks/README.md', 'benchmarks/'],
@@ -171,14 +172,6 @@ export function docsLoader(): Loader {
         const adrFiles = new Map(adr.records.map((record) => [record.number, record.file]));
         context.store.clear();
         const entries = [
-          {
-            id: 'index',
-            title: 'ADR Log',
-            body: adr.index.replace(/^# Architecture Decision Records\s*/m, ''),
-            directory: decisionsDirectory,
-            file: 'README.md',
-            sidebar: { order: -1, label: 'ADR Log', hidden: true },
-          },
           ...adr.records.map((record, order) => ({
             id: `adr/${record.number}`,
             title: `${record.number} · ${record.title}`,

@@ -60,20 +60,34 @@ describe('published documentation links', () => {
   });
 });
 
-describe('published ADR log', () => {
+describe('site root', () => {
+  it('redirects to the architecture overview and lists Architecture first in the sidebar', async () => {
+    const index = await readFile('dist/index.html', 'utf8');
+    expect(index).toContain(`http-equiv="refresh"`);
+    expect(index).toContain(`url=${base}architecture/`);
+    const overview = await readFile('dist/architecture/index.html', 'utf8');
+    const routes = sidebarRoutes(overview);
+    expect(routes[0]).toBe(`${base}architecture/`);
+    // The decision log has no page of its own, so nothing in the sidebar links to the root.
+    expect(routes).not.toContain(base);
+    expect(routes.indexOf(`${base}architecture/controls/`)).toBeLessThan(
+      routes.findIndex((href) => href.startsWith(`${base}adr/`)),
+    );
+  });
+});
+
+describe('published ADRs', () => {
   it('renders every record with navigation, current selection, headings and base-aware links', async () => {
     const { adr } = await readDocuments();
     const { records } = adr;
-    const index = await readFile('dist/index.html', 'utf8');
     for (const record of records) {
       const route = `${base}adr/${record.number}/`;
-      expect(index).toContain(`href="${route}"`);
       const html = await readFile(`dist/adr/${record.number}/index.html`, 'utf8');
       const routes = sidebarRoutes(html);
       expect(routes.filter((href) => href.startsWith(`${base}adr/`))).toEqual(
         records.map((item) => `${base}adr/${item.number}/`),
       );
-      expect(routes.filter((href) => href === base)).toHaveLength(1);
+      expect(routes).not.toContain(base);
       const activeLinks = html.match(/<a\b[^>]*aria-current="page"[^>]*>/g) ?? [];
       expect(activeLinks.length).toBeGreaterThan(0);
       expect(activeLinks.every((link) => link.includes(`href="${route}"`))).toBe(true);

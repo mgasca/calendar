@@ -15,6 +15,7 @@ namespace AdrDraft.Tests;
 public sealed class AdrValidatorTests : IDisposable
 {
   private const string First = "0000-first-decision.md";
+  private static readonly string[] FixtureNumbers = ["0000", "0001"];
   private readonly string _dir;
 
   public AdrValidatorTests()
@@ -101,7 +102,7 @@ public sealed class AdrValidatorTests : IDisposable
     File.WriteAllText(Path.Combine(_dir, AdrValidator.ReadmeFileName), "# Conventions\n\nNo table here.\n");
 
     AdrValidator.CheckRepository(_dir).ShouldBeEmpty();
-    AdrValidator.AdrFiles(_dir).Keys.ShouldBe(new[] { "0000", "0001" });
+    AdrValidator.AdrFiles(_dir).Keys.ShouldBe(FixtureNumbers);
   }
 
   [Fact]

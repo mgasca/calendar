@@ -16,7 +16,10 @@ public sealed record AdrFileResult(string FileName, IReadOnlyList<string> Errors
 /// </summary>
 public static partial class AdrValidator
 {
-  /// <summary>File name of the conventions page in the decisions directory (not an ADR; the log is derived from the files, ADR-0040).</summary>
+  /// <summary>
+  /// File name of the conventions page in the decisions directory. It is not an ADR, and it holds no index:
+  /// the log is derived from the files (ADR-0040).
+  /// </summary>
   public const string ReadmeFileName = "README.md";
   /// <summary>File name of the ADR template in the decisions directory.</summary>
   public const string TemplateFileName = "adr-template.md";

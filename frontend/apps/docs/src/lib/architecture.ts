@@ -41,7 +41,25 @@ export interface ModelNode {
   adrs: string[];
   /** Story ids (`0005`) listed in the element's metadata. */
   stories: string[];
+  /** `metadata.ownership` as declared; `resolveOwnership` derives the rest. */
+  ownership: Ownership | undefined;
   metadata: Json;
+}
+
+/** Who owns an element: the colour of its box in the diagrams. */
+export type Ownership = 'person' | 'ours' | 'platform' | 'external';
+
+export const ownershipLegend: Record<Ownership, { label: string; fill: string; stroke: string }> = {
+  person: { label: 'Person', fill: '#fde68a', stroke: '#b45309' },
+  ours: { label: 'Built in this repository', fill: '#bfdbfe', stroke: '#1d4ed8' },
+  platform: { label: 'Hosting and tooling we configure', fill: '#ddd6fe', stroke: '#6d28d9' },
+  external: { label: 'External service we only use', fill: '#e5e7eb', stroke: '#6b7280' },
+};
+
+const ownerships = Object.keys(ownershipLegend) as Ownership[];
+
+function isOwnership(value: unknown): value is Ownership {
+  return isText(value) && (ownerships as string[]).includes(value);
 }
 
 export interface Endpoint {
@@ -306,6 +324,7 @@ export function parseArchitecture(source: string): Architecture {
       controls: parseControls(node, at),
       adrs: adrIds(nodeMetadata, at),
       stories: storyIds(nodeMetadata, at),
+      ownership: parseOwnership(nodeMetadata, at),
       metadata: nodeMetadata,
     };
   });
@@ -408,6 +427,39 @@ function checkControls(controls: Control[], mappedUrls: Set<string>, where: stri
  * the decision log with the same title and status, story ids that exist, views over existing
  * nodes and control requirements that map to a local schema.
  */
+function parseOwnership(metadata: Json, where: string): Ownership | undefined {
+  const value = metadata.ownership;
+  if (value === undefined) return undefined;
+  if (!isOwnership(value)) {
+    throw new Error(`${where}: ownership must be one of ${ownerships.join(', ')}`);
+  }
+  return value;
+}
+
+/**
+ * The ownership of every node: as declared in its metadata, else a person for an actor, else
+ * "ours" for the members and containers of a composition. Anything else must be declared.
+ */
+export function resolveOwnership(architecture: Architecture): Map<string, Ownership> {
+  const composed = new Set<string>();
+  for (const { link } of architecture.relationships) {
+    if (link.kind === 'composed-of') {
+      composed.add(link.container);
+      for (const id of link.nodes) composed.add(id);
+    }
+  }
+  return new Map(
+    architecture.nodes.map((node) => {
+      if (node.ownership !== undefined) return [node.id, node.ownership];
+      if (node.type === 'actor') return [node.id, 'person'];
+      if (composed.has(node.id)) return [node.id, 'ours'];
+      throw new Error(
+        `node ${node.id}: declare metadata.ownership (${ownerships.join(', ')}); it is not an actor or part of a composition`,
+      );
+    }),
+  );
+}
+
 export function checkArchitecture(architecture: Architecture, context: ReferenceContext): void {
   unique(
     architecture.nodes.map((node) => node.id),
@@ -496,6 +548,7 @@ export function checkArchitecture(architecture: Architecture, context: Reference
     checkControls(node.controls, context.mappedUrls, `node ${node.id}`);
     checkMentions(node.adrs, node.stories, `node ${node.id}`);
   }
+  resolveOwnership(architecture);
   for (const relationship of architecture.relationships) {
     const where = `relationship ${relationship.id}`;
     const { link } = relationship;
@@ -564,6 +617,30 @@ function shape(node: ModelNode): string {
     default:
       return `["${label}"]`;
   }
+}
+
+/** One Mermaid class per ownership; external services get a dashed border as well as the grey. */
+function classDefs(): string[] {
+  return ownerships.map((ownership) => {
+    const { fill, stroke } = ownershipLegend[ownership];
+    const dash = ownership === 'external' ? ',stroke-dasharray:4 2' : '';
+    return `  classDef ${ownership} fill:${fill},stroke:${stroke},color:#1f2937${dash}`;
+  });
+}
+
+/** The one-line legend under a flowchart, with a swatch per ownership that appears in it. */
+export function legend(used: Iterable<Ownership>): string {
+  const items = ownerships
+    .filter((ownership) => new Set(used).has(ownership))
+    .map((ownership) => {
+      const { label, fill, stroke } = ownershipLegend[ownership];
+      const border = `1px ${ownership === 'external' ? 'dashed' : 'solid'} ${stroke}`;
+      const swatch =
+        `<span aria-hidden="true" style="display:inline-block;width:.9em;height:.9em;` +
+        `vertical-align:-.1em;border-radius:2px;background:${fill};border:${border}"></span>`;
+      return `${swatch} ${label}`;
+    });
+  return `Legend: ${items.join(' · ')}`;
 }
 
 /**
@@ -657,9 +734,11 @@ class Renderer {
   private readonly stories: Map<string, StoryReference>;
   private readonly storyFiles: Map<string, string>;
   private readonly architecture: Architecture;
+  private readonly ownership: Map<string, Ownership>;
 
   constructor(architecture: Architecture, context: Pick<ReferenceContext, 'stories'>) {
     this.architecture = architecture;
+    this.ownership = resolveOwnership(architecture);
     this.nodes = new Map(architecture.nodes.map((node) => [node.id, node]));
     this.relationships = new Map(architecture.relationships.map((item) => [item.id, item]));
     this.adrs = new Map(architecture.adrs.map((adr) => [adr.id, adr]));
@@ -766,9 +845,24 @@ class Renderer {
     return link.kind === 'interacts' ? [link.actor, first] : [first, link.container];
   }
 
+  private owner(id: string): Ownership {
+    const ownership = this.ownership.get(id);
+    if (ownership === undefined) throw new Error(`Unknown node ${id}`);
+    return ownership;
+  }
+
+  /** A node line with its shape and ownership class. */
+  private box(id: string): string {
+    return `${mermaidId(id)}${shape(this.node(id))}:::${this.owner(id)}`;
+  }
+
+  private legendFor(ids: string[]): string {
+    return legend(ids.map((id) => this.owner(id)));
+  }
+
   private contextDiagram(view: View): string {
     const members = new Set(view.nodes);
-    const lines = view.nodes.map((id) => `  ${mermaidId(id)}${shape(this.node(id))}`);
+    const lines = [...classDefs(), ...view.nodes.map((id) => `  ${this.box(id)}`)];
     const seen = new Set<string>();
     for (const relationship of this.architecture.relationships) {
       for (const [from, to] of this.edgeEnds(relationship)) {
@@ -801,14 +895,16 @@ class Renderer {
       (children.get(container) ?? []).flatMap((id) => {
         const indent = '  '.repeat(depth);
         const nested = children.get(id);
-        if (nested === undefined) return [`${indent}${mermaidId(id)}${shape(this.node(id))}`];
+        if (nested === undefined) return [`${indent}${this.box(id)}`];
+        const { fill, stroke } = ownershipLegend[this.owner(id)];
         return [
           `${indent}subgraph ${mermaidId(id)}["${mermaidText(this.node(id).name)}"]`,
           ...render(id, depth + 1),
           `${indent}end`,
+          `${indent}style ${mermaidId(id)} fill:${fill},stroke:${stroke},color:#1f2937`,
         ];
       });
-    const edges: string[] = [];
+    const edges: string[] = [...classDefs()];
     for (const relationship of this.architecture.relationships) {
       for (const [from, to] of this.edgeEnds(relationship)) {
         if (!members.has(from) || !members.has(to)) continue;
@@ -864,7 +960,12 @@ class Renderer {
   private elementRows(ids: string[]): string[][] {
     return ids.map((id) => {
       const node = this.node(id);
-      return [this.nodeLink(id), node.type, node.description];
+      return [
+        this.nodeLink(id),
+        node.type,
+        ownershipLegend[this.owner(id)].label,
+        node.description,
+      ];
     });
   }
 
@@ -898,9 +999,11 @@ class Renderer {
       '',
       this.contextDiagram(context),
       '',
+      this.legendFor(context.nodes),
+      '',
       '### Elements',
       '',
-      table(['Element', 'Type', 'Description'], this.elementRows(context.nodes)),
+      table(['Element', 'Type', 'Ownership', 'Description'], this.elementRows(context.nodes)),
       '',
       '### Relationships',
       '',
@@ -947,9 +1050,11 @@ class Renderer {
       '',
       this.containerDiagram(view),
       '',
+      this.legendFor(view.nodes),
+      '',
       '## Elements',
       '',
-      table(['Element', 'Type', 'Description'], this.elementRows(view.nodes)),
+      table(['Element', 'Type', 'Ownership', 'Description'], this.elementRows(view.nodes)),
       '',
       '## Relationships',
       '',

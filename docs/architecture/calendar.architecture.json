@@ -224,7 +224,7 @@
         { "unique-id": "google-authorization-endpoint", "url": "https://accounts.google.com/o/oauth2/v2/auth", "protocol": "OpenID Connect authorization code" },
         { "unique-id": "google-token-endpoint", "url": "https://oauth2.googleapis.com/token", "protocol": "OAuth 2.0 token exchange" }
       ],
-      "metadata": { "adrs": ["ADR-0027"], "per-environment": "A separate OAuth client (client id, secret and redirect URI) per environment (ADR-0035)" }
+      "metadata": { "ownership": "external", "adrs": ["ADR-0027"], "per-environment": "A separate OAuth client (client id, secret and redirect URI) per environment (ADR-0035)" }
     },
     {
       "unique-id": "calendar-system",
@@ -573,7 +573,7 @@
       "interfaces": [
         { "unique-id": "ci-workflows", "workflows": ["ci.yml", "codeql.yml", "dependency-review.yml", "infra-whatif.yml", "azure-oidc-check.yml", "migrate.yml", "pages.yml"] }
       ],
-      "metadata": { "adrs": ["ADR-0012", "ADR-0013", "ADR-0023", "ADR-0025", "ADR-0034"], "required-check": "CI result" }
+      "metadata": { "ownership": "platform", "adrs": ["ADR-0012", "ADR-0013", "ADR-0023", "ADR-0025", "ADR-0034"], "required-check": "CI result" }
     },
     {
       "unique-id": "container-registry",
@@ -583,7 +583,7 @@
       "interfaces": [
         { "unique-id": "registry-login-server", "host": "crcalendar<suffix>.azurecr.io", "port": 443 }
       ],
-      "metadata": { "adrs": ["ADR-0029", "ADR-0034"], "source": "infra/modules/foundation.bicep" }
+      "metadata": { "ownership": "platform", "adrs": ["ADR-0029", "ADR-0034"], "source": "infra/modules/foundation.bicep" }
     },
     {
       "unique-id": "azure-key-vault-app",
@@ -617,7 +617,7 @@
           ]
         }
       },
-      "metadata": { "adrs": ["ADR-0032", "ADR-0035"], "source": "infra/modules/foundation.bicep, infra/modules/app.bicep" }
+      "metadata": { "ownership": "platform", "adrs": ["ADR-0032", "ADR-0035"], "source": "infra/modules/foundation.bicep, infra/modules/app.bicep" }
     },
     {
       "unique-id": "azure-key-vault-ops",
@@ -627,7 +627,7 @@
       "interfaces": [
         { "unique-id": "ops-vault-uri", "url": "https://kv-ops-<suffix>.vault.azure.net/" }
       ],
-      "metadata": { "adrs": ["ADR-0032", "ADR-0035"], "source": "infra/modules/foundation.bicep, tools/infra/Database.cs" }
+      "metadata": { "ownership": "platform", "adrs": ["ADR-0032", "ADR-0035"], "source": "infra/modules/foundation.bicep, tools/infra/Database.cs" }
     },
     {
       "unique-id": "log-analytics",
@@ -637,7 +637,7 @@
       "interfaces": [
         { "unique-id": "log-analytics-workspace", "workspace": "law-calendar-<suffix>", "retention-days": 30 }
       ],
-      "metadata": { "adrs": ["ADR-0029", "ADR-0032"], "source": "infra/modules/monitoring.bicep" }
+      "metadata": { "ownership": "platform", "adrs": ["ADR-0029", "ADR-0032"], "source": "infra/modules/monitoring.bicep" }
     },
     {
       "unique-id": "calendar-container",
@@ -647,7 +647,7 @@
       "interfaces": [
         { "unique-id": "container-port", "port": 8080 }
       ],
-      "metadata": { "adrs": ["ADR-0018", "ADR-0021", "ADR-0030", "ADR-0034"], "notes": "The runtime image must include tzdata so named zones resolve (ADR-0018, ADR-0021); CI builds and smoke-tests the image against PostgreSQL" }
+      "metadata": { "ownership": "ours", "adrs": ["ADR-0018", "ADR-0021", "ADR-0030", "ADR-0034"], "notes": "The runtime image must include tzdata so named zones resolve (ADR-0018, ADR-0021); CI builds and smoke-tests the image against PostgreSQL" }
     },
     {
       "unique-id": "container-apps-environment",
@@ -657,7 +657,7 @@
       "interfaces": [
         { "unique-id": "container-app-ingress", "url": "https://ca-calendar-<suffix>.<region>.azurecontainerapps.io/", "tls": "Terminated by the platform ingress; X-Forwarded-* headers trusted with ForwardLimit 1" }
       ],
-      "metadata": { "adrs": ["ADR-0029", "ADR-0030", "ADR-0032", "ADR-0035"], "region": "UK South", "source": "infra/modules/app.bicep", "cost-model": "Free within the per-subscription Consumption grant; cold starts accepted (scale to zero)" }
+      "metadata": { "ownership": "platform", "adrs": ["ADR-0029", "ADR-0030", "ADR-0032", "ADR-0035"], "region": "UK South", "source": "infra/modules/app.bicep", "cost-model": "Free within the per-subscription Consumption grant; cold starts accepted (scale to zero)" }
     },
     {
       "unique-id": "azure-resource-group",
@@ -667,7 +667,7 @@
       "interfaces": [
         { "unique-id": "bicep-deployment", "template": "infra/main.bicep", "parameters": ["infra/parameters/staging.bicepparam", "infra/parameters/production.bicepparam"] }
       ],
-      "metadata": { "adrs": ["ADR-0029", "ADR-0033", "ADR-0035"], "region": "UK South", "tags": { "app": "calendar", "environment": "staging | production" } }
+      "metadata": { "ownership": "platform", "adrs": ["ADR-0029", "ADR-0033", "ADR-0035"], "region": "UK South", "tags": { "app": "calendar", "environment": "staging | production" } }
     },
     {
       "unique-id": "decision-log",
@@ -701,7 +701,7 @@
       "interfaces": [
         { "unique-id": "pages-origin", "url": "https://mgasca.github.io/calendar/" }
       ],
-      "metadata": { "adrs": ["ADR-0023", "ADR-0025"] }
+      "metadata": { "ownership": "platform", "adrs": ["ADR-0023", "ADR-0025"] }
     }
   ],
   "relationships": [

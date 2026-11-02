@@ -1,7 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
   deployment,
-  logTable,
   parseBenchmarks,
   parseLog,
   parseRunbooks,
@@ -45,7 +44,6 @@ describe('canonical ADR log', () => {
         number: '0001',
         file,
         title: 'Test code',
-        heading: 'Test `code`',
         status: 'proposed',
         body: '\n\n## Context\nBody',
       },
@@ -58,16 +56,6 @@ describe('canonical ADR log', () => {
       ['0002-middle.md', source.replace('Test `code`', 'Middle')],
     ]);
     expect(parseLog(files).map((record) => record.number)).toEqual(['0001', '0002', '0010']);
-  });
-  it('renders the log as a table that keeps the title Markdown and escapes pipes', () => {
-    const records = parseLog(new Map([[file, source.replace('Test `code`', 'A `<b>` | title')]]));
-    expect(logTable(records)).toBe(
-      [
-        '| ADR | Title | Status |',
-        '| --- | --- | --- |',
-        '| [0001](0001-test.md) | A `<b>` \\| title | proposed |',
-      ].join('\n'),
-    );
   });
   it.each([
     ['no files', new Map<string, string>()],
@@ -186,8 +174,8 @@ describe('canonical story index', () => {
 describe('deployment links', () => {
   const root = '/repo';
   const base = '/calendar/';
+  // The decision log index has no page, so it is absent here and resolves to the repository.
   const links = new Map([
-    ['docs/decisions/README.md', ''],
     ['docs/decisions/0001-test.md', 'adr/0001/'],
     ['docs/decisions/0003-test.md', 'adr/0003/'],
     ['docs/stories/README.md', 'stories/'],
@@ -199,7 +187,9 @@ describe('deployment links', () => {
     expect(rewrite(`./${file}#context`, 'docs/decisions/0003-test.md', prefix)).toBe(
       `${prefix}adr/0001/#context`,
     );
-    expect(rewrite('README.md', 'docs/decisions/0003-test.md', prefix)).toBe(prefix);
+    expect(rewrite('README.md', 'docs/decisions/0003-test.md', prefix)).toBe(
+      'https://github.com/mgasca/calendar/blob/main/docs/decisions/README.md',
+    );
     expect(
       rewrite('../stories/0002-test-story.md#story', 'docs/decisions/0003-test.md', prefix),
     ).toBe(`${prefix}stories/0002/#story`);

@@ -8,7 +8,7 @@ decision-makers: mgasca, Claude (AI assistant)
 
 ## Context and Problem Statement
 
-[ADR-0000](0000-use-markdown-architectural-decision-records.md) put a table in `docs/decisions/README.md` with one row per ADR (number, title, status), and [ADR-0023](0023-static-adr-log-publication.md) made that table the ordered log the documentation site renders and navigates by. Every ADR PR adds a row, every status change edits a row, and `just adr-check` and the docs build both compare each ADR file with its row. With several ADRs in flight the branches conflict on adjacent rows: of the 112 merges on `main`, 25 touched the table, and story [0010](../stories/0010-sweep-pending-adrs-to-a-decided-status.md) records a hand-resolved conflict that silently dropped a row (issue #184). Meanwhile the site already lists every ADR with its status badge in the left navigation and on the **ADR Log** page, so the table no longer carries anything the files do not. Where should the decision log come from?
+[ADR-0000](0000-use-markdown-architectural-decision-records.md) put a table in `docs/decisions/README.md` with one row per ADR (number, title, status), and [ADR-0023](0023-static-adr-log-publication.md) made that table the ordered log the documentation site renders and navigates by. Every ADR PR adds a row, every status change edits a row, and `just adr-check` and the docs build both compare each ADR file with its row. With several ADRs in flight the branches conflict on adjacent rows: of the 112 merges on `main`, 25 touched the table, and story [0010](../stories/0010-sweep-pending-adrs-to-a-decided-status.md) records a hand-resolved conflict that silently dropped a row (issue #184). Meanwhile the site already lists every ADR with its status badge in the left navigation, so the table no longer carries anything the files do not. Where should the decision log come from?
 
 ## Decision Drivers
 
@@ -41,7 +41,7 @@ Chosen option: "Derive the log from the files; `README.md` keeps only the conven
 
 * The decision log is the set of `docs/decisions/NNNN-*.md` files, ordered by number. The file name gives the number, the single `# Title` gives the title and the front matter `status` gives the status, exactly as the validator already requires.
 * `docs/decisions/README.md` holds the conventions and says where to browse the log. It has no list of records.
-* The documentation site builds the **Architecture decisions** navigation from the files and renders the same list, as a table, on the **ADR Log** landing page, so readers keep a page that lists every record with its status. The table is generated at build time, never committed.
+* The documentation site builds the **Architecture decisions** navigation from the files: every record in number order, with its status badge. Since PR #183 the site has no ADR Log page of its own; the navigation is the log.
 * `just adr-check` keeps every rule except the index row: contiguous numbering, no stray files, front matter, section order, drivers, rating tables, pros and cons, and links.
 * The architecture model ([ADR-0039](0039-architecture-model-and-visualization-tooling.md)) still lists every ADR in `metadata.adrs`, and the docs build still fails when an entry's file, title or status differs from the ADR file. That list stays a per-ADR edit, by the decision recorded in story [0012](../stories/0012-architecture-visualization-on-the-documentation-site.md), so a conflict there remains possible; it is a JSON array with one line per ADR, and the loss of a line fails the build instead of passing silently.
 
@@ -52,16 +52,16 @@ This replaces the first bullet of the "Source and navigation contract" in [ADR-0
 * Good, because **D1 No conflicts between ADRs in flight**: a new ADR or a status change edits the ADR file and its model entry, and nothing that another ADR PR edits in the same place.
 * Good, because **D2 One source of truth**: the validator and the loader have one less cross-check to perform, because there is one less copy.
 * Good, because **D5 Little tooling change**: the change removes the index rule from the validator and the table parser from the loader.
-* Bad, because **D3 Navigable log**: GitHub's rendering of `docs/decisions/README.md` no longer lists the records. The folder listing, sorted by number, and the site's ADR Log page take its place.
-* Bad, because **D3 Navigable log**: a status such as `superseded by ADR-0038` shows as text on the ADR Log page rather than as a link, as the hand-written row had. The row's number still links to the record, and the record's **Status** line carries the link.
+* Bad, because **D3 Navigable log**: GitHub's rendering of `docs/decisions/README.md` no longer lists the records. The folder listing, sorted by number, and the site's navigation take its place.
+* Bad, because **D3 Navigable log**: the hand-written row linked a `superseded by` status to the superseding record; the navigation badge only says `superseded`. The record's own **Status** line carries the link.
 * Neutral: the story, runbook and benchmark indexes keep their tables, because they carry information the documents do not (delivery order, one-line summaries, harness paths).
 
 ### Confirmation
 
 * `just adr-check` passes with no table in `README.md` and still rejects a numbering gap, a stray file and every structural fault (its tests in `.claude/skills/adr-draft/tests/`).
 * The docs tests (`frontend/apps/docs/src/lib/adr.test.ts`) show that `parseLog` orders records by number from the files alone and rejects a duplicate number, an unsafe file name, a missing title and a missing status; `corpus.test.ts` loads the real `docs/decisions` through the loader.
-* The build test (`frontend/apps/docs/tests/build.test.ts`, `published ADR log`) checks that the landing page links every record and that each record's page carries the sidebar in log order.
-* A reviewer confirms that the ADR Log page of the pull-request preview lists every record with its status.
+* The build test (`frontend/apps/docs/tests/build.test.ts`, `published ADRs`) checks that each record's page carries the sidebar in log order.
+* A reviewer confirms that the **Architecture decisions** navigation of the pull-request preview lists every record with its status.
 
 ## Pros and Cons of the Options
 

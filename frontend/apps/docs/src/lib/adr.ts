@@ -16,8 +16,6 @@ export interface Adr {
   number: string;
   file: string;
   title: string;
-  /** The title as written in the H1, with its Markdown, for the log table. */
-  heading: string;
   status: string;
   body: string;
 }
@@ -37,7 +35,6 @@ function parseDocument(source: string, file: string) {
   return {
     metadata: parsed.data as Record<string, unknown>,
     title: toString(heading),
-    heading: parsed.content.slice(start, end).replace(/^#+\s*/, ''),
     body: parsed.content.slice(0, start) + parsed.content.slice(end),
   };
 }
@@ -72,29 +69,16 @@ export function parseLog(sources: Map<string, string>): Adr[] {
     seen.set(number, file);
     const source = sources.get(file);
     if (source === undefined) throw new Error(`Missing ADR: ${file}`);
-    const { metadata, title, heading, body } = parseDocument(source, file);
+    const { metadata, title, body } = parseDocument(source, file);
     if (typeof metadata.status !== 'string' || !metadata.status.trim()) {
       throw new Error(`ADR without a status: ${file}`);
     }
     // `superseded by [ADR-0038](0038-….md)` reads as plain text, the same label the site shows.
     const status = toString(parser.parse(metadata.status));
-    return { number, file, title, heading, status, body };
+    return { number, file, title, status, body };
   });
   if (!records.length) throw new Error('ADR log is empty');
   return records;
-}
-
-/** The decision log as a Markdown table, for the ADR Log landing page. */
-export function logTable(records: Adr[]): string {
-  const cell = (text: string) => text.replaceAll('|', '\\|');
-  return [
-    '| ADR | Title | Status |',
-    '| --- | --- | --- |',
-    ...records.map(
-      (record) =>
-        `| [${record.number}](${record.file}) | ${cell(record.heading)} | ${cell(record.status)} |`,
-    ),
-  ].join('\n');
 }
 
 export const storyStatuses = ['planned', 'in-progress', 'implemented'];

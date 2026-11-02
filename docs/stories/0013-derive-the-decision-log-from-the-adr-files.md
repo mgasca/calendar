@@ -19,12 +19,12 @@ Tracked in issue #184. Card, [ADR-0040](../decisions/0040-derive-the-decision-lo
 
 `docs/decisions/README.md` carried a hand-maintained table with one row per ADR (number, title, status), introduced by [ADR-0000](../decisions/0000-use-markdown-architectural-decision-records.md) and made the ordered log of the documentation site by [ADR-0023](../decisions/0023-static-adr-log-publication.md). Every ADR PR added a row and every status change edited one; `just adr-check` and the docs build both compared each ADR file with its row. Of the 112 merges on `main`, 25 touched the table. Story [0010](0010-sweep-pending-adrs-to-a-decided-status.md), which changed four ADR statuses in parallel PRs, hit a conflict whose hand resolution dropped a row, caught only in review.
 
-The table had stopped carrying information of its own. The documentation site lists every ADR with its status badge in the **Architecture decisions** navigation and on the **ADR Log** page, the file name gives the number, the `# Title` gives the title and the front matter gives the status, and the architecture model ([ADR-0039](../decisions/0039-architecture-model-and-visualization-tooling.md)) lists every ADR with its status too.
+The table had stopped carrying information of its own. The documentation site lists every ADR with its status badge in the **Architecture decisions** navigation, the file name gives the number, the `# Title` gives the title and the front matter gives the status, and the architecture model ([ADR-0039](../decisions/0039-architecture-model-and-visualization-tooling.md)) lists every ADR with its status too.
 
 ### Agreed scope
 
 * **Remove the table** from `docs/decisions/README.md`, keeping the conventions text and saying where the log is browsed.
-* **The log is derived from the files.** The docs site orders the `NNNN-*.md` files by number, takes the title from the H1 and the status from the front matter, builds the left navigation from them and renders the same list as a table on the **ADR Log** landing page at build time.
+* **The log is derived from the files.** The docs site orders the `NNNN-*.md` files by number, takes the title from the H1 and the status from the front matter, and builds the left navigation from them. The site has no ADR Log page since PR #183 removed it; the navigation is the log.
 * **The checks stay strict.** The docs build fails on a duplicate number, a file name that is not `NNNN-kebab-title.md`, a record without a single H1 or without a `status`, and on an architecture model entry whose file, title or status differs from the ADR file. `just adr-check` drops only the index-row rule.
 * **An ADR records the decision** ([ADR-0040](../decisions/0040-derive-the-decision-log-from-the-adr-files.md)), because it changes a clause of [ADR-0023](../decisions/0023-static-adr-log-publication.md) and of [ADR-0000](../decisions/0000-use-markdown-architectural-decision-records.md).
 * **Guidance follows:** `AGENTS.md`, the `adr-draft` and `story-draft` skills, and the architecture model.
@@ -33,14 +33,14 @@ The table had stopped carrying information of its own. The documentation site li
 
 * **The story, runbook and benchmark indexes.** Their tables and list carry information the documents do not (delivery order, summaries, harness paths), and they stay as they are.
 * **Deriving the architecture model's `metadata.adrs` list from the files.** It stays a per-ADR edit by the decision in story [0012](0012-architecture-visualization-on-the-documentation-site.md); ADR-0040 names it as the revisit trigger.
-* **A link in the `superseded by` status on the ADR Log page.** The status shows as text; the record's own page keeps the link.
+* **A link from a `superseded by` status to the superseding record in the navigation.** The badge says `superseded`; the record's own page keeps the link.
 
 ### Acceptance criteria
 
 1. **Given** `docs/decisions/README.md`, **when** I read it, **then** it has no table of records, and it says where to browse the log.
-   Checked by reading the file; the docs tests load it as the landing page body ([`corpus.test.ts`](../../frontend/apps/docs/src/lib/corpus.test.ts), `reads every repository ADR and index together`). No test asserts the absence of the table.
-2. **Given** the `NNNN-*.md` files, **when** the docs site is built, **then** the **Architecture decisions** navigation lists every record in number order with its status, and the **ADR Log** page lists the same records in a table.
-   [`adr.test.ts`](../../frontend/apps/docs/src/lib/adr.test.ts) (`orders by number whatever the order of the sources`, `renders the log as a table …`); [`build.test.ts`](../../frontend/apps/docs/tests/build.test.ts) (`published ADR log`: the landing page links every record and each page's sidebar lists them in log order).
+   Checked by reading the file. The site no longer reads it at all, and no test asserts the absence of the table.
+2. **Given** the `NNNN-*.md` files, **when** the docs site is built, **then** the **Architecture decisions** navigation lists every record in number order with its status.
+   [`adr.test.ts`](../../frontend/apps/docs/src/lib/adr.test.ts) (`orders by number whatever the order of the sources`); [`build.test.ts`](../../frontend/apps/docs/tests/build.test.ts) (`published ADRs`: each page's sidebar lists every record in log order).
 3. **Given** two files with the same number, a file name outside the convention, or a record without a title or a status, **when** the docs build runs, **then** it fails and names the file.
    [`adr.test.ts`](../../frontend/apps/docs/src/lib/adr.test.ts) (`rejects duplicate number`, `unsafe filename`, `uppercase filename`, `missing status`, `empty status`, `two titles`, `no title`).
 4. **Given** an ADR whose title or status changes without its architecture model entry, **when** the docs build runs, **then** it fails.
@@ -66,8 +66,7 @@ The table had stopped carrying information of its own. The documentation site li
 
 ### Other decisions (not ADR-worthy)
 
-* **The ADR Log page keeps a table,** generated from the records at build time, so a reader who lands on the page sees the whole log and not only the conventions. The title cell uses the H1's Markdown (so `` `code` `` and `<name>` render as written) and pipes are escaped.
-* **The record keeps the plain-text title for the sidebar** and gains the raw heading for the table, instead of parsing the title twice.
+* **No generated table on the site.** A first version rendered the log as a table on the ADR Log landing page, but PR #183 removed that page while this PR was open (the site now opens on Architecture), so the navigation is the only list and the loader stops reading `README.md` altogether.
 * **`README.md` stays in `docs/decisions`** as the conventions page and the landing page body. The validator still knows the name only to exclude it from the stray-file check.
 * **ADR-0039 was added to the architecture model** while adding ADR-0040, because the model is meant to list every ADR and it did not.
 
@@ -78,8 +77,8 @@ The table had stopped carrying information of its own. The documentation site li
 | Area | Location |
 | --- | --- |
 | Conventions page, without the table | `docs/decisions/README.md` |
-| Log derived from the files and the generated table | `frontend/apps/docs/src/lib/adr.ts` (`parseLog`, `logTable`) |
-| Landing page body and navigation | `frontend/apps/docs/src/lib/docs-loader.ts` (`readLog`, the `index` entry) |
+| Log derived from the files | `frontend/apps/docs/src/lib/adr.ts` (`parseLog`) |
+| Navigation | `frontend/apps/docs/src/lib/docs-loader.ts` (`readLog`) |
 | Validator without the index rule | `.claude/skills/adr-draft/scripts/check-adr/AdrValidator.cs`, `check-adr.cs`, `tests/` |
 | Guidance | `AGENTS.md`, `.claude/skills/adr-draft/SKILL.md` (step 7 is now the architecture model entry), `.claude/skills/story-draft/SKILL.md` |
 | Model entries for ADR-0039 and ADR-0040 | `docs/architecture/calendar.architecture.json` (`metadata.adrs`) |
@@ -90,7 +89,7 @@ No changes.
 
 ### Testing
 
-* [`adr.test.ts`](../../frontend/apps/docs/src/lib/adr.test.ts): the log from the files alone, ordering by number, the generated table, the normalized `superseded by` status, and seven rejected inputs.
+* [`adr.test.ts`](../../frontend/apps/docs/src/lib/adr.test.ts): the log from the files alone, ordering by number, the normalized `superseded by` status, and eight rejected inputs.
 * [`corpus.test.ts`](../../frontend/apps/docs/src/lib/corpus.test.ts) and [`build.test.ts`](../../frontend/apps/docs/tests/build.test.ts) run against the real `docs/decisions` and the built site, unchanged.
 * [`check-adr.tests.cs`](../../.claude/skills/adr-draft/tests/check-adr.tests.cs): the two index tests were removed and one test added for a `README.md` without a table.
 
@@ -104,7 +103,7 @@ No changes.
 
 ### Finding a decision
 
-Open the documentation site and choose **Architecture decisions** in the sidebar. Every decision is listed in number order with its status badge; choose one to read it. The **ADR Log** page, the site's home page, lists the same decisions in a table with their statuses. In the repository, the decisions are the numbered files in `docs/decisions`, and `README.md` there explains the conventions.
+Open the documentation site and choose **Architecture decisions** in the sidebar. Every decision is listed in number order with its status badge; choose one to read it. In the repository, the decisions are the numbered files in `docs/decisions`, and `README.md` there explains the conventions.
 
 ### Adding or changing a decision
 

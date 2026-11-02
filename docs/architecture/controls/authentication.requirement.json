@@ -1,0 +1,39 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://mgasca.github.io/calendar/architecture/controls/authentication.requirement.json",
+  "title": "Authentication and session requirement",
+  "description": "How callers are authenticated and how the session is carried. Every endpoint is protected unless it is listed as anonymous (ADR-0027).",
+  "type": "object",
+  "properties": {
+    "identity-provider": { "type": "string", "description": "The external identity provider and protocol." },
+    "pattern": { "type": "string", "description": "The integration pattern, for example backend-for-frontend." },
+    "fallback-policy": { "type": "string", "description": "The authorization policy applied to every endpoint that declares none." },
+    "anonymous-endpoints": { "type": "array", "items": { "type": "string" }, "description": "Endpoints exempt from the fallback policy." },
+    "allow-list": {
+      "type": "object",
+      "properties": {
+        "source": { "type": "string" },
+        "requires-verified-email": { "type": "boolean" },
+        "comparison": { "type": "string" }
+      },
+      "required": ["source", "requires-verified-email"]
+    },
+    "session-cookie": {
+      "type": "object",
+      "properties": {
+        "http-only": { "type": "boolean" },
+        "same-site": { "type": "string", "enum": ["Strict", "Lax", "None"] },
+        "secure": { "type": "string" },
+        "lifetime": { "type": "string" },
+        "sliding-expiration": { "type": "boolean" },
+        "key-storage": { "type": "string" }
+      },
+      "required": ["http-only", "same-site", "secure", "lifetime", "sliding-expiration"]
+    },
+    "open-redirect-protection": { "type": "string" },
+    "unauthenticated-api-response": { "type": "string" },
+    "adrs": { "type": "array", "items": { "type": "string", "format": "uri" } }
+  },
+  "required": ["identity-provider", "pattern", "fallback-policy", "anonymous-endpoints", "allow-list", "session-cookie"],
+  "additionalProperties": false
+}

@@ -16,10 +16,11 @@ This file provides guidance to AI coding agents (Claude Code, Codex, Cursor, etc
 - `just format` — auto-format everything
 - `just contracts` — rebuild the API and regenerate `contracts/openapi.json` and the TS client. **Commit the result**; CI fails if the contract is stale.
 - `just tooling` / `just adr-check` — test/lint repo tooling; validate ADRs (for example `just adr-check --fix-links` or `just adr-check --next-number`)
+- `just architecture-check` — validate the CALM model in `docs/architecture/` against the CALM schema (part of `just lint`)
 - `just db-up` / `db-migrate` / `db-seed` / `db-psql` / `db-reset` / `db-down` — local PostgreSQL via Docker Compose (`compose.yaml`, `.env` from `.env.example`). Migrations are applied only by `db-migrate`, as `calendar_migrator`, never by the app (ADR-0015).
 - Several recipes in one command (`just db-up db-migrate`) work only when none of them takes arguments: `just tool-versions adr-check` passes `adr-check` to `tool-versions` as an argument. Run them as separate commands.
-- `just dev-docs` / `build-docs` — the ADR documentation site (`frontend/apps/docs`)
-- `just bench-docs` — run the docs benchmark by hand; results are recorded in `docs/benchmarks/` (see its README). Never part of `just test` or CI.
+- `just dev-docs` / `build-docs` — the documentation site (`frontend/apps/docs`): ADRs, stories, the architecture model, runbooks and benchmarks
+- `just bench-docs` — run the docs benchmark by hand; results are recorded in `docs/benchmarks/` (see its README) and published on the docs site. Never part of `just test` or CI.
 
 Single tests:
 - Backend (run from `backend/` so `global.json` applies; uses Microsoft.Testing.Platform, xUnit v3): `dotnet test --project tests/Calendar.Domain.Tests --filter-method "*MethodName*"` (or `--filter-class`)
@@ -37,8 +38,10 @@ Single tests:
   - API tests use `WebApplicationFactory` with a `FakeTimeProvider` (`ApiTestBase`). They need Docker.
   - `*AgreementTests` assert that the SQL query forms and `DayInclusion` agree.
 - **Dependencies**: NuGet Central Package Management (`backend/Directory.Packages.props`) with `packages.lock.json` per project (CI restores with `--locked-mode`, so commit lock file changes). Warnings are errors; Roslyn analyzers + SonarAnalyzer are enforced at build time.
-- **Frontend**: `frontend/apps/web` (feature folders such as `features/day`, `week`, `tasks`, `agenda`; TanStack Router (ADR-0026) and TanStack Query; Vitest + Testing Library + MSW), `frontend/apps/docs` (Astro Starlight ADR site), `frontend/packages/api-client`. TypeScript is pinned to 6.0 and ESLint to 9 (ADR-0010).
+- **Frontend**: `frontend/apps/web` (feature folders such as `features/day`, `week`, `tasks`, `agenda`; TanStack Router (ADR-0026) and TanStack Query; Vitest + Testing Library + MSW), `frontend/apps/docs` (Astro Starlight documentation site), `frontend/packages/api-client`. TypeScript is pinned to 6.0 and ESLint to 9 (ADR-0010).
 - **Repo tooling** (ADR-0017): scripts are .NET 10 *file-based apps* (`dotnet run x.cs`), located in `.claude/skills/<skill>/` or `tools/<name>/`, each folder with its own analyzers, `.editorconfig` and xUnit tests. The only exception is `tools/doctor/doctor.sh` (shellcheck). Don't write new tooling in Python/Node/shell.
+- **Architecture model** (ADR-0039): `docs/architecture/calendar.architecture.json` is a FINOS CALM 1.3 model (nodes, relationships, controls for the non-functional requirements, business flows, and `metadata.adrs` listing every ADR with its status). The docs site renders it as the Architecture section (`frontend/apps/docs/src/lib/architecture.ts`), and the docs build fails if an ADR entry differs from the decision log or an element references something that does not exist. When you add a component, an endpoint, an Azure resource or an ADR, or change an ADR's status, update the model in the same PR.
+- **Docs site collections**: the site is built from `docs/decisions`, `docs/stories`, `docs/architecture`, `docs/runbooks` and `docs/benchmarks` (`frontend/apps/docs/src/lib/docs-loader.ts`). Each folder's `README.md` is its index and must list every file, and each document's title must match its index entry (runbooks: the link text in the ordered list; benchmarks: `# NNNN Title`, the record's number). A link to a document that is not published, or a benchmark harness path that does not exist, fails the build. Routes: `adr/NNNN/`, `stories/NNNN/`, `runbooks/<name>/`, `benchmarks/NNNN/`.
 - **ADRs**: MADR 4.0 with decision drivers, a star-rating table and driver-tagged pros/cons; the index in `docs/decisions/README.md` is validated by `just adr-check`. To write one, use the `adr-draft` skill. **Decision status is independent of delivery**: an ADR becomes `accepted` when the user approves the decision, in that same PR before it merges, and never waits for the implementation, build or rollout. Delivery is tracked in issues and PRs, not in the ADR status.
 
 ## Stories and issues

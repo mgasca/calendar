@@ -1,0 +1,18 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://mgasca.github.io/calendar/architecture/controls/least-privilege-data-access.requirement.json",
+  "title": "Least-privilege database access requirement",
+  "description": "Which database role a component connects as and what that role may do (ADR-0014, ADR-0015).",
+  "type": "object",
+  "properties": {
+    "role": { "type": "string", "description": "The PostgreSQL login role used for the connection." },
+    "privileges": { "type": "array", "items": { "type": "string" }, "description": "The privileges the role holds." },
+    "ddl-allowed": { "type": "boolean", "description": "Whether the role may change the schema." },
+    "schema-owner": { "type": "string", "description": "The role that owns the schema." },
+    "migrations-applied-by": { "type": "string", "description": "The only path that applies EF Core migrations." },
+    "credential-source": { "type": "string", "description": "Where the connection string or password comes from." },
+    "adrs": { "type": "array", "items": { "type": "string", "format": "uri" } }
+  },
+  "required": ["role", "privileges", "ddl-allowed", "migrations-applied-by"],
+  "additionalProperties": false
+}

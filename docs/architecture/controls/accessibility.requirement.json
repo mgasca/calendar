@@ -1,0 +1,19 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://mgasca.github.io/calendar/architecture/controls/accessibility.requirement.json",
+  "title": "Accessibility and usability requirement",
+  "description": "The accessibility rules the story cards require of every view and dialog.",
+  "type": "object",
+  "properties": {
+    "keyboard": { "type": "array", "items": { "type": "string" } },
+    "dialogs": { "type": "array", "items": { "type": "string" } },
+    "status-messages": { "type": "string" },
+    "colour": { "type": "string" },
+    "landmarks": { "type": "string" },
+    "theme": { "type": "string" },
+    "small-screens": { "type": "string" },
+    "adrs": { "type": "array", "items": { "type": "string", "format": "uri" } }
+  },
+  "required": ["keyboard", "dialogs"],
+  "additionalProperties": false
+}

@@ -1,0 +1,16 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://mgasca.github.io/calendar/architecture/controls/read-consistency.requirement.json",
+  "title": "Read-model consistency requirement",
+  "description": "Consistency guarantees of an aggregate read (ADR-0020, ADR-0024).",
+  "type": "object",
+  "properties": {
+    "isolation-level": { "type": "string" },
+    "read-only": { "type": "boolean" },
+    "queries-per-read": { "type": "string", "description": "Query count and whether it depends on the range length." },
+    "single-rule-implementation": { "type": "string", "description": "Where the inclusion rules live and how SQL and in-memory forms are kept in agreement." },
+    "adrs": { "type": "array", "items": { "type": "string", "format": "uri" } }
+  },
+  "required": ["isolation-level", "read-only"],
+  "additionalProperties": false
+}

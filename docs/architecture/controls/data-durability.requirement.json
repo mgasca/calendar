@@ -1,0 +1,18 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://mgasca.github.io/calendar/architecture/controls/data-durability.requirement.json",
+  "title": "Data durability and integrity requirement",
+  "description": "Backups, storage and the database-level integrity rules that protect the data (ADR-0014, ADR-0031).",
+  "type": "object",
+  "properties": {
+    "engine": { "type": "string" },
+    "backup-retention-days": { "type": "integer" },
+    "geo-redundant-backup": { "type": "boolean" },
+    "storage": { "type": "string" },
+    "integrity-constraints": { "type": "array", "items": { "type": "string" } },
+    "network-exposure": { "type": "string" },
+    "adrs": { "type": "array", "items": { "type": "string", "format": "uri" } }
+  },
+  "required": ["engine"],
+  "additionalProperties": false
+}

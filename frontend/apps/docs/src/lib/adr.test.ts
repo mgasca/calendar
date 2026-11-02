@@ -1,10 +1,13 @@
 import { describe, expect, it } from 'vitest';
 import {
   deployment,
+  parseBenchmarks,
   parseLog,
+  parseRunbooks,
   parseStories,
   remarkDocLinks,
   rewriteLink,
+  runbookSlug,
   storySlug,
   storyStatusCategory,
 } from './adr';
@@ -172,8 +175,8 @@ describe('canonical story index', () => {
 describe('deployment links', () => {
   const root = '/repo';
   const base = '/calendar/';
+  // The decision log index has no page, so it is absent here and resolves to the repository.
   const links = new Map([
-    ['docs/decisions/README.md', ''],
     ['docs/decisions/0001-test.md', 'adr/0001/'],
     ['docs/decisions/0003-test.md', 'adr/0003/'],
     ['docs/stories/README.md', 'stories/'],
@@ -185,7 +188,9 @@ describe('deployment links', () => {
     expect(rewrite(`./${file}#context`, 'docs/decisions/0003-test.md', prefix)).toBe(
       `${prefix}adr/0001/#context`,
     );
-    expect(rewrite('README.md', 'docs/decisions/0003-test.md', prefix)).toBe(prefix);
+    expect(rewrite('README.md', 'docs/decisions/0003-test.md', prefix)).toBe(
+      'https://github.com/mgasca/calendar/blob/main/docs/decisions/README.md',
+    );
     expect(
       rewrite('../stories/0002-test-story.md#story', 'docs/decisions/0003-test.md', prefix),
     ).toBe(`${prefix}stories/0002/#story`);
@@ -296,4 +301,141 @@ it.each([
   ['planned', 'pending'],
 ])('styles story status %s as %s', (status, category) => {
   expect(storyStatusCategory(status)).toBe(category);
+});
+
+describe('canonical runbook index', () => {
+  const index = [
+    '# Runbooks',
+    '',
+    'Follow them in this order:',
+    '',
+    '1. [Azure bootstrap](azure-bootstrap.md) — create identities.',
+    '2. [Azure database](azure-database.md) — set up roles.',
+  ].join('\n');
+  const bootstrap = '# Azure bootstrap\n\nThis runbook prepares Azure.\n\n## Terms\n';
+  const database = '# Azure database\n\n## Before you start\n';
+  const files = () =>
+    new Map([
+      ['azure-bootstrap.md', bootstrap],
+      ['azure-database.md', database],
+    ]);
+  it('keeps the order of the list, matches titles and strips the title from the body', () => {
+    expect(parseRunbooks(index, files())).toEqual([
+      {
+        file: 'azure-bootstrap.md',
+        title: 'Azure bootstrap',
+        body: '\n\nThis runbook prepares Azure.\n\n## Terms\n',
+      },
+      { file: 'azure-database.md', title: 'Azure database', body: '\n\n## Before you start\n' },
+    ]);
+    expect(runbookSlug('azure-bootstrap.md')).toBe('azure-bootstrap');
+  });
+  it.each([
+    ['missing list', 'hello', files()],
+    ['bulleted list', index.replaceAll(/^\d\. /gm, '- '), files()],
+    ['two lists', `${index}\n\nMore:\n\n1. [X](azure-bootstrap.md)`, files()],
+    ['missing file', index, new Map([['azure-bootstrap.md', bootstrap]])],
+    ['unlisted runbook', index, new Map([...files(), ['extra.md', '# Extra\n']])],
+    ['title mismatch', index.replace('Azure database', 'Other'), files()],
+    ['duplicate', index.replace('azure-database.md', 'azure-bootstrap.md'), files()],
+    ['item without a link', index.replace('[Azure database](azure-database.md)', 'text'), files()],
+    ['unsafe path', index.replace('(azure-database.md)', '(../azure-database.md)'), files()],
+    ['two titles', index, new Map([...files(), ['azure-database.md', `${database}\n# Again\n`]])],
+  ])('rejects %s', (_label, text, sources) => {
+    expect(() => parseRunbooks(text, sources)).toThrow();
+  });
+});
+
+describe('canonical benchmark index', () => {
+  const index = [
+    '| Record | Subject | Harness |',
+    '| --- | --- | --- |',
+    '| [0001](0001-parse.md) | Loading the documents | `frontend/apps/docs/benchmarks/parse.bench.ts` |',
+  ].join('\n');
+  const record = '# 0001 Loading the ADRs\n\n- **Date:** 2026-10-31\n\n## Question\n';
+  const files = () => new Map([['0001-parse.md', record]]);
+  it('reads the number, title, subject and harness', () => {
+    expect(parseBenchmarks(index, files())).toEqual([
+      {
+        number: '0001',
+        file: '0001-parse.md',
+        title: 'Loading the ADRs',
+        subject: 'Loading the documents',
+        harness: 'frontend/apps/docs/benchmarks/parse.bench.ts',
+        body: '\n\n- **Date:** 2026-10-31\n\n## Question\n',
+      },
+    ]);
+  });
+  it.each([
+    ['missing table', 'hello', files()],
+    ['missing file', index, new Map<string, string>()],
+    ['unlisted record', index, new Map([...files(), ['0002-extra.md', record]])],
+    ['duplicate', `${index}\n${index.split('\n')[2] ?? ''}`, files()],
+    ['title without the number', index, new Map([['0001-parse.md', record.replace('0001 ', '')]])],
+    [
+      'wrong number in the title',
+      index,
+      new Map([['0001-parse.md', record.replace('0001', '0002')]]),
+    ],
+    ['malformed row', index.replace('[0001](0001-parse.md)', '0001'), files()],
+    [
+      'filename not matching the number',
+      index.replace('(0001-parse.md)', '(0002-parse.md)'),
+      files(),
+    ],
+    ['harness escaping the repository', index.replace('frontend/', '../frontend/'), files()],
+    ['harness with spaces', index.replace('frontend/', 'front end/'), files()],
+  ])('rejects %s', (_label, text, sources) => {
+    expect(() => parseBenchmarks(text, sources)).toThrow();
+  });
+});
+
+describe('runbook and benchmark links', () => {
+  const base = '/calendar/';
+  const links = new Map([
+    ['docs/decisions/0001-test.md', 'adr/0001/'],
+    ['docs/runbooks/README.md', 'runbooks/'],
+    ['docs/runbooks/azure-bootstrap.md', 'runbooks/azure-bootstrap/'],
+    ['docs/benchmarks/README.md', 'benchmarks/'],
+    ['docs/benchmarks/0001-parse.md', 'benchmarks/0001/'],
+    ['docs/architecture/pages/components/api.md', 'architecture/components/api/'],
+  ]);
+  const rewrite = (url: string, from: string) => rewriteLink(url, base, links, from);
+  it('routes links between runbooks, benchmarks, their indexes and ADRs', () => {
+    const runbook = 'docs/runbooks/azure-database.md';
+    expect(rewrite('azure-bootstrap.md#terms', runbook)).toBe(
+      `${base}runbooks/azure-bootstrap/#terms`,
+    );
+    expect(rewrite('README.md', runbook)).toBe(`${base}runbooks/`);
+    expect(rewrite('../decisions/0001-test.md', runbook)).toBe(`${base}adr/0001/`);
+    expect(rewrite('0001-parse.md', 'docs/benchmarks/README.md')).toBe(`${base}benchmarks/0001/`);
+    expect(rewrite('../runbooks/azure-bootstrap.md', 'docs/stories/0008-review.md')).toBe(
+      `${base}runbooks/azure-bootstrap/`,
+    );
+    // Architecture pages render as the model file, so their metadata links start from docs/architecture.
+    expect(
+      rewrite('../runbooks/azure-bootstrap.md', 'docs/architecture/calendar.architecture.json'),
+    ).toBe(`${base}runbooks/azure-bootstrap/`);
+  });
+  it('fails links to runbooks and benchmark records that are not published', () => {
+    expect(() => rewrite('azure-missing.md', 'docs/runbooks/README.md')).toThrow(
+      'Broken document link',
+    );
+    expect(() => rewrite('0002-missing.md', 'docs/benchmarks/README.md')).toThrow(
+      'Broken document link',
+    );
+    expect(() => rewrite('../runbooks/azure-missing.md', 'docs/decisions/0001-test.md')).toThrow(
+      'Broken document link',
+    );
+  });
+  it('still sends the harness and other repository files to GitHub', () => {
+    expect(
+      rewrite(
+        '../../frontend/apps/docs/benchmarks/parse.bench.ts',
+        'docs/benchmarks/0001-parse.md',
+      ),
+    ).toBe(
+      'https://github.com/mgasca/calendar/blob/main/frontend/apps/docs/benchmarks/parse.bench.ts',
+    );
+  });
 });

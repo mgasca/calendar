@@ -76,6 +76,8 @@ jobs:
       - run: pnpm format:check
       - run: pnpm lint
       - run: pnpm typecheck
+      - name: Architecture model conforms to the CALM schema
+        run: pnpm --filter @calendar/docs validate:architecture
       - run: pnpm test:coverage
       - run: pnpm build
       - name: Verify ADR site at the root path

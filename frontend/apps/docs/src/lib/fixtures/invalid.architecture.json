@@ -1,0 +1,25 @@
+{
+  "$schema": "https://calm.finos.org/release/1.3/meta/calm.json",
+  "unique-id": "invalid-fixture",
+  "name": "Invalid fixture",
+  "description": "Breaks the CALM schema on purpose: a node without a node-type, and a relationship to a node that does not exist.",
+  "nodes": [
+    {
+      "unique-id": "lonely-service",
+      "name": "Lonely service",
+      "description": "Has no node-type."
+    }
+  ],
+  "relationships": [
+    {
+      "unique-id": "dangling",
+      "description": "Points at a node that is not in the model",
+      "relationship-type": {
+        "connects": {
+          "source": { "node": "lonely-service" },
+          "destination": { "node": "missing-node" }
+        }
+      }
+    }
+  ]
+}

@@ -1,0 +1,21 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://mgasca.github.io/calendar/architecture/controls/client-performance.requirement.json",
+  "title": "Client performance requirement",
+  "description": "Caching, refresh and rendering rules the web client follows (performance review, issues #42–#49).",
+  "type": "object",
+  "properties": {
+    "query-stale-time-ms": { "type": "integer" },
+    "agenda-refetch-interval-ms": { "type": "integer" },
+    "refetch-triggers": { "type": "array", "items": { "type": "string" } },
+    "optimistic-updates": { "type": "string" },
+    "formatter-caching": { "type": "string" },
+    "clock-subscriptions": { "type": "string" },
+    "code-splitting": { "type": "string" },
+    "static-asset-caching": { "type": "object", "additionalProperties": { "type": "string" } },
+    "evidence": { "type": "string", "description": "What kind of test every performance fix must carry." },
+    "adrs": { "type": "array", "items": { "type": "string", "format": "uri" } }
+  },
+  "required": ["query-stale-time-ms"],
+  "additionalProperties": false
+}

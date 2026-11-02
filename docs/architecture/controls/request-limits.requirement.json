@@ -1,0 +1,33 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://mgasca.github.io/calendar/architecture/controls/request-limits.requirement.json",
+  "title": "Request validation and limits requirement",
+  "description": "Input validation, field limits, page sizes and bulk caps enforced by the API.",
+  "type": "object",
+  "properties": {
+    "error-format": { "type": "string" },
+    "validation-status": { "type": "integer" },
+    "field-limits": { "type": "object", "additionalProperties": { "type": "string" } },
+    "pagination": {
+      "type": "object",
+      "properties": {
+        "style": { "type": "string" },
+        "default-limit": { "type": "integer" },
+        "max-limit": { "type": "integer" },
+        "cursor": { "type": "string" },
+        "malformed-cursor-status": { "type": "integer" }
+      }
+    },
+    "bulk": {
+      "type": "object",
+      "properties": {
+        "max-ids": { "type": "integer" },
+        "filter-views": { "type": "array", "items": { "type": "string" } }
+      }
+    },
+    "agenda-overdue-limit": { "type": "integer" },
+    "adrs": { "type": "array", "items": { "type": "string", "format": "uri" } }
+  },
+  "required": ["error-format", "validation-status"],
+  "additionalProperties": false
+}

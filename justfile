@@ -40,7 +40,7 @@ test:
     {{ pnpm }} test
 
 # Static analysis (analyzers run as part of the .NET build)
-lint: && tooling tool-versions adr-check
+lint: && tooling tool-versions adr-check architecture-check
     {{ dotnet }} build --no-restore
     {{ dotnet }} format --verify-no-changes --no-restore
     {{ dotnet }} tool restore
@@ -81,6 +81,10 @@ tool-versions *args:
 # Validate ADRs in docs/decisions (e.g. just adr-check --fix-links)
 adr-check *args:
     dotnet run {{ adr_skill }}/scripts/check-adr/check-adr.cs -- {{ args }}
+
+# Validate the CALM architecture model in docs/architecture against the CALM schema (ADR-0039)
+architecture-check:
+    {{ pnpm }} --filter @calendar/docs validate:architecture
 
 # Start the local PostgreSQL (creates .env from .env.example on first run)
 db-up:
@@ -147,7 +151,7 @@ dev-api:
 dev-web:
     {{ pnpm }} dev
 
-# Run the documentation site (ADRs and stories) on http://localhost:4321
+# Run the documentation site (ADRs, stories, architecture, runbooks, benchmarks) on http://localhost:4321
 dev-docs:
     {{ pnpm }} --filter @calendar/docs dev
 

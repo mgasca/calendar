@@ -1,5 +1,5 @@
 ---
-status: proposed
+status: accepted
 date: 2026-11-02
 decision-makers: mgasca, Claude (AI assistant)
 ---
@@ -99,7 +99,7 @@ This replaces the first bullet of the "Source and navigation contract" in [ADR-0
 
 ## More Information
 
-* Issue #184 and story [0013](../stories/0013-derive-the-decision-log-from-the-adr-files.md) track the change; the removal, the validator and loader changes and this record ship in one PR.
+* Issue #184 and story [0013](../stories/0013-derive-the-decision-log-from-the-adr-files.md) track the change; the removal, the validator and loader changes and this record ship in one PR, where the maintainer accepted the decision on 2026-11-02.
 * Related: [ADR-0000](0000-use-markdown-architectural-decision-records.md) (format and validator), [ADR-0023](0023-static-adr-log-publication.md) (the site builds the log from the canonical files), [ADR-0028](0028-publish-user-stories-on-the-documentation-site.md) (the story index keeps its table), [ADR-0039](0039-architecture-model-and-visualization-tooling.md) (the model's ADR list).
 * The counts above were measured with `git log --first-parent` and `git log -- docs/decisions/README.md` on 2026-11-02.
 * Revisit if the architecture model's `metadata.adrs` list turns out to conflict as often as the table did; the remedy would be to derive that list from the files too, and keep only the per-element references in the model.

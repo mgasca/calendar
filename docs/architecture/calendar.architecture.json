@@ -65,7 +65,7 @@
       { "id": "ADR-0037", "title": "PostgreSQL only: drop the SQLite budget fallback", "status": "accepted", "supersedes": "ADR-0014", "file": "docs/decisions/0037-postgresql-only-no-sqlite-fallback.md", "url": "https://mgasca.github.io/calendar/adr/0037/" },
       { "id": "ADR-0038", "title": "just as the top-level task runner, replacing GNU Make", "status": "accepted", "supersedes": "ADR-0011", "file": "docs/decisions/0038-just-as-the-top-level-task-runner.md", "url": "https://mgasca.github.io/calendar/adr/0038/" },
       { "id": "ADR-0039", "title": "Architecture model and visualization tooling for the documentation site", "status": "proposed", "file": "docs/decisions/0039-architecture-model-and-visualization-tooling.md", "url": "https://mgasca.github.io/calendar/adr/0039/" },
-      { "id": "ADR-0040", "title": "Derive the decision log from the ADR files instead of an index table", "status": "proposed", "file": "docs/decisions/0040-derive-the-decision-log-from-the-adr-files.md", "url": "https://mgasca.github.io/calendar/adr/0040/" }
+      { "id": "ADR-0040", "title": "Derive the decision log from the ADR files instead of an index table", "status": "accepted", "file": "docs/decisions/0040-derive-the-decision-log-from-the-adr-files.md", "url": "https://mgasca.github.io/calendar/adr/0040/" }
     ],
     "stories": [
       { "id": "0001", "title": "Today view", "status": "implemented", "url": "https://mgasca.github.io/calendar/stories/0001/" },

@@ -168,7 +168,14 @@ const model: TestModel = {
 };
 
 const adrs: Adr[] = [
-  { number: '0001', file: '0001-test.md', title: 'Test code', status: 'proposed', body: '' },
+  {
+    number: '0001',
+    file: '0001-test.md',
+    title: 'Test code',
+    heading: 'Test `code`',
+    status: 'proposed',
+    body: '',
+  },
 ];
 const stories: Story[] = [
   {

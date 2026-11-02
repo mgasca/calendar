@@ -4,6 +4,7 @@ import { relative, resolve } from 'node:path';
 import type { Loader } from 'astro/loaders';
 import type { Adr, Story } from './adr';
 import {
+  logTable,
   parseBenchmarks,
   parseLog,
   parseRunbooks,
@@ -51,8 +52,9 @@ async function readSources(directory: URL, pattern: RegExp) {
 
 export async function readLog() {
   const sources = await readSources(decisionsDirectory, /^\d{4}-.+\.md$/);
+  // README.md holds the conventions only; the log itself comes from the files (ADR-0040).
   const index = await readFile(new URL('README.md', decisionsDirectory), 'utf8');
-  return { index, records: parseLog(index, sources) };
+  return { index, records: parseLog(sources) };
 }
 
 export async function readStories(adrs: Map<string, string>) {
@@ -174,7 +176,9 @@ export function docsLoader(): Loader {
           {
             id: 'index',
             title: 'ADR Log',
-            body: adr.index.replace(/^# Architecture Decision Records\s*/m, ''),
+            body:
+              adr.index.replace(/^# Architecture Decision Records\s*/m, '').trimEnd() +
+              `\n\n${logTable(adr.records)}\n`,
             directory: decisionsDirectory,
             file: 'README.md',
             sidebar: { order: -1, label: 'ADR Log', hidden: true },

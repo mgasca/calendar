@@ -75,8 +75,6 @@ if (fixLinks)
   }
 }
 
-var indexPath = Path.Combine(decisions, AdrValidator.IndexFileName);
-var indexText = File.Exists(indexPath) ? await File.ReadAllTextAsync(indexPath) : "";
 var failed = false;
 
 foreach (var error in AdrValidator.CheckRepository(decisions))
@@ -87,7 +85,7 @@ foreach (var error in AdrValidator.CheckRepository(decisions))
 
 foreach (var target in targets)
 {
-  AdrFileResult result = AdrValidator.CheckFile(target, files, indexText);
+  AdrFileResult result = AdrValidator.CheckFile(target, files);
   Console.WriteLine($"{(result.Ok ? "OK  " : "FAIL")} {result.FileName}");
   foreach (var error in result.Errors)
   {

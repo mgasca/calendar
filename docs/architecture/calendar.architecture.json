@@ -63,7 +63,9 @@
       { "id": "ADR-0035", "title": "Separate staging and production environments", "status": "accepted", "file": "docs/decisions/0035-separate-staging-and-production-environments.md", "url": "https://mgasca.github.io/calendar/adr/0035/" },
       { "id": "ADR-0036", "title": "C# layout rules enforced with a StyleCop subset and Sonar's line-length rule", "status": "accepted", "file": "docs/decisions/0036-csharp-layout-rules-with-stylecop-and-sonar.md", "url": "https://mgasca.github.io/calendar/adr/0036/" },
       { "id": "ADR-0037", "title": "PostgreSQL only: drop the SQLite budget fallback", "status": "accepted", "supersedes": "ADR-0014", "file": "docs/decisions/0037-postgresql-only-no-sqlite-fallback.md", "url": "https://mgasca.github.io/calendar/adr/0037/" },
-      { "id": "ADR-0038", "title": "just as the top-level task runner, replacing GNU Make", "status": "accepted", "supersedes": "ADR-0011", "file": "docs/decisions/0038-just-as-the-top-level-task-runner.md", "url": "https://mgasca.github.io/calendar/adr/0038/" }
+      { "id": "ADR-0038", "title": "just as the top-level task runner, replacing GNU Make", "status": "accepted", "supersedes": "ADR-0011", "file": "docs/decisions/0038-just-as-the-top-level-task-runner.md", "url": "https://mgasca.github.io/calendar/adr/0038/" },
+      { "id": "ADR-0039", "title": "Architecture model and visualization tooling for the documentation site", "status": "proposed", "file": "docs/decisions/0039-architecture-model-and-visualization-tooling.md", "url": "https://mgasca.github.io/calendar/adr/0039/" },
+      { "id": "ADR-0040", "title": "Derive the decision log from the ADR files instead of an index table", "status": "proposed", "file": "docs/decisions/0040-derive-the-decision-log-from-the-adr-files.md", "url": "https://mgasca.github.io/calendar/adr/0040/" }
     ],
     "stories": [
       { "id": "0001", "title": "Today view", "status": "implemented", "url": "https://mgasca.github.io/calendar/stories/0001/" },
@@ -678,7 +680,7 @@
         { "unique-id": "runbook-files", "path": "docs/runbooks/*.md" },
         { "unique-id": "benchmark-files", "path": "docs/benchmarks/NNNN-*.md" }
       ],
-      "metadata": { "adrs": ["ADR-0000", "ADR-0028"], "validation": "just adr-check; frontend/apps/docs tests fail on broken links, anchors, unknown ADRs, unlisted documents, titles that differ from the index or a missing benchmark harness" }
+      "metadata": { "adrs": ["ADR-0000", "ADR-0028"], "validation": "just adr-check; frontend/apps/docs tests fail on broken links, anchors, unknown or duplicate ADRs, unlisted stories, runbooks or benchmarks, titles that differ from their index or a missing benchmark harness" }
     },
     {
       "unique-id": "docs-site",

@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   deployment,
+  logTable,
   parseBenchmarks,
   parseLog,
   parseRunbooks,
@@ -14,8 +15,6 @@ import {
 import { readFile } from 'node:fs/promises';
 import { storiesDirectory } from './docs-loader';
 const file = '0001-test.md';
-const row = '| [0001](0001-test.md) | Test `code` | proposed |';
-const log = `| ADR | Title | Status |\n| --- | --- | --- |\n${row}`;
 const source = '---\nstatus: proposed\n---\n# Test `code`\n\n## Context\nBody';
 const sources = () => new Map([[file, source]]);
 
@@ -40,35 +39,47 @@ const adrs = new Map([['0001', file]]);
 const storySources = () => new Map([[storyFile, storySource]]);
 
 describe('canonical ADR log', () => {
-  it('preserves ordering, includes proposed records and removes duplicate title', () => {
-    expect(parseLog(log, sources())).toEqual([
+  it('reads number, title, status and the article beneath the title from the file alone', () => {
+    expect(parseLog(sources())).toEqual([
       {
         number: '0001',
         file,
         title: 'Test code',
+        heading: 'Test `code`',
         status: 'proposed',
         body: '\n\n## Context\nBody',
       },
     ]);
   });
-  it('does not read GFM syntax in titles, because only the index tables use GFM', () => {
-    // A document body is parsed without GFM to halve the load cost, so `~~code~~` stays literal
-    // while the index cell (parsed with GFM) drops the marks, and the two titles no longer match.
-    const struck = source.replace('# Test `code`', '# Test ~~code~~');
-    const index = log.replace('Test `code`', 'Test ~~code~~');
-    expect(() => parseLog(index, new Map([[file, struck]]))).toThrow();
+  it('orders by number whatever the order of the sources', () => {
+    const files = new Map([
+      ['0010-late.md', source.replace('Test `code`', 'Late')],
+      [file, source],
+      ['0002-middle.md', source.replace('Test `code`', 'Middle')],
+    ]);
+    expect(parseLog(files).map((record) => record.number)).toEqual(['0001', '0002', '0010']);
+  });
+  it('renders the log as a table that keeps the title Markdown and escapes pipes', () => {
+    const records = parseLog(new Map([[file, source.replace('Test `code`', 'A `<b>` | title')]]));
+    expect(logTable(records)).toBe(
+      [
+        '| ADR | Title | Status |',
+        '| --- | --- | --- |',
+        '| [0001](0001-test.md) | A `<b>` \\| title | proposed |',
+      ].join('\n'),
+    );
   });
   it.each([
-    ['missing table', 'hello', sources()],
-    ['duplicate', `${log}\n${row}`, sources()],
-    ['missing file', log, new Map<string, string>()],
-    ['title mismatch', log.replace('Test `code`', 'Other'), sources()],
-    ['status mismatch', log.replace('proposed', 'accepted'), sources()],
-    ['unlisted record', log, new Map([...sources(), ['0002-extra.md', source]])],
-    ['malformed row', log.replace('[0001](0001-test.md)', '0001'), sources()],
-    ['unsafe path', log.replace('(0001-test.md)', '(../0001-test.md)'), sources()],
-  ])('rejects %s', (_label, index, files) => {
-    expect(() => parseLog(index, files)).toThrow();
+    ['no files', new Map<string, string>()],
+    ['duplicate number', new Map([...sources(), ['0001-again.md', source]])],
+    ['unsafe filename', new Map([['../0001-test.md', source]])],
+    ['uppercase filename', new Map([['0001-Test.md', source]])],
+    ['missing status', new Map([[file, source.replace('status: proposed\n', '')]])],
+    ['empty status', new Map([[file, source.replace('status: proposed', 'status:')]])],
+    ['two titles', new Map([[file, `${source}\n# Again\n`]])],
+    ['no title', new Map([[file, source.replace('# Test `code`\n', '')]])],
+  ])('rejects %s', (_label, files) => {
+    expect(() => parseLog(files)).toThrow();
   });
 });
 
@@ -266,16 +277,15 @@ describe('deployment links', () => {
   });
 });
 
-it('follows explicit log order and normalizes linked superseded status', () => {
+it('normalizes a linked superseded status to its text', () => {
   const status = 'superseded by [ADR-0002](0002-second.md)';
-  const index = `| ADR | Title | Status |\n| --- | --- | --- |\n| [0002](0002-second.md) | Second | accepted |\n${row.replace('proposed', status)}`;
   const files = new Map([
-    [file, source.replace('proposed', status)],
     ['0002-second.md', '---\nstatus: accepted\n---\n# Second\nBody'],
+    [file, source.replace('proposed', status)],
   ]);
-  expect(parseLog(index, files).map(({ number, status: label }) => [number, label])).toEqual([
-    ['0002', 'accepted'],
+  expect(parseLog(files).map(({ number, status: label }) => [number, label])).toEqual([
     ['0001', 'superseded by ADR-0002'],
+    ['0002', 'accepted'],
   ]);
 });
 

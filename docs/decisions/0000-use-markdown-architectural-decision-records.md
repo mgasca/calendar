@@ -86,3 +86,4 @@ New significant decisions arrive in PRs as `docs/decisions/NNNN-title-with-dashe
 ## More Information
 
 * <https://adr.github.io/madr/>
+* [ADR-0040](0040-derive-the-decision-log-from-the-adr-files.md) removed the index table from `README.md`: the validator no longer checks an index, and the decision log is derived from the files.

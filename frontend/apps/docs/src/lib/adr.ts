@@ -8,14 +8,16 @@ import { visit } from 'unist-util-visit';
 import type { Definition, List, Root, Table } from 'mdast';
 
 const parser = unified().use(remarkParse).use(remarkGfm);
-// Document bodies are parsed only to find the title. GFM is for the index tables and roughly
-// doubles the parse cost (docs/benchmarks/0001-docs-parse.md).
+// Document bodies are parsed only to find the title. GFM is for the story, runbook and benchmark
+// index tables and roughly doubles the parse cost (docs/benchmarks/0001-docs-parse.md).
 const titleParser = unified().use(remarkParse);
 export const repository = 'https://github.com/mgasca/calendar';
 export interface Adr {
   number: string;
   file: string;
   title: string;
+  /** The title as written in the H1, with its Markdown, for the log table. */
+  heading: string;
   status: string;
   body: string;
 }
@@ -35,6 +37,7 @@ function parseDocument(source: string, file: string) {
   return {
     metadata: parsed.data as Record<string, unknown>,
     title: toString(heading),
+    heading: parsed.content.slice(start, end).replace(/^#+\s*/, ''),
     body: parsed.content.slice(0, start) + parsed.content.slice(end),
   };
 }
@@ -52,38 +55,46 @@ function findTable(index: string, header: string, name: string): Table {
   return table;
 }
 
-export function parseLog(index: string, sources: Map<string, string>): Adr[] {
-  const table = findTable(index, 'ADR|Title|Status', 'ADR log');
-  const seen = new Set<string>();
-  const records = table.children.slice(1).map((row) => {
-    const [numberCell, titleCell, statusCell] = row.children;
-    const link = numberCell?.children[0];
-    if (row.children.length !== 3 || link?.type !== 'link' || !titleCell || !statusCell) {
-      throw new Error('Malformed ADR log row');
-    }
-    const number = toString(link);
-    const file = link.url;
-    if (!/^\d{4}$/.test(number) || !new RegExp(`^${number}-[a-z0-9-]+\\.md$`).test(file)) {
-      throw new Error(`Invalid ADR filename: ${file}`);
-    }
-    if (seen.has(number)) throw new Error(`Duplicate ADR: ${number}`);
-    seen.add(number);
+const adrFileName = /^(\d{4})-[a-z0-9-]+\.md$/;
+
+/**
+ * Builds the decision log from the ADR sources alone (ADR-0040): the file name gives the number
+ * and the order, the single H1 gives the title and the front matter gives the status. There is no
+ * index table to keep in step, so two ADRs in flight never conflict on one.
+ */
+export function parseLog(sources: Map<string, string>): Adr[] {
+  const seen = new Map<string, string>();
+  const records = [...sources.keys()].sort().map((file) => {
+    const number = adrFileName.exec(file)?.[1];
+    if (number === undefined) throw new Error(`Invalid ADR filename: ${file}`);
+    const other = seen.get(number);
+    if (other !== undefined) throw new Error(`Duplicate ADR ${number}: ${other} and ${file}`);
+    seen.set(number, file);
     const source = sources.get(file);
     if (source === undefined) throw new Error(`Missing ADR: ${file}`);
-    const { metadata, title: heading, body } = parseDocument(source, file);
-    const title = toString(titleCell);
-    const status = toString(statusCell);
-    if (heading !== title) throw new Error(`ADR title differs from log: ${file}`);
-    if (typeof metadata.status !== 'string' || toString(parser.parse(metadata.status)) !== status) {
-      throw new Error(`ADR status differs from log: ${file}`);
+    const { metadata, title, heading, body } = parseDocument(source, file);
+    if (typeof metadata.status !== 'string' || !metadata.status.trim()) {
+      throw new Error(`ADR without a status: ${file}`);
     }
-    return { number, file, title, status, body };
+    // `superseded by [ADR-0038](0038-….md)` reads as plain text, the same label the site shows.
+    const status = toString(parser.parse(metadata.status));
+    return { number, file, title, heading, status, body };
   });
   if (!records.length) throw new Error('ADR log is empty');
-  for (const file of sources.keys()) {
-    if (!records.some((record) => record.file === file)) throw new Error(`Unlisted ADR: ${file}`);
-  }
   return records;
+}
+
+/** The decision log as a Markdown table, for the ADR Log landing page. */
+export function logTable(records: Adr[]): string {
+  const cell = (text: string) => text.replaceAll('|', '\\|');
+  return [
+    '| ADR | Title | Status |',
+    '| --- | --- | --- |',
+    ...records.map(
+      (record) =>
+        `| [${record.number}](${record.file}) | ${cell(record.heading)} | ${cell(record.status)} |`,
+    ),
+  ].join('\n');
 }
 
 export const storyStatuses = ['planned', 'in-progress', 'implemented'];

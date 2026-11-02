@@ -37,4 +37,5 @@ Front matter: `status` (`planned`, `in-progress` or `implemented`), `date` (`YYY
 | [0013](0013-derive-the-decision-log-from-the-adr-files.md) | Derive the decision log from the ADR files | implemented |
 | [0014](0014-supersede-adr-0014-drop-sqlite-fallback.md) | Supersede ADR-0014: drop the SQLite fallback | implemented |
 | [0015](0015-backend-performance-review-closeout.md) | Close out the backend performance review | implemented |
+| [0016](0016-colour-the-architecture-flow-diagrams-by-ownership.md) | Colour the architecture flow diagrams by ownership, with the legend | implemented |
 | [XXXX](XXXX-create-events-and-tasks-from-week-view.md) | Create events and tasks from the week view | planned |

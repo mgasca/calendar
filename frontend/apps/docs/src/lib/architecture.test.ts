@@ -14,6 +14,7 @@ import {
   parseArchitecture,
   renderValue,
   resolveOwnership,
+  rgba,
   shortLabel,
 } from './architecture';
 
@@ -438,6 +439,10 @@ describe('diagram text', () => {
   it('escapes the characters Mermaid reads as syntax', () => {
     expect(mermaidText('a; (b) <c> "d" #1')).toBe('a#59; #40;b#41; #lt;c#gt; #quot;d#quot; #35;1');
   });
+  it('writes a hex colour in the rgba() form a sequence-diagram box accepts', () => {
+    expect(rgba('#fde68a')).toBe('rgba(253,230,138,0.5)');
+    expect(rgba('#000000', 1)).toBe('rgba(0,0,0,1)');
+  });
   it('escapes backslashes before pipes in a table cell, and flattens newlines', () => {
     expect(escapeCell('a|b\\c\nd')).toBe('a\\|b\\\\c d');
     // A backslash before a pipe must not survive as an escape of the pipe's own escape.
@@ -564,6 +569,39 @@ describe('architecture pages', () => {
       '| 2 | [Db](pages/components/db.md) | [App (web)](pages/components/app.md) | Rows come back; all of them (quickly) |',
     );
     expect(body).toContain('[0002 Test story](../stories/0002-test-story.md)');
+  });
+
+  it('colours the participants of a flow by ownership in boxes, with the legend and a table', () => {
+    const body = page('architecture/flows/read').body;
+    // Participants keep their order of first appearance; each run of one ownership shares a box
+    // tinted with that ownership's colour (the same fills as the flowchart classes, half-transparent).
+    expect(body).toContain(
+      [
+        'sequenceDiagram',
+        '  box rgba(253,230,138,0.5)',
+        '    participant user as User',
+        '  end',
+        '  box rgba(191,219,254,0.5)',
+        '    participant app as App #40;web#41;',
+        '    participant db as Db',
+        '  end',
+        '  user ->> app: 1. Opens the app',
+      ].join('\n'),
+    );
+    // The same legend as the other diagrams, naming only the ownerships in this flow.
+    expect(body).toContain('Legend: <span aria-hidden="true"');
+    expect(body).toContain('</span> Person · <span');
+    expect(body).toContain('</span> Built in this repository');
+    expect(body).not.toContain('Hosting and tooling we configure');
+    // The participants table carries the ownership in text, before the steps.
+    expect(body).toContain('## Participants');
+    expect(body).toContain('| Participant | Type | Ownership | Description |');
+    expect(body).toContain('| [User](pages/components/user.md) | actor | Person | A person. |');
+    expect(body).toContain(
+      '| [Db](pages/components/db.md) | database | Built in this repository | Rows. |',
+    );
+    expect(body).not.toContain('pages/components/host.md');
+    expect(body.indexOf('## Participants')).toBeLessThan(body.indexOf('## Steps'));
   });
 
   it('gives a component its interfaces, relationships, controls and decisions', () => {

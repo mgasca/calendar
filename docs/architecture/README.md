@@ -15,7 +15,7 @@ This folder describes the Calendar system in the [FINOS Common Architecture Lang
 - **Controls** record the non-functional requirements found in the code, the story cards and the ADRs. Architecture-level controls cover the contract, the quality gates, supply-chain integrity and environment separation; node and relationship controls cover authentication, time correctness, read consistency, concurrency, request limits, observability, least-privilege database access, transport security, secrets, data durability, query performance, client performance and accessibility. Each control's `config` conforms to its `requirement-url` schema in `controls/`.
 - **Flows** model business processes over the relationships: Google sign-in, viewing today's agenda, adding an event, ticking a task off, overdue triage, applying database migrations and publishing the decision log.
 - **Views** (`metadata.views`) name the nodes the context and container diagrams show. CALM has no view concept, so the choice lives here, with the model.
-- **Ownership** (`metadata.ownership` on a node: `person`, `ours`, `platform` or `external`) colours the diagrams and fills the legend. Actors are people and composition members are ours without declaring it; every other node must declare it.
+- **Ownership** (`metadata.ownership` on a node: `person`, `ours`, `platform` or `external`) colours every diagram and fills the legend under it: the boxes of the context and container flowcharts, and the participant lanes of the flow sequence diagrams (story [0016](../stories/0016-colour-the-architecture-flow-diagrams-by-ownership.md)). Actors are people and composition members are ours without declaring it; every other node must declare it.
 
 ## ADR links
 

@@ -628,7 +628,17 @@ function classDefs(): string[] {
   });
 }
 
-/** The one-line legend under a flowchart, with a swatch per ownership that appears in it. */
+/**
+ * A `#rrggbb` colour as `rgba(r,g,b,a)`, the form Mermaid accepts for a sequence-diagram box (not
+ * hex). Half-transparent, the lane tints the page background in either theme, so the message text
+ * keeps its contrast in dark mode as well as light.
+ */
+export function rgba(hex: string, alpha = 0.5): string {
+  const channels = [1, 3, 5].map((start) => Number.parseInt(hex.slice(start, start + 2), 16));
+  return `rgba(${channels.join(',')},${String(alpha)})`;
+}
+
+/** The one-line legend under a diagram, with a swatch per ownership that appears in it. */
 export function legend(used: Iterable<Ownership>): string {
   const items = ownerships
     .filter((ownership) => new Set(used).has(ownership))
@@ -915,26 +925,55 @@ class Renderer {
     return ['```mermaid', 'flowchart TB', ...render('', 1), ...edges, '```'].join('\n');
   }
 
-  private sequenceDiagram(flow: Flow): string {
+  /** The nodes a step goes from and to, honouring a reversed transition. */
+  private transitionEnds(transition: Transition): [string, string] {
+    const relationship = this.relationships.get(transition.relationship);
+    if (!relationship) throw new Error(`Unknown relationship ${transition.relationship}`);
+    const [a, b] = this.stepEnds(relationship);
+    return transition.reversed ? [b, a] : [a, b];
+  }
+
+  /** The nodes a flow crosses, in order of first appearance: the participants of its diagram. */
+  private participants(flow: Flow): string[] {
     const order: string[] = [];
-    const steps: string[] = [];
     for (const transition of flow.transitions) {
-      const relationship = this.relationships.get(transition.relationship);
-      if (!relationship) throw new Error(`Unknown relationship ${transition.relationship}`);
-      {
-        const [a, b] = this.stepEnds(relationship);
-        const [from, to] = transition.reversed ? [b, a] : [a, b];
-        for (const id of [from, to]) if (!order.includes(id)) order.push(id);
-        const arrow = transition.reversed ? '-->>' : '->>';
-        const label = mermaidText(
-          `${String(transition.sequence)}. ${shortLabel(transition.description)}`,
-        );
-        steps.push(`  ${mermaidId(from)} ${arrow} ${mermaidId(to)}: ${label}`);
-      }
+      for (const id of this.transitionEnds(transition)) if (!order.includes(id)) order.push(id);
     }
-    const participants = order.map(
-      (id) => `  participant ${mermaidId(id)} as ${mermaidText(this.node(id).name)}`,
-    );
+    return order;
+  }
+
+  /**
+   * Participant lines in the given order, each run of the same ownership wrapped in a `box` filled
+   * with that ownership's colour. A sequence diagram takes no `classDef`, so the box is the colour
+   * carrier; keeping the order of first appearance (rather than one box per ownership) keeps the
+   * messages readable.
+   */
+  private participantBoxes(ids: string[]): string[] {
+    const lines: string[] = [];
+    let open: Ownership | undefined;
+    for (const id of ids) {
+      const ownership = this.owner(id);
+      if (ownership !== open) {
+        if (open !== undefined) lines.push('  end');
+        lines.push(`  box ${rgba(ownershipLegend[ownership].fill)}`);
+        open = ownership;
+      }
+      lines.push(`    participant ${mermaidId(id)} as ${mermaidText(this.node(id).name)}`);
+    }
+    if (open !== undefined) lines.push('  end');
+    return lines;
+  }
+
+  private sequenceDiagram(flow: Flow): string {
+    const steps = flow.transitions.map((transition) => {
+      const [from, to] = this.transitionEnds(transition);
+      const arrow = transition.reversed ? '-->>' : '->>';
+      const label = mermaidText(
+        `${String(transition.sequence)}. ${shortLabel(transition.description)}`,
+      );
+      return `  ${mermaidId(from)} ${arrow} ${mermaidId(to)}: ${label}`;
+    });
+    const participants = this.participantBoxes(this.participants(flow));
     return ['```mermaid', 'sequenceDiagram', ...participants, ...steps, '```'].join('\n');
   }
 
@@ -1212,11 +1251,9 @@ class Renderer {
 
   flows(): Page[] {
     return this.architecture.flows.map((flow, order): Page => {
+      const participants = this.participants(flow);
       const rows = flow.transitions.map((transition) => {
-        const relationship = this.relationships.get(transition.relationship);
-        if (!relationship) throw new Error(`Unknown relationship ${transition.relationship}`);
-        const [a, b] = this.stepEnds(relationship);
-        const [from, to] = transition.reversed ? [b, a] : [a, b];
+        const [from, to] = this.transitionEnds(transition);
         return [
           String(transition.sequence),
           this.nodeLink(from),
@@ -1229,6 +1266,12 @@ class Renderer {
         '',
         ...(flow.requirementUrl === undefined ? [] : [`Requirement: <${flow.requirementUrl}>`, '']),
         this.sequenceDiagram(flow),
+        '',
+        this.legendFor(participants),
+        '',
+        '## Participants',
+        '',
+        table(['Participant', 'Type', 'Ownership', 'Description'], this.elementRows(participants)),
         '',
         '## Steps',
         '',

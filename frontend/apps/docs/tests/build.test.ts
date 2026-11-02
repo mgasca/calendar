@@ -1,7 +1,7 @@
 import { access, readFile, readdir, stat } from 'node:fs/promises';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { deployment, storySlug } from '../src/lib/adr';
+import { deployment, runbookSlug, storySlug } from '../src/lib/adr';
 import { architecturePages, pageRoute } from '../src/lib/architecture';
 import { readDocuments } from '../src/lib/docs-loader';
 
@@ -157,6 +157,69 @@ describe('published architecture', () => {
         const slug = /\/stories\/([^/]+)\/$/.exec(stories.get(id) ?? '')?.[1] ?? '';
         expect(html, flow.id).toContain(`href="${base}stories/${slug}/"`);
       }
+    }
+  });
+});
+
+describe('published runbooks', () => {
+  it('renders every runbook in index order, with navigation, headings and ADR links', async () => {
+    const { runbook } = await readDocuments();
+    const runbookRoutes = runbook.records.map(
+      (record) => `${base}runbooks/${runbookSlug(record.file)}/`,
+    );
+    const index = await readFile('dist/runbooks/index.html', 'utf8');
+    for (const route of runbookRoutes) expect(index).toContain(`href="${route}"`);
+    for (const record of runbook.records) {
+      const route = `${base}runbooks/${runbookSlug(record.file)}/`;
+      const html = await readFile(`dist/runbooks/${runbookSlug(record.file)}/index.html`, 'utf8');
+      const routes = sidebarRoutes(html);
+      expect(routes.filter((href) => href.startsWith(`${base}runbooks/`))).toEqual([
+        `${base}runbooks/`,
+        ...runbookRoutes,
+      ]);
+      const activeLinks = html.match(/<a\b[^>]*aria-current="page"[^>]*>/g) ?? [];
+      expect(activeLinks.length).toBeGreaterThan(0);
+      expect(activeLinks.every((link) => link.includes(`href="${route}"`))).toBe(true);
+      expect(html).toMatch(new RegExp(`<h1[^>]*>${record.title}<`));
+      expect(html).toContain('id="before-you-start"');
+      // Every runbook cites at least one decision, and the citation is a site route.
+      expect(html).toMatch(new RegExp(`href="${base}adr/\\d{4}/"`));
+      expect(html).toContain(`/edit/main/docs/runbooks/${record.file}"`);
+    }
+  });
+});
+
+describe('published benchmarks', () => {
+  it('renders every record with navigation, its subject and a GitHub link to its harness', async () => {
+    const { benchmark, architecture } = await readDocuments();
+    const recordRoutes = benchmark.records.map((record) => `${base}benchmarks/${record.number}/`);
+    const index = await readFile('dist/benchmarks/index.html', 'utf8');
+    for (const route of recordRoutes) expect(index).toContain(`href="${route}"`);
+    for (const record of benchmark.records) {
+      const route = `${base}benchmarks/${record.number}/`;
+      const html = await readFile(`dist/benchmarks/${record.number}/index.html`, 'utf8');
+      const routes = sidebarRoutes(html);
+      expect(routes.filter((href) => href.startsWith(`${base}benchmarks/`))).toEqual([
+        `${base}benchmarks/`,
+        ...recordRoutes,
+      ]);
+      const activeLinks = html.match(/<a\b[^>]*aria-current="page"[^>]*>/g) ?? [];
+      expect(activeLinks.length).toBeGreaterThan(0);
+      expect(activeLinks.every((link) => link.includes(`href="${route}"`))).toBe(true);
+      expect(html).toMatch(new RegExp(`<h1[^>]*>${record.number} · `));
+      expect(html).toContain(`<strong>Subject:</strong> ${record.subject}`);
+      expect(html).toContain(`/edit/main/docs/benchmarks/${record.file}"`);
+    }
+    // Runbooks named in the model's metadata link to their published pages, not to GitHub.
+    const runbookPaths = /docs\/runbooks\/([a-z0-9-]+)\.md/g;
+    for (const node of architecture.nodes) {
+      const named = [...JSON.stringify(node.metadata).matchAll(runbookPaths)].map(
+        (m) => m[1] ?? '',
+      );
+      if (!named.length) continue;
+      const html = await readFile(`dist/architecture/components/${node.id}/index.html`, 'utf8');
+      const main = /<main\b[\s\S]*<\/main>/.exec(html)?.[0] ?? '';
+      for (const slug of named) expect(main, node.id).toContain(`href="${base}runbooks/${slug}/"`);
     }
   });
 });

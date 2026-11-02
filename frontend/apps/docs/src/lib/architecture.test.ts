@@ -421,6 +421,45 @@ describe('diagram text', () => {
       '* **on**: true',
     ]);
   });
+  it('links document paths under docs/ only when given the way to the docs root', () => {
+    const metadata = {
+      runbook: 'docs/runbooks/azure-database.md',
+      runbooks: ['docs/runbooks/azure-bootstrap.md', 'docs/runbooks/azure-infrastructure.md'],
+      workflow: '.github/workflows/migrate.yml',
+      nested: { record: 'docs/benchmarks/0001-docs-parse.md' },
+    };
+    expect(renderValue(metadata, 0, '../')).toEqual([
+      '* **runbook**: [docs/runbooks/azure-database.md](../runbooks/azure-database.md)',
+      '* **runbooks**: [docs/runbooks/azure-bootstrap.md](../runbooks/azure-bootstrap.md), ' +
+        '[docs/runbooks/azure-infrastructure.md](../runbooks/azure-infrastructure.md)',
+      '* **workflow**: .github/workflows/migrate.yml',
+      '* **nested**:',
+      '  * **record**: [docs/benchmarks/0001-docs-parse.md](../benchmarks/0001-docs-parse.md)',
+    ]);
+    expect(renderValue(metadata)).toEqual([
+      '* **runbook**: docs/runbooks/azure-database.md',
+      '* **runbooks**: docs/runbooks/azure-bootstrap.md, docs/runbooks/azure-infrastructure.md',
+      '* **workflow**: .github/workflows/migrate.yml',
+      '* **nested**:',
+      '  * **record**: docs/benchmarks/0001-docs-parse.md',
+    ]);
+  });
+  it('links the documents named in component and flow metadata from the model directory', () => {
+    const architecture = check((copy) => {
+      const user = copy.nodes.find((item) => item['unique-id'] === 'user');
+      if (user) user.metadata = { ...user.metadata, runbook: 'docs/runbooks/azure-bootstrap.md' };
+      const flow = copy.flows[0];
+      if (flow) flow.metadata = { ...flow.metadata, record: 'docs/benchmarks/0001-docs-parse.md' };
+    });
+    const pages = architecturePages(architecture, { stories });
+    const body = (id: string) => pages.find((page) => page.id === id)?.body ?? '';
+    expect(body('architecture/components/user')).toContain(
+      '* **runbook**: [docs/runbooks/azure-bootstrap.md](../runbooks/azure-bootstrap.md)',
+    );
+    expect(body('architecture/flows/read')).toContain(
+      '* **record**: [docs/benchmarks/0001-docs-parse.md](../benchmarks/0001-docs-parse.md)',
+    );
+  });
 });
 
 describe('architecture pages', () => {

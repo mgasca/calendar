@@ -12,8 +12,10 @@ Reference measurements for performance work. A benchmark here is a repeatable ha
 
 ## Writing a record
 
-- Name it `NNNN-short-title.md`, the next number, and add a row to the table above.
+- Name it `NNNN-short-title.md`, the next number, title it `# NNNN Short title`, and add a row to the table above. The harness cell must name a file that exists in the repository.
 - State what was measured and why, the commit, the machine, and how many iterations ran.
 - Compare before and after in one session, alternating the two versions (A, B, A, B), because a busy machine moves absolute numbers more than a code change does. Include a control task that the change should not affect.
 - Report the median of the runs and the spread, and say whether a finding is measured or inferred.
 - Never rewrite an old record. Add a new one and link it, so the history stays comparable.
+
+The documentation site publishes each record at `benchmarks/NNNN/`. The docs build fails on a record that is not in the table, a title without its number or a harness path that does not exist.

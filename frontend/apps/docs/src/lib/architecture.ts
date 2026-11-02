@@ -582,35 +582,50 @@ function table(header: string[], rows: string[][]): string {
   ].join('\n');
 }
 
-/** Renders a control's inline configuration as nested bullets. */
-export function renderValue(value: unknown, depth = 0): string[] {
+/**
+ * Renders a control's inline configuration or an element's metadata as nested bullets. With
+ * `docsRoot`, the relative path from the page to `docs/`, a value that names a Markdown document
+ * under `docs/` (such as a runbook) becomes a link to it, so a stale path fails the build.
+ */
+export function renderValue(value: unknown, depth = 0, docsRoot?: string): string[] {
   const indent = '  '.repeat(depth);
   if (isRecord(value)) {
     return Object.entries(value).flatMap(([key, entry]) => {
       if (isRecord(entry) || (isList(entry) && entry.some((item) => isRecord(item)))) {
-        return [`${indent}* **${key}**:`, ...renderValue(entry, depth + 1)];
+        return [`${indent}* **${key}**:`, ...renderValue(entry, depth + 1, docsRoot)];
       }
-      return [`${indent}* **${key}**: ${scalarList(entry)}`];
+      return [`${indent}* **${key}**: ${scalarList(entry, docsRoot)}`];
     });
   }
   if (isList(value)) {
     return value.flatMap((entry) =>
-      isRecord(entry) ? renderValue(entry, depth) : [`${indent}* ${scalarList(entry)}`],
+      isRecord(entry)
+        ? renderValue(entry, depth, docsRoot)
+        : [`${indent}* ${scalarList(entry, docsRoot)}`],
     );
   }
-  return [`${indent}* ${scalarList(value)}`];
+  return [`${indent}* ${scalarList(value, docsRoot)}`];
 }
 
-function scalarList(value: unknown): string {
-  if (isList(value)) return value.map(scalar).join(', ');
-  return scalar(value);
+function scalarList(value: unknown, docsRoot?: string): string {
+  if (isList(value)) return value.map((entry) => scalar(entry, docsRoot)).join(', ');
+  return scalar(value, docsRoot);
 }
 
-function scalar(value: unknown): string {
-  if (isText(value)) return value;
+const documentPath = /^docs\/[\w-]+\/[\w./-]+\.md$/;
+
+function scalar(value: unknown, docsRoot?: string): string {
+  if (isText(value)) {
+    return docsRoot !== undefined && documentPath.test(value)
+      ? `[${value}](${docsRoot}${value.slice('docs/'.length)})`
+      : value;
+  }
   if (typeof value === 'number' || typeof value === 'boolean') return String(value);
   return JSON.stringify(value);
 }
+
+/** Architecture pages render as if they were the model file, so `docs/` is one level up. */
+const docsRootFromElementPage = '../';
 
 export interface Page {
   /** Collection id and route: `architecture`, `architecture/containers`, `architecture/flows/<id>`. */
@@ -1010,7 +1025,13 @@ class Renderer {
         '',
         this.decisions(node.adrs, node.stories),
         '',
-        ...(other.length ? ['## Metadata', '', ...renderValue(Object.fromEntries(other))] : []),
+        ...(other.length
+          ? [
+              '## Metadata',
+              '',
+              ...renderValue(Object.fromEntries(other), 0, docsRootFromElementPage),
+            ]
+          : []),
       ].join('\n');
       return {
         id: `architecture/components/${node.id}`,
@@ -1122,6 +1143,8 @@ class Renderer {
                     ([key]) => !['adrs', 'stories', 'story'].includes(key),
                   ),
                 ),
+                0,
+                docsRootFromElementPage,
               ),
             ]
           : []),

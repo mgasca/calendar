@@ -42,7 +42,8 @@ export default defineConfig({
     starlight({
       title: 'Calendar · Docs',
       description:
-        'Architecture decisions and user stories for Calendar, with their context, alternatives, consequences and user guides.',
+        'Architecture decisions, user stories, the architecture model, runbooks and benchmarks for Calendar, ' +
+        'with their context, alternatives, consequences and user guides.',
       social: [{ icon: 'github', label: 'GitHub', href: repository }],
       customCss: ['./src/styles/docs.css'],
       sidebar: [
@@ -59,6 +60,20 @@ export default defineConfig({
           ],
         },
         { label: 'Architecture', items: architectureSidebar(flows) },
+        {
+          label: 'Runbooks',
+          items: [
+            { slug: 'runbooks', label: 'All runbooks' },
+            { autogenerate: { directory: '../../../docs/runbooks' } },
+          ],
+        },
+        {
+          label: 'Benchmarks',
+          items: [
+            { slug: 'benchmarks', label: 'All benchmarks' },
+            { autogenerate: { directory: '../../../docs/benchmarks' } },
+          ],
+        },
       ],
     }),
   ],

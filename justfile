@@ -151,7 +151,7 @@ dev-api:
 dev-web:
     {{ pnpm }} dev
 
-# Run the documentation site (ADRs and stories) on http://localhost:4321
+# Run the documentation site (ADRs, stories, architecture, runbooks, benchmarks) on http://localhost:4321
 dev-docs:
     {{ pnpm }} --filter @calendar/docs dev
 

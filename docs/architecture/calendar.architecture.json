@@ -670,19 +670,21 @@
     {
       "unique-id": "decision-log",
       "node-type": "data-asset",
-      "name": "Decision log and story cards",
-      "description": "docs/decisions (MADR 4.0 ADRs with decision drivers, star-rating tables and driver-tagged pros/cons, indexed in README.md and validated by just adr-check) and docs/stories (story cards: the long-lived source of truth for each story). Both are the input of the documentation site.",
+      "name": "Decision log, story cards, runbooks and benchmarks",
+      "description": "docs/decisions (MADR 4.0 ADRs with decision drivers, star-rating tables and driver-tagged pros/cons, indexed in README.md and validated by just adr-check) and docs/stories (story cards: the long-lived source of truth for each story). Both are the input of the documentation site, together with the runbooks in docs/runbooks (indexed in order in README.md) and the benchmark records in docs/benchmarks.",
       "interfaces": [
         { "unique-id": "adr-files", "path": "docs/decisions/NNNN-*.md" },
-        { "unique-id": "story-files", "path": "docs/stories/NNNN-*.md" }
+        { "unique-id": "story-files", "path": "docs/stories/NNNN-*.md" },
+        { "unique-id": "runbook-files", "path": "docs/runbooks/*.md" },
+        { "unique-id": "benchmark-files", "path": "docs/benchmarks/NNNN-*.md" }
       ],
-      "metadata": { "adrs": ["ADR-0000", "ADR-0028"], "validation": "just adr-check; frontend/apps/docs tests fail on broken links, anchors or unknown ADRs" }
+      "metadata": { "adrs": ["ADR-0000", "ADR-0028"], "validation": "just adr-check; frontend/apps/docs tests fail on broken links, anchors, unknown ADRs, unlisted documents, titles that differ from the index or a missing benchmark harness" }
     },
     {
       "unique-id": "docs-site",
       "node-type": "webclient",
       "name": "Documentation site (Calendar · Docs)",
-      "description": "Astro Starlight site (frontend/apps/docs) built from the decision log and story cards; each ADR has the stable route adr/NNNN/ and each story stories/NNNN/. Production is published from main; pull requests from this repository get previews at pr-preview/pr-N/. The site holds no authentication or sensitive state.",
+      "description": "Astro Starlight site (frontend/apps/docs) built from the decision log, the story cards, the CALM model, the runbooks and the benchmark records; each ADR has the stable route adr/NNNN/, each story stories/NNNN/, each runbook runbooks/<name>/ and each benchmark record benchmarks/NNNN/. Production is published from main; pull requests from this repository get previews at pr-preview/pr-N/. The site holds no authentication or sensitive state.",
       "interfaces": [
         { "unique-id": "docs-site-url", "url": "https://mgasca.github.io/calendar/" },
         { "unique-id": "docs-preview-url", "url": "https://mgasca.github.io/calendar/pr-preview/pr-<number>/" }
@@ -985,11 +987,11 @@
     },
     {
       "unique-id": "docs-site-built-from-decision-log",
-      "description": "Is built from the ADR files, the stories and their README indexes in",
+      "description": "Is built from the ADR files, the stories, the runbooks, the benchmark records and their README indexes in",
       "relationship-type": {
         "connects": {
           "source": { "node": "docs-site", "interfaces": ["docs-site-url"] },
-          "destination": { "node": "decision-log", "interfaces": ["adr-files", "story-files"] }
+          "destination": { "node": "decision-log", "interfaces": ["adr-files", "story-files", "runbook-files", "benchmark-files"] }
         }
       },
       "metadata": { "adrs": ["ADR-0022", "ADR-0023", "ADR-0028"] }
@@ -1251,13 +1253,13 @@
     {
       "unique-id": "publish-docs-flow",
       "name": "Publish the decision log",
-      "description": "Merging to main (or opening a PR from this repository) builds the documentation site from the ADRs and story cards in CI and publishes it, or a PR preview, to GitHub Pages through a publisher that never runs untrusted code (ADR-0023, ADR-0025, ADR-0028).",
+      "description": "Merging to main (or opening a PR from this repository) builds the documentation site from the ADRs, story cards, architecture model, runbooks and benchmark records in CI and publishes it, or a PR preview, to GitHub Pages through a publisher that never runs untrusted code (ADR-0023, ADR-0025, ADR-0028).",
       "requirement-url": "https://mgasca.github.io/calendar/adr/0023/",
       "transitions": [
-        { "relationship-unique-id": "operator-operates-platform", "sequence-number": 1, "description": "A PR adds or changes an ADR or story card (just adr-check and the docs tests pass locally) and is merged to main" },
-        { "relationship-unique-id": "docs-site-built-from-decision-log", "sequence-number": 2, "description": "The CI Frontend job builds the Astro Starlight site from docs/decisions and docs/stories, verifies it at the root path and at a project subpath, and uploads the adr-site artifact" },
+        { "relationship-unique-id": "operator-operates-platform", "sequence-number": 1, "description": "A PR adds or changes an ADR, a story card, the architecture model, a runbook or a benchmark record (just adr-check and the docs tests pass locally) and is merged to main" },
+        { "relationship-unique-id": "docs-site-built-from-decision-log", "sequence-number": 2, "description": "The CI Frontend job builds the Astro Starlight site from docs/decisions, docs/stories, docs/architecture, docs/runbooks and docs/benchmarks, verifies it at the root path and at a project subpath, and uploads the adr-site artifact" },
         { "relationship-unique-id": "ci-publishes-docs", "sequence-number": 3, "description": "After CI succeeds, the Publish ADR site workflow validates the source run, revision and PR state, downloads the exact artifact, assembles the retained production snapshot plus open-PR previews, and deploys with the github-pages environment" },
-        { "relationship-unique-id": "docs-site-on-github-pages", "sequence-number": 4, "description": "The site is live at https://mgasca.github.io/calendar/ with each ADR at adr/NNNN/ and each story at stories/NNNN/; a PR gets an 'ADR preview' check linking to pr-preview/pr-<number>/" }
+        { "relationship-unique-id": "docs-site-on-github-pages", "sequence-number": 4, "description": "The site is live at https://mgasca.github.io/calendar/ with each ADR at adr/NNNN/, each story at stories/NNNN/, each runbook at runbooks/<name>/ and each benchmark record at benchmarks/NNNN/; a PR gets an 'ADR preview' check linking to pr-preview/pr-<number>/" }
       ],
       "metadata": { "adrs": ["ADR-0000", "ADR-0022", "ADR-0023", "ADR-0025", "ADR-0028"], "stories": ["0010"], "workflows": [".github/workflows/ci.yml", ".github/workflows/pages.yml"] }
     }

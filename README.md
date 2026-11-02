@@ -109,7 +109,7 @@ The configured publication URL is [mgasca.github.io/calendar](https://mgasca.git
 
 ### Pull request previews
 
-After CI succeeds, a PR from this repository gets an **ADR preview** check linking to `https://mgasca.github.io/calendar/pr-preview/pr-<number>/`. Each new successful revision replaces that PR's preview; closing or merging the PR removes it. Fork PRs run CI but do not publish previews. Manual CI runs and merge-queue runs do not publish either.
+After CI succeeds, a PR from this repository gets an **ADR preview** check and one sticky PR comment, both linking to `https://mgasca.github.io/calendar/pr-preview/pr-<number>/`. The comment is updated in place on each new preview. Each new successful revision replaces that PR's preview; closing or merging the PR removes it. Fork PRs run CI but do not publish previews. Manual CI runs and merge-queue runs do not publish either.
 
 The publisher retains generated production files and preview directories on the `gh-pages` branch. That branch is storage for the combined artifact, **not** the Pages publishing source: leave Pages configured for GitHub Actions. A production update preserves open previews, a preview update preserves production, and queued publication serializes snapshot reads, updates, and deployment. The publisher also removes closed PR directories during subsequent publications. Do not edit the generated branch manually.
 

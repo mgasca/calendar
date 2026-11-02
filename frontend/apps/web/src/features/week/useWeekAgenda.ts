@@ -1,14 +1,9 @@
 import type { Schemas } from '@calendar/api-client';
 import { keepPreviousData, useQuery } from '@tanstack/react-query';
 
+import { apiError } from '../../api/apiError.ts';
 import { api } from '../../api/client.ts';
-import {
-  AGENDA_KEY,
-  AGENDA_REFETCH_INTERVAL_MS,
-  AgendaError,
-  problemMessage,
-  shouldRetryAgenda,
-} from '../agenda/agendaQuery.ts';
+import { AGENDA_KEY, AGENDA_REFETCH_INTERVAL_MS } from '../agenda/agendaQuery.ts';
 import type { AgendaTask } from '../agenda/dayTime.ts';
 import type { TaskPatch } from '../agenda/useToggleTask.ts';
 
@@ -39,14 +34,10 @@ export function useWeekAgenda(weekStart: string, timeZone: string, today: string
         signal,
       });
       if (!data) {
-        throw new AgendaError(
-          response.status,
-          problemMessage(error) ?? `Loading the week failed: ${String(response.status)}`,
-        );
+        throw apiError({ response, error }, `Loading the week failed: ${String(response.status)}`);
       }
       return data;
     },
-    retry: shouldRetryAgenda,
     refetchInterval: AGENDA_REFETCH_INTERVAL_MS,
     // On moving to another week (or at midnight), keep showing the previous data until the new
     // week arrives.

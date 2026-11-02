@@ -5,7 +5,7 @@ import userEvent from '@testing-library/user-event';
 import { http, HttpResponse } from 'msw';
 import { Profiler } from 'react';
 
-import { renderApp, renderInRouter, settle } from '../../test/render.tsx';
+import { renderApp, renderInRouter, type RetryOption, settle } from '../../test/render.tsx';
 import { server } from '../../test/server.ts';
 import { DayView } from './DayView.tsx';
 import { useToday } from '../agenda/useNow.ts';
@@ -163,8 +163,8 @@ function TodayView() {
   return <DayView date={useToday(ZONE)} timeZone={ZONE} locale="en-GB" />;
 }
 
-function renderToday() {
-  return renderInRouter(<TodayView />);
+function renderToday(options?: RetryOption) {
+  return renderInRouter(<TodayView />, options);
 }
 
 function renderDay(date: string) {
@@ -526,7 +526,7 @@ describe('DayView', () => {
           return new HttpResponse(null, { status: 500 });
         }),
       );
-      await renderToday();
+      await renderToday({ retry: true });
       expect(await screen.findByRole('alert')).toHaveTextContent('Couldn’t load today’s agenda');
       expect(calls).toBe(3);
 
@@ -548,7 +548,7 @@ describe('DayView', () => {
         }),
       );
 
-      await renderToday();
+      await renderToday({ retry: true });
 
       expect(await screen.findByRole('region', { name: 'Schedule' })).toBeInTheDocument();
       expect(calls).toBe(2);
@@ -570,7 +570,7 @@ describe('DayView', () => {
         }),
       );
 
-      await renderToday();
+      await renderToday({ retry: true });
 
       expect(await screen.findByRole('alert')).toHaveTextContent(
         "Unsupported time zone 'Mars/Base'.",

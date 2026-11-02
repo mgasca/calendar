@@ -15,7 +15,7 @@ import {
   type EventStatus,
   type TimedEvent,
 } from '../agenda/dayTime.ts';
-import { AgendaError } from '../agenda/agendaQuery.ts';
+import { ApiError } from '../../api/apiError.ts';
 import { Notes } from '../agenda/Notes.tsx';
 import { EventTimes } from '../agenda/EventTimes.tsx';
 import { TaskItem, TaskToggleError } from '../agenda/TaskItem.tsx';
@@ -69,7 +69,7 @@ export function DayView({ date, timeZone: zoneOverride, locale }: DayViewProps) 
         <h1 id="day-heading">{formatHeading(date)}</h1>
         <div role="alert" className="notice notice-error">
           <p>Couldn’t load {agendaName}.</p>
-          {agenda.error instanceof AgendaError && <p>{agenda.error.message}</p>}
+          {agenda.error instanceof ApiError && <p>{agenda.error.message}</p>}
           <button type="button" onClick={() => void agenda.refetch()}>
             Try again
           </button>

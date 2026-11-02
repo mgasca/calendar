@@ -716,7 +716,7 @@ describe('WeekView', () => {
           );
         }),
       );
-      renderApp('/week/2026-10-26');
+      renderApp('/week/2026-10-26', { retry: true });
 
       expect(await screen.findByRole('alert')).toHaveTextContent('Couldn’t load this week.');
       expect(screen.getByRole('alert')).toHaveTextContent('today is required.');

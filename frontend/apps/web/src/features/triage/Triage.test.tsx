@@ -346,3 +346,18 @@ describe('overdue triage', () => {
     });
   });
 });
+
+describe('loading overdue tasks', () => {
+  it('shows the error after one request when the server answers 400', async () => {
+    let calls = 0;
+    server.use(
+      http.get('*/api/tasks', () => {
+        calls += 1;
+        return HttpResponse.json({ title: 'Bad view', status: 400 }, { status: 400 });
+      }),
+    );
+    renderApp('/triage', { retry: true });
+    expect(await screen.findByRole('alert')).toHaveTextContent('Couldn’t load overdue tasks.');
+    expect(calls).toBe(1);
+  });
+});

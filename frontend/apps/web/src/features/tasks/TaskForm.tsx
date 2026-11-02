@@ -4,7 +4,7 @@ import { useMemo, useRef, useState } from 'react';
 import { api } from '../../api/client.ts';
 import { ModalDialog } from '../../components/ModalDialog.tsx';
 import { deadlineInstants } from '../agenda/deadline.ts';
-import { problemMessage } from '../agenda/agendaQuery.ts';
+import { problemMessage } from '../../api/apiError.ts';
 
 export function TaskForm({
   initialDate,

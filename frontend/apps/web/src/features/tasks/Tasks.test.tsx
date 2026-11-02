@@ -247,3 +247,31 @@ it('loads the next page and requests the selected view', async () => {
   });
   expect(requests).toContain('upcoming:next');
 });
+
+describe('loading My tasks', () => {
+  it('shows the error after one request when the server answers 400', async () => {
+    let calls = 0;
+    server.use(
+      http.get('/api/tasks', () => {
+        calls += 1;
+        return HttpResponse.json({ title: 'Bad view', status: 400 }, { status: 400 });
+      }),
+    );
+    renderWithProviders(<TaskList />, { retry: true });
+    expect(await screen.findByRole('alert')).toHaveTextContent('Couldn’t load tasks.');
+    expect(calls).toBe(1);
+  });
+
+  it('retries a failing server twice before showing the error', async () => {
+    let calls = 0;
+    server.use(
+      http.get('/api/tasks', () => {
+        calls += 1;
+        return new HttpResponse(null, { status: 500 });
+      }),
+    );
+    renderWithProviders(<TaskList />, { retry: true });
+    expect(await screen.findByRole('alert')).toHaveTextContent('Couldn’t load tasks.');
+    expect(calls).toBe(3);
+  });
+});

@@ -16,8 +16,11 @@ public sealed record AdrFileResult(string FileName, IReadOnlyList<string> Errors
 /// </summary>
 public static partial class AdrValidator
 {
-  /// <summary>File name of the ADR index in the decisions directory.</summary>
-  public const string IndexFileName = "README.md";
+  /// <summary>
+  /// File name of the conventions page in the decisions directory. It is not an ADR, and it holds no index:
+  /// the log is derived from the files (ADR-0040).
+  /// </summary>
+  public const string ReadmeFileName = "README.md";
   /// <summary>File name of the ADR template in the decisions directory.</summary>
   public const string TemplateFileName = "adr-template.md";
 
@@ -71,7 +74,7 @@ public static partial class AdrValidator
     var stray = Directory.EnumerateFiles(decisionsDir, "*.md")
         .Select(Path.GetFileName)
         .OfType<string>()
-        .Where(n => n is not IndexFileName and not TemplateFileName && !FileNameRegex().IsMatch(n))
+        .Where(n => n is not ReadmeFileName and not TemplateFileName && !FileNameRegex().IsMatch(n))
         .Order(StringComparer.Ordinal)
         .ToList();
     if (stray.Count > 0)
@@ -82,7 +85,7 @@ public static partial class AdrValidator
   }
 
   /// <summary>Validates a single ADR. <paramref name="files"/> comes from <see cref="AdrFiles"/>.</summary>
-  public static AdrFileResult CheckFile(string path, IReadOnlyDictionary<string, string> files, string indexText)
+  public static AdrFileResult CheckFile(string path, IReadOnlyDictionary<string, string> files)
   {
     var name = Path.GetFileName(path);
     var text = File.ReadAllText(path);
@@ -114,7 +117,6 @@ public static partial class AdrValidator
     CheckRatingTables(outcome, drivers, meta.GetValueOrDefault("status", ""), errors);
     CheckProsCons(prosCons, drivers, errors);
     CheckLinks(path, text, number, files, errors);
-    CheckIndexRow(name, number, title, meta, indexText, errors);
 
     return new AdrFileResult(name, errors);
   }
@@ -370,34 +372,6 @@ public static partial class AdrValidator
       {
         errors.Add($"broken link: {target}");
       }
-    }
-  }
-
-  private static void CheckIndexRow(
-      string name,
-      string number,
-      Match title,
-      Dictionary<string,
-      string> meta,
-      string indexText,
-      List<string> errors)
-  {
-    var pattern = $@"^\| \[{number}\]\({Regex.Escape(name)}\) \| (.+?) \| (.+?) \|$";
-    Match row = Regex.Match(indexText, pattern, RegexOptions.Multiline, TimeSpan.FromSeconds(1));
-    if (!row.Success)
-    {
-      errors.Add($"no row for {name} in docs/decisions/{IndexFileName}");
-      return;
-    }
-    if (title.Success && row.Groups[1].Value != title.Groups[1].Value.Trim())
-    {
-      errors.Add($"index title differs from H1: '{row.Groups[1].Value}'");
-    }
-    var status = meta.GetValueOrDefault("status", "");
-    var indexStatus = row.Groups[2].Value.Split(' ')[0];
-    if (status.Length > 0 && !status.StartsWith(indexStatus, StringComparison.Ordinal))
-    {
-      errors.Add($"index status '{row.Groups[2].Value}' differs from front matter '{status}'");
     }
   }
 

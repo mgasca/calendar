@@ -1,6 +1,3 @@
-# Fixture index
+# Fixture conventions
 
-| ADR | Title | Status |
-| --- | --- | --- |
-| [0000](0000-first-decision.md) | First decision | accepted |
-| [0001](0001-second-decision.md) | Second decision | proposed |
+The decision log is derived from the `NNNN-*.md` files in this directory; this page holds only the conventions.

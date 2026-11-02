@@ -50,9 +50,9 @@ async function readSources(directory: URL, pattern: RegExp) {
 }
 
 export async function readLog() {
+  // README.md holds the conventions only; the log itself comes from the files (ADR-0040).
   const sources = await readSources(decisionsDirectory, /^\d{4}-.+\.md$/);
-  const index = await readFile(new URL('README.md', decisionsDirectory), 'utf8');
-  return { index, records: parseLog(index, sources) };
+  return { records: parseLog(sources) };
 }
 
 export async function readStories(adrs: Map<string, string>) {

@@ -31,7 +31,7 @@ The repo holds the sources of truth. Read them at the start of every run. They w
 
 - `docs/decisions/0000-use-markdown-architectural-decision-records.md`: conventions and the star scale
 - `docs/decisions/adr-template.md`: the skeleton to copy
-- `docs/decisions/README.md`: the index of ADRs
+- `docs/decisions/README.md`: the conventions page (there is no index table: the log is derived from the files, [ADR-0040](../../../docs/decisions/0040-derive-the-decision-log-from-the-adr-files.md))
 
 ## Workflow
 
@@ -59,7 +59,7 @@ Derive the drivers from the user's requirements and from the project context bel
 Project context is not restated here to avoid staleness. Build it at run time:
 
 - Read `AGENTS.md` for standing constraints (e.g. platform, tooling, architecture, cost and security choices).
-- From the index, read every ADR with status `accepted` that touches the topic. Skip `proposed`, `rejected` and `superseded` ones, and follow a `superseded by` link to the current ADR.
+- From `ls docs/decisions` and the front matter, read every ADR with status `accepted` that touches the topic. Skip `proposed`, `rejected` and `superseded` ones, and follow a `superseded by` link to the current ADR.
 - Treat what you find as a constraint or a driver. Do not invent constraints from memory.
 
 ### 4. Research and verify facts
@@ -133,13 +133,9 @@ If the decision defers something until an event happens (for example "adopt Aspi
 
 Say in the ADR where the trigger is recorded.
 
-### 7. Index
+### 7. Architecture model
 
-Add a row to `docs/decisions/README.md`. Its title must equal the ADR's H1 (the `# Title` line), and its status must match the front matter:
-
-```markdown
-| [NNNN](NNNN-title.md) | <H1 title> | proposed |
-```
+There is no index row to add: the docs site derives the decision log from the files. Add the ADR to `metadata.adrs` in `docs/architecture/calendar.architecture.json` instead (id, title equal to the H1, status, file and site URL, like the neighbouring entries). The docs build fails if an entry differs from the ADR file.
 
 ### 8. Validate
 
@@ -200,9 +196,9 @@ Then tell the user, in plain language:
 
 ## After review
 
-- **Answers change the ADR:** update the drafts on the same branch, run the validator again, and update the PR description with what changed. If the user asks for a split, `git rm` the combined file, renumber, and fix every link and the index.
-- **The user approves:** set `status: accepted` in the front matter **and** in the index, in the same PR, *before* it merges. ADRs 0014–0016 merged still marked `proposed`. Do not repeat that. Taking a decision is separate from delivering it. Accept as soon as the user approves the decision. Never keep `proposed` until the implementation, build or rollout exists. The implementation issues and PRs track delivery, not the ADR status.
-- **Superseding an ADR:** the new ADR explains what changed. The old one becomes `status: superseded by [ADR-NNNN](NNNN-….md)`, and you update its index row. Do not edit the substance of the old decision.
+- **Answers change the ADR:** update the drafts on the same branch, run the validator again, and update the PR description with what changed. If the user asks for a split, `git rm` the combined file, renumber, and fix every link and the architecture model entry.
+- **The user approves:** set `status: accepted` in the front matter **and** in the architecture model entry, in the same PR, *before* it merges. ADRs 0014–0016 merged still marked `proposed`. Do not repeat that. Taking a decision is separate from delivering it. Accept as soon as the user approves the decision. Never keep `proposed` until the implementation, build or rollout exists. The implementation issues and PRs track delivery, not the ADR status.
+- **Superseding an ADR:** the new ADR explains what changed. The old one becomes `status: superseded by [ADR-NNNN](NNNN-….md)`, and its architecture model entry becomes `superseded`. Do not edit the substance of the old decision.
 - **Implementation:** goes in a separate PR that links to the ADR. It does not change the ADR's status. An accepted ADR with no implementation yet is normal. If the implementation shows the decision was wrong, supersede it with a new ADR. Do not leave it `proposed`.
 
 ## Bundled tooling

@@ -7,7 +7,7 @@ pr:
 adrs: ["0014", "0015", "0031", "0037"]
 ---
 
-# 0013 Supersede ADR-0014: drop the SQLite fallback
+# 0014 Supersede ADR-0014: drop the SQLite fallback
 
 ## Story
 

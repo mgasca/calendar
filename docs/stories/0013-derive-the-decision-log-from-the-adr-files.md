@@ -2,7 +2,8 @@
 status: implemented
 date: 2026-11-02
 issue: https://github.com/mgasca/calendar/issues/184
-pr: []
+pr:
+  - https://github.com/mgasca/calendar/pull/185
 adrs: ["0000", "0017", "0023", "0039", "0040"]
 ---
 
@@ -12,7 +13,7 @@ adrs: ["0000", "0017", "0023", "0039", "0040"]
 
 > As a contributor, whether a person or an agent, I need an ADR pull request to touch only its own record, so that several decisions can be in flight at once without their branches conflicting on a shared index table, and without a hand resolution ever dropping a record from the log.
 
-Tracked in issue #184. Card, [ADR-0040](../decisions/0040-derive-the-decision-log-from-the-adr-files.md) and the change itself ship in one PR.
+Tracked in issue #184. Card, [ADR-0040](../decisions/0040-derive-the-decision-log-from-the-adr-files.md) and the change itself ship in one PR: [#185](https://github.com/mgasca/calendar/pull/185).
 
 ## Background
 

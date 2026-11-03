@@ -21,7 +21,7 @@ Write a **proposed** ADR that a reviewer can approve with confidence. The rating
 ## Before you start
 
 - A clone of the repo with a clean working tree, so you can create a branch in step 9.
-- The .NET 10 SDK, `just`, `git`, and `gh` (the GitHub CLI) signed in to the repo's GitHub account.
+- .NET SDK 10.0.300 or later (see "Bundled tooling"), `just`, `git`, and `gh` (the GitHub CLI) signed in to the repo's GitHub account.
 - A clear request from the user: which decision to record, or which ADR to split, revise or supersede.
 - Run all commands from the repo root.
 
@@ -44,7 +44,7 @@ The repo holds the sources of truth. Read them at the start of every run. They w
   - `just adr-check --next-number`
   - `dotnet run .claude/skills/adr-draft/scripts/check-adr/check-adr.cs -- --next-number`
 
-  Success: the command prints the next free number, for example `0042`. If it fails, check that the .NET 10 SDK is installed. The first run compiles the script and takes about 30 s.
+  Success: the command prints the next free number, for example `0042`. If it fails with `Unrecognized directive 'include'`, `dotnet --version` is below 10.0.300. The first run compiles the script and takes about 30 s.
 
 ### 2. Scope: one decision per ADR
 
@@ -196,6 +196,8 @@ Then tell the user, in plain language:
 
 ## After review
 
+For user-requested issue-driven handovers, AGENTS.md's "Public GitHub posts and optional issue handovers" section overrides this skill's question placement: each open question goes in its own PR comment, and agreed answers go in the ADR. Explicit user authorization to merge overrides the default to leave merging to the user; required checks still apply. Outside that mode, use this skill's normal workflow.
+
 - **Answers change the ADR:** update the drafts on the same branch, run the validator again, and update the PR description with what changed. If the user asks for a split, `git rm` the combined file, renumber, and fix every link and the architecture model entry.
 - **The user approves:** set `status: accepted` in the front matter **and** in the architecture model entry, in the same PR, *before* it merges. ADRs 0014–0016 merged still marked `proposed`. Do not repeat that. Taking a decision is separate from delivering it. Accept as soon as the user approves the decision. Never keep `proposed` until the implementation, build or rollout exists. The implementation issues and PRs track delivery, not the ADR status.
 - **Superseding an ADR:** the new ADR explains what changed. The old one becomes `status: superseded by [ADR-NNNN](NNNN-….md)`, and its architecture model entry becomes `superseded`. Do not edit the substance of the old decision.
@@ -213,6 +215,6 @@ tests/check-adr.tests.cs                              # xUnit v3 tests; #:includ
 tests/fixtures/valid/                                 # minimal valid ADR set that the tests mutate
 ```
 
-- **Requirement:** the .NET 10 SDK. The first run on a machine compiles for about 30 s. After that, runs take under a second.
+- **Requirement:** .NET SDK 10.0.300 or later, the first band with `#:include` ([Microsoft Learn](https://learn.microsoft.com/dotnet/core/sdk/file-based-apps)). Older .NET 10 SDKs fail with `Unrecognized directive 'include'` before validating anything. A host repo whose `global.json` pins an older SDK can't run the validator. The first run on a machine compiles for about 30 s. After that, runs take under a second.
 - **Changing a rule:** edit `AdrValidator.cs`, add or adjust an `[InlineData]` case in the tests, then run `just tooling` (tests and whitespace check) and `just adr-check`. Success: both commands finish without errors.
 - **Package versions** in `Directory.Build.props` and the `#:package` directives are pinned exactly. Dependabot (the tool that opens dependency-update PRs) cannot see them (verified, ADR-0017). In this repo, `just tool-versions` fails when they differ from `backend/Directory.Packages.props`, and `just tool-versions --fix` updates them. In other repos, change them by hand.

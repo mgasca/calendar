@@ -159,7 +159,7 @@
           "requirement-url": "https://raw.githubusercontent.com/mgasca/calendar/main/docs/architecture/controls/supply-chain-integrity.requirement.json",
           "config": {
             "toolchain-pins": [
-              ".NET SDK 10.0.100 (backend/global.json, rollForward latestFeature)",
+              ".NET SDK 10.0.300 or later for repo tools, whose #:include needs it (ADR-0017), verified by just doctor",
               "Node 24 LTS (frontend/.node-version)",
               "pnpm 12.15.0 via Corepack (packageManager in frontend/package.json)",
               "just 1.59.0 (.just-version)",

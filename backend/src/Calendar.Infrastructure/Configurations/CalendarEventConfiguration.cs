@@ -33,7 +33,7 @@ internal sealed class CalendarEventConfiguration : IEntityTypeConfiguration<Cale
     // ADR-0041: every event belongs to a user. The GiST range indexes below stay single-column (a composite
     // GiST with a uuid needs btree_gist, which Azure only allows through its extension allow-list); the owner
     // predicate is applied to the rows the range overlap selects.
-    builder.Property(e => e.OwnerId).IsRequired();
+    builder.Property(e => e.OwnerId).IsRequired().HasDefaultValue(User.LegacyOwnerId);
     builder.HasOne<User>().WithMany().HasForeignKey(e => e.OwnerId).OnDelete(DeleteBehavior.Restrict).HasConstraintName("fk_events_owner");
 
     builder.Property(e => e.Title).HasMaxLength(200).IsRequired();

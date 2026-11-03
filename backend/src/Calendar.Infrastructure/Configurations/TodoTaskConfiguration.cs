@@ -21,7 +21,7 @@ internal sealed class TodoTaskConfiguration : IEntityTypeConfiguration<TodoTask>
 
     // ADR-0041: every task belongs to a user, and owner_id leads every index the agenda and task-list queries
     // use, since each of them is scoped to one owner first.
-    builder.Property(t => t.OwnerId).IsRequired();
+    builder.Property(t => t.OwnerId).IsRequired().HasDefaultValue(User.LegacyOwnerId);
     builder.HasOne<User>().WithMany().HasForeignKey(t => t.OwnerId).OnDelete(DeleteBehavior.Restrict).HasConstraintName("fk_tasks_owner");
 
     builder.Property(t => t.Title).HasMaxLength(200).IsRequired();

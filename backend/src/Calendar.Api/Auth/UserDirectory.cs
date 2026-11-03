@@ -7,10 +7,11 @@ namespace Calendar.Api.Auth;
 
 /// <summary>
 /// Finds or creates the <see cref="User"/> row of a signed-in identity (ADR-0041). Sign-in and the Development
-/// seed scheme share one lookup order: by Google subject; failing that, by lower-cased email among rows that
-/// have no subject yet; failing that, when the email is the first in <c>Auth:AllowedEmails</c>, the unclaimed
-/// legacy placeholder; otherwise a new row. A real sign-in fills in the subject of a matched row; the seed
-/// scheme never sets one.
+/// seed scheme share one lookup order: by Google subject; failing that, by lower-cased email (a real sign-in
+/// only matches a row that has no subject yet, so another Google account never takes over a claimed row; the
+/// seed scheme asserts no Google identity and matches its email whatever the row's subject); failing that, when
+/// the email is the first in <c>Auth:AllowedEmails</c>, the unclaimed legacy placeholder; otherwise a new row.
+/// A real sign-in fills in the subject of a matched row; the seed scheme never sets one.
 /// </summary>
 internal sealed class UserDirectory(CalendarDbContext db, TimeProvider time, IConfiguration configuration)
 {
@@ -84,7 +85,9 @@ internal sealed class UserDirectory(CalendarDbContext db, TimeProvider time, ICo
     User? user = googleSubject is null
       ? null
       : await db.Users.FirstOrDefaultAsync(u => u.GoogleSubject == googleSubject, cancellationToken);
-    user ??= await db.Users.FirstOrDefaultAsync(u => u.Email == normalizedEmail && u.GoogleSubject == null, cancellationToken);
+    user ??= googleSubject is null
+      ? await db.Users.FirstOrDefaultAsync(u => u.Email == normalizedEmail, cancellationToken)
+      : await db.Users.FirstOrDefaultAsync(u => u.Email == normalizedEmail && u.GoogleSubject == null, cancellationToken);
     if (user is null && IsFirstAllowed(normalizedEmail))
     {
       user = await db.Users.FirstOrDefaultAsync(

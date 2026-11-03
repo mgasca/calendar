@@ -37,11 +37,11 @@ public sealed class OwnershipMigrationTests(PostgresFixture postgres) : ApiTestB
       User placeholder = await db.Users.SingleAsync(u => u.Id == User.LegacyOwnerId, Ct);
       placeholder.IsUnclaimedPlaceholder.ShouldBeTrue();
 
-      // The backfill default is gone: a new row must say who owns it.
-      PostgresException missingOwner = await Should.ThrowAsync<PostgresException>(() => db.Database.ExecuteSqlRawAsync(
-        "INSERT INTO tasks (id, title) VALUES (gen_random_uuid(), 'ownerless')",
-        Ct));
-      missingOwner.SqlState.ShouldBe(PostgresErrorCodes.NotNullViolation);
+      // The backfill default stays, so a row the previous revision creates during the rollout lands on the
+      // legacy owner too (the app itself always names the owner).
+      await db.Database.ExecuteSqlRawAsync("INSERT INTO tasks (id, title) VALUES (gen_random_uuid(), 'rollout window')", Ct);
+      (await db.Database.SqlQueryRaw<Guid>("SELECT owner_id AS \"Value\" FROM tasks WHERE title = 'rollout window'").SingleAsync(Ct))
+        .ShouldBe(User.LegacyOwnerId);
     }
     finally
     {

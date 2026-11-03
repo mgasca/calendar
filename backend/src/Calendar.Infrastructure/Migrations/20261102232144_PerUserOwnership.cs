@@ -13,7 +13,9 @@ namespace Calendar.Infrastructure.Migrations
         {
             // ADR-0041. Order matters: the users table and its legacy placeholder must exist before owner_id can
             // reference them, and every existing event and task is backfilled to the placeholder through the
-            // column default, which is dropped right away so that new rows must name their owner.
+            // column default. The default stays: migrations run before the new revision starts, and a row the
+            // previous revision still creates in that window lands on the legacy owner too. The app always
+            // names the owner.
             migrationBuilder.CreateTable(
                 name: "users",
                 columns: table => new
@@ -64,9 +66,6 @@ namespace Calendar.Infrastructure.Migrations
                 type: "uuid",
                 nullable: false,
                 defaultValue: new Guid("11111111-1111-1111-1111-111111111111"));
-
-            migrationBuilder.Sql("ALTER TABLE events ALTER COLUMN owner_id DROP DEFAULT;");
-            migrationBuilder.Sql("ALTER TABLE tasks ALTER COLUMN owner_id DROP DEFAULT;");
 
             migrationBuilder.AddForeignKey(
                 name: "fk_events_owner",

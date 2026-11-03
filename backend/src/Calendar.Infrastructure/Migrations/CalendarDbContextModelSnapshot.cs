@@ -58,8 +58,10 @@ namespace Calendar.Infrastructure.Migrations
                         .HasColumnName("notes");
 
                     b.Property<Guid>("OwnerId")
+                        .ValueGeneratedOnAdd()
                         .HasColumnType("uuid")
-                        .HasColumnName("owner_id");
+                        .HasColumnName("owner_id")
+                        .HasDefaultValue(new Guid("11111111-1111-1111-1111-111111111111"));
 
                     b.Property<NpgsqlRange<DateTimeOffset>?>("Span")
                         .ValueGeneratedOnAddOrUpdate()
@@ -141,8 +143,10 @@ namespace Calendar.Infrastructure.Migrations
                         .HasColumnName("notes");
 
                     b.Property<Guid>("OwnerId")
+                        .ValueGeneratedOnAdd()
                         .HasColumnType("uuid")
-                        .HasColumnName("owner_id");
+                        .HasColumnName("owner_id")
+                        .HasDefaultValue(new Guid("11111111-1111-1111-1111-111111111111"));
 
                     b.Property<string>("Priority")
                         .IsRequired()

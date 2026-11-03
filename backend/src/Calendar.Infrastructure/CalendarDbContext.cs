@@ -40,17 +40,18 @@ public sealed class CalendarDbContext(DbContextOptions<CalendarDbContext> option
   private Guid? CurrentUserId => _currentUser.Id;
 
   /// <inheritdoc />
-  public override Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
+  public override Task<int> SaveChangesAsync(bool acceptAllChangesOnSuccess, CancellationToken cancellationToken = default)
   {
+    // The parameterless overloads delegate here, so every save passes the owner check.
     RequireOwnedByCurrentUser();
-    return base.SaveChangesAsync(cancellationToken);
+    return base.SaveChangesAsync(acceptAllChangesOnSuccess, cancellationToken);
   }
 
   /// <inheritdoc />
-  public override int SaveChanges()
+  public override int SaveChanges(bool acceptAllChangesOnSuccess)
   {
     RequireOwnedByCurrentUser();
-    return base.SaveChanges();
+    return base.SaveChanges(acceptAllChangesOnSuccess);
   }
 
   /// <inheritdoc />

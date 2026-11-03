@@ -5,6 +5,7 @@ using System.Text.Encodings.Web;
 using Calendar.Api.Auth;
 using Calendar.Domain.Users;
 using Microsoft.AspNetCore.Authentication;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using Microsoft.Extensions.Primitives;
 
@@ -47,7 +48,16 @@ internal sealed class DevSeedAuthenticationHandler(
       return AuthenticateResult.Fail(NoAllowedEmailMessage);
     }
 
-    User user = await directory.ResolveAsync(email, googleSubject: null, displayName: null, pictureUrl: null, Context.RequestAborted);
+    User user;
+    try
+    {
+      user = await directory.ResolveAsync(email, googleSubject: null, displayName: null, pictureUrl: null, Context.RequestAborted);
+    }
+    catch (DbUpdateException exception)
+    {
+      return AuthenticateResult.Fail("The seed scheme could not resolve the first allow-listed email's user: " + exception.Message);
+    }
+
     var identity = new ClaimsIdentity(
       [
         new Claim(ClaimTypes.Name, "dev-seed"),

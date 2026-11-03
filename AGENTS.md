@@ -103,6 +103,7 @@ Single tests:
 
 ## Testing notes
 
+- **Preserve the fix when proving a regression test:** before temporarily removing a fix, save the exact intended file contents or patch outside the checkout, or run the negative control in a separate scratch worktree. Do not use `git checkout --` or `git restore` to undo the probe on an unstaged implementation: that restores the committed baseline and can discard the fix (#189). Restore the saved version, inspect the diff for every affected file, and rerun the affected checks on the restored final tree before committing. Earlier green results do not validate a later restore or edit.
 - Run the frontend checks from `frontend/` as CI does: `corepack pnpm lint` (type-aware ESLint, which can take minutes, so don't kill it as hung), `typecheck`, `format:check`, `test`.
 - Vitest's default timeout is 5 s, and a full suite run in parallel with another can push a normal test past it. Don't run several full suites in parallel. Before treating a timeout as a regression, rerun the file with `--maxWorkers=1` and compare against a branch without your change. A test that genuinely needs more than 5 s should set an explicit timeout with a comment saying why, as the triage batch tests do.
 - Clock tests fake only `Date` by default (`useFakeClock` in `DayView.test.tsx`). Query staleness reads `Date.now()`, so `vi.setSystemTime` past 30 s makes data stale, for example to test a refetch on focus.

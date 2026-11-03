@@ -12,7 +12,7 @@ Reference measurements for performance work. A benchmark here is a repeatable ha
 
 ## Writing a record
 
-- Preserve measured decisions to leave code unchanged as carefully as performance fixes. Include a reconsideration condition tied to a changed workload or observed user cost. If an old measurement has no retained harness, record it in the relevant story with its source and missing methodology; do not create a benchmark record that implies it is repeatable. Layout-only timing does not measure rendering or interaction latency.
+- Preserve measured decisions to leave code unchanged as carefully as performance fixes. Include a reconsideration condition tied to a changed workload or observed user cost. Retain harnesses and benchmark code. If an old measurement has no retained harness, record it in the relevant story with its source and missing methodology; do not create a benchmark record that implies it is repeatable. Layout-only timing does not measure rendering or interaction latency.
 - Name it `NNNN-short-title.md`, the next number, title it `# NNNN Short title`, and add a row to the table above. The harness cell must name a file that exists in the repository.
 - State what was measured and why, the commit, the machine, and how many iterations ran.
 - Compare before and after in one session, alternating the two versions (A, B, A, B), because a busy machine moves absolute numbers more than a code change does. Include a control task that the change should not affect.

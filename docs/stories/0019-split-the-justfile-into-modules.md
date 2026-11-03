@@ -2,7 +2,8 @@
 status: planned
 date: 2026-11-03
 issue: https://github.com/mgasca/calendar/issues/213
-pr: []
+pr:
+  - https://github.com/mgasca/calendar/pull/214
 adrs: ["0001", "0015", "0016", "0017", "0038", "0039"]
 ---
 
@@ -12,7 +13,7 @@ adrs: ["0001", "0015", "0016", "0017", "0038", "0039"]
 
 > As a contributor, whether a person or another agent, I need the task runner's recipes grouped into modules by stack and by concern, so that I find, name and run a task by what it works on instead of by a prefix in one flat list.
 
-Tracked in issue #213.
+Tracked in issue #213. Card PR: [#214](https://github.com/mgasca/calendar/pull/214).
 
 ## Background
 

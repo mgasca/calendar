@@ -144,4 +144,4 @@ Use the following workflow only when the user requests an issue-driven handover 
 ## Notes
 
 - `.plan/` and `.env` are git-ignored scratch/local files.
-- Toolchain pins: .NET SDK from `backend/global.json`, Node from `frontend/.node-version`, pnpm via Corepack (`packageManager` in `frontend/package.json`; don't install globally). `just doctor` verifies them.
+- Toolchain pins: .NET SDK from `backend/global.json`, plus 10.0.300 or later for the repo tools' `#:include` (ADR-0017), Node from `frontend/.node-version`, pnpm via Corepack (`packageManager` in `frontend/package.json`; don't install globally). `just doctor` verifies them.

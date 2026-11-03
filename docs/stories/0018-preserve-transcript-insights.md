@@ -1,8 +1,16 @@
 ---
-status: planned
+status: implemented
 date: 2026-11-02
 issue: https://github.com/mgasca/calendar/issues/193
-pr: [https://github.com/mgasca/calendar/pull/201]
+pr:
+  - https://github.com/mgasca/calendar/pull/201
+  - https://github.com/mgasca/calendar/pull/202
+  - https://github.com/mgasca/calendar/pull/203
+  - https://github.com/mgasca/calendar/pull/205
+  - https://github.com/mgasca/calendar/pull/208
+  - https://github.com/mgasca/calendar/pull/204
+  - https://github.com/mgasca/calendar/pull/206
+  - https://github.com/mgasca/calendar/pull/207
 adrs: ["0012", "0016"]
 ---
 
@@ -22,7 +30,7 @@ This extends the performance lessons in [0015](0015-backend-performance-review-c
 
 ### Agreed scope
 
-* **Separate delivery:** one enhancement child and delivery PR per insight, in order 1, 2, 4, 6, 3, 5; memory coverage follows.
+* **Separate delivery:** one enhancement child and delivery PR per insight. Work began with 1, 2, 4 and 6; review and merge order varied. The front matter records delivery order.
 * **Reusable guidance:** preserve fixes during experiments (#194), isolate runtime resources (#195), coordinate story numbers (#196), verify delivery after merges (#197), report validation scope (#198), and retain evidence for rejected optimisations (#199).
 * **Memory coverage:** reconcile optional issue-handover preferences, public redaction and question placement; keep local scheduler details local and retire stale environment claims (#200).
 * **Honest evidence:** distinguish historical reports from new measurements, and documentation checks from demonstrated agent behaviour.
@@ -63,7 +71,7 @@ No new ADR is expected.
 
 ## Implementation notes
 
-*Planned. This section is completed as the story is built.*
+The six insights have separate guidance PRs, with memory reconciliation in a seventh. No runtime code, dependencies, endpoints or default provisioning changed. PR #207 also completes this card and the epic.
 
 ### Where things live
 
@@ -84,7 +92,36 @@ Docs corpus tests and the built site check card structure, index agreement and l
 
 ### Lessons learned, known issues and follow-ups
 
-The epic records the audit evidence and all seven enhancement children. Delivery notes will be added per child. No child is complete merely because its instructions have been proposed.
+### Delivery and acceptance evidence
+
+| Criterion / child | Delivery | Evidence and limits |
+| --- | --- | --- |
+| 1 / #194 | [#202](https://github.com/mgasca/calendar/pull/202) | Manually reviewed the negative-control and final-restoration procedure in AGENTS.md against #189. No automatic test proves future agent compliance. |
+| 2 / #195 | [#203](https://github.com/mgasca/calendar/pull/203) | Manually checked Compose project/volume/port defaults, the justfile migration port and Vite proxy configuration. No runtime isolation experiment or database reset performed. |
+| 3 / #196 | [#206](https://github.com/mgasca/calendar/pull/206) | Manually reviewed story-draft coordination and collision recovery against #166, #167 and #188. It explicitly does not promise atomic reservation. |
+| 4 / #197 | [#204](https://github.com/mgasca/calendar/pull/204) | Manually reviewed merge-boundary guidance against #180/#186. Squash-merge verification checks content rather than original commit ancestry. |
+| 5 / #198 | [#207](https://github.com/mgasca/calendar/pull/207) | Manually checked analyzer configuration and tool discovery against the repository. The historical #190 coverage gap was fixed independently in #209; the general lesson remains. |
+| 6 / #199 | [#205](https://github.com/mgasca/calendar/pull/205) | Historical #48 report transcribed below with provenance, sampling, limits and reconsideration conditions. Not rerun; no new benchmark harness. The reviewer added the explicit instruction to retain harnesses and benchmark code. |
+| 7 / #200 | [#208](https://github.com/mgasca/calendar/pull/208) | Manual cross-check of all three memory notes and drafting skills; dispositions below. Local timer state and Node version observed directly on 2026-11-03. |
+| 8 / checks | Each linked PR | Required CI gates delivery. Local docs corpus tests and site build/post-build checks validate the card and links. Full just check was not run locally for these documentation-only changes. |
+
+The [docs corpus tests](../../frontend/apps/docs/src/lib/corpus.test.ts) and [publication checks](../../frontend/apps/docs/tests/build.test.ts) cover card structure, index agreement and published links. They do not test guidance semantics or historical timing. No application regression tests were added for reversible prose edits.
+
+### Memory coverage disposition
+
+| Note | Disposition |
+| --- | --- |
+| Cards, PR sequencing and decision trails | Already in AGENTS.md; retained rather than duplicated. |
+| Optional handover activation and human/agent attribution | AGENTS.md scopes the mode explicitly. Terminal versus quoted footers are a heuristic; ambiguous attribution requires clarification. |
+| Comment/review channels and watching | AGENTS.md covers IDs, seen-state, empty review wrappers, requested cadence and direct checks if PR binding fails. No new monitor was deployed. |
+| Questions, substantive progress, counts and model attribution | AGENTS.md records separate question comments, substantive-only progress, requested numbers-only counts and model-switch disclosure. Both drafting skills defer to the optional mode; agreed answers remain in cards/ADRs. |
+| Resume events, stacked squash merges and close-out | AGENTS.md records the next authorized action, content verification, union of PR links and task-owned cleanup, without blanket merge permission. |
+| Reopened decision drivers | General rule added to AGENTS.md; the specific task-runner example stays in story 0011. |
+| Public GitHub redaction | AGENTS.md excludes private handles and absolute machine paths, and requires editing accidental disclosures in place. |
+| Scheduler and recovery | Retained in dated local operations memory. The installed timer was disabled/inactive on 2026-11-03; configured cadence is six-hourly UTC with up to five minutes of jitter and catch-up enabled. No scheduler state changed or new sweep executed. |
+| Stale Node 22 / make limitation | Removed from active local memory. Node 24.22.2 was observed and docs builds passed in this environment; future sessions must re-probe capabilities. |
+
+Local workflow/redaction memories now point to merged guidance rather than maintaining competing instructions. Operational paths and transcript identifiers stay private. The independent browser-skill work (#190/#209) and sweep/close-out proposal #168 are outside this epic, not deferred delivery here.
 
 ### Historical evidence: decision not to optimise grid layout (#199)
 
@@ -105,8 +142,6 @@ The issue closed without changing the algorithm. The source also noted memoizati
 **Validation:** manually compared this transcription with the linked issue comment and reviewed the limits above. Docs corpus/build checks validate structure and links, not the historical timings or future agent compliance.
 
 ## User guide
-
-*Planned behaviour. This section is finalised when the story is implemented.*
 
 Open **Transcript Insights** to follow each enhancement and its review. Read this card for the lasting outcomes and the limits of the evidence. Use the normal development setup for ordinary work; concurrent isolated environments must identify their own resources before starting or cleaning up.
 

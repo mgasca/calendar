@@ -106,7 +106,6 @@ The issue closed without changing the algorithm. The source also noted memoizati
 
 ## User guide
 
-
 *Planned behaviour. This section is finalised when the story is implemented.*
 
 Open **Transcript Insights** to follow each enhancement and its review. Read this card for the lasting outcomes and the limits of the evidence. Use the normal development setup for ordinary work; concurrent isolated environments must identify their own resources before starting or cleaning up.

@@ -1,0 +1,6 @@
+<!--
+  Script parsing for browse.cs, shared with tests/browse.tests.cs through #:project. It is a project rather than a file
+  pulled in with #:include (ADR-0017's usual layout) because #:include fails on SDK 10.0.1xx, which backend/global.json
+  allows, and the driver has to run there. Build and analyzer settings come from the skill's Directory.Build.props.
+-->
+<Project Sdk="Microsoft.NET.Sdk" />

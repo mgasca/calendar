@@ -176,6 +176,15 @@ corepack pnpm --dir frontend --filter @calendar/web test
 Observed: 241 web tests, 172 domain tests, 51 task endpoint tests pass. The API tests start their own Testcontainers
 PostgreSQL; with podman they work because `DOCKER_HOST` points at the podman socket.
 
+The driver's own tests cover script parsing only, so they need neither Chromium nor the app; `just tooling` and the CI
+`Tooling` job run them:
+
+```bash
+dotnet run .claude/skills/run-calendar/tests/browse.tests.cs
+```
+
+Observed: 20 tests pass.
+
 ## Gotchas
 
 - **No Google credentials, so sign in with the seed key.** In Development with `Auth__DevSeedKey` (at least 32
@@ -187,7 +196,8 @@ PostgreSQL; with podman they work because `DOCKER_HOST` points at the podman soc
   and volume (`calendar_calendar-pgdata`) with the human's checkout. The agent database is a separate `--rm`
   container on 55432, and the agent ports stay clear of `just dev-api` (5041) and `just dev-web` (5173).
 - **`just db-seed` fails on SDK 10.0.1xx** with `seed-dev.cs(2): error: Unrecognized directive 'include'`; that is why
-  seeding uses `curl`, and why the driver is one file with no `#:include`.
+  seeding uses `curl`, and why the driver has no `#:include`. Its script parsing lives in the `scripts/browse/lib`
+  project, which the driver and `tests/browse.tests.cs` reference with `#:project`, a directive 10.0.1xx supports.
 - **File-based apps default to `PublishAot`**, which disables reflection-based JSON; Playwright then fails with
   `Reflection-based serialization has been disabled`. The driver sets `#:property PublishAot=false`.
 - **`label=` is not a Playwright selector engine** (`Unknown engine "label"`); the driver maps it to `GetByLabel`.

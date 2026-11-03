@@ -1,12 +1,14 @@
 #!/usr/bin/env -S dotnet run
 #:package Microsoft.Playwright@1.64.1
+#:project lib/BrowseScript.csproj
 // File-based apps default to PublishAot, which turns off the reflection-based JSON that Playwright needs.
 #:property PublishAot=false
 
 // Drives the running web app in headless Chromium, signed in through the API's development seed key
 // (the X-Dev-Seed-Key header is sent with every request, so no Google sign-in is needed). The key comes from
 // --seed-key, else Auth__DevSeedKey, else the disposable local value in .env.example.
-// Reads one command per line from stdin and stops at the first command that fails.
+// Reads one command per line from stdin and stops at the first command that fails. Lines are parsed by
+// lib/Script.cs, a project rather than an #:include so the driver runs on SDK 10.0.1xx; tests/ unit tests it.
 // When ~/.cache/calendar-chromium-libs holds extracted system libraries (see SKILL.md), Chromium loads them.
 //
 //   dotnet run browse.cs -- --install                            download Chromium once
@@ -28,7 +30,6 @@
 //
 // Exit code 0 when every command succeeds, 1 when one fails, 2 on usage errors.
 
-using System.Text;
 using Microsoft.Playwright;
 using RunCalendar;
 
@@ -118,18 +119,16 @@ ILocator Find(string selector) => selector.StartsWith("label=", StringComparison
 while (await Console.In.ReadLineAsync() is { } line)
 {
   lineNumber++;
-  var trimmed = line.Trim();
-  if (trimmed.Length == 0 || trimmed.StartsWith('#'))
+  if (Script.Parse(line) is not { } step)
   {
     continue;
   }
 
+  var trimmed = line.Trim();
   Console.WriteLine($"> {trimmed}");
-  var command = Script.Split(trimmed, 2)[0];
-  var argCount = command is "fill" or "select" ? 3 : 2;
-  List<string> parts = Script.Split(trimmed, argCount);
-  var target = parts.Count > 1 ? parts[1] : "";
-  var rest = parts.Count > 2 ? parts[2] : "";
+  var command = step.Name;
+  var target = step.Target;
+  var rest = step.Rest;
   try
   {
     switch (command)
@@ -190,60 +189,3 @@ while (await Console.In.ReadLineAsync() is { } line)
 }
 
 return 0;
-
-namespace RunCalendar
-{
-  /// <summary>Splits script lines into a command and its arguments.</summary>
-  internal static class Script
-  {
-    /// <summary>
-    /// Splits <paramref name="line"/> into at most <paramref name="parts"/> parts. The parts before the last are
-    /// separated by spaces, and one wrapped in single quotes keeps its spaces; the last part is the raw rest of the
-    /// line, so text and JavaScript keep their quotes and spacing.
-    /// </summary>
-    public static List<string> Split(string line, int parts)
-    {
-      var result = new List<string>();
-      var current = new StringBuilder();
-      var quoted = false;
-      var i = 0;
-      for (; i < line.Length && result.Count < parts - 1; i++)
-      {
-        var c = line[i];
-        if (c == '\'')
-        {
-          quoted = !quoted;
-        }
-        else if (c == ' ' && !quoted)
-        {
-          Flush();
-        }
-        else
-        {
-          current.Append(c);
-        }
-      }
-      if (result.Count < parts - 1)
-      {
-        Flush();
-        return result;
-      }
-
-      var last = (current + line[i..]).Trim();
-      if (last.Length > 0)
-      {
-        result.Add(last);
-      }
-      return result;
-
-      void Flush()
-      {
-        if (current.Length > 0)
-        {
-          result.Add(current.ToString());
-          current.Clear();
-        }
-      }
-    }
-  }
-}

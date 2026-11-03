@@ -8,6 +8,7 @@ namespace Calendar.Domain.Tests.Agenda;
 public sealed class DayInclusionTests
 {
   private const string Zone = "America/New_York";
+  private static readonly Guid Owner = Guid.NewGuid();
   private static readonly DateOnly Today = new(2026, 10, 26);
 
   // New York, 2026-10-26: [04:00Z, 2026-10-27T04:00Z).
@@ -16,10 +17,10 @@ public sealed class DayInclusionTests
   private static DateTimeOffset At(int dayOffset, int hour, int minute = 0) =>
       new DateTimeOffset(2026, 10, 26, hour, minute, 0, TimeSpan.Zero).AddDays(dayOffset);
 
-  private static CalendarEvent Timed(DateTimeOffset start, DateTimeOffset end) => CalendarEvent.Create("E", start, end, Zone);
+  private static CalendarEvent Timed(DateTimeOffset start, DateTimeOffset end) => CalendarEvent.Create(Owner, "E", start, end, Zone);
 
   private static CalendarEvent AllDay(int startOffset, int endOffset) =>
-      CalendarEvent.CreateAllDay("E", Today.AddDays(startOffset), Today.AddDays(endOffset));
+      CalendarEvent.CreateAllDay(Owner, "E", Today.AddDays(startOffset), Today.AddDays(endOffset));
 
   // ---- events ----
 
@@ -90,7 +91,7 @@ public sealed class DayInclusionTests
   [Fact]
   public void Task_DueDateToday_IsDueToday()
   {
-    var task = TodoTask.Create("T", dueDate: Today);
+    var task = TodoTask.Create(Owner, "T", dueDate: Today);
 
     DayInclusion.IsDueToday(task, Window).ShouldBeTrue();
     DayInclusion.IsOverdue(task, Window).ShouldBeFalse();
@@ -100,13 +101,13 @@ public sealed class DayInclusionTests
   [InlineData(-1, false)]
   [InlineData(1, false)]
   public void Task_DueDateOtherDay_IsNotDueToday(int offset, bool expected) =>
-    DayInclusion.IsDueToday(TodoTask.Create("T", dueDate: Today.AddDays(offset)), Window).ShouldBe(expected);
+    DayInclusion.IsDueToday(TodoTask.Create(Owner, "T", dueDate: Today.AddDays(offset)), Window).ShouldBe(expected);
 
   [Fact]
   public void Task_DueAt_InWindow_IsDueToday_EvenIfAlreadyPastLocalTime()
   {
-    var early = TodoTask.Create("T", dueAt: Window.Start);
-    var late = TodoTask.Create("T", dueAt: Window.End.AddTicks(-1));
+    var early = TodoTask.Create(Owner, "T", dueAt: Window.Start);
+    var late = TodoTask.Create(Owner, "T", dueAt: Window.End.AddTicks(-1));
 
     DayInclusion.IsDueToday(early, Window).ShouldBeTrue();
     DayInclusion.IsDueToday(late, Window).ShouldBeTrue();
@@ -116,8 +117,8 @@ public sealed class DayInclusionTests
   [Fact]
   public void Task_DueAt_OutsideWindow_IsNotDueToday()
   {
-    DayInclusion.IsDueToday(TodoTask.Create("T", dueAt: Window.Start.AddTicks(-1)), Window).ShouldBeFalse();
-    DayInclusion.IsDueToday(TodoTask.Create("T", dueAt: Window.End), Window).ShouldBeFalse();
+    DayInclusion.IsDueToday(TodoTask.Create(Owner, "T", dueAt: Window.Start.AddTicks(-1)), Window).ShouldBeFalse();
+    DayInclusion.IsDueToday(TodoTask.Create(Owner, "T", dueAt: Window.End), Window).ShouldBeFalse();
   }
 
   // ---- tasks: overdue ----
@@ -125,7 +126,7 @@ public sealed class DayInclusionTests
   [Fact]
   public void Task_DueDateBeforeToday_IsOverdue()
   {
-    var task = TodoTask.Create("T", dueDate: Today.AddDays(-1));
+    var task = TodoTask.Create(Owner, "T", dueDate: Today.AddDays(-1));
 
     DayInclusion.IsOverdue(task, Window).ShouldBeTrue();
     DayInclusion.IsDueToday(task, Window).ShouldBeFalse();
@@ -133,13 +134,13 @@ public sealed class DayInclusionTests
 
   [Fact]
   public void Task_DueAtBeforeWindowStart_IsOverdue() =>
-    DayInclusion.IsOverdue(TodoTask.Create("T", dueAt: Window.Start.AddTicks(-1)), Window).ShouldBeTrue();
+    DayInclusion.IsOverdue(TodoTask.Create(Owner, "T", dueAt: Window.Start.AddTicks(-1)), Window).ShouldBeTrue();
 
   [Fact]
   public void Task_DueInFuture_IsNeitherDueTodayNorOverdue()
   {
-    var byDate = TodoTask.Create("T", dueDate: Today.AddDays(1));
-    var byInstant = TodoTask.Create("T", dueAt: Window.End);
+    var byDate = TodoTask.Create(Owner, "T", dueDate: Today.AddDays(1));
+    var byInstant = TodoTask.Create(Owner, "T", dueAt: Window.End);
 
     DayInclusion.IsOverdue(byDate, Window).ShouldBeFalse();
     DayInclusion.IsOverdue(byInstant, Window).ShouldBeFalse();
@@ -150,8 +151,8 @@ public sealed class DayInclusionTests
   [Fact]
   public void Task_Undated_IsNeverIncluded_EvenWhenCompletedToday()
   {
-    var open = TodoTask.Create("T");
-    var done = TodoTask.Create("T");
+    var open = TodoTask.Create(Owner, "T");
+    var done = TodoTask.Create(Owner, "T");
     done.Complete(Window.Start.AddHours(1));
 
     DayInclusion.IsDueToday(open, Window).ShouldBeFalse();
@@ -165,16 +166,16 @@ public sealed class DayInclusionTests
   [Fact]
   public void Task_IncompleteOverdue_Included()
   {
-    DayInclusion.IsIncludedInDay(TodoTask.Create("T", dueDate: Today.AddDays(-5)), Window).ShouldBeTrue();
-    DayInclusion.IsIncludedInDay(TodoTask.Create("T", dueAt: Window.Start.AddDays(-5)), Window).ShouldBeTrue();
+    DayInclusion.IsIncludedInDay(TodoTask.Create(Owner, "T", dueDate: Today.AddDays(-5)), Window).ShouldBeTrue();
+    DayInclusion.IsIncludedInDay(TodoTask.Create(Owner, "T", dueAt: Window.Start.AddDays(-5)), Window).ShouldBeTrue();
   }
 
   [Fact]
   public void Task_OverdueCompletedWithinWindow_Included()
   {
-    var byDate = TodoTask.Create("T", dueDate: Today.AddDays(-5));
+    var byDate = TodoTask.Create(Owner, "T", dueDate: Today.AddDays(-5));
     byDate.Complete(Window.Start);
-    var byInstant = TodoTask.Create("T", dueAt: Window.Start.AddDays(-5));
+    var byInstant = TodoTask.Create(Owner, "T", dueAt: Window.Start.AddDays(-5));
     byInstant.Complete(Window.End.AddTicks(-1));
 
     DayInclusion.IsIncludedInDay(byDate, Window).ShouldBeTrue();
@@ -184,7 +185,7 @@ public sealed class DayInclusionTests
   [Fact]
   public void Task_OverdueCompletedBeforeWindow_Excluded()
   {
-    var task = TodoTask.Create("T", dueDate: Today.AddDays(-5));
+    var task = TodoTask.Create(Owner, "T", dueDate: Today.AddDays(-5));
     task.Complete(Window.Start.AddTicks(-1));
 
     DayInclusion.IsIncludedInDay(task, Window).ShouldBeFalse();
@@ -193,7 +194,7 @@ public sealed class DayInclusionTests
   [Fact]
   public void Task_OverdueCompletedAfterWindow_Excluded()
   {
-    var task = TodoTask.Create("T", dueDate: Today.AddDays(-5));
+    var task = TodoTask.Create(Owner, "T", dueDate: Today.AddDays(-5));
     task.Complete(Window.End);
 
     DayInclusion.IsIncludedInDay(task, Window).ShouldBeFalse();
@@ -202,9 +203,9 @@ public sealed class DayInclusionTests
   [Fact]
   public void Task_DueTodayCompletedAnyTime_Included()
   {
-    var earlier = TodoTask.Create("T", dueDate: Today);
+    var earlier = TodoTask.Create(Owner, "T", dueDate: Today);
     earlier.Complete(Window.Start.AddDays(-3));
-    var later = TodoTask.Create("T", dueAt: Window.Start.AddHours(3));
+    var later = TodoTask.Create(Owner, "T", dueAt: Window.Start.AddHours(3));
     later.Complete(Window.End.AddDays(3));
 
     DayInclusion.IsIncludedInDay(earlier, Window).ShouldBeTrue();
@@ -214,7 +215,7 @@ public sealed class DayInclusionTests
   [Fact]
   public void Task_ReopenedOverdue_ReturnsToToday()
   {
-    var task = TodoTask.Create("T", dueDate: Today.AddDays(-2));
+    var task = TodoTask.Create(Owner, "T", dueDate: Today.AddDays(-2));
     task.Complete(Window.Start.AddDays(-1));
     DayInclusion.IsIncludedInDay(task, Window).ShouldBeFalse();
 
@@ -235,7 +236,7 @@ public sealed class DayInclusionTests
   public void Task_DueAt_OnDstFallBackDay_UsesTheLongWindow()
   {
     var longDay = DayWindow.Create(new DateOnly(2026, 11, 1), TimeZones.FindIana(Zone));
-    var lateEvening = TodoTask.Create("T", dueAt: new DateTimeOffset(2026, 11, 2, 4, 30, 0, TimeSpan.Zero)); // 23:30 EST on the 1st
+    var lateEvening = TodoTask.Create(Owner, "T", dueAt: new DateTimeOffset(2026, 11, 2, 4, 30, 0, TimeSpan.Zero)); // 23:30 EST on the 1st
 
     DayInclusion.IsDueToday(lateEvening, longDay).ShouldBeTrue();
   }
@@ -243,7 +244,7 @@ public sealed class DayInclusionTests
   [Fact]
   public void Task_OverdueCompletedExactlyAtWindowEnd_Excluded()
   {
-    var task = TodoTask.Create("T", Today.AddDays(-2));
+    var task = TodoTask.Create(Owner, "T", Today.AddDays(-2));
     task.Complete(Window.End);
 
     DayInclusion.IsIncludedInDay(task, Window).ShouldBeFalse();
@@ -252,7 +253,7 @@ public sealed class DayInclusionTests
   [Fact]
   public void Task_OverdueCompletedOneTickBeforeWindowEnd_Included()
   {
-    var task = TodoTask.Create("T", Today.AddDays(-2));
+    var task = TodoTask.Create(Owner, "T", Today.AddDays(-2));
     task.Complete(Window.End.AddTicks(-1));
 
     DayInclusion.IsIncludedInDay(task, Window).ShouldBeTrue();
@@ -261,7 +262,7 @@ public sealed class DayInclusionTests
   [Fact]
   public void Task_DueAtExactlyWindowEnd_IsTomorrow_NotIncluded()
   {
-    var task = TodoTask.Create("T", dueAt: Window.End);
+    var task = TodoTask.Create(Owner, "T", dueAt: Window.End);
 
     DayInclusion.IsDueToday(task, Window).ShouldBeFalse();
     DayInclusion.IsOverdue(task, Window).ShouldBeFalse();
@@ -271,7 +272,7 @@ public sealed class DayInclusionTests
   [Fact]
   public void Task_DueAtExactlyWindowStart_IsDueTodayNotOverdue()
   {
-    var task = TodoTask.Create("T", dueAt: Window.Start);
+    var task = TodoTask.Create(Owner, "T", dueAt: Window.Start);
 
     DayInclusion.IsDueToday(task, Window).ShouldBeTrue();
     DayInclusion.IsOverdue(task, Window).ShouldBeFalse();
@@ -282,7 +283,7 @@ public sealed class DayInclusionTests
   {
     TimeZoneInfo apia = TimeZones.FindIana("Pacific/Apia");
     var skipped = DayWindow.Create(new DateOnly(2011, 12, 30), apia);
-    var spanning = CalendarEvent.Create("E", skipped.Start.AddDays(-1), skipped.Start.AddDays(1), "Pacific/Apia");
+    var spanning = CalendarEvent.Create(Owner, "E", skipped.Start.AddDays(-1), skipped.Start.AddDays(1), "Pacific/Apia");
 
     skipped.Length.ShouldBe(TimeSpan.Zero);
     DayInclusion.EventOccursOn(spanning, skipped).ShouldBeFalse();
@@ -321,11 +322,11 @@ public sealed class DayInclusionTests
   {
     TodoTask[] tasks =
     [
-        TodoTask.Create("date today", Today),
-        TodoTask.Create("date yesterday", Today.AddDays(-1)),
-        TodoTask.Create("at start", dueAt: Window.Start),
-        TodoTask.Create("at end", dueAt: Window.End),
-        TodoTask.Create("undated"),
+        TodoTask.Create(Owner, "date today", Today),
+        TodoTask.Create(Owner, "date yesterday", Today.AddDays(-1)),
+        TodoTask.Create(Owner, "at start", dueAt: Window.Start),
+        TodoTask.Create(Owner, "at end", dueAt: Window.End),
+        TodoTask.Create(Owner, "undated"),
     ];
 
     tasks.Select(t => DayInclusion.IsDueOn(t.DueDate, t.DueAt, Window)).ShouldBe(tasks.Select(t => DayInclusion.IsDueToday(t, Window)));

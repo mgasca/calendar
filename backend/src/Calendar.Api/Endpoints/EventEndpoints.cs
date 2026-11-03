@@ -1,3 +1,4 @@
+using Calendar.Api.Auth;
 using Calendar.Api.Contracts;
 using Calendar.Domain.Events;
 using Calendar.Infrastructure;
@@ -23,6 +24,7 @@ internal static class EventEndpoints
   private static async Task<Results<CreatedAtRoute<EventResponse>, ValidationProblem>> CreateAsync(
       CreateEventRequest request,
       CalendarDbContext db,
+      ICurrentUser user,
       CancellationToken cancellationToken)
   {
     var errors = new FieldErrors();
@@ -50,9 +52,17 @@ internal static class EventEndpoints
     {
       try
       {
+        Guid owner = user.RequireId();
         created = request.AllDay
-            ? CalendarEvent.CreateAllDay(request.Title, request.StartDate!.Value, request.EndDate!.Value, request.Location, request.Notes)
+            ? CalendarEvent.CreateAllDay(
+              owner,
+              request.Title,
+              request.StartDate!.Value,
+              request.EndDate!.Value,
+              request.Location,
+              request.Notes)
             : CalendarEvent.Create(
+              owner,
               request.Title,
               request.Start!.Value,
               request.End!.Value,

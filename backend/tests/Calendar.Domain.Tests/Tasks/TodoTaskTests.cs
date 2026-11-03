@@ -4,12 +4,13 @@ namespace Calendar.Domain.Tests.Tasks;
 
 public sealed class TodoTaskTests
 {
+  private static readonly Guid Owner = Guid.NewGuid();
   private static readonly DateTimeOffset Now = new(2026, 10, 26, 12, 0, 0, TimeSpan.Zero);
 
   [Fact]
   public void Create_Undated_HasNoDueValue()
   {
-    var task = TodoTask.Create("  Buy milk ");
+    var task = TodoTask.Create(Owner, "  Buy milk ");
 
     task.Title.ShouldBe("Buy milk");
     task.Priority.ShouldBe("medium");
@@ -23,7 +24,7 @@ public sealed class TodoTaskTests
   [Fact]
   public void Create_WithDueDate_SetsDueDate()
   {
-    var task = TodoTask.Create("A", dueDate: new DateOnly(2026, 10, 26));
+    var task = TodoTask.Create(Owner, "A", dueDate: new DateOnly(2026, 10, 26));
 
     task.DueDate.ShouldBe(new DateOnly(2026, 10, 26));
     task.DueAt.ShouldBeNull();
@@ -32,7 +33,7 @@ public sealed class TodoTaskTests
   [Fact]
   public void Create_WithDueAt_NormalizesToUtc()
   {
-    var task = TodoTask.Create("A", dueAt: new DateTimeOffset(2026, 10, 26, 9, 0, 0, TimeSpan.FromHours(-4)));
+    var task = TodoTask.Create(Owner, "A", dueAt: new DateTimeOffset(2026, 10, 26, 9, 0, 0, TimeSpan.FromHours(-4)));
 
     task.DueAt.ShouldBe(new DateTimeOffset(2026, 10, 26, 13, 0, 0, TimeSpan.Zero));
     task.DueAt!.Value.Offset.ShouldBe(TimeSpan.Zero);
@@ -41,39 +42,39 @@ public sealed class TodoTaskTests
 
   [Fact]
   public void Create_WithBothDueValues_Throws() =>
-    Should.Throw<ArgumentException>(() => TodoTask.Create("A", new DateOnly(2026, 10, 26), Now));
+    Should.Throw<ArgumentException>(() => TodoTask.Create(Owner, "A", new DateOnly(2026, 10, 26), Now));
 
   [Theory]
   [InlineData("")]
   [InlineData("  ")]
-  public void Create_WithBlankTitle_Throws(string title) => Should.Throw<ArgumentException>(() => TodoTask.Create(title));
+  public void Create_WithBlankTitle_Throws(string title) => Should.Throw<ArgumentException>(() => TodoTask.Create(Owner, title));
 
   [Fact]
   public void Create_TitleLength_IsCappedAtTwoHundredAfterTrim()
   {
-    TodoTask.Create(" " + new string('a', 200)).Title.Length.ShouldBe(200);
-    Should.Throw<ArgumentException>(() => TodoTask.Create(new string('a', 201)));
+    TodoTask.Create(Owner, " " + new string('a', 200)).Title.Length.ShouldBe(200);
+    Should.Throw<ArgumentException>(() => TodoTask.Create(Owner, new string('a', 201)));
   }
 
   [Fact]
   public void Create_WithNotes_NormalizesAndLimitsLength()
   {
-    TodoTask.Create("T", priority: "high", notes: "  Details  ").Notes.ShouldBe("Details");
-    TodoTask.Create("T", notes: "  ").Notes.ShouldBeNull();
-    TodoTask.Create("T", notes: new string('a', 4000)).Notes!.Length.ShouldBe(4000);
-    Should.Throw<ArgumentException>(() => TodoTask.Create("T", notes: new string('a', 4001))).ParamName.ShouldBe("notes");
+    TodoTask.Create(Owner, "T", priority: "high", notes: "  Details  ").Notes.ShouldBe("Details");
+    TodoTask.Create(Owner, "T", notes: "  ").Notes.ShouldBeNull();
+    TodoTask.Create(Owner, "T", notes: new string('a', 4000)).Notes!.Length.ShouldBe(4000);
+    Should.Throw<ArgumentException>(() => TodoTask.Create(Owner, "T", notes: new string('a', 4001))).ParamName.ShouldBe("notes");
   }
 
   [Theory]
   [InlineData("urgent")]
   [InlineData("")]
   public void Create_WithInvalidPriority_Throws(string priority) =>
-      Should.Throw<ArgumentException>(() => TodoTask.Create("T", priority: priority)).ParamName.ShouldBe("priority");
+      Should.Throw<ArgumentException>(() => TodoTask.Create(Owner, "T", priority: priority)).ParamName.ShouldBe("priority");
 
   [Fact]
   public void Complete_SetsCompletedAtInUtc()
   {
-    var task = TodoTask.Create("A");
+    var task = TodoTask.Create(Owner, "A");
 
     task.Complete(new DateTimeOffset(2026, 10, 26, 8, 0, 0, TimeSpan.FromHours(-4)));
 
@@ -85,7 +86,7 @@ public sealed class TodoTaskTests
   [Fact]
   public void Complete_WhenAlreadyCompleted_KeepsFirstCompletionTime()
   {
-    var task = TodoTask.Create("A");
+    var task = TodoTask.Create(Owner, "A");
     task.Complete(Now);
 
     task.Complete(Now.AddHours(5));
@@ -96,7 +97,7 @@ public sealed class TodoTaskTests
   [Fact]
   public void Reopen_ClearsCompletion_AndIsIdempotent()
   {
-    var task = TodoTask.Create("A");
+    var task = TodoTask.Create(Owner, "A");
     task.Complete(Now);
 
     task.Reopen();
@@ -109,7 +110,7 @@ public sealed class TodoTaskTests
   [Fact]
   public void Complete_AfterReopen_RecordsNewTime()
   {
-    var task = TodoTask.Create("A");
+    var task = TodoTask.Create(Owner, "A");
     task.Complete(Now);
     task.Reopen();
 
@@ -121,7 +122,7 @@ public sealed class TodoTaskTests
   [Fact]
   public void DeadlineChanges_ReplaceOrClearOpenTaskDeadline()
   {
-    var task = TodoTask.Create("A", dueDate: new DateOnly(2026, 10, 25));
+    var task = TodoTask.Create(Owner, "A", dueDate: new DateOnly(2026, 10, 25));
     DateTimeOffset dueAt = new(2026, 10, 26, 9, 0, 0, TimeSpan.FromHours(-4));
 
     task.SetDueAt(dueAt);
@@ -138,7 +139,7 @@ public sealed class TodoTaskTests
   [Fact]
   public void DeadlineChanges_OnCompletedTask_Throw()
   {
-    var task = TodoTask.Create("A");
+    var task = TodoTask.Create(Owner, "A");
     task.Complete(Now);
 
     Should.Throw<InvalidOperationException>(() => task.SetDueDate(new DateOnly(2026, 10, 27)));

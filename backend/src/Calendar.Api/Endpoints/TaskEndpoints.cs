@@ -1,3 +1,4 @@
+using Calendar.Api.Auth;
 using Calendar.Api.Contracts;
 using Calendar.Domain.Tasks;
 using Calendar.Domain.Time;
@@ -51,6 +52,7 @@ internal static class TaskEndpoints
   private static async Task<Results<CreatedAtRoute<TaskResponse>, ValidationProblem>> CreateAsync(
       CreateTaskRequest request,
       CalendarDbContext db,
+      ICurrentUser user,
       CancellationToken cancellationToken)
   {
     var errors = new FieldErrors();
@@ -61,7 +63,7 @@ internal static class TaskEndpoints
     {
       try
       {
-        created = TodoTask.Create(request.Title, request.DueDate, request.DueAt, request.Priority, request.Notes);
+        created = TodoTask.Create(user.RequireId(), request.Title, request.DueDate, request.DueAt, request.Priority, request.Notes);
       }
       catch (ArgumentException ex)
       {

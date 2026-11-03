@@ -1,8 +1,12 @@
 using System.Security.Claims;
+using System.Text.Json;
+using Calendar.Api.Auth;
 using Calendar.Api.Contracts;
+using Calendar.Domain.Users;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authentication.Google;
+using Microsoft.AspNetCore.Authentication.OAuth;
 using Microsoft.AspNetCore.Http.HttpResults;
 
 namespace Calendar.Api.Endpoints;
@@ -51,6 +55,41 @@ internal static class ApiAuthentication
     && !url.Any(char.IsControl)
       ? url
       : "/";
+
+  /// <summary>
+  /// Resolves the signed-in person's <see cref="User"/> row from the Google claims and adds its id to the
+  /// ticket's identity (ADR-0041). Fails the ticket when Google sent no subject.
+  /// </summary>
+  public static async Task AttachUserAsync(OAuthCreatingTicketContext context, string email)
+  {
+    var subject = context.User.TryGetProperty("sub", out JsonElement sub) && sub.ValueKind == JsonValueKind.String
+      ? sub.GetString()
+      : context.Principal?.FindFirstValue(ClaimTypes.NameIdentifier);
+    if (string.IsNullOrWhiteSpace(subject) || context.Identity is null)
+    {
+      context.Fail("The identity provider sent no subject.");
+      return;
+    }
+
+    UserDirectory directory = context.HttpContext.RequestServices.GetRequiredService<UserDirectory>();
+    User user = await directory.ResolveAsync(
+      email,
+      subject,
+      context.Principal?.FindFirstValue(ClaimTypes.Name),
+      context.Principal?.FindFirstValue("picture"),
+      context.HttpContext.RequestAborted);
+    context.Identity.AddClaim(new Claim(CalendarClaims.UserId, user.Id.ToString()));
+  }
+
+  /// <summary>Rejects, and signs out, a cookie principal that carries no user id (one issued before ADR-0041).</summary>
+  public static async Task RequireUserIdAsync(CookieValidatePrincipalContext context)
+  {
+    if (CalendarClaims.UserIdOf(context.Principal) is null)
+    {
+      context.RejectPrincipal();
+      await context.HttpContext.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
+    }
+  }
 
   public static Task RedirectOrStatus(RedirectContext<CookieAuthenticationOptions> context, int status)
   {

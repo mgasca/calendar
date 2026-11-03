@@ -103,5 +103,6 @@ public static class SeedAuthentication
   /// <summary>Explains how to resolve an authentication failure.</summary>
   public const string UnauthorizedMessage =
     "Seed authentication failed (401). Set Auth__DevSeedKey in .env or pass --seed-key, "
-    + "and run the API in Development with the same key.";
+    + "and run the API in Development with the same key. Seeded rows belong to the first allow-listed "
+    + "account, so Auth__AllowedEmails__0 must be set too.";
 }

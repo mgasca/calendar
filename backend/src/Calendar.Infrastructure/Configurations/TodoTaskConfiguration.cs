@@ -1,4 +1,5 @@
 using Calendar.Domain.Tasks;
+using Calendar.Domain.Users;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
@@ -18,20 +19,25 @@ internal sealed class TodoTaskConfiguration : IEntityTypeConfiguration<TodoTask>
     builder.HasKey(t => t.Id);
     builder.Property(t => t.Id).ValueGeneratedNever();
 
+    // ADR-0041: every task belongs to a user, and owner_id leads every index the agenda and task-list queries
+    // use, since each of them is scoped to one owner first.
+    builder.Property(t => t.OwnerId).IsRequired();
+    builder.HasOne<User>().WithMany().HasForeignKey(t => t.OwnerId).OnDelete(DeleteBehavior.Restrict).HasConstraintName("fk_tasks_owner");
+
     builder.Property(t => t.Title).HasMaxLength(200).IsRequired();
     builder.Property(t => t.Priority).HasMaxLength(6).HasDefaultValue("medium").IsRequired();
     builder.Property(t => t.Notes).HasMaxLength(4000);
     builder.Property(t => t.DueDate).HasColumnType("date");
 
     // Partial indexes: undated tasks never match the agenda's due-date predicates.
-    builder.HasIndex(t => t.DueDate).HasDatabaseName("ix_tasks_due_date").HasFilter("due_date IS NOT NULL");
-    builder.HasIndex(t => t.DueAt).HasDatabaseName("ix_tasks_due_at").HasFilter("due_at IS NOT NULL");
-    builder.HasIndex(t => t.CompletedAt).HasDatabaseName("ix_tasks_completed_at").HasFilter("completed_at IS NOT NULL");
+    builder.HasIndex(t => new { t.OwnerId, t.DueDate }).HasDatabaseName("ix_tasks_due_date").HasFilter("due_date IS NOT NULL");
+    builder.HasIndex(t => new { t.OwnerId, t.DueAt }).HasDatabaseName("ix_tasks_due_at").HasFilter("due_at IS NOT NULL");
+    builder.HasIndex(t => new { t.OwnerId, t.CompletedAt }).HasDatabaseName("ix_tasks_completed_at").HasFilter("completed_at IS NOT NULL");
     // Open tasks only: the overdue list's open branch, which must not grow with the completed history.
-    builder.HasIndex(t => t.DueDate, "ix_tasks_open_due_date")
+    builder.HasIndex(t => new { t.OwnerId, t.DueDate }, "ix_tasks_open_due_date")
       .HasDatabaseName("ix_tasks_open_due_date")
       .HasFilter("due_date IS NOT NULL AND completed_at IS NULL");
-    builder.HasIndex(t => t.DueAt, "ix_tasks_open_due_at")
+    builder.HasIndex(t => new { t.OwnerId, t.DueAt }, "ix_tasks_open_due_at")
       .HasDatabaseName("ix_tasks_open_due_at")
       .HasFilter("due_at IS NOT NULL AND completed_at IS NULL");
 

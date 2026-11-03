@@ -89,8 +89,8 @@ public sealed class WeekAgendaAgreementTests(PostgresFixture postgres) : ApiTest
       // Short events near each point, events crossing one or two day edges, and a few long ones.
       foreach (var j in new[] { i + 1, i + 2, i + 4, i + 9, points.Length - 1 }.Distinct().Where(j => j > i && j < points.Length))
       {
-        events.Add(CalendarEvent.Create($"timed {i}-{j}", points[i], points[j], zoneId));
-        events.Add(CalendarEvent.Create($"Timed {i}-{j}", points[i], points[j], zoneId)); // ties broken by id
+        events.Add(CalendarEvent.Create(Owner, $"timed {i}-{j}", points[i], points[j], zoneId));
+        events.Add(CalendarEvent.Create(Owner, $"Timed {i}-{j}", points[i], points[j], zoneId)); // ties broken by id
       }
     }
 
@@ -99,6 +99,7 @@ public sealed class WeekAgendaAgreementTests(PostgresFixture postgres) : ApiTest
       foreach (var length in new[] { 1, 2, 9 })
       {
         events.Add(CalendarEvent.CreateAllDay(
+          Owner,
           $"all-day {start}+{length}",
           range.StartDate.AddDays(start),
           range.StartDate.AddDays(start + length)));
@@ -134,7 +135,7 @@ public sealed class WeekAgendaAgreementTests(PostgresFixture postgres) : ApiTest
 
   private static TodoTask Task(string title, DateOnly? dueDate, DateTimeOffset? dueAt, DateTimeOffset? completedAt)
   {
-    var task = TodoTask.Create(title, dueDate, dueAt);
+    var task = TodoTask.Create(Owner, title, dueDate, dueAt);
     if (completedAt is { } at)
     {
       task.Complete(at);

@@ -153,7 +153,7 @@ Create a Google OAuth web application client and configure its authorized redire
 
 Set `Auth__Google__ClientId`, `Auth__Google__ClientSecret` and indexed entries such as `Auth__AllowedEmails__0` in the untracked `.env` for local development, then export them into the API process (`just dev-api` loads `.env` for you; restart it after editing, since hot reload does not re-read the environment); use deployment secrets for production. Add only the verified Google emails permitted to access the calendar. Keep the client secret out of version control. Use HTTPS in production and configure trusted forwarded headers when behind a proxy so redirects and secure cookies use the public origin.
 
-> **Authentication and limitations.** Google sign-in protects the API with a same-origin cookie ([ADR-0027](docs/decisions/0027-google-oidc-bff-session.md)). All allowed accounts currently share the same data: add `owner_id` and per-user scoping before supporting a second user. Add bearer support before enabling non-browser clients.
+> **Authentication and limitations.** Google sign-in protects the API with a same-origin cookie ([ADR-0027](docs/decisions/0027-google-oidc-bff-session.md)). Each allowed account sees only its own events and tasks ([ADR-0041](docs/decisions/0041-per-user-data-ownership.md)): rows from before per-user ownership belong to the first email in `Auth__AllowedEmails`, which claims them at its first sign-in, and `just db-seed` seeds that account. Add bearer support before enabling non-browser clients, and re-decide row-level security before sharing between users, a non-browser client with its own identity, or a background job that reads across users.
 
 ## Tooling
 

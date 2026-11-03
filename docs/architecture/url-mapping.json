@@ -7,6 +7,7 @@
   "https://raw.githubusercontent.com/mgasca/calendar/main/docs/architecture/controls/data-durability.requirement.json": "controls/data-durability.requirement.json",
   "https://raw.githubusercontent.com/mgasca/calendar/main/docs/architecture/controls/environment-separation.requirement.json": "controls/environment-separation.requirement.json",
   "https://raw.githubusercontent.com/mgasca/calendar/main/docs/architecture/controls/least-privilege-data-access.requirement.json": "controls/least-privilege-data-access.requirement.json",
+  "https://raw.githubusercontent.com/mgasca/calendar/main/docs/architecture/controls/per-user-data-isolation.requirement.json": "controls/per-user-data-isolation.requirement.json",
   "https://raw.githubusercontent.com/mgasca/calendar/main/docs/architecture/controls/observability.requirement.json": "controls/observability.requirement.json",
   "https://raw.githubusercontent.com/mgasca/calendar/main/docs/architecture/controls/quality-gates.requirement.json": "controls/quality-gates.requirement.json",
   "https://raw.githubusercontent.com/mgasca/calendar/main/docs/architecture/controls/query-performance.requirement.json": "controls/query-performance.requirement.json",

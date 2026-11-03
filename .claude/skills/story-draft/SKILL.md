@@ -19,6 +19,8 @@ A story card is the long-lived record of a feature: what was asked, what was agr
 
 ## Before you start: read these parts
 
+When the user requests issue-driven handover mode, follow AGENTS.md's "Public GitHub posts and optional issue handovers" section: open questions go in separate PR comments, overriding this skill's question-placement instructions. Keep agreed answers in the card. Outside that mode, use the normal steps below. Explicit user authorization to merge takes precedence over the default instruction to leave the PR for the user; required checks still apply.
+
 At the start of every run, read only these parts. They win over anything restated here.
 
 - `docs/stories/README.md`: the whole file (it is short). It covers naming, "Source of truth", sections, front matter, and the index table.
@@ -57,7 +59,8 @@ If the answer changes the scope or the acceptance criteria (who the user is, wha
 The file name is `docs/stories/NNNN-lowercase-kebab-title.md`.
 
 - Numbers follow delivery order. A story that is not yet scheduled is `XXXX-…md` with the heading `# XXXX Title`. It gets the next number when it is scheduled. To schedule it, rename the file, then fix the heading, the index row and every link.
-- The next number is the highest existing number plus 1, found **after fetching** (`git fetch`), so that two stories do not take the same number.
+- The next number is the highest existing number plus 1, found **after fetching** (`git fetch`) and coordinated with other active story work as described below.
+- A fetch is a snapshot, not a reservation: #166, #167 and #188 needed repeated renumbering as other cards merged. Also inspect open story PRs and their changed card files (`gh pr list`, then `gh pr view N --json files`); coordinate any claim on the next number before publishing. Record the chosen number on the source issue and PR, and use the issue link as the stable reference while the number is provisional. An issue comment does not make allocation atomic. Re-fetch and compare main and active card PRs before pushing or merging. If another story takes the number, retain both stories and renumber the unmerged card to the next available number in coordination with the other active work. Update its file name, H1, index row, document/model links, PR title/body and issue references together; rerun the docs tests and build. Keep the existing delivery-order convention; do not introduce permanent gaps merely to reserve numbers.
 - If an `XXXX` story must come after other stories, say so in the card.
 
 ### 4. Write the card

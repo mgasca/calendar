@@ -39,4 +39,5 @@ Front matter: `status` (`planned`, `in-progress` or `implemented`), `date` (`YYY
 | [0015](0015-backend-performance-review-closeout.md) | Close out the backend performance review | implemented |
 | [0016](0016-colour-the-architecture-flow-diagrams-by-ownership.md) | Colour the architecture flow diagrams by ownership, with the legend | implemented |
 | [0017](0017-per-user-calendar-ownership.md) | Per-user calendar ownership: my events and tasks are mine alone | planned |
+| [0018](0018-preserve-transcript-insights.md) | Preserve transcript insights in agent guidance | implemented |
 | [XXXX](XXXX-create-events-and-tasks-from-week-view.md) | Create events and tasks from the week view | planned |

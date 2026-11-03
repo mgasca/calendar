@@ -81,6 +81,19 @@ public sealed class DoctorTests : IDisposable
     text.ShouldContain("just 0.1.0, but .just-version wants");
   }
 
+  [Theory]
+  [InlineData("10.0.114", false)]
+  [InlineData("10.0.204", false)]
+  [InlineData("10.0.300", true)]
+  [InlineData("10.0.403", true)]
+  public async Task RepoToolsNeedSdkWithIncludeDirective(string sdk, bool success)
+  {
+    WriteExecutable("dotnet", $"echo {sdk}");
+    (var code, var text) = await RunDoctor(infra: false);
+    (code == 0).ShouldBe(success);
+    text.ShouldContain(success ? $".NET SDK {sdk} for repo tools" : "#:include needs 10.0.300 or later");
+  }
+
   [Fact]
   public async Task OrdinaryDoctorDoesNotRequireAzure()
   {

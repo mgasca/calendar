@@ -34,7 +34,7 @@ New UIs go under `frontend/apps/` (TypeScript) or a new top-level directory for 
 
 | Tool | Version source | Notes |
 | --- | --- | --- |
-| .NET SDK | `backend/global.json` | 10.0.100 or later feature band |
+| .NET SDK | `backend/global.json` | 10.0.300 or later: the backend accepts the 10.0.100 feature band or later, but the repo tools' `#:include` needs 10.0.300 ([ADR-0017](docs/decisions/0017-dotnet-file-based-apps-for-repo-tooling.md)) |
 | Node | `frontend/.node-version` | 24; use a version manager, since Ubuntu's apt `nodejs` is too old and lacks Corepack |
 | pnpm | `packageManager` in `frontend/package.json` | Provided by Corepack (bundled with Node 24); don't install it globally |
 | Docker | n/a | Engine running and reachable; needed for the local database and for integration tests (Testcontainers) |

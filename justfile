@@ -12,7 +12,8 @@ pnpm := "pnpm --dir " + frontend
 dotnet := "cd " + backend + " && dotnet"
 # Repo tooling: .NET file-based apps kept in their skill folder or tools/<name>/ (ADR-0017).
 adr_skill := ".claude/skills/adr-draft"
-tool_dirs := adr_skill + " tools"
+run_skill := ".claude/skills/run-calendar"
+tool_dirs := adr_skill + " " + run_skill + " tools"
 shell_tools := "tools/doctor/doctor.sh"
 
 # List recipes

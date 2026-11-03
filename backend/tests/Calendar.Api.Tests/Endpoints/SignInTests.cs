@@ -7,7 +7,6 @@ using Calendar.Infrastructure;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Google;
 using Microsoft.AspNetCore.Authentication.OAuth;
-using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.EntityFrameworkCore;
@@ -97,7 +96,7 @@ public sealed class SignInTests(PostgresFixture postgres) : ApiTestBase(postgres
     }
 
     var identity = new ClaimsIdentity(claims, GoogleDefaults.AuthenticationScheme);
-    var user = JsonSerializer.SerializeToElement(new Dictionary<string, object?>
+    JsonElement user = JsonSerializer.SerializeToElement(new Dictionary<string, object?>
     {
       ["sub"] = subject,
       ["email"] = email,

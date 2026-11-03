@@ -23,6 +23,51 @@ public sealed class SchemaTests(PostgresFixture postgres) : ApiTestBase(postgres
   }
 
   [Theory]
+  [InlineData("ix_users_google_subject", "google_subject")]
+  [InlineData("ix_users_email", "email")]
+  public async Task UsersIndex_IsUniqueAmongRowsThatHaveTheValue(string indexName, string column)
+  {
+    await using CalendarDbContext db = Postgres.Database.CreateMigratorContext();
+    var definition = await db.Database.SqlQuery<string>(
+        $"SELECT indexdef AS \"Value\" FROM pg_indexes WHERE tablename = 'users' AND indexname = {indexName}").SingleAsync(Ct);
+
+    definition.ShouldStartWith("CREATE UNIQUE INDEX");
+    definition.ShouldContain($"({column} IS NOT NULL)");
+
+    // The column name is a fixed literal from the InlineData above, so it cannot be a parameter.
+    var insert = $"INSERT INTO users (id, {column}, created_at) VALUES (gen_random_uuid(), 'dup', now())";
+#pragma warning disable EF1002 // fixed literals, not user input
+    await db.Database.ExecuteSqlRawAsync(insert, Ct);
+    PostgresException ex = await Should.ThrowAsync<PostgresException>(async () => await db.Database.ExecuteSqlRawAsync(insert, Ct));
+#pragma warning restore EF1002
+    ex.SqlState.ShouldBe(PostgresErrorCodes.UniqueViolation);
+    ex.ConstraintName.ShouldBe(indexName);
+  }
+
+  [Fact]
+  public async Task UsersEmail_MustBeLowerCase()
+  {
+    await using CalendarDbContext db = Postgres.Database.CreateMigratorContext();
+
+    PostgresException ex = await Should.ThrowAsync<PostgresException>(async () => await db.Database.ExecuteSqlRawAsync(
+        "INSERT INTO users (id, email, created_at) VALUES (gen_random_uuid(), 'Mixed@Example.com', now())",
+        Ct));
+
+    ex.SqlState.ShouldBe(PostgresErrorCodes.CheckViolation);
+    ex.ConstraintName.ShouldBe("ck_users_email_lower");
+  }
+
+  [Fact]
+  public async Task EventsOwner_IsIndexed()
+  {
+    await using CalendarDbContext db = Postgres.Database.CreateMigratorContext();
+    var definition = await db.Database.SqlQueryRaw<string>(
+        "SELECT indexdef AS \"Value\" FROM pg_indexes WHERE tablename = 'events' AND indexname = 'ix_events_owner_id'").SingleAsync(Ct);
+
+    definition.ShouldEndWith("(owner_id)");
+  }
+
+  [Theory]
   [InlineData("events", "fk_events_owner")]
   [InlineData("tasks", "fk_tasks_owner")]
   public async Task OwnerId_IsANonNullForeignKeyToUsers(string table, string constraint)

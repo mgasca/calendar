@@ -74,6 +74,7 @@ mkdir -p /tmp/calendar-agent
 (cd backend && ASPNETCORE_ENVIRONMENT=Development \
   ConnectionStrings__Calendar="Host=127.0.0.1;Port=55432;Database=calendar;Username=calendar_app;Password=dev-app-password" \
   Auth__DevSeedKey=local-development-seed-key-change-me-123456 \
+  Auth__AllowedEmails__0=dev-seed@example.com \
   nohup dotnet run --project src/Calendar.Api --no-launch-profile --urls http://127.0.0.1:55041 > /tmp/calendar-agent/api.log 2>&1 &)
 timeout 180 bash -c 'until curl -sf http://127.0.0.1:55041/api/health >/dev/null; do sleep 1; done'
 ```
@@ -201,8 +202,10 @@ Observed: 20 tests pass.
 ## Gotchas
 
 - **No Google credentials, so sign in with the seed key.** In Development with `Auth__DevSeedKey` (at least 32
-  characters) set, a request carrying `X-Dev-Seed-Key` is authenticated as `dev-seed`. The driver sends it on every
-  browser request, so the SPA's `/api/auth/me` check passes and the nav shows "dev-seed".
+  characters) set, a request carrying `X-Dev-Seed-Key` is authenticated as `dev-seed`, acting as the user of the
+  first allow-listed email (`Auth__AllowedEmails__0`, any syntactically valid address here): the seed finds, claims
+  or creates that user's row, and every event and task it creates belongs to it (ADR-0041). The driver sends the
+  key on every browser request, so the SPA's `/api/auth/me` check passes and the nav shows "dev-seed".
 - **`--no-launch-profile` drops `ASPNETCORE_ENVIRONMENT=Development`** from `launchSettings.json`; set it yourself or
   the seed scheme is never registered and every call is 401.
 - **Why not `just db-up`:** `compose.yaml` pins the project name `calendar`, so every worktree shares one container
@@ -227,6 +230,7 @@ Observed: 20 tests pass.
   `apt-get download` block above (the driver picks up `~/.cache/calendar-chromium-libs` automatically).
 - **`Executable doesn't exist at ~/.cache/ms-playwright/...`**: run the driver with `--install`.
 - **`wait-for` times out, `failure.png` shows "Sign in", and the error lists `HTTP 401 GET .../api/auth/me`**: the
-  API is not in Development or was started with a different `Auth__DevSeedKey` than the driver's (`--seed-key`).
+  API is not in Development, was started with a different `Auth__DevSeedKey` than the driver's (`--seed-key`), or
+  has no `Auth__AllowedEmails__0` (the seed scheme refuses to act without a first allow-listed email).
 - **`the container name "calendar-agent-db" is already in use`**: the previous agent database is still running;
   reuse it, or `docker stop calendar-agent-db` and start again.

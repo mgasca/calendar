@@ -22,6 +22,14 @@ public sealed class TodoTaskTests
   }
 
   [Fact]
+  public void Create_SetsTheOwner_AndRejectsAnEmptyOne()
+  {
+    TodoTask.Create(Owner, "A").OwnerId.ShouldBe(Owner);
+
+    Should.Throw<ArgumentException>(() => TodoTask.Create(Guid.Empty, "A")).ParamName.ShouldBe("ownerId");
+  }
+
+  [Fact]
   public void Create_WithDueDate_SetsDueDate()
   {
     var task = TodoTask.Create(Owner, "A", dueDate: new DateOnly(2026, 10, 26));

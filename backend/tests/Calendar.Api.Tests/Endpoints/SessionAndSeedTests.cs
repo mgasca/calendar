@@ -9,6 +9,7 @@ using Calendar.Infrastructure;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Hosting;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
@@ -85,13 +86,40 @@ public sealed class SessionAndSeedTests(PostgresFixture postgres) : ApiTestBase(
   }
 
   [Fact]
-  public async Task SeedScheme_RequiresAnAllowList()
+  public async Task SeedScheme_RequiresAnAllowList_AndSaysSo()
   {
     using WebApplicationFactory<Program> host = SeedHost("Development", SeedKey, allowedEmail: null);
     using HttpClient client = host.CreateClient();
     using HttpResponseMessage response = await SendSeedAsync(client, HttpMethod.Get, "/api/auth/me", SeedKey, null);
-
     response.StatusCode.ShouldBe(HttpStatusCode.Unauthorized);
+
+    using IServiceScope scope = host.Services.CreateScope();
+    var httpContext = new DefaultHttpContext { RequestServices = scope.ServiceProvider };
+    httpContext.Request.Headers["X-Dev-Seed-Key"] = SeedKey;
+    AuthenticateResult result = await scope.ServiceProvider.GetRequiredService<IAuthenticationService>()
+      .AuthenticateAsync(httpContext, DevSeedAuthenticationHandler.SchemeName);
+    result.Failure.ShouldNotBeNull().Message.ShouldBe(DevSeedAuthenticationHandler.NoAllowedEmailMessage);
+  }
+
+  [Fact]
+  public async Task SeedScheme_StillWorks_AfterTheOwnerHasSignedInForReal()
+  {
+    await using (CalendarDbContext db = Postgres.Database.CreateMigratorContext())
+    {
+      // The owner's row after a real Google sign-in: subject and email set.
+      db.Users.Add(User.Create(Clock.GetUtcNow(), FirstAllowed, "sub-owner", "The Owner", null));
+      await db.SaveChangesAsync(Ct);
+    }
+
+    using WebApplicationFactory<Program> host = SeedHost("Development", SeedKey, FirstAllowed);
+    using HttpClient client = host.CreateClient();
+    using HttpResponseMessage created = await SendSeedAsync(client, HttpMethod.Post, "/api/tasks", SeedKey, new { title = "seeded later" });
+    created.StatusCode.ShouldBe(HttpStatusCode.Created);
+
+    await using CalendarDbContext check = Postgres.Database.CreateMigratorContext();
+    User owner = await check.Users.SingleAsync(u => u.Email == "owner@example.com", Ct);
+    owner.GoogleSubject.ShouldBe("sub-owner");
+    (await check.Tasks.IgnoreQueryFilters().SingleAsync(t => t.Title == "seeded later", Ct)).OwnerId.ShouldBe(owner.Id);
   }
 
   [Fact]

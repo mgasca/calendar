@@ -1,7 +1,6 @@
 using Calendar.Domain.Users;
 using Calendar.Infrastructure;
 using Microsoft.EntityFrameworkCore;
-using Npgsql;
 
 namespace Calendar.Api.Tests;
 

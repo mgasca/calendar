@@ -24,6 +24,18 @@ public sealed class CalendarEventTests
   }
 
   [Fact]
+  public void Create_SetsTheOwner_AndRejectsAnEmptyOne()
+  {
+    CalendarEvent.Create(Owner, "A", Nine, Nine.AddHours(1), NewYork).OwnerId.ShouldBe(Owner);
+    CalendarEvent.CreateAllDay(Owner, "A", Day, Day.AddDays(1)).OwnerId.ShouldBe(Owner);
+
+    Should.Throw<ArgumentException>(() => CalendarEvent.Create(Guid.Empty, "A", Nine, Nine.AddHours(1), NewYork))
+      .ParamName.ShouldBe("ownerId");
+    Should.Throw<ArgumentException>(() => CalendarEvent.CreateAllDay(Guid.Empty, "A", Day, Day.AddDays(1)))
+      .ParamName.ShouldBe("ownerId");
+  }
+
+  [Fact]
   public void Create_NormalizesInstantsToUtc()
   {
     var start = new DateTimeOffset(2026, 1, 5, 4, 0, 0, TimeSpan.FromHours(-5));

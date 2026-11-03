@@ -3,7 +3,10 @@ using Calendar.Domain.Users;
 using Calendar.Infrastructure;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Diagnostics;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Npgsql;
 
 namespace Calendar.Api.Tests;
 
@@ -45,6 +48,45 @@ public sealed class UserDirectoryTests(PostgresFixture postgres) : ApiTestBase(p
     User signedIn = await ResolveAsync(Other, "sub-2", "Other", null);
     signedIn.Id.ShouldBe(seeded.Id);
     signedIn.GoogleSubject.ShouldBe("sub-2");
+    (await CountUsersAsync()).ShouldBe(3);
+  }
+
+  [Fact]
+  public async Task SeedScheme_AfterTheRealSignIn_ResolvesTheSameRow_AndKeepsTheSubject()
+  {
+    User signedIn = await ResolveAsync(Other, "sub-6", "Other", "https://pic/6");
+
+    User seeded = await ResolveAsync(Other, googleSubject: null, displayName: null, pictureUrl: null);
+
+    seeded.Id.ShouldBe(signedIn.Id);
+    seeded.GoogleSubject.ShouldBe("sub-6");
+    seeded.DisplayName.ShouldBe("Other");
+    (await CountUsersAsync()).ShouldBe(3);
+  }
+
+  [Theory]
+  [InlineData("sub-race")]
+  [InlineData(null)]
+  public async Task ConcurrentFirstSignIns_ConvergeOnOneRow(string? subjectOfTheRowThatWon)
+  {
+    // Another request inserts the same person's row between this one's lookup and its insert.
+    var interposed = Guid.NewGuid();
+    var interceptor = new InterposingInterceptor(Postgres.Database.MigratorConnectionString, interposed, subjectOfTheRowThatWon);
+    DbContextOptions<CalendarDbContext> options = CalendarDbContextOptions.Create(Postgres.Database.AppConnectionString)
+      .AddInterceptors(interceptor)
+      .Options;
+    await using var db = new CalendarDbContext(options, FixedCurrentUser.None);
+    var directory = new UserDirectory(
+      db,
+      Clock,
+      new ConfigurationBuilder().AddInMemoryCollection([new("Auth:AllowedEmails:0", First)]).Build());
+
+    User resolved = await directory.ResolveAsync("race@example.com", "sub-race", "Racer", null, Ct);
+
+    interceptor.Fired.ShouldBe(1);
+    resolved.Id.ShouldBe(interposed);
+    resolved.GoogleSubject.ShouldBe("sub-race");
+    resolved.LastSignedInAt.ShouldBe(Clock.GetUtcNow());
     (await CountUsersAsync()).ShouldBe(3);
   }
 
@@ -120,5 +162,32 @@ public sealed class UserDirectoryTests(PostgresFixture postgres) : ApiTestBase(p
   {
     await using CalendarDbContext db = Postgres.Database.CreateMigratorContext();
     return await db.Users.CountAsync(Ct);
+  }
+
+  /// <summary>On the first save that adds a user, inserts a competing row for the same email through another connection.</summary>
+  private sealed class InterposingInterceptor(string connectionString, Guid id, string? subject) : SaveChangesInterceptor
+  {
+    public int Fired { get; private set; }
+
+    public override async ValueTask<InterceptionResult<int>> SavingChangesAsync(
+      DbContextEventData eventData,
+      InterceptionResult<int> result,
+      CancellationToken cancellationToken = default)
+    {
+      if (Fired == 0 && eventData.Context!.ChangeTracker.Entries<User>().Any(e => e.State == EntityState.Added))
+      {
+        Fired++;
+        await using var connection = new NpgsqlConnection(connectionString);
+        await connection.OpenAsync(cancellationToken);
+        await using var insert = new NpgsqlCommand(
+          "INSERT INTO users (id, google_subject, email, created_at) VALUES (@id, @subject, 'race@example.com', now())",
+          connection);
+        insert.Parameters.AddWithValue("id", id);
+        insert.Parameters.AddWithValue("subject", (object?)subject ?? DBNull.Value);
+        await insert.ExecuteNonQueryAsync(cancellationToken);
+      }
+
+      return result;
+    }
   }
 }

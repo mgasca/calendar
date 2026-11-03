@@ -1,14 +1,14 @@
 #!/usr/bin/env -S dotnet run
 #:package Microsoft.Playwright@1.64.1
-#:project lib/BrowseScript.csproj
+#:include Script.cs
 // File-based apps default to PublishAot, which turns off the reflection-based JSON that Playwright needs.
 #:property PublishAot=false
 
 // Drives the running web app in headless Chromium, signed in through the API's development seed key
 // (the X-Dev-Seed-Key header is sent with every request, so no Google sign-in is needed). The key comes from
 // --seed-key, else Auth__DevSeedKey, else the disposable local value in .env.example.
-// Reads one command per line from stdin and stops at the first command that fails. Lines are parsed by
-// lib/Script.cs, a project rather than an #:include so the driver runs on SDK 10.0.1xx; tests/ unit tests it.
+// Reads one command per line from stdin and stops at the first command that fails. Script.cs parses the lines;
+// tests/browse.tests.cs unit tests it. #:include needs a newer SDK than 10.0.1xx (see SKILL.md).
 // When ~/.cache/calendar-chromium-libs holds extracted system libraries (see SKILL.md), Chromium loads them.
 //
 //   dotnet run browse.cs -- --install                            download Chromium once

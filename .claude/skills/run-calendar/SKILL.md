@@ -10,8 +10,8 @@ the API's development seed key, and driven by
 `.claude/skills/run-calendar/scripts/browse/browse.cs`: a .NET file-based Playwright driver (ADR-0017) that reads
 commands on stdin and writes screenshots to `/tmp/calendar-shots/`. Use `curl` with the same key for the API.
 
-All paths are relative to the repo root. Each block below was run as written on Ubuntu 26.04 (WSL2), .NET SDK
-10.0.114, Node 24, with podman behind the `docker` command.
+All paths are relative to the repo root. Each block below was run as written on Ubuntu 26.04 (WSL2), Node 24, with
+podman behind the `docker` command; the driver blocks with .NET SDK 10.0.403, the others with 10.0.114.
 
 ## Prerequisites (once per machine)
 
@@ -19,6 +19,19 @@ Toolchain as in the README (`./tools/doctor/doctor.sh`), then dependencies:
 
 ```bash
 (cd backend && dotnet restore) && corepack pnpm --dir frontend install --frozen-lockfile
+```
+
+The driver uses `#:include`, which .NET SDK 10.0.1xx rejects (`Unrecognized directive 'include'`), and 10.0.1xx is
+what Ubuntu's `dotnet-sdk-10.0` package installs. Check `dotnet --version` in the shell that runs the driver: under
+WSL, the Windows SDK in `C:\Program Files\dotnet` doesn't count. If it starts with `10.0.1`, install a newer SDK next
+to it, without sudo, and put it first on `PATH` (add the `export` to `~/.bashrc` to keep it):
+
+```bash
+curl -fsSL https://dot.net/v1/dotnet-install.sh | bash -s -- --version 10.0.403 --install-dir ~/.dotnet
+```
+
+```bash
+export DOTNET_ROOT="$HOME/.dotnet" PATH="$HOME/.dotnet:$PATH"
 ```
 
 Download Chromium for the driver (the first run also builds the driver, about a minute):
@@ -195,9 +208,9 @@ Observed: 20 tests pass.
 - **Why not `just db-up`:** `compose.yaml` pins the project name `calendar`, so every worktree shares one container
   and volume (`calendar_calendar-pgdata`) with the human's checkout. The agent database is a separate `--rm`
   container on 55432, and the agent ports stay clear of `just dev-api` (5041) and `just dev-web` (5173).
-- **`just db-seed` fails on SDK 10.0.1xx** with `seed-dev.cs(2): error: Unrecognized directive 'include'`; that is why
-  seeding uses `curl`, and why the driver has no `#:include`. Its script parsing lives in the `scripts/browse/lib`
-  project, which the driver and `tests/browse.tests.cs` reference with `#:project`, a directive 10.0.1xx supports.
+- **`#:include` needs a newer SDK than 10.0.1xx.** On 10.0.1xx the driver, its tests, `just db-seed`, `just adr-check`
+  and `just tooling` all fail with `Unrecognized directive 'include'`; see Prerequisites. Seeding above uses `curl`,
+  which works with any SDK.
 - **File-based apps default to `PublishAot`**, which disables reflection-based JSON; Playwright then fails with
   `Reflection-based serialization has been disabled`. The driver sets `#:property PublishAot=false`.
 - **`label=` is not a Playwright selector engine** (`Unknown engine "label"`); the driver maps it to `GetByLabel`.

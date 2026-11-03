@@ -8,7 +8,7 @@ namespace RunCalendar;
 /// <param name="Rest">The text after the target for <c>fill</c> and <c>select</c>; empty otherwise.</param>
 public sealed record ScriptCommand(string Name, string Target, string Rest);
 
-/// <summary>Splits script lines into a command and its arguments. Pure logic, so it can be unit tested.</summary>
+/// <summary>Splits script lines into a command and its arguments. Pure logic, so it can be unit tested (ADR-0017).</summary>
 public static class Script
 {
   /// <summary>

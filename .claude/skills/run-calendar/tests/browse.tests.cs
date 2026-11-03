@@ -1,10 +1,10 @@
 #!/usr/bin/env -S dotnet run
 #:package xunit.v3.mtp-v2@4.0.2
 #:package Shouldly@4.3.0
-#:project ../scripts/browse/lib/BrowseScript.csproj
+#:include ../scripts/browse/Script.cs
 
 // Tests for the browse driver's script parsing. Run: dotnet run tests/browse.tests.cs
-// They reference the parsing library, not the driver, so they need neither Playwright nor Chromium.
+// They include only the parser, not the driver, so they need neither Playwright nor Chromium.
 
 using Shouldly;
 using Xunit;

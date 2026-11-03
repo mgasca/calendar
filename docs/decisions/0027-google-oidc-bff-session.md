@@ -86,3 +86,5 @@ API and web tests cover anonymous 401 responses, allowed and denied accounts, se
 ## More Information
 
 The follow-up triggers are recorded in the README and pull request template. [Story 0005](../stories/0005-google-sign-in.md) records the implementation and user-facing flow.
+
+[ADR-0041](0041-per-user-data-ownership.md) delivers the ownership follow-up (`owner_id` and per-user scoping) and replaces the shared-data item in the README and the pull request template with its own trigger. The bearer-scheme follow-up for non-browser clients stays open.

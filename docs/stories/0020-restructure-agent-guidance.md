@@ -2,7 +2,11 @@
 status: planned
 date: 2026-11-04
 issue: https://github.com/mgasca/calendar/issues/216
-pr: []
+pr:
+  - https://github.com/mgasca/calendar/pull/220
+  - https://github.com/mgasca/calendar/pull/221
+  - https://github.com/mgasca/calendar/pull/222
+  - https://github.com/mgasca/calendar/pull/223
 adrs: ["0017"]
 ---
 
@@ -12,7 +16,7 @@ adrs: ["0017"]
 
 > As a calendar maintainer, I need the shared agent guidance to be short where every session reads it, disclosed on demand where only some sessions need it, and enforced mechanically where a rule must always hold, so that agents follow it reliably and each session pays only for the guidance it uses.
 
-Tracked in [epic #216](https://github.com/mgasca/calendar/issues/216).
+Tracked in [epic #216](https://github.com/mgasca/calendar/issues/216). Card PR: [#220](https://github.com/mgasca/calendar/pull/220); delivery PRs [#221](https://github.com/mgasca/calendar/pull/221) (skill), [#222](https://github.com/mgasca/calendar/pull/222) (hooks and ADR-0042), [#223](https://github.com/mgasca/calendar/pull/223) (restructure).
 
 ## Background
 

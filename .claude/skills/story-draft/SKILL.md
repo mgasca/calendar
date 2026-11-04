@@ -19,7 +19,7 @@ A story card is the long-lived record of a feature: what was asked, what was agr
 
 ## Before you start: read these parts
 
-When the user requests issue-driven handover mode, follow AGENTS.md's "Public GitHub posts and optional issue handovers" section: open questions go in separate PR comments, overriding this skill's question-placement instructions. Keep agreed answers in the card. Outside that mode, use the normal steps below. Explicit user authorization to merge takes precedence over the default instruction to leave the PR for the user; required checks still apply.
+When the user requests issue-driven handover mode, follow the `issue-handover` skill (`.claude/skills/issue-handover/SKILL.md`): open questions go in separate PR comments, overriding this skill's question-placement instructions. Keep agreed answers in the card. Outside that mode, use the normal steps below. Explicit user authorization to merge takes precedence over the default instruction to leave the PR for the user; required checks still apply.
 
 At the start of every run, read only these parts. They win over anything restated here.
 

@@ -52,7 +52,7 @@ Cheap, local and read-only, one at a time (the frontend suite times out when run
 
 A check that would first install or restore dependencies counts as an install. If `frontend/node_modules` is missing, skip the frontend checks (the recipes install before running), and skip backend tests that would need a NuGet restore; say which checks you skipped.
 
-Never: edit, write or delete files; change git state (`checkout`, `restore`, `switch`, `stash`, `commit`, `reset`, `rebase`, `worktree`); run `just db-*`, `docker`, Testcontainers or API test suites; install packages; post to GitHub or any other service. When a finding needs one of these to confirm it, recommend the measurement instead, for example `EXPLAIN (ANALYZE, BUFFERS)` on about 100k seeded rows as `backend/AGENTS.md` describes, an A/B benchmark as `docs/benchmarks/README.md` describes, or `vite build` entry-chunk sizes before and after when frontend imports changed (a build writes `dist/`, so you do not run it).
+Never: edit, write or delete files; change git state (`checkout`, `restore`, `switch`, `stash`, `commit`, `reset`, `rebase`, `worktree`); run the `just db` recipes, `docker`, Testcontainers or API test suites; install packages; post to GitHub or any other service. When a finding needs one of these to confirm it, recommend the measurement instead, for example `EXPLAIN (ANALYZE, BUFFERS)` on about 100k seeded rows as `backend/AGENTS.md` describes, an A/B benchmark as `docs/benchmarks/README.md` describes, or `vite build` entry-chunk sizes before and after when frontend imports changed (a build writes `dist/`, so you do not run it).
 
 ## 5. Report
 

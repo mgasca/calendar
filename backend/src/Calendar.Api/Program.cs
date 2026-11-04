@@ -1,5 +1,6 @@
 using System.Text.Json;
 using Calendar.Api;
+using Calendar.Api.Auth;
 using Calendar.Api.Endpoints;
 using Calendar.Infrastructure;
 using Microsoft.AspNetCore.Authentication;
@@ -46,6 +47,8 @@ AuthenticationBuilder auth = builder.Services.AddAuthentication(CookieAuthentica
       options.SlidingExpiration = false;
       options.Events.OnRedirectToLogin = context => ApiAuthentication.RedirectOrStatus(context, 401);
       options.Events.OnRedirectToAccessDenied = context => ApiAuthentication.RedirectOrStatus(context, 403);
+      // A session issued before per-user ownership carries no user id: it ends here, and the person signs in again (ADR-0041).
+      options.Events.OnValidatePrincipal = ApiAuthentication.RequireUserIdAsync;
     });
 var clientId = builder.Configuration["Auth:Google:ClientId"];
 var clientSecret = builder.Configuration["Auth:Google:ClientSecret"];
@@ -57,7 +60,7 @@ if (!string.IsNullOrWhiteSpace(clientId) && !string.IsNullOrWhiteSpace(clientSec
     options.ClientSecret = clientSecret;
     options.CallbackPath = "/api/auth/callback/google";
     options.ClaimActions.MapJsonKey("picture", "picture");
-    options.Events.OnCreatingTicket = context =>
+    options.Events.OnCreatingTicket = async context =>
     {
       var verified = context.User.TryGetProperty("email_verified", out JsonElement value)
         && value.ValueKind == System.Text.Json.JsonValueKind.True;
@@ -66,8 +69,11 @@ if (!string.IsNullOrWhiteSpace(clientId) && !string.IsNullOrWhiteSpace(clientSec
       if (!ApiAuthentication.IsAllowed(email, verified, allowed))
       {
         context.Fail("Access denied");
+        return;
       }
-      return Task.CompletedTask;
+
+      // The allowed person gets (or claims) their users row, and its id travels in the cookie (ADR-0041).
+      await ApiAuthentication.AttachUserAsync(context, email!);
     };
     options.Events.OnRemoteFailure = context =>
     {
@@ -97,6 +103,9 @@ builder.Services.AddAuthorization(options =>
   options.FallbackPolicy = policy.RequireAuthenticatedUser().Build();
 });
 builder.Services.AddSingleton(TimeProvider.System);
+builder.Services.AddHttpContextAccessor();
+builder.Services.AddScoped<ICurrentUser, HttpCurrentUser>();
+builder.Services.AddScoped<UserDirectory>();
 // Binding failures throw in every environment and BadRequestExceptionHandler turns them into 400 problem details.
 builder.Services.Configure<RouteHandlerOptions>(options => options.ThrowOnBadRequest = true);
 builder.Services.AddExceptionHandler<BadRequestExceptionHandler>();

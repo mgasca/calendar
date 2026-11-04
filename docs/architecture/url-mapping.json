@@ -1,0 +1,20 @@
+{
+  "https://raw.githubusercontent.com/mgasca/calendar/main/docs/architecture/controls/accessibility.requirement.json": "controls/accessibility.requirement.json",
+  "https://raw.githubusercontent.com/mgasca/calendar/main/docs/architecture/controls/authentication.requirement.json": "controls/authentication.requirement.json",
+  "https://raw.githubusercontent.com/mgasca/calendar/main/docs/architecture/controls/client-performance.requirement.json": "controls/client-performance.requirement.json",
+  "https://raw.githubusercontent.com/mgasca/calendar/main/docs/architecture/controls/concurrency-control.requirement.json": "controls/concurrency-control.requirement.json",
+  "https://raw.githubusercontent.com/mgasca/calendar/main/docs/architecture/controls/contract-first.requirement.json": "controls/contract-first.requirement.json",
+  "https://raw.githubusercontent.com/mgasca/calendar/main/docs/architecture/controls/data-durability.requirement.json": "controls/data-durability.requirement.json",
+  "https://raw.githubusercontent.com/mgasca/calendar/main/docs/architecture/controls/environment-separation.requirement.json": "controls/environment-separation.requirement.json",
+  "https://raw.githubusercontent.com/mgasca/calendar/main/docs/architecture/controls/least-privilege-data-access.requirement.json": "controls/least-privilege-data-access.requirement.json",
+  "https://raw.githubusercontent.com/mgasca/calendar/main/docs/architecture/controls/per-user-data-isolation.requirement.json": "controls/per-user-data-isolation.requirement.json",
+  "https://raw.githubusercontent.com/mgasca/calendar/main/docs/architecture/controls/observability.requirement.json": "controls/observability.requirement.json",
+  "https://raw.githubusercontent.com/mgasca/calendar/main/docs/architecture/controls/quality-gates.requirement.json": "controls/quality-gates.requirement.json",
+  "https://raw.githubusercontent.com/mgasca/calendar/main/docs/architecture/controls/query-performance.requirement.json": "controls/query-performance.requirement.json",
+  "https://raw.githubusercontent.com/mgasca/calendar/main/docs/architecture/controls/read-consistency.requirement.json": "controls/read-consistency.requirement.json",
+  "https://raw.githubusercontent.com/mgasca/calendar/main/docs/architecture/controls/request-limits.requirement.json": "controls/request-limits.requirement.json",
+  "https://raw.githubusercontent.com/mgasca/calendar/main/docs/architecture/controls/secrets-management.requirement.json": "controls/secrets-management.requirement.json",
+  "https://raw.githubusercontent.com/mgasca/calendar/main/docs/architecture/controls/supply-chain-integrity.requirement.json": "controls/supply-chain-integrity.requirement.json",
+  "https://raw.githubusercontent.com/mgasca/calendar/main/docs/architecture/controls/time-correctness.requirement.json": "controls/time-correctness.requirement.json",
+  "https://raw.githubusercontent.com/mgasca/calendar/main/docs/architecture/controls/transport-security.requirement.json": "controls/transport-security.requirement.json"
+}

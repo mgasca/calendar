@@ -3,7 +3,7 @@ import { cleanup, configure } from '@testing-library/react';
 
 import { server } from './server.ts';
 
-// The default 1 s for findBy/waitFor is too tight for a file's first render when `make check`
+// The default 1 s for findBy/waitFor is too tight for a file's first render when `just check`
 // runs the backend build and every test file in parallel.
 configure({ asyncUtilTimeout: 5000 });
 

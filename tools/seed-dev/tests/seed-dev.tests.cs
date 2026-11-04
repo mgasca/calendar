@@ -27,6 +27,7 @@ public sealed class SeedPlanTests
     client.DefaultRequestHeaders.GetValues("X-Dev-Seed-Key").Single().ShouldBe("test-key");
     SeedAuthentication.UnauthorizedMessage.ShouldContain("Development");
     SeedAuthentication.UnauthorizedMessage.ShouldContain("Auth__DevSeedKey");
+    SeedAuthentication.UnauthorizedMessage.ShouldContain("Auth__AllowedEmails__0");
   }
 
   [Fact]

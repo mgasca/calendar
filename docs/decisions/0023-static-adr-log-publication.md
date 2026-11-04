@@ -105,5 +105,6 @@ Run the existing ADR validator alongside docs type checking, tests and a product
 ## More Information
 
 * Official references: [Astro deployment to GitHub Pages](https://docs.astro.build/en/guides/deploy/github/), [Starlight sidebar navigation](https://starlight.astro.build/guides/sidebar/).
+* [ADR-0040](0040-derive-the-decision-log-from-the-adr-files.md) replaces the first bullet of the source and navigation contract: the log is derived from the numbered files, and `README.md` holds only the conventions. The rest of this decision stands.
 * Related: [ADR-0013](0013-public-repository-for-github-security-features.md) establishes the public GitHub repository; this decision adds a documentation deployment target without changing the product deployment architecture.
 * This remains a proposed record for review. The user explicitly requested implementation alongside the draft.

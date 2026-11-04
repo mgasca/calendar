@@ -57,6 +57,12 @@ namespace Calendar.Infrastructure.Migrations
                         .HasColumnType("character varying(4000)")
                         .HasColumnName("notes");
 
+                    b.Property<Guid>("OwnerId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("owner_id")
+                        .HasDefaultValue(new Guid("11111111-1111-1111-1111-111111111111"));
+
                     b.Property<NpgsqlRange<DateTimeOffset>?>("Span")
                         .ValueGeneratedOnAddOrUpdate()
                         .HasColumnType("tstzrange")
@@ -97,6 +103,9 @@ namespace Calendar.Infrastructure.Migrations
 
                     NpgsqlIndexBuilderExtensions.HasMethod(b.HasIndex("DateSpan"), "gist");
 
+                    b.HasIndex("OwnerId")
+                        .HasDatabaseName("ix_events_owner_id");
+
                     b.HasIndex("Span")
                         .HasDatabaseName("ix_events_span");
 
@@ -133,6 +142,12 @@ namespace Calendar.Infrastructure.Migrations
                         .HasColumnType("character varying(4000)")
                         .HasColumnName("notes");
 
+                    b.Property<Guid>("OwnerId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("owner_id")
+                        .HasDefaultValue(new Guid("11111111-1111-1111-1111-111111111111"));
+
                     b.Property<string>("Priority")
                         .IsRequired()
                         .ValueGeneratedOnAdd()
@@ -156,23 +171,23 @@ namespace Calendar.Infrastructure.Migrations
                     b.HasKey("Id")
                         .HasName("pk_tasks");
 
-                    b.HasIndex("CompletedAt")
+                    b.HasIndex("OwnerId", "CompletedAt")
                         .HasDatabaseName("ix_tasks_completed_at")
                         .HasFilter("completed_at IS NOT NULL");
 
-                    b.HasIndex("DueAt")
+                    b.HasIndex("OwnerId", "DueAt")
                         .HasDatabaseName("ix_tasks_due_at")
                         .HasFilter("due_at IS NOT NULL");
 
-                    b.HasIndex("DueDate")
+                    b.HasIndex("OwnerId", "DueDate")
                         .HasDatabaseName("ix_tasks_due_date")
                         .HasFilter("due_date IS NOT NULL");
 
-                    b.HasIndex(new[] { "DueAt" }, "ix_tasks_open_due_at")
+                    b.HasIndex(new[] { "OwnerId", "DueAt" }, "ix_tasks_open_due_at")
                         .HasDatabaseName("ix_tasks_open_due_at")
                         .HasFilter("due_at IS NOT NULL AND completed_at IS NULL");
 
-                    b.HasIndex(new[] { "DueDate" }, "ix_tasks_open_due_date")
+                    b.HasIndex(new[] { "OwnerId", "DueDate" }, "ix_tasks_open_due_date")
                         .HasDatabaseName("ix_tasks_open_due_date")
                         .HasFilter("due_date IS NOT NULL AND completed_at IS NULL");
 
@@ -183,6 +198,59 @@ namespace Calendar.Infrastructure.Migrations
                             t.HasCheckConstraint("ck_tasks_priority", "priority IN ('low', 'medium', 'high')");
 
                             t.HasCheckConstraint("ck_tasks_title_not_blank", "length(btrim(title)) > 0");
+                        });
+                });
+
+            modelBuilder.Entity("Calendar.Domain.Users.User", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<string>("DisplayName")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("display_name");
+
+                    b.Property<string>("Email")
+                        .HasMaxLength(320)
+                        .HasColumnType("character varying(320)")
+                        .HasColumnName("email");
+
+                    b.Property<string>("GoogleSubject")
+                        .HasMaxLength(255)
+                        .HasColumnType("character varying(255)")
+                        .HasColumnName("google_subject");
+
+                    b.Property<DateTimeOffset?>("LastSignedInAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("last_signed_in_at");
+
+                    b.Property<string>("PictureUrl")
+                        .HasMaxLength(2048)
+                        .HasColumnType("character varying(2048)")
+                        .HasColumnName("picture_url");
+
+                    b.HasKey("Id")
+                        .HasName("pk_users");
+
+                    b.HasIndex("Email")
+                        .IsUnique()
+                        .HasDatabaseName("ix_users_email")
+                        .HasFilter("email IS NOT NULL");
+
+                    b.HasIndex("GoogleSubject")
+                        .IsUnique()
+                        .HasDatabaseName("ix_users_google_subject")
+                        .HasFilter("google_subject IS NOT NULL");
+
+                    b.ToTable("users", null, t =>
+                        {
+                            t.HasCheckConstraint("ck_users_email_lower", "email IS NULL OR email = lower(email)");
                         });
                 });
 
@@ -207,6 +275,26 @@ namespace Calendar.Infrastructure.Migrations
                         .HasName("pk_data_protection_keys");
 
                     b.ToTable("data_protection_keys", (string)null);
+                });
+
+            modelBuilder.Entity("Calendar.Domain.Events.CalendarEvent", b =>
+                {
+                    b.HasOne("Calendar.Domain.Users.User", null)
+                        .WithMany()
+                        .HasForeignKey("OwnerId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_events_owner");
+                });
+
+            modelBuilder.Entity("Calendar.Domain.Tasks.TodoTask", b =>
+                {
+                    b.HasOne("Calendar.Domain.Users.User", null)
+                        .WithMany()
+                        .HasForeignKey("OwnerId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_tasks_owner");
                 });
 #pragma warning restore 612, 618
         }

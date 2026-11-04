@@ -1,0 +1,99 @@
+{
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "dotnet run \"$CLAUDE_PROJECT_DIR\"/tools/agent-hooks/agent-hooks.cs -- warm",
+            "timeout": 120
+          }
+        ]
+      }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "if": "Bash(git *)",
+            "command": "dotnet run \"$CLAUDE_PROJECT_DIR\"/tools/agent-hooks/agent-hooks.cs -- pre-bash",
+            "timeout": 30
+          },
+          {
+            "type": "command",
+            "if": "Bash(gh *)",
+            "command": "dotnet run \"$CLAUDE_PROJECT_DIR\"/tools/agent-hooks/agent-hooks.cs -- pre-bash",
+            "timeout": 30
+          },
+          {
+            "type": "command",
+            "if": "Bash(just *)",
+            "command": "dotnet run \"$CLAUDE_PROJECT_DIR\"/tools/agent-hooks/agent-hooks.cs -- pre-bash",
+            "timeout": 30
+          },
+          {
+            "type": "command",
+            "if": "Bash(docker *)",
+            "command": "dotnet run \"$CLAUDE_PROJECT_DIR\"/tools/agent-hooks/agent-hooks.cs -- pre-bash",
+            "timeout": 30
+          }
+        ]
+      },
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "if": "Edit(**/openapi.json)",
+            "command": "dotnet run \"$CLAUDE_PROJECT_DIR\"/tools/agent-hooks/agent-hooks.cs -- pre-edit",
+            "timeout": 30
+          },
+          {
+            "type": "command",
+            "if": "Edit(**/schema.gen.ts)",
+            "command": "dotnet run \"$CLAUDE_PROJECT_DIR\"/tools/agent-hooks/agent-hooks.cs -- pre-edit",
+            "timeout": 30
+          },
+          {
+            "type": "command",
+            "if": "Edit(**/packages.lock.json)",
+            "command": "dotnet run \"$CLAUDE_PROJECT_DIR\"/tools/agent-hooks/agent-hooks.cs -- pre-edit",
+            "timeout": 30
+          },
+          {
+            "type": "command",
+            "if": "Edit(**/pnpm-lock.yaml)",
+            "command": "dotnet run \"$CLAUDE_PROJECT_DIR\"/tools/agent-hooks/agent-hooks.cs -- pre-edit",
+            "timeout": 30
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "if": "Edit(**/*.cs)",
+            "command": "dotnet run \"$CLAUDE_PROJECT_DIR\"/tools/agent-hooks/agent-hooks.cs -- post-edit",
+            "timeout": 30
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "dotnet run \"$CLAUDE_PROJECT_DIR\"/tools/agent-hooks/agent-hooks.cs -- stop",
+            "timeout": 60
+          }
+        ]
+      }
+    ]
+  }
+}

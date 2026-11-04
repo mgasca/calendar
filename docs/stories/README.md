@@ -31,6 +31,16 @@ Front matter: `status` (`planned`, `in-progress` or `implemented`), `date` (`YYY
 | [0007](0007-overdue-triage-and-task-deletion.md) | Overdue triage and task deletion | implemented |
 | [0008](0008-review-runbooks-for-clarity-and-simplicity.md) | Review the runbooks for clarity and simplicity | implemented |
 | [0009](0009-review-drafting-skills-for-clarity-and-simplicity.md) | Review the adr-draft and story-draft skills for clarity and simplicity | planned |
-| [0010](0010-sweep-pending-adrs-to-a-decided-status.md) | Sweep pending ADRs to a decided status | planned |
-| [0011](0011-review-the-top-level-task-runner.md) | Review the top-level task runner | planned |
+| [0010](0010-sweep-pending-adrs-to-a-decided-status.md) | Sweep pending ADRs to a decided status | implemented |
+| [0011](0011-review-the-top-level-task-runner.md) | Review the top-level task runner | implemented |
+| [0012](0012-architecture-visualization-on-the-documentation-site.md) | Architecture visualization on the documentation site | implemented |
+| [0013](0013-derive-the-decision-log-from-the-adr-files.md) | Derive the decision log from the ADR files | implemented |
+| [0014](0014-supersede-adr-0014-drop-sqlite-fallback.md) | Supersede ADR-0014: drop the SQLite fallback | implemented |
+| [0015](0015-backend-performance-review-closeout.md) | Close out the backend performance review | implemented |
+| [0016](0016-colour-the-architecture-flow-diagrams-by-ownership.md) | Colour the architecture flow diagrams by ownership, with the legend | implemented |
+| [0017](0017-per-user-calendar-ownership.md) | Per-user calendar ownership: my events and tasks are mine alone | implemented |
+| [0018](0018-preserve-transcript-insights.md) | Preserve transcript insights in agent guidance | implemented |
+| [0019](0019-split-the-justfile-into-modules.md) | Split the justfile into modules | implemented |
+| [0020](0020-restructure-agent-guidance.md) | Restructure agent guidance: a short root AGENTS.md, nested area files, a skill and hooks | implemented |
+| [0021](0021-sign-in-locally-without-google.md) | Sign in to the local web app without Google | planned |
 | [XXXX](XXXX-create-events-and-tasks-from-week-view.md) | Create events and tasks from the week view | planned |

@@ -15,6 +15,7 @@ namespace AdrDraft.Tests;
 public sealed class AdrValidatorTests : IDisposable
 {
   private const string First = "0000-first-decision.md";
+  private static readonly string[] FixtureNumbers = ["0000", "0001"];
   private readonly string _dir;
 
   public AdrValidatorTests()
@@ -96,22 +97,12 @@ public sealed class AdrValidatorTests : IDisposable
   }
 
   [Fact]
-  public void IndexTitleAndStatusMismatch_AreReported()
+  public void ReadmeWithoutAnIndexTable_IsNotAnAdrAndNotStray()
   {
-    Mutate("README.md", "| First decision | accepted |", "| Old title | proposed |");
+    File.WriteAllText(Path.Combine(_dir, AdrValidator.ReadmeFileName), "# Conventions\n\nNo table here.\n");
 
-    IReadOnlyList<string> errors = Check(First).Errors;
-
-    errors.ShouldContain(e => e.Contains("index title differs from H1", StringComparison.Ordinal));
-    errors.ShouldContain(e => e.Contains("index status 'proposed' differs", StringComparison.Ordinal));
-  }
-
-  [Fact]
-  public void MissingIndexRow_IsReported()
-  {
-    Mutate("README.md", "| [0000](0000-first-decision.md) | First decision | accepted |\n", "");
-
-    Check(First).Errors.ShouldContain(e => e.Contains("no row for 0000-first-decision.md", StringComparison.Ordinal));
+    AdrValidator.CheckRepository(_dir).ShouldBeEmpty();
+    AdrValidator.AdrFiles(_dir).Keys.ShouldBe(FixtureNumbers);
   }
 
   [Fact]
@@ -141,10 +132,7 @@ public sealed class AdrValidatorTests : IDisposable
   }
 
   private AdrFileResult Check(string file) =>
-      AdrValidator.CheckFile(
-          Path.Combine(_dir, file),
-          AdrValidator.AdrFiles(_dir),
-          File.ReadAllText(Path.Combine(_dir, AdrValidator.IndexFileName)));
+      AdrValidator.CheckFile(Path.Combine(_dir, file), AdrValidator.AdrFiles(_dir));
 
   private void Mutate(string file, string find, string replace)
   {

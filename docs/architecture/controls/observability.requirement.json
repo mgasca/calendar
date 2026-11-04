@@ -1,0 +1,31 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://mgasca.github.io/calendar/architecture/controls/observability.requirement.json",
+  "title": "Health and observability requirement",
+  "description": "Health probes, logging destinations and retention for a running component.",
+  "type": "object",
+  "properties": {
+    "health-endpoint": { "type": "string" },
+    "probes": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "type": { "type": "string" },
+          "period-seconds": { "type": "integer" },
+          "failure-threshold": { "type": "integer" },
+          "initial-delay-seconds": { "type": "integer" }
+        },
+        "required": ["type"]
+      }
+    },
+    "logs": { "type": "string" },
+    "log-retention-days": { "type": "integer" },
+    "telemetry": { "type": "string" },
+    "audit-logs": { "type": "array", "items": { "type": "string" } },
+    "structured-logging": { "type": "string" },
+    "adrs": { "type": "array", "items": { "type": "string", "format": "uri" } }
+  },
+  "required": ["health-endpoint"],
+  "additionalProperties": false
+}

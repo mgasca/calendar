@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { useState } from 'react';
 
+import { apiError } from '../../api/apiError.ts';
 import { api } from '../../api/client.ts';
 
 /** Fetch the full item only when its notes are opened. */
@@ -15,7 +16,7 @@ export function Notes({ id, kind }: { id: string; kind: 'task' | 'event' }) {
         kind === 'task'
           ? await api.GET('/api/tasks/{id}', params)
           : await api.GET('/api/events/{id}', params);
-      if (!result.data) throw new Error('Could not load notes');
+      if (!result.data) throw apiError(result, 'Could not load notes');
       return result.data.notes;
     },
   });

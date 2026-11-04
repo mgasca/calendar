@@ -3,6 +3,7 @@ using System.Net.Http.Json;
 using System.Text.Json.Nodes;
 using Calendar.Api.Contracts;
 using Calendar.Infrastructure;
+using Microsoft.EntityFrameworkCore;
 
 namespace Calendar.Api.Tests.Endpoints;
 
@@ -194,7 +195,7 @@ public sealed class EventEndpointsTests(PostgresFixture postgres) : ApiTestBase(
     errors.ContainsKey(field).ShouldBeTrue($"{scenario}: expected an error for '{field}' but got {errors.ToJsonString()}");
 
     await using CalendarDbContext db = Postgres.Database.CreateMigratorContext();
-    db.Events.Count().ShouldBe(0);
+    (await db.Events.IgnoreQueryFilters().CountAsync(Ct)).ShouldBe(0);
   }
 
   [Theory]
@@ -213,7 +214,7 @@ public sealed class EventEndpointsTests(PostgresFixture postgres) : ApiTestBase(
     response.Content.Headers.ContentType!.MediaType.ShouldBe("application/problem+json");
     JsonNode.Parse(await response.Content.ReadAsStringAsync(Ct))!["errors"]!.AsObject().ContainsKey(field).ShouldBeTrue();
     await using CalendarDbContext db = Postgres.Database.CreateMigratorContext();
-    db.Events.Count().ShouldBe(0);
+    (await db.Events.IgnoreQueryFilters().CountAsync(Ct)).ShouldBe(0);
   }
 
   [Fact]

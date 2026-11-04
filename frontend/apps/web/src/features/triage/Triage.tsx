@@ -4,9 +4,15 @@ import { useMemo, useState } from 'react';
 import { api } from '../../api/client.ts';
 import { ConfirmDialog } from '../../components/ConfirmDialog.tsx';
 import { ModalDialog } from '../../components/ModalDialog.tsx';
-import { browserTimeZone, dateTimeFormat, daysBetween, localDate } from '../agenda/dayTime.ts';
+import {
+  browserTimeZone,
+  dateTimeFormat,
+  daysBetween,
+  formatDateTime,
+  localDate,
+} from '../agenda/dayTime.ts';
 import { deadlineInstants } from '../agenda/deadline.ts';
-import { problemMessage } from '../agenda/agendaQuery.ts';
+import { apiError } from '../../api/apiError.ts';
 import { useToday } from '../agenda/useNow.ts';
 
 type Action = 'complete' | 'setDueDate' | 'setDueInstant' | 'clearDeadline' | 'delete';
@@ -33,7 +39,7 @@ export function Triage() {
     queryKey: key,
     initialPageParam: undefined as string | undefined,
     queryFn: async ({ signal, pageParam }) => {
-      const { data, error } = await api.GET('/api/tasks', {
+      const { data, error, response } = await api.GET('/api/tasks', {
         signal,
         params: {
           query: {
@@ -44,7 +50,7 @@ export function Triage() {
           },
         },
       });
-      if (!data) throw new Error(problemMessage(error) ?? 'Couldn’t load overdue tasks.');
+      if (!data) throw apiError({ response, error }, 'Couldn’t load overdue tasks.');
       return data;
     },
     getNextPageParam: (page) => page.nextCursor ?? undefined,
@@ -318,7 +324,7 @@ export function Triage() {
                     <option value="">Choose…</option>
                     {candidates.map((v) => (
                       <option key={v} value={v}>
-                        {new Date(v).toLocaleString()}
+                        {formatDateTime(v)}
                       </option>
                     ))}
                   </select>

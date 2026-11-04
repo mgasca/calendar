@@ -59,7 +59,7 @@ Implementation:
 
 * `Microsoft.AspNetCore.OpenApi` + `Microsoft.Extensions.ApiDescription.Server` write `contracts/openapi.json` on every API build.
 * `@calendar/api-client` (`frontend/packages/api-client`) generates `schema.gen.ts` with openapi-typescript, and `openapi-fetch` provides a typed `fetch` wrapper (~6 kB).
-* Generated files are **committed**. `make contracts` regenerates both.
+* Generated files are **committed**. `just contracts` regenerates both.
 
 ### Consequences
 

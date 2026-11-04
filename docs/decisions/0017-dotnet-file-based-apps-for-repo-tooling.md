@@ -10,8 +10,8 @@ decision-makers: mgasca, Claude (AI assistant)
 
 The repo has two kinds of tooling scripts:
 
-* **Skill-bundled tools**, such as the `adr-draft` skill's validator `check_adr.py`, which runs in `make lint` and in the CI `Docs` job ([ADR-0000](0000-use-markdown-architectural-decision-records.md)).
-* **Repo-wide tools**, such as `scripts/doctor.sh`, the toolchain check that `make setup` runs ([ADR-0011](0011-make-as-top-level-task-runner.md)).
+* **Skill-bundled tools**, such as the `adr-draft` skill's validator `check_adr.py`, which runs in `just lint` and in the CI `Docs` job ([ADR-0000](0000-use-markdown-architectural-decision-records.md)).
+* **Repo-wide tools**, such as `scripts/doctor.sh`, the toolchain check that `just setup` runs ([ADR-0011](0011-make-as-top-level-task-runner.md)).
 
 Both were written without a recorded decision, in Python and Bash. That adds languages to a repo deliberately limited to C# and TypeScript ([ADR-0001](0001-monorepo-layout.md)), and neither script meets the lint and test standards that apply to all other code ([ADR-0009](0009-static-analysis-and-formatting.md)). More checkers and generators will follow.
 
@@ -23,7 +23,7 @@ Which language and layout should **all** repo tooling scripts use, and where sho
 * **D2 Same quality bar as product code**: analyzers/lint, formatting checks and automated tests run locally and in CI. Required in review.
 * **D3 No new toolchain**: use only tools contributors already need (.NET SDK, Node/pnpm, Docker, Make; see [ADR-0011](0011-make-as-top-level-task-runner.md)).
 * **D4 Stack consistency**: stay within the repo's two languages ([ADR-0001](0001-monorepo-layout.md)).
-* **D5 Fast feedback**: quick enough to stay in `make lint`, agent loops and CI.
+* **D5 Fast feedback**: quick enough to stay in `just lint`, agent loops and CI.
 * **D6 Text-processing ergonomics & AI-agent proficiency**: concise to write for Markdown, regex and file work, and reliably written and fixed by agents.
 
 ## Considered Options
@@ -32,7 +32,7 @@ Which language and layout should **all** repo tooling scripts use, and where sho
 * Python standard-library script in the tool's folder, with `unittest`, ruff and mypy (status quo for the validator, plus a linter and type checker)
 * TypeScript run directly by Node 24 in the tool's folder, with `node:test`, `tsc` and ESLint
 * .NET 10 file-based app in the tool's folder that imports `backend/` build settings
-* .NET console project and test project in the backend solution, invoked by skills and `make`
+* .NET console project and test project in the backend solution, invoked by skills and `just`
 * Bash, with shellcheck and bats (status quo for `doctor.sh`)
 
 ## Decision Outcome
@@ -55,7 +55,7 @@ The rule covers **every** tooling script, with one narrow exception for bootstra
 
 ### Exception: bootstrap checks stay in POSIX shell
 
-A tool whose job is to diagnose a missing or broken toolchain can't depend on that toolchain. `make doctor` must report "no .NET SDK", and a .NET program can't run to say so. Therefore:
+A tool whose job is to diagnose a missing or broken toolchain can't depend on that toolchain. `just doctor` must report "no .NET SDK", and a .NET program can't run to say so. Therefore:
 
 * **What qualifies:** checks that run *before* the toolchain is guaranteed. Today that's only `doctor`.
 * **Language:** POSIX/Bash, kept minimal, with no parsing logic beyond version comparison.
@@ -79,6 +79,14 @@ Measured on 2026-10-26 with .NET SDK 10.0.403, Node 24.22.1 and Python 3.12.3 on
 | Run time, current Python validator | 0.16 s |
 | Node 24 running `.ts` directly, plus `node --test` | Works (0.37 s), but types are stripped, not checked; `tsc` is needed for type checking |
 | Dependabot updating `#:package` versions | **Not supported** (verified 2026-10-26). The NuGet updater only discovers project files. For both tool folders it logged "No project files found" and reported no dependencies |
+
+Measured on 2026-11-03 on WSL2 (amendment, see Minimum SDK): a two-file probe, `probe.cs` starting `#:include Lib.cs` and printing a constant from `Lib.cs`, run with `dotnet run probe.cs` on each SDK. SDKs 10.0.204 and 10.0.300 were installed side by side with `dotnet-install.sh --version`; they were the newest 10.0.2xx and the first 10.0.3xx release in the .NET 10 release metadata.
+
+| SDK | Result |
+| --- | --- |
+| 10.0.114 (newest 10.0.1xx) | `probe.cs(2): error: Unrecognized directive 'include'.` |
+| 10.0.204 (newest 10.0.2xx) | `probe.cs(2): error: Unrecognized directive 'include'.` |
+| 10.0.300 (first 10.0.3xx) | Builds and runs |
 
 ### Layout and conventions
 
@@ -107,11 +115,14 @@ tools/                             # repo-wide tools
   * `ManagePackageVersionsCentrally=false`, so a host repo's Central Package Management doesn't interfere
   * a versioned `SonarAnalyzer.CSharp` reference
 * **Package versions:** `#:package` directives pin exact versions. Each file-based app sits in its own directory, because restore writes `packages.lock.json` next to it.
-* **Dependency updates:** Dependabot does **not** read `#:package` directives or folder-local `Directory.Build.props` files (verified, see Evidence). Versions are therefore **bumped manually**, matched to `backend/Directory.Packages.props` whenever Dependabot updates the backend. `tools/tool-versions` enforces this: `make tool-versions` (in `make lint` and the CI `Tooling` job) fails when a tooling pin differs from the backend's version, and `make tool-versions ARGS=--fix` rewrites the pins. Packages the backend doesn't use are listed as `SKIP` and stay fully manual. There is deliberately no Dependabot entry for tool folders: it would run weekly and find nothing. Revisit if Dependabot adds support for file-based apps.
-* **Minimum SDK:** .NET **10**. A host repo whose `global.json` pins an older SDK can't run a skill's tools; each `SKILL.md` that bundles tools states this.
+* **Dependency updates:** Dependabot does **not** read `#:package` directives or folder-local `Directory.Build.props` files (verified, see Evidence). Versions are therefore **bumped manually**, matched to `backend/Directory.Packages.props` whenever Dependabot updates the backend. `tools/tool-versions` enforces this: `just tools versions` (in `just lint` and the CI `Tooling` job) fails when a tooling pin differs from the backend's version, and `just tools versions --fix` rewrites the pins. Packages the backend doesn't use are listed as `SKIP` and stay fully manual. There is deliberately no Dependabot entry for tool folders: it would run weekly and find nothing. Revisit if Dependabot adds support for file-based apps.
+* **Minimum SDK:** .NET SDK **10.0.300** or later (amended 2026-11-03; it said ".NET 10" before). `#:include`, which this layout uses to pull tool logic into entry points and tests, first ships in the 10.0.3xx feature band. On 10.0.1xx and 10.0.2xx every tool that uses it fails before compiling, with `Unrecognized directive 'include'` (see Evidence).
+  * `backend/global.json` (10.0.100, `rollForward: latestFeature`) doesn't enforce this: the tools run from the repo root, which no `global.json` covers, so they use the newest installed SDK. `just doctor` therefore checks the SDK that `dotnet --version` resolves at the repo root and fails below 10.0.300.
+  * CI's `dotnet-version: 10.0.x` installs the newest band, so CI alone doesn't catch an older local SDK.
+  * A host repo whose `global.json` pins an older SDK can't run a skill's tools; each `SKILL.md` that bundles tools states this.
 * **Invocation:**
   * `dotnet run <path>/<tool>.cs -- <args>`, or `./<tool>.cs` thanks to the `#!` line.
-  * `make` targets wrap each tool (e.g. `make adr-check`), and `make lint` runs every tool's tests and the whitespace format checks.
+  * `just` recipes wrap each tool (e.g. `just tools adr`), and `just lint` runs every tool's tests and the whitespace format checks.
 * **CI:** the `Docs` job becomes a **Tooling** job:
   * `actions/setup-dotnet` with `dotnet-version: 10.0.x`, because there's no repo-root `global.json`
   * every tool's tests, the format checks, shellcheck for bootstrap scripts, and the ADR validator
@@ -130,9 +141,9 @@ All steps are implemented. Step 5 showed that Dependabot doesn't support file-ba
 ### Consequences
 
 * Good, because all tooling code apart from bootstrap shell is C# and passes the same analyzers and tests as product code, including the tools that enforce the conventions.
-* Good, because skill folders stay portable: copy one into any repo with the .NET 10 SDK and `dotnet run` works, with its own quality settings.
+* Good, because skill folders stay portable: copy one into any repo with .NET SDK 10.0.300 or later and `dotnet run` works, with its own quality settings.
 * Good, because tests can unit-test tool logic (`#:include`), not just run tools as black boxes.
-* Bad, because the first run on a fresh machine takes ~36 s and runs after an edit ~5 s, against 0.16 s for Python. Cached runs (0.7 s) are fine for `make lint` and agent loops.
+* Bad, because the first run on a fresh machine takes ~36 s and runs after an edit ~5 s, against 0.16 s for Python. Cached runs (0.7 s) are fine for `just lint` and agent loops.
 * Bad, because the quality settings are duplicated: one `Directory.Build.props` per skill plus one for `tools/`. This is the price of portability.
 * Bad, because pinned tool versions need manual bumps: Dependabot can't see them (verified).
 * Bad, because the CI tooling job gets slower once it has to install .NET; it still runs in parallel with the backend job.
@@ -142,6 +153,7 @@ All steps are implemented. Step 5 showed that Dependabot doesn't support file-ba
 
 * The CI tooling job runs every tool's xUnit tests, `dotnet format whitespace --folder --verify-no-changes` on `tools/` and each skill folder, shellcheck on bootstrap scripts, and the ADR validator.
 * Code review rejects new `.py`, `.sh` or other non-.NET tooling, unless it falls under the bootstrap exception or a new ADR supersedes this one.
+* `just doctor` fails when the SDK resolved at the repo root is below 10.0.300, the minimum for `#:include` (`tools/doctor/tests/doctor.tests.cs`).
 * A portability smoke test in the implementation PR: copy the skill folder to an empty temp directory and run the validator and its tests there.
 
 ## Pros and Cons of the Options
@@ -152,7 +164,7 @@ All steps are implemented. Step 5 showed that Dependabot doesn't support file-ba
 * Good, because **D2 Same quality bar**: Roslyn and Sonar analyzers with warnings as errors, xUnit tests, and a whitespace format check, all verified on file-based apps.
 * Good, because **D3 No new toolchain**: needs only the .NET SDK, which contributors already have.
 * Good, because **D4 Stack consistency**: C#, like the backend.
-* Bad, because **D1 Self-contained tool folders**: requires the .NET 10 SDK, packages restore from NuGet on first run, and it can't diagnose a missing SDK (hence the bootstrap exception).
+* Bad, because **D1 Self-contained tool folders**: requires .NET SDK 10.0.300 or later (the first band with `#:include`), packages restore from NuGet on first run, and it can't diagnose a missing SDK (hence the bootstrap exception).
 * Bad, because **D5 Fast feedback**: ~36 s on the very first run per machine, ~5 s after edits, 0.7 s cached.
 * Bad, because **D6 Ergonomics & AI proficiency**: file-based apps are new (since .NET 10), so there are fewer examples. Regex code is wordier than Python's.
 
@@ -162,7 +174,7 @@ All steps are implemented. Step 5 showed that Dependabot doesn't support file-ba
 * Good, because **D5 Fast feedback**: 0.16 s per run.
 * Good, because **D6 Ergonomics & AI proficiency**: concise text processing, and agents write Python fluently.
 * Bad, because **D2 Same quality bar**: linting and type checking need ruff and mypy, which aren't in the standard library and don't travel with the folder.
-* Bad, because **D3 No new toolchain**: adds Python tooling (e.g. uv, ruff, mypy) to the required setup and to `make doctor`.
+* Bad, because **D3 No new toolchain**: adds Python tooling (e.g. uv, ruff, mypy) to the required setup and to `just doctor`.
 * Bad, because **D4 Stack consistency**: a third language.
 
 ### TypeScript run directly by Node 24, with `node:test`, `tsc` and ESLint
@@ -200,9 +212,11 @@ All steps are implemented. Step 5 showed that Dependabot doesn't support file-ba
 
 * Related: [ADR-0000](0000-use-markdown-architectural-decision-records.md) (the validator's role), [ADR-0001](0001-monorepo-layout.md) (stack boundaries), [ADR-0009](0009-static-analysis-and-formatting.md) (quality bar), [ADR-0011](0011-make-as-top-level-task-runner.md) (`make` targets, `doctor`), [ADR-0012](0012-ci-and-dependency-updates.md) (CI, Dependabot).
 * Sources: [.NET file-based apps documentation](https://learn.microsoft.com/dotnet/core/sdk/file-based-apps) (`#:package`, `#:property`, `#:include`, `#:project`, `#:sdk`), [Announcing `dotnet run app.cs`](https://devblogs.microsoft.com/dotnet/announcing-dotnet-run-app/).
+* Minimum SDK for `#:include`: [Microsoft Learn, file-based apps](https://learn.microsoft.com/dotnet/core/sdk/file-based-apps) (page dated 2026-09-10) says "This directive is available in .NET 11 Preview 3 and .NET SDK 10.0.300 and later." The dotnet/sdk and dotnet/core release notes don't mention the directive, so the band boundary was also measured (see Evidence).
 * Versions at the time of writing: .NET SDK 10.0.403, `SonarAnalyzer.CSharp` 10.35.0.4138, `xunit.v3.mtp-v2` 4.0.2.
 * Review decisions:
   * Manual version bumps are acceptable. Dependabot was later verified not to support file-based apps, so this is the ongoing approach.
   * The ADR covers all tooling scripts, with non-skill tools in `tools/<name>/`.
   * Sharing skills with non-.NET repos is deferred.
+* **Amendment, 2026-11-03:** the minimum SDK was corrected from ".NET 10" to 10.0.300, after `just tools adr`, `just tools test`, `just tools versions` and `just db seed` failed locally on SDK 10.0.114 while CI passed. The decision itself is unchanged, so this ADR was amended, not superseded. The evidence was gathered on 10.0.403, which is why the gap went unnoticed.
 * **Deferred:** if a skill must be shared with non-.NET repos, reconsider the language for that skill only, in a new ADR.

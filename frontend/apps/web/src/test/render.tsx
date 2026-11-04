@@ -1,20 +1,32 @@
-import { QueryClientProvider } from '@tanstack/react-query';
+import { type QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import {
   createMemoryHistory,
   createRootRoute,
   createRouter,
   RouterProvider,
 } from '@tanstack/react-router';
-import { render, type RenderOptions } from '@testing-library/react';
+import { act, render, type RenderOptions } from '@testing-library/react';
 import type { ReactElement } from 'react';
+import { expect, vi } from 'vitest';
 
 import { App } from '../App.tsx';
 import { createQueryClient } from '../queryClient.ts';
 import { createAppRouter } from '../router.tsx';
 
-export function renderWithProviders(ui: ReactElement, options?: RenderOptions) {
+export interface RetryOption {
+  /**
+   * Keep the app's real retry policy (without its delays). Off by default, so a test that serves
+   * an error sees exactly one request unless it is about retrying.
+   */
+  retry?: boolean;
+}
+
+export function renderWithProviders(
+  ui: ReactElement,
+  { retry = false, ...options }: RenderOptions & RetryOption = {},
+) {
   const queryClient = createQueryClient({
-    defaultOptions: { queries: { retry: false, retryDelay: 0 } },
+    defaultOptions: { queries: { ...(retry ? {} : { retry: false }), retryDelay: 0 } },
   });
   return {
     queryClient,
@@ -26,22 +38,44 @@ export function renderWithProviders(ui: ReactElement, options?: RenderOptions) {
  * Renders a single component inside a minimal router, so its `Link`s work, without the app's
  * routes. The router is loaded first, so the component is on screen when this resolves.
  */
-export async function renderInRouter(ui: ReactElement) {
+export async function renderInRouter(ui: ReactElement, options: RetryOption = {}) {
   const router = createRouter({
     routeTree: createRootRoute({ component: () => ui }),
     history: createMemoryHistory({ initialEntries: ['/'] }),
   });
   await router.load();
   // The minimal route tree isn't the app's registered one, which only matters to the types.
-  return renderWithProviders(<RouterProvider router={router as never} />);
+  return renderWithProviders(<RouterProvider router={router as never} />, options);
 }
 
 /** Renders the whole app with its routes, starting at `path`. Route matching is asynchronous. */
-export function renderApp(path: string, { timeZone = 'Europe/Madrid', locale = 'en-GB' } = {}) {
+export function renderApp(
+  path: string,
+  {
+    timeZone = 'Europe/Madrid',
+    locale = 'en-GB',
+    retry = false,
+  }: { timeZone?: string; locale?: string } & RetryOption = {},
+) {
   const router = createAppRouter({
     history: createMemoryHistory({ initialEntries: [path] }),
     timeZone,
     locale,
   });
-  return { router, ...renderWithProviders(<App router={router} />) };
+  return { router, ...renderWithProviders(<App router={router} />, { retry }) };
+}
+
+/**
+ * Waits until no query is fetching and the notifications that follow have been flushed, all
+ * inside `act`. `waitFor` can return while TanStack Query still has a state update queued on a
+ * real `setTimeout(0)`; that update would otherwise land later, outside `act`, and show up as an
+ * unexpected render in tests that count renders.
+ */
+export async function settle(queryClient: QueryClient) {
+  await act(async () => {
+    await vi.waitFor(() => {
+      expect(queryClient.isFetching()).toBe(0);
+    });
+    await new Promise((resolve) => setTimeout(resolve, 0));
+  });
 }

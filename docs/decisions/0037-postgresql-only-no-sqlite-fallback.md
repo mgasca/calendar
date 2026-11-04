@@ -12,7 +12,7 @@ decision-makers: mgasca, Claude (AI assistant)
 
 ## Decision Drivers
 
-* **D1 Operational simplicity**: one engine, one migration set and one query dialect to build, test and run, with no second path that must be kept viable. Infrastructure can use PostgreSQL features (ranges, GiST, partial indexes) freely (see `AGENTS.md`, backend practices).
+* **D1 Operational simplicity**: one engine, one migration set and one query dialect to build, test and run, with no second path that must be kept viable. Infrastructure can use PostgreSQL features (ranges, GiST, partial indexes) freely (see `backend/AGENTS.md`).
 * **D2 Review overhead**: contributors and reviewers carry no recurring checklist cost for a path that is not used.
 * **D3 Production cost**: running cost at small scale stays under control, and there is a plan if it does not.
 * **D4 Production security and durability**: database authentication, least-privilege roles, TLS, backups and point-in-time restore ([ADR-0031](0031-azure-postgresql-flexible-server.md)).
@@ -55,7 +55,7 @@ There is no pre-agreed fallback. If managed PostgreSQL cost is no longer accepta
 
 ### Confirmation
 
-* `make adr-check` validates the supersession: [ADR-0014](0014-postgresql-database-engine.md) status and the index row.
+* `just tools adr` validates the supersession: [ADR-0014](0014-postgresql-database-engine.md) status and the index row.
 * `grep -ri sqlite` finds no live instruction to keep a fallback, only historical text in superseded ADRs.
 * The PR template no longer asks for a SQLite impact note.
 

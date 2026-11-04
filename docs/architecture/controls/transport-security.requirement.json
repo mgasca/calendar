@@ -1,0 +1,26 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://mgasca.github.io/calendar/architecture/controls/transport-security.requirement.json",
+  "title": "Transport security requirement",
+  "description": "Encryption in transit and proxy trust for a connection.",
+  "type": "object",
+  "properties": {
+    "tls-required": { "type": "boolean" },
+    "enforced-by": { "type": "array", "items": { "type": "string" }, "description": "The mechanisms that enforce TLS, for example ingress settings or server configuration." },
+    "hsts": { "type": "boolean" },
+    "https-redirection": { "type": "boolean" },
+    "development-exception": { "type": "string" },
+    "forwarded-headers": {
+      "type": "object",
+      "properties": {
+        "trusted-source": { "type": "string" },
+        "forward-limit": { "type": "integer" },
+        "headers": { "type": "array", "items": { "type": "string" } }
+      }
+    },
+    "cross-origin": { "type": "string" },
+    "adrs": { "type": "array", "items": { "type": "string", "format": "uri" } }
+  },
+  "required": ["tls-required", "enforced-by"],
+  "additionalProperties": false
+}

@@ -5,11 +5,11 @@ import remarkParse from 'remark-parse';
 import remarkGfm from 'remark-gfm';
 import { toString } from 'mdast-util-to-string';
 import { visit } from 'unist-util-visit';
-import type { Definition, Root, Table } from 'mdast';
+import type { Definition, List, Root, Table } from 'mdast';
 
 const parser = unified().use(remarkParse).use(remarkGfm);
-// Document bodies are parsed only to find the title. GFM is for the index tables and roughly
-// doubles the parse cost (docs/benchmarks/0001-docs-parse.md).
+// Document bodies are parsed only to find the title. GFM is for the story, runbook and benchmark
+// index tables and roughly doubles the parse cost (docs/benchmarks/0001-docs-parse.md).
 const titleParser = unified().use(remarkParse);
 export const repository = 'https://github.com/mgasca/calendar';
 export interface Adr {
@@ -52,37 +52,32 @@ function findTable(index: string, header: string, name: string): Table {
   return table;
 }
 
-export function parseLog(index: string, sources: Map<string, string>): Adr[] {
-  const table = findTable(index, 'ADR|Title|Status', 'ADR log');
-  const seen = new Set<string>();
-  const records = table.children.slice(1).map((row) => {
-    const [numberCell, titleCell, statusCell] = row.children;
-    const link = numberCell?.children[0];
-    if (row.children.length !== 3 || link?.type !== 'link' || !titleCell || !statusCell) {
-      throw new Error('Malformed ADR log row');
-    }
-    const number = toString(link);
-    const file = link.url;
-    if (!/^\d{4}$/.test(number) || !new RegExp(`^${number}-[a-z0-9-]+\\.md$`).test(file)) {
-      throw new Error(`Invalid ADR filename: ${file}`);
-    }
-    if (seen.has(number)) throw new Error(`Duplicate ADR: ${number}`);
-    seen.add(number);
+const adrFileName = /^(\d{4})-[a-z0-9-]+\.md$/;
+
+/**
+ * Builds the decision log from the ADR sources alone (ADR-0040): the file name gives the number
+ * and the order, the single H1 gives the title and the front matter gives the status. There is no
+ * index table to keep in step, so two ADRs in flight never conflict on one.
+ */
+export function parseLog(sources: Map<string, string>): Adr[] {
+  const seen = new Map<string, string>();
+  const records = [...sources.keys()].sort().map((file) => {
+    const number = adrFileName.exec(file)?.[1];
+    if (number === undefined) throw new Error(`Invalid ADR filename: ${file}`);
+    const other = seen.get(number);
+    if (other !== undefined) throw new Error(`Duplicate ADR ${number}: ${other} and ${file}`);
+    seen.set(number, file);
     const source = sources.get(file);
     if (source === undefined) throw new Error(`Missing ADR: ${file}`);
-    const { metadata, title: heading, body } = parseDocument(source, file);
-    const title = toString(titleCell);
-    const status = toString(statusCell);
-    if (heading !== title) throw new Error(`ADR title differs from log: ${file}`);
-    if (typeof metadata.status !== 'string' || toString(parser.parse(metadata.status)) !== status) {
-      throw new Error(`ADR status differs from log: ${file}`);
+    const { metadata, title, body } = parseDocument(source, file);
+    if (typeof metadata.status !== 'string' || !metadata.status.trim()) {
+      throw new Error(`ADR without a status: ${file}`);
     }
+    // `superseded by [ADR-0038](0038-….md)` reads as plain text, the same label the site shows.
+    const status = toString(parser.parse(metadata.status));
     return { number, file, title, status, body };
   });
   if (!records.length) throw new Error('ADR log is empty');
-  for (const file of sources.keys()) {
-    if (!records.some((record) => record.file === file)) throw new Error(`Unlisted ADR: ${file}`);
-  }
   return records;
 }
 
@@ -176,6 +171,117 @@ export function parseStories(
   return records;
 }
 
+export interface Runbook {
+  file: string;
+  title: string;
+  body: string;
+}
+
+/** Finds the one ordered list in the runbooks index: the order in which to follow them. */
+function findOrderedList(index: string, name: string): List {
+  let list: List | undefined;
+  visit(parser.parse(index), 'list', (node) => {
+    if (!node.ordered) return;
+    if (list) throw new Error(`Duplicate ${name} list`);
+    list = node;
+  });
+  if (!list) throw new Error(`Missing ${name} list`);
+  return list;
+}
+
+/**
+ * Parses the runbooks index against the runbook sources. Each list item starts with a link whose
+ * text is the runbook's title; what follows the link is the index's own summary and stays there.
+ */
+export function parseRunbooks(index: string, sources: Map<string, string>): Runbook[] {
+  const seen = new Set<string>();
+  const records = findOrderedList(index, 'runbook').children.map((item) => {
+    const paragraph = item.children[0];
+    const link = paragraph?.type === 'paragraph' ? paragraph.children[0] : undefined;
+    if (item.children.length !== 1 || link?.type !== 'link') {
+      throw new Error('Malformed runbook list item');
+    }
+    const file = link.url;
+    if (!/^[a-z0-9-]+\.md$/.test(file)) throw new Error(`Invalid runbook filename: ${file}`);
+    if (seen.has(file)) throw new Error(`Duplicate runbook: ${file}`);
+    seen.add(file);
+    const source = sources.get(file);
+    if (source === undefined) throw new Error(`Missing runbook: ${file}`);
+    const { title: heading, body } = parseDocument(source, file);
+    const title = toString(link);
+    if (heading !== title) throw new Error(`Runbook title differs from index: ${file}`);
+    return { file, title, body };
+  });
+  if (!records.length) throw new Error('Runbook list is empty');
+  for (const file of sources.keys()) {
+    if (!records.some((record) => record.file === file))
+      throw new Error(`Unlisted runbook: ${file}`);
+  }
+  return records;
+}
+
+/** URL segment for a runbook: its filename without the extension. */
+export function runbookSlug(file: string) {
+  return file.replace(/\.md$/, '');
+}
+
+export interface Benchmark {
+  number: string;
+  file: string;
+  /** The record's title without its number. */
+  title: string;
+  /** What the index says the record measures. */
+  subject: string;
+  /** Repository-relative path of the harness that produced the record. */
+  harness: string;
+  body: string;
+}
+
+/** Parses the benchmark index (`Record|Subject|Harness`) against the record sources. */
+export function parseBenchmarks(index: string, sources: Map<string, string>): Benchmark[] {
+  const table = findTable(index, 'Record|Subject|Harness', 'benchmark index');
+  const seen = new Set<string>();
+  const records = table.children.slice(1).map((row) => {
+    const [numberCell, subjectCell, harnessCell] = row.children;
+    const link = numberCell?.children[0];
+    if (row.children.length !== 3 || link?.type !== 'link' || !subjectCell || !harnessCell) {
+      throw new Error('Malformed benchmark index row');
+    }
+    const number = toString(link);
+    const file = link.url;
+    if (!/^\d{4}$/.test(number) || !new RegExp(`^${number}-[a-z0-9-]+\\.md$`).test(file)) {
+      throw new Error(`Invalid benchmark filename: ${file}`);
+    }
+    if (seen.has(number)) throw new Error(`Duplicate benchmark: ${number}`);
+    seen.add(number);
+    const source = sources.get(file);
+    if (source === undefined) throw new Error(`Missing benchmark: ${file}`);
+    const { title: heading, body } = parseDocument(source, file);
+    if (!heading.startsWith(`${number} `)) {
+      throw new Error(`Benchmark title must start with its number: ${file}`);
+    }
+    const harness = toString(harnessCell);
+    if (!/^[\w./-]+$/.test(harness) || harness.split('/').includes('..')) {
+      throw new Error(`Benchmark harness must be a repository-relative path: ${file}`);
+    }
+    return {
+      number,
+      file,
+      title: heading.slice(number.length + 1),
+      subject: toString(subjectCell),
+      harness,
+      body,
+    };
+  });
+  if (!records.length) throw new Error('Benchmark index is empty');
+  for (const file of sources.keys()) {
+    if (!records.some((record) => record.file === file)) {
+      throw new Error(`Unlisted benchmark: ${file}`);
+    }
+  }
+  return records;
+}
+
 /** URL segment for a story: its number, or its slug while it is unnumbered. */
 export function storySlug(file: string) {
   const number = /^(\d{4})-/.exec(file)?.[1];
@@ -197,9 +303,14 @@ export function deployment(url = 'http://localhost:4321/') {
   return { site: parsed.origin, base: `${parsed.pathname.replace(/\/$/, '')}/` };
 }
 
+// Paths that name an ADR, story, benchmark record or runbook: linking one that is not published is an error.
+const brokenDocumentLink =
+  /^docs\/(?:(?:decisions|stories|benchmarks)\/(?:\d{4}|XXXX)-[^/]*|runbooks\/[a-z0-9-]+)\.md$/;
+
 /**
  * Rewrites one link in the document at `from`, a repository-relative path. `links` maps
- * repository-relative document paths (ADRs, stories and both indexes) to routes under `base`.
+ * repository-relative document paths (ADRs, stories, runbooks, benchmarks and their indexes) to
+ * routes under `base`.
  */
 export function rewriteLink(
   url: string,
@@ -217,7 +328,7 @@ export function rewriteLink(
   const resolved = posix.normalize(posix.join(posix.dirname(from), path));
   const route = links.get(resolved);
   if (route !== undefined) return base + route + suffix;
-  if (/^docs\/(?:decisions|stories)\/(?:\d{4}|XXXX)-.*\.md$/.test(resolved)) {
+  if (brokenDocumentLink.test(resolved)) {
     throw new Error(`Broken document link: ${url}`);
   }
   if (resolved.startsWith('../')) throw new Error(`Unsupported repository link: ${url}`);

@@ -40,7 +40,7 @@ public sealed class TaskEndpointsTests(PostgresFixture postgres) : ApiTestBase(p
   private async Task<(TodoTask Task, uint Xmin)> ReadTaskAndXminAsync(Guid id)
   {
     await using CalendarDbContext db = Postgres.Database.CreateAppContext();
-    TodoTask task = await db.Tasks.SingleAsync(candidate => candidate.Id == id, Ct);
+    TodoTask task = await db.Tasks.IgnoreQueryFilters().SingleAsync(candidate => candidate.Id == id, Ct);
     return (task, db.Entry(task).Property<uint>("xmin").CurrentValue);
   }
 

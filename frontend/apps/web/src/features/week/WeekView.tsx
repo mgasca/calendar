@@ -1,7 +1,7 @@
 import { Link, useNavigate } from '@tanstack/react-router';
 import { useCallback, useMemo } from 'react';
 
-import { AgendaError } from '../agenda/agendaQuery.ts';
+import { ApiError } from '../../api/apiError.ts';
 import { browserTimeZone, type AgendaTask } from '../agenda/dayTime.ts';
 import { TaskToggleError } from '../agenda/TaskItem.tsx';
 import { useToday } from '../agenda/useNow.ts';
@@ -91,7 +91,7 @@ export function WeekView({ weekStart, timeZone: zoneOverride, locale }: WeekView
         {weekNav}
         <div role="alert" className="notice notice-error">
           <p>Couldn’t load this week.</p>
-          {agenda.error instanceof AgendaError && <p>{agenda.error.message}</p>}
+          {agenda.error instanceof ApiError && <p>{agenda.error.message}</p>}
           <button type="button" onClick={() => void agenda.refetch()}>
             Try again
           </button>

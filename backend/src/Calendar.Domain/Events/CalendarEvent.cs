@@ -20,6 +20,9 @@ public sealed class CalendarEvent
   /// <summary>Unique id, generated on creation.</summary>
   public Guid Id { get; private set; }
 
+  /// <summary>The user who owns the event (ADR-0041); only they can ever read or change it.</summary>
+  public Guid OwnerId { get; private set; }
+
   /// <summary>Normalized, non-empty title.</summary>
   public string Title { get; private set; }
 
@@ -50,8 +53,12 @@ public sealed class CalendarEvent
   /// <summary>Length of a timed event; <c>null</c> for all-day events.</summary>
   public TimeSpan? Duration => End - Start;
 
-  /// <summary>Creates a timed event. Instants are normalized to UTC; <paramref name="timeZoneId"/> must be IANA.</summary>
+  /// <summary>
+  /// Creates a timed event owned by <paramref name="ownerId"/>. Instants are normalized to UTC;
+  /// <paramref name="timeZoneId"/> must be IANA.
+  /// </summary>
   public static CalendarEvent Create(
+      Guid ownerId,
       string title,
       DateTimeOffset start,
       DateTimeOffset end,
@@ -70,6 +77,7 @@ public sealed class CalendarEvent
     return new CalendarEvent
     {
       Id = Guid.NewGuid(),
+      OwnerId = RequireOwner(ownerId),
       Title = normalizedTitle,
       Location = Validation.NormalizeOptional(location, Validation.MaxLocationLength, nameof(location)),
       Notes = Validation.NormalizeOptional(notes, Validation.MaxNotesLength, nameof(notes)),
@@ -80,8 +88,9 @@ public sealed class CalendarEvent
     };
   }
 
-  /// <summary>Creates an all-day event covering <c>[startDate, endDate)</c> (end exclusive).</summary>
+  /// <summary>Creates an all-day event owned by <paramref name="ownerId"/>, covering <c>[startDate, endDate)</c> (end exclusive).</summary>
   public static CalendarEvent CreateAllDay(
+      Guid ownerId,
       string title,
       DateOnly startDate,
       DateOnly endDate,
@@ -97,6 +106,7 @@ public sealed class CalendarEvent
     return new CalendarEvent
     {
       Id = Guid.NewGuid(),
+      OwnerId = RequireOwner(ownerId),
       Title = normalizedTitle,
       Location = Validation.NormalizeOptional(location, Validation.MaxLocationLength, nameof(location)),
       Notes = Validation.NormalizeOptional(notes, Validation.MaxNotesLength, nameof(notes)),
@@ -123,4 +133,7 @@ public sealed class CalendarEvent
         ? StartDate < other.EndDate && other.StartDate < EndDate
         : Start < other.End && other.Start < End;
   }
+
+  private static Guid RequireOwner(Guid ownerId) =>
+    ownerId == Guid.Empty ? throw new ArgumentException("An event needs an owner.", nameof(ownerId)) : ownerId;
 }

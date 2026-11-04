@@ -1,7 +1,8 @@
 import { access, readFile, readdir, stat } from 'node:fs/promises';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { deployment, storySlug } from '../src/lib/adr';
+import { deployment, runbookSlug, storySlug } from '../src/lib/adr';
+import { architecturePages, pageRoute } from '../src/lib/architecture';
 import { readDocuments } from '../src/lib/docs-loader';
 
 const { base } = deployment(process.env.DOCS_SITE_URL);
@@ -59,20 +60,34 @@ describe('published documentation links', () => {
   });
 });
 
-describe('published ADR log', () => {
+describe('site root', () => {
+  it('redirects to the architecture overview and lists Architecture first in the sidebar', async () => {
+    const index = await readFile('dist/index.html', 'utf8');
+    expect(index).toContain(`http-equiv="refresh"`);
+    expect(index).toContain(`url=${base}architecture/`);
+    const overview = await readFile('dist/architecture/index.html', 'utf8');
+    const routes = sidebarRoutes(overview);
+    expect(routes[0]).toBe(`${base}architecture/`);
+    // The decision log has no page of its own, so nothing in the sidebar links to the root.
+    expect(routes).not.toContain(base);
+    expect(routes.indexOf(`${base}architecture/controls/`)).toBeLessThan(
+      routes.findIndex((href) => href.startsWith(`${base}adr/`)),
+    );
+  });
+});
+
+describe('published ADRs', () => {
   it('renders every record with navigation, current selection, headings and base-aware links', async () => {
     const { adr } = await readDocuments();
     const { records } = adr;
-    const index = await readFile('dist/index.html', 'utf8');
     for (const record of records) {
       const route = `${base}adr/${record.number}/`;
-      expect(index).toContain(`href="${route}"`);
       const html = await readFile(`dist/adr/${record.number}/index.html`, 'utf8');
       const routes = sidebarRoutes(html);
       expect(routes.filter((href) => href.startsWith(`${base}adr/`))).toEqual(
         records.map((item) => `${base}adr/${item.number}/`),
       );
-      expect(routes.filter((href) => href === base)).toHaveLength(1);
+      expect(routes).not.toContain(base);
       const activeLinks = html.match(/<a\b[^>]*aria-current="page"[^>]*>/g) ?? [];
       expect(activeLinks.length).toBeGreaterThan(0);
       expect(activeLinks.every((link) => link.includes(`href="${route}"`))).toBe(true);
@@ -112,6 +127,113 @@ describe('published user stories', () => {
       for (const adr of record.adrs) {
         expect(html).toContain(`href="${base}adr/${adr}/"`);
       }
+    }
+  });
+});
+
+describe('published architecture', () => {
+  it('renders every page from the model with a diagram, its text table and links to decisions and stories', async () => {
+    const { architecture, story } = await readDocuments();
+    const pages = architecturePages(architecture, { stories: story.records });
+    const overview = await readFile('dist/architecture/index.html', 'utf8');
+    for (const slug of [
+      'architecture/containers',
+      'architecture/components',
+      'architecture/controls',
+    ]) {
+      expect(overview).toContain(`href="${base}${slug}/"`);
+    }
+    for (const page of pages) {
+      const html = await readFile(`dist/${pageRoute(page.id)}index.html`, 'utf8');
+      expect(html).toMatch(/<h1[^>]*>/);
+      const routes = sidebarRoutes(html);
+      expect(routes).toContain(`${base}architecture/`);
+      for (const flow of architecture.flows)
+        expect(routes).toContain(`${base}architecture/flows/${flow.id}/`);
+      // Component pages stay out of the sidebar; everything else in the section is listed.
+      expect(routes.includes(`${base}${pageRoute(page.id)}`)).toBe(!page.sidebar.hidden);
+      if (page.body.includes('```mermaid')) {
+        expect(html, page.id).toContain('<pre class="mermaid">');
+        expect(html, page.id).toContain('<table');
+      }
+    }
+    const stories = new Map(architecture.stories.map((item) => [item.id, item.url]));
+    for (const node of architecture.nodes) {
+      const html = await readFile(`dist/architecture/components/${node.id}/index.html`, 'utf8');
+      for (const id of node.adrs)
+        expect(html, node.id).toContain(`href="${base}adr/${id.slice('ADR-'.length)}/"`);
+    }
+    for (const flow of architecture.flows) {
+      const html = await readFile(`dist/architecture/flows/${flow.id}/index.html`, 'utf8');
+      for (const id of flow.adrs)
+        expect(html, flow.id).toContain(`href="${base}adr/${id.slice('ADR-'.length)}/"`);
+      for (const id of flow.stories) {
+        const slug = /\/stories\/([^/]+)\/$/.exec(stories.get(id) ?? '')?.[1] ?? '';
+        expect(html, flow.id).toContain(`href="${base}stories/${slug}/"`);
+      }
+    }
+  });
+});
+
+describe('published runbooks', () => {
+  it('renders every runbook in index order, with navigation, headings and ADR links', async () => {
+    const { runbook } = await readDocuments();
+    const runbookRoutes = runbook.records.map(
+      (record) => `${base}runbooks/${runbookSlug(record.file)}/`,
+    );
+    const index = await readFile('dist/runbooks/index.html', 'utf8');
+    for (const route of runbookRoutes) expect(index).toContain(`href="${route}"`);
+    for (const record of runbook.records) {
+      const route = `${base}runbooks/${runbookSlug(record.file)}/`;
+      const html = await readFile(`dist/runbooks/${runbookSlug(record.file)}/index.html`, 'utf8');
+      const routes = sidebarRoutes(html);
+      expect(routes.filter((href) => href.startsWith(`${base}runbooks/`))).toEqual([
+        `${base}runbooks/`,
+        ...runbookRoutes,
+      ]);
+      const activeLinks = html.match(/<a\b[^>]*aria-current="page"[^>]*>/g) ?? [];
+      expect(activeLinks.length).toBeGreaterThan(0);
+      expect(activeLinks.every((link) => link.includes(`href="${route}"`))).toBe(true);
+      expect(html).toMatch(new RegExp(`<h1[^>]*>${record.title}<`));
+      expect(html).toContain('id="before-you-start"');
+      // Every runbook cites at least one decision, and the citation is a site route.
+      expect(html).toMatch(new RegExp(`href="${base}adr/\\d{4}/"`));
+      expect(html).toContain(`/edit/main/docs/runbooks/${record.file}"`);
+    }
+  });
+});
+
+describe('published benchmarks', () => {
+  it('renders every record with navigation, its subject and a GitHub link to its harness', async () => {
+    const { benchmark, architecture } = await readDocuments();
+    const recordRoutes = benchmark.records.map((record) => `${base}benchmarks/${record.number}/`);
+    const index = await readFile('dist/benchmarks/index.html', 'utf8');
+    for (const route of recordRoutes) expect(index).toContain(`href="${route}"`);
+    for (const record of benchmark.records) {
+      const route = `${base}benchmarks/${record.number}/`;
+      const html = await readFile(`dist/benchmarks/${record.number}/index.html`, 'utf8');
+      const routes = sidebarRoutes(html);
+      expect(routes.filter((href) => href.startsWith(`${base}benchmarks/`))).toEqual([
+        `${base}benchmarks/`,
+        ...recordRoutes,
+      ]);
+      const activeLinks = html.match(/<a\b[^>]*aria-current="page"[^>]*>/g) ?? [];
+      expect(activeLinks.length).toBeGreaterThan(0);
+      expect(activeLinks.every((link) => link.includes(`href="${route}"`))).toBe(true);
+      expect(html).toMatch(new RegExp(`<h1[^>]*>${record.number} · `));
+      expect(html).toContain(`<strong>Subject:</strong> ${record.subject}`);
+      expect(html).toContain(`/edit/main/docs/benchmarks/${record.file}"`);
+    }
+    // Runbooks named in the model's metadata link to their published pages, not to GitHub.
+    const runbookPaths = /docs\/runbooks\/([a-z0-9-]+)\.md/g;
+    for (const node of architecture.nodes) {
+      const named = [...JSON.stringify(node.metadata).matchAll(runbookPaths)].map(
+        (m) => m[1] ?? '',
+      );
+      if (!named.length) continue;
+      const html = await readFile(`dist/architecture/components/${node.id}/index.html`, 'utf8');
+      const main = /<main\b[\s\S]*<\/main>/.exec(html)?.[0] ?? '';
+      for (const slug of named) expect(main, node.id).toContain(`href="${base}runbooks/${slug}/"`);
     }
   });
 });

@@ -19,6 +19,28 @@ export function dateTimeFormat(
   return formatter;
 }
 
+/** The date and time fields `Date#toLocaleString` shows when given no date or time field. */
+const localeStringFields: Intl.DateTimeFormatOptions = {
+  year: 'numeric',
+  month: 'numeric',
+  day: 'numeric',
+  hour: 'numeric',
+  minute: 'numeric',
+  second: 'numeric',
+};
+
+/**
+ * `new Date(instant).toLocaleString(undefined, options)` with a cached formatter.
+ * `toLocaleString` adds date and time fields when `options` has none (`timeZoneName` alone
+ * doesn't count), while `Intl.DateTimeFormat` adds only the date, so they are spelled out here.
+ */
+export function formatDateTime(
+  instant: number | string | Date,
+  options: Intl.DateTimeFormatOptions = {},
+): string {
+  return dateTimeFormat(undefined, { ...localeStringFields, ...options }).format(new Date(instant));
+}
+
 export type EventStatus = 'past' | 'current' | 'next' | 'upcoming';
 
 /** The browser's IANA time zone, e.g. `Europe/Madrid`. */

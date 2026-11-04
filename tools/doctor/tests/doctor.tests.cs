@@ -16,7 +16,7 @@ public sealed class DoctorTests : IDisposable
 
   public DoctorTests()
   {
-    foreach (var command in new[] { "dirname", "tr", "sed" })
+    foreach (var command in new[] { "dirname", "tr", "sed", "sort", "head" })
     {
       File.CreateSymbolicLink(Path.Combine(_bin, command), "/usr/bin/" + command);
     }
@@ -24,6 +24,7 @@ public sealed class DoctorTests : IDisposable
     WriteExecutable("node", "echo v24.0.0");
     WriteExecutable("pnpm", "exit 0");
     WriteExecutable("docker", "exit 0");
+    WriteExecutable("just", "echo just 99.0.0");
   }
 
   private void WriteExecutable(string name, string body)
@@ -59,6 +60,38 @@ public sealed class DoctorTests : IDisposable
     (var code, var text) = await RunDoctor();
     (code == 0).ShouldBe(success);
     text.ShouldContain(expected);
+  }
+
+  [Fact]
+  public async Task MissingJustFailsWithInstallHint()
+  {
+    File.Delete(Path.Combine(_bin, "just"));
+    (var code, var text) = await RunDoctor(infra: false);
+    code.ShouldNotBe(0);
+    text.ShouldContain("just not found");
+    text.ShouldContain("Install just");
+  }
+
+  [Fact]
+  public async Task JustOlderThanPinnedVersionFails()
+  {
+    WriteExecutable("just", "echo just 0.1.0");
+    (var code, var text) = await RunDoctor(infra: false);
+    code.ShouldNotBe(0);
+    text.ShouldContain("just 0.1.0, but .just-version wants");
+  }
+
+  [Theory]
+  [InlineData("10.0.114", false)]
+  [InlineData("10.0.204", false)]
+  [InlineData("10.0.300", true)]
+  [InlineData("10.0.403", true)]
+  public async Task RepoToolsNeedSdkWithIncludeDirective(string sdk, bool success)
+  {
+    WriteExecutable("dotnet", $"echo {sdk}");
+    (var code, var text) = await RunDoctor(infra: false);
+    (code == 0).ShouldBe(success);
+    text.ShouldContain(success ? $".NET SDK {sdk} for repo tools" : "#:include needs 10.0.300 or later");
   }
 
   [Fact]

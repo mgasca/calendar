@@ -6,9 +6,9 @@ import { useDeleteTask } from '../agenda/useDeleteTask.ts';
 
 import { viewParam, views, type View } from './taskViews.ts';
 import { api } from '../../api/client.ts';
-import { browserTimeZone, isPastDue } from '../agenda/dayTime.ts';
+import { browserTimeZone, formatDateTime, isPastDue } from '../agenda/dayTime.ts';
 import { useNow, useToday } from '../agenda/useNow.ts';
-import { problemMessage } from '../agenda/agendaQuery.ts';
+import { apiError } from '../../api/apiError.ts';
 import {
   TaskUpdateError,
   useTaskTogglePending,
@@ -46,7 +46,7 @@ export function TaskList() {
     queryKey,
     initialPageParam: undefined as string | undefined,
     queryFn: async ({ signal, pageParam }) => {
-      const { data, error } = await api.GET('/api/tasks', {
+      const { data, error, response } = await api.GET('/api/tasks', {
         signal,
         params: {
           query: {
@@ -57,7 +57,7 @@ export function TaskList() {
           },
         },
       });
-      if (!data) throw new Error(problemMessage(error) ?? 'Couldn’t load tasks.');
+      if (!data) throw apiError({ response, error }, 'Couldn’t load tasks.');
       return data;
     },
     getNextPageParam: (page) => page.nextCursor ?? undefined,
@@ -121,7 +121,7 @@ export function TaskList() {
             </label>
             <span className="badge">{task.priority ?? 'medium'} priority</span>
             <span className="item-meta">
-              {task.dueDate ?? (task.dueAt ? new Date(task.dueAt).toLocaleString() : 'No deadline')}
+              {task.dueDate ?? (task.dueAt ? formatDateTime(task.dueAt) : 'No deadline')}
               {view === 'Upcoming' && task.dueAt && <PastDue task={task} />}
             </span>
             {task.notes && <p className="task-notes">{task.notes}</p>}

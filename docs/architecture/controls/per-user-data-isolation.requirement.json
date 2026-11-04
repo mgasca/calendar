@@ -1,0 +1,21 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://mgasca.github.io/calendar/architecture/controls/per-user-data-isolation.requirement.json",
+  "title": "Per-user data isolation requirement",
+  "description": "How every read and write of user-owned rows is scoped to the signed-in user, and how another user's rows answer (ADR-0041).",
+  "type": "object",
+  "properties": {
+    "owner-column": { "type": "string", "description": "The non-null owner column on every user-owned table and what it references." },
+    "identity-key": { "type": "string", "description": "What identifies a user row and how it is resolved at sign-in." },
+    "scoping-mechanism": { "type": "string", "description": "The mechanism that applies the owner predicate to every query and write." },
+    "fail-closed": { "type": "string", "description": "What a context without a signed-in user sees." },
+    "legacy-owner": { "type": "string", "description": "Who owns rows created before ownership existed and how that owner is claimed." },
+    "session-claim": { "type": "string", "description": "How the user id travels with the session and what happens to sessions without it." },
+    "cross-user-response": { "type": "string", "description": "What the API answers for another user's row." },
+    "client-supplied-user": { "type": "boolean", "description": "Whether any endpoint accepts a user identifier from the client. Must be false." },
+    "tests": { "type": "array", "items": { "type": "string" }, "description": "The tests that assert the isolation." },
+    "adrs": { "type": "array", "items": { "type": "string", "format": "uri" } }
+  },
+  "required": ["owner-column", "scoping-mechanism", "fail-closed", "cross-user-response", "client-supplied-user"],
+  "additionalProperties": false
+}

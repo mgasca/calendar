@@ -4,6 +4,7 @@ using Calendar.Domain.Events;
 using Calendar.Domain.Tasks;
 using Calendar.Domain.Time;
 using Calendar.Infrastructure;
+using Microsoft.EntityFrameworkCore;
 
 namespace Calendar.Api.Tests;
 
@@ -37,8 +38,9 @@ public sealed class AgendaAgreementTests(PostgresFixture postgres) : ApiTestBase
     await SeedAsync(BuildEvents(date, zoneId, window), BuildTasks(date, window));
 
     await using CalendarDbContext db = Postgres.Database.CreateMigratorContext();
-    var events = db.Events.ToList();
-    var tasks = db.Tasks.ToList();
+    // The migrator context has no current user, so the rows are read with the filter explicitly off.
+    List<CalendarEvent> events = await db.Events.IgnoreQueryFilters().ToListAsync(Ct);
+    List<TodoTask> tasks = await db.Tasks.IgnoreQueryFilters().ToListAsync(Ct);
     events.Count.ShouldBeGreaterThan(40);
 
     DayAgendaResponse agenda = await GetAgendaAsync(dateText, zoneId);
@@ -94,7 +96,7 @@ public sealed class AgendaAgreementTests(PostgresFixture postgres) : ApiTestBase
     {
       for (var j = i + 1; j < points.Length; j++)
       {
-        events.Add(CalendarEvent.Create($"timed {i}-{j}", points[i], points[j], zoneId));
+        events.Add(CalendarEvent.Create(Owner, $"timed {i}-{j}", points[i], points[j], zoneId));
       }
     }
 
@@ -102,7 +104,7 @@ public sealed class AgendaAgreementTests(PostgresFixture postgres) : ApiTestBase
     {
       for (var end = start + 1; end <= 4; end++)
       {
-        events.Add(CalendarEvent.CreateAllDay($"all-day {start}..{end}", date.AddDays(start), date.AddDays(end)));
+        events.Add(CalendarEvent.CreateAllDay(Owner, $"all-day {start}..{end}", date.AddDays(start), date.AddDays(end)));
       }
     }
 
@@ -134,7 +136,7 @@ public sealed class AgendaAgreementTests(PostgresFixture postgres) : ApiTestBase
 
   private static TodoTask Task(string title, DateOnly? dueDate, DateTimeOffset? dueAt, DateTimeOffset? completedAt)
   {
-    var task = TodoTask.Create(title, dueDate, dueAt);
+    var task = TodoTask.Create(Owner, title, dueDate, dueAt);
     if (completedAt is { } at)
     {
       task.Complete(at);

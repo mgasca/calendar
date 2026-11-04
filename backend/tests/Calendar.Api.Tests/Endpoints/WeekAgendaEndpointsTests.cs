@@ -98,10 +98,10 @@ public sealed class WeekAgendaEndpointsTests(PostgresFixture postgres) : ApiTest
   {
     await SeedAsync(
         [
-          CalendarEvent.Create("E", Utc(2026, 10, 27, 14), Utc(2026, 10, 27, 15), NewYork),
-          CalendarEvent.CreateAllDay("A", D(Monday), D("2026-10-27")),
+          CalendarEvent.Create(Owner, "E", Utc(2026, 10, 27, 14), Utc(2026, 10, 27, 15), NewYork),
+          CalendarEvent.CreateAllDay(Owner, "A", D(Monday), D("2026-10-27")),
         ],
-        [TodoTask.Create("T", D(Wednesday))]);
+        [TodoTask.Create(Owner, "T", D(Wednesday))]);
 
     var json = await Client.GetStringAsync(
       new Uri($"/api/agenda/week?date={Wednesday}&timeZone={NewYork}&today={Wednesday}", UriKind.Relative),
@@ -161,13 +161,13 @@ public sealed class WeekAgendaEndpointsTests(PostgresFixture postgres) : ApiTest
   {
     await SeedAsync(
     [
-        CalendarEvent.Create("overnight Tue-Wed", Utc(2026, 10, 28, 2), Utc(2026, 10, 28, 10), NewYork), // 22:00 Tue - 06:00 Wed
-        CalendarEvent.Create("beta", Utc(2026, 10, 28, 15), Utc(2026, 10, 28, 16), NewYork),
-        CalendarEvent.Create("Alpha", Utc(2026, 10, 28, 15), Utc(2026, 10, 28, 15, 30), NewYork),
-        CalendarEvent.Create("from last week", Utc(2026, 10, 25, 12), Utc(2026, 10, 26, 12), NewYork),
-        CalendarEvent.Create("into next week", Utc(2026, 11, 2, 4), Utc(2026, 11, 2, 6), NewYork), // 23:00 EST Sun
-        CalendarEvent.Create("next week", Utc(2026, 11, 2, 5), Utc(2026, 11, 2, 6), NewYork),
-        CalendarEvent.Create("last week", Utc(2026, 10, 25, 12), Utc(2026, 10, 26, 4), NewYork),
+        CalendarEvent.Create(Owner, "overnight Tue-Wed", Utc(2026, 10, 28, 2), Utc(2026, 10, 28, 10), NewYork), // 22:00 Tue - 06:00 Wed
+        CalendarEvent.Create(Owner, "beta", Utc(2026, 10, 28, 15), Utc(2026, 10, 28, 16), NewYork),
+        CalendarEvent.Create(Owner, "Alpha", Utc(2026, 10, 28, 15), Utc(2026, 10, 28, 15, 30), NewYork),
+        CalendarEvent.Create(Owner, "from last week", Utc(2026, 10, 25, 12), Utc(2026, 10, 26, 12), NewYork),
+        CalendarEvent.Create(Owner, "into next week", Utc(2026, 11, 2, 4), Utc(2026, 11, 2, 6), NewYork), // 23:00 EST Sun
+        CalendarEvent.Create(Owner, "next week", Utc(2026, 11, 2, 5), Utc(2026, 11, 2, 6), NewYork),
+        CalendarEvent.Create(Owner, "last week", Utc(2026, 10, 25, 12), Utc(2026, 10, 26, 4), NewYork),
     ]);
 
     WeekAgendaResponse week = await GetWeekAgendaAsync(Wednesday, NewYork, Wednesday);
@@ -193,18 +193,18 @@ public sealed class WeekAgendaEndpointsTests(PostgresFixture postgres) : ApiTest
   [Fact]
   public async Task AllDayEvents_AreReturnedOncePerWeek_OrderedByStartDateThenTitleThenId()
   {
-    var twinA = CalendarEvent.CreateAllDay("Twin", D("2026-10-27"), D("2026-10-28"));
-    var twinB = CalendarEvent.CreateAllDay("twin", D("2026-10-27"), D("2026-10-28"));
+    var twinA = CalendarEvent.CreateAllDay(Owner, "Twin", D("2026-10-27"), D("2026-10-28"));
+    var twinB = CalendarEvent.CreateAllDay(Owner, "twin", D("2026-10-27"), D("2026-10-28"));
     await SeedAsync(
     [
-        CalendarEvent.CreateAllDay("conference", D("2026-10-27"), D("2026-10-30")),
+        CalendarEvent.CreateAllDay(Owner, "conference", D("2026-10-27"), D("2026-10-30")),
         twinA,
         twinB,
-        CalendarEvent.CreateAllDay("trip from last week", D("2026-10-24"), D("2026-10-27")),
-        CalendarEvent.CreateAllDay("into next week", D("2026-11-01"), D("2026-11-04")),
-        CalendarEvent.CreateAllDay("ended last week", D("2026-10-20"), D(Monday)),
-        CalendarEvent.CreateAllDay("next week", D("2026-11-02"), D("2026-11-03")),
-        CalendarEvent.Create("timed", Utc(2026, 10, 27, 14), Utc(2026, 10, 27, 15), NewYork),
+        CalendarEvent.CreateAllDay(Owner, "trip from last week", D("2026-10-24"), D("2026-10-27")),
+        CalendarEvent.CreateAllDay(Owner, "into next week", D("2026-11-01"), D("2026-11-04")),
+        CalendarEvent.CreateAllDay(Owner, "ended last week", D("2026-10-20"), D(Monday)),
+        CalendarEvent.CreateAllDay(Owner, "next week", D("2026-11-02"), D("2026-11-03")),
+        CalendarEvent.Create(Owner, "timed", Utc(2026, 10, 27, 14), Utc(2026, 10, 27, 15), NewYork),
     ]);
 
     WeekAgendaResponse week = await GetWeekAgendaAsync(Wednesday, NewYork, Wednesday);
@@ -226,14 +226,14 @@ public sealed class WeekAgendaEndpointsTests(PostgresFixture postgres) : ApiTest
   {
     await SeedAsync(tasks:
     [
-        TodoTask.Create("zeta", D(Wednesday)),
-        TodoTask.Create("late", dueAt: Utc(2026, 10, 28, 21)),
+        TodoTask.Create(Owner, "zeta", D(Wednesday)),
+        TodoTask.Create(Owner, "late", dueAt: Utc(2026, 10, 28, 21)),
         CompletedTask("Alpha", D(Wednesday), Utc(2026, 10, 27, 9)),
-        TodoTask.Create("early", dueAt: Utc(2026, 10, 28, 9)),
-        TodoTask.Create("late Sunday EST", dueAt: Utc(2026, 11, 2, 4, 30)), // 23:30 Sunday after the fall back
-        TodoTask.Create("first instant", dueAt: Utc(2026, 10, 26, 4)),
-        TodoTask.Create("next Monday", D("2026-11-02")),
-        TodoTask.Create("undated"),
+        TodoTask.Create(Owner, "early", dueAt: Utc(2026, 10, 28, 9)),
+        TodoTask.Create(Owner, "late Sunday EST", dueAt: Utc(2026, 11, 2, 4, 30)), // 23:30 Sunday after the fall back
+        TodoTask.Create(Owner, "first instant", dueAt: Utc(2026, 10, 26, 4)),
+        TodoTask.Create(Owner, "next Monday", D("2026-11-02")),
+        TodoTask.Create(Owner, "undated"),
     ]);
 
     WeekAgendaResponse week = await GetWeekAgendaAsync(Wednesday, NewYork, Wednesday);
@@ -251,9 +251,9 @@ public sealed class WeekAgendaEndpointsTests(PostgresFixture postgres) : ApiTest
     await SeedAsync(tasks:
     [
         CompletedTask("done on time", D("2026-10-14"), Utc(2026, 10, 14, 15)),
-        TodoTask.Create("never done", D("2026-10-14")),
+        TodoTask.Create(Owner, "never done", D("2026-10-14")),
         CompletedTask("done late", D("2026-10-12"), Utc(2026, 10, 28, 15)),
-        TodoTask.Create("older", D("2026-10-01")),
+        TodoTask.Create(Owner, "older", D("2026-10-01")),
     ]);
 
     WeekAgendaResponse week = await GetWeekAgendaAsync("2026-10-14", NewYork, Wednesday);
@@ -283,14 +283,14 @@ public sealed class WeekAgendaEndpointsTests(PostgresFixture postgres) : ApiTest
   {
     await SeedAsync(tasks:
     [
-        TodoTask.Create("last week, open", D("2026-10-20")),
-        TodoTask.Create("timed Sunday night, open", dueAt: Utc(2026, 10, 26, 3, 59)),
+        TodoTask.Create(Owner, "last week, open", D("2026-10-20")),
+        TodoTask.Create(Owner, "timed Sunday night, open", dueAt: Utc(2026, 10, 26, 3, 59)),
         CompletedTask("last week, done today", D("2026-10-19"), Utc(2026, 10, 28, 15)),
         CompletedTask("last week, done yesterday", D("2026-10-19"), Utc(2026, 10, 27, 15)),
-        TodoTask.Create("Monday, open", D(Monday)),
-        TodoTask.Create("Monday first instant, open", dueAt: Utc(2026, 10, 26, 4)),
-        TodoTask.Create("Tuesday, open", D("2026-10-27")),
-        TodoTask.Create("today, open", D(Wednesday)),
+        TodoTask.Create(Owner, "Monday, open", D(Monday)),
+        TodoTask.Create(Owner, "Monday first instant, open", dueAt: Utc(2026, 10, 26, 4)),
+        TodoTask.Create(Owner, "Tuesday, open", D("2026-10-27")),
+        TodoTask.Create(Owner, "today, open", D(Wednesday)),
     ]);
 
     WeekAgendaResponse week = await GetWeekAgendaAsync(Wednesday, NewYork, Wednesday);
@@ -309,13 +309,13 @@ public sealed class WeekAgendaEndpointsTests(PostgresFixture postgres) : ApiTest
   {
     await SeedAsync(tasks:
     [
-        TodoTask.Create("old high", D("2026-10-24"), priority: "high"),
-            TodoTask.Create("older low", D("2026-10-23"), priority: "low"),
-            TodoTask.Create("due date low", D(Monday), priority: "low"),
-            TodoTask.Create("due date high", D(Monday), priority: "high"),
-            TodoTask.Create("same instant medium", dueAt: Utc(2026, 10, 26, 12), priority: "medium"),
-            TodoTask.Create("same instant high z", dueAt: Utc(2026, 10, 26, 12), priority: "high"),
-            TodoTask.Create("same instant high a", dueAt: Utc(2026, 10, 26, 12), priority: "high"),
+        TodoTask.Create(Owner, "old high", D("2026-10-24"), priority: "high"),
+            TodoTask.Create(Owner, "older low", D("2026-10-23"), priority: "low"),
+            TodoTask.Create(Owner, "due date low", D(Monday), priority: "low"),
+            TodoTask.Create(Owner, "due date high", D(Monday), priority: "high"),
+            TodoTask.Create(Owner, "same instant medium", dueAt: Utc(2026, 10, 26, 12), priority: "medium"),
+            TodoTask.Create(Owner, "same instant high z", dueAt: Utc(2026, 10, 26, 12), priority: "high"),
+            TodoTask.Create(Owner, "same instant high a", dueAt: Utc(2026, 10, 26, 12), priority: "high"),
         ]);
 
     WeekAgendaResponse week = await GetWeekAgendaAsync(Wednesday, NewYork, Wednesday);
@@ -330,15 +330,15 @@ public sealed class WeekAgendaEndpointsTests(PostgresFixture postgres) : ApiTest
   {
     await SeedAsync(tasks:
     [
-        TodoTask.Create("last week, open", D("2026-10-20")),
-        TodoTask.Create("this Monday, open", D(Monday)),
-        TodoTask.Create("timed yesterday, open", dueAt: Utc(2026, 10, 27, 20)),
+        TodoTask.Create(Owner, "last week, open", D("2026-10-20")),
+        TodoTask.Create(Owner, "this Monday, open", D(Monday)),
+        TodoTask.Create(Owner, "timed yesterday, open", dueAt: Utc(2026, 10, 27, 20)),
         CompletedTask("this Monday, done today", D(Monday), Utc(2026, 10, 28, 15)),
         CompletedTask("this Monday, done yesterday", D(Monday), Utc(2026, 10, 27, 15)),
-        TodoTask.Create("today, open", D(Wednesday)),
-        TodoTask.Create("timed later today, open", dueAt: Utc(2026, 10, 28, 20)),
-        TodoTask.Create("Friday, not yet due", D("2026-10-30")),
-        TodoTask.Create("in the week", D("2026-11-03")),
+        TodoTask.Create(Owner, "today, open", D(Wednesday)),
+        TodoTask.Create(Owner, "timed later today, open", dueAt: Utc(2026, 10, 28, 20)),
+        TodoTask.Create(Owner, "Friday, not yet due", D("2026-10-30")),
+        TodoTask.Create(Owner, "in the week", D("2026-11-03")),
     ]);
 
     WeekAgendaResponse week = await GetWeekAgendaAsync("2026-11-04", NewYork, Wednesday);
@@ -359,8 +359,8 @@ public sealed class WeekAgendaEndpointsTests(PostgresFixture postgres) : ApiTest
   {
     await SeedAsync(tasks:
     [
-        TodoTask.Create("b", D("2026-10-20")),
-        TodoTask.Create("a", dueAt: Utc(2026, 10, 22, 22)),
+        TodoTask.Create(Owner, "b", D("2026-10-20")),
+        TodoTask.Create(Owner, "a", dueAt: Utc(2026, 10, 22, 22)),
         CompletedTask("done today", D("2026-10-21"), Utc(2026, 10, 26, 15)),
         CompletedTask("done before", D("2026-10-21"), Utc(2026, 10, 25, 15)),
     ]);

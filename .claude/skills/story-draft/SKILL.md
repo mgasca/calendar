@@ -19,11 +19,13 @@ A story card is the long-lived record of a feature: what was asked, what was agr
 
 ## Before you start: read these parts
 
+When the user requests issue-driven handover mode, follow the `issue-handover` skill (`.claude/skills/issue-handover/SKILL.md`): open questions go in separate PR comments, overriding this skill's question-placement instructions. Keep agreed answers in the card. Outside that mode, use the normal steps below. Explicit user authorization to merge takes precedence over the default instruction to leave the PR for the user; required checks still apply.
+
 At the start of every run, read only these parts. They win over anything restated here.
 
 - `docs/stories/README.md`: the whole file (it is short). It covers naming, "Source of truth", sections, front matter, and the index table.
 - `docs/stories/story-template.md`: the whole file. It is the skeleton to copy. Its leading comment holds the front matter rules.
-- `AGENTS.md`: the "Stories and issues" section (the PR 0 workflow). In "Architecture", read only the **Backend**, **Frontend** and **ADRs** bullets. The card must not contradict their conventions. Skip the practices sections unless the story touches them.
+- `AGENTS.md`: the "Stories and issues" section (the PR 0 workflow). In "Architecture", read only the **Backend**, **Frontend** and **ADRs** bullets. The card must not contradict their conventions. The practices live in `backend/AGENTS.md` and `frontend/AGENTS.md`; read them only if the story touches that stack.
 - `README.md`: only the opening paragraphs before `## Layout`. Use them to describe the story in the terms of the product.
 - One finished card as a model: `docs/stories/0007-*.md`. For a planned card, read `docs/stories/XXXX-*.md`. Read only the `##` sections that you are about to write.
 
@@ -44,7 +46,7 @@ You need the repo checked out, and `gh` signed in if the story comes from an iss
 - If the story comes from an issue, read the issue and **all its comments** (`gh issue view N --comments`). Approvals and changes of direction arrive in the comments.
 - Read the neighbouring stories (`ls docs/stories`) and grep for the topic. State how this story relates to earlier ones: what it reuses, what it leaves to them, and what it must come after. Link cards by number, for example `[0004](0004-add-event-entries.md)`.
 - Skim the code that the story touches, so that "what exists today" is accurate. Do not write the implementation. The card describes behaviour and agreed scope.
-- Find the relevant ADRs (`grep -ril <topic> docs/decisions`, and the index). Read every `accepted` ADR that touches the topic. A story must not contradict an accepted ADR. If it must, that change is an ADR (use `adr-draft`), not a story detail.
+- Find the relevant ADRs (`grep -ril <topic> docs/decisions`, and `ls docs/decisions`). Read every `accepted` ADR that touches the topic. A story must not contradict an accepted ADR. If it must, that change is an ADR (use `adr-draft`), not a story detail.
 
 You are done when you can say what exists today, how the story relates to earlier stories, and which ADRs apply.
 
@@ -57,7 +59,8 @@ If the answer changes the scope or the acceptance criteria (who the user is, wha
 The file name is `docs/stories/NNNN-lowercase-kebab-title.md`.
 
 - Numbers follow delivery order. A story that is not yet scheduled is `XXXX-…md` with the heading `# XXXX Title`. It gets the next number when it is scheduled. To schedule it, rename the file, then fix the heading, the index row and every link.
-- The next number is the highest existing number plus 1, found **after fetching** (`git fetch`), so that two stories do not take the same number.
+- The next number is the highest existing number plus 1, found **after fetching** (`git fetch`) and coordinated with other active story work as described below.
+- A fetch is a snapshot, not a reservation: #166, #167 and #188 needed repeated renumbering as other cards merged. Also inspect open story PRs and their changed card files (`gh pr list`, then `gh pr view N --json files`); coordinate any claim on the next number before publishing. Record the chosen number on the source issue and PR, and use the issue link as the stable reference while the number is provisional. An issue comment does not make allocation atomic. Re-fetch and compare main and active card PRs before pushing or merging. If another story takes the number, retain both stories and renumber the unmerged card to the next available number in coordination with the other active work. Update its file name, H1, index row, document/model links, PR title/body and issue references together; rerun the docs tests and build. Keep the existing delivery-order convention; do not introduce permanent gaps merely to reserve numbers.
 - If an `XXXX` story must come after other stories, say so in the card.
 
 ### 4. Write the card
@@ -89,7 +92,7 @@ A docs test requires the five `##` sections in this order: Story, Background, De
 
 - Each criterion must map to at least one test later. A vague criterion ("works well") cannot be linked or failed. Write from the point of view of the user, but be exact about numbers, states and error behaviour.
 - Cover the happy path and the main failure or edge case (validation, empty state, stale data, and DST or time zone when time is involved). Cover keyboard and accessibility when the UI is new. Cover persistence and refresh when data changes.
-- End with the delivery criterion: `**Given** the change is complete, **when** I run `make check`, **then** it passes`. If the API changes, add "including the regenerated contract".
+- End with the delivery criterion: `**Given** the change is complete, **when** I run `just check`, **then** it passes`. If the API changes, add "including the regenerated contract".
 - While the card is `planned`, the criteria carry no test links. Add the links on completion.
 
 **`## Design decisions`**
@@ -128,7 +131,7 @@ corepack pnpm --dir frontend --filter @calendar/docs test
 
 It passes when the tests report no failures. A failure names the card and the rule it broke. Fix every failure and run it again.
 
-Before you deliver, also run `make build-docs` if the card links to other documents or code. It passes when the site builds with no broken-link errors.
+Before you deliver, also run `just docs build` if the card links to other documents or code. It passes when the site builds with no broken-link errors.
 
 The parser cannot judge scope. Compare the acceptance criteria with the scope bullets. Make sure that no "not in this story" item reappears in the criteria.
 
@@ -175,7 +178,7 @@ Do this in the PR that delivers the story, or in a card-only PR. A story is not 
 2. **Scope and criteria:** change them only to record what was agreed and shipped. If scope was dropped, move it to "Not in this story" or to the follow-ups. Do not delete it silently.
 3. **Link every criterion to its tests.** Use a relative link to the file and line, or to the test name. Example: `[Redirect to sign-in](../../frontend/apps/web/src/features/auth/auth.test.tsx) (`redirects signed-out visitors…`)`. Make sure that each link points at a test that exists and asserts the criterion. If a criterion has no automatic test, say so plainly ("checked by hand", "not exercised in a real browser"). An honest gap is better than a clean-looking card.
 4. **Implementation notes:** write where the code lives (key files and symbols), the API surface (endpoints, status codes, contract regenerated), persistence and migrations, testing, and the delivery plan with the PRs. Add what future contributors need: lessons learned, measurements (state whether you measured or inferred them, and with what data), known issues and limits, and follow-up stories. For deferred scope, open an `XXXX` card or an issue. Do not leave it as a loose sentence.
-5. **User guide:** finalise it against the real UI labels and behaviour, including current limitations. If you can, run the app (`run` skill or `make dev-web`). If you cannot, derive the labels from the components and tests, and say so.
+5. **User guide:** finalise it against the real UI labels and behaviour, including current limitations. If you can, run the app (`run` skill or `just frontend dev`). If you cannot, derive the labels from the components and tests, and say so.
 6. Validate as in step 6. Then deliver as in step 7, with the title `Story NNNN: implementation notes, test links and user guide`.
 
 ## Pitfalls seen in this repo

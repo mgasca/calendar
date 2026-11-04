@@ -1,0 +1,17 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://mgasca.github.io/calendar/architecture/controls/environment-separation.requirement.json",
+  "title": "Environment separation requirement",
+  "description": "How deployment environments are isolated from each other (ADR-0035).",
+  "type": "object",
+  "properties": {
+    "environments": { "type": "array", "items": { "type": "string" } },
+    "isolation-unit": { "type": "string" },
+    "parameter-files": { "type": "array", "items": { "type": "string" } },
+    "shared-resources": { "type": "array", "items": { "type": "string" } },
+    "promotion": { "type": "string" },
+    "adrs": { "type": "array", "items": { "type": "string", "format": "uri" } }
+  },
+  "required": ["environments", "isolation-unit"],
+  "additionalProperties": false
+}

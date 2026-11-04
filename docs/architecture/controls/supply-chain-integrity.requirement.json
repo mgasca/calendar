@@ -1,0 +1,20 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://mgasca.github.io/calendar/architecture/controls/supply-chain-integrity.requirement.json",
+  "title": "Supply-chain integrity requirement",
+  "description": "Reproducible toolchains, locked dependencies and credential-free deployment (ADR-0006, ADR-0010, ADR-0012, ADR-0034).",
+  "type": "object",
+  "properties": {
+    "toolchain-pins": { "type": "array", "items": { "type": "string" } },
+    "lockfiles": { "type": "array", "items": { "type": "string" } },
+    "locked-restore": { "type": "boolean" },
+    "base-image-pinning": { "type": "string" },
+    "action-pinning": { "type": "string" },
+    "dependency-updates": { "type": "string" },
+    "deployment-credentials": { "type": "string" },
+    "registry-admin-user": { "type": "boolean" },
+    "adrs": { "type": "array", "items": { "type": "string", "format": "uri" } }
+  },
+  "required": ["locked-restore", "deployment-credentials"],
+  "additionalProperties": false
+}

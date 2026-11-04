@@ -103,3 +103,11 @@
     width: auto;
   }
 }
+
+/* Numbered entries without a status badge (benchmark records) close the badge column. */
+.sidebar-content a[data-doc-number]:not(:has(.adr-status)) {
+  grid-template-columns: max-content minmax(0, 1fr);
+}
+.sidebar-content a[data-doc-number]:not(:has(.adr-status)) > span:first-child {
+  grid-column: 2;
+}

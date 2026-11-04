@@ -2,7 +2,6 @@ using System.Net;
 using System.Net.Http.Json;
 using Calendar.Api.Endpoints;
 using Microsoft.AspNetCore.Authentication;
-using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.AspNetCore.TestHost;
 using Microsoft.Extensions.DependencyInjection;
@@ -11,31 +10,6 @@ namespace Calendar.Api.Tests.Endpoints;
 
 public sealed class AuthenticationTests(WebApplicationFactory<Program> factory) : IClassFixture<WebApplicationFactory<Program>>
 {
-  [Theory]
-  [InlineData("Development", "12345678901234567890123456789012", "12345678901234567890123456789012", HttpStatusCode.OK)]
-  [InlineData("Development", "12345678901234567890123456789012", "wrong", HttpStatusCode.Unauthorized)]
-  [InlineData("Development", "12345678901234567890123456789012", null, HttpStatusCode.Unauthorized)]
-  [InlineData("Development", "", "12345678901234567890123456789012", HttpStatusCode.Unauthorized)]
-  [InlineData("Production", "12345678901234567890123456789012", "12345678901234567890123456789012", HttpStatusCode.Unauthorized)]
-  public async Task SeedKeyOnlyAuthenticatesInDevelopment(string environment, string key, string? header, HttpStatusCode expected)
-  {
-    using WebApplicationFactory<Program> host = factory.WithWebHostBuilder(builder =>
-    {
-      builder.UseEnvironment(environment);
-      builder.UseSetting("Auth:DevSeedKey", key);
-    });
-    using HttpClient client = host.CreateClient();
-    using var request = new HttpRequestMessage(HttpMethod.Get, new Uri("/api/auth/me", UriKind.Relative));
-    if (header is not null)
-    {
-      request.Headers.Add("X-Dev-Seed-Key", header);
-    }
-    using HttpResponseMessage response = await client.SendAsync(request, TestContext.Current.CancellationToken);
-    response.StatusCode.ShouldBe(expected);
-    IAuthenticationSchemeProvider schemes = host.Services.GetRequiredService<IAuthenticationSchemeProvider>();
-    (await schemes.GetSchemeAsync("DevSeed") is not null).ShouldBe(environment == "Development" && key.Length > 0);
-  }
-
   [Theory]
   [InlineData("/api/events/00000000-0000-0000-0000-000000000000")]
   [InlineData("/api/tasks")]

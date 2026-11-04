@@ -1,0 +1,19 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://mgasca.github.io/calendar/architecture/controls/contract-first.requirement.json",
+  "title": "Contract-first API requirement",
+  "description": "The API contract is generated from the backend and every client is generated from the contract (ADR-0004).",
+  "type": "object",
+  "properties": {
+    "contract": { "type": "string", "description": "Repository path of the contract." },
+    "format": { "type": "string" },
+    "generated-by": { "type": "string" },
+    "regenerate-command": { "type": "string" },
+    "staleness-gate": { "type": "string", "description": "What fails when the committed contract is stale." },
+    "consumers": { "type": "array", "items": { "type": "string" } },
+    "hand-edits-allowed": { "type": "boolean" },
+    "adrs": { "type": "array", "items": { "type": "string", "format": "uri" } }
+  },
+  "required": ["contract", "generated-by", "staleness-gate", "hand-edits-allowed"],
+  "additionalProperties": false
+}

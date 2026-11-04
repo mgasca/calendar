@@ -14,6 +14,9 @@ public sealed class TodoTask
   /// <summary>Unique id, generated on creation.</summary>
   public Guid Id { get; private set; }
 
+  /// <summary>The user who owns the task (ADR-0041); only they can ever read or change it.</summary>
+  public Guid OwnerId { get; private set; }
+
   /// <summary>Normalized, non-empty title.</summary>
   public string Title { get; private set; }
 
@@ -35,19 +38,26 @@ public sealed class TodoTask
   /// <summary>True once the task has been completed.</summary>
   public bool IsCompleted => CompletedAt is not null;
 
-  /// <summary>Creates an open task with an optional due date or due instant, but not both.</summary>
+  /// <summary>Creates an open task owned by <paramref name="ownerId"/>, with an optional due date or due instant, but not both.</summary>
+  /// <param name="ownerId">The owning user.</param>
   /// <param name="title">The task title.</param>
   /// <param name="dueDate">Floating due date, or <c>null</c>.</param>
   /// <param name="dueAt">Due instant (normalized to UTC), or <c>null</c>.</param>
   /// <param name="priority">Priority level; defaults to medium.</param>
   /// <param name="notes">Optional task notes.</param>
   public static TodoTask Create(
+    Guid ownerId,
     string title,
     DateOnly? dueDate = null,
     DateTimeOffset? dueAt = null,
     string priority = "medium",
     string? notes = null)
   {
+    if (ownerId == Guid.Empty)
+    {
+      throw new ArgumentException("A task needs an owner.", nameof(ownerId));
+    }
+
     var normalizedTitle = Validation.NormalizeTitle(title, nameof(title));
     if (dueDate is not null && dueAt is not null)
     {
@@ -64,6 +74,7 @@ public sealed class TodoTask
     return new TodoTask
     {
       Id = Guid.NewGuid(),
+      OwnerId = ownerId,
       Title = normalizedTitle,
       Priority = priority,
       Notes = normalizedNotes,

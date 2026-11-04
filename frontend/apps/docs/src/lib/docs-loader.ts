@@ -1,18 +1,44 @@
-import { readdir, readFile } from 'node:fs/promises';
+import { access, readdir, readFile } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 import { relative, resolve } from 'node:path';
 import type { Loader } from 'astro/loaders';
+import type { Adr, Story } from './adr';
 import {
+  parseBenchmarks,
   parseLog,
+  parseRunbooks,
   parseStories,
   repository,
+  runbookSlug,
   statusCategory,
   storySlug,
   storyStatusCategory,
 } from './adr';
+import type { Architecture } from './architecture';
+import {
+  architectureDirectory,
+  architecturePages,
+  checkArchitecture,
+  mappingFile,
+  modelEditUrl,
+  modelFile,
+  pagePath,
+  pageRoute,
+  parseArchitecture,
+} from './architecture';
 
-export const decisionsDirectory = new URL('../../../../../docs/decisions/', import.meta.url);
-export const storiesDirectory = new URL('../../../../../docs/stories/', import.meta.url);
+const repositoryRoot = new URL('../../../../../', import.meta.url);
+export const decisionsDirectory = new URL('docs/decisions/', repositoryRoot);
+export const storiesDirectory = new URL('docs/stories/', repositoryRoot);
+export const runbooksDirectory = new URL('docs/runbooks/', repositoryRoot);
+export const benchmarksDirectory = new URL('docs/benchmarks/', repositoryRoot);
+/** The folder under `docs/` behind each Markdown collection, for edit links. */
+const folders = new Map([
+  [decisionsDirectory.href, 'decisions'],
+  [storiesDirectory.href, 'stories'],
+  [runbooksDirectory.href, 'runbooks'],
+  [benchmarksDirectory.href, 'benchmarks'],
+]);
 
 async function readSources(directory: URL, pattern: RegExp) {
   const names = (await readdir(directory)).filter((name) => pattern.test(name));
@@ -24,9 +50,9 @@ async function readSources(directory: URL, pattern: RegExp) {
 }
 
 export async function readLog() {
+  // README.md holds the conventions only; the log itself comes from the files (ADR-0040).
   const sources = await readSources(decisionsDirectory, /^\d{4}-.+\.md$/);
-  const index = await readFile(new URL('README.md', decisionsDirectory), 'utf8');
-  return { index, records: parseLog(index, sources) };
+  return { records: parseLog(sources) };
 }
 
 export async function readStories(adrs: Map<string, string>) {
@@ -35,29 +61,89 @@ export async function readStories(adrs: Map<string, string>) {
   return { index, records: parseStories(index, sources, adrs) };
 }
 
-/** Reads and validates both collections together, since stories reference ADR numbers. */
+/** Reads the runbooks in the order their index gives; `README.md` is the index, not a runbook. */
+export async function readRunbooks() {
+  const sources = await readSources(runbooksDirectory, /^[a-z0-9-]+\.md$/);
+  const index = await readFile(new URL('README.md', runbooksDirectory), 'utf8');
+  return { index, records: parseRunbooks(index, sources) };
+}
+
+/** Reads the benchmark records; the harness each one names must exist in the repository. */
+export async function readBenchmarks() {
+  const sources = await readSources(benchmarksDirectory, /^\d{4}-.+\.md$/);
+  const index = await readFile(new URL('README.md', benchmarksDirectory), 'utf8');
+  const records = parseBenchmarks(index, sources);
+  for (const record of records) {
+    try {
+      await access(new URL(record.harness, repositoryRoot));
+    } catch {
+      throw new Error(`Benchmark harness not found: ${record.harness} (${record.file})`);
+    }
+  }
+  return { index, records };
+}
+
+/**
+ * Reads the CALM model (ADR-0039) and checks its references against the decision log and the
+ * stories. `url-mapping.json` must map every control requirement URL to a schema that exists.
+ */
+export async function readArchitecture(adrs: Adr[], stories: Story[]): Promise<Architecture> {
+  const source = await readFile(new URL(modelFile, architectureDirectory), 'utf8');
+  const mapping: unknown = JSON.parse(
+    await readFile(new URL(mappingFile, architectureDirectory), 'utf8'),
+  );
+  if (typeof mapping !== 'object' || mapping === null || Array.isArray(mapping)) {
+    throw new Error(`${mappingFile} must be an object`);
+  }
+  const mappedUrls = new Set<string>();
+  for (const [url, path] of Object.entries(mapping as Record<string, unknown>)) {
+    if (typeof path !== 'string') throw new Error(`${mappingFile}: ${url} must map to a path`);
+    await access(new URL(path, architectureDirectory));
+    mappedUrls.add(url);
+  }
+  const architecture = parseArchitecture(source);
+  checkArchitecture(architecture, { adrs, stories, mappedUrls });
+  return architecture;
+}
+
+/** Reads and validates all collections together, since stories and the model reference ADR numbers. */
 export async function readDocuments() {
   const adr = await readLog();
   const story = await readStories(
     new Map(adr.records.map((record) => [record.number, record.file])),
   );
-  return { adr, story };
+  const architecture = await readArchitecture(adr.records, story.records);
+  const runbook = await readRunbooks();
+  const benchmark = await readBenchmarks();
+  return { adr, story, architecture, runbook, benchmark };
 }
 
 /**
  * Maps every published document, by repository-relative path, to its route under the site base.
- * The remark plugin uses this to turn links between ADRs, stories and indexes into site routes.
+ * The remark plugin uses this to turn links between documents and indexes into site routes.
  */
 export async function documentRoutes() {
-  const { adr, story } = await readDocuments();
+  const { adr, story, architecture, runbook, benchmark } = await readDocuments();
+  // The decision log index has no page of its own: the sidebar lists every ADR with its status,
+  // so a link to docs/decisions/README.md goes to the repository.
   const routes = new Map([
-    ['docs/decisions/README.md', ''],
     ['docs/stories/README.md', 'stories/'],
+    ['docs/runbooks/README.md', 'runbooks/'],
+    ['docs/benchmarks/README.md', 'benchmarks/'],
   ]);
   for (const record of adr.records)
     routes.set(`docs/decisions/${record.file}`, `adr/${record.number}/`);
   for (const record of story.records) {
     routes.set(`docs/stories/${record.file}`, `stories/${storySlug(record.file)}/`);
+  }
+  for (const record of runbook.records) {
+    routes.set(`docs/runbooks/${record.file}`, `runbooks/${runbookSlug(record.file)}/`);
+  }
+  for (const record of benchmark.records) {
+    routes.set(`docs/benchmarks/${record.file}`, `benchmarks/${record.number}/`);
+  }
+  for (const page of architecturePages(architecture, { stories: story.records })) {
+    routes.set(pagePath(page.id), pageRoute(page.id));
   }
   return routes;
 }
@@ -69,23 +155,23 @@ function adrLink(number: string, adrFiles: Map<string, string>) {
   return `[ADR-${number}](../decisions/${file})`;
 }
 
+/** Where a page's "Edit page" link points: the model for architecture pages, else the Markdown file. */
+function editUrl(directory: URL, file: string) {
+  if (directory === architectureDirectory) return modelEditUrl;
+  const folder = folders.get(directory.href);
+  if (folder === undefined) throw new Error(`Unknown document directory: ${directory.href}`);
+  return `${repository}/edit/main/docs/${folder}/${file}`;
+}
+
 export function docsLoader(): Loader {
   return {
     name: 'canonical-docs',
     async load(context) {
       const sync = async () => {
-        const { adr, story } = await readDocuments();
+        const { adr, story, architecture, runbook, benchmark } = await readDocuments();
         const adrFiles = new Map(adr.records.map((record) => [record.number, record.file]));
         context.store.clear();
         const entries = [
-          {
-            id: 'index',
-            title: 'ADR Log',
-            body: adr.index.replace(/^# Architecture Decision Records\s*/m, ''),
-            directory: decisionsDirectory,
-            file: 'README.md',
-            sidebar: { order: -1, label: 'ADR Log', hidden: true },
-          },
           ...adr.records.map((record, order) => ({
             id: `adr/${record.number}`,
             title: `${record.number} · ${record.title}`,
@@ -150,15 +236,63 @@ export function docsLoader(): Loader {
               },
             },
           })),
+          // Architecture pages are rendered from the model; links in them resolve from its directory.
+          ...architecturePages(architecture, { stories: story.records }).map((page) => ({
+            id: page.id,
+            title: page.title,
+            body: page.body,
+            directory: architectureDirectory,
+            file: modelFile,
+            sidebar: page.sidebar,
+          })),
+          {
+            id: 'runbooks',
+            title: 'Runbooks',
+            body: runbook.index.replace(/^# Runbooks\s*/m, ''),
+            directory: runbooksDirectory,
+            file: 'README.md',
+            sidebar: { order: -1, label: 'Runbooks', hidden: true },
+          },
+          // Runbooks keep the order of their index, which is the order to follow them in.
+          ...runbook.records.map((record, order) => ({
+            id: `runbooks/${runbookSlug(record.file)}`,
+            title: record.title,
+            body: record.body,
+            directory: runbooksDirectory,
+            file: record.file,
+            sidebar: { order, label: record.title },
+          })),
+          {
+            id: 'benchmarks',
+            title: 'Benchmarks',
+            body: benchmark.index.replace(/^# Benchmarks\s*/m, ''),
+            directory: benchmarksDirectory,
+            file: 'README.md',
+            sidebar: { order: -1, label: 'Benchmarks', hidden: true },
+          },
+          ...benchmark.records.map((record, order) => ({
+            id: `benchmarks/${record.number}`,
+            title: `${record.number} · ${record.title}`,
+            body: `**Subject:** ${record.subject}\n\n${record.body}`,
+            directory: benchmarksDirectory,
+            file: record.file,
+            sidebar: {
+              order,
+              label: record.title,
+              attrs: {
+                'data-doc-number': record.number,
+                'aria-label': `${record.number} · ${record.title}`,
+              },
+            },
+          })),
         ];
         for (const entry of entries) {
-          const isStory = entry.directory === storiesDirectory;
           const data = await context.parseData({
             id: entry.id,
             data: {
               title: entry.title,
               sidebar: entry.sidebar,
-              editUrl: `${repository}/edit/main/docs/${isStory ? 'stories' : 'decisions'}/${entry.file}`,
+              editUrl: editUrl(entry.directory, entry.file),
             },
           });
           const fileURL = new URL(entry.file, entry.directory);
@@ -174,7 +308,13 @@ export function docsLoader(): Loader {
       };
       await sync();
       if (context.watcher) {
-        const directories = [decisionsDirectory, storiesDirectory].map((url) => fileURLToPath(url));
+        const directories = [
+          decisionsDirectory,
+          storiesDirectory,
+          architectureDirectory,
+          runbooksDirectory,
+          benchmarksDirectory,
+        ].map((url) => fileURLToPath(url));
         for (const directory of directories) context.watcher.add(directory);
         let pending = Promise.resolve();
         const reload = (path: string) => {

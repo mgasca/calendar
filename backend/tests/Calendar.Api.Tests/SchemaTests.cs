@@ -16,9 +16,84 @@ public sealed class SchemaTests(PostgresFixture postgres) : ApiTestBase(postgres
     var definition = await db.Database.SqlQuery<string>(
         $"SELECT indexdef AS \"Value\" FROM pg_indexes WHERE tablename = 'tasks' AND indexname = {indexName}").SingleAsync(Ct);
 
-    definition.ShouldContain($"({column})");
+    // ADR-0041: the owner leads, since every task query is scoped to one owner first.
+    definition.ShouldContain($"(owner_id, {column})");
     definition.ShouldContain($"({column} IS NOT NULL)");
     definition.ShouldContain("(completed_at IS NULL)");
+  }
+
+  [Theory]
+  [InlineData("ix_users_google_subject", "google_subject")]
+  [InlineData("ix_users_email", "email")]
+  public async Task UsersIndex_IsUniqueAmongRowsThatHaveTheValue(string indexName, string column)
+  {
+    await using CalendarDbContext db = Postgres.Database.CreateMigratorContext();
+    var definition = await db.Database.SqlQuery<string>(
+        $"SELECT indexdef AS \"Value\" FROM pg_indexes WHERE tablename = 'users' AND indexname = {indexName}").SingleAsync(Ct);
+
+    definition.ShouldStartWith("CREATE UNIQUE INDEX");
+    definition.ShouldContain($"({column} IS NOT NULL)");
+
+    // The column name is a fixed literal from the InlineData above, so it cannot be a parameter.
+    var insert = $"INSERT INTO users (id, {column}, created_at) VALUES (gen_random_uuid(), 'dup', now())";
+#pragma warning disable EF1002 // fixed literals, not user input
+    await db.Database.ExecuteSqlRawAsync(insert, Ct);
+    PostgresException ex = await Should.ThrowAsync<PostgresException>(async () => await db.Database.ExecuteSqlRawAsync(insert, Ct));
+#pragma warning restore EF1002
+    ex.SqlState.ShouldBe(PostgresErrorCodes.UniqueViolation);
+    ex.ConstraintName.ShouldBe(indexName);
+  }
+
+  [Fact]
+  public async Task UsersEmail_MustBeLowerCase()
+  {
+    await using CalendarDbContext db = Postgres.Database.CreateMigratorContext();
+
+    PostgresException ex = await Should.ThrowAsync<PostgresException>(async () => await db.Database.ExecuteSqlRawAsync(
+        "INSERT INTO users (id, email, created_at) VALUES (gen_random_uuid(), 'Mixed@Example.com', now())",
+        Ct));
+
+    ex.SqlState.ShouldBe(PostgresErrorCodes.CheckViolation);
+    ex.ConstraintName.ShouldBe("ck_users_email_lower");
+  }
+
+  [Fact]
+  public async Task EventsOwner_IsIndexed()
+  {
+    await using CalendarDbContext db = Postgres.Database.CreateMigratorContext();
+    var definition = await db.Database.SqlQueryRaw<string>(
+        "SELECT indexdef AS \"Value\" FROM pg_indexes WHERE tablename = 'events' AND indexname = 'ix_events_owner_id'").SingleAsync(Ct);
+
+    definition.ShouldEndWith("(owner_id)");
+  }
+
+  [Theory]
+  [InlineData("events", "fk_events_owner")]
+  [InlineData("tasks", "fk_tasks_owner")]
+  public async Task OwnerId_IsANonNullForeignKeyToUsers(string table, string constraint)
+  {
+    await using CalendarDbContext db = Postgres.Database.CreateMigratorContext();
+
+    var nullable = await db.Database.SqlQuery<string>(
+        $"""
+        SELECT is_nullable AS "Value" FROM information_schema.columns
+        WHERE table_name = {table} AND column_name = 'owner_id'
+        """).SingleAsync(Ct);
+    nullable.ShouldBe("NO");
+
+    var definition = await db.Database.SqlQuery<string>(
+        $"SELECT pg_get_constraintdef(oid) AS \"Value\" FROM pg_constraint WHERE conname = {constraint}").SingleAsync(Ct);
+    definition.ShouldBe("FOREIGN KEY (owner_id) REFERENCES users(id) ON DELETE RESTRICT");
+
+    // Events need their shape columns too; tasks ignore them (UndefinedColumn) only if the FK check did not fire first.
+    var insert = table == "events"
+      ? "INSERT INTO events (id, owner_id, title, is_all_day, start_date, end_date) "
+        + "VALUES (gen_random_uuid(), gen_random_uuid(), 'orphan', true, '2026-10-26', '2026-10-27')"
+      : "INSERT INTO tasks (id, owner_id, title) VALUES (gen_random_uuid(), gen_random_uuid(), 'orphan')";
+#pragma warning disable EF1003 // fixed literals chosen above, not user input
+    PostgresException ex = await Should.ThrowAsync<PostgresException>(async () => await db.Database.ExecuteSqlRawAsync(insert, Ct));
+#pragma warning restore EF1003
+    ex.SqlState.ShouldBe(PostgresErrorCodes.ForeignKeyViolation);
   }
 
   [Fact]
@@ -26,8 +101,8 @@ public sealed class SchemaTests(PostgresFixture postgres) : ApiTestBase(postgres
   {
     await using CalendarDbContext db = Postgres.Database.CreateMigratorContext();
 
-    PostgresException ex = await Should.ThrowAsync<PostgresException>(async () => await db.Database.ExecuteSqlRawAsync(
-        "INSERT INTO tasks (id, title, due_date, due_at) VALUES (gen_random_uuid(), 't', '2026-10-26', now())",
+    PostgresException ex = await Should.ThrowAsync<PostgresException>(async () => await db.Database.ExecuteSqlAsync(
+        $"INSERT INTO tasks (id, owner_id, title, due_date, due_at) VALUES (gen_random_uuid(), {UserA}, 't', '2026-10-26', now())",
         Ct));
 
     ex.SqlState.ShouldBe(PostgresErrorCodes.CheckViolation);
@@ -47,7 +122,8 @@ public sealed class SchemaTests(PostgresFixture postgres) : ApiTestBase(postgres
 
 #pragma warning disable EF1003 // values are fixed literals from the InlineData above, not user input
     PostgresException ex = await Should.ThrowAsync<PostgresException>(async () => await db.Database.ExecuteSqlRawAsync(
-        "INSERT INTO events (id, title, is_all_day, starts_at, ends_at, time_zone_id, start_date, end_date) VALUES " + values,
+        "INSERT INTO events (id, owner_id, title, is_all_day, starts_at, ends_at, time_zone_id, start_date, end_date) VALUES "
+        + values.Replace("(gen_random_uuid(), ", $"(gen_random_uuid(), '{UserA}', ", StringComparison.Ordinal),
         Ct));
 #pragma warning restore EF1003
 
@@ -64,13 +140,17 @@ public sealed class SchemaTests(PostgresFixture postgres) : ApiTestBase(postgres
         "SELECT indexdef AS \"Value\" FROM pg_indexes WHERE tablename = 'events' AND indexname = 'ix_events_span'").SingleAsync(Ct);
     gist.ShouldContain("USING gist (span)");
 
-    await db.Database.ExecuteSqlRawAsync(
-        "INSERT INTO events (id, title, is_all_day, starts_at, ends_at, time_zone_id) "
-        + "VALUES (gen_random_uuid(), 'timed', false, '2026-10-26T10:00Z', '2026-10-26T11:00Z', 'UTC')",
+    await db.Database.ExecuteSqlAsync(
+        $"""
+        INSERT INTO events (id, owner_id, title, is_all_day, starts_at, ends_at, time_zone_id)
+        VALUES (gen_random_uuid(), {UserA}, 'timed', false, '2026-10-26T10:00Z', '2026-10-26T11:00Z', 'UTC')
+        """,
         Ct);
-    await db.Database.ExecuteSqlRawAsync(
-        "INSERT INTO events (id, title, is_all_day, start_date, end_date) "
-        + "VALUES (gen_random_uuid(), 'day', true, '2026-10-26', '2026-10-27')",
+    await db.Database.ExecuteSqlAsync(
+        $"""
+        INSERT INTO events (id, owner_id, title, is_all_day, start_date, end_date)
+        VALUES (gen_random_uuid(), {UserA}, 'day', true, '2026-10-26', '2026-10-27')
+        """,
         Ct);
 
     List<string> spans = await db.Database
@@ -88,13 +168,17 @@ public sealed class SchemaTests(PostgresFixture postgres) : ApiTestBase(postgres
         "SELECT indexdef AS \"Value\" FROM pg_indexes WHERE tablename = 'events' AND indexname = 'ix_events_date_span'").SingleAsync(Ct);
     gist.ShouldContain("USING gist (date_span) WHERE is_all_day");
 
-    await db.Database.ExecuteSqlRawAsync(
-        "INSERT INTO events (id, title, is_all_day, starts_at, ends_at, time_zone_id) "
-        + "VALUES (gen_random_uuid(), 'timed', false, '2026-10-26T10:00Z', '2026-10-26T11:00Z', 'UTC')",
+    await db.Database.ExecuteSqlAsync(
+        $"""
+        INSERT INTO events (id, owner_id, title, is_all_day, starts_at, ends_at, time_zone_id)
+        VALUES (gen_random_uuid(), {UserA}, 'timed', false, '2026-10-26T10:00Z', '2026-10-26T11:00Z', 'UTC')
+        """,
         Ct);
-    await db.Database.ExecuteSqlRawAsync(
-        "INSERT INTO events (id, title, is_all_day, start_date, end_date) "
-        + "VALUES (gen_random_uuid(), 'days', true, '2026-10-26', '2026-10-28')",
+    await db.Database.ExecuteSqlAsync(
+        $"""
+        INSERT INTO events (id, owner_id, title, is_all_day, start_date, end_date)
+        VALUES (gen_random_uuid(), {UserA}, 'days', true, '2026-10-26', '2026-10-28')
+        """,
         Ct);
 
     List<string> spans = await db.Database

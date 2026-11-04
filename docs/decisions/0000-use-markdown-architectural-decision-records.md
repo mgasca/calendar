@@ -51,7 +51,7 @@ Project conventions on top of MADR:
 
 ### Confirmation
 
-New significant decisions arrive in PRs as `docs/decisions/NNNN-title-with-dashes.md`, copied from the template (or drafted with the `adr-draft` agent skill in `.claude/skills/adr-draft/`). The skill's validator, `scripts/check-adr/check-adr.cs` (a .NET file-based app with its own tests, per [ADR-0017](0017-dotnet-file-based-apps-for-repo-tooling.md)), runs as `make adr-check`, in `make lint` and in the CI `Tooling` job. It enforces front matter, section order, driver format, rating-table shape and star values, one pros/cons section per option, driver coverage, linked cross-references and the index. Reviewers still judge whether the ratings are fair. The PR template includes an ADR checklist item.
+New significant decisions arrive in PRs as `docs/decisions/NNNN-title-with-dashes.md`, copied from the template (or drafted with the `adr-draft` agent skill in `.claude/skills/adr-draft/`). The skill's validator, `scripts/check-adr/check-adr.cs` (a .NET file-based app with its own tests, per [ADR-0017](0017-dotnet-file-based-apps-for-repo-tooling.md)), runs as `just tools adr`, in `just lint` and in the CI `Tooling` job. It enforces front matter, section order, driver format, rating-table shape and star values, one pros/cons section per option, driver coverage, linked cross-references and the index. Reviewers still judge whether the ratings are fair. The PR template includes an ADR checklist item.
 
 ## Pros and Cons of the Options
 
@@ -86,3 +86,4 @@ New significant decisions arrive in PRs as `docs/decisions/NNNN-title-with-dashe
 ## More Information
 
 * <https://adr.github.io/madr/>
+* [ADR-0040](0040-derive-the-decision-log-from-the-adr-files.md) removed the index table from `README.md`: the validator no longer checks an index, and the decision log is derived from the files.

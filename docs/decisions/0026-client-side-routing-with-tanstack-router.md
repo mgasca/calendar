@@ -65,7 +65,7 @@ Chosen option: "TanStack Router with code-based route definitions", because it i
 
 ### Consequences
 
-* Good, because a wrong param or a link to a route that doesn't exist fails `make lint` (`tsc`), not at runtime.
+* Good, because a wrong param or a link to a route that doesn't exist fails `just lint` (`tsc`), not at runtime.
 * Good, because invalid URLs are rejected while matching, so views only ever receive valid dates.
 * Good, because there is no generated route file to keep in sync and no Vite plugin, unlike file-based routing.
 * Bad, because code-based routes need the `getParentRoute` and `addChildren` boilerplate, and route-level code splitting (`lazyRouteComponent`) is manual. That is acceptable for a handful of routes.
@@ -75,8 +75,8 @@ Chosen option: "TanStack Router with code-based route definitions", because it i
 
 ### Confirmation
 
-* Routing tests in `frontend/apps/web/src/App.test.tsx` render the app from a memory history and cover `/` as today, `/day/<date>`, an invalid date, an unknown path and the link back to today. They run in `make test` and CI.
-* `tsc` in `make lint` checks every `Link`, `useParams` and `navigate` against the registered route tree.
+* Routing tests in `frontend/apps/web/src/App.test.tsx` render the app from a memory history and cover `/` as today, `/day/<date>`, an invalid date, an unknown path and the link back to today. They run in `just test` and CI.
+* `tsc` in `just lint` checks every `Link`, `useParams` and `navigate` against the registered route tree.
 * Review rule: new routes are added in `router.tsx` with validated params; a PR that adds `@tanstack/router-plugin` or file-based routes needs a superseding ADR.
 * When the API starts serving the SPA, its PR adds the fallback tests listed under *Deep links*.
 

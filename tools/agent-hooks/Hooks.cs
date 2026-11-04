@@ -180,7 +180,7 @@ public static partial class ShellCommand
   private static partial Regex SeparatorRegex();
 }
 
-/// <summary>Guards for Bash commands: protect unstaged work, the shared stash, the public record and the shared database.</summary>
+/// <summary>Guards for Bash commands: protect unstaged work, the public record and the shared database.</summary>
 public static partial class BashGuard
 {
   private const string Deny = "deny";
@@ -188,7 +188,6 @@ public static partial class BashGuard
 
   private static readonly string[] GhPostSubjects = ["issue", "pr"];
   private static readonly string[] GhPostVerbs = ["create", "comment", "edit", "review"];
-  private static readonly string[] SafeStashVerbs = ["list", "show", "branch", "create", "store"];
 
   /// <summary>The first verdict any segment of the command earns, or null when it may run.</summary>
   public static Verdict? Evaluate(string command, string cwd, IRepoProbe probe)
@@ -222,7 +221,6 @@ public static partial class BashGuard
     {
       "restore" => Restore([.. tokens.Skip(2)], segment.Cwd, probe),
       "checkout" => Checkout([.. tokens.Skip(2)], segment.Cwd, probe),
-      "stash" => Stash([.. tokens.Skip(2)]),
       _ => null,
     };
   }
@@ -259,23 +257,6 @@ public static partial class BashGuard
         $"Unstaged changes in {string.Join(", ", paths)} would be discarded. Save the patch (git diff > file) or make a WIP commit "
         + "first, then restore the saved version explicitly (AGENTS.md: preserve the fix when proving a regression test).")
       : null;
-
-  private static Verdict? Stash(List<string> args)
-  {
-    var verb = args.FirstOrDefault(a => !a.StartsWith('-'));
-    var bare = verb is null
-      || (verb == "push" && !args.Any(a => a is "-m" or "--message" || a.StartsWith("--message=", StringComparison.Ordinal)))
-      || (verb is "pop" or "drop" or "apply" && args.SkipWhile(a => a != verb).Skip(1).All(a => a.StartsWith('-')));
-    if (!bare || (verb is not null && SafeStashVerbs.Contains(verb)))
-    {
-      return null;
-    }
-    return new Verdict(
-      Deny,
-      "The stash stack is shared by every worktree of this repo, so a bare stash, pop or drop can take another session's work. "
-      + "Prefer a WIP commit. If you must stash: git stash push -u -m \"<unique-tag>\", note its SHA with "
-      + "git stash list --format='%H %gs', restore with git stash apply <sha>, then drop that entry by tag.");
-  }
 
   private static Verdict? GhPost(ShellCommand.Segment segment, IRepoProbe probe)
   {

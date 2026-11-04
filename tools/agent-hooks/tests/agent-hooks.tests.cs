@@ -96,31 +96,6 @@ public sealed class BashGuardTests
   }
 
   [Theory]
-  [InlineData("git stash")]
-  [InlineData("git stash push")]
-  [InlineData("git stash push -u")]
-  [InlineData("git stash pop")]
-  [InlineData("git stash drop")]
-  [InlineData("git stash apply")]
-  public void Bare_stash_commands_are_denied(string command)
-  {
-    Verdict verdict = BashGuard.Evaluate(command, Root, _probe).ShouldNotBeNull();
-
-    verdict.Decision.ShouldBe("deny");
-    verdict.Reason.ShouldContain("shared by every worktree");
-  }
-
-  [Theory]
-  [InlineData("git stash push -u -m my-tag")]
-  [InlineData("git stash push --message=my-tag")]
-  [InlineData("git stash list --format='%H %gs'")]
-  [InlineData("git stash apply 0123abcd")]
-  [InlineData("git stash drop stash@{2}")]
-  [InlineData("git stash show -p stash@{0}")]
-  public void Tagged_and_referenced_stash_commands_pass(string command) =>
-    BashGuard.Evaluate(command, Root, _probe).ShouldBeNull();
-
-  [Theory]
   [InlineData("gh pr create --title t --body \"see /home/me/repo/x.md\"", "/home/me/repo/x.md")]
   [InlineData("gh issue comment 1 --body 'logs in /tmp/claude/out.txt'", "/tmp/claude/out.txt")]
   [InlineData("gh pr comment 2 --body 'C:\\Users\\me\\repo'", "C:\\Users\\me\\repo")]

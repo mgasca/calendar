@@ -30,10 +30,10 @@ A scratch build that drops the folder's `Directory.Build.props`, `.editorconfig`
 
 ## agent-hooks
 
-`tools/agent-hooks/` is the set of Claude Code hooks wired in `.claude/settings.json` ([ADR-0042](../docs/decisions/0042-layered-agent-guidance-and-hooks.md)): it denies discarding unstaged work, bare stashes, public posts with private details and edits of generated files; asks before the shared database is touched from a linked worktree; and reports over-long C# lines and a stale API contract. Each subcommand reads the hook JSON on stdin, so you can try one by hand:
+`tools/agent-hooks/` is the set of Claude Code hooks wired in `.claude/settings.json` ([ADR-0042](../docs/decisions/0042-layered-agent-guidance-and-hooks.md)): it denies discarding unstaged work, public posts with private details and edits of generated files; asks before the shared database is touched from a linked worktree; and reports over-long C# lines and a stale API contract. Each subcommand reads the hook JSON on stdin, so you can try one by hand:
 
 ```bash
 printf '{"tool_name":"Bash","tool_input":{"command":"git restore AGENTS.md"},"cwd":"%s"}' "$PWD" | dotnet run tools/agent-hooks/agent-hooks.cs -- pre-bash
 ```
 
-Exit 0 with JSON is a decision or a note; exit 2 with stderr is a usage error; any other failure (for example an SDK below 10.0.300) is non-blocking for Claude Code, and the rules in `AGENTS.md` still apply by hand. Personal overrides go in the git-ignored `.claude/settings.local.json`. Revisit the hooks when their latency is felt in sessions (add `if` argument filters), when Claude Code documents native nested `AGENTS.md` loading (drop the `CLAUDE.md` shims), or when a rule in `AGENTS.md` is ignored repeatedly (promote it to a hook).
+Exit 0 with JSON is a decision or a note; exit 2 with stderr is a usage error; any other failure (for example an SDK below 10.0.300) is non-blocking for Claude Code, and the rules in `AGENTS.md` still apply by hand. Each handler carries an `if` filter (`Bash(git *)`, `Edit(**/*.cs)`, …) so unrelated commands and edits start no process. Personal overrides go in the git-ignored `.claude/settings.local.json`. Revisit the hooks when their latency is still felt in sessions, when Claude Code documents native nested `AGENTS.md` loading (drop the `CLAUDE.md` shims), or when a rule in `AGENTS.md` is ignored repeatedly (promote it to a hook).

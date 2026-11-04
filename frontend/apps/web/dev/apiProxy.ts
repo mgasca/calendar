@@ -1,3 +1,4 @@
+import type { IncomingHttpHeaders } from 'node:http';
 import type { ProxyOptions } from 'vite';
 
 /** Where the dev server sends `/api` when `CALENDAR_API_URL` is unset (`just backend dev`). */
@@ -11,15 +12,22 @@ export const SEED_KEY_HEADER = 'X-Dev-Seed-Key';
 
 const LOOPBACK_HOSTS = new Set(['localhost', '127.0.0.1', '[::1]']);
 
+/** `Sec-Fetch-Site` values a browser sends for the page's own origin or a user-typed address. */
+const OWN_FETCH_SITES = new Set(['same-origin', 'none']);
+
 export type Env = Readonly<Record<string, string | undefined>>;
 
 /**
  * The dev server's `/api` proxy. Story 0021 and the 2026-11-04 amendment to ADR-0027 cover it.
  *
  * With `CALENDAR_DEV_SIGN_IN=true`, which only `just frontend dev-signed-in` sets, the proxy adds
- * `Auth__DevSeedKey` to every proxied request. The browser is then signed in as the API's first
- * allow-listed email without Google. The key is added between the dev server and the API, so it
- * never reaches the page. The proxy's value replaces any key the client sends.
+ * `Auth__DevSeedKey` to requests from the dev server's own page. The browser is then signed in as
+ * the API's first allow-listed email without Google. The key is added between the dev server and
+ * the API, so it never reaches the page.
+ *
+ * The proxy always removes any key the client sends, and adds its own only when
+ * `isSameOriginRequest` holds. Vite's default CORS policy lets any localhost origin read `/api`
+ * responses, so a key on every request would sign other local pages in too.
  *
  * Throws when the mode is on and the key is missing or too short, or the target is not a loopback
  * host, so the key never goes to a remote API.
@@ -45,7 +53,36 @@ export function apiProxy(env: Env): ProxyOptions {
       `Dev sign-in sends the seed key only to a loopback API (localhost, 127.0.0.1 or [::1]), but CALENDAR_API_URL is ${target}.`,
     );
   }
-  return { ...options, headers: { [SEED_KEY_HEADER]: key } };
+  return {
+    ...options,
+    configure: (proxy) => {
+      proxy.on('proxyReq', (proxyRequest, request) => {
+        proxyRequest.removeHeader(SEED_KEY_HEADER);
+        if (isSameOriginRequest(request.headers)) proxyRequest.setHeader(SEED_KEY_HEADER, key);
+      });
+    },
+  };
+}
+
+/**
+ * Whether a request comes from the dev server's own page, or from no page at all (curl, or an
+ * address typed into the browser). It's judged by headers that browsers set and pages cannot forge.
+ *
+ * `Sec-Fetch-Site: same-site` is refused, because `localhost:3000` and `localhost:5173` are the
+ * same site. A browser too old to send `Sec-Fetch-Site` still sends `Origin` on cross-origin
+ * requests, and that `Origin` must then name this host.
+ */
+export function isSameOriginRequest(headers: IncomingHttpHeaders): boolean {
+  const site = headers['sec-fetch-site'];
+  if (site !== undefined && !OWN_FETCH_SITES.has(site)) return false;
+  const origin = headers.origin;
+  if (origin === undefined) return true;
+  if (headers.host === undefined) return false;
+  try {
+    return new URL(origin).host === headers.host.toLowerCase();
+  } catch {
+    return false;
+  }
 }
 
 function isLoopback(target: string): boolean {

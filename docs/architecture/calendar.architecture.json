@@ -242,7 +242,7 @@
       "name": "Calendar web app",
       "description": "React 19 + Vite + TypeScript single-page app (frontend/apps/web). TanStack Router with code-based routes for /, /day/$date, /week, /week/$weekStart, /tasks, /triage and /signin; TanStack Query for server state. Reads the browser's IANA time zone and local date and sends them with every agenda request. Served as static files from the API container (same origin, no CORS).",
       "interfaces": [
-        { "unique-id": "web-app-origin", "url": "https://<container-app>.azurecontainerapps.io/", "description": "Same origin as the API; in development Vite proxies /api to http://localhost:5041. Under just frontend dev-signed-in the proxy adds the Development-only X-Dev-Seed-Key to every /api request, only towards a loopback API, so the browser is signed in without Google and never sees the key (ADR-0027 amendment, story 0021)" },
+        { "unique-id": "web-app-origin", "url": "https://<container-app>.azurecontainerapps.io/", "description": "Same origin as the API; in development Vite proxies /api to http://localhost:5041. Under just frontend dev-signed-in the proxy adds the Development-only X-Dev-Seed-Key to /api requests from the app's own origin only (Sec-Fetch-Site and Origin checked), only towards a loopback API, so the browser is signed in without Google and never sees the key (ADR-0027 amendment, story 0021)" },
         { "unique-id": "web-app-routes", "routes": ["/", "/day/$date", "/week", "/week/$weekStart", "/tasks", "/triage", "/signin"] }
       ],
       "controls": {

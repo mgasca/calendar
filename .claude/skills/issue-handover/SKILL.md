@@ -5,7 +5,7 @@ description: Operate an issue-driven handover in this repo: watch an issue and i
 
 # Issue-driven handover
 
-In this mode the GitHub issue and its PRs are where the work is handed back and forth: the user (or another agent) answers there, and you resume from there. Ordinary repository work does not enter this mode by itself. Explicit instructions for the current task take precedence over anything here.
+In this mode the GitHub issue and its PRs are where the work is handed back and forth: `@mgasca` answers there, and you resume from there. Ordinary repository work does not enter this mode by itself.
 
 The root `AGENTS.md` still applies, in particular its rule for public posts: repository-relative paths, public issue and PR links, no private session, task or subagent handles, no absolute machine paths, and edit any disclosure in place.
 

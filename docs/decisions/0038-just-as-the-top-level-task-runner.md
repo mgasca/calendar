@@ -72,6 +72,41 @@ Delivered in separate PRs after this ADR is accepted, tracked in story [0011](..
 
 Every `make <target>` command is rewritten to `just`, in all of these files and in the other ADRs. [ADR-0011](0011-make-as-top-level-task-runner.md) is left as written, because it is the superseded record. Passages that talk about GNU Make as a tool, such as the comparison of the options above, stay.
 
+### Amendment, 2026-11-04: recipes live in modules
+
+The decision above is unchanged: `just` stays the runner, every recipe stays a thin wrapper over native commands, and the ratings of D1 to D4 stand. What changes is the layout. The `justfile` was ported from the Makefile as one flat list (37 recipes in 238 lines, grouped only by name prefix such as `db-*` and `infra-*`). It becomes a root `justfile` plus `just` modules (`mod`). Story [0019](../stories/0019-split-the-justfile-into-modules.md) holds the scope, the recipe table and the acceptance criteria. This section records the conventions that the layout relies on.
+
+**Layout**
+
+* The root keeps the recipes that span stacks or bootstrap the repo: `default`, `doctor`, `setup`, `build`, `test`, `lint`, `format`, `check`, `clean` and `contracts`. They keep their names and call the module recipes.
+* Seven modules hold the rest: `backend`, `frontend`, `docs`, `db`, `image`, `infra` and `tools`.
+* Each module file sits where `just`'s default lookup finds it: beside the code it runs (`backend/mod.just`, `frontend/mod.just`, `frontend/apps/docs/mod.just`, `infra/mod.just`, `tools/mod.just`), or, when it has no directory of its own, beside the root file as `<name>.just` (`db.just` next to `compose.yaml`, `image.just` next to `Dockerfile`).
+* The old flat names are removed with no aliases, as the Makefile was (step 4 of the implementation plan above). Every reference changes in the one PR that renames the recipes.
+
+**Conventions**
+
+* **Settings are per module.** Each module file sets its own shell (`set shell := ["bash", "-euo", "pipefail", "-c"]`), because a module does not inherit it. The root's `set dotenv-load` is enough for `.env` values to reach module recipes, so modules do not repeat it.
+* **Working directory.** A module recipe runs in the directory of its module file. A module whose file is not in the directory it works in sets `set working-directory`. A stack module therefore needs no `cd backend &&` or `--dir frontend`.
+* **Chaining uses `::`.** Several recipes of one module run as `just db::up db::migrate`. `just db up migrate` is an error. The rule in `AGENTS.md` that chained recipes must take no arguments still applies.
+* **A bare module name runs nothing.** Each module marks a `[default]` recipe that only lists the module, so `just db` cannot start or delete anything.
+* **Dependencies point one way.** A root recipe may depend on a module recipe (`check: backend::lint`). A module recipe cannot depend on a root recipe, so a step that two modules share lives in the module that owns it.
+
+**Evidence**
+
+* **Measured on `just` 1.59.0, 2026-11-03 and 2026-11-04, in scratch directories (not the repository):** a module recipe runs in its module file's directory, and `set working-directory := '..'` and `[no-cd]` change that; a module without `set shell` ran under `sh`; `.env` values loaded by the root were visible in module recipes; `just db::up db::migrate` runs both and `just db up migrate` fails with "does not contain recipe `migrate`"; bare `just db` ran the module's first recipe; plain `just --list` shows a module as `db ...` and `--list-submodules` shows its recipes; an alias to a module recipe works; run from `frontend/`, `just` finds the root `justfile` and the module recipe still runs in its own directory.
+* **Measured, same setup:** `just --fmt --check` at the root does not check module files. With a badly formatted module beside a clean root it exited 0, and `just --fmt --check --justfile <module file>` found the difference and exited 1. `--fmt` ran without `--unstable`, so "still marked unstable in 1.59.0" in the Confirmation below is out of date.
+* **Checked in the release notes:** modules were stabilised in 1.31.0 (2024-07-14), the `working-directory` setting arrived in 1.33.0 and the `[default]` attribute in 1.43.0. The pinned 1.59.0 has all three.
+* **Untested:** the repository's own recipes under the new layout, and the CI step below. Both are covered by the acceptance criteria of story 0019.
+
+**Consequences of the amendment**
+
+* Good, because **D3 Discoverability**: a recipe is named by what it works on, and `just --list <module>` shows one family.
+* Good, because **D2 Thin over native tools**: a stack module runs in its own directory, so the `cd` and `--dir` plumbing in the root variables goes away.
+* Bad, because **D3 Discoverability**: plain `just --list` shows a module as a bare name, so the `default` recipe has to list with `--list-submodules`.
+* Bad, because **D4 Expressiveness**: chaining needs the `::` form, and each of the seven module files repeats the `set shell` line.
+* Bad, because the rename reaches up to 59 tracked files and the 6 CI call sites (an upper bound, counted by searching for the real recipe names), and contributors and agents relearn the names.
+* Neutral: [ADR-0017](0017-dotnet-file-based-apps-for-repo-tooling.md)'s choice of language for tool scripts, and the minimum `just` version in `.just-version`, do not change.
+
 ### Consequences
 
 * Good, because **D1 Modern and fit for purpose**: the repo uses a runner built for tasks, and the maintainer learns it.
@@ -87,7 +122,7 @@ Every `make <target>` command is rewritten to `just`, in all of these files and 
 
 * CI runs the same checks through `just` as it ran through `make`, and `just check` passes locally and in CI.
 * `tools/doctor/doctor.sh` fails when `just` is missing or older than the version in `.just-version`.
-* A CI step runs `just --list` and the `justfile` format check (`just --fmt --check`, which is still marked unstable in 1.59.0), so a recipe with a syntax error or a missing comment is caught.
+* A CI step runs `just --list` and the `justfile` format check (`just --fmt --check`, which is still marked unstable in 1.59.0), so a recipe with a syntax error or a missing comment is caught. *Amended 2026-11-04:* no workflow runs this step today (checked in `.github/`). With modules, the step runs `just --list --list-submodules` and `just --fmt --check` on the root `justfile` and on every module file separately with `--justfile`, because the root check does not reach module files.
 
 ## Pros and Cons of the Options
 
@@ -144,4 +179,5 @@ Every `make <target>` command is rewritten to `just`, in all of these files and 
 * Related: [ADR-0011](0011-make-as-top-level-task-runner.md) (superseded by this ADR once accepted), [ADR-0017](0017-dotnet-file-based-apps-for-repo-tooling.md) (the tool-script language; the bootstrap exception in it still applies to `tools/doctor/doctor.sh`), [ADR-0001](0001-monorepo-layout.md) (stack boundary), issue #153 and story [0011](../stories/0011-review-the-top-level-task-runner.md).
 * "Task" in the options is the `go-task` runner. "File-based apps" are the ones defined in [ADR-0017](0017-dotnet-file-based-apps-for-repo-tooling.md).
 * An earlier analysis recommended keeping Make. It was written under the previous drivers and did not test `just`, so it was used as historical input only.
+* **Amendment, 2026-11-04:** the layout moved from one flat `justfile` to a root file plus seven modules, in issue #213 and story [0019](../stories/0019-split-the-justfile-into-modules.md). The decision itself is unchanged, so this ADR was amended, not superseded, as [ADR-0017](0017-dotnet-file-based-apps-for-repo-tooling.md) was for its minimum SDK. The commands quoted under "What was measured" are the ones run in the prototype and are left as they were.
 * Revisit if `just` stops being maintained or its install friction in CI turns out to cost more than the prototype suggested. This trigger is recorded in this ADR only. The implementation PR adds it to the `AGENTS.md` notes.

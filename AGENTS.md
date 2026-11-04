@@ -35,7 +35,6 @@ Guidance for AI coding agents (Claude Code, Codex, Cursor, …) working in this 
 ## Working on several changes at once
 
 - Give each branch its own `git worktree` from fresh `origin/main`; never edit the main checkout. Each worktree needs its own `pnpm install --frozen-lockfile` in `frontend/`.
-- The stash stack is shared by every worktree: never bare `git stash` or `git stash pop` *(hook)*. Prefer a WIP commit, or `git stash push -u -m <tag>` and `git stash apply <sha>`.
 - Worktrees do not isolate running services: `just db-*` from any checkout hits the shared Compose project, volume and port *(hook)*. For concurrent runtime work use the throwaway stack in the `run-calendar` skill (PostgreSQL 55432, API 55041, Vite 55173), record which resources belong to the task, and before any reset, down or kill verify that the container, volume or PID is yours. Keep the ordinary defaults unchanged (ADR-0016).
 - Two branches that each add an EF migration conflict in `CalendarDbContextModelSnapshot.cs`: stack the second on the first (`--base <first-branch>`) and retarget it to `main` after the first merges. Postpone a change that rewrites code several open PRs touch until they merge, and say so on its issue.
 - Breaking contract changes (e.g. a list becoming `{ items, nextCursor }`) go in one PR with the regenerated `openapi.json`, the TS client and every consumer updated; find consumers with a grep for the path across `frontend/`, including MSW handlers in tests.

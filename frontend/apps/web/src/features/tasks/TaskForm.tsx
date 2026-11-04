@@ -3,6 +3,7 @@ import { useMemo, useRef, useState } from 'react';
 
 import { api } from '../../api/client.ts';
 import { ModalDialog } from '../../components/ModalDialog.tsx';
+import { browserTimeZone, formatDateTime } from '../agenda/dayTime.ts';
 import { deadlineInstants } from '../agenda/deadline.ts';
 import { problemMessage } from '../../api/apiError.ts';
 
@@ -126,7 +127,7 @@ export function TaskForm({
                   }}
                 />
               </label>
-              <p>Time zone: {Intl.DateTimeFormat().resolvedOptions().timeZone}</p>
+              <p>Time zone: {browserTimeZone()}</p>
               {candidates.length > 1 && (
                 <label>
                   This time occurs twice. Choose an occurrence
@@ -140,9 +141,7 @@ export function TaskForm({
                     <option value="">Choose…</option>
                     {candidates.map((instant) => (
                       <option key={instant} value={instant}>
-                        {new Date(instant).toLocaleString(undefined, {
-                          timeZoneName: 'shortOffset',
-                        })}
+                        {formatDateTime(instant, { timeZoneName: 'shortOffset' })}
                       </option>
                     ))}
                   </select>

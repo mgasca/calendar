@@ -1,6 +1,6 @@
 # Frontend practices
 
-Practices for the pnpm workspace in `frontend/`: checks, rendering, data fetching and the docs site, which matter only when editing here. The root `AGENTS.md` still applies and nothing here overrides it. Most of this was learned in the performance review (issues #42–#49, story 0018 records #48).
+Practices for the pnpm workspace in `frontend/`: checks, rendering, data fetching and the docs site, which matter only when editing here. The root `AGENTS.md` still applies and nothing here overrides it. Most of this was learned in the performance review (issues #42–#49, story 0018 records #48). Rules marked _(lint)_ are also enforced by ESLint (`eslint.config.js`), whose messages name the helper to use.
 
 ## Running checks
 
@@ -13,7 +13,7 @@ Practices for the pnpm workspace in `frontend/`: checks, rendering, data fetchin
 
 ## Dates and clocks
 
-- Don't build an `Intl.DateTimeFormat` per call or per item, because construction costs far more than formatting. Use the cached `dateTimeFormat(locale, options)` in `features/agenda/dayTime.ts`. Never construct one inside a sort comparator.
+- Don't build an `Intl.DateTimeFormat` per call or per item, because construction costs far more than formatting, and don't call `toLocaleString`, `toLocaleDateString` or `toLocaleTimeString`, which build one each time. Use the cached `dateTimeFormat(locale, options)`, `formatDateTime(instant, options)` or `browserTimeZone()` in `features/agenda/dayTime.ts` _(lint)_. Never construct one inside a sort comparator.
 - `useNow()` re-renders its component every minute. Call it in the smallest component that actually shows minute-sensitive state: the now line, today's event statuses, past-due flags. Never call it at the top of a whole view. Use `useToday(zone)` when only the date matters. Both share one timer, refresh on focus and visibility changes, and roll over at midnight.
 - Memoize layouts, groupings and sorts on their real inputs (data, date, zone, view), and keep the props passed to `memo` children stable.
 
@@ -23,7 +23,7 @@ Anything expensive derived from form state, such as `deadlineInstants` (a 361-st
 
 ## TanStack Query
 
-- Create clients with `createQueryClient()` (`src/queryClient.ts`, `staleTime: 30_000`), in the app and in tests. Don't call `new QueryClient()` directly. Data is fresh for 30 s, so focus and remount don't refetch within that window.
+- Create clients with `createQueryClient()` (`src/queryClient.ts`, `staleTime: 30_000`), in the app and in tests. Don't call `new QueryClient()` directly _(lint)_. Data is fresh for 30 s, so focus and remount don't refetch within that window.
 - The client carries the one retry policy (`shouldRetry`): never on a 4xx, at most twice otherwise. For it to work, a failed query must throw `ApiError` with the HTTP status; build it with `apiError(result, fallback)` from `src/api/apiError.ts` instead of a plain `Error`, and don't set `retry` per query. The test renderer turns retries off, so a test about retrying opts in with `{ retry: true }` and counts requests with an MSW handler.
 - In `useInfiniteQuery`, put `queryFn` before `getNextPageParam`, or the page type infers as `unknown`. With `exactOptionalPropertyTypes`, omit absent query params (`...(cursor && { cursor })`) instead of passing `undefined`.
 

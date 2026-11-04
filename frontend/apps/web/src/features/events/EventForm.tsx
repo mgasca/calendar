@@ -1,5 +1,6 @@
 import { useMemo, useRef, useState } from 'react';
 import { ModalDialog } from '../../components/ModalDialog.tsx';
+import { formatDateTime } from '../agenda/dayTime.ts';
 import { deadlineInstants } from '../agenda/deadline.ts';
 import { defaults, moveStart, validate, type EventValues, type FieldErrors } from './eventForm.ts';
 import { CreateEventError, useCreateEvent } from './useCreateEvent.ts';
@@ -117,9 +118,7 @@ export function EventForm({
                     <option value="">Choose…</option>
                     {candidates[field].map((value) => (
                       <option key={value} value={value}>
-                        {new Date(value).toLocaleString(undefined, {
-                          timeZoneName: 'shortOffset',
-                        })}
+                        {formatDateTime(value, { timeZoneName: 'shortOffset' })}
                       </option>
                     ))}
                   </select>

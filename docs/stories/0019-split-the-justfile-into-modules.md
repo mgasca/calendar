@@ -4,6 +4,7 @@ date: 2026-11-03
 issue: https://github.com/mgasca/calendar/issues/213
 pr:
   - https://github.com/mgasca/calendar/pull/214
+  - https://github.com/mgasca/calendar/pull/215
 adrs: ["0001", "0015", "0016", "0017", "0038", "0039"]
 ---
 
@@ -46,8 +47,8 @@ Decided with the maintainer on 2026-11-03:
   | --- | --- | --- |
   | root | `justfile` | `default`, `doctor`, `setup`, `build`, `test`, `lint`, `format`, `check`, `clean`, `contracts` |
   | `backend` | `backend/mod.just` | `restore`, `build`, `test`, `lint`, `format`, `dev`, `contract` |
-  | `frontend` | `frontend/mod.just` | `install`, `build`, `test`, `lint`, `typecheck`, `format`, `dev`, `generate` |
-  | `docs` | `frontend/apps/docs/mod.just` | `dev`, `build`, `preview`, `bench`, `architecture` |
+  | `frontend` | `frontend/mod.just` | `install`, `build`, `test`, `test-web`, `lint`, `typecheck`, `format`, `dev`, `generate` |
+  | `docs` | `frontend/apps/docs/mod.just` | `dev`, `build`, `preview`, `bench`, `test`, `architecture` |
   | `db` | `db.just` | `up`, `down`, `reset`, `migrate`, `seed`, `psql` |
   | `image` | `image.just` | `build`, `run`, `smoke` |
   | `infra` | `infra/mod.just` | `what-if`, `deploy`, `secret-init`, `init-roles`, `migrate`, `db-stop`, `db-start`, `integration` |
@@ -58,7 +59,7 @@ Decided with the maintainer on 2026-11-03:
 * **Hard cut.** The old recipe names stop working, with no aliases, as when Make was replaced ([0011](0011-review-the-top-level-task-runner.md)). Every reference changes in the same PR as the recipes.
 * **Dev recipes live in the modules.** `just backend dev`, `just frontend dev` and `just docs dev` replace `dev-api`, `dev-web` and `dev-docs`. There are no root shortcuts.
 * **`adr-check` becomes `just tools adr`**, beside `tools test` and `tools versions`, because it is a .NET file-based repo tool under [ADR-0017](../decisions/0017-dotnet-file-based-apps-for-repo-tooling.md).
-* **Pass-through arguments on `test`.** `just backend test` forwards its arguments to `dotnet test`, so a single test is `just backend test --project tests/Calendar.Domain.Tests --filter-method "*X*"`. The root `just test` takes no arguments. The frontend counterpart is an open question (see the PR for this card).
+* **Pass-through arguments on `test`.** `just backend test` forwards its arguments to `dotnet test`, so a single test is `just backend test --project tests/Calendar.Domain.Tests --filter-method "*X*"`. The root `just test` takes no arguments. On the frontend, `just frontend test` runs the whole workspace and takes no arguments, `just frontend test-web *args` runs a pattern in `@calendar/web`, and `just docs test *args` does the same for the docs app (decided with the maintainer on the PR for this card), so no argument changes what a recipe means.
 * **Behaviour parity.** A recipe does what it did, with the same commands in the same order. The new `restore`, `install` and `typecheck` recipes expose steps that `setup` and `lint` already ran.
 * **Each module is self-contained.** It sets its own shell (`bash -euo pipefail`, as the root does) and, where its file does not sit in the directory it works in, its working directory.
 * **ADR-0038 is amended, not superseded.** The tool choice and its drivers do not change, only the layout. The amendment records the module facts above, the chaining rule, and the CI step that lists the recipes and format-checks each file. The maintainer approves it in its own PR, as in [0011](0011-review-the-top-level-task-runner.md).
@@ -79,7 +80,7 @@ Decided with the maintainer on 2026-11-03:
 2. **Given** I run `just <module>` for any module with no recipe name, **when** the command ends, **then** it has listed that module's recipes and has run none of them. *(The mechanism is to be confirmed in the implementation.)*
 3. **Given** I run `just setup`, `build`, `test`, `lint`, `format`, `clean`, `contracts` or `check`, **when** the command ends, **then** it ran the same native commands, in the same order, as the `justfile` on `main` at `ca8ce46e`. Compare with `just --dry-run` on both revisions.
 4. **Given** I run any module recipe from the repository root or from a subdirectory such as `frontend/`, **when** it starts, **then** it runs in the directory its module works in (`backend/`, `frontend/` or the repo root) and sees the values in `.env`.
-5. **Given** I run `just backend test --project tests/Calendar.Domain.Tests --filter-method "*X*"`, **when** the run ends, **then** only matching tests ran. The same recipe with no arguments runs the whole backend suite, and the root `just test` still takes no arguments.
+5. **Given** I run `just backend test --project tests/Calendar.Domain.Tests --filter-method "*X*"`, **when** the run ends, **then** only matching tests ran. The same recipe with no arguments runs the whole backend suite, and the root `just test` still takes no arguments. The frontend equivalents are `just frontend test-web <pattern>` for `@calendar/web` and `just docs test <pattern>` for the docs app, and `just frontend test` runs the whole workspace.
 6. **Given** I chain two recipes of one module, **when** I write `just db::up db::migrate`, **then** both run in that order. The README, `AGENTS.md` and the runbooks show this form and explain why `just db up migrate` is not valid.
 7. **Given** a recipe name from before this story, such as `db-up` or `build-docs`, **when** I run it, **then** `just` stops with its "does not contain recipe" error, and no file in the repository names a removed recipe, except the recorded measurements in ADR-0038 and story [0011](0011-review-the-top-level-task-runner.md), which quote the commands that were run.
 8. **Given** the CI workflows, **when** they run on the implementation PR, **then** each of the 6 call sites uses a new name, the Tooling job still runs the same four checks, and a new step runs `just --list --list-submodules` and `just --fmt --check` on the root `justfile` and on each module file separately with `--justfile`.
@@ -153,7 +154,7 @@ No changes. The contract does not change, and `just contracts` keeps its name.
 
 * **Measured, scratch directory:** the module behaviours listed under Background. Nothing has been run in the repository yet.
 * **To verify during delivery:** how a module's `[default]` recipe can list its module (criterion 2); that `dotnet format whitespace --folder tools` and the ESLint and Prettier checks ignore the new `.just` files; and that the per-file format check passes on every module file.
-* **Possible follow-up:** nested modules (`just infra db stop`) and a `just docs test` recipe, if wanted after the first release of the layout.
+* **Possible follow-up:** nested modules (`just infra db stop`), if wanted after the first release of the layout.
 
 ## User guide
 
@@ -164,7 +165,7 @@ No changes. The contract does not change, and `just contracts` keeps its name.
 1. Run `just` with no arguments to list every recipe, grouped by module.
 2. The everyday commands keep their names: `just setup`, `just test`, `just lint`, `just format` and `just check`.
 3. Everything else is `just <module> <recipe>`: for example `just db up`, `just backend dev`, `just frontend dev`, `just docs build` and `just infra what-if staging full --allow-ip <ipv4>`. `just --list <module>` shows one module's recipes.
-4. Arguments follow the recipe name, for example `just db seed --date 2026-01-01` or `just backend test --filter-method "*X*"`.
+4. Arguments follow the recipe name, for example `just db seed --date 2026-01-01` or `just backend test --filter-method "*X*"`. To run one frontend test, use `just frontend test-web <pattern>`; for the docs app, `just docs test <pattern>`.
 5. To run several recipes of one module in one command, write each with `::`: `just db::up db::migrate`. Run recipes that take arguments as separate commands.
 
 The old flat names, such as `just db-up`, no longer exist.

@@ -32,7 +32,7 @@ public sealed class HookRunnerTests
   public void Pre_bash_ask_and_pass()
   {
     _probe.LinkedWorktree = true;
-    HookResult ask = HookRunner.Run("pre-bash", Json("Bash", "command", "just db-reset"), _probe, "10.0.0");
+    HookResult ask = HookRunner.Run("pre-bash", Json("Bash", "command", "just db reset"), _probe, "10.0.0");
     (ask.Stdout ?? string.Empty).ShouldContain("\"permissionDecision\":\"ask\"");
 
     HookResult pass = HookRunner.Run("pre-bash", Json("Bash", "command", "just test"), _probe, "10.0.0");

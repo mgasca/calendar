@@ -21,5 +21,5 @@
 
 // Tests for the Claude Code hooks. Run: dotnet run tools/agent-hooks/tests/agent-hooks.tests.cs
 // One test class per file, named after the subject it covers (BashGuardTests.cs tests ../BashGuard.cs); this file is
-// the single test app that includes them, so just tooling compiles once. Each hook decision branch gets sample stdin
+// the single test app that includes them, so just tools test compiles once. Each hook decision branch gets sample stdin
 // JSON and a fake repository probe (FakeProbe.cs); the exit code and JSON are asserted.

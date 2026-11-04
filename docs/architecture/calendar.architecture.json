@@ -131,7 +131,7 @@
               "just tools test (tests and analyzers of every .NET file-based tool, shellcheck for doctor.sh)",
               "just tools versions (tool package pins match backend)",
               "just tools adr (MADR front matter, section order, rating tables, driver coverage, links, index)",
-              "just --fmt --check",
+              "just --list --list-submodules and just --fmt --check on the justfile and each module file (*.just)",
               "Container image build + smoke test against PostgreSQL in Docker",
               "Azure role SQL matches the local init script"
             ],

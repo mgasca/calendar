@@ -21,7 +21,7 @@ public static partial class BashGuard
       {
         "git" => Git(segment, probe),
         "gh" => GhPost(segment, probe),
-        "just" => SharedDatabase(segment, probe, segment.Tokens.Skip(1).Any(t => DbRecipeRegex().IsMatch(t))),
+        "just" => SharedDatabase(segment, probe, DbRecipeRegex().IsMatch(string.Join(' ', segment.Tokens.Skip(1)))),
         "docker" => SharedDatabase(segment, probe, segment.Tokens.Count > 1 && segment.Tokens[1] == "compose"),
         _ => null,
       };
@@ -138,7 +138,8 @@ public static partial class BashGuard
   private static bool HasShortFlag(string arg, char flag) =>
     arg.Length > 1 && arg[0] == '-' && arg[1] != '-' && arg.Contains(flag, StringComparison.Ordinal);
 
-  [GeneratedRegex(@"^db-(up|down|reset|migrate|psql)$")]
+  // A db module recipe on the shared database, written `db up` or `db::up` (story 0019). `db seed` goes through the API.
+  [GeneratedRegex(@"(?:^| )db(?: |::)(?:up|down|reset|migrate|psql)(?: |$)")]
   private static partial Regex DbRecipeRegex();
 
   [GeneratedRegex(

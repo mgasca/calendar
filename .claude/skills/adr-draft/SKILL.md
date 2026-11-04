@@ -41,7 +41,7 @@ The repo holds the sources of truth. Read them at the start of every run. They w
 - Run `grep -ril <topic> docs/decisions` to find related ADRs, and read them. A new ADR must not silently contradict an accepted ADR. If it changes an earlier decision, it **supersedes** that decision (see "After review").
 - Read the code and configuration that the decision touches, so the context and implementation notes are accurate.
 - Get the next number with one of these commands:
-  - `just adr-check --next-number`
+  - `just tools adr --next-number`
   - `dotnet run .claude/skills/adr-draft/scripts/check-adr/check-adr.cs -- --next-number`
 
   Success: the command prints the next free number, for example `0042`. If it fails with `Unrecognized directive 'include'`, `dotnet --version` is below 10.0.300. The first run compiles the script and takes about 30 s.
@@ -216,5 +216,5 @@ tests/fixtures/valid/                                 # minimal valid ADR set th
 ```
 
 - **Requirement:** .NET SDK 10.0.300 or later, the first band with `#:include` ([Microsoft Learn](https://learn.microsoft.com/dotnet/core/sdk/file-based-apps)). Older .NET 10 SDKs fail with `Unrecognized directive 'include'` before validating anything. A host repo whose `global.json` pins an older SDK can't run the validator. The first run on a machine compiles for about 30 s. After that, runs take under a second.
-- **Changing a rule:** edit `AdrValidator.cs`, add or adjust an `[InlineData]` case in the tests, then run `just tooling` (tests and whitespace check) and `just adr-check`. Success: both commands finish without errors.
-- **Package versions** in `Directory.Build.props` and the `#:package` directives are pinned exactly. Dependabot (the tool that opens dependency-update PRs) cannot see them (verified, ADR-0017). In this repo, `just tool-versions` fails when they differ from `backend/Directory.Packages.props`, and `just tool-versions --fix` updates them. In other repos, change them by hand.
+- **Changing a rule:** edit `AdrValidator.cs`, add or adjust an `[InlineData]` case in the tests, then run `just tools test` (tests and whitespace check) and `just tools adr`. Success: both commands finish without errors.
+- **Package versions** in `Directory.Build.props` and the `#:package` directives are pinned exactly. Dependabot (the tool that opens dependency-update PRs) cannot see them (verified, ADR-0017). In this repo, `just tools versions` fails when they differ from `backend/Directory.Packages.props`, and `just tools versions --fix` updates them. In other repos, change them by hand.

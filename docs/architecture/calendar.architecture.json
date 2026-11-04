@@ -128,10 +128,10 @@
               "Docs site build verified at the root path and at a project subpath"
             ],
             "repository-checks": [
-              "just tooling (tests and analyzers of every .NET file-based tool, shellcheck for doctor.sh)",
-              "just tool-versions (tool package pins match backend)",
-              "just adr-check (MADR front matter, section order, rating tables, driver coverage, links, index)",
-              "just --fmt --check",
+              "just tools test (tests and analyzers of every .NET file-based tool, shellcheck for doctor.sh)",
+              "just tools versions (tool package pins match backend)",
+              "just tools adr (MADR front matter, section order, rating tables, driver coverage, links, index)",
+              "just --list --list-submodules and just --fmt --check on the justfile and each module file (*.just)",
               "Container image build + smoke test against PostgreSQL in Docker",
               "Azure role SQL matches the local init script"
             ],
@@ -196,7 +196,7 @@
             "isolation-unit": "Azure resource group per environment with its own user-assigned identity, Container Apps environment, PostgreSQL Flexible Server, app and ops Key Vaults, Container Registry, Log Analytics workspace and Google OAuth client",
             "parameter-files": ["infra/parameters/staging.bicepparam", "infra/parameters/production.bicepparam"],
             "shared-resources": ["None at the Azure level; the GitHub repository and its workflows are shared"],
-            "promotion": "The same SHA-tagged image is deployed to staging first; production deployment requires reviewer approval of the GitHub 'production' environment (ADR-0034). Deployment is currently run with `just infra-deploy <env>` (tools/infra, Bicep); migrations with the 'Database migration' workflow.",
+            "promotion": "The same SHA-tagged image is deployed to staging first; production deployment requires reviewer approval of the GitHub 'production' environment (ADR-0034). Deployment is currently run with `just infra deploy <env>` (tools/infra, Bicep); migrations with the 'Database migration' workflow.",
             "adrs": ["https://mgasca.github.io/calendar/adr/0034/", "https://mgasca.github.io/calendar/adr/0035/"]
           }
         }
@@ -505,7 +505,7 @@
         "tests": "xUnit v3 on Microsoft.Testing.Platform; API tests use WebApplicationFactory + FakeTimeProvider on Testcontainers PostgreSQL",
         "resources": "0.25 vCPU / 0.5 GiB, min 0 / max 1 replica (Consumption)",
         "dev-url": "http://localhost:5041",
-        "development-only": "X-Dev-Seed-Key header scheme (Auth:DevSeedKey ≥ 32 chars) lets just db-seed authenticate"
+        "development-only": "X-Dev-Seed-Key header scheme (Auth:DevSeedKey ≥ 32 chars) lets just db seed authenticate"
       }
     },
     {
@@ -574,16 +574,16 @@
         "adrs": ["ADR-0014", "ADR-0015", "ADR-0016", "ADR-0031", "ADR-0035", "ADR-0037", "ADR-0041"],
         "schema-management": "EF Core code-first migrations in backend/src/Calendar.Infrastructure/Migrations, snake_case naming; applied only by the migrator, never by the app",
         "local": "docker compose (compose.yaml), roles created by docker/postgres/init/01-roles.sh, credentials in untracked .env",
-        "azure": "infra/modules/database.bicep; roles created by `just infra-init-roles` with the same SQL (checked by CI)"
+        "azure": "infra/modules/database.bicep; roles created by `just infra init-roles` with the same SQL (checked by CI)"
       }
     },
     {
       "unique-id": "db-migrator",
       "node-type": "service",
       "name": "Database migrator",
-      "description": "The only path that changes the schema: EF Core migrations applied as calendar_migrator. Locally `just db-migrate` (dotnet ef database update); in Azure `just infra-migrate <env>` builds an idempotent migration bundle and runs it, from the manually dispatched 'Database migration' GitHub Actions workflow. A failed bundle leaves the existing revision serving.",
+      "description": "The only path that changes the schema: EF Core migrations applied as calendar_migrator. Locally `just db migrate` (dotnet ef database update); in Azure `just infra migrate <env>` builds an idempotent migration bundle and runs it, from the manually dispatched 'Database migration' GitHub Actions workflow. A failed bundle leaves the existing revision serving.",
       "interfaces": [
-        { "unique-id": "migrator-command", "commands": ["just db-migrate", "just infra-migrate <env>", ".github/workflows/migrate.yml (workflow_dispatch, environment input)"] }
+        { "unique-id": "migrator-command", "commands": ["just db migrate", "just infra migrate <env>", ".github/workflows/migrate.yml (workflow_dispatch, environment input)"] }
       ],
       "metadata": { "adrs": ["ADR-0015", "ADR-0031", "ADR-0034"], "source": "tools/infra/Database.cs, backend/src/Calendar.Infrastructure/Migrations" }
     },
@@ -591,9 +591,9 @@
       "unique-id": "infra-tool",
       "node-type": "service",
       "name": "Infrastructure tool",
-      "description": ".NET 10 file-based app (tools/infra) driven by just: `infra-what-if` and `infra-deploy <env> [foundation|full]` run the Bicep deployment with the Azure CLI, `infra-secret-init` stores the PostgreSQL admin password in the ops vault, `infra-init-roles` creates the database roles, `infra-db-stop/start` manage the staging server. Pinned Azure CLI and Bicep versions are verified by just doctor.",
+      "description": ".NET 10 file-based app (tools/infra) driven by the just infra module: `just infra what-if` and `just infra deploy <env> [foundation|full]` run the Bicep deployment with the Azure CLI, `just infra secret-init` stores the PostgreSQL admin password in the ops vault, `just infra init-roles` creates the database roles, `just infra db-stop` and `db-start` manage the staging server. Pinned Azure CLI and Bicep versions are verified by just doctor.",
       "interfaces": [
-        { "unique-id": "infra-commands", "commands": ["just infra-what-if <env>", "just infra-deploy <env>", "just infra-secret-init <env>", "just infra-init-roles <env>", "just infra-db-stop", "just infra-db-start"] }
+        { "unique-id": "infra-commands", "commands": ["just infra what-if <env>", "just infra deploy <env>", "just infra secret-init <env>", "just infra init-roles <env>", "just infra db-stop", "just infra db-start"] }
       ],
       "metadata": { "adrs": ["ADR-0017", "ADR-0033", "ADR-0034"], "source": "tools/infra, infra/main.bicep, infra/modules/*.bicep, infra/parameters/*.bicepparam" }
     },
@@ -705,14 +705,14 @@
       "unique-id": "decision-log",
       "node-type": "data-asset",
       "name": "Decision log, story cards, runbooks and benchmarks",
-      "description": "docs/decisions (MADR 4.0 ADRs with decision drivers, star-rating tables and driver-tagged pros/cons, indexed in README.md and validated by just adr-check) and docs/stories (story cards: the long-lived source of truth for each story). Both are the input of the documentation site, together with the runbooks in docs/runbooks (indexed in order in README.md) and the benchmark records in docs/benchmarks.",
+      "description": "docs/decisions (MADR 4.0 ADRs with decision drivers, star-rating tables and driver-tagged pros/cons, indexed in README.md and validated by just tools adr) and docs/stories (story cards: the long-lived source of truth for each story). Both are the input of the documentation site, together with the runbooks in docs/runbooks (indexed in order in README.md) and the benchmark records in docs/benchmarks.",
       "interfaces": [
         { "unique-id": "adr-files", "path": "docs/decisions/NNNN-*.md" },
         { "unique-id": "story-files", "path": "docs/stories/NNNN-*.md" },
         { "unique-id": "runbook-files", "path": "docs/runbooks/*.md" },
         { "unique-id": "benchmark-files", "path": "docs/benchmarks/NNNN-*.md" }
       ],
-      "metadata": { "adrs": ["ADR-0000", "ADR-0028"], "validation": "just adr-check; frontend/apps/docs tests fail on broken links, anchors, unknown or duplicate ADRs, unlisted stories, runbooks or benchmarks, titles that differ from their index or a missing benchmark harness" }
+      "metadata": { "adrs": ["ADR-0000", "ADR-0028"], "validation": "just tools adr; frontend/apps/docs tests fail on broken links, anchors, unknown or duplicate ADRs, unlisted stories, runbooks or benchmarks, titles that differ from their index or a missing benchmark harness" }
     },
     {
       "unique-id": "docs-site",
@@ -723,7 +723,7 @@
         { "unique-id": "docs-site-url", "url": "https://mgasca.github.io/calendar/" },
         { "unique-id": "docs-preview-url", "url": "https://mgasca.github.io/calendar/pr-preview/pr-<number>/" }
       ],
-      "metadata": { "adrs": ["ADR-0022", "ADR-0023", "ADR-0025", "ADR-0028"], "source": "frontend/apps/docs", "build": "just build-docs (DOCS_SITE_URL sets site and base)" }
+      "metadata": { "adrs": ["ADR-0022", "ADR-0023", "ADR-0025", "ADR-0028"], "source": "frontend/apps/docs", "build": "just docs build (DOCS_SITE_URL sets site and base)" }
     },
     {
       "unique-id": "github-pages",
@@ -882,7 +882,7 @@
                 "privileges": ["CONNECT on database calendar", "USAGE on schema public", "SELECT, INSERT, UPDATE, DELETE on tables (default privileges from calendar_migrator)", "USAGE, SELECT on sequences"],
                 "ddl-allowed": false,
                 "schema-owner": "calendar_migrator",
-                "migrations-applied-by": "db-migrator (just db-migrate locally, just infra-migrate / Database migration workflow in Azure); never at application startup",
+                "migrations-applied-by": "db-migrator (just db migrate locally, just infra migrate / Database migration workflow in Azure); never at application startup",
                 "credential-source": "ConnectionStrings__Calendar from the app Key Vault (Azure) or dotnet user-secrets / env var (local); never in tracked appsettings",
                 "adrs": ["https://mgasca.github.io/calendar/adr/0014/", "https://mgasca.github.io/calendar/adr/0015/", "https://mgasca.github.io/calendar/adr/0016/", "https://mgasca.github.io/calendar/adr/0031/"]
               }
@@ -1266,7 +1266,7 @@
       "requirement-url": "https://mgasca.github.io/calendar/adr/0034/",
       "transitions": [
         { "relationship-unique-id": "operator-operates-platform", "sequence-number": 1, "description": "The operator dispatches 'Database migration' with the environment input (concurrency group migrate-<env>, GitHub environment <env> restricted to main)" },
-        { "relationship-unique-id": "ci-runs-migrator", "sequence-number": 2, "description": "The job verifies the PostgreSQL root certificates, installs the pinned Azure CLI, logs in with the federated identity (no stored secret) and runs just infra-migrate <env>" },
+        { "relationship-unique-id": "ci-runs-migrator", "sequence-number": 2, "description": "The job verifies the PostgreSQL root certificates, installs the pinned Azure CLI, logs in with the federated identity (no stored secret) and runs just infra migrate <env>" },
         { "relationship-unique-id": "migrator-reads-ops-vault", "sequence-number": 3, "description": "The tool resolves the server host and reads calendar-migrator-password from the ops vault" },
         { "relationship-unique-id": "migrator-migrates-db", "sequence-number": 4, "description": "dotnet ef migrations bundle builds an idempotent bundle, which runs against the environment's database as calendar_migrator over TLS; default privileges grant DML on any new table to calendar_app" },
         { "relationship-unique-id": "ci-runs-migrator", "sequence-number": 5, "description": "The outcome is written to the job summary; a failed bundle stops promotion and the existing revision keeps serving", "direction": "destination-to-source" }
@@ -1277,7 +1277,7 @@
           "requirements": [
             {
               "requirement-url": "https://raw.githubusercontent.com/mgasca/calendar/main/docs/architecture/controls/least-privilege-data-access.requirement.json",
-              "config": { "role": "calendar_migrator", "privileges": ["Owner of the database and schema"], "ddl-allowed": true, "migrations-applied-by": "This workflow (Azure) or just db-migrate (local); never the app", "adrs": ["https://mgasca.github.io/calendar/adr/0015/", "https://mgasca.github.io/calendar/adr/0034/"] }
+              "config": { "role": "calendar_migrator", "privileges": ["Owner of the database and schema"], "ddl-allowed": true, "migrations-applied-by": "This workflow (Azure) or just db migrate (local); never the app", "adrs": ["https://mgasca.github.io/calendar/adr/0015/", "https://mgasca.github.io/calendar/adr/0034/"] }
             }
           ]
         }
@@ -1290,7 +1290,7 @@
       "description": "Merging to main (or opening a PR from this repository) builds the documentation site from the ADRs, story cards, architecture model, runbooks and benchmark records in CI and publishes it, or a PR preview, to GitHub Pages through a publisher that never runs untrusted code (ADR-0023, ADR-0025, ADR-0028).",
       "requirement-url": "https://mgasca.github.io/calendar/adr/0023/",
       "transitions": [
-        { "relationship-unique-id": "operator-operates-platform", "sequence-number": 1, "description": "A PR adds or changes an ADR, a story card, the architecture model, a runbook or a benchmark record (just adr-check and the docs tests pass locally) and is merged to main" },
+        { "relationship-unique-id": "operator-operates-platform", "sequence-number": 1, "description": "A PR adds or changes an ADR, a story card, the architecture model, a runbook or a benchmark record (just tools adr and the docs tests pass locally) and is merged to main" },
         { "relationship-unique-id": "docs-site-built-from-decision-log", "sequence-number": 2, "description": "The CI Frontend job builds the Astro Starlight site from docs/decisions, docs/stories, docs/architecture, docs/runbooks and docs/benchmarks, verifies it at the root path and at a project subpath, and uploads the adr-site artifact" },
         { "relationship-unique-id": "ci-publishes-docs", "sequence-number": 3, "description": "After CI succeeds, the Publish ADR site workflow validates the source run, revision and PR state, downloads the exact artifact, assembles the retained production snapshot plus open-PR previews, and deploys with the github-pages environment" },
         { "relationship-unique-id": "docs-site-on-github-pages", "sequence-number": 4, "description": "The site is live at https://mgasca.github.io/calendar/ with each ADR at adr/NNNN/, each story at stories/NNNN/, each runbook at runbooks/<name>/ and each benchmark record at benchmarks/NNNN/; a PR gets an 'ADR preview' check and a sticky comment linking to pr-preview/pr-<number>/" }

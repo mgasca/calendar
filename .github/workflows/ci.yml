@@ -138,14 +138,19 @@ jobs:
       - uses: extractions/setup-just@53165ef7e734c5c07cb06b3c8e7b647c5aa16db3 # v4.0.0
         with:
           just-version: ${{ steps.just-version.outputs.version }}
+      # `just --fmt --check` at the root does not reach module files, so each file is checked on its own (ADR-0038).
+      - name: justfile and its modules parse and are formatted
+        run: |
+          just --list --list-submodules > /dev/null
+          git ls-files -z justfile '*.just' | xargs -0 -n1 just --fmt --check --justfile
       - name: Test and lint tooling
-        run: just tooling
+        run: just tools test
       - name: Azure role SQL matches the local init script (PostgreSQL in Docker)
-        run: just infra-integration
+        run: just infra integration
       - name: Tooling package pins match backend
-        run: just tool-versions
+        run: just tools versions
       - name: ADRs follow conventions
-        run: just adr-check
+        run: just tools adr
 
   image:
     name: Container image
@@ -192,7 +197,7 @@ jobs:
             if curl -fsS http://localhost:8080/api/health >/dev/null; then break; fi
             sleep 1
           done
-          just smoke-image
+          just image smoke
       - name: Container logs
         if: ${{ failure() }}
         run: docker logs calendar-smoke

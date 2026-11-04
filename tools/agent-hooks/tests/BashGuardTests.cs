@@ -92,9 +92,10 @@ public sealed class BashGuardTests
   }
 
   [Theory]
-  [InlineData("just db-migrate")]
-  [InlineData("just db-up db-migrate")]
-  [InlineData("just db-reset")]
+  [InlineData("just db migrate")]
+  [InlineData("just db::up db::migrate")]
+  [InlineData("just db reset")]
+  [InlineData("just db::psql")]
   [InlineData("docker compose down -v")]
   public void Shared_database_from_a_linked_worktree_asks(string command)
   {
@@ -107,9 +108,11 @@ public sealed class BashGuardTests
   }
 
   [Theory]
-  [InlineData("just db-migrate", true)]
-  [InlineData("just db-migrate", false)]
-  [InlineData("just db-seed --api-url http://localhost:55041", true)]
+  [InlineData("just db migrate", true)]
+  [InlineData("just db migrate", false)]
+  [InlineData("just db seed --api-url http://localhost:55041", true)]
+  [InlineData("just db", true)]
+  [InlineData("just docs build", true)]
   [InlineData("docker run -d --rm --name calendar-agent-db postgres", true)]
   [InlineData("just test", true)]
   public void Shared_database_passes_from_the_main_checkout_and_isolated_commands_pass_anywhere(string command, bool linked)
@@ -118,7 +121,7 @@ public sealed class BashGuardTests
 
     Verdict? verdict = BashGuard.Evaluate(command, Root, _probe);
 
-    if (command == "just db-migrate" && linked)
+    if (command == "just db migrate" && linked)
     {
       verdict.ShouldNotBeNull();
     }

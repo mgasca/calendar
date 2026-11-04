@@ -47,7 +47,7 @@ Chosen option: "StyleCop.Analyzers limited to SA1501, SA1116 and SA1117, plus So
 
 **Packages**
 
-* `StyleCop.Analyzers` `1.3.151-beta`, referenced from `backend/Directory.Build.props` (version in `Directory.Packages.props`) and pinned in `tools/Directory.Build.props` and `.claude/skills/adr-draft/Directory.Build.props`. `just tool-versions` keeps the pins in step.
+* `StyleCop.Analyzers` `1.3.151-beta`, referenced from `backend/Directory.Build.props` (version in `Directory.Packages.props`) and pinned in `tools/Directory.Build.props` and `.claude/skills/adr-draft/Directory.Build.props`. `just tools versions` keeps the pins in step.
 * SonarAnalyzer.CSharp is already referenced.
 
 **Rules** (in each of the three `.editorconfig` copies)
@@ -100,7 +100,7 @@ These rules came out of the same review and are configured in the same `.editorc
 ### Confirmation
 
 * The analyzers run in every `dotnet build`, with warnings as errors, in `just lint` and in CI.
-* The tooling apps run the same rules when `just tooling` builds them.
+* The tooling apps run the same rules when `just tools test` builds them.
 * `dotnet format --verify-no-changes` fails when a StyleCop code fix hasn't been applied.
 
 ## Pros and Cons of the Options

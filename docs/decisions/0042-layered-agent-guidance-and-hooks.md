@@ -29,7 +29,7 @@ decision-makers: mgasca, Claude (AI assistant)
 
 ## Decision Outcome
 
-Chosen option: "Layered guidance (root, nested `AGENTS.md` with `CLAUDE.md` shims, skills) and hooks as a .NET file-based tool", because it cuts the always-loaded text to what every session needs (D1), stops a destructive action before it happens (D2), keeps every rule readable by any agent as nested `AGENTS.md` files and one-line prose statements (D3), and reuses the [ADR-0017](0017-dotnet-file-based-apps-for-repo-tooling.md) tooling pattern with tests run by `just tooling` (D4), at a measured cost of about a quarter of a second per hook call (D5). It accepts that a hooked rule exists twice, as code and as one line of prose (D6).
+Chosen option: "Layered guidance (root, nested `AGENTS.md` with `CLAUDE.md` shims, skills) and hooks as a .NET file-based tool", because it cuts the always-loaded text to what every session needs (D1), stops a destructive action before it happens (D2), keeps every rule readable by any agent as nested `AGENTS.md` files and one-line prose statements (D3), and reuses the [ADR-0017](0017-dotnet-file-based-apps-for-repo-tooling.md) tooling pattern with tests run by `just tools test` (D4), at a measured cost of about a quarter of a second per hook call (D5). It accepts that a hooked rule exists twice, as code and as one line of prose (D6).
 
 | Driver | **Layered guidance + .NET hooks (chosen)** | Prose only (status quo) | Layered + inline shell hooks | Layered + lint/CI checks | Claude-only rules + hooks |
 | --- | :---: | :---: | :---: | :---: | :---: |
@@ -51,7 +51,7 @@ Chosen option: "Layered guidance (root, nested `AGENTS.md` with `CLAUDE.md` shim
 ### Hook policy
 
 * **Deny** actions that destroy work or damage the public record: `git restore` or `git checkout --` over paths with unstaged changes; `gh` posts whose body carries absolute machine paths or private session handles; edits of generated files (`contracts/openapi.json`, `schema.gen.ts`, lock files).
-* **Ask** before `just db-*` or `docker compose` runs from a linked worktree, because the Compose project, volume and port are shared with the human's checkout and the user may still want that.
+* **Ask** before a `just db` recipe that touches the database (`up`, `down`, `reset`, `migrate`, `psql`, written `db up` or `db::up`) or `docker compose` runs from a linked worktree, because the Compose project, volume and port are shared with the human's checkout and the user may still want that.
 * **Inform** otherwise: C# lines over 140 characters after an edit (S103, which nothing fixes automatically), a stale API contract when the agent stops (blocked once, then let through), and a session-start line that compiles the tool and names the runtime.
 * **Spawn only when relevant**: each handler carries an `if` permission-rule filter (`Bash(git *)`, `Bash(gh *)`, `Bash(just *)`, `Bash(docker *)`; `Edit(**/openapi.json)` and the other generated paths; `Edit(**/*.cs)`), so an unrelated command or edit starts no process. The filter is best-effort: when Claude Code cannot tell which commands a Bash input runs, the hook runs anyway and decides in-process.
 * **Degrade to prose** when the tool cannot run (an SDK below 10.0.300 rejects `#:include`): Claude Code treats that exit as non-blocking, and the one-line rules remain.
@@ -60,7 +60,7 @@ Chosen option: "Layered guidance (root, nested `AGENTS.md` with `CLAUDE.md` shim
 
 * Good, because a session reads about a third of the text it read before, and the backend or frontend practice arrives exactly when a file of that stack is touched.
 * Good, because the four invariants that caused real incidents (#189, the shared database, stale contracts, machine paths in posts) are refused mechanically for Claude Code sessions.
-* Good, because the hooks are an ordinary [ADR-0017](0017-dotnet-file-based-apps-for-repo-tooling.md) tool: analysers, `dotnet format whitespace`, xUnit tests per decision branch, `just tooling` and `just tool-versions` cover it without a new job.
+* Good, because the hooks are an ordinary [ADR-0017](0017-dotnet-file-based-apps-for-repo-tooling.md) tool: analysers, `dotnet format whitespace`, xUnit tests per decision branch, `just tools test` and `just tools versions` cover it without a new job.
 * Bad, because every `git`, `gh`, `just` or `docker` command and every edit of a C# or generated file now spawns a process (about 0.25 s when cached, 4.5 s on the first run after the tool's source changes); mitigated by the `if` filters and by a `SessionStart` hook that compiles it.
 * Bad, because a hooked rule exists twice, as code and as a line of prose, and the two must be kept in step by review.
 * Bad, because `.claude/settings.json` is now shared behaviour for every Claude Code user of the repo; personal overrides go in the git-ignored `.claude/settings.local.json`.
@@ -69,7 +69,7 @@ Chosen option: "Layered guidance (root, nested `AGENTS.md` with `CLAUDE.md` shim
 
 ### Confirmation
 
-* `just tooling` (local and the CI `Tooling` job) runs `tools/agent-hooks/tests/agent-hooks.tests.cs` and the whitespace check on `tools/`; `just tool-versions` checks its package pins.
+* `just tools test` (local and the CI `Tooling` job) runs `tools/agent-hooks/tests/agent-hooks.tests.cs` and the whitespace check on `tools/`; `just tools versions` checks its package pins.
 * Story 0020 (card in [PR #220](https://github.com/mgasca/calendar/pull/220)) records the acceptance criteria: file budgets, rule preservation, one *(hook)* line per hooked rule, and a live check that a hook refuses `git restore` on a dirty file and an edit of `contracts/openapi.json`.
 * Reviewers check that a new rule added to `AGENTS.md` goes to the layer this ADR names: an invariant becomes a hook with a one-line statement, area practice goes to the nested file, a procedure to a skill or README.
 
@@ -80,7 +80,7 @@ Chosen option: "Layered guidance (root, nested `AGENTS.md` with `CLAUDE.md` shim
 * Good, because **D1 Context cost per session**: the root shrinks to what every session needs and the rest loads on demand.
 * Good, because **D2 Reliable invariants**: a `PreToolUse` deny stops the action before it runs, whatever the agent concluded from the prose.
 * Good, because **D3 Agent neutrality**: nested `AGENTS.md` files are read natively by Codex and Cursor, and every hooked rule keeps its prose line.
-* Good, because **D4 Same quality bar and toolchain**: the tool follows [ADR-0017](0017-dotnet-file-based-apps-for-repo-tooling.md) exactly, with analysers, formatting and tests discovered by `just tooling`.
+* Good, because **D4 Same quality bar and toolchain**: the tool follows [ADR-0017](0017-dotnet-file-based-apps-for-repo-tooling.md) exactly, with analysers, formatting and tests discovered by `just tools test`.
 * Neutral, because **D5 Fast feedback**: 0.21–0.26 s per call when cached (measured on `tools/tool-versions`, 2026-11-04), 4.5 s after a source change; acceptable, not free.
 * Bad, because **D6 One copy of each rule**: each hooked rule exists as code and as one line of prose.
 

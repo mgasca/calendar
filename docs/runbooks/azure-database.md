@@ -34,7 +34,7 @@ See also [ADR-0031](../decisions/0031-azure-postgresql-flexible-server.md) and [
 1. Create the roles and their permissions on staging:
 
    ```sh
-   just infra-init-roles staging --client-ip <public-ipv4>
+   just infra init-roles staging --client-ip <public-ipv4>
    ```
 
    The command allows your address through the firewall for a short time. It reads the administrator password from the ops vault, creates or checks the roles and their permissions, then removes its firewall rule. If you omit `--client-ip`, the tool asks `https://api.ipify.org` for your address. Supply `--client-ip` if that service is unavailable or reaches Azure by a different route than the database.

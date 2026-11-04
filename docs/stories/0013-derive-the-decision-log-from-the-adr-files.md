@@ -17,7 +17,7 @@ Tracked in issue #184. Card, [ADR-0040](../decisions/0040-derive-the-decision-lo
 
 ## Background
 
-`docs/decisions/README.md` carried a hand-maintained table with one row per ADR (number, title, status), introduced by [ADR-0000](../decisions/0000-use-markdown-architectural-decision-records.md) and made the ordered log of the documentation site by [ADR-0023](../decisions/0023-static-adr-log-publication.md). Every ADR PR added a row and every status change edited one; `just adr-check` and the docs build both compared each ADR file with its row. Of the 112 merges on `main`, 25 touched the table. Story [0010](0010-sweep-pending-adrs-to-a-decided-status.md), which changed four ADR statuses in parallel PRs, hit a conflict whose hand resolution dropped a row, caught only in review.
+`docs/decisions/README.md` carried a hand-maintained table with one row per ADR (number, title, status), introduced by [ADR-0000](../decisions/0000-use-markdown-architectural-decision-records.md) and made the ordered log of the documentation site by [ADR-0023](../decisions/0023-static-adr-log-publication.md). Every ADR PR added a row and every status change edited one; `just tools adr` and the docs build both compared each ADR file with its row. Of the 112 merges on `main`, 25 touched the table. Story [0010](0010-sweep-pending-adrs-to-a-decided-status.md), which changed four ADR statuses in parallel PRs, hit a conflict whose hand resolution dropped a row, caught only in review.
 
 The table had stopped carrying information of its own. The documentation site lists every ADR with its status badge in the **Architecture decisions** navigation, the file name gives the number, the `# Title` gives the title and the front matter gives the status, and the architecture model ([ADR-0039](../decisions/0039-architecture-model-and-visualization-tooling.md)) lists every ADR with its status too.
 
@@ -25,7 +25,7 @@ The table had stopped carrying information of its own. The documentation site li
 
 * **Remove the table** from `docs/decisions/README.md`, keeping the conventions text and saying where the log is browsed.
 * **The log is derived from the files.** The docs site orders the `NNNN-*.md` files by number, takes the title from the H1 and the status from the front matter, and builds the left navigation from them. The site has no ADR Log page since PR #183 removed it; the navigation is the log.
-* **The checks stay strict.** The docs build fails on a duplicate number, a file name that is not `NNNN-kebab-title.md`, a record without a single H1 or without a `status`, and on an architecture model entry whose file, title or status differs from the ADR file. `just adr-check` drops only the index-row rule.
+* **The checks stay strict.** The docs build fails on a duplicate number, a file name that is not `NNNN-kebab-title.md`, a record without a single H1 or without a `status`, and on an architecture model entry whose file, title or status differs from the ADR file. `just tools adr` drops only the index-row rule.
 * **An ADR records the decision** ([ADR-0040](../decisions/0040-derive-the-decision-log-from-the-adr-files.md)), because it changes a clause of [ADR-0023](../decisions/0023-static-adr-log-publication.md) and of [ADR-0000](../decisions/0000-use-markdown-architectural-decision-records.md).
 * **Guidance follows:** `AGENTS.md`, the `adr-draft` and `story-draft` skills, and the architecture model.
 
@@ -45,10 +45,10 @@ The table had stopped carrying information of its own. The documentation site li
    [`adr.test.ts`](../../frontend/apps/docs/src/lib/adr.test.ts) (`rejects duplicate number`, `unsafe filename`, `uppercase filename`, `missing status`, `empty status`, `two titles`, `no title`).
 4. **Given** an ADR whose title or status changes without its architecture model entry, **when** the docs build runs, **then** it fails.
    Already enforced by [`architecture.test.ts`](../../frontend/apps/docs/src/lib/architecture.test.ts) (`rejects …` for ADR file, title and status drift) and `corpus.test.ts` on the real model; unchanged by this story.
-5. **Given** `just adr-check`, **when** it runs with no table in `README.md`, **then** it passes, and it still rejects a numbering gap, a stray file and every structural fault.
+5. **Given** `just tools adr`, **when** it runs with no table in `README.md`, **then** it passes, and it still rejects a numbering gap, a stray file and every structural fault.
    [`check-adr.tests.cs`](../../.claude/skills/adr-draft/tests/check-adr.tests.cs) (`ReadmeWithoutAnIndexTable_IsNotAnAdrAndNotStray`, `NumberingGapAndStrayFiles_AreReported`, `BrokenRule_IsReported`). The validator could not run on the implementing agent's machine (its SDK rejects `#:include`); the CI `Tooling` job is the check.
 6. **Given** the change is complete, **when** `just check` runs, **then** it passes.
-   CI runs every part of `just check` on the PR. Locally the agent ran the frontend gates (`format:check`, `lint`, `typecheck`, `test`) and `just build-docs`; see the implementation notes for what did not run.
+   CI runs every part of `just check` on the PR. Locally the agent ran the frontend gates (`format:check`, `lint`, `typecheck`, `test`) and `just docs build`; see the implementation notes for what did not run.
 
 ## Design decisions
 
@@ -56,7 +56,7 @@ The table had stopped carrying information of its own. The documentation site li
 
 | ADR | Decision | Why it matters for this story |
 | --- | --- | --- |
-| [0000](../decisions/0000-use-markdown-architectural-decision-records.md) | MADR ADRs in `docs/decisions`, validated by `just adr-check` | The validator's index rule is the one this story removes; every other rule stays. |
+| [0000](../decisions/0000-use-markdown-architectural-decision-records.md) | MADR ADRs in `docs/decisions`, validated by `just tools adr` | The validator's index rule is the one this story removes; every other rule stays. |
 | [0017](../decisions/0017-dotnet-file-based-apps-for-repo-tooling.md) | Repo tooling scripts are .NET file-based apps | The validator change is made in `AdrValidator.cs` and its xUnit tests, not in a new tool. |
 | [0023](../decisions/0023-static-adr-log-publication.md) | The site builds the log from the canonical Markdown | Its first contract bullet named the README rows as the log; ADR-0040 replaces that bullet, the rest stands. |
 | [0039](../decisions/0039-architecture-model-and-visualization-tooling.md) | FINOS CALM model with every ADR listed | The model's ADR list becomes the only per-ADR entry outside the record, and the build keeps checking it against the files. |
@@ -96,7 +96,7 @@ No changes.
 ### Lessons learned, known issues and follow-ups
 
 * **Measured:** 25 of the 112 merges on `main` had touched the index table before this change (`git log -- docs/decisions/README.md`).
-* **Not verified by the implementing agent:** `just adr-check` and the validator tests, because the local .NET SDK (10.0.114) rejects the `#:include` directive the tools use; the C# was compiled in a scratch project instead, and the CI `Tooling` job runs the real tests.
+* **Not verified by the implementing agent:** `just tools adr` and the validator tests, because the local .NET SDK (10.0.114) rejects the `#:include` directive the tools use; the C# was compiled in a scratch project instead, and the CI `Tooling` job runs the real tests.
 * **Follow-up:** if the architecture model's `metadata.adrs` list conflicts as the table did, derive it from the files too (the revisit trigger in ADR-0040).
 
 ## User guide

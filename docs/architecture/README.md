@@ -25,7 +25,7 @@ The documentation build checks that every entry matches the decision log (file, 
 
 ## Validate and render
 
-`just architecture-check` validates the model against the CALM schema with the pinned `@finos/calm-cli` (a dev dependency of `frontend/apps/docs`); it is part of `just lint`, so `just check` and CI run it. The docs-site tests (`corepack pnpm --dir frontend --filter @calendar/docs test`) check the references, and `just build-docs` renders the pages and checks their links.
+`just docs architecture` validates the model against the CALM schema with the pinned `@finos/calm-cli` (a dev dependency of `frontend/apps/docs`); it is part of `just lint`, so `just check` and CI run it. The docs-site tests (`corepack pnpm --dir frontend --filter @calendar/docs test`) check the references, and `just docs build` renders the pages and checks their links.
 
 To run the CLI directly from this folder:
 

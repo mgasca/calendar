@@ -74,7 +74,7 @@ Chosen option: "Docker Compose for development, Testcontainers for tests". It is
 
 ### Consequences
 
-* Good, because new contributors run `just db-up && just db-migrate`; nothing is installed on the host.
+* Good, because new contributors run `just db up && just db migrate`; nothing is installed on the host.
 * Good, because each test run gets a clean database, so tests are order-independent and parallel-safe across assemblies.
 * Bad, because Docker becomes a hard requirement for development and integration tests.
 * Bad, because integration test startup grows by ~2–5 s per test assembly (container start). Sharing one container per assembly keeps this small.

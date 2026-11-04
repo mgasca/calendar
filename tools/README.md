@@ -5,8 +5,8 @@ Every script in this repo is a .NET 10 *file-based app* (`dotnet run x.cs`, no p
 ## Layout and discovery
 
 - A tool is `tools/<name>/<name>.cs` (the entry point, with a `#!/usr/bin/env -S dotnet run` line and a usage comment), one or more `#:include`d implementation files, and `tests/<name>.tests.cs`. Copy `tools/tool-versions/` as the pattern, including `tests/Directory.Build.props`.
-- `just tooling` runs every `*.tests.cs` under the `tool_dirs` list in the justfile and `dotnet format whitespace --verify-no-changes` on each directory. `tools` is in the list, so a new `tools/<name>/` is checked automatically. A tool inside a skill folder must be added to `tool_dirs` by hand, or neither its tests nor CI validate it (the gap behind #190 and #209). After adding one, check that `just tooling` prints its test file.
-- Package pins (`#:package` directives and `Directory.Build.props`) must match `backend/Directory.Packages.props`; `just tool-versions` fails on drift and `just tool-versions --fix` rewrites them. The first run of a tool writes `packages.lock.json` next to it: commit it. CI restores in locked mode.
+- `just tools test` runs every `*.tests.cs` under the `tool_dirs` list in `tools/mod.just` and `dotnet format whitespace --verify-no-changes` on each directory. `tools` is in the list, so a new `tools/<name>/` is checked automatically. A tool inside a skill folder must be added to `tool_dirs` by hand, or neither its tests nor CI validate it (the gap behind #190 and #209). After adding one, check that `just tools test` prints its test file.
+- Package pins (`#:package` directives and `Directory.Build.props`) must match `backend/Directory.Packages.props`; `just tools versions` fails on drift and `just tools versions --fix` rewrites them. The first run of a tool writes `packages.lock.json` next to it: commit it. CI restores in locked mode.
 
 ## SDK and build gotchas
 
@@ -26,7 +26,7 @@ Then `dotnet format` inside `.scratch`, copy the formatted bodies back and delet
 
 ## Reporting what a tool's checks covered
 
-A scratch build that drops the folder's `Directory.Build.props`, `.editorconfig`, `SonarLint.xml` or package settings can pass locally and fail the CI analyzers (#185). When you report verification, name the directory, the command, and whether `just tooling` discovered the tests.
+A scratch build that drops the folder's `Directory.Build.props`, `.editorconfig`, `SonarLint.xml` or package settings can pass locally and fail the CI analyzers (#185). When you report verification, name the directory, the command, and whether `just tools test` discovered the tests.
 
 ## agent-hooks
 

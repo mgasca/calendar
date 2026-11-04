@@ -48,7 +48,7 @@ The internet-facing deployment trigger in [ADR-0019](../decisions/0019-single-us
 
 ## Implementation notes
 
-The API provides `GET /api/auth/login?returnUrl`, `GET /api/auth/callback/google`, `GET /api/auth/me` and `POST /api/auth/logout`. The web sign-in route is `/signin`. Configure `Auth__Google__ClientId`, `Auth__Google__ClientSecret` and `Auth__AllowedEmails`. API tests use a fake authentication scheme; web tests cover sign-in and return paths. For local seeding, `just db-seed` authenticates with a Development-only key (`Auth__DevSeedKey`, see ADR-0027); `just dev-api` loads `.env`, and `GET /api/auth/login` explains a missing Google configuration with a 503. Known gaps: the Google round trip, the callback's denial path and the cookie/proxy settings have no automated tests; signing in with a real Google account was checked by hand only. Regenerate the contract with `just contracts` and run `just check`.
+The API provides `GET /api/auth/login?returnUrl`, `GET /api/auth/callback/google`, `GET /api/auth/me` and `POST /api/auth/logout`. The web sign-in route is `/signin`. Configure `Auth__Google__ClientId`, `Auth__Google__ClientSecret` and `Auth__AllowedEmails`. API tests use a fake authentication scheme; web tests cover sign-in and return paths. For local seeding, `just db seed` authenticates with a Development-only key (`Auth__DevSeedKey`, see ADR-0027); `just backend dev` loads `.env`, and `GET /api/auth/login` explains a missing Google configuration with a 503. Known gaps: the Google round trip, the callback's denial path and the cookie/proxy settings have no automated tests; signing in with a real Google account was checked by hand only. Regenerate the contract with `just contracts` and run `just check`.
 
 ## User guide
 

@@ -165,7 +165,7 @@ Delivered as three stacked PRs, each green on `just check`:
 
 ### Lessons learned during the build
 
-* The ADR numbers drafted in this story went stale when #16 merged first: 0022 and 0023 became 0024 and 0025, and the routing ADR moved again to 0026 when #21 took 0025. Run `just adr-check --next-number` right before writing an ADR, not when planning it.
+* The ADR numbers drafted in this story went stale when #16 merged first: 0022 and 0023 became 0024 and 0025, and the routing ADR moved again to 0026 when #21 took 0025. Run `just tools adr --next-number` right before writing an ADR, not when planning it.
 * An agreement test between two outputs of the same builder can't catch a bug the builder shares with itself. It earns its place by catching multi-day bugs; the SQL itself is anchored by a test against an independent implementation.
 * TanStack Router signals not-found and redirects by throwing its own values. ESLint's `only-throw-error` rule allows `NotFoundError` and `Redirect` from `@tanstack/router-core`, and nothing else.
 * Routes render asynchronously, so component tests that need `Link` render inside a minimal router that is loaded before rendering (`renderInRouter`), and app tests wait with `findBy…`.

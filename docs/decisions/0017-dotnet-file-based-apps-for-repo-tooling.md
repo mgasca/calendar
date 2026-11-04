@@ -115,14 +115,14 @@ tools/                             # repo-wide tools
   * `ManagePackageVersionsCentrally=false`, so a host repo's Central Package Management doesn't interfere
   * a versioned `SonarAnalyzer.CSharp` reference
 * **Package versions:** `#:package` directives pin exact versions. Each file-based app sits in its own directory, because restore writes `packages.lock.json` next to it.
-* **Dependency updates:** Dependabot does **not** read `#:package` directives or folder-local `Directory.Build.props` files (verified, see Evidence). Versions are therefore **bumped manually**, matched to `backend/Directory.Packages.props` whenever Dependabot updates the backend. `tools/tool-versions` enforces this: `just tool-versions` (in `just lint` and the CI `Tooling` job) fails when a tooling pin differs from the backend's version, and `just tool-versions --fix` rewrites the pins. Packages the backend doesn't use are listed as `SKIP` and stay fully manual. There is deliberately no Dependabot entry for tool folders: it would run weekly and find nothing. Revisit if Dependabot adds support for file-based apps.
+* **Dependency updates:** Dependabot does **not** read `#:package` directives or folder-local `Directory.Build.props` files (verified, see Evidence). Versions are therefore **bumped manually**, matched to `backend/Directory.Packages.props` whenever Dependabot updates the backend. `tools/tool-versions` enforces this: `just tools versions` (in `just lint` and the CI `Tooling` job) fails when a tooling pin differs from the backend's version, and `just tools versions --fix` rewrites the pins. Packages the backend doesn't use are listed as `SKIP` and stay fully manual. There is deliberately no Dependabot entry for tool folders: it would run weekly and find nothing. Revisit if Dependabot adds support for file-based apps.
 * **Minimum SDK:** .NET SDK **10.0.300** or later (amended 2026-11-03; it said ".NET 10" before). `#:include`, which this layout uses to pull tool logic into entry points and tests, first ships in the 10.0.3xx feature band. On 10.0.1xx and 10.0.2xx every tool that uses it fails before compiling, with `Unrecognized directive 'include'` (see Evidence).
   * `backend/global.json` (10.0.100, `rollForward: latestFeature`) doesn't enforce this: the tools run from the repo root, which no `global.json` covers, so they use the newest installed SDK. `just doctor` therefore checks the SDK that `dotnet --version` resolves at the repo root and fails below 10.0.300.
   * CI's `dotnet-version: 10.0.x` installs the newest band, so CI alone doesn't catch an older local SDK.
   * A host repo whose `global.json` pins an older SDK can't run a skill's tools; each `SKILL.md` that bundles tools states this.
 * **Invocation:**
   * `dotnet run <path>/<tool>.cs -- <args>`, or `./<tool>.cs` thanks to the `#!` line.
-  * `just` recipes wrap each tool (e.g. `just adr-check`), and `just lint` runs every tool's tests and the whitespace format checks.
+  * `just` recipes wrap each tool (e.g. `just tools adr`), and `just lint` runs every tool's tests and the whitespace format checks.
 * **CI:** the `Docs` job becomes a **Tooling** job:
   * `actions/setup-dotnet` with `dotnet-version: 10.0.x`, because there's no repo-root `global.json`
   * every tool's tests, the format checks, shellcheck for bootstrap scripts, and the ADR validator
@@ -218,5 +218,5 @@ All steps are implemented. Step 5 showed that Dependabot doesn't support file-ba
   * Manual version bumps are acceptable. Dependabot was later verified not to support file-based apps, so this is the ongoing approach.
   * The ADR covers all tooling scripts, with non-skill tools in `tools/<name>/`.
   * Sharing skills with non-.NET repos is deferred.
-* **Amendment, 2026-11-03:** the minimum SDK was corrected from ".NET 10" to 10.0.300, after `just adr-check`, `just tooling`, `just tool-versions` and `just db-seed` failed locally on SDK 10.0.114 while CI passed. The decision itself is unchanged, so this ADR was amended, not superseded. The evidence was gathered on 10.0.403, which is why the gap went unnoticed.
+* **Amendment, 2026-11-03:** the minimum SDK was corrected from ".NET 10" to 10.0.300, after `just tools adr`, `just tools test`, `just tools versions` and `just db seed` failed locally on SDK 10.0.114 while CI passed. The decision itself is unchanged, so this ADR was amended, not superseded. The evidence was gathered on 10.0.403, which is why the gap went unnoticed.
 * **Deferred:** if a skill must be shared with non-.NET repos, reconsider the language for that skill only, in a new ADR.

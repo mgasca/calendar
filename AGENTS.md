@@ -8,12 +8,12 @@ Guidance for AI coding agents (Claude Code, Codex, Cursor, …) working in this 
 
 ## Commands
 
-`just` (minimum version in `.just-version`) is a thin task runner over native tooling; `just` alone lists the recipes: `setup`, `dev-api` (http://localhost:5041), `dev-web` (proxies `/api`), `test`, `lint`, `check` (everything CI runs), `format`, `contracts`, `tooling`, `adr-check`, `architecture-check`, `db-up|db-migrate|db-seed|db-psql|db-reset|db-down`, `dev-docs`, `build-docs`, `bench-docs`.
+`just` (minimum version in `.just-version`) is a thin task runner over native tooling; `just` alone lists the recipes. The root holds those that span stacks: `setup`, `build`, `test`, `lint`, `check` (everything CI runs), `format`, `clean`, `contracts`, `doctor`. The rest live in modules, called as `just <module> <recipe>` (ADR-0038 amendment): `backend` (`dev` on http://localhost:5041, `test`), `frontend` (`dev`, which proxies `/api`, `test-web`), `docs` (`dev`, `build`, `test`, `architecture`, `bench`), `db` (`up`, `migrate`, `seed`, `psql`, `reset`, `down`), `image`, `infra` and `tools` (`test`, `versions`, `adr`). A module file sits beside the code it runs (`backend/mod.just`, `infra/mod.just`, …) or beside the root `justfile` (`db.just`, `image.just`) and sets its own `set shell`, because modules inherit no settings.
 
 - `just contracts` rebuilds the API and regenerates `contracts/openapi.json` and the TS client. Commit the result: CI fails on a stale contract, and generated files are never edited by hand *(hook)*.
-- Migrations are applied only by `just db-migrate`, as `calendar_migrator`, never by the app (ADR-0015). The `db-*` recipes and `compose.yaml` address one shared Compose project (`calendar`, volume `calendar-pgdata`, port 5432) from every checkout *(hook)*; see "Working on several changes at once".
-- Several recipes in one command (`just db-up db-migrate`) work only when none takes arguments; otherwise the rest become arguments of the first. Run them separately.
-- `just bench-docs` runs the docs benchmark by hand (results in `docs/benchmarks/`); it is never part of `just test` or CI.
+- Migrations are applied only by `just db migrate`, as `calendar_migrator`, never by the app (ADR-0015). The `db` recipes and `compose.yaml` address one shared Compose project (`calendar`, volume `calendar-pgdata`, port 5432) from every checkout *(hook)*; see "Working on several changes at once".
+- Several recipes in one command need the `module::recipe` form (`just db::up db::migrate`; `just db up migrate` is an error) and work only when none takes arguments; otherwise the rest become arguments of the first. Run them separately.
+- `just docs bench` runs the docs benchmark by hand (results in `docs/benchmarks/`); it is never part of `just test` or CI.
 
 ## Architecture
 
@@ -21,9 +21,9 @@ Guidance for AI coding agents (Claude Code, Codex, Cursor, …) working in this 
 - **Backend**: `Calendar.Domain` (no framework dependencies; time-zone and day rules in `Time/` and `Agenda/DayInclusion`) ← `Calendar.Infrastructure` (EF Core code-first on PostgreSQL, ADR-0014/0015; SQL forms of the domain rules in `Queries/`) ← `Calendar.Api` (minimal API; `Endpoints/`, `Contracts/`). The app connects as the least-privilege `calendar_app` role. Agenda reads are one read-only snapshot (ADR-0020). The client supplies `today` and `timeZone`; the server never decides what day it is (ADR-0021). Every endpoint requires an authenticated user except health and sign-in (ADR-0027). Tests: one xUnit project per src project plus `Calendar.Testing` (Testcontainers PostgreSQL); API tests need Docker.
 - **Dependencies**: NuGet Central Package Management (`backend/Directory.Packages.props`) with a `packages.lock.json` per project, restored with `--locked-mode` in CI, so commit lock-file changes. Warnings are errors; Roslyn and Sonar analyzers run at build time.
 - **Frontend**: `frontend/apps/web` (feature folders `features/day`, `week`, `tasks`, `agenda`; TanStack Router (ADR-0026) and Query; Vitest, Testing Library, MSW), `frontend/apps/docs` (Astro Starlight site), `frontend/packages/api-client`. TypeScript 6.0 and ESLint 9 are pinned (ADR-0010).
-- **Repo tooling** (ADR-0017): .NET 10 file-based apps in `.claude/skills/<skill>/` or `tools/<name>/`, each with analyzers and xUnit tests run by `just tooling`; `tools/doctor/doctor.sh` is the one shell exception. Never write tooling in Python, Node or shell. Read `tools/README.md` before writing or fixing a tool.
+- **Repo tooling** (ADR-0017): .NET 10 file-based apps in `.claude/skills/<skill>/` or `tools/<name>/`, each with analyzers and xUnit tests run by `just tools test`; `tools/doctor/doctor.sh` is the one shell exception. Never write tooling in Python, Node or shell. Read `tools/README.md` before writing or fixing a tool.
 - **Docs site and architecture model**: the site is built from `docs/decisions`, `docs/stories`, `docs/architecture`, `docs/runbooks` and `docs/benchmarks`. Each folder's `README.md` holds its conventions and, for stories, runbooks and benchmarks, its index; the build fails on a missing row, a mismatched title or a link to an unpublished document. `docs/architecture/calendar.architecture.json` is a FINOS CALM model (ADR-0039): when you add a component, endpoint, Azure resource or ADR, or change an ADR's status, update it in the same PR.
-- **ADRs**: MADR with decision drivers and a star-rating table, validated by `just adr-check` and written with the `adr-draft` skill. Status follows the decision, not delivery: an ADR becomes `accepted` when the user approves it, in the same PR before it merges, never waiting for the implementation.
+- **ADRs**: MADR with decision drivers and a star-rating table, validated by `just tools adr` and written with the `adr-draft` skill. Status follows the decision, not delivery: an ADR becomes `accepted` when the user approves it, in the same PR before it merges, never waiting for the implementation.
 
 ## Stories and issues
 
@@ -34,8 +34,8 @@ Guidance for AI coding agents (Claude Code, Codex, Cursor, …) working in this 
 
 ## Working on several changes at once
 
-- Give each branch its own `git worktree` from fresh `origin/main`; never edit the main checkout. Each worktree needs its own `pnpm install --frozen-lockfile` in `frontend/`.
-- Worktrees do not isolate running services: `just db-*` from any checkout hits the shared Compose project, volume and port *(hook)*. For concurrent runtime work use the throwaway stack in the `run-calendar` skill (PostgreSQL 55432, API 55041, Vite 55173), record which resources belong to the task, and before any reset, down or kill verify that the container, volume or PID is yours. Keep the ordinary defaults unchanged (ADR-0016).
+- Give each branch its own `git worktree` from fresh `origin/main`; never edit the main checkout. Each worktree needs its own `just frontend install` (`pnpm install --frozen-lockfile` in `frontend/`).
+- Worktrees do not isolate running services: `just db` recipes from any checkout hit the shared Compose project, volume and port *(hook)*. For concurrent runtime work use the throwaway stack in the `run-calendar` skill (PostgreSQL 55432, API 55041, Vite 55173), record which resources belong to the task, and before any reset, down or kill verify that the container, volume or PID is yours. Keep the ordinary defaults unchanged (ADR-0016).
 - Two branches that each add an EF migration conflict in `CalendarDbContextModelSnapshot.cs`: stack the second on the first (`--base <first-branch>`) and retarget it to `main` after the first merges. Postpone a change that rewrites code several open PRs touch until they merge, and say so on its issue.
 - Breaking contract changes (e.g. a list becoming `{ items, nextCursor }`) go in one PR with the regenerated `openapi.json`, the TS client and every consumer updated; find consumers with a grep for the path across `frontend/`, including MSW handlers in tests.
 
@@ -44,7 +44,7 @@ Guidance for AI coding agents (Claude Code, Codex, Cursor, …) working in this 
 - **Report what verification covered**: the revision (or precisely described tree), command, effective configuration and files included; distinguish local passes, skipped checks and CI results on the current head; rerun after a restore, conflict resolution or any later edit. Never generalise one passing suite into "all checks passed".
 - **Preserve the fix when proving a regression test**: before removing a fix for a negative control, save the exact intended contents or patch outside the checkout, or run the control in a scratch worktree. Never `git checkout --` or `git restore` an unstaged implementation *(hook)*: it restores the committed baseline and can discard the fix (#189). Restore the saved version, inspect the diff, rerun the checks, then commit.
 - **Every fix needs a test that fails without it**, confirmed against the old code. Say whether a performance finding is measured or inferred, and keep the evidence for a decision not to optimise in the story card (`docs/benchmarks/README.md` for a repeatable benchmark).
-- **Sandboxed agents** may lack network or Docker: restore offline with `dotnet restore -p:NuGetAudit=false`, run what can run (build, format, domain and pure unit tests), state exactly which suites did not run, and never report a change as verified when its integration tests were skipped.
+- **Sandboxed agents** may lack network or Docker: restore offline with `just backend restore -p:NuGetAudit=false`, run what can run (build, format, domain and pure unit tests), state exactly which suites did not run, and never report a change as verified when its integration tests were skipped.
 
 ## Public GitHub posts
 

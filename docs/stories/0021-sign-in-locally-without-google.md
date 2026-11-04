@@ -4,6 +4,7 @@ date: 2026-11-04
 issue: https://github.com/mgasca/calendar/issues/238
 pr:
   - https://github.com/mgasca/calendar/pull/239
+  - https://github.com/mgasca/calendar/pull/241
 adrs: ["0027", "0038", "0041"]
 ---
 
@@ -13,7 +14,7 @@ adrs: ["0027", "0038", "0041"]
 
 > As a developer running the app on my own machine, I need to open the web app in my browser already signed in, without a Google OAuth client, so that I can try a change by hand without setting up real credentials.
 
-Tracked in issue #238. Card PR: [#239](https://github.com/mgasca/calendar/pull/239).
+Tracked in issue #238. Card PR: [#239](https://github.com/mgasca/calendar/pull/239); delivery PR: [#241](https://github.com/mgasca/calendar/pull/241).
 
 ## Background
 

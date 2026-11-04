@@ -67,7 +67,7 @@
       { "id": "ADR-0039", "title": "Architecture model and visualization tooling for the documentation site", "status": "proposed", "file": "docs/decisions/0039-architecture-model-and-visualization-tooling.md", "url": "https://mgasca.github.io/calendar/adr/0039/" },
       { "id": "ADR-0040", "title": "Derive the decision log from the ADR files instead of an index table", "status": "accepted", "file": "docs/decisions/0040-derive-the-decision-log-from-the-adr-files.md", "url": "https://mgasca.github.io/calendar/adr/0040/" },
       { "id": "ADR-0041", "title": "Per-user data ownership: scope every query and write with an EF Core global query filter keyed by the signed-in user", "status": "accepted", "file": "docs/decisions/0041-per-user-data-ownership.md", "url": "https://mgasca.github.io/calendar/adr/0041/" },
-      { "id": "ADR-0042", "title": "Layer agent guidance by scope and enforce its invariants with Claude Code hooks built as repo tools", "status": "proposed", "file": "docs/decisions/0042-layered-agent-guidance-and-hooks.md", "url": "https://mgasca.github.io/calendar/adr/0042/" }
+      { "id": "ADR-0042", "title": "Layer agent guidance by scope and enforce its invariants with Claude Code hooks built as repo tools", "status": "accepted", "file": "docs/decisions/0042-layered-agent-guidance-and-hooks.md", "url": "https://mgasca.github.io/calendar/adr/0042/" }
     ],
     "stories": [
       { "id": "0001", "title": "Today view", "status": "implemented", "url": "https://mgasca.github.io/calendar/stories/0001/" },

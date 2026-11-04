@@ -1,24 +1,38 @@
 import react from '@vitejs/plugin-react';
 import { defineConfig } from 'vitest/config';
 
-const apiTarget = process.env.CALENDAR_API_URL ?? 'http://localhost:5041';
+import { apiProxy } from './dev/apiProxy.ts';
 
 export default defineConfig({
   plugins: [react()],
   server: {
     proxy: {
-      '/api': { target: apiTarget, changeOrigin: false },
+      // Adds the API's seed key only under `just frontend dev-signed-in` (story 0021).
+      '/api': apiProxy(process.env),
     },
   },
   test: {
-    environment: 'jsdom',
-    globals: true,
-    setupFiles: ['./src/test/setup.ts'],
-    css: false,
     coverage: {
       provider: 'v8',
       include: ['src/**/*.{ts,tsx}'],
       exclude: ['src/main.tsx', 'src/test/**'],
     },
+    projects: [
+      {
+        extends: true,
+        test: {
+          name: 'web',
+          include: ['src/**/*.test.{ts,tsx}'],
+          environment: 'jsdom',
+          globals: true,
+          setupFiles: ['./src/test/setup.ts'],
+          css: false,
+        },
+      },
+      {
+        // Dev-server code runs in Node, without the browser setup and MSW.
+        test: { name: 'dev-server', include: ['dev/**/*.test.ts'], environment: 'node' },
+      },
+    ],
   },
 });

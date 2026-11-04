@@ -24,7 +24,7 @@ Tracked in issue #213. Card PR: [#214](https://github.com/mgasca/calendar/pull/2
 * **Stacks hidden in variables:** the stacks are reached through `dotnet := "cd backend && dotnet"` and `pnpm := "pnpm --dir frontend"`. A recipe that must run `dotnet ef` or call a different pnpm package repeats the `cd` or the `--filter`.
 * **Reach:** 59 tracked files name a recipe (measured with a search for the actual recipe names, so an upper bound for the files a rename touches). CI has 6 call sites: 5 in `ci.yml` and 1 in `migrate.yml`.
 
-`just` has had stable modules (`mod`) since 1.31, and `.just-version` pins 1.59.0. The behaviours below were checked on 1.59.0 in a scratch directory, not in the repo, and are the facts the design relies on:
+`just` has had stable modules (`mod`) since 1.31.0 (2024-07-14), the `working-directory` setting since 1.33.0 and the `[default]` recipe attribute since 1.43.0 (from the release notes), and `.just-version` pins 1.59.0. The behaviours below were checked on 1.59.0 in a scratch directory, not in the repo, and are the facts the design relies on:
 
 * A module recipe runs with the module file's directory as its working directory. `set working-directory := '..'` changes that, and `[no-cd]` keeps the caller's directory.
 * Module settings are not inherited: a module without `set shell` ran its recipes under `sh`, not bash. The root's `.env` values were visible to module recipes.
@@ -33,6 +33,8 @@ Tracked in issue #213. Card PR: [#214](https://github.com/mgasca/calendar/pull/2
 * Plain `just --list` shows a module as `db ...`. `just --list --list-submodules` shows every recipe, and `just --list db` shows one module.
 * A root recipe may depend on a module recipe (`check: backend::lint`). A module recipe cannot depend on a root recipe.
 * Run from a subdirectory such as `frontend/`, `just` finds the root `justfile`, and a module recipe still runs in its own directory.
+* `just --fmt --check` run at the root checks only the root file: with a badly formatted module file beside it, the command exited 0. The same command with `--justfile <module file>` found the difference and exited 1. `--fmt` also ran without `--unstable`, so the "still unstable in 1.59.0" notes in ADR-0038 and story 0011 are out of date.
+* ADR-0038's Confirmation says a CI step runs `just --list` and the `justfile` format check. No workflow under `.github/` does today (checked with a search of `.github/` for `--fmt` and `--list`).
 
 ### Agreed scope
 
@@ -59,7 +61,7 @@ Decided with the maintainer on 2026-11-03:
 * **Pass-through arguments on `test`.** `just backend test` forwards its arguments to `dotnet test`, so a single test is `just backend test --project tests/Calendar.Domain.Tests --filter-method "*X*"`. The root `just test` takes no arguments. The frontend counterpart is an open question (see the PR for this card).
 * **Behaviour parity.** A recipe does what it did, with the same commands in the same order. The new `restore`, `install` and `typecheck` recipes expose steps that `setup` and `lint` already ran.
 * **Each module is self-contained.** It sets its own shell (`bash -euo pipefail`, as the root does) and, where its file does not sit in the directory it works in, its working directory.
-* **ADR-0038 is amended, not superseded.** The tool choice and its drivers do not change, only the layout. The amendment records the module facts above, the chaining rule and the changed CI list and format check. The maintainer approves it in its own PR, as in [0011](0011-review-the-top-level-task-runner.md).
+* **ADR-0038 is amended, not superseded.** The tool choice and its drivers do not change, only the layout. The amendment records the module facts above, the chaining rule, and the CI step that lists the recipes and format-checks each file. The maintainer approves it in its own PR, as in [0011](0011-review-the-top-level-task-runner.md).
 * **Every consumer changes in the implementation PR**, as `AGENTS.md` asks for breaking changes: `ci.yml`, `migrate.yml`, `tools/doctor/doctor.sh` and its hint text, `README.md`, `AGENTS.md`, `CLAUDE.md`, the runbooks, the skills, the benchmark README, the architecture model, the story cards and the ADRs. Statements in ADR-0038 and story 0011 that quote the commands run in the prototype stay, because they record what was measured.
 
 ### Not in this story
@@ -69,7 +71,7 @@ Decided with the maintainer on 2026-11-03:
 * **New behaviour in a recipe.** Besides `restore`, `install`, `typecheck` and the argument pass-through, no recipe gains a feature, and the native commands and their configuration do not change.
 * **Changing the isolation rules** for concurrent worktrees in `AGENTS.md` (the Compose project name, volume key and PostgreSQL host port stay as [ADR-0016](../decisions/0016-local-database-provisioning.md) set them), or the rule that migrations are applied only by the `db migrate` recipe ([ADR-0015](../decisions/0015-ef-core-data-access.md)).
 * **Replacing `just`** or revisiting the other options in [ADR-0038](../decisions/0038-just-as-the-top-level-task-runner.md).
-* **A new `justfile` formatter or linter.** The existing `just --fmt --check` step stays, extended to the module files.
+* **Other new checks.** The list-and-format step that ADR-0038 describes is part of this story (criterion 8), because it does not exist yet. No other formatter or linter is added.
 
 ### Acceptance criteria
 
@@ -80,7 +82,7 @@ Decided with the maintainer on 2026-11-03:
 5. **Given** I run `just backend test --project tests/Calendar.Domain.Tests --filter-method "*X*"`, **when** the run ends, **then** only matching tests ran. The same recipe with no arguments runs the whole backend suite, and the root `just test` still takes no arguments.
 6. **Given** I chain two recipes of one module, **when** I write `just db::up db::migrate`, **then** both run in that order. The README, `AGENTS.md` and the runbooks show this form and explain why `just db up migrate` is not valid.
 7. **Given** a recipe name from before this story, such as `db-up` or `build-docs`, **when** I run it, **then** `just` stops with its "does not contain recipe" error, and no file in the repository names a removed recipe, except the recorded measurements in ADR-0038 and story [0011](0011-review-the-top-level-task-runner.md), which quote the commands that were run.
-8. **Given** the CI workflows, **when** they run on the implementation PR, **then** each of the 6 call sites uses a new name, the Tooling job still runs the same four checks, and the check that lists recipes and formats the `justfile` covers the module files too.
+8. **Given** the CI workflows, **when** they run on the implementation PR, **then** each of the 6 call sites uses a new name, the Tooling job still runs the same four checks, and a new step runs `just --list --list-submodules` and `just --fmt --check` on the root `justfile` and on each module file separately with `--justfile`.
 9. **Given** `tools/doctor/doctor.sh` and the architecture model, **when** they name a recipe, **then** they name its new form, and the docs-site build and `just docs architecture` pass.
 10. **Given** the `docs/` content loader, **when** `frontend/apps/docs/mod.just` and the other module files exist, **then** the docs site builds and `just docs build` passes.
 11. **Given** the ADR-0038 amendment, **when** `just tools adr` runs, **then** it passes, and the maintainer approved the amendment in its PR before it merged.
@@ -150,7 +152,7 @@ No changes. The contract does not change, and `just contracts` keeps its name.
 ### Lessons learned, known issues and follow-ups
 
 * **Measured, scratch directory:** the module behaviours listed under Background. Nothing has been run in the repository yet.
-* **To verify during delivery:** how a module's `[default]` recipe can list its module (criterion 2); that `dotnet format whitespace --folder tools` and the ESLint and Prettier checks ignore the new `.just` files; and that `just --fmt --check`, still unstable in 1.59.0, accepts module files.
+* **To verify during delivery:** how a module's `[default]` recipe can list its module (criterion 2); that `dotnet format whitespace --folder tools` and the ESLint and Prettier checks ignore the new `.just` files; and that the per-file format check passes on every module file.
 * **Possible follow-up:** nested modules (`just infra db stop`) and a `just docs test` recipe, if wanted after the first release of the layout.
 
 ## User guide

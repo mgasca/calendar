@@ -25,7 +25,7 @@ At the start of every run, read only these parts. They win over anything restate
 
 - `docs/stories/README.md`: the whole file (it is short). It covers naming, "Source of truth", sections, front matter, and the index table.
 - `docs/stories/story-template.md`: the whole file. It is the skeleton to copy. Its leading comment holds the front matter rules.
-- `AGENTS.md`: the "Stories and issues" section (the PR 0 workflow). In "Architecture", read only the **Backend**, **Frontend** and **ADRs** bullets. The card must not contradict their conventions. Skip the practices sections unless the story touches them.
+- `AGENTS.md`: the "Stories and issues" section (the PR 0 workflow). In "Architecture", read only the **Backend**, **Frontend** and **ADRs** bullets. The card must not contradict their conventions. The practices live in `backend/AGENTS.md` and `frontend/AGENTS.md`; read them only if the story touches that stack.
 - `README.md`: only the opening paragraphs before `## Layout`. Use them to describe the story in the terms of the product.
 - One finished card as a model: `docs/stories/0007-*.md`. For a planned card, read `docs/stories/XXXX-*.md`. Read only the `##` sections that you are about to write.
 

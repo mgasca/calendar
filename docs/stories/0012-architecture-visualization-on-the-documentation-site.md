@@ -57,7 +57,7 @@ A first machine-readable model of the whole system was drafted in FINOS CALM (no
 3. **Given** a pull request from this repository that changes the model, **when** CI runs, **then** the model is validated and the pull-request preview shows the regenerated diagrams.
    The Frontend job runs `pnpm --filter @calendar/docs validate:architecture` before the tests and build (`.github/workflows/ci.yml`), and the existing preview publication covers the generated pages. Checked on PR 1's **ADR preview**; no automated test exercises the preview.
 4. **Given** a model with a schema error, a dangling reference or an ADR number that does not exist, **when** `just check` runs, **then** it fails and names the problem.
-   [`calm validate` fails on a broken fixture](../../frontend/apps/docs/src/lib/architecture.test.ts) (`calm validate gate`) and [the loader rejects every dangling reference](../../frontend/apps/docs/src/lib/architecture.test.ts) (`rejects …`, 22 cases). `just lint` runs the first through `just architecture-check`; the docs tests and build run the second.
+   [`calm validate` fails on a broken fixture](../../frontend/apps/docs/src/lib/architecture.test.ts) (`calm validate gate`) and [the loader rejects every dangling reference](../../frontend/apps/docs/src/lib/architecture.test.ts) (`rejects …`, 22 cases). `just lint` runs the first through `just docs architecture`; the docs tests and build run the second.
 5. **Given** the chosen tool, **when** `just doctor` runs on a machine where the pinned version is missing or different, **then** it says so, unless the tool is a workspace dependency installed by `pnpm install`.
    `@finos/calm-cli` is a `devDependency` of `frontend/apps/docs`, pinned by `frontend/pnpm-lock.yaml` and installed by `pnpm install --frozen-lockfile`, so `just doctor` has nothing to check. No test.
 6. **Given** the Architecture section, **when** it is read on a phone or with a screen reader, **then** every diagram has a text alternative (a table or list of the same elements and relationships), and the pages pass the site's existing accessibility lint.
@@ -65,7 +65,7 @@ A first machine-readable model of the whole system was drafted in FINOS CALM (no
 7. **Given** [ADR-0039](../decisions/0039-architecture-model-and-visualization-tooling.md), **when** the maintainer approves the decision, **then** it is `accepted` in that same PR before it merges, and the implementation PR references it.
    Met on [#179](https://github.com/mgasca/calendar/pull/179): the maintainer chose FINOS CALM and the status changed to `accepted` in the commit "ADR-0039 accepted" before the merge. PR 1 references the ADR. No automated test.
 8. **Given** the change is complete, **when** I run `just check`, **then** it passes, including the model validation.
-   CI runs every part of `just check` on PR 1. Locally the implementing agent ran the frontend gates (`format:check`, `lint`, `typecheck`, `test`), `validate:architecture`, `build-docs` and `just --fmt --check`; `just adr-check` could not run on that machine (its SDK rejects the `#:include` directive), so the Tooling job is the check for it.
+   CI runs every part of `just check` on PR 1. Locally the implementing agent ran the frontend gates (`format:check`, `lint`, `typecheck`, `test`), `validate:architecture`, `build-docs` and `just --fmt --check`; `just tools adr` could not run on that machine (its SDK rejects the `#:include` directive), so the Tooling job is the check for it.
 
 ## Design decisions
 
@@ -73,7 +73,7 @@ A first machine-readable model of the whole system was drafted in FINOS CALM (no
 
 | ADR | Decision | Why it matters for this story |
 | --- | --- | --- |
-| [0000](../decisions/0000-use-markdown-architectural-decision-records.md) | MADR ADRs in `docs/decisions`, validated by `just adr-check` | The model links ADRs by number, so it depends on the numbering and the index staying valid. |
+| [0000](../decisions/0000-use-markdown-architectural-decision-records.md) | MADR ADRs in `docs/decisions`, validated by `just tools adr` | The model links ADRs by number, so it depends on the numbering and the index staying valid. |
 | [0010](../decisions/0010-toolchain-version-pins.md) | Pin toolchain versions | The CLI is pinned through the pnpm lockfile like the other frontend tools. |
 | [0017](../decisions/0017-dotnet-file-based-apps-for-repo-tooling.md) | Repo tooling scripts are .NET file-based apps | No new script was needed: the rendering is TypeScript inside the docs app and the validation is a pnpm script. |
 | [0022](../decisions/0022-astro-starlight-documentation-ui.md) | Astro and Starlight for the documentation UI | The Architecture section is rendered by the Starlight site, not by a second site. |
@@ -106,7 +106,7 @@ A first machine-readable model of the whole system was drafted in FINOS CALM (no
 | Parsing, reference checks and page rendering | `frontend/apps/docs/src/lib/architecture.ts` (`parseArchitecture`, `checkArchitecture`, `architecturePages`) |
 | Loading into the site, link routes and the watcher | `frontend/apps/docs/src/lib/docs-loader.ts` (`readArchitecture`, `readDocuments`, `documentRoutes`) |
 | Mermaid integration and the sidebar group | `frontend/apps/docs/astro.config.ts` (`astro-mermaid` before Starlight; `architectureSidebar`) |
-| Schema validation | `frontend/apps/docs/package.json` (`validate:architecture`), `justfile` (`architecture-check`, part of `lint`), `.github/workflows/ci.yml` (Frontend job) |
+| Schema validation | `frontend/apps/docs/package.json` (`validate:architecture`), `frontend/apps/docs/mod.just` (`just docs architecture`, part of `just lint`), `.github/workflows/ci.yml` (Frontend job) |
 
 The pages are: `architecture/` (overview with the system-context diagram, the views, the flows and the Decisions table), `architecture/containers/`, `architecture/components/` plus one page per node, `architecture/controls/` and one page per flow under `architecture/flows/`. Page bodies are Markdown with Mermaid code blocks; links to ADRs, stories and other architecture pages are written as repository-relative paths and rewritten to site routes by the existing `remarkDocLinks` plugin, so the same link checker applies.
 
@@ -128,7 +128,7 @@ No changes.
 * **The Mermaid client bundle is large:** Vite warns about a 660 kB chunk; the heavy renderers (Cytoscape, KaTeX) are split into separate lazy chunks that flowcharts and sequence diagrams do not load. Measured on the build output, not profiled in a browser.
 * **Measured:** the docs build went from 56 to 89 pages (33 architecture pages) and takes about 25 s on the implementing agent's machine; the docs unit tests take under 5 s including the CLI test.
 * **`erasableSyntaxOnly`** is on in the frontend TypeScript config, so classes cannot use constructor parameter properties; assign fields explicitly.
-* **Not verified by the implementing agent:** diagram rendering in a browser (no browser was available), the preview workflow on this PR before it ran, and `just adr-check` locally (SDK mismatch; CI runs it).
+* **Not verified by the implementing agent:** diagram rendering in a browser (no browser was available), the preview workflow on this PR before it ran, and `just tools adr` locally (SDK mismatch; CI runs it).
 * **Follow-ups:** a story for keeping the model current could add a CI check that every node named in `AGENTS.md`'s architecture section exists in the model; the model's `metadata.adrs` must be edited by hand when an ADR changes status (deliberately, see the decision above).
 
 ## User guide
@@ -137,4 +137,4 @@ No changes.
 
 Open the documentation site and choose **Architecture** in the sidebar. The **Overview** shows who uses the calendar and which outside services it depends on, with a table of the same elements beneath the diagram, and ends with a table of every decision (ADR) and the parts that depend on it. Choose **Containers and deployment** to see the parts that run (the web app and API in their container, the database, the migrator, the Azure resources and the documentation site) and how they connect. Choose **Components** for the list of every part; each part's page gives its interfaces, its relationships, the **controls** it must satisfy, such as the sign-in rules or the limits on a request, and links to the decisions and stories behind it. **Controls** lists every non-functional requirement and where it applies. Under **Flows**, choose an activity such as **Google sign-in** or **Triage all overdue tasks** to follow it step by step across the parts, as a sequence diagram with a numbered table of the same steps. Every diagram has a table beneath it with the same information, so the pages can be read without the pictures.
 
-To change the architecture, edit `docs/architecture/calendar.architecture.json` (the **Edit page** link on every architecture page opens it). Run `just architecture-check` to validate it against the CALM schema and `just build-docs` to rebuild the pages; both run in `just check`.
+To change the architecture, edit `docs/architecture/calendar.architecture.json` (the **Edit page** link on every architecture page opens it). Run `just docs architecture` to validate it against the CALM schema and `just docs build` to rebuild the pages; both run in `just check`.

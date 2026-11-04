@@ -168,7 +168,7 @@ lsof -ti:55173 -sTCP:LISTEN | xargs -r kill; lsof -ti:55041 -sTCP:LISTEN | xargs
 
 ## Run (human path)
 
-`just db-up`, `just db-migrate`, `just dev-api`, `just dev-web`, then open http://localhost:5173. That path signs in
+`just db up`, `just db migrate`, `just backend dev`, `just frontend dev`, then open http://localhost:5173. That path signs in
 with Google only, so it needs a real OAuth client and allow-listed email in `.env` (README, "Google sign-in setup");
 without them the sign-in button returns 503. It also uses the shared `calendar` Compose project, so it touches the
 same database container and volume as every other checkout on the machine.
@@ -190,7 +190,7 @@ corepack pnpm --dir frontend --filter @calendar/web test
 Observed: 241 web tests, 172 domain tests, 51 task endpoint tests pass. The API tests start their own Testcontainers
 PostgreSQL; with podman they work because `DOCKER_HOST` points at the podman socket.
 
-The driver's own tests cover script parsing only, so they need neither Chromium nor the app; `just tooling` and the CI
+The driver's own tests cover script parsing only, so they need neither Chromium nor the app; `just tools test` and the CI
 `Tooling` job run them:
 
 ```bash
@@ -208,11 +208,11 @@ Observed: 20 tests pass.
   key on every browser request, so the SPA's `/api/auth/me` check passes and the nav shows "dev-seed".
 - **`--no-launch-profile` drops `ASPNETCORE_ENVIRONMENT=Development`** from `launchSettings.json`; set it yourself or
   the seed scheme is never registered and every call is 401.
-- **Why not `just db-up`:** `compose.yaml` pins the project name `calendar`, so every worktree shares one container
+- **Why not `just db up`:** `compose.yaml` pins the project name `calendar`, so every worktree shares one container
   and volume (`calendar_calendar-pgdata`) with the human's checkout. The agent database is a separate `--rm`
-  container on 55432, and the agent ports stay clear of `just dev-api` (5041) and `just dev-web` (5173).
-- **`#:include` needs a newer SDK than 10.0.1xx.** On 10.0.1xx the driver, its tests, `just db-seed`, `just adr-check`
-  and `just tooling` all fail with `Unrecognized directive 'include'`; see Prerequisites. Seeding above uses `curl`,
+  container on 55432, and the agent ports stay clear of `just backend dev` (5041) and `just frontend dev` (5173).
+- **`#:include` needs a newer SDK than 10.0.1xx.** On 10.0.1xx the driver, its tests, `just db seed`, `just tools adr`
+  and `just tools test` all fail with `Unrecognized directive 'include'`; see Prerequisites. Seeding above uses `curl`,
   which works with any SDK.
 - **File-based apps default to `PublishAot`**, which disables reflection-based JSON; Playwright then fails with
   `Reflection-based serialization has been disabled`. The driver sets `#:property PublishAot=false`.

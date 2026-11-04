@@ -104,12 +104,12 @@ Keep `ENV` as a plain shell variable, as shown. Do not `export` it: some shells 
 
    ```bash
    # Preview the changes. Read the output. Go on only if every change is expected.
-   just infra-what-if "$ENV" foundation
+   just infra what-if "$ENV" foundation
    ```
 
    ```bash
    # Deploy the foundation.
-   just infra-deploy "$ENV" foundation
+   just infra deploy "$ENV" foundation
    # Show the result and the names of the two vaults.
    az deployment group show --resource-group "$RG" --name calendar-foundation --query '{state:properties.provisioningState,appVault:properties.outputs.appKeyVaultName.value,opsVault:properties.outputs.opsKeyVaultName.value}' -o json
    ```
@@ -144,7 +144,7 @@ Keep `ENV` as a plain shell variable, as shown. Do not `export` it: some shells 
 
    ```bash
    # Generate the password on your machine and store it in the ops vault. It is never printed.
-   just infra-secret-init "$ENV"
+   just infra secret-init "$ENV"
    # Check that the secret exists. This prints its name only.
    az keyvault secret show --vault-name "$ops_vault" --name postgres-admin-password --query name -o tsv
    ```
@@ -155,12 +155,12 @@ Keep `ENV` as a plain shell variable, as shown. Do not `export` it: some shells 
 
    ```bash
    # Preview the changes. Read the output. Go on only if every change is expected.
-   just infra-what-if "$ENV" full --allow-ip "$PUBLIC_IP"
+   just infra what-if "$ENV" full --allow-ip "$PUBLIC_IP"
    ```
 
    ```bash
    # Deploy the database and the Container App.
-   just infra-deploy "$ENV" full --allow-ip "$PUBLIC_IP"
+   just infra deploy "$ENV" full --allow-ip "$PUBLIC_IP"
    # List the database. Expect one server with SKU Standard_B1ms.
    az postgres flexible-server list --resource-group "$RG" --query '[].{name:name,state:state,sku:sku.name}' -o json
    # List the Container App and its public hostname (FQDN). Expect one app, provisioned.
@@ -179,7 +179,7 @@ Keep `ENV` as a plain shell variable, as shown. Do not `export` it: some shells 
 6. **Check for drift.** Run the full preview again, with the same address. It should show no changes. Investigate any change it still shows.
 
    ```bash
-   just infra-what-if "$ENV" full --allow-ip "$PUBLIC_IP"
+   just infra what-if "$ENV" full --allow-ip "$PUBLIC_IP"
    ```
 
 The first full deployment has no app secrets yet. The [database runbook](azure-database.md), which comes next, adds the connection string; Google sign-in adds the rest later.
@@ -244,7 +244,7 @@ Stop the staging database when it is not in use, to save compute cost:
 
 ```bash
 # Stop the server. Azure stops billing for compute after it has stopped.
-just infra-db-stop
+just infra db-stop
 # Show the state. Run it again until it reports Stopped.
 az postgres flexible-server show -g "$RG" -n "$SERVER_NAME" --query state -o tsv
 ```
@@ -253,7 +253,7 @@ Start it again before migrations, deployments or testing:
 
 ```bash
 # Start the server.
-just infra-db-start
+just infra db-start
 # Show the state. Run it again until it reports Ready.
 az postgres flexible-server show -g "$RG" -n "$SERVER_NAME" --query state -o tsv
 ```

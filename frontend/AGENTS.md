@@ -4,7 +4,7 @@ Practices for the pnpm workspace in `frontend/`: checks, rendering, data fetchin
 
 ## Running checks
 
-- Run the checks from `frontend/` as CI does: `corepack pnpm lint` (type-aware ESLint, which can take minutes, so don't kill it as hung), `typecheck`, `format:check`, `test`. One test file: `pnpm --dir frontend --filter @calendar/web test -- <file-or-pattern>` (Vitest).
+- Run the checks from `frontend/` as CI does: `corepack pnpm lint` (type-aware ESLint, which can take minutes, so don't kill it as hung), `typecheck`, `format:check`, `test`. One test file: `just frontend test-web <file-or-pattern>` (Vitest, in `@calendar/web`); `just frontend test` runs every package and takes no arguments.
 - Run `tsc -b` (the `typecheck` script), not `tsc -p .`, which can pass while the project references fail.
 - Hundreds of ESLint `no-unsafe-*` errors at once usually mean a broken `node_modules`. Rerun `corepack pnpm install --frozen-lockfile` before touching code.
 - Vitest's default timeout is 5 s, and a full suite run in parallel with another can push a normal test past it. Don't run several full suites in parallel. Before treating a timeout as a regression, rerun the file with `--maxWorkers=1` and compare against a branch without your change. A test that genuinely needs more than 5 s sets an explicit timeout with a comment saying why, as the triage batch tests do.
@@ -44,4 +44,4 @@ Say whether a finding is measured or inferred from the code. Every fix needs a t
 
 ## Docs site (`apps/docs`)
 
-The site is built from the `docs/*` folders by `src/lib/docs-loader.ts`; `src/lib/adr.ts` parses and validates the cards and ADRs, and `src/lib/architecture.ts` renders the CALM model. Never hard-code the set of stories (or ADRs) in tests; derive it from `docs/stories/` (see `adr.test.ts`). Run the corpus tests with `corepack pnpm --dir frontend --filter @calendar/docs test` and the publication checks with `just build-docs`.
+The site is built from the `docs/*` folders by `src/lib/docs-loader.ts`; `src/lib/adr.ts` parses and validates the cards and ADRs, and `src/lib/architecture.ts` renders the CALM model. Never hard-code the set of stories (or ADRs) in tests; derive it from `docs/stories/` (see `adr.test.ts`). Run the corpus tests with `just docs test` (a file or pattern narrows it) and the publication checks with `just docs build`.

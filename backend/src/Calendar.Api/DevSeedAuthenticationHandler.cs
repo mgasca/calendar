@@ -12,7 +12,7 @@ using Microsoft.Extensions.Primitives;
 namespace Calendar.Api;
 
 /// <summary>
-/// Development-only authentication for <c>just db-seed</c> (ADR-0027): a shared key in <c>X-Dev-Seed-Key</c>.
+/// Development-only authentication for <c>just db seed</c> (ADR-0027): a shared key in <c>X-Dev-Seed-Key</c>.
 /// The seed has no Google identity, so it acts as the user of the first allow-listed email, resolving (or
 /// creating, or claiming the legacy placeholder for) that row on every request (ADR-0041).
 /// </summary>

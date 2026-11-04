@@ -4,7 +4,7 @@
 
 Monorepo for the Calendar application: a .NET backend and a web front end, with room for more UIs.
 
-Create todo tasks from the calendar or **My tasks**, with optional date or exact-time deadlines, priority, and notes. Review Upcoming, Overdue, Completed, and No deadline lists. See the [task story and user guide](docs/stories/0003-add-todo-tasks.md). Apply the new migration with `just db-migrate` before running an existing database.
+Create todo tasks from the calendar or **My tasks**, with optional date or exact-time deadlines, priority, and notes. Review Upcoming, Overdue, Completed, and No deadline lists. See the [task story and user guide](docs/stories/0003-add-todo-tasks.md). Apply the new migration with `just db migrate` before running an existing database.
 
 ## Layout
 
@@ -63,26 +63,28 @@ cd calendar/frontend && fnm install && corepack enable pnpm
 
 ## Common tasks
 
+Recipes that span both stacks run from the root (`just test`, `just check`). The rest are grouped into modules and take the module name first (`just db up`, `just docs build`). Run `just` to list them all, or `just --list <module>` for one module. To chain recipes of a module in one command, write each as `module::recipe` (`just db::up db::migrate`).
+
 | Task | Command |
 | --- | --- |
 | Check toolchain versions | `just doctor` |
 | Install dependencies | `just setup` |
-| Run API (http://localhost:5041) | `just dev-api` |
-| Start / stop local PostgreSQL | `just db-up` / `just db-down` |
-| Apply migrations locally (as `calendar_migrator`) | `just db-migrate` |
-| Wipe the local database | `just db-reset` (then `just db-migrate`) |
-| Seed a sample day into the running API (additive; accepts `--date …` and `--time-zone …`) | `just db-seed` (set `Auth__DevSeedKey` in `.env` and export it before starting the API in Development) |
-| psql shell | `just db-psql` |
-| Run web UI (proxies `/api` to the API) | `just dev-web` |
-| Run docs site (http://localhost:4321) | `just dev-docs` |
-| Build and verify docs site | `just build-docs` |
-| Preview built docs site | `just preview-docs` |
+| Run API (http://localhost:5041) | `just backend dev` |
+| Start / stop local PostgreSQL | `just db up` / `just db down` |
+| Apply migrations locally (as `calendar_migrator`) | `just db migrate` |
+| Wipe the local database | `just db reset` (then `just db migrate`) |
+| Seed a sample day into the running API (additive; accepts `--date …` and `--time-zone …`) | `just db seed` (set `Auth__DevSeedKey` in `.env` and export it before starting the API in Development) |
+| psql shell | `just db psql` |
+| Run web UI (proxies `/api` to the API) | `just frontend dev` |
+| Run docs site (http://localhost:4321) | `just docs dev` |
+| Build and verify docs site | `just docs build` |
+| Preview built docs site | `just docs preview` |
 | Tests | `just test` |
 | Lint / static analysis | `just lint` |
-| Test and lint repo tooling | `just tooling` |
-| Check tooling package pins vs backend | `just tool-versions` |
-| Validate ADRs | `just adr-check` |
-| Validate the architecture model | `just architecture-check` |
+| Test and lint repo tooling | `just tools test` |
+| Check tooling package pins vs backend | `just tools versions` |
+| Validate ADRs | `just tools adr` |
+| Validate the architecture model | `just docs architecture` |
 | Format | `just format` |
 | Regenerate contract + TS client | `just contracts` |
 | Everything CI runs | `just check` |
@@ -91,13 +93,13 @@ cd calendar/frontend && fnm install && corepack enable pnpm
 
 The Astro + Starlight site opens on the **Architecture** overview (`/` redirects to `/architecture/`) and renders the canonical Markdown in `docs/decisions/` (each ADR at `/adr/NNNN/`, listed with its status in the sidebar; the decision log table itself is not a page) and `docs/stories/` (the user stories, at `/stories/NNNN/`), and the FINOS CALM model in `docs/architecture/` (the **Architecture** section, at `/architecture/`: context and container diagrams, a page per component and per business flow, and the controls, all generated from the model and linked to their ADRs; see [ADR-0039](docs/decisions/0039-architecture-model-and-visualization-tooling.md)), the runbooks in `docs/runbooks/` (at `/runbooks/<name>/`, in the order of their index) and the benchmark records in `docs/benchmarks/` (at `/benchmarks/NNNN/`). Every ADR and story merged to `main` is published, including proposed and superseded decisions. Links between ADRs, stories, runbooks and benchmarks, and from any of them to the code they reference, work on the published site. Edit the sources there; generated pages are build output and are not committed.
 
-After installing the frontend dependencies with `pnpm --dir frontend install --frozen-lockfile`, use `just dev-docs` to develop the site. `just build-docs` builds and verifies the static output in `frontend/apps/docs/dist`; `just preview-docs` serves that output. These tasks require Node and pnpm, but do not require the backend or database.
+After installing the frontend dependencies with `pnpm --dir frontend install --frozen-lockfile`, use `just docs dev` to develop the site. `just docs build` builds and verifies the static output in `frontend/apps/docs/dist`; `just docs preview` serves that output. These tasks require Node and pnpm, but do not require the backend or database.
 
 To reproduce the GitHub Pages project path locally:
 
 ```sh
-DOCS_SITE_URL=https://mgasca.github.io/calendar/ just build-docs
-DOCS_SITE_URL=https://mgasca.github.io/calendar/ just preview-docs
+DOCS_SITE_URL=https://mgasca.github.io/calendar/ just docs build
+DOCS_SITE_URL=https://mgasca.github.io/calendar/ just docs preview
 # Open http://localhost:4321/calendar/
 ```
 
@@ -126,8 +128,8 @@ The privileged publisher downloads only static artifacts, rejects non-regular an
 ### Local database
 
 ```sh
-just db-up        # starts PostgreSQL on 127.0.0.1:5432; creates .env from .env.example on first run
-just db-migrate   # applies EF Core migrations as calendar_migrator
+just db up        # starts PostgreSQL on 127.0.0.1:5432; creates .env from .env.example on first run
+just db migrate   # applies EF Core migrations as calendar_migrator
 ```
 
 `.env` is untracked and holds disposable local passwords. The database creates two roles: `calendar_migrator` (owns the schema, runs migrations) and `calendar_app` (DML only; the API always connects as this role). Migrations are never applied at API startup.
@@ -151,9 +153,9 @@ Create a Google OAuth web application client and configure its authorized redire
 * Development: `http://localhost:5173/api/auth/callback/google`
 * Production: `https://<host>/api/auth/callback/google`
 
-Set `Auth__Google__ClientId`, `Auth__Google__ClientSecret` and indexed entries such as `Auth__AllowedEmails__0` in the untracked `.env` for local development, then export them into the API process (`just dev-api` loads `.env` for you; restart it after editing, since hot reload does not re-read the environment); use deployment secrets for production. Add only the verified Google emails permitted to access the calendar. Keep the client secret out of version control. Use HTTPS in production and configure trusted forwarded headers when behind a proxy so redirects and secure cookies use the public origin.
+Set `Auth__Google__ClientId`, `Auth__Google__ClientSecret` and indexed entries such as `Auth__AllowedEmails__0` in the untracked `.env` for local development, then export them into the API process (`just backend dev` loads `.env` for you; restart it after editing, since hot reload does not re-read the environment); use deployment secrets for production. Add only the verified Google emails permitted to access the calendar. Keep the client secret out of version control. Use HTTPS in production and configure trusted forwarded headers when behind a proxy so redirects and secure cookies use the public origin.
 
-> **Authentication and limitations.** Google sign-in protects the API with a same-origin cookie ([ADR-0027](docs/decisions/0027-google-oidc-bff-session.md)). Each allowed account sees only its own events and tasks ([ADR-0041](docs/decisions/0041-per-user-data-ownership.md)): rows from before per-user ownership belong to the first email in `Auth__AllowedEmails`, which claims them at its first sign-in, and `just db-seed` seeds that account. Add bearer support before enabling non-browser clients, and re-decide row-level security before sharing between users, a non-browser client with its own identity, or a background job that reads across users.
+> **Authentication and limitations.** Google sign-in protects the API with a same-origin cookie ([ADR-0027](docs/decisions/0027-google-oidc-bff-session.md)). Each allowed account sees only its own events and tasks ([ADR-0041](docs/decisions/0041-per-user-data-ownership.md)): rows from before per-user ownership belong to the first email in `Auth__AllowedEmails`, which claims them at its first sign-in, and `just db seed` seeds that account. Add bearer support before enabling non-browser clients, and re-decide row-level security before sharing between users, a non-browser client with its own identity, or a background job that reads across users.
 
 ## Tooling
 
@@ -184,8 +186,8 @@ revision; the application never applies them. Restrict database access and backu
 
 ### Local container image
 
-Run `just image` to build `calendar:local` and `calendar:<short-git-sha>` using the Node major in `frontend/.node-version` and the pnpm version in `frontend/package.json`. The .NET SDK and runtime use the .NET 10 image family; `backend/global.json` selects the SDK. The image listens on port **8080**, which is also the Azure Container Apps target port.
+Run `just image build` to build `calendar:local` and `calendar:<short-git-sha>` using the Node major in `frontend/.node-version` and the pnpm version in `frontend/package.json`. The .NET SDK and runtime use the .NET 10 image family; `backend/global.json` selects the SDK. The image listens on port **8080**, which is also the Azure Container Apps target port.
 
-Run `just db-up db-migrate` first, then `just run-image`. On Linux/WSL this uses host networking to reach the loopback-only PostgreSQL port with the `calendar_app` role; port 8080 must be free and is exposed on the host network interfaces. It loads `.env` and passes the connection string through the environment. The image defaults to Production; use `just run-image Development` to enable development-only behavior. Production Google sign-in requires real `Auth__Google__ClientId`, `Auth__Google__ClientSecret` and `Auth__AllowedEmails__0` settings in `.env`, otherwise only anonymous endpoints are available.
+Run `just db::up db::migrate` first, then `just image run`. On Linux/WSL this uses host networking to reach the loopback-only PostgreSQL port with the `calendar_app` role; port 8080 must be free and is exposed on the host network interfaces. It loads `.env` and passes the connection string through the environment. The image defaults to Production; use `just image run Development` to enable development-only behavior. Production Google sign-in requires real `Auth__Google__ClientId`, `Auth__Google__ClientSecret` and `Auth__AllowedEmails__0` settings in `.env`, otherwise only anonymous endpoints are available.
 
-In another terminal, run `just smoke-image` (optionally set `BASE_URL`) to check the SPA root, `/week` deep link, `/api/health`, unknown API 404 and anonymous protected API 401. The runtime image has no healthcheck because it does not include an HTTP client; external platforms can probe `/api/health`.
+In another terminal, run `just image smoke` (optionally set `BASE_URL`) to check the SPA root, `/week` deep link, `/api/health`, unknown API 404 and anonymous protected API 401. The runtime image has no healthcheck because it does not include an HTTP client; external platforms can probe `/api/health`.

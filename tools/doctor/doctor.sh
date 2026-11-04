@@ -30,7 +30,7 @@ if command -v dotnet >/dev/null 2>&1; then
     ok ".NET SDK $tools_sdk for repo tools ($want_tools_sdk or later)"
   else
     fail ".NET SDK ${tools_sdk:-unavailable} for repo tools, but #:include needs $want_tools_sdk or later (ADR-0017)" \
-      "Install SDK $want_tools_sdk or later, e.g. 'dotnet-install.sh --channel 10.0'; until then just adr-check, tooling, tool-versions, db-seed and lint fail"
+      "Install SDK $want_tools_sdk or later, e.g. 'dotnet-install.sh --channel 10.0'; until then just tools adr, tools test, tools versions, db seed and lint fail"
   fi
 fi
 
@@ -58,7 +58,7 @@ else
   fail "pnpm not on PATH and corepack not available" "Install Node $want_node (bundles Corepack), then run 'corepack enable pnpm'"
 fi
 
-# Docker: needed for the local database (just db-up) and the Testcontainers-based tests (ADR-0016).
+# Docker: needed for the local database (just db up) and the Testcontainers-based tests (ADR-0016).
 if ! command -v docker >/dev/null 2>&1; then
   fail "docker not found" "Install Docker Engine (or Docker Desktop with WSL integration): https://docs.docker.com/engine/install/"
 elif ! docker info >/dev/null 2>&1; then

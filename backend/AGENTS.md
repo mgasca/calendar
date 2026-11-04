@@ -4,7 +4,7 @@ Practices for the .NET backend in `backend/`: tests, queries, indexes and analyz
 
 ## Running tests
 
-- Run from `backend/` so `global.json` applies (Microsoft.Testing.Platform, xUnit v3): `dotnet test --project tests/Calendar.Domain.Tests --filter-method "*MethodName*"` (or `--filter-class`).
+- One project or test: `just backend test --project tests/Calendar.Domain.Tests --filter-method "*MethodName*"` (or `--filter-class`). The recipe runs `dotnet test` in `backend/`, so `global.json` applies (Microsoft.Testing.Platform, xUnit v3), and passes its arguments through.
 - API tests use `WebApplicationFactory` with a `FakeTimeProvider` (`ApiTestBase`) and need Docker (Testcontainers PostgreSQL via `Calendar.Testing`, `PostgresTestDatabase`). Their logs, including generated SQL, are printed only for failing tests; to inspect SQL, write it to a file from a throwaway test with `ToQueryString()`.
 - `*AgreementTests` assert that the SQL query forms and `DayInclusion` agree. Untranslatable expressions fail only at runtime with a 500, so cover every query shape with an API test.
 - RS0030 bans `DateTime.Now`/`UtcNow`/`Today`, `DateTimeOffset.Now`/`UtcNow` and `TimeZoneInfo.Local` in `backend/src`. Use the injected `TimeProvider`.

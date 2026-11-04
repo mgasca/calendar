@@ -51,4 +51,4 @@ jobs:
           INFRA_ENVIRONMENT: ${{ inputs.environment }}
         run: |
           printf '## Database migration: %s\n\n' "$INFRA_ENVIRONMENT" >> "$GITHUB_STEP_SUMMARY"
-          just infra-migrate "$INFRA_ENVIRONMENT" | tee -a "$GITHUB_STEP_SUMMARY"
+          just infra migrate "$INFRA_ENVIRONMENT" | tee -a "$GITHUB_STEP_SUMMARY"

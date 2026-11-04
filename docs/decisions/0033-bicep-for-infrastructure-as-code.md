@@ -53,7 +53,7 @@ Chosen option: "Bicep driven by Azure CLI", because it provides reviewed declara
 
 ### Confirmation
 
-The infrastructure implementation PR includes doctor tests for missing and mismatched pins, CI Bicep lint/build and environment what-if, and a documented example of reviewing a no-change preview. Reviewers verify that both CI and local deployment use the pinned binaries, that parameters contain no secrets, and that removal and preview limitations are documented. `just adr-check` validates this record.
+The infrastructure implementation PR includes doctor tests for missing and mismatched pins, CI Bicep lint/build and environment what-if, and a documented example of reviewing a no-change preview. Reviewers verify that both CI and local deployment use the pinned binaries, that parameters contain no secrets, and that removal and preview limitations are documented. `just tools adr` validates this record.
 
 ## Pros and Cons of the Options
 

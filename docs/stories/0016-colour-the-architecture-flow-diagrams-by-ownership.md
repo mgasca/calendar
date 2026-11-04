@@ -47,7 +47,7 @@ The seven **flow** pages (Google sign-in, viewing today's agenda, adding an even
 4. **Given** a model where a flow's participant has no resolvable ownership, **when** the docs build runs, **then** it fails and names the node.
    [`resolveOwnership` rejects a node without ownership](../../frontend/apps/docs/src/lib/architecture.test.ts) (`rejects … a node that declares no ownership and is neither an actor nor part of a composition`), unchanged by this story: the flow renderer uses the same resolution, so the rule reaches flows without a new check.
 5. **Given** the change is complete, **when** `just check` runs, **then** it passes.
-   CI runs every part of `just check` on the PR. Locally the implementing agent ran the docs tests, ESLint, `typecheck`, `format:check`, `validate:architecture` and `just build-docs`; `just adr-check` could not run on that machine (its SDK rejects the `#:include` directive), so the Tooling job is the check for it.
+   CI runs every part of `just check` on the PR. Locally the implementing agent ran the docs tests, ESLint, `typecheck`, `format:check`, `validate:architecture` and `just docs build`; `just tools adr` could not run on that machine (its SDK rejects the `#:include` directive), so the Tooling job is the check for it.
 
 ## Design decisions
 

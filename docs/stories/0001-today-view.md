@@ -26,7 +26,7 @@ A morning planner wants one glance that answers three questions: *what's fixed i
   * Tasks without a due date never appear in the Today view.
 * **Task due value:** either a calendar date ("due Friday") or an exact date and time ("due Friday 17:00").
 * **Interaction:** tasks can be marked complete or reopened from the view.
-* **Data entry:** events and tasks are created through the API. For demos and development, `just db-seed` adds a realistic sample day. A create/edit UI is a later story.
+* **Data entry:** events and tasks are created through the API. For demos and development, `just db seed` adds a realistic sample day. A create/edit UI is a later story.
 * **Whose "today":** the browser's time zone and local date.
 * **Users:** single user, no sign-in yet.
 
@@ -194,15 +194,15 @@ The view refreshes when you switch back to its window and every five minutes whi
 ### For developers: run it locally with sample data
 
 ```sh
-just db-up && just db-migrate       # start PostgreSQL and create the schema
+just db up && just db migrate   # start PostgreSQL and create the schema
 dotnet user-secrets set "ConnectionStrings:Calendar" \
   "Host=127.0.0.1;Port=5432;Database=calendar;Username=calendar_app;Password=<CALENDAR_APP_PASSWORD from .env>" \
   --project backend/src/Calendar.Api
-just dev-api                        # API on http://localhost:5041
-just db-seed                        # add a sample day for your local zone (additive)
-just dev-web                        # web UI; proxies /api to the API
+just backend dev                # API on http://localhost:5041
+just db seed                    # add a sample day for your local zone (additive)
+just frontend dev               # web UI; proxies /api to the API
 ```
 
-* **Seed options:** `just db-seed --date 2026-10-26 --time-zone Europe/Berlin --api-url http://localhost:5041`.
-* **Clean slate:** `just db-reset`, then `just db-migrate`.
+* **Seed options:** `just db seed --date 2026-10-26 --time-zone Europe/Berlin --api-url http://localhost:5041`.
+* **Clean slate:** `just db reset`, then `just db migrate`.
 * **Sample data:** the seed adds six timed events (one overlapping pair, one from last night, one running into tomorrow), a birthday and a multi-day conference. It also adds tasks due today, overdue tasks (one already completed), and an undated task and a task due tomorrow, which correctly don't appear.

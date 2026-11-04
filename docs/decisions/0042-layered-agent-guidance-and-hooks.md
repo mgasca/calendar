@@ -45,6 +45,7 @@ Chosen option: "Layered guidance (root, nested `AGENTS.md` with `CLAUDE.md` shim
 * **Root `AGENTS.md`** (target: at most 90 lines and 1,500 words): overview, commands, architecture invariants, the story and issue workflow, working on several changes, testing principles, the redaction rule, and pointers to the layers below. `CLAUDE.md` stays a shim that imports it.
 * **Nested `backend/AGENTS.md` and `frontend/AGENTS.md`**: the practices and testing notes of one stack. Each has a two-line `CLAUDE.md` beside it that imports it, because Claude Code loads a nested `CLAUDE.md` when a file under that directory is read or edited, while Codex and Cursor read a nested `AGENTS.md` natively. Each opens by saying the root still applies.
 * **Skills** (`.claude/skills/<name>/SKILL.md`): multi-step procedures used on request, such as `issue-handover`, `adr-draft`, `story-draft` and `run-calendar`.
+* **Subagents** (`.claude/agents/<name>.md`): Claude Code reviewer roles run on request, such as `security-reviewer`. Their prompt is plain Markdown, so other agents can follow it as a checklist.
 * **Folder READMEs** (`docs/*/README.md`, `tools/README.md`): conventions that people read too. The root points at them instead of restating them.
 * **Hooks** (`tools/agent-hooks/`, wired in the git-tracked `.claude/settings.json`): the invariants below. Every hooked rule keeps a one-line statement in the root marked *(hook)*, so agents without hooks still see it.
 

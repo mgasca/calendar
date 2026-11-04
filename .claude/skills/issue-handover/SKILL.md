@@ -41,6 +41,7 @@ The root `AGENTS.md` still applies, in particular its rule for public posts: rep
 
 ## Resume and close out
 
+- Stack delivery PRs wherever you can. Open each later PR on the previous PR's branch (`gh pr create --base <previous-branch>`) instead of waiting for that PR to merge, so review of the next step can start straight away. This includes a delivery PR on its card PR. Base a PR on fresh `origin/main` only when it neither builds on nor touches the files of an open PR in the story.
 - Answers, approvals, check results and merge notices trigger the next authorized step.
 - Approval alone is not permission to bypass checks or to merge without authorization. Explicit user authorization to merge overrides a skill's default to leave merging to the user; required checks and repository protections still apply.
 - Check for conflicts and outstanding scope, update the durable card, and verify the issue state after the last PR merges.

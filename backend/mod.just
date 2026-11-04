@@ -9,9 +9,9 @@ set shell := ["bash", "-euo", "pipefail", "-c"]
 list:
     @just --list backend
 
-# Restore .NET packages
-restore:
-    dotnet restore
+# Restore .NET packages; arguments go to dotnet restore (e.g. just backend restore -p:NuGetAudit=false offline)
+restore *args:
+    dotnet restore {{ args }}
 
 # Build the solution
 build:

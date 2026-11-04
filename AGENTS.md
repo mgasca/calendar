@@ -34,8 +34,8 @@ Guidance for AI coding agents (Claude Code, Codex, Cursor, …) working in this 
 
 ## Working on several changes at once
 
-- Give each branch its own `git worktree` from fresh `origin/main`; never edit the main checkout. Each worktree needs its own `pnpm install --frozen-lockfile` in `frontend/`.
-- Worktrees do not isolate running services: `just db` recipes from any checkout hits the shared Compose project, volume and port *(hook)*. For concurrent runtime work use the throwaway stack in the `run-calendar` skill (PostgreSQL 55432, API 55041, Vite 55173), record which resources belong to the task, and before any reset, down or kill verify that the container, volume or PID is yours. Keep the ordinary defaults unchanged (ADR-0016).
+- Give each branch its own `git worktree` from fresh `origin/main`; never edit the main checkout. Each worktree needs its own `just frontend install` (`pnpm install --frozen-lockfile` in `frontend/`).
+- Worktrees do not isolate running services: `just db` recipes from any checkout hit the shared Compose project, volume and port *(hook)*. For concurrent runtime work use the throwaway stack in the `run-calendar` skill (PostgreSQL 55432, API 55041, Vite 55173), record which resources belong to the task, and before any reset, down or kill verify that the container, volume or PID is yours. Keep the ordinary defaults unchanged (ADR-0016).
 - Two branches that each add an EF migration conflict in `CalendarDbContextModelSnapshot.cs`: stack the second on the first (`--base <first-branch>`) and retarget it to `main` after the first merges. Postpone a change that rewrites code several open PRs touch until they merge, and say so on its issue.
 - Breaking contract changes (e.g. a list becoming `{ items, nextCursor }`) go in one PR with the regenerated `openapi.json`, the TS client and every consumer updated; find consumers with a grep for the path across `frontend/`, including MSW handlers in tests.
 
@@ -44,7 +44,7 @@ Guidance for AI coding agents (Claude Code, Codex, Cursor, …) working in this 
 - **Report what verification covered**: the revision (or precisely described tree), command, effective configuration and files included; distinguish local passes, skipped checks and CI results on the current head; rerun after a restore, conflict resolution or any later edit. Never generalise one passing suite into "all checks passed".
 - **Preserve the fix when proving a regression test**: before removing a fix for a negative control, save the exact intended contents or patch outside the checkout, or run the control in a scratch worktree. Never `git checkout --` or `git restore` an unstaged implementation *(hook)*: it restores the committed baseline and can discard the fix (#189). Restore the saved version, inspect the diff, rerun the checks, then commit.
 - **Every fix needs a test that fails without it**, confirmed against the old code. Say whether a performance finding is measured or inferred, and keep the evidence for a decision not to optimise in the story card (`docs/benchmarks/README.md` for a repeatable benchmark).
-- **Sandboxed agents** may lack network or Docker: restore offline with `dotnet restore -p:NuGetAudit=false`, run what can run (build, format, domain and pure unit tests), state exactly which suites did not run, and never report a change as verified when its integration tests were skipped.
+- **Sandboxed agents** may lack network or Docker: restore offline with `just backend restore -p:NuGetAudit=false`, run what can run (build, format, domain and pure unit tests), state exactly which suites did not run, and never report a change as verified when its integration tests were skipped.
 
 ## Public GitHub posts
 

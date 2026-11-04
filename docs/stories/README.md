@@ -40,6 +40,6 @@ Front matter: `status` (`planned`, `in-progress` or `implemented`), `date` (`YYY
 | [0016](0016-colour-the-architecture-flow-diagrams-by-ownership.md) | Colour the architecture flow diagrams by ownership, with the legend | implemented |
 | [0017](0017-per-user-calendar-ownership.md) | Per-user calendar ownership: my events and tasks are mine alone | implemented |
 | [0018](0018-preserve-transcript-insights.md) | Preserve transcript insights in agent guidance | implemented |
-| [0019](0019-split-the-justfile-into-modules.md) | Split the justfile into modules | planned |
+| [0019](0019-split-the-justfile-into-modules.md) | Split the justfile into modules | implemented |
 | [0020](0020-restructure-agent-guidance.md) | Restructure agent guidance: a short root AGENTS.md, nested area files, a skill and hooks | planned |
 | [XXXX](XXXX-create-events-and-tasks-from-week-view.md) | Create events and tasks from the week view | planned |

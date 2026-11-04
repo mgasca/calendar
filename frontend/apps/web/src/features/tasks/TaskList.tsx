@@ -6,7 +6,7 @@ import { useDeleteTask } from '../agenda/useDeleteTask.ts';
 
 import { viewParam, views, type View } from './taskViews.ts';
 import { api } from '../../api/client.ts';
-import { browserTimeZone, isPastDue } from '../agenda/dayTime.ts';
+import { browserTimeZone, formatDateTime, isPastDue } from '../agenda/dayTime.ts';
 import { useNow, useToday } from '../agenda/useNow.ts';
 import { apiError } from '../../api/apiError.ts';
 import {
@@ -121,7 +121,7 @@ export function TaskList() {
             </label>
             <span className="badge">{task.priority ?? 'medium'} priority</span>
             <span className="item-meta">
-              {task.dueDate ?? (task.dueAt ? new Date(task.dueAt).toLocaleString() : 'No deadline')}
+              {task.dueDate ?? (task.dueAt ? formatDateTime(task.dueAt) : 'No deadline')}
               {view === 'Upcoming' && task.dueAt && <PastDue task={task} />}
             </span>
             {task.notes && <p className="task-notes">{task.notes}</p>}

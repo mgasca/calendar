@@ -4,6 +4,7 @@ import {
   describeOverdue,
   eventStatuses,
   formatDate,
+  formatDateTime,
   formatTime,
   isIsoDate,
   isPastDue,
@@ -26,6 +27,34 @@ describe('dateTimeFormat', () => {
     expect(dateTimeFormat('fr-FR', { timeZone: 'UTC', day: 'numeric' })).not.toBe(base);
     expect(dateTimeFormat('en-GB', { timeZone: 'Europe/Madrid', day: 'numeric' })).not.toBe(base);
     expect(dateTimeFormat('en-GB', { timeZone: 'UTC', month: 'numeric' })).not.toBe(base);
+  });
+});
+
+describe('formatDateTime', () => {
+  const instant = '2026-10-25T00:30:00Z';
+
+  // formatDateTime replaces toLocaleString, so the text shown must not change.
+  it.each([{}, { timeZoneName: 'shortOffset' } as const])(
+    'shows what toLocaleString shows for %o',
+    (options) => {
+      // eslint-disable-next-line no-restricted-properties -- the reference being replaced
+      const expected = new Date(instant).toLocaleString(undefined, options);
+      expect(formatDateTime(instant, options)).toBe(expected);
+    },
+  );
+
+  it('accepts an instant as a string, a number or a Date', () => {
+    const ms = Date.parse(instant);
+    expect(formatDateTime(ms)).toBe(formatDateTime(instant));
+    expect(formatDateTime(new Date(ms))).toBe(formatDateTime(instant));
+  });
+
+  it('reuses the cached formatter', () => {
+    const format = vi.spyOn(Intl, 'DateTimeFormat');
+    formatDateTime(instant, { timeZoneName: 'short' });
+    formatDateTime(instant, { timeZoneName: 'short' });
+    expect(format).toHaveBeenCalledTimes(1);
+    format.mockRestore();
   });
 });
 

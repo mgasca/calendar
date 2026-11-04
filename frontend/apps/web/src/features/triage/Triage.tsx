@@ -4,7 +4,13 @@ import { useMemo, useState } from 'react';
 import { api } from '../../api/client.ts';
 import { ConfirmDialog } from '../../components/ConfirmDialog.tsx';
 import { ModalDialog } from '../../components/ModalDialog.tsx';
-import { browserTimeZone, dateTimeFormat, daysBetween, localDate } from '../agenda/dayTime.ts';
+import {
+  browserTimeZone,
+  dateTimeFormat,
+  daysBetween,
+  formatDateTime,
+  localDate,
+} from '../agenda/dayTime.ts';
 import { deadlineInstants } from '../agenda/deadline.ts';
 import { apiError } from '../../api/apiError.ts';
 import { useToday } from '../agenda/useNow.ts';
@@ -318,7 +324,7 @@ export function Triage() {
                     <option value="">Choose…</option>
                     {candidates.map((v) => (
                       <option key={v} value={v}>
-                        {new Date(v).toLocaleString()}
+                        {formatDateTime(v)}
                       </option>
                     ))}
                   </select>

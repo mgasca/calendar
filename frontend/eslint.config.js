@@ -47,7 +47,38 @@ export default defineConfig([
           ],
         },
       ],
+      // Code rules from frontend/AGENTS.md, marked (lint) there. Each helper file turns off only
+      // its own rule below.
+      'no-restricted-syntax': [
+        'error',
+        {
+          selector: "NewExpression[callee.name='QueryClient']",
+          message:
+            'Create clients with createQueryClient() from src/queryClient.ts, in the app and in tests: it sets the 30 s staleTime and the shared retry policy (frontend/AGENTS.md).',
+        },
+      ],
+      'no-restricted-properties': [
+        'error',
+        {
+          object: 'Intl',
+          property: 'DateTimeFormat',
+          message:
+            'Building a formatter costs far more than formatting. Use the cached dateTimeFormat(locale, options), or browserTimeZone(), from features/agenda/dayTime.ts (frontend/AGENTS.md).',
+        },
+        ...['toLocaleString', 'toLocaleDateString', 'toLocaleTimeString'].map((property) => ({
+          property,
+          message: `${property}() builds a formatter on every call. Use formatDateTime(instant, options) or dateTimeFormat(locale, options) from features/agenda/dayTime.ts (frontend/AGENTS.md).`,
+        })),
+      ],
     },
+  },
+  {
+    files: ['apps/web/src/queryClient.ts'],
+    rules: { 'no-restricted-syntax': 'off' },
+  },
+  {
+    files: ['apps/web/src/features/agenda/dayTime.ts'],
+    rules: { 'no-restricted-properties': 'off' },
   },
   {
     files: ['**/*.config.{js,ts}'],

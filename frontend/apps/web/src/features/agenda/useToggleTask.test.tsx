@@ -1,8 +1,9 @@
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { QueryClientProvider } from '@tanstack/react-query';
 import { act, renderHook, waitFor } from '@testing-library/react';
 import { http, HttpResponse } from 'msw';
 import type { ReactNode } from 'react';
 
+import { createQueryClient } from '../../queryClient.ts';
 import { server } from '../../test/server.ts';
 import type { AgendaTask } from './dayTime.ts';
 import { TaskUpdateError, useToggleTask, type TaskPatch } from './useToggleTask.ts';
@@ -47,7 +48,7 @@ const board = (): Board => ({
 });
 
 function setup() {
-  const queryClient = new QueryClient({
+  const queryClient = createQueryClient({
     defaultOptions: { queries: { retry: false, staleTime: Infinity } },
   });
   queryClient.setQueryData(BOARD_KEY, board());

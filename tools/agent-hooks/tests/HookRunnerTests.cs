@@ -75,12 +75,19 @@ public sealed class HookRunnerTests
   }
 
   [Fact]
-  public void Warm_adds_session_context()
+  public void Warm_names_the_sdk_and_the_runtime()
   {
-    HookResult result = HookRunner.Run("warm", """{"hook_event_name":"SessionStart"}""", _probe, "10.0.403");
+    HookResult result = HookRunner.Run(
+      "warm",
+      """{"hook_event_name":"SessionStart"}""",
+      _probe,
+      DotnetSdk.Describe("10.0.403", "10.0.14"));
 
     result.ExitCode.ShouldBe(0);
-    (result.Stdout ?? string.Empty).ShouldContain("10.0.403");
+    JsonElement output = JsonDocument.Parse(result.Stdout!).RootElement.GetProperty("hookSpecificOutput");
+    output.GetProperty("hookEventName").GetString().ShouldBe("SessionStart");
+    output.GetProperty("additionalContext").GetString()
+      .ShouldBe("agent-hooks active (tools/agent-hooks, .NET SDK 10.0.403, runtime 10.0.14).");
   }
 
   [Fact]

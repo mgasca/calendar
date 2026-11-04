@@ -8,8 +8,11 @@ public static class HookRunner
   /// <summary>The subcommands the tool accepts.</summary>
   public static readonly string[] Subcommands = ["pre-bash", "pre-edit", "post-edit", "stop", "warm"];
 
-  /// <summary>Runs one hook. Malformed JSON and unknown subcommands exit 2 so the mistake is visible.</summary>
-  public static HookResult Run(string subcommand, string stdin, IRepoProbe probe, string sdkVersion)
+  /// <summary>
+  /// Runs one hook. Malformed JSON and unknown subcommands exit 2 so the mistake is visible. <c>dotnet</c> is the SDK and
+  /// runtime text for the session-start line, as <see cref="DotnetSdk.Describe"/> writes it.
+  /// </summary>
+  public static HookResult Run(string subcommand, string stdin, IRepoProbe probe, string dotnet)
   {
     if (!Subcommands.Contains(subcommand))
     {
@@ -32,7 +35,7 @@ public static class HookRunner
       "pre-edit" => PreEdit(input),
       "post-edit" => PostEdit(input, probe),
       "stop" => Stop(input, probe),
-      _ => new HookResult(0, HookOutput.Context("SessionStart", $"agent-hooks active (tools/agent-hooks, .NET runtime {sdkVersion}).")),
+      _ => new HookResult(0, HookOutput.Context("SessionStart", $"agent-hooks active (tools/agent-hooks, .NET {dotnet}).")),
     };
   }
 

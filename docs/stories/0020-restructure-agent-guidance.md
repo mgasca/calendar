@@ -38,7 +38,7 @@ This story extends 0018, which made the guidance complete; this one makes it eff
 * **Nested area files:** `backend/AGENTS.md` and `frontend/AGENTS.md` hold the backend and frontend practices and testing notes. Each has a two-line `CLAUDE.md` shim that imports it, so Claude Code loads it when a file under that directory is touched and other agents read the same text natively. Each stays under 200 lines and opens by saying that the root file still applies.
 * **Tooling procedures in `tools/README.md`:** the ADR-0017 layout, `tool_dirs` inclusion and test discovery, the `#:include` SDK minimum, the scratch-project formatting procedure and the lock-file notes move there. No new skill for them: the procedure is rare and people read it too.
 * **`issue-handover` skill:** the "Public GitHub posts and optional issue handovers" section becomes `.claude/skills/issue-handover/SKILL.md`, loaded only when the user asks for that mode or one of its behaviours. The general redaction rule stays in the root.
-* **Hooks as an ADR-0017 tool:** `tools/agent-hooks/` is run by Claude Code from a git-tracked `.claude/settings.json`. Guards that protect work or the public record deny (`git restore`/`git checkout --` over unstaged changes, `gh` posts carrying machine paths or session handles, bare `git stash`/`pop`/`drop`, edits of generated files). The shared-database guard asks, because the user may want the shared database. The rest informs: C# lines over 140 characters after an edit, a stale contract when the agent stops, and a session-start line that warms the build cache and names the SDK.
+* **Hooks as an ADR-0017 tool:** `tools/agent-hooks/` is run by Claude Code from a git-tracked `.claude/settings.json`. Guards that protect work or the public record deny (`git restore`/`git checkout --` over unstaged changes, `gh` posts carrying machine paths or session handles, edits of generated files). The shared-database guard asks, because the user may want the shared database. The rest informs: C# lines over 140 characters after an edit, a stale contract when the agent stops, and a session-start line that warms the build cache and names the runtime. Each handler carries an `if` filter, so unrelated commands and edits start no process.
 * **Rules survive the move:** every hooked rule keeps a one-line statement in the root marked *(hook)*, so agents without hooks still see it. The decision is recorded in a new ADR (0042) that lands in the hooks PR.
 * **Delivery as an epic:** one child issue and one PR per deliverable (#217 skill, #218 hooks and ADR, #219 restructure), as 0018 did.
 
@@ -46,7 +46,7 @@ This story extends 0018, which made the guidance complete; this one makes it eff
 
 * Changes to what any rule requires. Wording, placement and enforcement change; a rule that turns out to be wrong gets its own issue.
 * Lint rules for guidance that is really a code rule, such as `new QueryClient()` outside `createQueryClient` or `new Intl.DateTimeFormat` outside `dayTime.ts`. Proposed as a follow-up issue at close-out.
-* Hook `if` argument filters that avoid spawning the tool for unrelated commands. Measured follow-up once the cached cost is observed in real sessions.
+* A guard for bare `git stash`: dropped in review on #222, because it is a harness rule rather than repository guidance.
 * The `issue-sweep` and `issue-closeout` skills proposed in #168, and the content review of `adr-draft` and `story-draft` (0009).
 * Hooks for agents other than Claude Code. Their rules stay in prose.
 

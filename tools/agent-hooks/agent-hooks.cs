@@ -1,5 +1,13 @@
 #!/usr/bin/env -S dotnet run
-#:include Hooks.cs
+#:include HookProtocol.cs
+#:include IRepoProbe.cs
+#:include ShellCommand.cs
+#:include BashGuard.cs
+#:include EditGuard.cs
+#:include LineLengthCheck.cs
+#:include ContractCheck.cs
+#:include HookRunner.cs
+#:include GitProbe.cs
 
 // Claude Code hooks for this repo (ADR-0042), wired up in .claude/settings.json. Each run handles one event:
 // it reads the hook JSON on stdin and answers on stdout, as https://code.claude.com/docs/en/hooks describes.

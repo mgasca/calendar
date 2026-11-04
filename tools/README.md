@@ -30,7 +30,7 @@ A scratch build that drops the folder's `Directory.Build.props`, `.editorconfig`
 
 ## agent-hooks
 
-`tools/agent-hooks/` is the set of Claude Code hooks wired in `.claude/settings.json` ([ADR-0042](../docs/decisions/0042-layered-agent-guidance-and-hooks.md)): it denies discarding unstaged work, public posts with private details and edits of generated files; asks before the shared database is touched from a linked worktree; and reports over-long C# lines and a stale API contract. Each subcommand reads the hook JSON on stdin, so you can try one by hand:
+`tools/agent-hooks/` is the set of Claude Code hooks wired in `.claude/settings.json` ([ADR-0042](../docs/decisions/0042-layered-agent-guidance-and-hooks.md)): it denies discarding unstaged work, public posts with private details and edits of generated files; asks before the shared database is touched from a linked worktree; and reports over-long C# lines and a stale API contract. The code is one file per guard or check (`BashGuard.cs`, `EditGuard.cs`, `LineLengthCheck.cs`, `ContractCheck.cs`), plus `ShellCommand.cs` (command splitting), `HookRunner.cs` (subcommand dispatch), `GitProbe.cs` behind `IRepoProbe.cs` (questions asked of git) and `HookProtocol.cs` (the hook JSON in and out); each tested class has a matching `tests/<Class>Tests.cs`, included by the one test app `tests/agent-hooks.tests.cs`. Each subcommand reads the hook JSON on stdin, so you can try one by hand:
 
 ```bash
 printf '{"tool_name":"Bash","tool_input":{"command":"git restore AGENTS.md"},"cwd":"%s"}' "$PWD" | dotnet run tools/agent-hooks/agent-hooks.cs -- pre-bash

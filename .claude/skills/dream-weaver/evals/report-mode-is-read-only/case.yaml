@@ -1,0 +1,9 @@
+schema_version: "1.1"
+name: report-mode-is-read-only
+expected_outcome: |
+  Asked for a consolidation of the last 24 hours with no mode named, the skill
+  reads session history and guidance on origin/main, and produces a report in
+  which every lesson has a class, a route and at least one session citation,
+  a coverage section says what was not read, and the last line is the
+  watermark. It runs no gh or git command that writes (no issue, comment, PR,
+  push or merge).

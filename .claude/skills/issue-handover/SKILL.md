@@ -66,6 +66,14 @@ If the push is rejected, someone added images meanwhile: run the block again, wh
 - After a squash merge in a stack, update the next branch from fresh `main`, preserve the union of delivered PR links in the card, rerun the relevant checks, and propagate the update through the children. Retarget each child to `main` when appropriate.
 - Finish substantive issue and PR reporting, then clean up only this task's merged resources.
 
+## Performance issues
+
+A `performance` issue is closed on evidence, not on a merged diff.
+
+- Before implementing, the issue states the baseline: the quantity, its value, how it was measured (CI job or step medians over a stated number of runs, or a harness run) and the commit. `just tools ci-timings` samples CI job and step durations; `just docs bench` runs the docs harness.
+- The delivery PR reports the same quantity after the change on the same basis, says which numbers are measured and which inferred, and adds a benchmark record under `docs/benchmarks/` following its `README.md` (next number, a harness that exists in the repository, commit, machine, iterations, median and spread, a control the change should not move). A measured decision to leave code unchanged gets a record too, with its reconsideration condition.
+- Close out only when the record is merged and the after measurement is on the issue; the card links the record.
+
 ## Reopened decisions
 
 Before re-rating a decision, ask whether the decision drivers and their weights changed, as well as checking changed facts. Story 0011 records why familiarity changed the task-runner decision.

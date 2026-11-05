@@ -5,10 +5,11 @@ Reference measurements for performance work. A benchmark here is a repeatable ha
 | Record | Subject | Harness |
 | --- | --- | --- |
 | [0001](0001-docs-parse.md) | Loading the ADRs and stories for the docs site and tests | `frontend/apps/docs/benchmarks/parse.bench.ts` |
+| [0002](0002-frontend-ci-job.md) | The Frontend CI job: job and step durations before the fixes of #272 | `tools/ci-timings/ci-timings.cs` |
 
 ## Running one
 
-`just docs bench` runs the docs harness with [tinybench](https://github.com/tinylibs/tinybench) inside Vitest (`vitest.bench.config.ts`). Set `BENCH_OUT=<file>` to also write the Markdown table to a file. `just test`, `just check` and CI never run benchmarks.
+`just tools ci-timings --job <name>` samples a workflow's job and step durations from the runs GitHub keeps (needs `gh` signed in) and prints the tables for a record. `just docs bench` runs the docs harness with [tinybench](https://github.com/tinylibs/tinybench) inside Vitest (`vitest.bench.config.ts`). Set `BENCH_OUT=<file>` to also write the Markdown table to a file. `just test`, `just check` and CI never run benchmarks.
 
 ## Writing a record
 

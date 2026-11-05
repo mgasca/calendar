@@ -43,6 +43,10 @@ test:
 versions *args:
     dotnet run tools/tool-versions/tool-versions.cs -- {{ args }}
 
+# Sample a workflow's job and step durations from GitHub (e.g. just tools ci-timings --job Frontend)
+ci-timings *args:
+    dotnet run tools/ci-timings/ci-timings.cs -- {{ args }}
+
 # Validate ADRs in docs/decisions (e.g. just tools adr --fix-links)
 adr *args:
     dotnet run {{ adr_skill }}/scripts/check-adr/check-adr.cs -- {{ args }}

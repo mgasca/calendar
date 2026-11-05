@@ -60,7 +60,7 @@ A first read of the code and workflows (`frontend/apps/docs`, `.github/workflows
 
 ## Design decisions
 
-### Architecture Decision Records
+### Any Decision Records
 
 | ADR | Decision | Why it matters for this story |
 | --- | --- | --- |

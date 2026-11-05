@@ -68,7 +68,7 @@ This story adds the event form to the day view, beside **Add task**, so an edito
 
 ## Design decisions
 
-### Architecture Decision Records
+### Any Decision Records
 
 | ADR | Decision | Why it matters for this story |
 | --- | --- | --- |

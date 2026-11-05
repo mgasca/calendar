@@ -59,7 +59,7 @@ The migration runs as `calendar_migrator` from `just db migrate` or the Azure mi
 
 ## Design decisions
 
-### Architecture Decision Records
+### Any Decision Records
 
 | ADR | Decision | Why it matters for this story |
 | --- | --- | --- |

@@ -111,7 +111,7 @@ Evidence is marked **CI** (run on the PR head), **local** (run by the implementi
 
 ## Design decisions
 
-### Architecture Decision Records
+### Any Decision Records
 
 | ADR | Decision | Why it matters for this story |
 | --- | --- | --- |

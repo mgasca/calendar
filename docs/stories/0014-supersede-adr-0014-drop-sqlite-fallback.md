@@ -39,7 +39,7 @@ Tracked in issue #145 and delivered by the card PR ([#166](https://github.com/mg
 
 ## Design decisions
 
-### Architecture Decision Records
+### Any Decision Records
 
 | ADR | Decision | Why it matters for this story |
 | --- | --- | --- |

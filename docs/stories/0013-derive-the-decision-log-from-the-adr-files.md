@@ -19,7 +19,7 @@ Tracked in issue #184. Card, [ADR-0040](../decisions/0040-derive-the-decision-lo
 
 `docs/decisions/README.md` carried a hand-maintained table with one row per ADR (number, title, status), introduced by [ADR-0000](../decisions/0000-use-markdown-architectural-decision-records.md) and made the ordered log of the documentation site by [ADR-0023](../decisions/0023-static-adr-log-publication.md). Every ADR PR added a row and every status change edited one; `just tools adr` and the docs build both compared each ADR file with its row. Of the 112 merges on `main`, 25 touched the table. Story [0010](0010-sweep-pending-adrs-to-a-decided-status.md), which changed four ADR statuses in parallel PRs, hit a conflict whose hand resolution dropped a row, caught only in review.
 
-The table had stopped carrying information of its own. The documentation site lists every ADR with its status badge in the **Architecture decisions** navigation, the file name gives the number, the `# Title` gives the title and the front matter gives the status, and the architecture model ([ADR-0039](../decisions/0039-architecture-model-and-visualization-tooling.md)) lists every ADR with its status too.
+The table had stopped carrying information of its own. The documentation site lists every ADR with its status badge in the **Any decision records** navigation, the file name gives the number, the `# Title` gives the title and the front matter gives the status, and the architecture model ([ADR-0039](../decisions/0039-architecture-model-and-visualization-tooling.md)) lists every ADR with its status too.
 
 ### Agreed scope
 
@@ -39,7 +39,7 @@ The table had stopped carrying information of its own. The documentation site li
 
 1. **Given** `docs/decisions/README.md`, **when** I read it, **then** it has no table of records, and it says where to browse the log.
    Checked by reading the file. The site no longer reads it at all, and no test asserts the absence of the table.
-2. **Given** the `NNNN-*.md` files, **when** the docs site is built, **then** the **Architecture decisions** navigation lists every record in number order with its status.
+2. **Given** the `NNNN-*.md` files, **when** the docs site is built, **then** the **Any decision records** navigation lists every record in number order with its status.
    [`adr.test.ts`](../../frontend/apps/docs/src/lib/adr.test.ts) (`orders by number whatever the order of the sources`); [`build.test.ts`](../../frontend/apps/docs/tests/build.test.ts) (`published ADRs`: each page's sidebar lists every record in log order).
 3. **Given** two files with the same number, a file name outside the convention, or a record without a title or a status, **when** the docs build runs, **then** it fails and names the file.
    [`adr.test.ts`](../../frontend/apps/docs/src/lib/adr.test.ts) (`rejects duplicate number`, `unsafe filename`, `uppercase filename`, `missing status`, `empty status`, `two titles`, `no title`).
@@ -52,7 +52,7 @@ The table had stopped carrying information of its own. The documentation site li
 
 ## Design decisions
 
-### Architecture Decision Records
+### Any Decision Records
 
 | ADR | Decision | Why it matters for this story |
 | --- | --- | --- |
@@ -103,7 +103,7 @@ No changes.
 
 ### Finding a decision
 
-Open the documentation site and choose **Architecture decisions** in the sidebar. Every decision is listed in number order with its status badge; choose one to read it. In the repository, the decisions are the numbered files in `docs/decisions`, and `README.md` there explains the conventions.
+Open the documentation site and choose **Any decision records** in the sidebar. Every decision is listed in number order with its status badge; choose one to read it. In the repository, the decisions are the numbered files in `docs/decisions`, and `README.md` there explains the conventions.
 
 ### Adding or changing a decision
 

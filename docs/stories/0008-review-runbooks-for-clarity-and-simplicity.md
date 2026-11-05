@@ -51,7 +51,7 @@ Clarity and simplicity can compete. More explanation makes a step clearer but th
 
 ## Design decisions
 
-### Architecture Decision Records
+### Any Decision Records
 
 | ADR | Decision | Why it matters for this story |
 | --- | --- | --- |

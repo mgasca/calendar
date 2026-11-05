@@ -37,7 +37,7 @@ This extends the performance lessons in [0015](0015-backend-performance-review-c
 
 ### Not in this story
 
-* Application behaviour, default database provisioning, new dependencies or changes to accepted architecture decisions.
+* Application behaviour, default database provisioning, new dependencies or changes to accepted ADRs.
 * Implementing or merging the separate browser-skill proposal (#190), or the sweep/close-out proposal (#168).
 * Running a new performance comparison or claiming an unavailable historical harness is reproducible.
 
@@ -54,7 +54,7 @@ This extends the performance lessons in [0015](0015-backend-performance-review-c
 
 ## Design decisions
 
-### Architecture Decision Records
+### Any Decision Records
 
 | ADR | Decision | Why it matters for this story |
 | --- | --- | --- |

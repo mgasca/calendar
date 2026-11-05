@@ -67,14 +67,25 @@ Measured, and the reason the setup file resets the module registry per file: wit
 
 ## CI
 
-To be measured on the PR branch once it has at least five successful runs, with `just tools ci-timings --runs <n> --job Frontend`, and compared with step 10 (`pnpm test:coverage`, median 23 s over 40 runs) of record 0002 and the web suite's `Duration` line in the job log (20.33–22.50 s in the three logs the issue cites).
+Six successful runs of the PR branch (`9c107ec2`: the pull-request run and five `workflow_dispatch` runs started one after another, since the workflow's concurrency group holds one queued run per ref), sampled with the `--branch` option that #286 adds to the harness, run from that PR's revision of `tools/ci-timings/ci-timings.cs` (`--runs 6 --branch claude/web-tests-275 --job Frontend`). Record 0002 is the before (40 runs on `main`).
+
+| Quantity | Before (0002) | After (6 runs) |
+| --- | ---: | ---: |
+| Step 10, `pnpm test:coverage`, median s (min–max) | 23 (14–25) | 11 (8–12) |
+| Web suite `Duration` in the job log | 20.33–22.50 s (3 logs) | 9.18–10.26 s in four runs, 6.77 and 6.93 s in the two on faster runners |
+| jsdom instances the web suite reports | 17–19 per run | none reported (one per worker) |
+| act warnings / MSW unhandled-request errors per run | 10 / 4 | 0 / 0 in all six |
+
+The Frontend job itself is not comparable across this sample: a `workflow_dispatch` run skips the publication build (step 15 is 0 s in five of the six runs), and two runs landed on faster hardware (the job's 2:19 minimum against 4:40). The pull-request run, the one comparable with record 0002, took 4:40 with the test step at 12 s.
+
+Measured: the step drops by 12 s at the median, more than the 10 s the issue expected, and the web suite by about 11 s in the same runner class; the docs suite (7.6 s in the log, run concurrently) now bounds the step. Not separable in CI: the two parts were not deployed one at a time, so the per-part split rests on the local series above.
 
 ## Reading
 
 - Measured: at the runner's core count, the pool change alone takes the local web suite from 11.4 s to 5.2 s, and both changes together from 16.0 s to 6.6 s. The step in CI also contains the `docs` and `api-client` suites and coverage collection, so the saving there is bounded by the web suite's share of it.
 - Measured: the batching change takes 3 s off the slowest file at 12 workers, where it bounds the suite less than it does on four cores.
-- Inferred: on the 4-core runner, where the issue measured `Triage.test.tsx` at 8.6 s, the file was the suite's long pole and the pool change cannot shorten it, so both changes are needed for the step to drop by the 10 s the issue expected; the CI section will say whether it did.
+- Inferred: on the 4-core runner, where the issue measured `Triage.test.tsx` at 8.6 s, the file was the suite's long pole and the pool change cannot shorten it, so both changes were needed for the step to drop by the 10 s the issue expected; the CI section shows it dropped by 12 s.
 
 ## Reconsider when
 
-The CI numbers in this record are added before the PR merges; if the step does not drop, the pool change is the part to question, since its local gain depends on process reuse that the runner may not reproduce. Revisit `vmThreads` if MSW stops reading `WritableStream` at module scope, and the per-file module reset if Vitest grows an option that resets modules without recreating the environment.
+The docs suite now bounds the test step (#273 and #274 change what runs beside it, so a later record should sample the step again once they merge). Revisit `vmThreads` if MSW stops reading `WritableStream` at module scope, and the per-file module reset if Vitest grows an option that resets modules without recreating the environment.

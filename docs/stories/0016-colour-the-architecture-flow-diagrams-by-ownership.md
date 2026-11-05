@@ -51,7 +51,7 @@ The seven **flow** pages (Google sign-in, viewing today's agenda, adding an even
 
 ## Design decisions
 
-### Architecture Decision Records
+### Any Decision Records
 
 | ADR | Decision | Why it matters for this story |
 | --- | --- | --- |

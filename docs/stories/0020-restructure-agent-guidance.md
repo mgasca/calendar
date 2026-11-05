@@ -74,7 +74,7 @@ Story 0019 (the justfile modules) ran in parallel. Its card ([PR #214](https://g
 
 ## Design decisions
 
-### Architecture Decision Records
+### Any Decision Records
 
 | ADR | Decision | Why it matters for this story |
 | --- | --- | --- |

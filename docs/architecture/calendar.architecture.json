@@ -25,7 +25,7 @@
       }
     },
     "adrs": [
-      { "id": "ADR-0000", "title": "Use Markdown Architectural Decision Records", "status": "accepted", "file": "docs/decisions/0000-use-markdown-architectural-decision-records.md", "url": "https://mgasca.github.io/calendar/adr/0000/" },
+      { "id": "ADR-0000", "title": "Use MADR for Any Decision Records", "status": "accepted", "file": "docs/decisions/0000-use-markdown-architectural-decision-records.md", "url": "https://mgasca.github.io/calendar/adr/0000/" },
       { "id": "ADR-0001", "title": "Single repository with per-stack top-level directories", "status": "accepted", "file": "docs/decisions/0001-monorepo-layout.md", "url": "https://mgasca.github.io/calendar/adr/0001/" },
       { "id": "ADR-0002", "title": ".NET 10 LTS with ASP.NET Core Minimal APIs, Domain + Api projects", "status": "accepted", "file": "docs/decisions/0002-dotnet-10-minimal-api-backend.md", "url": "https://mgasca.github.io/calendar/adr/0002/" },
       { "id": "ADR-0003", "title": "React + Vite + TypeScript SPA for the web UI", "status": "accepted", "file": "docs/decisions/0003-react-vite-typescript-web-ui.md", "url": "https://mgasca.github.io/calendar/adr/0003/" },

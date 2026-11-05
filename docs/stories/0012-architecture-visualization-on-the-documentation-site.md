@@ -69,7 +69,7 @@ A first machine-readable model of the whole system was drafted in FINOS CALM (no
 
 ## Design decisions
 
-### Architecture Decision Records
+### Any Decision Records
 
 | ADR | Decision | Why it matters for this story |
 | --- | --- | --- |

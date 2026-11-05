@@ -75,7 +75,7 @@ An earlier analysis (a previous agent session, recorded in a comment on the issu
 
 ## Design decisions
 
-### Architecture Decision Records
+### Any Decision Records
 
 | ADR | Decision | Why it matters for this story |
 | --- | --- | --- |

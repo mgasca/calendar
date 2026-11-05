@@ -107,4 +107,4 @@ Test that production updates preserve previews, preview updates preserve product
 
 * Verified on 2026-10-27: [`actions/deploy-pages`](https://github.com/actions/deploy-pages) documents its normal artifact deployment; its experimental preview input is not a generally available preview-hosting solution. [GitHub workflow events](https://docs.github.com/en/actions/reference/workflows-and-actions/events-that-trigger-workflows#workflow_run) documents the trusted follow-on workflow mechanism and its security considerations.
 * Alternative: [Cloudflare preview deployments](https://developers.cloudflare.com/pages/configuration/preview-deployments/).
-* This remains a proposed architectural decision while the requested implementation is prepared for review.
+* This remains a proposed decision while the requested implementation is prepared for review.

@@ -77,7 +77,7 @@ Tracked in issue #247. Delivery PR: [#248](https://github.com/mgasca/calendar/pu
 
 ## Design decisions
 
-### Architecture Decision Records
+### Any Decision Records
 
 | ADR | Decision | Why it matters for this story |
 | --- | --- | --- |

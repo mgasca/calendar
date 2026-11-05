@@ -41,7 +41,7 @@ Chosen option: "Derive the log from the files; `README.md` keeps only the conven
 
 * The decision log is the set of `docs/decisions/NNNN-*.md` files, ordered by number. The file name gives the number, the single `# Title` gives the title and the front matter `status` gives the status, exactly as the validator already requires.
 * `docs/decisions/README.md` holds the conventions and says where to browse the log. It has no list of records.
-* The documentation site builds the **Architecture decisions** navigation from the files: every record in number order, with its status badge. Since PR #183 the site has no ADR Log page of its own; the navigation is the log.
+* The documentation site builds the **Any decision records** navigation from the files: every record in number order, with its status badge. Since PR #183 the site has no ADR Log page of its own; the navigation is the log.
 * `just tools adr` keeps every rule except the index row: contiguous numbering, no stray files, front matter, section order, drivers, rating tables, pros and cons, and links.
 * The architecture model ([ADR-0039](0039-architecture-model-and-visualization-tooling.md)) still lists every ADR in `metadata.adrs`, and the docs build still fails when an entry's file, title or status differs from the ADR file. That list stays a per-ADR edit, by the decision recorded in story [0012](../stories/0012-architecture-visualization-on-the-documentation-site.md), so a conflict there remains possible; it is a JSON array with one line per ADR, and the loss of a line fails the build instead of passing silently.
 
@@ -61,7 +61,7 @@ This replaces the first bullet of the "Source and navigation contract" in [ADR-0
 * `just tools adr` passes with no table in `README.md` and still rejects a numbering gap, a stray file and every structural fault (its tests in `.claude/skills/adr-draft/tests/`).
 * The docs tests (`frontend/apps/docs/src/lib/adr.test.ts`) show that `parseLog` orders records by number from the files alone and rejects a duplicate number, an unsafe file name, a missing title and a missing status; `corpus.test.ts` loads the real `docs/decisions` through the loader.
 * The build test (`frontend/apps/docs/tests/build.test.ts`, `published ADRs`) checks that each record's page carries the sidebar in log order.
-* A reviewer confirms that the **Architecture decisions** navigation of the pull-request preview lists every record with its status.
+* A reviewer confirms that the **Any decision records** navigation of the pull-request preview lists every record with its status.
 
 ## Pros and Cons of the Options
 

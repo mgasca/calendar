@@ -39,6 +39,50 @@ function servePages() {
   );
 }
 
+/** `count` open tasks, all overdue since 2000, titled `<prefix> <n>`. */
+function overdueTasks(count: number, prefix: string) {
+  return Array.from({ length: count }, (_, index) => ({
+    id: `${prefix.toLowerCase()}-${String(index + 1)}`,
+    title: `${prefix} ${String(index + 1)}`,
+    dueDate: '2000-01-01',
+    isCompleted: false,
+  }));
+}
+
+/**
+ * Serves `tasks` as one page and applies every bulk batch within `limit` ids, recording the ids of
+ * each request; a batch over the limit gets the API's 400, and request number `failBatch` a 503.
+ */
+function serveBatches(
+  tasks: ReturnType<typeof overdueTasks>,
+  { limit, failBatch }: { limit: number; failBatch?: number },
+) {
+  const requests: string[][] = [];
+  server.use(
+    http.get('*/api/tasks', () =>
+      HttpResponse.json({ items: tasks, total: tasks.length, nextCursor: null }),
+    ),
+    http.post('*/api/tasks/bulk', async ({ request }) => {
+      const body = (await request.json()) as { ids: string[] };
+      requests.push(body.ids);
+      if (requests.length === failBatch) return HttpResponse.json({}, { status: 503 });
+      if (body.ids.length > limit) {
+        return HttpResponse.json(
+          { title: `At most ${String(limit)} ids are allowed.` },
+          { status: 400 },
+        );
+      }
+      return HttpResponse.json({
+        results: body.ids.map((id) => ({ id, outcome: 'applied' })),
+        applied: body.ids.length,
+        skipped: 0,
+        notFound: 0,
+      });
+    }),
+  );
+  return requests;
+}
+
 async function selectFirst(user: ReturnType<typeof userEvent.setup>) {
   await screen.findByText('First overdue');
   await user.click(screen.getByRole('checkbox', { name: 'Select First overdue' }));
@@ -146,77 +190,36 @@ describe('overdue triage', () => {
     });
   });
 
-  it('submits loaded selections in sequential batches of at most 500 ids', async () => {
-    const manyTasks = Array.from({ length: 501 }, (_, index) => ({
-      id: `00000000-0000-0000-0000-${String(index + 1).padStart(12, '0')}`,
-      title: `Overdue ${String(index + 1)}`,
-      dueDate: '2000-01-01',
-      isCompleted: false,
-    }));
-    const requests: string[][] = [];
-    server.use(
-      http.get('*/api/tasks', () =>
-        HttpResponse.json({ items: manyTasks, total: manyTasks.length, nextCursor: null }),
-      ),
-      http.post('*/api/tasks/bulk', async ({ request }) => {
-        const body = (await request.json()) as { ids: string[] };
-        requests.push(body.ids);
-        if (body.ids.length > 500) {
-          return HttpResponse.json({ title: 'At most 500 ids are allowed.' }, { status: 400 });
-        }
-        return HttpResponse.json({
-          results: body.ids.map((id) => ({ id, outcome: 'applied' })),
-          applied: body.ids.length,
-          skipped: 0,
-          notFound: 0,
-        });
-      }),
-    );
-    renderApp('/triage');
+  // The batching rule itself (500 ids per request, sequential, stop at the first failure) is
+  // covered at the unit level in bulkBatches.test.ts with 501 and 1,001 ids. These two render the
+  // view with a limit of 2 and a few rows, to show it wires the rule up and reports the outcome.
+  it('submits loaded selections in batches of at most the limit and reports the total', async () => {
+    const manyTasks = overdueTasks(3, 'Overdue');
+    const requests = serveBatches(manyTasks, { limit: 2 });
+    renderWithProviders(<Triage bulkIdLimit={2} />);
     const user = userEvent.setup();
-    await screen.findByText('Overdue 501');
+    await screen.findByText('Overdue 3');
     await user.click(screen.getByRole('checkbox', { name: 'Select all loaded tasks' }));
     await user.click(screen.getByRole('button', { name: 'Complete' }));
     await waitFor(() => {
       expect(requests).toHaveLength(2);
     });
-    expect(requests.map((batch) => batch.length)).toEqual([500, 1]);
+    expect(requests.map((batch) => batch.length)).toEqual([2, 1]);
     expect(requests.flat()).toEqual(manyTasks.map((task) => task.id));
-    expect(await screen.findByText('501 tasks updated')).toBeInTheDocument();
-  }, 15_000);
+    expect(await screen.findByText('3 tasks updated')).toBeInTheDocument();
+  });
 
   it('stops after a failed batch and reports earlier applied tasks', async () => {
-    const manyTasks = Array.from({ length: 1_001 }, (_, index) => ({
-      id: `10000000-0000-0000-0000-${String(index + 1).padStart(12, '0')}`,
-      title: `Task ${String(index + 1)}`,
-      dueDate: '2000-01-01',
-      isCompleted: false,
-    }));
-    const requests: string[][] = [];
-    server.use(
-      http.get('*/api/tasks', () =>
-        HttpResponse.json({ items: manyTasks, total: manyTasks.length, nextCursor: null }),
-      ),
-      http.post('*/api/tasks/bulk', async ({ request }) => {
-        const body = (await request.json()) as { ids: string[] };
-        requests.push(body.ids);
-        if (requests.length === 2) return HttpResponse.json({}, { status: 503 });
-        return HttpResponse.json({
-          results: body.ids.map((id) => ({ id, outcome: 'applied' })),
-          applied: body.ids.length,
-          skipped: 0,
-          notFound: 0,
-        });
-      }),
-    );
-    renderApp('/triage');
+    const manyTasks = overdueTasks(5, 'Task');
+    const requests = serveBatches(manyTasks, { limit: 2, failBatch: 2 });
+    renderWithProviders(<Triage bulkIdLimit={2} />);
     const user = userEvent.setup();
-    await screen.findByText('Task 1001');
+    await screen.findByText('Task 5');
     await user.click(screen.getByRole('checkbox', { name: 'Select all loaded tasks' }));
     await user.click(screen.getByRole('button', { name: 'Complete' }));
-    expect(await screen.findByText(/500 tasks applied before failure/)).toBeInTheDocument();
-    expect(requests.map((batch) => batch.length)).toEqual([500, 500]);
-  }, 15_000);
+    expect(await screen.findByText(/2 tasks applied before failure/)).toBeInTheDocument();
+    expect(requests.map((batch) => batch.length)).toEqual([2, 2]);
+  });
 
   it('handles 409 and partial skipped outcomes', async () => {
     servePages();

@@ -14,23 +14,16 @@ import {
 import { deadlineInstants } from '../agenda/deadline.ts';
 import { apiError } from '../../api/apiError.ts';
 import { useToday } from '../agenda/useNow.ts';
+import { BULK_ID_LIMIT, BulkActionError, submitInBatches } from './bulkBatches.ts';
 
 type Action = 'complete' | 'setDueDate' | 'setDueInstant' | 'clearDeadline' | 'delete';
-const BULK_ID_LIMIT = 500;
 
-class BulkActionError extends Error {
-  readonly status: number;
-
-  readonly applied: number;
-
-  constructor(status: number, applied: number) {
-    super(status === 409 ? 'The overdue count changed.' : 'Couldn’t apply action.');
-    this.status = status;
-    this.applied = applied;
-  }
+export interface TriageProps {
+  /** Ids per bulk request: the API limit by default, lowered by tests to reach the boundary with a few rows. */
+  bulkIdLimit?: number;
 }
 
-export function Triage() {
+export function Triage({ bulkIdLimit = BULK_ID_LIMIT }: TriageProps = {}) {
   const zone = browserTimeZone();
   const today = useToday(zone);
   const client = useQueryClient();
@@ -93,24 +86,11 @@ export function Triage() {
         return data;
       }
 
-      const aggregate = {
-        results: [] as { id: string; outcome: string }[],
-        applied: 0,
-        skipped: 0,
-        notFound: 0,
-      };
-      for (let start = 0; start < selected.length; start += BULK_ID_LIMIT) {
-        const ids = selected.slice(start, start + BULK_ID_LIMIT);
-        const { data, response } = await api.POST('/api/tasks/bulk', {
-          body: { ...payload, ids },
-        });
-        if (!data) throw new BulkActionError(response.status, aggregate.applied);
-        aggregate.results.push(...data.results);
-        aggregate.applied += Number(data.applied);
-        aggregate.skipped += Number(data.skipped);
-        aggregate.notFound += Number(data.notFound);
-      }
-      return aggregate;
+      return submitInBatches(
+        selected,
+        (ids) => api.POST('/api/tasks/bulk', { body: { ...payload, ids } }),
+        bulkIdLimit,
+      );
     },
     onSuccess: (result) => {
       const skipped = Number(result.skipped) + Number(result.notFound);

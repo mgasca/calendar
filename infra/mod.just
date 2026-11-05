@@ -4,6 +4,8 @@
 set shell := ["bash", "-euo", "pipefail", "-c"]
 set working-directory := '..'
 
+import '../just/do.just'
+
 # List this module's recipes
 [default]
 [private]

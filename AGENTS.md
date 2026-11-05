@@ -12,7 +12,7 @@ Guidance for AI coding agents (Claude Code, Codex, Cursor, …) working in this 
 
 - `just contracts` rebuilds the API and regenerates `contracts/openapi.json` and the TS client. Commit the result: CI fails on a stale contract, and generated files are never edited by hand *(hook)*.
 - Migrations are applied only by `just db migrate`, as `calendar_migrator`, never by the app (ADR-0015). The `db` recipes and `compose.yaml` address one shared Compose project (`calendar`, volume `calendar-pgdata`, port 5432) from every checkout *(hook)*; see "Working on several changes at once".
-- Several recipes in one command need the `module::recipe` form (`just db::up db::migrate`; `just db up migrate` is an error) and work only when none takes arguments; otherwise the rest become arguments of the first. Run them separately.
+- To run several recipes of one module in order, use `do`: `just backend do build test` stops at the first failure, and words from the first one that starts with `-` go to the last recipe (`just backend do build test --filter-method "*Name*"`), and so do the words after a `--` (`just infra do what-if -- staging`). Write `-n` after `do` to preview (`just db do -n up migrate`). Without `do`, only the first word is looked up in the module (`just backend build test` runs the **root** `test`), and the `module::recipe` form (`just db::up db::migrate`) works only when no recipe but the last takes arguments.
 - `just docs bench` runs the docs benchmark by hand (results in `docs/benchmarks/`); it is never part of `just test` or CI.
 
 ## Architecture

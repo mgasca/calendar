@@ -87,7 +87,7 @@ The decision above is unchanged: `just` stays the runner, every recipe stays a t
 
 * **Settings are per module.** Each module file sets its own shell (`set shell := ["bash", "-euo", "pipefail", "-c"]`), because a module does not inherit it. The root's `set dotenv-load` is enough for `.env` values to reach module recipes, so modules do not repeat it.
 * **Working directory.** A module recipe runs in the directory of its module file. A module whose file is not in the directory it works in sets `set working-directory`. A stack module therefore needs no `cd backend &&` or `--dir frontend`.
-* **Chaining uses `::`.** Several recipes of one module run as `just db::up db::migrate`. `just db up migrate` is an error. The rule in `AGENTS.md` that chained recipes must take no arguments still applies.
+* **Chaining uses `::`.** Several recipes of one module run as `just db::up db::migrate`. `just db up migrate` is an error. The rule in `AGENTS.md` that chained recipes must take no arguments still applies. *Amended 2026-11-05:* the `do` recipe below chains them without repeating the module, and takes arguments for the last one.
 * **A bare module name runs nothing.** Each module marks a `[default]` recipe that only lists the module, so `just db` cannot start or delete anything.
 * **Dependencies point one way.** A root recipe may depend on a module recipe (`check: backend::lint`). A module recipe cannot depend on a root recipe, so a step that two modules share lives in the module that owns it.
 
@@ -106,6 +106,28 @@ The decision above is unchanged: `just` stays the runner, every recipe stays a t
 * Bad, because **D4 Expressiveness**: chaining needs the `::` form, and each of the seven module files repeats the `set shell` line.
 * Bad, because the rename reaches up to 59 tracked files and the 6 CI call sites (an upper bound, counted by searching for the real recipe names), and contributors and agents relearn the names.
 * Neutral: [ADR-0017](0017-dotnet-file-based-apps-for-repo-tooling.md)'s choice of language for tool scripts, and the minimum `just` version in `.just-version`, do not change.
+
+### Amendment, 2026-11-05: chaining a module's recipes with `do`
+
+`just backend build test` runs `backend::build`, then the **root** `test`, because only the first word after a module name is looked up in the module (issue #247). The `::` form works, but it repeats the module, and a recipe that takes `*args` swallows the names after it: `just backend::restore backend::build` passes `backend::build` to `dotnet restore`.
+
+* **One recipe, imported by every module.** `just/do.just` defines `do`, and each module file pulls it in with `import`. An imported recipe belongs to the importing module, and `module_path()` names that module, so the root `justfile` does not change.
+* **Words.** `just <module> do [options] <recipe>... [arguments]`: leading words that start with `-` are `just` options for every call (`-n`, `--yes`; an option with a value uses the `=` form), then come the recipe names, and from the next word that starts with `-` the words are arguments of the last recipe (`just backend do restore build test --project tests/Calendar.Domain.Tests`). A `--` after the names ends them and is dropped, so an argument that does not start with `-` can follow it (`just infra do what-if -- staging`); a second `--` reaches the recipe. Without the `--`, such a word is read as a recipe name, and the error says to use `--`.
+* **Fail fast.** Every name is checked with `just --show` before anything runs. The recipes run in order, each in its own `just` call, and the first failure stops the chain with its exit code.
+* **Named `do`,** because `image run` already exists.
+* **Preview with `do -n`.** `just -n backend do …` previews only the runner, because a recipe cannot tell that `just` was started with `--dry-run`.
+* **The shared-database hook** of [ADR-0042](0042-layered-agent-guidance-and-hooks.md) also asks before a `db do` chain that names `up`, `down`, `reset`, `migrate` or `psql`.
+
+**Evidence**
+
+* **Measured on `just` 1.59.0, 2026-11-05, in scratch directories and then in the repository:** a recipe from a file that a module imports is listed under that module (`just --list backend`); `module_path()` returns the module's name; `just backend do build test` in an unrestored checkout stopped at the failing build without running the tests, exit 1; `just backend do restore build test --project tests/Calendar.Domain.Tests` ran all three and passed 180 domain tests, with the arguments reaching only `dotnet test`; `just backend do clean nope test` stopped on `nope` before `clean` ran; `just image do -n build run -- Development` and `just infra do -n what-if -- staging` passed `Development` and `staging` to the last recipe, and `just infra do -n what-if staging` stopped on `staging` with the hint; `just db do -n up migrate`, `just docs do -n build test` and `just tools do -n versions adr` printed each recipe's commands; `just --fmt --check --justfile` passed on every module file and on `just/do.just`.
+
+**Consequences of this amendment**
+
+* Good, because **D4 Expressiveness**: a module's recipes chain without the module prefix, and arguments reach the last recipe instead of being swallowed by the first.
+* Good, because **D3 Discoverability**: `do` is listed in every module, with its usage in the comment.
+* Bad, because **D2 Thin over native tools**: about 30 lines of bash logic sit in a recipe, and `just -n` before the module name does not preview the chain.
+* Bad, because a dependency that two chained recipes share runs twice. Only `db reset` declares a dependency today (`&& up`).
 
 ### Consequences
 
@@ -180,4 +202,5 @@ The decision above is unchanged: `just` stays the runner, every recipe stays a t
 * "Task" in the options is the `go-task` runner. "File-based apps" are the ones defined in [ADR-0017](0017-dotnet-file-based-apps-for-repo-tooling.md).
 * An earlier analysis recommended keeping Make. It was written under the previous drivers and did not test `just`, so it was used as historical input only.
 * **Amendment, 2026-11-04:** the layout moved from one flat `justfile` to a root file plus seven modules, in issue #213 and story [0019](../stories/0019-split-the-justfile-into-modules.md). The decision itself is unchanged, so this ADR was amended, not superseded, as [ADR-0017](0017-dotnet-file-based-apps-for-repo-tooling.md) was for its minimum SDK. The commands quoted under "What was measured" are the ones run in the prototype and are left as they were.
+* **Amendment, 2026-11-05:** the `do` recipe that chains a module's recipes, in issue #247. The decision is unchanged, so this ADR was amended again.
 * Revisit if `just` stops being maintained or its install friction in CI turns out to cost more than the prototype suggested. This trigger is recorded in this ADR only. The implementation PR adds it to the `AGENTS.md` notes.

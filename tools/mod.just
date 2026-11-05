@@ -4,6 +4,8 @@
 set shell := ["bash", "-euo", "pipefail", "-c"]
 set working-directory := '..'
 
+import '../just/do.just'
+
 adr_skill := ".claude/skills/adr-draft"
 run_skill := ".claude/skills/run-calendar"
 tool_dirs := adr_skill + " " + run_skill + " tools"

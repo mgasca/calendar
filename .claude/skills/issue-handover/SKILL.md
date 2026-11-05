@@ -64,6 +64,7 @@ If the push is rejected, someone added images meanwhile: run the block again, wh
 - Answers, approvals, check results and merge notices trigger the next authorized step.
 - Approval alone is not permission to bypass checks or to merge without authorization. Explicit user authorization to merge overrides a skill's default to leave merging to the user; required checks and repository protections still apply.
 - Check for conflicts and outstanding scope, update the durable card, and verify the issue state after the last PR merges.
+- End every close-out message with a `Remaining:` line: `nothing`, or the list (local worktree and branch, open related PRs, deferred findings, unmerged stack members, follow-up issues).
 - After a squash merge in a stack, update the next branch from fresh `main`, preserve the union of delivered PR links in the card, rerun the relevant checks, and propagate the update through the children. Retarget each child to `main` when appropriate.
 - Finish substantive issue and PR reporting, then clean up only this task's merged resources.
 

@@ -1,5 +1,5 @@
 ---
-status: proposed
+status: accepted
 date: 2026-11-02
 decision-makers: mgasca, Claude (AI assistant)
 ---
@@ -27,7 +27,7 @@ The documentation site publishes the ADR log and the story cards ([ADR-0022](002
 
 ## Decision Outcome
 
-Chosen option: to be decided in review. This draft is a neutral comparison: the ratings below favour "FINOS CALM" on D1, D2 and D3, with LikeC4 as the nearest alternative and hand-written Mermaid as the cheapest. The ADR validator requires one column to be marked as chosen, so the column the ratings favour carries the mark; the reviewer sets the real choice, rewrites this paragraph and the status, and the implementation PR follows.
+Chosen option: "FINOS CALM", because it is the only option that is a schema-validated model (D1) with first-class controls, flows and metadata that carry the non-functional requirements and the ADR links (D2), and it runs as an npm package inside the pinned Node toolchain (D3). It is not the easiest to render in Starlight (D4): LikeC4 and hand-written Mermaid need less glue, but neither gives a validated model with traceability. The maintainer chose it in review of the neutral draft (pull request [#179](https://github.com/mgasca/calendar/pull/179)).
 
 | Driver | **FINOS CALM (chosen)** | C4 with the Structurizr DSL | Hand-written Mermaid in Markdown | LikeC4 | PlantUML or D2 diagrams as code |
 | --- | :---: | :---: | :---: | :---: | :---: |
@@ -36,13 +36,13 @@ Chosen option: to be decided in review. This draft is a neutral comparison: the 
 | D3 Toolchain fit | ★★★ | ☆☆☆ | ★★★ | ★★★ | ★☆☆ |
 | D4 Starlight rendering | ★★☆ | ★★☆ | ★★★ | ★★☆ | ★★☆ |
 
-### Implementation sketch, whichever option is chosen
+### Implementation
 
-* The model lives in `docs/architecture/` as reviewable text. Diagrams are generated during the docs build and never committed as images.
-* A Node-based tool is a `devDependency` of `frontend/apps/docs`, so pnpm pins it in the lockfile and Dependabot updates it ([ADR-0012](0012-ci-and-dependency-updates.md)). A tool shipped as a separate binary gets a pin in `tools/` and a `just doctor` check.
-* The docs app's own TypeScript (a content loader next to the ADR and story loaders in `frontend/apps/docs/src/lib/`) turns the tool's output into Starlight pages, with a text alternative for every diagram. Any glue outside the docs app is a .NET file-based app ([ADR-0017](0017-dotnet-file-based-apps-for-repo-tooling.md)), not a shell or Node script.
-* Validation runs in `just lint` (and so in `just check` and CI), and the docs build fails on an invalid model, a dangling reference or an unknown ADR number.
-* Mermaid in Starlight needs an integration (at the time of writing `astro-mermaid`, which renders in the browser, or `rehype-mermaid`, which renders at build time through a headless browser). Every option except LikeC4 relies on it for diagrams.
+* The model is `docs/architecture/calendar.architecture.json` (CALM 1.3), with the control requirement schemas in `docs/architecture/controls/` and a `url-mapping.json` that maps their canonical URLs to the local files, so validation works offline and before a branch merges. Diagrams are generated during the docs build and never committed as images.
+* `@finos/calm-cli` is a `devDependency` of `frontend/apps/docs`, so pnpm pins it in the lockfile and Dependabot updates it ([ADR-0012](0012-ci-and-dependency-updates.md)). No separate binary, so no `just doctor` check.
+* `just lint` runs `calm validate --architecture docs/architecture/calendar.architecture.json --url-to-local-file-mapping docs/architecture/url-mapping.json --strict` through a pnpm script of the docs app, so `just check` and CI fail on an invalid model.
+* A content loader next to the ADR and story loaders in `frontend/apps/docs/src/lib/` reads the model and produces the Starlight pages: context and container views and flow sequence diagrams as Mermaid, controls as tables, and a table under every diagram as its text alternative. Its tests check that every ADR and story the model links exists and that every flow references existing relationships, independently of the CLI. Any glue outside the docs app is a .NET file-based app ([ADR-0017](0017-dotnet-file-based-apps-for-repo-tooling.md)), not a shell or Node script.
+* Mermaid renders in the browser through `astro-mermaid`, which keeps the docs build free of a headless browser; build-time rendering with `rehype-mermaid` is the fallback if browser-side rendering proves unreliable.
 
 ### Consequences
 
@@ -54,9 +54,9 @@ Chosen option: to be decided in review. This draft is a neutral comparison: the 
 
 ### Confirmation
 
-* `just lint` runs the chosen tool's validation; CI fails on an invalid model. A docs-site test proves that a deliberately broken fixture fails.
-* The docs-site tests check that every ADR and story the model links exists, and the docs build checks the generated pages' links at the root path and at a project subpath.
-* `just doctor` verifies a separately installed binary's version; a workspace dependency is verified by `pnpm install --frozen-lockfile`.
+* `just lint` runs `calm validate --strict`; CI fails on an invalid model. A docs-site test proves that a deliberately broken fixture fails.
+* The docs-site tests check that every ADR and story the model links exists and that flows reference existing relationships, and the docs build checks the generated pages' links at the root path and at a project subpath.
+* The CLI version is pinned by `pnpm install --frozen-lockfile`.
 * Review checks that the model changes with the code: a PR that adds a component, an endpoint, an Azure resource or an ADR updates the model, and the PR preview shows it.
 
 ## Pros and Cons of the Options
@@ -102,10 +102,8 @@ Chosen option: to be decided in review. This draft is a neutral comparison: the 
 
 * Versions and facts checked on 2026-11-02: `@finos/calm-cli` 1.67.0 on npm (Apache-2.0, `engines.node` `^22.13.0 || >=23.5.0`), matching the "CLI v1.67.0" release on GitHub; `likec4` 1.60.0 (MIT); `astro-mermaid` 2.2.0 (peer `mermaid` ^10–^12) and `rehype-mermaid` 3.0.0; `@terrastruct/d2` 0.1.33; the Structurizr CLI repository archived on 4 February 2026, with the current binaries (2026.09.19) requiring Java 21 or Docker. Whether `likec4 build` fails on model errors, and the licences of PlantUML and D2, were not verified on the vendors' pages for this draft.
 * FINOS CALM core concepts: <https://calm.finos.org/core-concepts/>; CLI: <https://calm.finos.org/working-with-calm/cli>. Structurizr DSL: <https://docs.structurizr.com/dsl/language>. LikeC4: <https://likec4.dev/>.
-* A draft CALM model of this system (nodes, relationships, controls, seven flows, every ADR linked) exists on a local branch and was validated with `calm validate --strict`. It is the candidate input for story [0012](../stories/0012-architecture-visualization-on-the-documentation-site.md) if CALM is chosen, and a source of element names for the other options otherwise.
-* Open questions for the reviewer:
-  1. Which option is chosen? The ratings favour CALM; the cheapest path is hand-written Mermaid; LikeC4 is the nearest model-based alternative within the Node toolchain.
-  2. Should D3 count the headless-browser requirement of build-time Mermaid rendering against every option that uses Mermaid, or is browser-side rendering (`astro-mermaid`) acceptable for the docs site?
-  3. If CALM is chosen, is `calm validate` in `just lint` enough, or should the docs-site tests also validate the model with the schema directly, so that a CLI upgrade cannot change what passes?
+* A draft CALM model of this system (nodes, relationships, controls, seven flows, every ADR linked) was validated with `calm validate --strict` while this ADR was drafted. It is the starting point of story [0012](../stories/0012-architecture-visualization-on-the-documentation-site.md)'s implementation.
+* Questions settled in review of pull request [#179](https://github.com/mgasca/calendar/pull/179): the maintainer chose FINOS CALM. The draft had asked whether D3 should count a headless browser against Mermaid-based options (answer taken: browser-side rendering is acceptable, so the ratings stand) and whether `calm validate` in `just lint` is enough (answer taken: yes, with the docs-site tests checking the references the CLI does not, so a CLI upgrade cannot silently change what passes).
+* The acceptance was committed two minutes after #179 had merged, so it never reached `main`, and the ADR read `proposed` until 2026-11-05, when the maintainer confirmed it and the same text was applied. The decision itself dates from the review of #179.
 * Note, 2026-11-05: the docs app also depends on `@mermaid-js/layout-elk` 0.2.3, Mermaid's ELK layout engine, which `astro-mermaid` registers by itself when the package resolves. Only the Overview opts into it, to keep its relationship labels on their own arrows ([story 0022](../stories/0022-make-the-architecture-diagrams-easier-to-read.md)). Rendering stays in the browser; nothing above changes.
 * Revisit when the chosen tool stops releasing, when the docs site moves off Starlight ([ADR-0022](0022-astro-starlight-documentation-ui.md)), or when a second consumer of the model appears (for example a pattern library or a hub). The trigger is recorded here only.

@@ -46,7 +46,7 @@ A first machine-readable model of the whole system was drafted in FINOS CALM (no
 
 ### Dependencies
 
-* [ADR-0039](../decisions/0039-architecture-model-and-visualization-tooling.md) was `accepted` in PR 0 before the model and the rendering were merged (PR 1).
+* [ADR-0039](../decisions/0039-architecture-model-and-visualization-tooling.md) was approved in PR 0, before the model and the rendering were merged (PR 1). Its `accepted` status only reached `main` later (see criterion 7).
 
 ### Acceptance criteria
 
@@ -63,7 +63,7 @@ A first machine-readable model of the whole system was drafted in FINOS CALM (no
 6. **Given** the Architecture section, **when** it is read on a phone or with a screen reader, **then** every diagram has a text alternative (a table or list of the same elements and relationships), and the pages pass the site's existing accessibility lint.
    [Every built page with a diagram also has a table](../../frontend/apps/docs/tests/build.test.ts) (`published architecture`). The docs app has no accessibility lint (jsx-a11y applies to `apps/web` only), so that part of the criterion is not checked; the pages are plain Starlight Markdown.
 7. **Given** [ADR-0039](../decisions/0039-architecture-model-and-visualization-tooling.md), **when** the maintainer approves the decision, **then** it is `accepted` in that same PR before it merges, and the implementation PR references it.
-   Met on [#179](https://github.com/mgasca/calendar/pull/179): the maintainer chose FINOS CALM and the status changed to `accepted` in the commit "ADR-0039 accepted" before the merge. PR 1 references the ADR. No automated test.
+   Partly met on [#179](https://github.com/mgasca/calendar/pull/179): the maintainer chose FINOS CALM there, but the commit "ADR-0039 accepted" was pushed two minutes after the PR had merged, so `main` kept `proposed`. Nobody noticed until 2026-11-05, when the maintainer confirmed the decision and the same text was applied to the ADR and its model entry. PR 1 references the ADR. No automated test.
 8. **Given** the change is complete, **when** I run `just check`, **then** it passes, including the model validation.
    CI runs every part of `just check` on PR 1. Locally the implementing agent ran the frontend gates (`format:check`, `lint`, `typecheck`, `test`), `validate:architecture`, `build-docs` and `just --fmt --check`; `just tools adr` could not run on that machine (its SDK rejects the `#:include` directive), so the Tooling job is the check for it.
 

@@ -157,7 +157,7 @@ describe('canonical story index', () => {
       '### Not in this story',
       '### Acceptance criteria',
       '## Design decisions',
-      '### Architecture Decision Records',
+      '### Decision records (ADRs)',
       '### Other decisions (not ADR-worthy)',
       '## Implementation notes',
       '### Where things live',

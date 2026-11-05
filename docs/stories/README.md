@@ -45,4 +45,5 @@ Front matter: `status` (`planned`, `in-progress` or `implemented`), `date` (`YYY
 | [0021](0021-sign-in-locally-without-google.md) | Sign in to the local web app without Google | implemented |
 | [0022](0022-make-the-architecture-diagrams-easier-to-read.md) | Make the architecture diagrams easier to read: rounded, shadowed boxes and labels off the arrows | implemented |
 | [0023](0023-chain-a-modules-recipes-in-one-command.md) | Chain a module's recipes in one command | implemented |
+| [0024](0024-one-way-to-show-what-to-fix-in-add-task-and-add-event.md) | One way to show what to fix in Add task and Add event | planned |
 | [XXXX](XXXX-create-events-and-tasks-from-week-view.md) | Create events and tasks from the week view | planned |

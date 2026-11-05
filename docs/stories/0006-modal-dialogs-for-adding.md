@@ -67,6 +67,7 @@ No new ADR is expected. Using a dialog library would need its own ADR first; the
 * **Extract, don't copy:** the dialog behaviour moves out of `EventForm` into one shared component (`ModalDialog`) that both forms render inside. It owns opening with `showModal()` (guarding against StrictMode's double effect), Escape, the pending lock and the `<dialog>` markup; each form keeps its own fields, mutation and error handling. This keeps the two dialogs from drifting apart, which is the point of the story.
 * **Pending lock:** the shared dialog ignores Escape and **Cancel** while the form says a save is pending, as 0004 does for events, because the request can't be cancelled and closing would hide its result.
 * **Task errors stay in one message:** the task form keeps its single `role="alert"` message ([0003](0003-add-todo-tasks.md)). Per-field errors for tasks are not part of this story.
+  Both forms move to one validation style, red borders with a bubble, in [story 0024](0024-one-way-to-show-what-to-fix-in-add-task-and-add-event.md).
 * **Confirmation and focus stay with the button:** as in 0004, the button component owns the confirmation message and moves focus back to the button after close. Only the form is inside the dialog.
 * **No change to the API or the generated client.**
 

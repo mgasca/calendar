@@ -11,7 +11,7 @@ A story card is the long-lived record of a feature: what was asked, what was agr
 
 - **Card**: one Markdown file in `docs/stories/` that describes one story.
 - **PR 0**: the first pull request of a story. It is docs-only and adds the card.
-- **ADR**: Architecture Decision Record, a file in `docs/decisions/` that records a significant technical choice. Cards link to ADRs by number (for example 0018).
+- **ADR**: Any Decision Record, a file in `docs/decisions/` that records a significant decision (architecture, product, process or tooling). Cards link to ADRs by number (for example 0018).
 - **Index**: the table in `docs/stories/README.md` that lists every card.
 - **Front matter**: the `key: value` lines between the two `---` lines at the top of a card.
 - **Given-When-Then**: the format of one acceptance criterion: a starting state, an action, an observable result.

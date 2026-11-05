@@ -1,6 +1,6 @@
-# Architecture Decision Records
+# Any Decision Records
 
-Decisions are recorded in [MADR 4.0](https://adr.github.io/madr/) format. To add one, copy [`adr-template.md`](adr-template.md) to `NNNN-short-title.md`.
+The "A" in ADR means **any**: a record is written for any decision the team considers significant, whether it is about architecture, the product, the process or the tooling ([ADR-0000](0000-use-markdown-architectural-decision-records.md) chose the format for architectural decisions; the scope has grown since). Decisions are recorded in [MADR 4.0](https://adr.github.io/madr/) format. To add one, copy [`adr-template.md`](adr-template.md) to `NNNN-short-title.md`.
 
 Every record lists its **decision drivers**, rates each option against them in a table (drivers as rows, options as columns, ★★★ to ☆☆☆), and gives pros and cons for every option in terms of those drivers. See [ADR-0000](0000-use-markdown-architectural-decision-records.md) for the conventions.
 

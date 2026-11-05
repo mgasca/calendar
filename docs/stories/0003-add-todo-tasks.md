@@ -70,6 +70,7 @@ The Today view already supports task completion and reopening; creation previous
 * The personal list fetches all tasks; pagination and server-side filtering are deferred for the current single-user scale.
 * Authentication and calendar edit permissions must precede multi-user use. Tasks must eventually be scoped to their authenticated creator in every list, agenda, read, and write operation.
 * The reminder follow-up retains the choice of in-app, email, or neither. It must define date-only reminder timing, exact-time reminder timing, timezone behavior while travelling, delivery when the app is closed, and preference storage.
+* **Validation style:** the browser's `required` bubble and the single message under the buttons are replaced by red borders with a bubble, the same in both dialogs, in [story 0024](0024-one-way-to-show-what-to-fix-in-add-task-and-add-event.md) ([ADR-0043](../decisions/0043-form-validation-red-borders-and-bubble.md)).
 
 ## User guide
 

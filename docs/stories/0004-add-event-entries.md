@@ -126,6 +126,7 @@ Vitest covers form logic, DST resolution, validation, retry, pending state, focu
 
 * **Inline or dialog, then consolidate:** **Add event** is a dialog and **Add task** is inline. Once the event dialog is in, the product owner will run usability testing to see which the editors prefer, and then make both forms use it. That is [story 0006](0006-modal-dialogs-for-adding.md), where usability testing preferred the dialog. Until it is delivered the two are intentionally different.
 * **Discard prompt:** none for now. Revisit if testing shows people losing typed text by closing the dialog.
+* **Validation style:** the plain inline messages described here are replaced by red borders with a bubble, the same in both dialogs, in [story 0024](0024-one-way-to-show-what-to-fix-in-add-task-and-add-event.md) ([ADR-0043](../decisions/0043-form-validation-red-borders-and-bubble.md)).
 * **All day checkbox layout** ([#259](https://github.com/mgasca/calendar/issues/259), [PR #260](https://github.com/mgasca/calendar/pull/260)): the dialog styles every `<label>` as a column (text above a full-width control), which stacked the All day box above its text. The label now carries the task lists' `task-label` class and the dialog keeps that one label a row, so the box sits beside "All day" with the whole row clickable. jsdom cannot measure layout, so the regression test pins the class and the PR carries before and after screenshots.
 
 ## User guide

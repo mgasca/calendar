@@ -46,7 +46,7 @@ Why the story exists and what it builds on.
 
 ## Design decisions
 
-### Architecture Decision Records
+### Decision records (ADRs)
 
 | ADR | Decision | Why it matters for this story |
 | --- | --- | --- |

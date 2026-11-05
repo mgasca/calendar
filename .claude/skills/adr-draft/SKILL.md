@@ -1,6 +1,6 @@
 ---
 name: adr-draft
-description: Draft a new Architecture Decision Record (ADR) in docs/decisions for review, following this repo's MADR conventions (decision drivers, driver × option star-rating table, driver-tagged pros/cons for every option), validate it, and open a review PR. Use when the user asks to draft, propose, write or record an ADR or architecture/tooling decision, asks "what do you recommend for X? write it up", or wants to split, revise or supersede an existing ADR.
+description: Draft a new Any Decision Record (ADR, any significant decision, not only architecture) in docs/decisions for review, following this repo's MADR conventions (decision drivers, driver × option star-rating table, driver-tagged pros/cons for every option), validate it, and open a review PR. Use when the user asks to draft, propose, write or record an ADR or architecture/tooling decision, asks "what do you recommend for X? write it up", or wants to split, revise or supersede an existing ADR.
 ---
 
 # ADR draft
@@ -9,7 +9,7 @@ Write a **proposed** ADR that a reviewer can approve with confidence. The rating
 
 ## Terms
 
-- **ADR** (Architecture Decision Record): a short Markdown file in `docs/decisions` that records one decision, the options considered and the reasons for the choice.
+- **ADR** (Any Decision Record): a short Markdown file in `docs/decisions` that records one significant decision, the options considered and the reasons for the choice. The "A" means *any*: product, process and tooling decisions qualify, not only architecture.
 - **MADR**: the Markdown ADR format this repo uses. Step 6 lists its sections.
 - **Decision driver**: a criterion that you judge the options against. Drivers are numbered `D1`, `D2`, and so on.
 - **Validator**: the script `check-adr.cs` (see "Bundled tooling"). It checks the ADR format. It does not judge whether the ratings are fair.

@@ -11,7 +11,7 @@ public sealed record AdrFileResult(string FileName, IReadOnlyList<string> Errors
 }
 
 /// <summary>
-/// Validates Architecture Decision Records against this repo's conventions (ADR-0000).
+/// Validates Any Decision Records (ADRs) against this repo's conventions (ADR-0000).
 /// Pure logic: no console output and no process exit, so it can be unit tested.
 /// </summary>
 public static partial class AdrValidator

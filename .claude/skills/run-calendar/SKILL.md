@@ -123,6 +123,8 @@ EOF
 
 It prints each command, the screenshot paths (`/tmp/calendar-shots/task-added.png`, ...) and `no errors`. Open the
 PNGs with the Read tool and look at them.
+To show one on an issue or PR, add it to the `screenshots` branch under the issue number and link the pinned raw
+URL, as "Screenshots on GitHub" in the `issue-handover` skill describes; never attach it another way.
 
 | command | what it does |
 | --- | --- |

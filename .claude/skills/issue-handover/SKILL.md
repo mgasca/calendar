@@ -39,6 +39,23 @@ The root `AGENTS.md` still applies, in particular its rule for public posts: rep
 - When a turn starts real tasks or subagents and counts are requested, post one count comment on the issue. No count post for a poll-only turn.
 - Disclose a model switch in the next substantive post if attribution would otherwise be misleading.
 
+## Screenshots on GitHub
+
+`gh` cannot attach an image to an issue or PR, so images live on the orphan branch `screenshots` and posts link them there.
+
+- One directory per GitHub number, bare: `259/add-event-before.png`. Issues and PRs share one number sequence, so numbers never collide. Images taken for a delivery PR go under the issue it delivers; use the PR number only when there is no issue.
+- Name a file by what it shows (`add-event-before.png`, `week-after.png`), never by a session or task handle.
+- The branch is never merged, rebased, force-pushed or deleted, and a file is never replaced or removed: a retaken screenshot gets a new name, so earlier links keep showing what the reviewer saw.
+- Add images with git plumbing from any checkout, without checking the branch out. With the number in `N` and the PNGs in `DIR`, and the commit message ending with the usual agent attribution:
+
+```bash
+git fetch -q origin screenshots && P=$(git rev-parse origin/screenshots) && export GIT_INDEX_FILE=$(mktemp) && git read-tree "$P" && for f in "$DIR"/*.png; do git update-index --add --cacheinfo 100644,$(git hash-object -w "$f"),"$N/$(basename "$f")"; done && C=$(git commit-tree "$(git write-tree)" -p "$P" -m "Screenshots for #$N") && unset GIT_INDEX_FILE && git update-ref refs/heads/screenshots "$C" "$P" && git push -q origin screenshots && echo "$C"
+```
+
+If the push is rejected, someone added images meanwhile: run the block again, which starts from the new tip. The branch exists; never recreate it with `--orphan`.
+- Link each image by the commit the block printed, `https://raw.githubusercontent.com/<owner>/<repo>/<commit>/N/<file>.png`, as a Markdown image whose alt text says what it shows. The link is immutable; a link by branch name is not pinned and is not used.
+- A UI change's PR description shows before and after side by side (a table with one image per cell) and says which revision each was taken at. The `run-calendar` skill takes the screenshots.
+
 ## Resume and close out
 
 - Stack delivery PRs wherever you can. Open each later PR on the previous PR's branch (`gh pr create --base <previous-branch>`) instead of waiting for that PR to merge, so review of the next step can start straight away. This includes a delivery PR on its card PR. Base a PR on fresh `origin/main` only when it neither builds on nor touches the files of an open PR in the story.

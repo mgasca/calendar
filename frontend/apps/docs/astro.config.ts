@@ -1,5 +1,6 @@
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
+import type { AstroIntegration } from 'astro';
 import { defineConfig } from 'astro/config';
 import starlight from '@astrojs/starlight';
 import { unified } from '@astrojs/markdown-remark';
@@ -18,6 +19,28 @@ const { site, base } = deployment(process.env.DOCS_SITE_URL);
 const { flows } = parseArchitecture(
   readFileSync(new URL(modelFile, architectureDirectory), 'utf8'),
 );
+
+/**
+ * Turns off Mermaid's own render-on-load the moment the module evaluates. Mermaid adds a window
+ * `load` listener that renders every `.mermaid` element unless `startOnLoad` is false, and
+ * astro-mermaid sets that only after it has also loaded the ELK layout. When `load` fires in that
+ * gap (a slow network), Mermaid renders the diagrams itself, with its default config and without
+ * keeping their source, and the next theme switch re-renders the SVG's text and fails. This
+ * callback runs in the same microtask checkpoint as astro-mermaid's, before any `load` task.
+ */
+const mermaidNoAutoStart: AstroIntegration = {
+  name: 'mermaid-no-auto-start',
+  hooks: {
+    'astro:config:setup': ({ injectScript }) => {
+      injectScript(
+        'page',
+        "if (document.querySelector('pre.mermaid')) {" +
+          " import('mermaid').then(({ default: mermaid }) => { mermaid.startOnLoad = false; }); }",
+      );
+    },
+  },
+};
+
 export default defineConfig({
   site,
   base,
@@ -40,6 +63,7 @@ export default defineConfig({
     }),
   },
   integrations: [
+    mermaidNoAutoStart,
     // Renders ```mermaid blocks in the browser (ADR-0039); it must register before Starlight. It
     // registers the ELK layout because `@mermaid-js/layout-elk` resolves from here; only the
     // architecture overview opts into it, in its frontmatter. `radius` rounds the rounded node

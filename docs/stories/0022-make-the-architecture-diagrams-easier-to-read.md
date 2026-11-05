@@ -86,6 +86,7 @@ No new ADR is needed. The ELK package is a rendering add-on of the Mermaid integ
 | Area | Location |
 | --- | --- |
 | Mermaid settings: corner radius, padding, spacing, edge-label CSS | `frontend/apps/docs/astro.config.ts` (`mermaidConfig` of the `astro-mermaid` integration) |
+| Switching off Mermaid's own render-on-load | `frontend/apps/docs/astro.config.ts` (`mermaidNoAutoStart`) |
 | Drop shadows and rounded subgraphs and flow participants | `frontend/apps/docs/src/styles/docs.css` (the Mermaid section, `--diagram-shadow`) |
 | Rounded node shape and the Overview's ELK frontmatter | `frontend/apps/docs/src/lib/architecture.ts` (`shape`, `elkLayout`, `Renderer.contextDiagram`) |
 | The ELK layout package | `frontend/apps/docs/package.json` (`@mermaid-js/layout-elk`, a `devDependency`) |
@@ -99,13 +100,14 @@ No changes.
 ### Testing
 
 * [`architecture.test.ts`](../../frontend/apps/docs/src/lib/architecture.test.ts): the Overview's diagram starts with the ELK frontmatter, the Containers diagram starts directly with `flowchart TB` and has no `layout: elk`, and plain components use the rounded shape next to the unchanged actor and database shapes.
-* [`build.test.ts`](../../frontend/apps/docs/tests/build.test.ts) (`ships the ELK layout the overview asks for`): the built Overview asks for ELK, and the ELK chunk is in the built assets.
+* [`build.test.ts`](../../frontend/apps/docs/tests/build.test.ts) (`ships the ELK layout the overview asks for`): the built Overview asks for ELK, and the ELK chunk is in the built assets. (`turns off Mermaid's own render-on-load in the page script`): the shipped page script switches Mermaid's auto-render off (see the lessons below).
 * The rendered result was checked on screenshots of the built site taken with headless Chromium: the Overview, the Containers diagram and the Google sign-in flow, each in the light and the dark theme, with no console errors.
 
 ### Lessons learned, known issues and follow-ups
 
 * **Mermaid sizes a label before page CSS applies.** Anything that changes a label's size (padding, font, wrapping) belongs in `themeCSS` or the Mermaid config, never in the page stylesheet.
 * **A missing layout fails silently.** A diagram that names an unregistered layout is drawn with dagre and no warning, hence the build check.
+* **Loading ELK opened a race with Mermaid's own render-on-load** (found on the PR preview). Mermaid adds a window `load` listener that renders every `.mermaid` element unless `startOnLoad` is false. `astro-mermaid` sets that only after it has also downloaded the ELK layout, and before ELK there was no such gap. When `load` landed in the gap, Mermaid drew the diagrams itself: with its default config, under a timestamp id (`mermaid-1793875505573`), and without the diagram source that `astro-mermaid` keeps for re-rendering. The next theme switch then re-rendered the SVG's own text and showed "Error rendering diagram" in place of the diagram. A page script in `astro.config.ts` (`mermaidNoAutoStart`) now sets `mermaid.startOnLoad = false` as soon as the module loads, before any `load` task can run. The race was reproduced in headless Chromium by slowing the ELK download and running Mermaid's listener during the gap; with the fix, all three diagram kinds render through `astro-mermaid` and switch themes without error. A [build check](../../frontend/apps/docs/tests/build.test.ts) (`turns off Mermaid's own render-on-load in the page script`) fails without the script; the race itself needs a browser and has no automated test.
 * **Known issue:** on the Containers diagram, dagre still ends one arrow in empty space above the Azure resource group, and still partly hides one HTTPS label behind Ops Key Vault. ELK fixes both. If those faults matter more than the diagram's proportions, adding the ELK frontmatter to `Renderer.containerDiagram` is a one-line change, and the test that pins its absence would change with it.
 * **Known issue:** in the dark theme, the Containers diagram's arrows are faint over the light-violet subgraphs, as they were before this story.
 

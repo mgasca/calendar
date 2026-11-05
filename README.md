@@ -63,7 +63,7 @@ cd calendar/frontend && fnm install && corepack enable pnpm
 
 ## Common tasks
 
-Recipes that span both stacks run from the root (`just test`, `just check`). The rest are grouped into modules and take the module name first (`just db up`, `just docs build`). Run `just` to list them all, or `just --list <module>` for one module. To chain recipes of a module in one command, write each as `module::recipe` (`just db::up db::migrate`).
+Recipes that span both stacks run from the root (`just test`, `just check`). The rest are grouped into modules and take the module name first (`just db up`, `just docs build`). Run `just` to list them all, or `just --list <module>` for one module. To run several recipes of a module in order, stopping at the first failure, use `do`: `just db do up migrate`, or `just backend do build test --filter-method "*Name*"` to pass arguments to the last one. Without `do`, only the first word is looked up in the module, so `just backend build test` runs the root `test` (both stacks).
 
 | Task | Command |
 | --- | --- |

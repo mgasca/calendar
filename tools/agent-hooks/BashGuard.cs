@@ -138,8 +138,9 @@ public static partial class BashGuard
   private static bool HasShortFlag(string arg, char flag) =>
     arg.Length > 1 && arg[0] == '-' && arg[1] != '-' && arg.Contains(flag, StringComparison.Ordinal);
 
-  // A db module recipe on the shared database, written `db up` or `db::up` (story 0019). `db seed` goes through the API.
-  [GeneratedRegex(@"(?:^| )db(?: |::)(?:up|down|reset|migrate|psql)(?: |$)")]
+  // A db module recipe on the shared database, written `db up` or `db::up` (story 0019), or named anywhere in a
+  // `db do` chain (`db do -n up migrate`, #247). `db seed` goes through the API.
+  [GeneratedRegex(@"(?:^| )db(?: |::)(?:do (?:\S+ )*)?(?:up|down|reset|migrate|psql)(?: |$)")]
   private static partial Regex DbRecipeRegex();
 
   [GeneratedRegex(

@@ -2,6 +2,8 @@
 
 set shell := ["bash", "-euo", "pipefail", "-c"]
 
+import '../just/do.just'
+
 # List this module's recipes
 [default]
 [private]

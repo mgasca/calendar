@@ -27,6 +27,9 @@ The root `AGENTS.md` still applies, in particular its rule for public posts: rep
 - Cover issue comments, PR conversation comments, inline review comments and non-empty submitted reviews for every delivery PR, including closed and merged ones. Ignore empty review wrappers.
 - Use comment IDs as cursors. Keep the seen-ID record and process one ID per line; do not parse multiline bodies as line-delimited records.
 - Poll at the requested cadence. The established handover routine uses 60 seconds.
+- A watch lasts 30 minutes. While any delivery PR is open, re-arm it on every expiry, and never end a turn on a notification that needs no action without saying what will wake you.
+- A notification that quotes your own agent footer, or a bot preview comment, is not an event: record its ID as seen and keep watching.
+- CI is done only when the full set of checks is present and finished: right after a push the check list can be empty, and an empty list satisfies `all()` (#271).
 - Re-read the actual new comment before acting. A notification is not its contents.
 - If an integration cannot bind a PR or deliver notifications, use direct GitHub checks while work is active and state the monitoring gap.
 

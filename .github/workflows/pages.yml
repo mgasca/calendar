@@ -17,21 +17,25 @@ concurrency:
   cancel-in-progress: false
   queue: max
 
+# Assembling and deploying are separate jobs, so "Re-run failed jobs" after a Pages error re-runs
+# only the deploy, against the one artifact already uploaded (#265). Neither job holds both
+# repository write access and the Pages/OIDC token (ADR-0025).
 jobs:
-  publish:
+  assemble:
     if: github.event_name == 'pull_request_target' || github.event.workflow_run.conclusion == 'success'
     runs-on: ubuntu-latest
     timeout-minutes: 15
     permissions:
       actions: read
       contents: write
-      pull-requests: write
-      checks: write
-      pages: write
-      id-token: write
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
+      pull-requests: read
+    outputs:
+      mode: ${{ steps.source.outputs.mode }}
+      pr: ${{ steps.source.outputs.pr }}
+      sha: ${{ steps.source.outputs.sha }}
+      ready: ${{ steps.snapshot.outputs.ready }}
+      snapshot: ${{ steps.snapshot.outputs.snapshot }}
+      artifact: ${{ steps.snapshot.outputs.artifact }}
     steps:
       - name: Validate source run and current revision
         id: source
@@ -163,23 +167,62 @@ jobs:
             }
             // Keep checkout credentials and Git history out of the public artifact.
             fs.cpSync(root, path.resolve('published'), { recursive: true, filter: source => path.basename(source) !== '.git' });
+            // The deploy job checks that gh-pages still points at this commit before deploying it.
+            core.setOutput('snapshot', git('rev-parse', 'HEAD').trim());
+            // One name per attempt: re-running every job uploads a second artifact, and a shared
+            // name would leave deploy-pages two artifacts to choose from.
+            core.setOutput('artifact', `github-pages-${process.env.GITHUB_RUN_ATTEMPT}`);
             core.setOutput('ready', 'true');
       - name: Upload combined site
         if: steps.snapshot.outputs.ready == 'true'
         uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9 # v5.0.0
         with:
           path: published
+          name: ${{ steps.snapshot.outputs.artifact }}
+
+  deploy:
+    needs: assemble
+    if: needs.assemble.outputs.ready == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+      checks: write
+      pull-requests: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Skip a snapshot a later publication replaced
+        id: current
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        env:
+          SNAPSHOT: ${{ needs.assemble.outputs.snapshot }}
+        with:
+          script: |
+            // The artifact is the whole site. A re-run started after a newer publication must not
+            // roll production or another PR's preview back, so deploy only the current gh-pages.
+            const { data: branch } = await github.rest.repos.getBranch({ ...context.repo, branch: 'gh-pages' });
+            if (branch.commit.sha !== process.env.SNAPSHOT) {
+              core.notice(`gh-pages moved from ${process.env.SNAPSHOT} to ${branch.commit.sha}; a later publication deploys it.`);
+              return;
+            }
+            core.setOutput('deploy', 'true');
       - name: Deploy production and previews
-        if: steps.snapshot.outputs.ready == 'true'
+        if: steps.current.outputs.deploy == 'true'
         id: deployment
         uses: actions/deploy-pages@368f82528645a54fb793d4d04e342629a3f51346 # v5.0.1
+        with:
+          artifact_name: ${{ needs.assemble.outputs.artifact }}
       - name: Link published preview
-        if: steps.source.outputs.mode == 'preview' && steps.deployment.outcome == 'success'
+        if: needs.assemble.outputs.mode == 'preview' && steps.deployment.outcome == 'success'
         uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
         env:
           SITE_URL: ${{ steps.deployment.outputs.page_url }}
-          PR_NUMBER: ${{ steps.source.outputs.pr }}
-          SOURCE_SHA: ${{ steps.source.outputs.sha }}
+          PR_NUMBER: ${{ needs.assemble.outputs.pr }}
+          SOURCE_SHA: ${{ needs.assemble.outputs.sha }}
         with:
           script: |
             const url = `${process.env.SITE_URL.replace(/\/$/, '')}/pr-preview/pr-${process.env.PR_NUMBER}/`;

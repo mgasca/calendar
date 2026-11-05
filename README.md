@@ -76,6 +76,7 @@ Recipes that span both stacks run from the root (`just test`, `just check`). The
 | Seed a sample day into the running API (additive; accepts `--date …` and `--time-zone …`) | `just db seed` (set `Auth__DevSeedKey` in `.env` and export it before starting the API in Development) |
 | psql shell | `just db psql` |
 | Run web UI (proxies `/api` to the API) | `just frontend dev` |
+| Run web UI signed in without Google (needs `Auth__AllowedEmails__0` in `.env`; see [Google sign-in setup](#google-sign-in-setup)) | `just frontend dev-signed-in` |
 | Run docs site (http://localhost:4321) | `just docs dev` |
 | Build and verify docs site | `just docs build` |
 | Preview built docs site | `just docs preview` |
@@ -154,6 +155,8 @@ Create a Google OAuth web application client and configure its authorized redire
 * Production: `https://<host>/api/auth/callback/google`
 
 Set `Auth__Google__ClientId`, `Auth__Google__ClientSecret` and indexed entries such as `Auth__AllowedEmails__0` in the untracked `.env` for local development, then export them into the API process (`just backend dev` loads `.env` for you; restart it after editing, since hot reload does not re-read the environment); use deployment secrets for production. Add only the verified Google emails permitted to access the calendar. Keep the client secret out of version control. Use HTTPS in production and configure trusted forwarded headers when behind a proxy so redirects and secure cookies use the public origin.
+
+**Without Google, locally.** To try the web app without an OAuth client, set `Auth__AllowedEmails__0` in `.env` (the `Auth__DevSeedKey` from `.env.example` is already there), start the API with `just backend dev`, and run `just frontend dev-signed-in` instead of `just frontend dev`. The Vite proxy adds the Development-only seed key to `/api` requests from the app's own page, so http://localhost:5173 opens signed in as that email. Pages from other origins, including other `localhost` ports, get no key. The key never reaches the browser. The dev server refuses to start if the key is missing or shorter than 32 characters, or if `CALENDAR_API_URL` is not a loopback address. **Sign out** does not end this mode: stop the recipe instead ([story 0021](docs/stories/0021-sign-in-locally-without-google.md), [ADR-0027](docs/decisions/0027-google-oidc-bff-session.md) amendment).
 
 > **Authentication and limitations.** Google sign-in protects the API with a same-origin cookie ([ADR-0027](docs/decisions/0027-google-oidc-bff-session.md)). Each allowed account sees only its own events and tasks ([ADR-0041](docs/decisions/0041-per-user-data-ownership.md)): rows from before per-user ownership belong to the first email in `Auth__AllowedEmails`, which claims them at its first sign-in, and `just db seed` seeds that account. Add bearer support before enabling non-browser clients, and re-decide row-level security before sharing between users, a non-browser client with its own identity, or a background job that reads across users.
 

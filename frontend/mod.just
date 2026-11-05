@@ -40,6 +40,16 @@ format:
 dev:
     pnpm dev
 
+# Run the web UI signed in without Google: the /api proxy adds Auth__DevSeedKey from .env (story 0021)
+dev-signed-in:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    if [ -z "${Auth__AllowedEmails__0:-}" ]; then
+        echo "Warning: Auth__AllowedEmails__0 is not set in .env, so the API will reject the seed key (401). Set it and restart the API."
+    fi
+    echo "Dev sign-in: the browser is signed in as Auth__AllowedEmails__0 while this runs. The API must run in Development (just backend dev). Sign out does not end it: stop this recipe."
+    CALENDAR_DEV_SIGN_IN=true pnpm dev
+
 # Regenerate the TypeScript client from contracts/openapi.json (part of just contracts)
 generate:
     pnpm --filter @calendar/api-client generate

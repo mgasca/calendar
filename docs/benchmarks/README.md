@@ -6,6 +6,7 @@ Reference measurements for performance work. A benchmark here is a repeatable ha
 | --- | --- | --- |
 | [0001](0001-docs-parse.md) | Loading the ADRs and stories for the docs site and tests | `frontend/apps/docs/benchmarks/parse.bench.ts` |
 | [0002](0002-frontend-ci-job.md) | The Frontend CI job: job and step durations before the fixes of #272 | `tools/ci-timings/ci-timings.cs` |
+| [0003](0003-docs-loader-sync.md) | One corpus read per docs-site sync instead of one per document (#273) | `frontend/apps/docs/benchmarks/parse.bench.ts` |
 
 ## Running one
 

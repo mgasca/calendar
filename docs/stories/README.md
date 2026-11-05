@@ -43,4 +43,5 @@ Front matter: `status` (`planned`, `in-progress` or `implemented`), `date` (`YYY
 | [0019](0019-split-the-justfile-into-modules.md) | Split the justfile into modules | implemented |
 | [0020](0020-restructure-agent-guidance.md) | Restructure agent guidance: a short root AGENTS.md, nested area files, a skill and hooks | implemented |
 | [0021](0021-sign-in-locally-without-google.md) | Sign in to the local web app without Google | implemented |
+| [0022](0022-make-the-architecture-diagrams-easier-to-read.md) | Make the architecture diagrams easier to read: rounded, shadowed boxes and labels off the arrows | implemented |
 | [XXXX](XXXX-create-events-and-tasks-from-week-view.md) | Create events and tasks from the week view | planned |

@@ -132,6 +132,15 @@ describe('published user stories', () => {
 });
 
 describe('published architecture', () => {
+  it('ships the ELK layout the overview asks for', async () => {
+    // Mermaid falls back to its default layout without a word when a diagram names a layout that
+    // was never registered; astro-mermaid registers ELK, and bundles it, only when it resolves.
+    const overview = await readFile('dist/architecture/index.html', 'utf8');
+    expect(overview).toContain('layout: elk');
+    const assets = await readdir('dist/_astro');
+    expect(assets.some((name) => /^mermaid-layout-elk\..*\.js$/.test(name))).toBe(true);
+  });
+
   it('renders every page from the model with a diagram, its text table and links to decisions and stories', async () => {
     const { architecture, story } = await readDocuments();
     const pages = architecturePages(architecture, { stories: story.records });

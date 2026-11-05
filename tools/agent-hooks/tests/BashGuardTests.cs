@@ -106,6 +106,11 @@ public sealed class BashGuardTests
   [InlineData("just db do up migrate")]
   [InlineData("just db do -n reset")]
   [InlineData("just db::do seed psql")]
+  [InlineData("just db run up migrate")]
+  [InlineData("just db run -n reset")]
+  [InlineData("just db::run seed psql")]
+  [InlineData("just db run seed down")]
+  [InlineData("just db::run --yes seed migrate")]
   [InlineData("docker compose down -v")]
   public void Shared_database_from_a_linked_worktree_asks(string command)
   {
@@ -124,6 +129,9 @@ public sealed class BashGuardTests
   [InlineData("just db", true)]
   [InlineData("just db do seed --api-url http://localhost:55041", true)]
   [InlineData("just backend do build test", true)]
+  [InlineData("just db run seed --api-url http://localhost:55041", true)]
+  [InlineData("just backend run build test", true)]
+  [InlineData("just db run up migrate", false)]
   [InlineData("just docs build", true)]
   [InlineData("docker run -d --rm --name calendar-agent-db postgres", true)]
   [InlineData("just test", true)]

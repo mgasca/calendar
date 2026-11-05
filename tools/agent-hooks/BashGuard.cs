@@ -276,8 +276,9 @@ public static partial class BashGuard
     arg.Length > 1 && arg[0] == '-' && arg[1] != '-' && arg.Contains(flag, StringComparison.Ordinal);
 
   // A db module recipe on the shared database, written `db up` or `db::up` (story 0019), or named anywhere in a
-  // `db do` chain (`db do -n up migrate`, #247). `db seed` goes through the API.
-  [GeneratedRegex(@"(?:^| )db(?: |::)(?:do (?:\S+ )*)?(?:up|down|reset|migrate|psql)(?: |$)")]
+  // `db run` chain (`db run -n up migrate`, #315). Keep guarding the former `do` spelling too.
+  // `db seed` goes through the API.
+  [GeneratedRegex(@"(?:^| )db(?: |::)(?:(?:do|run) (?:\S+ )*)?(?:up|down|reset|migrate|psql)(?: |$)")]
   private static partial Regex DbRecipeRegex();
 
   [GeneratedRegex(

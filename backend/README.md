@@ -22,7 +22,7 @@ The build generates [`contracts/openapi.json`](../contracts/openapi.json). Run `
 | Build | `just backend build` |
 | Tests (API tests need Docker) | `just backend test` |
 | One test | `just backend test --filter-method "*Name*"` |
-| Build, then test | `just backend do build test` |
+| Build, then test | `just backend run build test` |
 | Format | `just backend format` |
 | psql shell on the local database | `just db psql` |
 | Wipe the local database | `just db reset` (then `just db migrate`) |

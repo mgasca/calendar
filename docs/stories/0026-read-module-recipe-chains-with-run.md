@@ -1,5 +1,5 @@
 ---
-status: planned
+status: implemented
 date: 2026-11-05
 issue: https://github.com/mgasca/calendar/issues/315
 pr:
@@ -46,6 +46,10 @@ This is a naming change to the existing runner. Its argument rules and execution
 7. **Given** current command guidance, **when** I look up module chaining or container startup, **then** it uses `run` and `image start` respectively.
 8. **Given** the change is complete, **when** I run `just check`, **then** it passes.
 
+Criteria 1–4 and 6 were checked by hand with `just` 1.59.0 on the delivery tree: all seven modules expose `run` and reject `do`; safe scratch recipes verified order, quoted arguments, a second `--`, leading `-n`, validation before execution, and preservation of exit code 23 without running a later recipe. Repository dry runs covered backend restore/build/test arguments, database up/migrate, and image build/start with Development and the Production default. These checks did not start containers or touch the shared database.
+
+Criterion 5 is covered by [BashGuardTests](../../tools/agent-hooks/tests/BashGuardTests.cs), including both command forms, a guarded recipe after a safe one, leading options, safe chains and the main checkout. Five new guarded cases failed against the old code; all 98 hook tests pass with the update. Criterion 7 was checked by reading the updated guidance and searching for obsolete current commands. Criterion 8's local and CI results are recorded in the delivery PR; it is not claimed from the targeted checks alone.
+
 ## Design decisions
 
 ### Any Decision Records
@@ -66,13 +70,11 @@ No new ADR is needed, as requested by the maintainer.
 
 ## Implementation notes
 
-*Planned. This section is completed as the story is built.*
-
 ### Where things live
 
 | Area | Location |
 | --- | --- |
-| Shared runner | `just/do.just`, to become `just/run.just` |
+| Shared runner | `just/run.just` |
 | Module imports | `backend/mod.just`, `frontend/mod.just`, `frontend/apps/docs/mod.just`, `db.just`, `image.just`, `infra/mod.just`, `tools/mod.just` |
 | Container startup | `image.just` |
 | Database guard and tests | `tools/agent-hooks/BashGuard.cs`, `tools/agent-hooks/tests/BashGuardTests.cs` |
@@ -84,18 +86,19 @@ No changes.
 
 ### Testing
 
-* Check parsing, formatting and discovery for every module and the shared recipe.
-* Exercise ordering, argument forwarding, separators, missing names, failure exit codes and dry-run previews without touching the shared database or starting a container.
-* Add guard cases for the new spelling and confirm that guarded chains fail those tests against the old guard.
-* Run docs corpus tests and publication checks after updating the card and command references.
+* Parsing, formatting and discovery checks cover every module and the shared recipe.
+* Manual scratch checks exercise ordering, argument forwarding, separators, missing names, failure exit codes and dry-run previews without touching the shared database or starting a container. There is no committed automated runner harness.
+* Guard cases for the new spelling were confirmed to fail against the old guard before updating it. `just tools test` discovers the hook test app and passes the tooling test apps and whitespace checks; shellcheck is unavailable locally and is left to CI.
+* Docs corpus tests and publication checks validate the card and command references. The delivery PR records the commands and results for its final revision.
 
 ### Lessons learned, known issues and follow-ups
 
-* To be completed during delivery. Existing preview placement and option-value limitations remain as described in story 0023.
+* The old shared recipe was imported by every module, so renaming the image command first avoids a duplicate recipe name.
+* The guard retains recognition of `do` chains as well as the new `run` chains. That is protection for old command text, not a recipe alias.
+* Existing preview placement and option-value limitations remain as described in story 0023. Use `run -n`, and write options with values using `=`.
+* Historical evidence in story 0023 and ADR-0038 keeps the original commands, explicitly labelled as the old spelling; current user guides use the new names.
 
 ## User guide
-
-*Planned behaviour. This section is finalised when the story is implemented.*
 
 Write `just backend run build test` to build and then test the backend. Arguments go to the last recipe; use `--` before a plain-word argument, for example `just image run build start -- Development`. Put preview options after `run`: `just db run -n up migrate`.
 

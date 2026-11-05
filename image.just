@@ -2,7 +2,7 @@
 
 set shell := ["bash", "-euo", "pipefail", "-c"]
 
-import 'just/do.just'
+import 'just/run.just'
 
 # List this module's recipes
 [default]
@@ -15,7 +15,7 @@ build:
     docker build --build-arg NODE_VERSION=$(cat frontend/.node-version) -t calendar:local -t calendar:$(git rev-parse --short HEAD) .
 
 # Run on host port 8080 using local Postgres and .env (image_env defaults to Production)
-run image_env="Production":
+start image_env="Production":
     #!/usr/bin/env bash
     set -euo pipefail
     export ConnectionStrings__Calendar="Host=127.0.0.1;Port=5432;Database=${POSTGRES_DB};Username=calendar_app;Password=${CALENDAR_APP_PASSWORD}"

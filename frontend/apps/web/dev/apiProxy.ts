@@ -1,5 +1,5 @@
 import type { IncomingHttpHeaders } from 'node:http';
-import type { ProxyOptions } from 'vite';
+import type { Plugin, ProxyOptions } from 'vite';
 
 /** Where the dev server sends `/api` when `CALENDAR_API_URL` is unset (`just backend dev`). */
 export const DEFAULT_API_URL = 'http://localhost:5041';
@@ -18,10 +18,45 @@ export const SEED_KEY_HEADER = 'X-Dev-Seed-Key';
 
 const LOOPBACK_HOSTS = new Set(['localhost', '127.0.0.1', '[::1]']);
 
+/** `server.host` / `preview.host` values that keep Vite listening on this machine only. */
+const LOOPBACK_LISTEN_HOSTS = new Set(['localhost', '127.0.0.1', '::1']);
+
 /** `Sec-Fetch-Site` values a browser sends for the page's own origin or a user-typed address. */
 const OWN_FETCH_SITES = new Set(['same-origin', 'none']);
 
 export type Env = Readonly<Record<string, string | undefined>>;
+
+/**
+ * Stops `vite` and `vite preview` from listening beyond loopback while dev sign-in is on (#242).
+ *
+ * The proxy signs in every request that carries no browser headers (curl, scripts). So with `--host`,
+ * `server.host` or `preview.host` set to anything but a loopback address, anyone on the network would
+ * be signed in as the first allow-listed email. The hooks run before the server listens, so nothing is
+ * exposed even briefly. `vite preview` is covered because its proxy defaults to `server.proxy`, and
+ * its host to `server.host`. In plain dev mode the plugin does nothing, so `--host` still works for
+ * testing on another device.
+ */
+export function devSignInHostGuard(env: Env): Plugin {
+  const signedIn = env.CALENDAR_DEV_SIGN_IN === 'true';
+  return {
+    name: 'calendar:dev-sign-in-host-guard',
+    configureServer(server) {
+      if (signedIn) assertLoopbackHost(server.config.server.host, 'server.host (--host)');
+    },
+    configurePreviewServer(server) {
+      if (signedIn)
+        assertLoopbackHost(server.config.preview.host, 'preview.host (vite preview --host)');
+    },
+  };
+}
+
+function assertLoopbackHost(host: string | boolean | undefined, setting: string): void {
+  if (host === undefined || host === false) return;
+  if (typeof host === 'string' && LOOPBACK_LISTEN_HOSTS.has(host.toLowerCase())) return;
+  throw new Error(
+    `Dev sign-in listens only on loopback (localhost, 127.0.0.1 or ::1), because it signs in every non-browser request, but ${setting} is ${String(host)}. Drop --host, or use plain \`just frontend dev\` to test from another device.`,
+  );
+}
 
 /**
  * The dev server's `/api` proxy. Story 0021 and the 2026-11-04 amendment to ADR-0027 cover it.

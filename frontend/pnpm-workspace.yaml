@@ -4,3 +4,10 @@ packages:
 
 # Refuse to install when the running Node doesn't satisfy package.json "engines".
 engineStrict: true
+
+# GHSA-g3hv-75wg-m249 (CVE-2026-118764): minimatch >=7.0.0 <11.0.1 is vulnerable, and
+# @typescript-eslint/typescript-estree still depends on ^10, so Dependabot can't fix it.
+# The 3.x and 5.x copies (ESLint, Redocly) are outside the advisory and stay as they are.
+# Remove this override once typescript-estree depends on minimatch ^11.
+overrides:
+  'minimatch@>=7.0.0 <11.0.1': ^11.0.1

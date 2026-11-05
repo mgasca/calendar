@@ -47,6 +47,21 @@ public sealed class GitProbeTests : IDisposable
   }
 
   [Fact]
+  public void CurrentBranch_names_the_checked_out_branch_and_is_null_when_detached_or_missing()
+  {
+    var probe = new GitProbe();
+    Git("init", "-q", "-b", "main");
+    Commit(("a.cs", "a"));
+    Git("switch", "-q", "-c", "claude/293-push-guard");
+
+    probe.CurrentBranch(_root).ShouldBe("claude/293-push-guard");
+
+    Git("switch", "-q", "--detach");
+    probe.CurrentBranch(_root).ShouldBeNull();
+    probe.CurrentBranch(Path.Combine(_root, "not-created-yet")).ShouldBeNull();
+  }
+
+  [Fact]
   public void LastWriteTimeUtc_reads_the_file_time_and_is_null_for_a_missing_file()
   {
     var probe = new GitProbe();

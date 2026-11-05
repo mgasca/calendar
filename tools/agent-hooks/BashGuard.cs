@@ -12,14 +12,23 @@ public static partial class BashGuard
   private static readonly string[] GhPostSubjects = ["issue", "pr"];
   private static readonly string[] GhPostVerbs = ["create", "comment", "edit", "review"];
 
+  // git's global options that take the next word as their value (-C is applied to the directory instead).
+  private static readonly string[] GitGlobalOptionsWithValue = ["-c", "--git-dir", "--work-tree", "--namespace", "--config-env"];
+
+  // git push options that take the next word as their value, and those after which no branch needs checking.
+  private static readonly string[] PushOptionsWithValue = ["--repo", "-o", "--push-option", "--receive-pack", "--exec"];
+  private static readonly string[] PushOptionsWithoutBranch = ["--all", "--branches", "--mirror", "--delete", "--dry-run"];
+
   /// <summary>The first verdict any segment of the command earns, or null when it may run.</summary>
   public static Verdict? Evaluate(string command, string cwd, IRepoProbe probe)
   {
+    // Branches that earlier segments of this command switch to, by directory; null when the switch detaches HEAD.
+    var switchedTo = new Dictionary<string, string?>(StringComparer.Ordinal);
     foreach (ShellCommand.Segment segment in ShellCommand.Split(command, cwd))
     {
       Verdict? verdict = segment.Tokens[0] switch
       {
-        "git" => Git(segment, probe),
+        "git" => Git(segment, probe, switchedTo),
         "gh" => GhPost(segment, probe),
         "just" => SharedDatabase(segment, probe, DbRecipeRegex().IsMatch(string.Join(' ', segment.Tokens.Skip(1)))),
         "docker" => SharedDatabase(segment, probe, segment.Tokens.Count > 1 && segment.Tokens[1] == "compose"),
@@ -33,13 +42,39 @@ public static partial class BashGuard
     return null;
   }
 
-  private static Verdict? Git(ShellCommand.Segment segment, IRepoProbe probe)
+  /// <summary>A git subcommand with git's global options removed, and the directory it runs in (<c>-C</c> applied).</summary>
+  private sealed record GitCall(string Subcommand, List<string> Args, string Cwd);
+
+  private static GitCall? ParseGit(ShellCommand.Segment segment)
   {
     IReadOnlyList<string> tokens = segment.Tokens;
-    if (tokens.Count < 2)
+    var cwd = segment.Cwd;
+    var i = 1;
+    while (i < tokens.Count && tokens[i].StartsWith('-'))
+    {
+      if (tokens[i] == "-C" && i + 1 < tokens.Count)
+      {
+        cwd = Path.GetFullPath(Path.Combine(cwd, tokens[i + 1]));
+      }
+      i += tokens[i] == "-C" || GitGlobalOptionsWithValue.Contains(tokens[i]) ? 2 : 1;
+    }
+    return i < tokens.Count ? new GitCall(tokens[i], [.. tokens.Skip(i + 1)], cwd) : null;
+  }
+
+  private static Verdict? Git(ShellCommand.Segment segment, IRepoProbe probe, Dictionary<string, string?> switchedTo)
+  {
+    IReadOnlyList<string> tokens = segment.Tokens;
+    GitCall? call = ParseGit(segment);
+    if (call is null)
     {
       return null;
     }
+    RecordBranchSwitch(call, probe, switchedTo);
+    if (call.Subcommand == "push")
+    {
+      return Push(call, probe, switchedTo);
+    }
+    // restore and checkout are guarded in their plain form only, as before the push guard (#293).
     return tokens[1] switch
     {
       "restore" => Restore([.. tokens.Skip(2)], segment.Cwd, probe),
@@ -71,6 +106,108 @@ public static partial class BashGuard
       return null;
     }
     return paths.Count > 0 ? Discard(paths, cwd, probe) : null;
+  }
+
+  /// <summary>
+  /// Notes the branch a <c>switch</c> or <c>checkout</c> moves to, so a later push in the same command checks the new branch
+  /// (the remedy <c>git switch -c new origin/main &amp;&amp; git push -u origin HEAD</c> must pass).
+  /// </summary>
+  private static void RecordBranchSwitch(GitCall call, IRepoProbe probe, Dictionary<string, string?> switchedTo)
+  {
+    List<string> args = call.Args;
+    if (call.Subcommand is not ("switch" or "checkout") || args.Contains("--"))
+    {
+      return;
+    }
+    var create = args.FindIndex(a => a is "-c" or "-C" or "--create" or "--force-create" or "-b" or "-B" or "--orphan");
+    if (create >= 0 && create + 1 < args.Count)
+    {
+      switchedTo[call.Cwd] = args[create + 1];
+    }
+    else if (args.Any(a => a is "--detach" or "-d" or "-"))
+    {
+      switchedTo[call.Cwd] = null;
+    }
+    else if (PathArgs(args).FirstOrDefault() is { } target && (call.Subcommand == "switch" || !probe.PathExists(call.Cwd, target)))
+    {
+      switchedTo[call.Cwd] = target;
+    }
+  }
+
+  private static Verdict? Push(GitCall call, IRepoProbe probe, Dictionary<string, string?> switchedTo)
+  {
+    var positionals = new List<string>();
+    var tags = false;
+    var i = 0;
+    while (i < call.Args.Count)
+    {
+      var arg = call.Args[i];
+      if (arg == "--")
+      {
+        positionals.AddRange(call.Args.Skip(i + 1));
+        break;
+      }
+      if (PushOptionsWithoutBranch.Contains(arg) || HasShortFlag(arg, 'd') || HasShortFlag(arg, 'n'))
+      {
+        return null;
+      }
+      tags |= arg == "--tags";
+      if (!arg.StartsWith('-'))
+      {
+        positionals.Add(arg);
+      }
+      i += PushOptionsWithValue.Contains(arg) ? 2 : 1;
+    }
+    if (tags && positionals.Count < 2)
+    {
+      return null;
+    }
+    var current = new Lazy<string?>(() =>
+      switchedTo.TryGetValue(call.Cwd, out var switched) ? switched : probe.CurrentBranch(call.Cwd));
+    IEnumerable<string?> branches = positionals.Count < 2
+      ? [current.Value]
+      : positionals.Skip(1).Select(refspec => RemoteBranch(refspec, current));
+    foreach (var branch in branches)
+    {
+      // An all-digit name would be read by gh as a PR number, so it is not looked up.
+      if (branch is null || branch.All(char.IsAsciiDigit))
+      {
+        continue;
+      }
+      if (probe.PullRequestFor(call.Cwd, branch) is { IsMergedOrClosed: true } pr)
+      {
+        return new Verdict(
+          Deny,
+          $"this branch's PR is merged/closed: start a new branch from origin/main (branch '{branch}' has PR #{pr.Number} "
+          + $"{pr.State.ToLowerInvariant()}; a push adds nothing to it and recreates the deleted remote branch. "
+          + "AGENTS.md: verify delivery across a merge).");
+      }
+    }
+    return null;
+  }
+
+  /// <summary>
+  /// The remote branch a refspec writes to: the destination side, without <c>+</c> or <c>refs/heads/</c>; the current branch
+  /// for <c>HEAD</c>; null for a delete (<c>:branch</c>), a pattern, or a ref outside <c>refs/heads/</c> such as a tag.
+  /// </summary>
+  private static string? RemoteBranch(string refspec, Lazy<string?> current)
+  {
+    var spec = refspec.TrimStart('+');
+    var colon = spec.IndexOf(':', StringComparison.Ordinal);
+    var target = colon >= 0 ? spec[(colon + 1)..] : spec;
+    if (colon == 0 || target.Length == 0 || target.Contains('*', StringComparison.Ordinal))
+    {
+      return null;
+    }
+    if (target is "HEAD" or "@")
+    {
+      return current.Value;
+    }
+    if (target.StartsWith("refs/heads/", StringComparison.Ordinal))
+    {
+      return target["refs/heads/".Length..];
+    }
+    return target.StartsWith("refs/", StringComparison.Ordinal) ? null : target;
   }
 
   private static Verdict? Discard(List<string> paths, string cwd, IRepoProbe probe) =>

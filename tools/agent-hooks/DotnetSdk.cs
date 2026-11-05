@@ -36,7 +36,7 @@ public static class DotnetSdk
   /// <summary>Runs the executable and parses its standard output; null when it is missing, fails or times out.</summary>
   internal static async Task<string?> RunAsync(string executable, IReadOnlyList<string> args, TimeSpan timeout)
   {
-    var info = new ProcessStartInfo(OnPath(executable))
+    var info = new ProcessStartInfo(ExternalCommand.OnPath(executable))
     {
       RedirectStandardOutput = true,
       RedirectStandardError = true,
@@ -73,11 +73,4 @@ public static class DotnetSdk
       return null;
     }
   }
-
-  /// <summary>The executable's absolute path on PATH, so the process start uses one; the bare name when it is not found.</summary>
-  private static string OnPath(string executable) =>
-    (Environment.GetEnvironmentVariable("PATH") ?? string.Empty)
-      .Split(Path.PathSeparator, StringSplitOptions.RemoveEmptyEntries)
-      .Select(dir => Path.Combine(dir, OperatingSystem.IsWindows() ? executable + ".exe" : executable))
-      .FirstOrDefault(File.Exists) ?? executable;
 }

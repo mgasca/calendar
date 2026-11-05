@@ -67,12 +67,23 @@ public sealed class GitProbe : IRepoProbe
     return File.Exists(full) ? File.GetLastWriteTimeUtc(full) : null;
   }
 
+  /// <inheritdoc/>
+  public string? CurrentBranch(string cwd)
+  {
+    ExternalCommand.Output? output =
+      ExternalCommand.Run(GitExecutable.Value, ["symbolic-ref", "--quiet", "--short", "HEAD"], cwd, BranchTimeout);
+    var branch = output is { ExitCode: 0 } ? output.Stdout.Trim() : string.Empty;
+    return branch.Length > 0 ? branch : null;
+  }
+
+  /// <inheritdoc/>
+  public PullRequest? PullRequestFor(string cwd, string branch) =>
+    PullRequestLookup.Find(cwd, branch, "gh", PullRequestLookup.Timeout);
+
+  private static readonly TimeSpan BranchTimeout = TimeSpan.FromSeconds(5);
+
   /// <summary>git resolved on PATH once, so the process start uses an absolute path.</summary>
-  private static readonly Lazy<string> GitExecutable = new(() =>
-    (Environment.GetEnvironmentVariable("PATH") ?? string.Empty)
-      .Split(Path.PathSeparator, StringSplitOptions.RemoveEmptyEntries)
-      .Select(dir => Path.Combine(dir, OperatingSystem.IsWindows() ? "git.exe" : "git"))
-      .FirstOrDefault(File.Exists) ?? "/usr/bin/git");
+  private static readonly Lazy<string> GitExecutable = new(() => ExternalCommand.OnPath("git"));
 
   private static IEnumerable<string> Lines(string output) =>
     output.Split('\n').Select(l => l.TrimEnd('\r')).Where(l => l.Length > 0);

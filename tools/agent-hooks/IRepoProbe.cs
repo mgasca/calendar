@@ -23,4 +23,10 @@ public interface IRepoProbe
 
   /// <summary>The file's last write time in UTC, or null when it does not exist.</summary>
   DateTime? LastWriteTimeUtc(string cwd, string path);
+
+  /// <summary>The branch checked out in <paramref name="cwd"/>, or null when HEAD is detached or git cannot tell.</summary>
+  string? CurrentBranch(string cwd);
+
+  /// <summary>The pull request whose head is <paramref name="branch"/>, or null when there is none or gh cannot answer.</summary>
+  PullRequest? PullRequestFor(string cwd, string branch);
 }

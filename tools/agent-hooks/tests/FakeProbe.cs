@@ -33,4 +33,20 @@ internal sealed class FakeProbe : IRepoProbe
   public IReadOnlyList<string> ChangedFiles(string cwd) => Changed;
 
   public DateTime? LastWriteTimeUtc(string cwd, string path) => WriteTimes.TryGetValue(path, out DateTime time) ? time : null;
+
+  /// <summary>The branch checked out per directory; a directory missing here has a detached HEAD.</summary>
+  public Dictionary<string, string> Branches { get; } = new(StringComparer.Ordinal);
+
+  /// <summary>The PR of each head branch; a branch missing here has none.</summary>
+  public Dictionary<string, PullRequest> PullRequests { get; } = new(StringComparer.Ordinal);
+
+  public List<(string Cwd, string Branch)> PullRequestQueries { get; } = [];
+
+  public string? CurrentBranch(string cwd) => Branches.TryGetValue(cwd, out var branch) ? branch : null;
+
+  public PullRequest? PullRequestFor(string cwd, string branch)
+  {
+    PullRequestQueries.Add((cwd, branch));
+    return PullRequests.TryGetValue(branch, out PullRequest? pr) ? pr : null;
+  }
 }

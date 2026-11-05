@@ -29,6 +29,24 @@ public sealed class HookRunnerTests
   }
 
   [Fact]
+  public void Pre_bash_denies_a_push_to_a_branch_whose_pr_merged()
+  {
+    _probe.Branches["/repo"] = "feature";
+    _probe.PullRequests["feature"] = new PullRequest(186, "MERGED");
+
+    HookResult result = HookRunner.Run("pre-bash", Json("Bash", "command", "git push -u origin HEAD"), _probe, "10.0.0");
+
+    result.ExitCode.ShouldBe(0);
+    JsonElement output = JsonDocument.Parse(result.Stdout!).RootElement.GetProperty("hookSpecificOutput");
+    output.GetProperty("permissionDecision").GetString().ShouldBe("deny");
+    (output.GetProperty("permissionDecisionReason").GetString() ?? string.Empty)
+      .ShouldStartWith("this branch's PR is merged/closed: start a new branch from origin/main");
+
+    _probe.PullRequests["feature"] = new PullRequest(293, "OPEN");
+    HookRunner.Run("pre-bash", Json("Bash", "command", "git push -u origin HEAD"), _probe, "10.0.0").ShouldBe(HookResult.Pass);
+  }
+
+  [Fact]
   public void Pre_bash_ask_and_pass()
   {
     _probe.LinkedWorktree = true;

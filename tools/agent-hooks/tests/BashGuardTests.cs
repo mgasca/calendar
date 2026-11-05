@@ -8,6 +8,13 @@ public sealed class BashGuardTests
   private const string Root = "/repo";
   private readonly FakeProbe _probe = new();
 
+  // The push tests run on branch feature, whose PR #186 merged; the other guards never ask for a branch or a PR.
+  public BashGuardTests()
+  {
+    _probe.Branches[Root] = "feature";
+    _probe.PullRequests["feature"] = new PullRequest(186, "MERGED");
+  }
+
   [Theory]
   [InlineData("git restore AGENTS.md")]
   [InlineData("git restore -SW AGENTS.md")]
@@ -134,5 +141,126 @@ public sealed class BashGuardTests
     {
       verdict.ShouldBeNull();
     }
+  }
+
+  [Theory]
+  [InlineData("git push")]
+  [InlineData("git push origin")]
+  [InlineData("git push -u origin HEAD")]
+  [InlineData("git push --set-upstream origin HEAD")]
+  [InlineData("git push origin feature")]
+  [InlineData("git push origin HEAD:feature")]
+  [InlineData("git push --force-with-lease origin +local:refs/heads/feature")]
+  [InlineData("git push -o ci.skip origin feature")]
+  [InlineData("git push --follow-tags")]
+  [InlineData("git push origin docs feature")]
+  [InlineData("git -c push.default=current push")]
+  [InlineData("git add -A && git commit -m 'card' && git push")]
+  public void Push_to_a_branch_whose_pr_merged_is_denied(string command)
+  {
+    Verdict verdict = BashGuard.Evaluate(command, Root, _probe).ShouldNotBeNull();
+
+    verdict.Decision.ShouldBe("deny");
+    verdict.Reason.ShouldStartWith("this branch's PR is merged/closed: start a new branch from origin/main");
+    verdict.Reason.ShouldContain("'feature' has PR #186 merged");
+  }
+
+  [Fact]
+  public void Push_to_a_branch_whose_pr_closed_is_denied()
+  {
+    _probe.PullRequests["feature"] = new PullRequest(226, "CLOSED");
+
+    Verdict verdict = BashGuard.Evaluate("git push", Root, _probe).ShouldNotBeNull();
+
+    verdict.Decision.ShouldBe("deny");
+    verdict.Reason.ShouldContain("PR #226 closed");
+  }
+
+  [Fact]
+  public void Push_to_a_branch_whose_pr_is_open_passes()
+  {
+    _probe.PullRequests["feature"] = new PullRequest(293, "OPEN");
+
+    BashGuard.Evaluate("git push -u origin HEAD", Root, _probe).ShouldBeNull();
+    _probe.PullRequestQueries.ShouldBe([(Root, "feature")]);
+  }
+
+  [Theory]
+  [InlineData("git push origin other")]
+  [InlineData("git push origin feature:other")]
+  public void Push_to_a_branch_without_a_pr_passes(string command)
+  {
+    BashGuard.Evaluate(command, Root, _probe).ShouldBeNull();
+    _probe.PullRequestQueries.ShouldBe([(Root, "other")]);
+  }
+
+  [Fact]
+  public void Push_from_a_detached_head_passes_without_asking_gh()
+  {
+    _probe.Branches.Clear();
+
+    BashGuard.Evaluate("git push origin HEAD", Root, _probe).ShouldBeNull();
+    _probe.PullRequestQueries.ShouldBeEmpty();
+  }
+
+  [Theory]
+  [InlineData("git push origin --delete feature")]
+  [InlineData("git push -d origin feature")]
+  [InlineData("git push origin :feature")]
+  [InlineData("git push --dry-run")]
+  [InlineData("git push -n origin feature")]
+  [InlineData("git push --all")]
+  [InlineData("git push --mirror")]
+  [InlineData("git push --tags")]
+  [InlineData("git push origin --tags")]
+  [InlineData("git push origin refs/tags/v1")]
+  [InlineData("git push origin 'refs/heads/*:refs/heads/*'")]
+  [InlineData("git push origin 293")]
+  [InlineData("git pull")]
+  [InlineData("git log --oneline -- push")]
+  public void Pushes_that_name_no_branch_to_check_pass_without_asking_gh(string command)
+  {
+    _probe.PullRequests["293"] = new PullRequest(1, "MERGED");
+
+    BashGuard.Evaluate(command, Root, _probe).ShouldBeNull();
+    _probe.PullRequestQueries.ShouldBeEmpty();
+  }
+
+  [Theory]
+  [InlineData("git switch -c fresh origin/main && git push -u origin HEAD")]
+  [InlineData("git checkout -b fresh origin/main && git push -u origin HEAD")]
+  [InlineData("git switch fresh && git push")]
+  [InlineData("git checkout fresh && git push")]
+  public void A_branch_switched_to_earlier_in_the_command_is_the_one_checked(string command)
+  {
+    BashGuard.Evaluate(command, Root, _probe).ShouldBeNull();
+    _probe.PullRequestQueries.ShouldBe([(Root, "fresh")]);
+  }
+
+  [Fact]
+  public void A_detaching_switch_earlier_in_the_command_leaves_no_branch_to_check()
+  {
+    BashGuard.Evaluate("git switch --detach origin/main && git push origin HEAD", Root, _probe).ShouldBeNull();
+    _probe.PullRequestQueries.ShouldBeEmpty();
+  }
+
+  [Fact]
+  public void A_file_checkout_is_not_a_branch_switch()
+  {
+    _probe.Existing.Add("AGENTS.md");
+
+    BashGuard.Evaluate("git checkout AGENTS.md && git push", Root, _probe).ShouldNotBeNull().Decision.ShouldBe("deny");
+  }
+
+  [Theory]
+  [InlineData("git -C other push")]
+  [InlineData("cd other && git push")]
+  public void The_push_is_checked_in_the_directory_it_runs_in(string command)
+  {
+    _probe.Branches[Root] = "fresh";
+    _probe.Branches["/repo/other"] = "feature";
+
+    BashGuard.Evaluate(command, Root, _probe).ShouldNotBeNull().Decision.ShouldBe("deny");
+    _probe.PullRequestQueries.ShouldBe([("/repo/other", "feature")]);
   }
 }

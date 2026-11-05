@@ -11,6 +11,8 @@
 #:include ../HookRunner.cs
 #:include ../GitProbe.cs
 #:include ../DotnetSdk.cs
+#:include ../ExternalCommand.cs
+#:include ../PullRequestLookup.cs
 #:include FakeProbe.cs
 #:include BashGuardTests.cs
 #:include ShellCommandTests.cs
@@ -20,6 +22,8 @@
 #:include HookRunnerTests.cs
 #:include GitProbeTests.cs
 #:include DotnetSdkTests.cs
+#:include ExternalCommandTests.cs
+#:include PullRequestLookupTests.cs
 
 // Tests for the Claude Code hooks. Run: dotnet run tools/agent-hooks/tests/agent-hooks.tests.cs
 // One test class per file, named after the subject it covers (BashGuardTests.cs tests ../BashGuard.cs); this file is

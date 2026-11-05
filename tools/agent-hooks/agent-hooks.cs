@@ -9,12 +9,15 @@
 #:include HookRunner.cs
 #:include GitProbe.cs
 #:include DotnetSdk.cs
+#:include ExternalCommand.cs
+#:include PullRequestLookup.cs
 
 // Claude Code hooks for this repo (ADR-0042), wired up in .claude/settings.json. Each run handles one event:
 // it reads the hook JSON on stdin and answers on stdout, as https://code.claude.com/docs/en/hooks describes.
 //
 //   dotnet run tools/agent-hooks/agent-hooks.cs -- pre-bash    PreToolUse Bash (git, gh, just, docker): deny discarding
-//                                                               unstaged work and public posts with private details; ask
+//                                                               unstaged work, public posts with private details and a
+//                                                               push to a branch whose PR is merged or closed; ask
 //                                                               before the shared database is touched from a worktree
 //   dotnet run tools/agent-hooks/agent-hooks.cs -- pre-edit    PreToolUse Edit|Write: deny edits of generated files
 //   dotnet run tools/agent-hooks/agent-hooks.cs -- post-edit   PostToolUse Edit|Write: report C# lines over 140 chars

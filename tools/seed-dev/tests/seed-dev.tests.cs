@@ -69,12 +69,28 @@ public sealed class SeedPlanTests
 
     tasks.Count(t => t.DueDate == Day).ShouldBe(2);
     tasks.Count(t => t.DueAt >= dayStart && t.DueAt < dayEnd).ShouldBe(1);
-    tasks.Count(t => t.DueDate < Day).ShouldBe(2);
+    tasks.Count(t => t.DueDate < Day).ShouldBeGreaterThan(20);
     tasks.Count(t => t is { DueDate: null, DueAt: null }).ShouldBe(1);
     tasks.Count(t => t.DueDate == Day.AddDays(1)).ShouldBe(1);
     tasks.Count(t => t.CompleteAfterCreate).ShouldBe(1);
     tasks.Single(t => t.CompleteAfterCreate).DueDate.ShouldBe(Day.AddDays(-2));
     tasks.ShouldAllBe(t => t.DueDate == null || t.DueAt == null);
+  }
+
+  [Fact]
+  public void Open_overdue_tasks_expose_day_and_week_triage_and_span_multiple_pages()
+  {
+    // Check every weekday: the week panel only counts tasks due before Monday.
+    for (var offset = 0; offset < 7; offset++)
+    {
+      DateOnly day = Day.AddDays(offset);
+      DateOnly monday = day.AddDays(-((int)day.DayOfWeek + 6) % 7);
+      TaskSeed[] openOverdue = [.. SeedPlan.Build(day, Berlin).Tasks.Where(t => !t.CompleteAfterCreate && t.DueDate < day)];
+
+      openOverdue.Length.ShouldBeGreaterThan(50); // Default triage page size.
+      openOverdue.Count(t => t.DueDate < monday).ShouldBeGreaterThan(20); // Agenda link threshold.
+      openOverdue.Select(t => t.Title).Distinct().Count().ShouldBe(openOverdue.Length);
+    }
   }
 
   [Fact]

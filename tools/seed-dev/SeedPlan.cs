@@ -56,7 +56,11 @@ public sealed record SeedPlan(IReadOnlyList<EventSeed> Events, IReadOnlyList<Tas
             new("Plan next sprint (due tomorrow)", DueDate: date.AddDays(1)),
         ];
 
-    return new SeedPlan(events, tasks);
+    // More than the 20-row agenda cap and the 50-row triage page; before this week's Monday on every weekday.
+    TaskSeed[] backlog = [.. Enumerable.Range(1, 60).Select(i =>
+        new TaskSeed($"Review backlog item {i:D2} (overdue)", DueDate: date.AddDays(-7 - i)))];
+
+    return new SeedPlan(events, [.. tasks, .. backlog]);
   }
 
   /// <summary>The instant of a local wall-clock time; a time skipped by a DST gap moves to the first valid time after it.</summary>

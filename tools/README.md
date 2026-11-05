@@ -36,4 +36,6 @@ A scratch build that drops the folder's `Directory.Build.props`, `.editorconfig`
 printf '{"tool_name":"Bash","tool_input":{"command":"git restore AGENTS.md"},"cwd":"%s"}' "$PWD" | dotnet run tools/agent-hooks/agent-hooks.cs -- pre-bash
 ```
 
+The stale-contract check at stop counts a file as changed only while it still differs from `origin/main`, so a squash-merged branch stops tripping it. It passes when `contracts/openapi.json` was written after every changed contract source (any API build regenerates it, so an unchanged contract no longer blocks every turn), and the same holds for `schema.gen.ts` against the contract; a deleted source still blocks (#254).
+
 Exit 0 with JSON is a decision or a note; exit 2 with stderr is a usage error; any other failure (for example an SDK below 10.0.300) is non-blocking for Claude Code, and the rules in `AGENTS.md` still apply by hand. Each handler carries an `if` filter (`Bash(git *)`, `Edit(**/*.cs)`, …) so unrelated commands and edits start no process. Personal overrides go in the git-ignored `.claude/settings.local.json`. Revisit the hooks when their latency is still felt in sessions, when Claude Code documents native nested `AGENTS.md` loading (drop the `CLAUDE.md` shims), or when a rule in `AGENTS.md` is ignored repeatedly (promote it to a hook).

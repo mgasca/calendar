@@ -46,7 +46,11 @@ public sealed class GitProbe : IRepoProbe
       GitResult mergeBase = Git(cwd, ["merge-base", "HEAD", baseRef]);
       if (mergeBase.ExitCode == 0 && mergeBase.Output.Trim().Length > 0)
       {
-        files.UnionWith(Lines(Git(cwd, ["diff", "--name-only", mergeBase.Output.Trim()]).Output));
+        // A file that already matches the base tip was delivered (for example by a squash merge, which leaves the merge
+        // base behind), so only files that still differ from the tip count as the branch's changes (#254).
+        IEnumerable<string> sinceMergeBase = Lines(Git(cwd, ["diff", "--name-only", mergeBase.Output.Trim()]).Output);
+        var fromTip = new HashSet<string>(Lines(Git(cwd, ["diff", "--name-only", baseRef]).Output), StringComparer.Ordinal);
+        files.UnionWith(sinceMergeBase.Where(fromTip.Contains));
         break;
       }
     }
@@ -54,6 +58,13 @@ public sealed class GitProbe : IRepoProbe
       .Select(l => l.Length > 3 ? l[3..] : l)
       .Select(l => l.Contains(" -> ", StringComparison.Ordinal) ? l[(l.IndexOf(" -> ", StringComparison.Ordinal) + 4)..] : l));
     return [.. files.Order(StringComparer.Ordinal)];
+  }
+
+  /// <inheritdoc/>
+  public DateTime? LastWriteTimeUtc(string cwd, string path)
+  {
+    var full = Path.Combine(cwd, path);
+    return File.Exists(full) ? File.GetLastWriteTimeUtc(full) : null;
   }
 
   /// <summary>git resolved on PATH once, so the process start uses an absolute path.</summary>

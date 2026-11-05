@@ -75,7 +75,7 @@ public static class HookRunner
     {
       return HookResult.Pass;
     }
-    var reason = ContractCheck.Evaluate(probe.ChangedFiles(input.Cwd));
+    var reason = ContractCheck.Evaluate(probe.ChangedFiles(input.Cwd), path => probe.LastWriteTimeUtc(input.Cwd, path));
     return reason is null ? HookResult.Pass : new HookResult(0, HookOutput.StopBlock(reason));
   }
 }

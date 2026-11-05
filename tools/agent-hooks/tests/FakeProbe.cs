@@ -11,6 +11,8 @@ internal sealed class FakeProbe : IRepoProbe
 
   public List<string> Changed { get; } = [];
 
+  public Dictionary<string, DateTime> WriteTimes { get; } = new(StringComparer.Ordinal);
+
   public bool LinkedWorktree { get; set; }
 
   public List<(string Cwd, IReadOnlyList<string> Paths)> UnstagedQueries { get; } = [];
@@ -29,4 +31,6 @@ internal sealed class FakeProbe : IRepoProbe
   public string? ReadFile(string cwd, string path) => Files.TryGetValue(path, out var text) ? text : null;
 
   public IReadOnlyList<string> ChangedFiles(string cwd) => Changed;
+
+  public DateTime? LastWriteTimeUtc(string cwd, string path) => WriteTimes.TryGetValue(path, out DateTime time) ? time : null;
 }

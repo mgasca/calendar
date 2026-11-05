@@ -15,6 +15,12 @@ public interface IRepoProbe
   /// <summary>The file's text, or null when it cannot be read.</summary>
   string? ReadFile(string cwd, string path);
 
-  /// <summary>Repo-relative paths changed since the branch left origin/main, plus everything git status reports.</summary>
+  /// <summary>
+  /// Repo-relative paths changed since the branch left origin/main that still differ from origin/main, so a squash-merged
+  /// change drops out, plus everything git status reports.
+  /// </summary>
   IReadOnlyList<string> ChangedFiles(string cwd);
+
+  /// <summary>The file's last write time in UTC, or null when it does not exist.</summary>
+  DateTime? LastWriteTimeUtc(string cwd, string path);
 }

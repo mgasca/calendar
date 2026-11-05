@@ -75,6 +75,18 @@ public sealed class HookRunnerTests
   }
 
   [Fact]
+  public void Stop_passes_when_the_contract_was_regenerated_after_the_source_edit()
+  {
+    var edited = new DateTime(2026, 11, 5, 13, 35, 0, DateTimeKind.Utc);
+    _probe.Changed.Add("backend/src/Calendar.Api/Endpoints/AuthEndpoints.cs");
+    _probe.WriteTimes["backend/src/Calendar.Api/Endpoints/AuthEndpoints.cs"] = edited;
+    _probe.WriteTimes["contracts/openapi.json"] = edited.AddMinutes(3);
+
+    HookRunner.Run("stop", """{"cwd":"/repo","hook_event_name":"Stop","stop_hook_active":false}""", _probe, "10.0.0")
+      .ShouldBe(HookResult.Pass);
+  }
+
+  [Fact]
   public void Warm_names_the_sdk_and_the_runtime()
   {
     HookResult result = HookRunner.Run(

@@ -79,7 +79,10 @@ jobs:
       - run: pnpm lint
       - run: pnpm -r --filter '!@calendar/docs' typecheck
       - run: pnpm -r --filter '!@calendar/docs' test:coverage
-      - run: pnpm -r --filter '!@calendar/docs' build
+      # The typecheck step above has just run the web app's `tsc -b`, so the build here is only the bundler;
+      # `pnpm build` (and `just frontend build`) still type-check first.
+      - name: Build the web app
+        run: pnpm --filter @calendar/web exec vite build
       - uses: actions/upload-artifact@v7
         if: ${{ !cancelled() }}
         with:

@@ -57,6 +57,16 @@ Measured on Vite 8.3.5 (2026-11-04, in a scratch directory with a throwaway upst
 5. **Given** the mode is on, **when** the page runs, **then** the key is never in anything served to the browser: it is added only between the dev server and the API. Not directly tested. Checked by hand on 2026-11-04: the key did not appear in `/`, `/src/main.tsx`, `/src/App.tsx`, `/@vite/client`, `/@vite/env`, `/src/features/auth/auth.ts`, `/src/api/client.ts`, or the `/api/auth/me` response headers. Vite exposes only `VITE_`-prefixed variables to the page, and the key isn't one.
 6. **Given** `Auth__AllowedEmails__0` is unset, **when** I start the recipe, **then** it warns that the API will reject the key. Checked by hand through the recipe; there is no automated test for recipes.
 7. **Given** the mode is on, **when** a page from another origin calls the dev server's `/api` (another local port, `127.0.0.1` instead of `localhost`, `*.localhost`, an internet site, or a `same-site` or `cross-site` request), **then** the API receives no key and answers 401, even if that page sent a key of its own. Added after the security review of #241 (finding 1). Tested by "sends no key for …" (dev server) and the `isSameOriginRequest` cases.
+8. **Given** the mode is on, **when** `vite` or `vite preview` is asked to listen beyond loopback (`--host`, `--host 0.0.0.0`, `--host ::`, a LAN address or name, `server.host`, `preview.host`, or a `server.host` that `vite preview` inherits), **then** it refuses to start before it listens, with a message naming the setting. Plain `just frontend dev --host` is unaffected. Added for #242 (finding 2 of the security review of #241). Tested in [`devSignInHostGuard.test.ts`](../../frontend/apps/web/dev/devSignInHostGuard.test.ts):
+   * "stops the dev server on host …", "stops vite preview on host …" and "stops vite preview when it inherits a non-loopback server.host";
+   * "lets … start on host …" for the loopback hosts and the default;
+   * "leaves the dev server on host … alone" for plain mode;
+   * against the real `vite.config.ts`: "refuses \`--host\` under dev sign-in" and "starts on the default host under dev sign-in".
+
+   End to end on 2026-11-05:
+   * `CALENDAR_DEV_SIGN_IN=true pnpm dev --host` and `vite preview --host` exited 1 with the message, and nothing listened on 5173 or 4173;
+   * `just frontend dev-signed-in` listened on `127.0.0.1:5173`;
+   * plain `pnpm dev --host` listened on `*:5173`.
    * End to end in Chromium on 2026-11-04: a page on `127.0.0.1:55180` got 401 from `localhost:5173/api/auth/me` and `/api/tasks`, while the app's own page stayed signed in.
    * Against the pre-fix proxy, the same page read `/api/auth/me` as 200 with the allow-listed email.
 
@@ -87,10 +97,10 @@ The amendment to ADR-0027 keeps the decision and its ratings. It widens only who
 
 | Area | Location |
 | --- | --- |
-| Proxy options, refusals and the same-origin rule | `frontend/apps/web/dev/apiProxy.ts` (`apiProxy(env)`, `isSameOriginRequest(headers)`) |
-| Wiring | `frontend/apps/web/vite.config.ts` (`server.proxy['/api']`); `tsconfig.node.json` type-checks `dev/` |
+| Proxy options, refusals, the same-origin rule and the loopback host guard | `frontend/apps/web/dev/apiProxy.ts` (`apiProxy(env)`, `isSameOriginRequest(headers)`, `devSignInHostGuard(env)`) |
+| Wiring | `frontend/apps/web/vite.config.ts` (`server.proxy['/api']`, and the guard in `plugins`); `tsconfig.node.json` type-checks `dev/` |
 | Recipe | `frontend/mod.just` (`dev-signed-in`) |
-| Tests | `frontend/apps/web/dev/apiProxy.test.ts`, in the Vitest project `dev-server` |
+| Tests | `frontend/apps/web/dev/apiProxy.test.ts` and `devSignInHostGuard.test.ts`, in the Vitest project `dev-server` |
 | Docs | `README.md` (run table, "Google sign-in setup"), `.env.example`, `.claude/skills/run-calendar/SKILL.md`, `docs/architecture/calendar.architecture.json` |
 
 ### API
@@ -110,6 +120,14 @@ No changes. The API's seed scheme, its Development-only switch and `contracts/op
 * Negative controls (2026-11-04):
   * With `apiProxy` returning the options without `headers`, 7 of the first 21 tests failed. The fix was saved outside the checkout first and restored by hash.
   * The new cross-origin tests ran against the committed fixed-header proxy before the fix: all 4 "sends no key for …" dev-server tests failed, because the key reached the API.
+* `devSignInHostGuard.test.ts` has 26 tests (#242).
+  * They build Vite servers with `createServer` and `preview` around the guard alone, and check refusals for 5 non-loopback hosts in each command and for a `server.host` that preview inherits.
+  * They check that both commands start on 4 loopback or default hosts, and that plain mode is unaffected.
+  * Two tests load the real `vite.config.ts` with the environment stubbed.
+  * `createServer` doesn't listen, so the plain-mode cases bind nothing.
+* Negative control for #242 (2026-11-05):
+  * Before the guard existed, the real-config test "refuses \`--host\` under dev sign-in" failed: the dev server resolved instead of refusing.
+  * With the guard's hooks disabled, 12 tests failed, which is every refusal. The fix was saved outside the checkout first and restored by hash.
 * End to end on a throwaway stack (PostgreSQL 55432, API 55041 in Development, Vite on 5173 through the recipe), see the acceptance criteria.
 
 ### Lessons learned, known issues and follow-ups
@@ -117,12 +135,11 @@ No changes. The API's seed scheme, its Development-only switch and `contracts/op
 * **Vitest projects:** the web test setup (`src/test/setup.ts`) patches `window` and starts MSW, so Node-side dev-server tests can't share it. `vite.config.ts` now has two Vitest projects: `web` (jsdom, the setup, `src/**`) and `dev-server` (Node, no setup, `dev/**`). `just frontend test` runs both.
 * **A fixed proxy header signs in every page, not just the app.** The first version used `headers: { 'X-Dev-Seed-Key': … }`. Vite 8.3.5's default `server.cors` allows any localhost origin and runs before the proxy. So any other local page in the same browser could read and change the developer's calendar, and the PR's tests didn't catch it because they sent no `Origin`. The security review of #241 found it. Tests for a credential the proxy adds should include a foreign `Origin` and `Sec-Fetch-Site`.
 * **Measured:** Vite 8.3.5 proxies with http-proxy-3. Removing and setting the header in `proxyReq` replaces a client's key. A Vite upgrade that changes this fails "replaces a key the client sends with the proxy's" or "sends no key for another origin sending a key of its own".
-* **Not fixed here (security review of #241, findings 2 and 3, both low):**
-  * Nothing in code limits the mode to loopback when Vite is started with `--host` or run as `vite preview`. The recipe passes neither.
-  * The README and the user guide below say the placeholder `Auth__DevSeedKey` from `.env.example` is "already there", rather than telling you to replace it with `openssl rand -hex 32`.
+* **Fixed after delivery:** finding 2 of the security review of #241 was that nothing in code limited the mode to loopback under `vite --host` or `vite preview`, so only the recipe's lack of arguments protected it. Fixed for #242 by the guard plugin (criterion 8). Vite runs `configureServer` and `configurePreviewServer` before it listens, so a refusal there exposes nothing, even briefly. `preview.host` and `preview.proxy` fall back to the `server` values (checked in the Vite 8.3.5 source), which is why preview needs the same guard.
+* **Not fixed here (security review of #241, finding 3, low):** the README and the user guide below say the placeholder `Auth__DevSeedKey` from `.env.example` is "already there", rather than telling you to replace it with `openssl rand -hex 32`. Tracked in #243.
 * **Known limitation:** **Sign out** clears the cookie, but the next request carries the key again, so the mode can't be left from the UI. Stop the recipe instead.
 * **Known limitation:** the recipe prints its "Dev sign-in" line before Vite checks the key, so a refused start shows that line followed by the error.
-* **Security note:** while the recipe runs, anything that can reach the dev server without browser headers (curl, a script, another local user) is signed in. Vite listens only on localhost unless started with `--host`, and the recipe doesn't pass it. Other pages in your browser are not signed in.
+* **Security note:** while the recipe runs, anything that can reach the dev server without browser headers (curl, a script, another local user) is signed in. In this mode Vite refuses to listen beyond loopback (criterion 8), so that means this machine only. Other pages in your browser are not signed in.
 
 ## User guide
 

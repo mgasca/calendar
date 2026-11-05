@@ -60,7 +60,10 @@ The decision above is unchanged: browsers sign in with Google through the API, t
   * a request with neither header, such as curl, still gets the key.
 
   This is needed because Vite's default CORS policy lets any `localhost`, `127.0.0.1`, `[::1]` or `*.localhost` origin read `/api` responses. A key on every request would let any other local page act as the developer, and any internet site send simple requests with the key added.
-* **Loopback target, valid key.** In this mode the dev server refuses to start if `CALENDAR_API_URL` is not a loopback host (`localhost`, `127.0.0.1`, `::1`), or if the key is missing or shorter than the API's 32-character minimum.
+* **Loopback target, loopback listener, valid key.** In this mode the dev server refuses to start in any of these cases:
+  * `CALENDAR_API_URL` is not a loopback host (`localhost`, `127.0.0.1`, `::1`);
+  * `vite` or `vite preview` would listen beyond loopback (`--host`, `server.host` or `preview.host` set to anything else; #242);
+  * the key is missing or shorter than the API's 32-character minimum.
 * **The API is unchanged.** It still accepts the key only in Development, as the first allow-listed email's user ([ADR-0041](0041-per-user-data-ownership.md)), and Google stays the only sign-in in every other environment.
 
 **Evidence**
@@ -68,11 +71,14 @@ The decision above is unchanged: browsers sign in with Google through the API, t
 * **Measured on Vite 8.3.5, 2026-11-04, in a scratch directory with a throwaway upstream (not the repository):** a `/api` proxy entry with `headers: { 'X-Dev-Seed-Key': … }` forwarded the header to the upstream, and its value replaced a different `X-Dev-Seed-Key` sent by the client.
 * **Untested until delivery:** the repository's proxy, recipe and refusals, and the end-to-end sign-in. The acceptance criteria of story 0021 cover all of them.
 * **Measured on Vite 8.3.5 and Chromium, 2026-11-04, during the review of PR #241:** with that fixed `headers` entry, a page served from `http://127.0.0.1:55180` read `http://localhost:55173/api/auth/me` as `200` with the allow-listed email. With the same-origin rule above, the same request got `401`, and the app's own page stayed signed in.
+* **Measured on Vite 8.3.5, 2026-11-05, for #242:**
+  * Before the listener check, the real `vite.config.ts` started with dev sign-in on and `--host`.
+  * With the check, `CALENDAR_DEV_SIGN_IN=true pnpm dev --host` and `vite preview --host` exited before listening, and plain `pnpm dev --host` still listened on all interfaces.
 
 **Consequences of the amendment**
 
 * Good, because **D3 Operational simplicity**: trying the web app by hand no longer needs a Google OAuth client.
-* Bad, because **D1 Browser security** in development: while the recipe runs, anyone who can reach the dev server is signed in as the first allow-listed email. Vite listens on localhost unless started with `--host`. Other pages in the developer's browser are not signed in, because of the same-origin rule.
+* Bad, because **D1 Browser security** in development: while the recipe runs, anyone who can reach the dev server is signed in as the first allow-listed email. In this mode the dev server refuses to listen beyond loopback, so that means local users and programs only. Other pages in the developer's browser are not signed in, because of the same-origin rule.
 * Bad, because the same-origin rule depends on browser-set headers (`Sec-Fetch-Site`, `Origin`). A local program that isn't a browser, such as curl or a script run by another user on the same machine, sends neither header and gets the key. That is the "anyone who can reach the dev server" exposure in the bullet above.
 * Bad, because **Sign out** cannot end the mode, since the next request carries the key again. Stopping the recipe signs out.
 * Neutral, because the API, its contract, CORS and every non-Development environment do not change.

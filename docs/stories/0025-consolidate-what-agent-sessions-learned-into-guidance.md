@@ -98,6 +98,20 @@ No changes.
 * **A watch script can declare CI done on an empty check list** right after a push (`all()` over nothing is true). Observed on PR #271; the fix is to require the full set of checks. Candidate bullet for `issue-handover`.
 * **Follow-ups:** the second run and the card update (tracked on #269); the routine install (#270); whether to file or deliver the first run's nine lessons (#269).
 
+### Memory coverage disposition
+
+The first run found 8 of 11 worker memory roots holding the 2026-11-01 versions of three memories that were reconciled with the merged guidance on 2026-11-03 (story [0018](0018-preserve-transcript-insights.md)). Issue [#302](https://github.com/mgasca/calendar/issues/302) reconciled them on 2026-11-05 with the maintainer's go-ahead. Versions were identified by SHA-256 fingerprint, compared with the project-level memory root that new workers are seeded from.
+
+| Memory | 2026-11-01 version | Disposition |
+| --- | --- | --- |
+| Issue-driven handover workflow | Full handover rules, now owned by `AGENTS.md` and the `issue-handover` skill, and the retired "Node 22 / `make build-docs` cannot run" limitation | Replaced by the reconciled pointer to the merged guidance, which records that the limitation was retired and capabilities must be re-probed. |
+| Issue sweep routine | Says the six-hourly timer runs sweeps | Replaced by the dated note: the timer was found disabled and inactive on 2026-11-03, with recovery steps. Stays local (machine-specific). |
+| Redact GitHub posts | Own copy of the redaction rule | Replaced by the pointer to "Public GitHub posts" in `AGENTS.md`. |
+
+* **Roots at reconciliation time:** by 2026-11-05 only 4 worker roots for this project were left. The other 7 had been removed with their workers. 3 of the 4 already held the reconciled versions, because they were seeded from the project-level root after 2026-11-03. One live, long-running worker still held all three 2026-11-01 versions. Its three files and their three index lines were replaced with the reconciled ones, and nothing in it differed from both known versions. Another worker root was removed while the reconciliation ran.
+* **Verified:** afterwards the fingerprints of all three files matched the project-level root in each of the 3 remaining roots, and no root still stated the Node 22 limitation as current. The harness's per-worker baseline copies and the other memories in each root were not changed.
+* **Limits:** stale copies come from workers that were seeded before a reconciliation and are still running; new workers start from the project-level root. A later dream-weaver run should fingerprint the roots again rather than assume this result holds.
+
 ## User guide
 
 *Planned behaviour. This section is finalised when the story is implemented.*

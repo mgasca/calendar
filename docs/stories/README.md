@@ -47,4 +47,5 @@ Front matter: `status` (`planned`, `in-progress` or `implemented`), `date` (`YYY
 | [0023](0023-chain-a-modules-recipes-in-one-command.md) | Chain a module's recipes in one command | implemented |
 | [0024](0024-one-way-to-show-what-to-fix-in-add-task-and-add-event.md) | One way to show what to fix in Add task and Add event | implemented |
 | [0025](0025-consolidate-what-agent-sessions-learned-into-guidance.md) | Consolidate what agent sessions learned into guidance | in-progress |
+| [0026](0026-read-module-recipe-chains-with-run.md) | Read module recipe chains with run | planned |
 | [XXXX](XXXX-create-events-and-tasks-from-week-view.md) | Create events and tasks from the week view | planned |

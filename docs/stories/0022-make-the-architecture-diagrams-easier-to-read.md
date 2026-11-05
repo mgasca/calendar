@@ -60,7 +60,7 @@ The choice was solid label backgrounds everywhere, with ELK on the Overview only
 
 ## Design decisions
 
-### Architecture Decision Records
+### Any Decision Records
 
 | ADR | Decision | Why it matters for this story |
 | --- | --- | --- |

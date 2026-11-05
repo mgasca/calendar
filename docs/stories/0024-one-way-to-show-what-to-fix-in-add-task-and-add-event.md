@@ -57,7 +57,7 @@ Five styles were compared on screenshots and mock-ups built with the app's own s
 
 ## Design decisions
 
-### Decision records (ADRs)
+### Any Decision Records
 
 | ADR | Decision | Why it matters for this story |
 | --- | --- | --- |

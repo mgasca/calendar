@@ -4,7 +4,7 @@ date: 2026-10-26
 decision-makers: mgasca, Claude (AI assistant)
 ---
 
-# Use Markdown Architectural Decision Records
+# Use MADR for Any Decision Records
 
 ## Context and Problem Statement
 

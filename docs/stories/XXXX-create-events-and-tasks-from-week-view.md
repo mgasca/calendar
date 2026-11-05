@@ -55,7 +55,7 @@ The `POST /api/events` and `POST /api/tasks` endpoints already exist. This is a 
 
 ## Design decisions
 
-### Architecture Decision Records
+### Any Decision Records
 
 | ADR | Decision | Why it matters for this story |
 | --- | --- | --- |

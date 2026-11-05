@@ -92,14 +92,14 @@ export default defineConfig({
     starlight({
       title: 'Calendar · Docs',
       description:
-        'Architecture decisions, user stories, the architecture model, runbooks and benchmarks for Calendar, ' +
+        'Any decision records, user stories, the architecture model, runbooks and benchmarks for Calendar, ' +
         'with their context, alternatives, consequences and user guides.',
       social: [{ icon: 'github', label: 'GitHub', href: repository }],
       customCss: ['./src/styles/docs.css'],
       sidebar: [
         { label: 'Architecture', items: architectureSidebar(flows) },
         {
-          label: 'Architecture decisions',
+          label: 'Any decision records',
           items: [{ autogenerate: { directory: '../../../docs/decisions' } }],
         },
         {

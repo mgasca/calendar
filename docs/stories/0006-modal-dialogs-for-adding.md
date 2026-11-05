@@ -53,7 +53,7 @@ Today **Add event** opens a native `<dialog>` (`features/events/EventForm.tsx`),
 
 ## Design decisions
 
-### Architecture Decision Records
+### Any Decision Records
 
 | ADR | Decision | Why it matters for this story |
 | --- | --- | --- |

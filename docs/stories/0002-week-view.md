@@ -60,7 +60,7 @@ The Today view can only show today. This story also makes any day viewable, so t
 
 ## Design decisions
 
-### Architecture Decision Records
+### Any Decision Records
 
 | ADR | Decision | Why it matters for this story |
 | --- | --- | --- |

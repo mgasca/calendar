@@ -11,7 +11,7 @@ Record 0002 measured the Frontend job at a 4:28 median over 40 runs, the critica
 
 ## Method
 
-The same harness and statistics as record 0002, restricted with `--branch main` to the newest five successful runs of the workflow on `main`: the push run of fe6b4029 (after #274 and #276, before #275) and four runs on 97f787ed (one push, three `workflow_dispatch`, started one at a time because the concurrency group keeps one queued run per ref), 2026-11-05 20:07Z to 20:29Z, GitHub-hosted `ubuntu-latest` runners. The harness output is pasted unchanged below. Five runs is a smaller sample than the baseline's forty, so the spread matters more than the median; the per-child records measured each change on five or six runs of its PR branch before merging.
+The same harness and statistics as record 0002, restricted with `--branch main` to the newest five successful runs of the workflow on `main`, all on 97f787ed (one push run and four `workflow_dispatch` runs started one at a time, because the concurrency group keeps one queued run per ref), 2026-11-05 20:19Z to 20:32Z, GitHub-hosted `ubuntu-latest` runners. The harness output is pasted unchanged below. Five runs is a smaller sample than the baseline's forty, so the spread matters more than the median; the per-child records measured each change on five or six runs of its PR branch before merging.
 
 ## Results
 
@@ -72,10 +72,10 @@ Steps of `Docs site`:
 
 ## Reading
 
-- Measured: a run's critical path moved from the Frontend job (4:28 median, record 0002) to the Backend job (1:57 median here, 1:58 in record 0002); the Frontend job is now 0:57 and the new Docs site job 1:14, both under Backend.
-- Measured, by step: the content syncs that cost 48–50 s each four times per run are gone from the Frontend job; the docs site syncs once per build at 11–15 s a build, in its own job, and type-checks from the types the build generated in 4 s. The web test step is 10 s (23 s in record 0002), lint 16 s (unchanged), the web build under 1 s after the typecheck step.
+- Measured: a run's critical path moved from the Frontend job (4:28 median, record 0002) to the Backend job, which this epic did not touch (2:39 median here with a 1:25–4:56 spread, against 1:58 over 40 runs in record 0002; one 4:56 run pulls this small sample's median up); the Frontend job is now 0:53 and the new Docs site job 1:14, both under Backend in every run.
+- Measured, by step: the content syncs that cost 48–50 s each four times per run are gone from the Frontend job; the docs site syncs once per build at 11–15 s a build, in its own job, and type-checks from the types the build generated in 4 s. The web test step is 9 s (23 s in record 0002), lint 14 s (16 s), the web build under 1 s after the typecheck step.
 - Inferred: the remaining Frontend time is setup (about 15 s), lint and tests; the next saving on the Frontend job would come from lint, and on a run's critical path from the Backend job (Testcontainers PostgreSQL and the test projects), which this epic did not touch.
-- Variance: `pnpm test:coverage` ranged 7–21 s over the five runs and the Backend job 1:25–2:49, so a change of a few seconds is inside the noise of this sample.
+- Variance: the Backend job ranged 1:25–4:56 over the five runs and `pnpm test:coverage` 7–10 s, so a change of a few seconds is inside the noise of this sample.
 
 ## Reconsider when
 

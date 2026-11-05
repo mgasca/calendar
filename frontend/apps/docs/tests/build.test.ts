@@ -132,6 +132,28 @@ describe('published user stories', () => {
 });
 
 describe('published architecture', () => {
+  it('ships the ELK layout the overview asks for', async () => {
+    // Mermaid falls back to its default layout without a word when a diagram names a layout that
+    // was never registered; astro-mermaid registers ELK, and bundles it, only when it resolves.
+    const overview = await readFile('dist/architecture/index.html', 'utf8');
+    expect(overview).toContain('layout: elk');
+    const assets = await readdir('dist/_astro');
+    expect(assets.some((name) => /^mermaid-layout-elk\..*\.js$/.test(name))).toBe(true);
+  });
+
+  it("turns off Mermaid's own render-on-load in the page script", async () => {
+    // Loading ELK leaves a gap before astro-mermaid configures Mermaid; if the window `load` event
+    // lands in it, Mermaid renders the diagrams itself without keeping their source, and the next
+    // theme switch fails with "Error rendering diagram". astro.config.ts closes the gap by setting
+    // the `startOnLoad` property as soon as the module loads; the config's `startOnLoad: false` is
+    // an object literal, so only that assignment matches here. The race itself needs a browser.
+    const scripts = (await readdir('dist/_astro')).filter((name) => name.endsWith('.js'));
+    const sources = await Promise.all(
+      scripts.map((name) => readFile(`dist/_astro/${name}`, 'utf8')),
+    );
+    expect(sources.some((source) => /\.startOnLoad\s*=\s*(?:!1|false)\b/.test(source))).toBe(true);
+  });
+
   it('renders every page from the model with a diagram, its text table and links to decisions and stories', async () => {
     const { architecture, story } = await readDocuments();
     const pages = architecturePages(architecture, { stories: story.records });

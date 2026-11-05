@@ -528,13 +528,17 @@ describe('architecture pages', () => {
 
   it('collapses the context diagram onto the view nodes and drops edges that leave the view', () => {
     const body = page('architecture').body;
-    expect(body).toContain('flowchart LR');
+    // The overview alone is laid out with ELK, which keeps its long labels on their own arrows.
+    expect(body).toContain(
+      ['```mermaid', '---', 'config:', '  layout: elk', '---', 'flowchart LR'].join('\n'),
+    );
     expect(body).toContain('classDef person fill:#fde68a,stroke:#b45309,color:#1f2937');
     expect(body).toContain(
       'classDef external fill:#e5e7eb,stroke:#6b7280,color:#1f2937,stroke-dasharray:4 2',
     );
     expect(body).toContain('user([User]):::person');
-    expect(body).toContain('app["App #40;web#41;"]:::ours');
+    // Plain components are rounded boxes; actors, databases and data assets keep their shapes.
+    expect(body).toContain('app("App #40;web#41;"):::ours');
     expect(body).toContain('user -->|"Uses"| app');
     // The legend names only the ownerships on the diagram, with a swatch each.
     expect(body).toContain('Legend: <span aria-hidden="true"');
@@ -550,9 +554,13 @@ describe('architecture pages', () => {
 
   it('nests the container diagram by deployment and labels edges with the protocol', () => {
     const body = page('architecture/containers').body;
+    // The container diagram keeps Mermaid's default layout.
+    expect(body).toContain('```mermaid\nflowchart TB');
+    expect(body).not.toContain('layout: elk');
     expect(body).toContain('subgraph host["Host"]');
     expect(body).toContain('style host fill:#ddd6fe,stroke:#6d28d9,color:#1f2937');
     expect(body).toContain('db[(Db)]:::ours');
+    expect(body).toContain('app("App #40;web#41;"):::ours');
     expect(body).toContain('app -->|TCP| db');
     expect(body).toContain('</span> Hosting and tooling we configure');
     expect(body).toContain(

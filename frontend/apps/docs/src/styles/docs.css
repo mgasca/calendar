@@ -111,3 +111,29 @@
 .sidebar-content a[data-doc-number]:not(:has(.adr-status)) > span:first-child {
   grid-column: 2;
 }
+
+/*
+ * Mermaid diagrams: the SVG is inlined into the page, so these rules reach it. Boxes get a soft
+ * shadow (darker in the dark theme), and subgraphs and sequence participants get the same rounded
+ * corners as the nodes (`radius` in astro.config.ts). Edge-label rules live in `themeCSS` there
+ * instead: Mermaid sizes a label before page CSS reaches it, so label padding here would wrap the
+ * text past its box and clip it.
+ */
+:root {
+  --diagram-shadow: rgba(15, 23, 42, 0.22);
+}
+:root[data-theme='dark'] {
+  --diagram-shadow: rgba(0, 0, 0, 0.6);
+}
+pre.mermaid .node .label-container,
+pre.mermaid .node > path,
+pre.mermaid .node > g > path,
+pre.mermaid .cluster rect,
+pre.mermaid rect.actor {
+  filter: drop-shadow(0 2px 3px var(--diagram-shadow));
+}
+pre.mermaid .cluster rect,
+pre.mermaid rect.actor {
+  rx: 8px;
+  ry: 8px;
+}

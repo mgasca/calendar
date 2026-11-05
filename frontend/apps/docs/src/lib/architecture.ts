@@ -615,9 +615,17 @@ function shape(node: ModelNode): string {
     case 'data-asset':
       return `[[${label}]]`;
     default:
-      return `["${label}"]`;
+      // The rounded box; its corner radius is the `radius` theme variable (astro.config.ts).
+      return `("${label}")`;
   }
 }
+
+/**
+ * Frontmatter that lays a flowchart out with ELK rather than Mermaid's default (dagre), which
+ * keeps the overview's long relationship labels on their own arrows. The container diagram
+ * keeps dagre.
+ */
+const elkLayout = ['---', 'config:', '  layout: elk', '---'];
 
 /** One Mermaid class per ownership; external services get a dashed border as well as the grey. */
 function classDefs(): string[] {
@@ -886,7 +894,7 @@ class Renderer {
         lines.push(`  ${mermaidId(source)} -->|"${label}"| ${mermaidId(target)}`);
       }
     }
-    return ['```mermaid', 'flowchart LR', ...lines, '```'].join('\n');
+    return ['```mermaid', ...elkLayout, 'flowchart LR', ...lines, '```'].join('\n');
   }
 
   private containerDiagram(view: View): string {

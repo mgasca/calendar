@@ -15,8 +15,8 @@ The **Add task** and **Add event** dialogs ([story 0006](../stories/0006-modal-d
 * **D1 Consistency**: both dialogs, and any later form, must validate and show errors the same way, so the two cannot drift apart again.
 * **D2 Polish**: the owner prefers the compact look of the browser bubble, where the message appears beside the field and nothing in the layout moves; the result should look finished in both colour schemes.
 * **D3 Accessibility**: every error must reach keyboard, touch and screen-reader users (WCAG 3.3.1 error identification), not only pointer users who hover.
-* **D4 All problems visible**: when several fields fail, the user should see every one at once, and cross-field rules such as "end after start" must be expressible.
-* **D5 Browser independence**: the look and behaviour must be the same in Chrome, Firefox and Safari and follow the app's theme, rather than each browser's native styling.
+* **D4 Browser independence**: the look and behaviour must be the same in Chrome, Firefox and Safari and follow the app's theme, rather than each browser's native styling.
+* **D5 All problems visible**: when several fields fail, the user should see every one at once, and cross-field rules such as "end after start" must be expressible.
 
 ## Considered Options
 
@@ -28,15 +28,15 @@ The **Add task** and **Add event** dialogs ([story 0006](../stories/0006-modal-d
 
 ## Decision Outcome
 
-Chosen option: "Red borders plus a bubble shown on focus or hover", because it is the only option that keeps the compact bubble the owner prefers (D2) while marking every invalid field at once (D4), working the same in every browser (D5) and keeping the message in the accessibility tree whether or not the bubble is visible (D3). The product owner reviewed mock-ups of the last three options, built with the app's own stylesheet, and chose this combination in a conversation outside GitHub; the answer is recorded on [issue #262](https://github.com/mgasca/calendar/issues/262).
+Chosen option: "Red borders plus a bubble shown on focus or hover", because it is the only option that keeps the compact bubble the owner prefers (D2) while marking every invalid field at once (D5), working the same in every browser (D4) and keeping the message in the accessibility tree whether or not the bubble is visible (D3). The product owner reviewed mock-ups of the last three options, built with the app's own stylesheet, and chose this combination in a conversation outside GitHub; the answer is recorded on [issue #262](https://github.com/mgasca/calendar/issues/262).
 
 | Driver | **Red borders plus a bubble (chosen)** | Native browser validation | Plain inline text | Styled inline text | Styled inline text plus summary |
 | --- | :---: | :---: | :---: | :---: | :---: |
 | D1 Consistency | ★★★ | ★☆☆ | ★★★ | ★★★ | ★★★ |
 | D2 Polish | ★★★ | ★★☆ | ☆☆☆ | ★★☆ | ★☆☆ |
 | D3 Accessibility | ★★☆ | ★☆☆ | ★★★ | ★★★ | ★★★ |
-| D4 All problems visible | ★★☆ | ☆☆☆ | ★★★ | ★★★ | ★★★ |
-| D5 Browser independence | ★★★ | ☆☆☆ | ★★★ | ★★★ | ★★★ |
+| D4 Browser independence | ★★★ | ☆☆☆ | ★★★ | ★★★ | ★★★ |
+| D5 All problems visible | ★★☆ | ☆☆☆ | ★★★ | ★★★ | ★★★ |
 
 ### The style
 
@@ -69,36 +69,36 @@ Chosen option: "Red borders plus a bubble shown on focus or hover", because it i
 * Good, because **D2 Polish**: the browser draws a bubble that looks finished, with no CSS of our own.
 * Bad, because **D1 Consistency**: cross-field rules and daylight-saving checks still need custom messages, so two styles coexist inside one form, which is the problem today.
 * Bad, because **D3 Accessibility**: the bubble disappears after a few seconds or on any click, and screen readers announce it inconsistently.
-* Bad, because **D4 All problems visible**: the browser reports one field at a time.
-* Bad, because **D5 Browser independence**: the bubble's look differs per browser and cannot be themed; Firefox and Safari show something different from Chrome.
+* Bad, because **D5 All problems visible**: the browser reports one field at a time.
+* Bad, because **D4 Browser independence**: the bubble's look differs per browser and cannot be themed; Firefox and Safari show something different from Chrome.
 
 ### Plain inline text everywhere
 
 * Good, because **D1 Consistency**: one mechanism in both forms.
 * Good, because **D3 Accessibility**: the text is in the page, linked to the control, and visible to everyone.
-* Good, because **D4 All problems visible**: every failing field shows its message at once.
-* Good, because **D5 Browser independence**: plain text renders the same everywhere.
+* Good, because **D5 All problems visible**: every failing field shows its message at once.
+* Good, because **D4 Browser independence**: plain text renders the same everywhere.
 * Bad, because **D2 Polish**: body text in the default colour under the field, with nothing marking the field itself and no focus move, looks unfinished; the owner rejected it on the screenshot.
 
 ### Styled inline text under each field
 
-* Good, because **D1 Consistency**, **D3 Accessibility**, **D4 All problems visible** and **D5 Browser independence**: the same mechanics as plain inline text, with the field marked and focus moved to the first problem.
+* Good, because **D1 Consistency**, **D3 Accessibility**, **D4 Browser independence** and **D5 All problems visible**: the same mechanics as plain inline text, with the field marked and focus moved to the first problem.
 * Good, because **D2 Polish**: a red border, a red message with a warning mark and the focus move make it look deliberate.
 * Bad, because **D2 Polish**: each message adds a line under its field, so the form grows and shifts when an error appears, which the owner did not want.
 
 ### Styled inline text plus an error summary at the top of the form
 
 * Good, because **D3 Accessibility**: a summary that lists every problem as a link to its field is the strongest pattern for screen-reader users on long forms.
-* Good, because **D1 Consistency**, **D4 All problems visible** and **D5 Browser independence**: as for styled inline text.
+* Good, because **D1 Consistency**, **D4 Browser independence** and **D5 All problems visible**: as for styled inline text.
 * Bad, because **D2 Polish**: these dialogs have five to seven fields, so the summary repeats what is already visible and pushes the first field down.
 
 ### Red borders plus a bubble shown on focus or hover
 
 * Good, because **D1 Consistency**: one mechanism and one component for both forms.
 * Good, because **D2 Polish**: the compact bubble the owner liked in the task form, now with the app's colours, and nothing in the layout moves.
-* Good, because **D5 Browser independence**: the bubble is ours, drawn from the theme tokens, identical in every browser and colour scheme.
-* Good, because **D4 All problems visible**: every invalid field is bordered at once, and cross-field rules are ordinary messages.
-* Bad, because **D4 All problems visible**: only one message is readable at a time.
+* Good, because **D4 Browser independence**: the bubble is ours, drawn from the theme tokens, identical in every browser and colour scheme.
+* Good, because **D5 All problems visible**: every invalid field is bordered at once, and cross-field rules are ordinary messages.
+* Bad, because **D5 All problems visible**: only one message is readable at a time.
 * Bad, because **D3 Accessibility**: a bubble shown on hover or focus must not be the only carrier of the message; the always-present accessible description and the focus move on submit cover keyboard, touch and screen-reader users, and that wiring has to be tested.
 
 ## More Information

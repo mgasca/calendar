@@ -76,7 +76,7 @@ export function EventForm({
               {errors.title}
             </p>
           )}
-          <label>
+          <label className="task-label">
             <input
               type="checkbox"
               checked={values.allDay}

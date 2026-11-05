@@ -6,6 +6,7 @@ pr:
   - https://github.com/mgasca/calendar/pull/35
   - https://github.com/mgasca/calendar/pull/36
   - https://github.com/mgasca/calendar/pull/37
+  - https://github.com/mgasca/calendar/pull/260
 adrs: ["0018", "0019", "0020", "0021", "0026"]
 ---
 
@@ -125,6 +126,7 @@ Vitest covers form logic, DST resolution, validation, retry, pending state, focu
 
 * **Inline or dialog, then consolidate:** **Add event** is a dialog and **Add task** is inline. Once the event dialog is in, the product owner will run usability testing to see which the editors prefer, and then make both forms use it. That is [story 0006](0006-modal-dialogs-for-adding.md), where usability testing preferred the dialog. Until it is delivered the two are intentionally different.
 * **Discard prompt:** none for now. Revisit if testing shows people losing typed text by closing the dialog.
+* **All day checkbox layout** ([#259](https://github.com/mgasca/calendar/issues/259), [PR #260](https://github.com/mgasca/calendar/pull/260)): the dialog styles every `<label>` as a column (text above a full-width control), which stacked the All day box above its text. The label now carries the task lists' `task-label` class and the dialog keeps that one label a row, so the box sits beside "All day" with the whole row clickable. jsdom cannot measure layout, so the regression test pins the class and the PR carries before and after screenshots.
 
 ## User guide
 

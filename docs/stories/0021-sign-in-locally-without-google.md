@@ -75,7 +75,7 @@ Measured on Vite 8.3.5 (2026-11-04, in a scratch directory with a throwaway upst
 
 ## Design decisions
 
-### Architecture Decision Records
+### Any Decision Records
 
 | ADR | Decision | Why it matters for this story |
 | --- | --- | --- |

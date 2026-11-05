@@ -55,7 +55,7 @@ None. The review should come after PR [#138](https://github.com/mgasca/calendar/
 
 ## Design decisions
 
-### Architecture Decision Records
+### Any Decision Records
 
 | ADR | Decision | Why it matters for this story |
 | --- | --- | --- |

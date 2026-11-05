@@ -61,7 +61,7 @@ Chosen option: "Build canonical Markdown and publish main with GitHub Actions to
 * Good, because GitHub Markdown and the website share the same canonical records.
 * Bad, because the application must adapt MADR metadata and repository-relative links to Starlight's content model.
 * Bad, because publication depends on GitHub Actions and Pages configuration, even though the static artifact can be hosted elsewhere.
-* Neutral, because a merged proposed ADR remains visible as proposed; publication does not approve architectural decisions.
+* Neutral, because a merged proposed ADR remains visible as proposed; publication does not approve decisions.
 
 ### Confirmation
 

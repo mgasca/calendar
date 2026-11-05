@@ -38,7 +38,7 @@ Issue #86 tracks a review of the backend API (`backend/src/**`) that raised one 
 
 ## Design decisions
 
-### Architecture Decision Records
+### Any Decision Records
 
 | ADR | Decision | Why it matters for this story |
 | --- | --- | --- |

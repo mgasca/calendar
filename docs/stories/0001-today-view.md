@@ -42,7 +42,7 @@ A morning planner wants one glance that answers three questions: *what's fixed i
 
 ## Design decisions
 
-### Architecture Decision Records
+### Any Decision Records
 
 | ADR | Decision | Why it matters for this story |
 | --- | --- | --- |

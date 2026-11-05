@@ -8,7 +8,7 @@ decision-makers: mgasca, Codex (AI assistant)
 
 ## Context and Problem Statement
 
-The repository's architectural decisions need a browsable web UI whose ADR log provides navigation to the selected record. The product UI uses React, Vite and TypeScript ([ADR-0003](0003-react-vite-typescript-web-ui.md)), but documentation has different rendering and navigation requirements. The user has selected Astro with Starlight; why should documentation use this stack, and how does it fit the existing frontend workspace?
+The repository's decision records need a browsable web UI whose ADR log provides navigation to the selected record. The product UI uses React, Vite and TypeScript ([ADR-0003](0003-react-vite-typescript-web-ui.md)), but documentation has different rendering and navigation requirements. The user has selected Astro with Starlight; why should documentation use this stack, and how does it fit the existing frontend workspace?
 
 ## Decision Drivers
 

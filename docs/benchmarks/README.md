@@ -6,6 +6,7 @@ Reference measurements for performance work. A benchmark here is a repeatable ha
 | --- | --- | --- |
 | [0001](0001-docs-parse.md) | Loading the ADRs and stories for the docs site and tests | `frontend/apps/docs/benchmarks/parse.bench.ts` |
 | [0002](0002-frontend-ci-job.md) | The Frontend CI job: job and step durations before the fixes of #272 | `tools/ci-timings/ci-timings.cs` |
+| [0005](0005-web-test-suite.md) | The web test suite: one jsdom per worker and a unit-level batching test (#275) | `tools/ci-timings/ci-timings.cs` |
 
 ## Running one
 

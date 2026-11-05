@@ -89,9 +89,9 @@ No new ADR is needed. The ELK package is a rendering add-on of the Mermaid integ
 | Switching off Mermaid's own render-on-load | `frontend/apps/docs/astro.config.ts` (`mermaidNoAutoStart`) |
 | Drop shadows and rounded subgraphs and flow participants | `frontend/apps/docs/src/styles/docs.css` (the Mermaid section, `--diagram-shadow`) |
 | Rounded node shape and the Overview's ELK frontmatter | `frontend/apps/docs/src/lib/architecture.ts` (`shape`, `elkLayout`, `Renderer.contextDiagram`) |
-| The ELK layout package | `frontend/apps/docs/package.json` (`@mermaid-js/layout-elk`, a `devDependency`) |
+| The ELK layout | Bundled with Mermaid 12 (`mermaid` in `frontend/apps/docs/package.json`); `layout: dagre` and `look: classic` in `mermaidConfig` keep it opt-in |
 
-`astro-mermaid` registers ELK by itself when `@mermaid-js/layout-elk` resolves from the docs app (it logs "Enabling ELK support" during the build). The package was already in the lockfile as an optional peer of `astro-mermaid`, so the lockfile gains only the importer entry.
+This story first added `@mermaid-js/layout-elk` 0.2.3, which `astro-mermaid` registers by itself when it resolves from the docs app. Since [#258](https://github.com/mgasca/calendar/issues/258) the docs app uses Mermaid 12, which bundles ELK and makes it the default, so the package was removed and `mermaidConfig` sets `layout: dagre` and `look: classic` to keep the Mermaid 11 layout and look everywhere except the Overview.
 
 ### API
 

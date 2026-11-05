@@ -11,3 +11,8 @@ engineStrict: true
 # Remove this override once typescript-estree depends on minimatch ^11.
 overrides:
   'minimatch@>=7.0.0 <11.0.1': ^11.0.1
+  # GHSA-238p-pmpm-9mq7 (CVE-2026-103923): katex >=0.11.0 <0.18.2 is vulnerable, and mermaid 11, which
+  # @finos/calm-cli still depends on, requires ^0.16, so Dependabot can't fix it. Mermaid only calls
+  # katex.renderToString. Stays below 0.19, which has further breaking changes. The docs app's own
+  # Mermaid 12 already uses ^0.18. Remove this override once @finos/calm-cli moves to Mermaid 12.
+  'katex@>=0.11.0 <0.18.2': ^0.18.2

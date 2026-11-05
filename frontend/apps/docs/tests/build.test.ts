@@ -134,11 +134,11 @@ describe('published user stories', () => {
 describe('published architecture', () => {
   it('ships the ELK layout the overview asks for', async () => {
     // Mermaid falls back to its default layout without a word when a diagram names a layout that
-    // was never registered; astro-mermaid registers ELK, and bundles it, only when it resolves.
+    // was never registered. Mermaid 12 bundles ELK as its own lazily loaded chunk.
     const overview = await readFile('dist/architecture/index.html', 'utf8');
     expect(overview).toContain('layout: elk');
     const assets = await readdir('dist/_astro');
-    expect(assets.some((name) => /^mermaid-layout-elk\..*\.js$/.test(name))).toBe(true);
+    expect(assets.some((name) => /^elk-.*\.js$/.test(name))).toBe(true);
   });
 
   it("turns off Mermaid's own render-on-load in the page script", async () => {

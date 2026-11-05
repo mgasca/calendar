@@ -28,12 +28,11 @@
   "devDependencies": {
     "@astrojs/check": "^0.9.12",
     "@finos/calm-cli": "^1.67.0",
-    "@mermaid-js/layout-elk": "^0.2.3",
     "@types/mdast": "^4.0.4",
     "@types/node": "^26.6.6",
     "@vitest/coverage-v8": "^5.0.5",
     "astro-mermaid": "^2.2.0",
-    "mermaid": "^11.17.2",
+    "mermaid": "^12.3.0",
     "tinybench": "^6.2.2",
     "typescript": "~6.0.3",
     "vitest": "^5.0.5"

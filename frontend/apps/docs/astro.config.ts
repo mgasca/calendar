@@ -23,7 +23,8 @@ const { flows } = parseArchitecture(
 /**
  * Turns off Mermaid's own render-on-load the moment the module evaluates. Mermaid adds a window
  * `load` listener that renders every `.mermaid` element unless `startOnLoad` is false, and
- * astro-mermaid sets that only after it has also loaded the ELK layout. When `load` fires in that
+ * astro-mermaid sets that only in its own module script, after Mermaid has loaded (with Mermaid 11
+ * it also waited for the separate ELK package, which made the gap wide). When `load` fires in that
  * gap (a slow network), Mermaid renders the diagrams itself, with its default config and without
  * keeping their source, and the next theme switch re-renders the SVG's text and fails. This
  * callback runs in the same microtask checkpoint as astro-mermaid's, before any `load` task.
@@ -64,10 +65,11 @@ export default defineConfig({
   },
   integrations: [
     mermaidNoAutoStart,
-    // Renders ```mermaid blocks in the browser (ADR-0039); it must register before Starlight. It
-    // registers the ELK layout because `@mermaid-js/layout-elk` resolves from here; only the
-    // architecture overview opts into it, in its frontmatter. `radius` rounds the rounded node
-    // shape the generator emits; padding and spacing give the text and the edge labels room.
+    // Renders ```mermaid blocks in the browser (ADR-0039); it must register before Starlight.
+    // Mermaid 12 bundles ELK and makes it the default layout; `layout: 'dagre'` and
+    // `look: 'classic'` keep the Mermaid 11 layout and look, and only the architecture overview
+    // opts into ELK, in its frontmatter. `radius` rounds the rounded node shape the generator
+    // emits; padding and spacing give the text and the edge labels room.
     // `themeCSS` puts each edge label on a solid, padded patch of the page background, so an arrow
     // never runs through its text; it is Mermaid's own CSS because Mermaid sizes the label with it
     // (page CSS arrives too late), and it needs `!important` over Mermaid's id-scoped label rules.
@@ -76,6 +78,8 @@ export default defineConfig({
       autoTheme: true,
       enableLog: false,
       mermaidConfig: {
+        layout: 'dagre',
+        look: 'classic',
         themeVariables: { radius: 8 },
         flowchart: { padding: 22, nodeSpacing: 60, rankSpacing: 90 },
         themeCSS: [

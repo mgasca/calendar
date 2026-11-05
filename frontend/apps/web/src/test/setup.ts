@@ -1,7 +1,15 @@
-import '@testing-library/jest-dom/vitest';
-import { cleanup, configure } from '@testing-library/react';
-
-import { server } from './server.ts';
+// The `web` project shares one jsdom per worker (`isolate: false` in vite.config.ts), because
+// creating one per file was the largest cost of the suite. App modules are not shared: this file
+// runs before every test file, and clearing the registry first gives each file fresh app modules,
+// as isolation did, so module state such as the date formatter cache can't leak between files.
+// Everything below is imported after the reset, so the test file gets the same instances this file
+// configures. Library modules under node_modules are loaded by Node and do stay per worker, which
+// is why the act environment and `cleanup` are set up here rather than left to Testing Library's
+// own hooks, registered only in the first file a worker runs.
+vi.resetModules();
+await import('@testing-library/jest-dom/vitest');
+const { cleanup, configure } = await import('@testing-library/react');
+const { server } = await import('./server.ts');
 
 // The default 1 s for findBy/waitFor is too tight for a file's first render when `just check`
 // runs the backend build and every test file in parallel.
@@ -24,6 +32,7 @@ HTMLDialogElement.prototype.close = function close(this: HTMLDialogElement) {
 const unhandled: string[] = [];
 
 beforeAll(() => {
+  (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
   server.listen({
     onUnhandledFrame({ frame, defaults }) {
       const request = (frame.data as { request?: Request }).request;

@@ -21,6 +21,10 @@ const actWarning = (calls: unknown[][]) =>
   calls.filter((call) => String(call[0]).includes('not wrapped in act'));
 
 describe('eventually', () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
   it('awaits an update that lands while polling without an act warning', async () => {
     const error = vi.spyOn(console, 'error').mockImplementation(() => undefined);
     render(<Later />);

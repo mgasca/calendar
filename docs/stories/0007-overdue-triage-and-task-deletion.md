@@ -7,6 +7,7 @@ pr:
   - https://github.com/mgasca/calendar/pull/125
   - https://github.com/mgasca/calendar/pull/126
   - https://github.com/mgasca/calendar/pull/127
+  - https://github.com/mgasca/calendar/pull/284
 adrs: ["0015", "0018", "0020", "0021", "0026"]
 ---
 
@@ -91,3 +92,5 @@ Open triage with **View all N overdue** from the day view or the week view's ove
 Choose **Complete**, **Reschedule**, **Clear deadline** or **Delete** for the selection. Rescheduling offers a date or an exact time. For a nonexistent local time, choose another time; if the time occurs twice during a daylight-saving transition, choose which occurrence. Delete opens a confirmation showing the number of tasks and cannot be undone.
 
 A result message reports how many tasks were changed and which were skipped. A count-changed message means the overdue set changed since it was loaded; reload and review the new count before trying again. Delete a single task from **My tasks** or from a task in the day or week agenda using its **Delete** action, then confirm. Cancelling a confirmation makes no change.
+
+For local ad-hoc testing, run `just db seed` against a running development API and open the seeded date in the day or week view. The seed adds 60 open backlog tasks due 8–67 days before that date, alongside the existing sample tasks. This makes **View all N overdue** available in both views and supplies more than the default 50 tasks per triage page. Use **Load more** to exercise pagination. Seeding is additive; repeating it adds another set. The [seed-plan regression test](../../tools/seed-dev/tests/seed-dev.tests.cs) checks the open backlog size and week cutoff for every weekday; it does not exercise the live browser flow. Tracked in [issue #283](https://github.com/mgasca/calendar/issues/283).

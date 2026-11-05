@@ -4,6 +4,7 @@ date: 2026-11-05
 issue: https://github.com/mgasca/calendar/issues/247
 pr:
   - https://github.com/mgasca/calendar/pull/248
+  - https://github.com/mgasca/calendar/pull/249
 adrs: ["0017", "0038", "0042"]
 ---
 
@@ -13,7 +14,7 @@ adrs: ["0017", "0038", "0042"]
 
 > As a contributor, whether a person or another agent, I need to run several recipes of one module in order with one command, stopping at the first failure, so that "build, then test if the build passed" is one short command that runs only that module's recipes.
 
-Tracked in issue #247. Delivery PR: [#248](https://github.com/mgasca/calendar/pull/248), opened before this card; the card was written afterwards at the maintainer's request.
+Tracked in issue #247. Delivery PR: [#248](https://github.com/mgasca/calendar/pull/248), opened before this card; card PR: [#249](https://github.com/mgasca/calendar/pull/249), written afterwards at the maintainer's request.
 
 ## Background
 

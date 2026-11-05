@@ -1,11 +1,21 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 
 import { api } from '../../api/client.ts';
+import { Field } from '../../components/Field.tsx';
+import { focusFirstInvalid, withoutError } from '../../components/fieldErrors.ts';
 import { ModalDialog } from '../../components/ModalDialog.tsx';
 import { browserTimeZone, formatDateTime } from '../agenda/dayTime.ts';
 import { deadlineInstants } from '../agenda/deadline.ts';
-import { problemMessage } from '../../api/apiError.ts';
+import {
+  requestBody,
+  SaveTaskError,
+  serverErrors,
+  validate,
+  type TaskErrors,
+  type TaskField,
+  type TaskValues,
+} from './taskForm.ts';
 
 export function TaskForm({
   initialDate,
@@ -16,35 +26,55 @@ export function TaskForm({
 }) {
   const client = useQueryClient();
   const titleInput = useRef<HTMLInputElement>(null);
-  const [title, setTitle] = useState('');
-  const [kind, setKind] = useState(initialDate ? 'date' : 'none');
-  const [date, setDate] = useState(initialDate ?? '');
-  const [time, setTime] = useState('');
-  const [occurrence, setOccurrence] = useState('');
-  const [priority, setPriority] = useState('medium');
-  const [notes, setNotes] = useState('');
-  const deadlineValue = `${date}T${time}`;
+  const dateInput = useRef<HTMLInputElement>(null);
+  const timeInput = useRef<HTMLInputElement>(null);
+  const occurrenceSelect = useRef<HTMLSelectElement>(null);
+  const notesInput = useRef<HTMLTextAreaElement>(null);
+  const order = [
+    { field: 'title', ref: titleInput },
+    { field: 'date', ref: dateInput },
+    { field: 'time', ref: timeInput },
+    { field: 'occurrence', ref: occurrenceSelect },
+    { field: 'notes', ref: notesInput },
+  ] as const;
+  const [values, setValues] = useState<TaskValues>({
+    title: '',
+    kind: initialDate ? 'date' : 'none',
+    date: initialDate ?? '',
+    time: '',
+    occurrence: '',
+    priority: 'medium',
+    notes: '',
+  });
+  const [errors, setErrors] = useState<TaskErrors>({});
+  const focusPending = useRef(false);
+  const deadlineValue = `${values.date}T${values.time}`;
   const candidates = useMemo(
-    () => (kind === 'time' ? deadlineInstants(deadlineValue) : []),
-    [kind, deadlineValue],
+    () => (values.kind === 'time' ? deadlineInstants(deadlineValue) : []),
+    [values.kind, deadlineValue],
   );
+  /** Applies `patch` and clears the errors of the fields it edits, so a fixed field stops being marked. */
+  const set = (patch: Partial<TaskValues>, ...edited: TaskField[]) => {
+    setValues((v) => ({ ...v, ...patch }));
+    setErrors((e) => edited.reduce<TaskErrors>((rest, field) => withoutError(rest, field), e));
+  };
+  /** Shows `found` and focuses its first field once the form is enabled again (after a save, the
+   * controls are still disabled when the error arrives, so the focus has to wait a render). */
+  const show = (found: TaskErrors) => {
+    setErrors(found);
+    focusPending.current = true;
+  };
   const save = useMutation({
     mutationFn: async () => {
-      if (!title.trim()) throw new Error('Enter a title.');
-      if (kind === 'time' && !candidates.length)
-        throw new Error('This local time does not exist. Choose another time.');
-      if (candidates.length > 1 && !candidates.includes(occurrence))
-        throw new Error('Choose which occurrence of this time you mean.');
-      const { data, error } = await api.POST('/api/tasks', {
-        body: {
-          title,
-          priority,
-          notes,
-          ...(kind === 'date' ? { dueDate: date } : {}),
-          ...(kind === 'time' ? { dueAt: candidates.length > 1 ? occurrence : candidates[0] } : {}),
-        },
+      const { data, error, response } = await api.POST('/api/tasks', {
+        body: requestBody(values, candidates),
       });
-      if (!data) throw new Error(problemMessage(error) ?? 'Couldn’t save the task. Try again.');
+      if (!data)
+        throw new SaveTaskError(
+          response.status === 400
+            ? serverErrors(error)
+            : { form: 'Couldn’t save the task. Try again.' },
+        );
       return data;
     },
     onSuccess: async () => {
@@ -54,6 +84,19 @@ export function TaskForm({
       ]);
       onClose(true);
     },
+    onError: (error) => {
+      show(
+        error instanceof SaveTaskError
+          ? error.fields
+          : { form: 'Couldn’t save the task. Try again.' },
+      );
+    },
+  });
+  useEffect(() => {
+    if (focusPending.current && !save.isPending) {
+      focusPending.current = false;
+      focusFirstInvalid(errors, order);
+    }
   });
   return (
     <ModalDialog
@@ -65,114 +108,134 @@ export function TaskForm({
       initialFocusRef={titleInput}
     >
       <form
+        noValidate
         onSubmit={(event) => {
           event.preventDefault();
+          if (save.isPending) return;
+          const found = validate(values, candidates);
+          if (Object.keys(found).length) {
+            show(found);
+            return;
+          }
+          setErrors(found);
           save.mutate();
         }}
       >
         <fieldset disabled={save.isPending}>
-          <label>
-            Title
-            <input
-              ref={titleInput}
-              required
-              maxLength={200}
-              value={title}
-              onChange={(e) => {
-                setTitle(e.target.value);
-              }}
-            />
-          </label>
-          <label>
-            Deadline
-            <select
-              value={kind}
-              onChange={(e) => {
-                setKind(e.target.value);
-                setOccurrence('');
-              }}
-            >
-              <option value="none">No deadline</option>
-              <option value="date">Date only</option>
-              <option value="time">Exact date and time</option>
-            </select>
-          </label>
-          {kind !== 'none' && (
-            <label>
-              Due date
+          <Field label="Title" error={errors.title}>
+            {(control) => (
               <input
-                type="date"
-                required
-                min="1900-01-01"
-                max="2200-12-31"
-                value={date}
+                ref={titleInput}
+                {...control}
+                maxLength={200}
+                value={values.title}
                 onChange={(e) => {
-                  setDate(e.target.value);
-                  setOccurrence('');
+                  set({ title: e.target.value }, 'title');
                 }}
               />
-            </label>
-          )}
-          {kind === 'time' && (
-            <>
-              <label>
-                Due time
+            )}
+          </Field>
+          <Field label="Deadline">
+            {(control) => (
+              <select
+                {...control}
+                value={values.kind}
+                onChange={(e) => {
+                  set({ kind: e.target.value, occurrence: '' }, 'date', 'time', 'occurrence');
+                }}
+              >
+                <option value="none">No deadline</option>
+                <option value="date">Date only</option>
+                <option value="time">Exact date and time</option>
+              </select>
+            )}
+          </Field>
+          {values.kind !== 'none' && (
+            <Field label="Due date" error={errors.date}>
+              {(control) => (
                 <input
-                  type="time"
-                  required
-                  value={time}
+                  ref={dateInput}
+                  {...control}
+                  type="date"
+                  value={values.date}
                   onChange={(e) => {
-                    setTime(e.target.value);
-                    setOccurrence('');
+                    set({ date: e.target.value, occurrence: '' }, 'date', 'time', 'occurrence');
                   }}
                 />
-              </label>
+              )}
+            </Field>
+          )}
+          {values.kind === 'time' && (
+            <>
+              <Field label="Due time" error={errors.time}>
+                {(control) => (
+                  <input
+                    ref={timeInput}
+                    {...control}
+                    type="time"
+                    value={values.time}
+                    onChange={(e) => {
+                      set({ time: e.target.value, occurrence: '' }, 'time', 'occurrence');
+                    }}
+                  />
+                )}
+              </Field>
               <p>Time zone: {browserTimeZone()}</p>
               {candidates.length > 1 && (
-                <label>
-                  This time occurs twice. Choose an occurrence
-                  <select
-                    required
-                    value={occurrence}
-                    onChange={(e) => {
-                      setOccurrence(e.target.value);
-                    }}
-                  >
-                    <option value="">Choose…</option>
-                    {candidates.map((instant) => (
-                      <option key={instant} value={instant}>
-                        {formatDateTime(instant, { timeZoneName: 'shortOffset' })}
-                      </option>
-                    ))}
-                  </select>
-                </label>
+                <Field
+                  label="This time occurs twice. Choose an occurrence"
+                  error={errors.occurrence}
+                >
+                  {(control) => (
+                    <select
+                      ref={occurrenceSelect}
+                      {...control}
+                      value={values.occurrence}
+                      onChange={(e) => {
+                        set({ occurrence: e.target.value }, 'occurrence');
+                      }}
+                    >
+                      <option value="">Choose…</option>
+                      {candidates.map((instant) => (
+                        <option key={instant} value={instant}>
+                          {formatDateTime(instant, { timeZoneName: 'shortOffset' })}
+                        </option>
+                      ))}
+                    </select>
+                  )}
+                </Field>
               )}
             </>
           )}
-          <label>
-            Priority
-            <select
-              value={priority}
-              onChange={(e) => {
-                setPriority(e.target.value);
-              }}
-            >
-              <option value="low">Low</option>
-              <option value="medium">Medium</option>
-              <option value="high">High</option>
-            </select>
-          </label>
-          <label>
-            Notes
-            <textarea
-              maxLength={4000}
-              rows={4}
-              value={notes}
-              onChange={(e) => {
-                setNotes(e.target.value);
-              }}
-            />
-          </label>
+          <Field label="Priority">
+            {(control) => (
+              <select
+                {...control}
+                value={values.priority}
+                onChange={(e) => {
+                  set({ priority: e.target.value });
+                }}
+              >
+                <option value="low">Low</option>
+                <option value="medium">Medium</option>
+                <option value="high">High</option>
+              </select>
+            )}
+          </Field>
+          <Field label="Notes" error={errors.notes}>
+            {(control) => (
+              <textarea
+                ref={notesInput}
+                {...control}
+                maxLength={4000}
+                rows={4}
+                value={values.notes}
+                onChange={(e) => {
+                  set({ notes: e.target.value }, 'notes');
+                }}
+              />
+            )}
+          </Field>
           <div className="actions">
             <button type="submit">{save.isPending ? 'Saving…' : 'Save task'}</button>
             <button
@@ -185,7 +248,11 @@ export function TaskForm({
             </button>
           </div>
         </fieldset>
-        {save.isError && <p role="alert">{save.error.message}</p>}
+        {errors.form && (
+          <p className="notice notice-error" role="alert">
+            {errors.form}
+          </p>
+        )}
       </form>
     </ModalDialog>
   );

@@ -1,8 +1,17 @@
-import { useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { Field } from '../../components/Field.tsx';
+import { focusFirstInvalid, withoutError } from '../../components/fieldErrors.ts';
 import { ModalDialog } from '../../components/ModalDialog.tsx';
 import { formatDateTime } from '../agenda/dayTime.ts';
 import { deadlineInstants } from '../agenda/deadline.ts';
-import { defaults, moveStart, validate, type EventValues, type FieldErrors } from './eventForm.ts';
+import {
+  defaults,
+  moveStart,
+  validate,
+  type EventField,
+  type EventValues,
+  type FieldErrors,
+} from './eventForm.ts';
 import { CreateEventError, useCreateEvent } from './useCreateEvent.ts';
 
 export function EventForm({
@@ -18,11 +27,45 @@ export function EventForm({
 }) {
   const [values, setValues] = useState(() => defaults(date, initialValues));
   const [errors, setErrors] = useState<FieldErrors>({});
+  const focusPending = useRef(false);
   const title = useRef<HTMLInputElement>(null);
+  const start = useRef<HTMLInputElement>(null);
+  const startOccurrence = useRef<HTMLSelectElement>(null);
+  const end = useRef<HTMLInputElement>(null);
+  const endOccurrence = useRef<HTMLSelectElement>(null);
+  const location = useRef<HTMLInputElement>(null);
+  const notes = useRef<HTMLTextAreaElement>(null);
+  const order = [
+    { field: 'title', ref: title },
+    { field: 'start', ref: start },
+    { field: 'startOccurrence', ref: startOccurrence },
+    { field: 'end', ref: end },
+    { field: 'endOccurrence', ref: endOccurrence },
+    { field: 'location', ref: location },
+    { field: 'notes', ref: notes },
+  ] as const;
+  const refs = { start, end, startOccurrence, endOccurrence };
   const save = useCreateEvent(timeZone);
-  const set = (patch: Partial<EventValues>) => {
+  /** Applies `patch` and clears the errors of the fields it edits, so a fixed field stops being marked. */
+  const set = (patch: Partial<EventValues>, ...edited: EventField[]) => {
     setValues((v) => ({ ...v, ...patch }));
+    clear(...edited);
   };
+  const clear = (...edited: EventField[]) => {
+    setErrors((e) => edited.reduce<FieldErrors>((rest, field) => withoutError(rest, field), e));
+  };
+  /** Shows `found` and focuses its first field once the form is enabled again (after a save, the
+   * controls are still disabled when the error arrives, so the focus has to wait a render). */
+  const show = (found: FieldErrors) => {
+    setErrors(found);
+    focusPending.current = true;
+  };
+  useEffect(() => {
+    if (focusPending.current && !save.isPending) {
+      focusPending.current = false;
+      focusFirstInvalid(errors, order);
+    }
+  });
   const startCandidates = useMemo(() => deadlineInstants(values.start), [values.start]);
   const endCandidates = useMemo(() => deadlineInstants(values.end), [values.end]);
   const candidates = { start: startCandidates, end: endCandidates };
@@ -41,14 +84,17 @@ export function EventForm({
           e.preventDefault();
           if (save.isPending) return;
           const found = validate(values);
+          if (Object.keys(found).length) {
+            show(found);
+            return;
+          }
           setErrors(found);
-          if (Object.keys(found).length) return;
           save.mutate(values, {
             onSuccess: () => {
               onClose({ title: values.title.trim(), date: values.start.slice(0, 10) });
             },
             onError: (error) => {
-              setErrors(
+              show(
                 error instanceof CreateEventError
                   ? error.fields
                   : { form: 'Couldn’t save the event. Try again.' },
@@ -58,114 +104,111 @@ export function EventForm({
         }}
       >
         <fieldset disabled={save.isPending}>
-          <label>
-            Title
-            <input
-              ref={title}
-              aria-invalid={!!errors.title}
-              aria-describedby={errors.title ? 'event-title-error' : undefined}
-              value={values.title}
-              maxLength={200}
-              onChange={(e) => {
-                set({ title: e.target.value });
-              }}
-            />
-          </label>
-          {errors.title && (
-            <p id="event-title-error" role="alert">
-              {errors.title}
-            </p>
-          )}
+          <Field label="Title" error={errors.title}>
+            {(control) => (
+              <input
+                ref={title}
+                {...control}
+                value={values.title}
+                maxLength={200}
+                onChange={(e) => {
+                  set({ title: e.target.value }, 'title');
+                }}
+              />
+            )}
+          </Field>
           <label className="task-label">
             <input
               type="checkbox"
               checked={values.allDay}
               onChange={(e) => {
-                set({ allDay: e.target.checked });
+                set(
+                  { allDay: e.target.checked },
+                  'start',
+                  'end',
+                  'startOccurrence',
+                  'endOccurrence',
+                );
               }}
             />
             All day
           </label>
           {(['start', 'end'] as const).map((field) => (
             <div key={field}>
-              <label>
-                {field === 'start' ? 'Start' : 'End'}
-                <input
-                  aria-invalid={!!errors[field]}
-                  aria-describedby={errors[field] ? `event-${field}-error` : undefined}
-                  type={values.allDay ? 'date' : 'datetime-local'}
-                  value={values.allDay ? values[field].slice(0, 10) : values[field]}
-                  onChange={(e) => {
-                    const value = values.allDay
-                      ? e.target.value
-                        ? `${e.target.value}T${values[field].slice(11) || '09:00'}`
-                        : ''
-                      : e.target.value;
-                    if (field === 'start') setValues((v) => moveStart(v, value));
-                    else set({ end: value, endOccurrence: '' });
-                  }}
-                />
-              </label>
-              {!values.allDay && candidates[field].length > 1 && (
-                <label>
-                  {field === 'start' ? 'Start' : 'End'} occurs twice. Choose an occurrence
-                  <select
-                    value={values[`${field}Occurrence`]}
+              <Field label={field === 'start' ? 'Start' : 'End'} error={errors[field]}>
+                {(control) => (
+                  <input
+                    ref={refs[field]}
+                    {...control}
+                    type={values.allDay ? 'date' : 'datetime-local'}
+                    value={values.allDay ? values[field].slice(0, 10) : values[field]}
                     onChange={(e) => {
-                      set({ [`${field}Occurrence`]: e.target.value });
+                      const value = values.allDay
+                        ? e.target.value
+                          ? `${e.target.value}T${values[field].slice(11) || '09:00'}`
+                          : ''
+                        : e.target.value;
+                      if (field === 'start') {
+                        setValues((v) => moveStart(v, value));
+                        clear('start', 'end', 'startOccurrence', 'endOccurrence');
+                      } else set({ end: value, endOccurrence: '' }, 'end', 'endOccurrence');
                     }}
-                  >
-                    <option value="">Choose…</option>
-                    {candidates[field].map((value) => (
-                      <option key={value} value={value}>
-                        {formatDateTime(value, { timeZoneName: 'shortOffset' })}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-              )}
-              {errors[field] && (
-                <p id={`event-${field}-error`} role="alert">
-                  {errors[field]}
-                </p>
+                  />
+                )}
+              </Field>
+              {!values.allDay && candidates[field].length > 1 && (
+                <Field
+                  label={`${field === 'start' ? 'Start' : 'End'} occurs twice. Choose an occurrence`}
+                  error={errors[`${field}Occurrence`]}
+                >
+                  {(control) => (
+                    <select
+                      ref={refs[`${field}Occurrence`]}
+                      {...control}
+                      value={values[`${field}Occurrence`]}
+                      onChange={(e) => {
+                        set({ [`${field}Occurrence`]: e.target.value }, `${field}Occurrence`);
+                      }}
+                    >
+                      <option value="">Choose…</option>
+                      {candidates[field].map((value) => (
+                        <option key={value} value={value}>
+                          {formatDateTime(value, { timeZoneName: 'shortOffset' })}
+                        </option>
+                      ))}
+                    </select>
+                  )}
+                </Field>
               )}
             </div>
           ))}
           <p>Time zone: {timeZone}</p>
-          <label>
-            Location
-            <input
-              aria-invalid={!!errors.location}
-              aria-describedby={errors.location ? 'event-location-error' : undefined}
-              maxLength={200}
-              value={values.location}
-              onChange={(e) => {
-                set({ location: e.target.value });
-              }}
-            />
-          </label>
-          {errors.location && (
-            <p id="event-location-error" role="alert">
-              {errors.location}
-            </p>
-          )}
-          <label>
-            Notes
-            <textarea
-              aria-invalid={!!errors.notes}
-              aria-describedby={errors.notes ? 'event-notes-error' : undefined}
-              maxLength={4000}
-              value={values.notes}
-              onChange={(e) => {
-                set({ notes: e.target.value });
-              }}
-            />
-          </label>
-          {errors.notes && (
-            <p id="event-notes-error" role="alert">
-              {errors.notes}
-            </p>
-          )}
+          <Field label="Location" error={errors.location}>
+            {(control) => (
+              <input
+                ref={location}
+                {...control}
+                maxLength={200}
+                value={values.location}
+                onChange={(e) => {
+                  set({ location: e.target.value }, 'location');
+                }}
+              />
+            )}
+          </Field>
+          <Field label="Notes" error={errors.notes}>
+            {(control) => (
+              <textarea
+                ref={notes}
+                {...control}
+                maxLength={4000}
+                value={values.notes}
+                onChange={(e) => {
+                  set({ notes: e.target.value }, 'notes');
+                }}
+              />
+            )}
+          </Field>
           <div className="actions">
             <button type="submit">{save.isPending ? 'Saving…' : 'Save event'}</button>
             <button
@@ -178,7 +221,11 @@ export function EventForm({
             </button>
           </div>
         </fieldset>
-        {errors.form && <p role="alert">{errors.form}</p>}
+        {errors.form && (
+          <p className="notice notice-error" role="alert">
+            {errors.form}
+          </p>
+        )}
       </form>
     </ModalDialog>
   );

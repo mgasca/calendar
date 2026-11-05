@@ -101,6 +101,34 @@ describe('validation and request handling', () => {
     );
     expect(close).not.toHaveBeenCalled();
   });
+  it('moves focus to the first invalid field and clears its mark once it is edited', async () => {
+    renderWithProviders(
+      <EventForm
+        date="2026-10-29"
+        timeZone="UTC"
+        initialValues={{ end: '2026-10-29T08:00' }}
+        onClose={vi.fn()}
+      />,
+    );
+    const user = userEvent.setup();
+    await user.click(screen.getByRole('button', { name: 'Save event' }));
+    const title = screen.getByLabelText('Title');
+    expect(title).toHaveFocus();
+    expect(title).toHaveAttribute('aria-invalid', 'true');
+    expect(screen.getByLabelText('End')).toHaveAttribute('aria-invalid', 'true');
+    await user.type(title, 'Dentist');
+    expect(title).toHaveAttribute('aria-invalid', 'false');
+    expect(title).not.toHaveAccessibleDescription();
+    expect(screen.getByLabelText('End')).toHaveAccessibleDescription(
+      'End must be after the start.',
+    );
+  });
+  it('leaves no browser validation attribute on any field', () => {
+    renderWithProviders(<EventForm date="2026-10-29" timeZone="UTC" onClose={vi.fn()} />);
+    const dialog = screen.getByRole('dialog');
+    expect(dialog.querySelector('form')).toHaveAttribute('novalidate');
+    expect(dialog.querySelectorAll('[required], [min], [max]')).toHaveLength(0);
+  });
   it('rejects skipped start and end local times', async () => {
     vi.stubEnv('TZ', 'America/New_York');
     renderWithProviders(
@@ -131,6 +159,10 @@ describe('validation and request handling', () => {
     const user = userEvent.setup();
     await user.click(screen.getByRole('button', { name: 'Save event' }));
     expect(screen.getAllByText('Choose which occurrence of this time you mean.')).toHaveLength(2);
+    expect(screen.getByLabelText('Start occurs twice. Choose an occurrence')).toHaveFocus();
+    expect(
+      screen.getByLabelText('End occurs twice. Choose an occurrence'),
+    ).toHaveAccessibleDescription('Choose which occurrence of this time you mean.');
     await user.selectOptions(
       screen.getByLabelText('Start occurs twice. Choose an occurrence'),
       '2026-11-01T05:15:00.000Z',

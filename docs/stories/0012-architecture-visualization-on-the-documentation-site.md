@@ -55,7 +55,7 @@ A first machine-readable model of the whole system was drafted in FINOS CALM (no
 2. **Given** any element or flow in the Architecture section, **when** I look for the decisions behind it, **then** it links to the ADRs it depends on at their `adr/NNNN/` routes, and a flow links to its story card.
    [Built pages carry the ADR and story hrefs](../../frontend/apps/docs/tests/build.test.ts) (`published architecture`); [component and flow bodies link decisions and stories](../../frontend/apps/docs/src/lib/architecture.test.ts) (`gives a component its interfaces, relationships, controls and decisions`, `draws a flow …`).
 3. **Given** a pull request from this repository that changes the model, **when** CI runs, **then** the model is validated and the pull-request preview shows the regenerated diagrams.
-   The Frontend job runs `pnpm --filter @calendar/docs validate:architecture` before the tests and build (`.github/workflows/ci.yml`), and the existing preview publication covers the generated pages. Checked on PR 1's **ADR preview**; no automated test exercises the preview.
+   The Docs site job (the Frontend job until #274) runs `pnpm --filter @calendar/docs validate:architecture` before the tests and build (`.github/workflows/ci.yml`), and the existing preview publication covers the generated pages. Checked on PR 1's **ADR preview**; no automated test exercises the preview.
 4. **Given** a model with a schema error, a dangling reference or an ADR number that does not exist, **when** `just check` runs, **then** it fails and names the problem.
    [`calm validate` fails on a broken fixture](../../frontend/apps/docs/src/lib/architecture.test.ts) (`calm validate gate`) and [the loader rejects every dangling reference](../../frontend/apps/docs/src/lib/architecture.test.ts) (`rejects …`, 22 cases). `just lint` runs the first through `just docs architecture`; the docs tests and build run the second.
 5. **Given** the chosen tool, **when** `just doctor` runs on a machine where the pinned version is missing or different, **then** it says so, unless the tool is a workspace dependency installed by `pnpm install`.
@@ -106,7 +106,7 @@ A first machine-readable model of the whole system was drafted in FINOS CALM (no
 | Parsing, reference checks and page rendering | `frontend/apps/docs/src/lib/architecture.ts` (`parseArchitecture`, `checkArchitecture`, `architecturePages`) |
 | Loading into the site, link routes and the watcher | `frontend/apps/docs/src/lib/docs-loader.ts` (`readArchitecture`, `readDocuments`, `documentRoutes`) |
 | Mermaid integration and the sidebar group | `frontend/apps/docs/astro.config.ts` (`astro-mermaid` before Starlight; `architectureSidebar`) |
-| Schema validation | `frontend/apps/docs/package.json` (`validate:architecture`), `frontend/apps/docs/mod.just` (`just docs architecture`, part of `just lint`), `.github/workflows/ci.yml` (Frontend job) |
+| Schema validation | `frontend/apps/docs/package.json` (`validate:architecture`), `frontend/apps/docs/mod.just` (`just docs architecture`, part of `just lint`), `.github/workflows/ci.yml` (Docs site job) |
 
 The pages are: `architecture/` (overview with the system-context diagram, the views, the flows and the Decisions table), `architecture/containers/`, `architecture/components/` plus one page per node, `architecture/controls/` and one page per flow under `architecture/flows/`. Page bodies are Markdown with Mermaid code blocks; links to ADRs, stories and other architecture pages are written as repository-relative paths and rewritten to site routes by the existing `remarkDocLinks` plugin, so the same link checker applies.
 
@@ -119,7 +119,7 @@ No changes.
 * [`architecture.test.ts`](../../frontend/apps/docs/src/lib/architecture.test.ts): parsing of every element kind; 22 rejected mutations (dangling nodes, interfaces, relationships and views, out-of-order steps, ADR file/title/status/URL drift, unknown stories, unmapped requirements); diagram text helpers; the rendered pages; and the `calm validate` gate on a broken fixture (`src/lib/fixtures/invalid.architecture.json`, 30 s timeout because the CLI takes seconds to start).
 * [`corpus.test.ts`](../../frontend/apps/docs/src/lib/corpus.test.ts) loads the real model with the real ADRs and stories through `readDocuments`, so any drift between them fails the unit tests before the build.
 * [`build.test.ts`](../../frontend/apps/docs/tests/build.test.ts) (`published architecture`): every page is built, the sidebar lists the section and the flows but not the component pages, every page with a diagram has a `<pre class="mermaid">` and a table, and component and flow pages carry the ADR and story hrefs. The existing link test covers every generated link at the root path and at a project subpath.
-* CI: `validate:architecture` in the Frontend job, the unit tests, the build and the post-build verification.
+* CI: `validate:architecture` in the Docs site job, the unit tests, the build and the post-build verification.
 
 ### Lessons learned, known issues and follow-ups
 

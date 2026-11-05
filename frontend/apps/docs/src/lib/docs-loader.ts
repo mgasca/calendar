@@ -118,12 +118,30 @@ export async function readDocuments() {
   return { adr, story, architecture, runbook, benchmark };
 }
 
+type Documents = Awaited<ReturnType<typeof readDocuments>>;
+
+/**
+ * The route map the remark plugin reads, computed once per corpus read. The loader primes it from
+ * its own read on every sync, so a build or `astro check` reads the corpus once, not once per
+ * rendered document (#273); any other caller before the first sync computes it once.
+ */
+let routes: Promise<Map<string, string>> | undefined;
+
 /**
  * Maps every published document, by repository-relative path, to its route under the site base.
  * The remark plugin uses this to turn links between documents and indexes into site routes.
  */
-export async function documentRoutes() {
-  const { adr, story, architecture, runbook, benchmark } = await readDocuments();
+export function documentRoutes(): Promise<Map<string, string>> {
+  routes ??= readDocuments().then(routesOf);
+  return routes;
+}
+
+/** Forgets the cached route map, so the next `documentRoutes()` reads the corpus again. */
+export function resetDocumentRoutes() {
+  routes = undefined;
+}
+
+function routesOf({ adr, story, architecture, runbook, benchmark }: Documents) {
   // The decision log index has no page of its own: the sidebar lists every ADR with its status,
   // so a link to docs/decisions/README.md goes to the repository.
   const routes = new Map([
@@ -168,7 +186,10 @@ export function docsLoader(): Loader {
     name: 'canonical-docs',
     async load(context) {
       const sync = async () => {
-        const { adr, story, architecture, runbook, benchmark } = await readDocuments();
+        const documents = await readDocuments();
+        const { adr, story, architecture, runbook, benchmark } = documents;
+        // One read serves the entries below and every link the remark plugin rewrites in them.
+        routes = Promise.resolve(routesOf(documents));
         const adrFiles = new Map(adr.records.map((record) => [record.number, record.file]));
         context.store.clear();
         const entries = [

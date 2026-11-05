@@ -55,6 +55,8 @@ jobs:
           path: backend/TestResults
           if-no-files-found: ignore
 
+  # The web app and the API client. Format and lint cover the whole workspace, docs sources included;
+  # the docs site's own checks, tests and builds run in the Docs site job beside this one (#274).
   frontend:
     name: Frontend
     runs-on: ubuntu-latest
@@ -75,11 +77,48 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: pnpm format:check
       - run: pnpm lint
-      - run: pnpm typecheck
+      - run: pnpm -r --filter '!@calendar/docs' typecheck
+      - run: pnpm -r --filter '!@calendar/docs' test:coverage
+      # The typecheck step above has just run the web app's `tsc -b`, so the build here is only the bundler;
+      # `pnpm build` (and `just frontend build`) still type-check first.
+      - name: Build the web app
+        run: pnpm --filter @calendar/web exec vite build
+      - uses: actions/upload-artifact@v7
+        if: ${{ !cancelled() }}
+        with:
+          name: frontend-coverage
+          path: frontend/**/coverage
+          if-no-files-found: ignore
+
+  # The documentation site, once per URL variant: the root path (what `just docs build` produces), a
+  # project subpath and the GitHub Pages URL whose build becomes the published artifact.
+  docs:
+    name: Docs site
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
+        with:
+          package_json_file: frontend/package.json
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: frontend/.node-version
+          cache: pnpm
+          cache-dependency-path: frontend/pnpm-lock.yaml
+      - run: pnpm install --frozen-lockfile
       - name: Architecture model conforms to the CALM schema
         run: pnpm --filter @calendar/docs validate:architecture
-      - run: pnpm test:coverage
-      - run: pnpm build
+      - run: pnpm --filter @calendar/docs test:coverage
+      - name: Build ADR site at the root path
+        run: pnpm --filter @calendar/docs build
+      # `astro check` syncs the content before it reports diagnostics; the build above has just done
+      # that sync, so `--noSync` reuses its generated types instead of repeating it.
+      - name: Type-check with the types the build generated
+        run: pnpm --filter @calendar/docs typecheck --noSync
       - name: Verify ADR site at the root path
         run: pnpm --filter @calendar/docs verify:build
       - name: Verify ADR site at a project subpath
@@ -116,8 +155,8 @@ jobs:
       - uses: actions/upload-artifact@v7
         if: ${{ !cancelled() }}
         with:
-          name: frontend-coverage
-          path: frontend/**/coverage
+          name: docs-coverage
+          path: frontend/apps/docs/coverage
           if-no-files-found: ignore
 
   tooling:
@@ -206,7 +245,7 @@ jobs:
   result:
     name: CI result
     if: ${{ always() }}
-    needs: [backend, frontend, tooling, image]
+    needs: [backend, frontend, docs, tooling, image]
     runs-on: ubuntu-latest
     steps:
       - name: All jobs succeeded

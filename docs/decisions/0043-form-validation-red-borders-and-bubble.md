@@ -17,7 +17,6 @@ The **Add task** and **Add event** dialogs ([story 0006](../stories/0006-modal-d
 * **D3 Accessibility**: every error must reach keyboard, touch and screen-reader users (WCAG 3.3.1 error identification), not only pointer users who hover.
 * **D4 All problems visible**: when several fields fail, the user should see every one at once, and cross-field rules such as "end after start" must be expressible.
 * **D5 Browser independence**: the look and behaviour must be the same in Chrome, Firefox and Safari and follow the app's theme, rather than each browser's native styling.
-* **D6 Effort and maintenance**: one shared field component and a few CSS rules, with no form library and no change to the API or the contract.
 
 ## Considered Options
 
@@ -38,7 +37,6 @@ Chosen option: "Red borders plus a bubble shown on focus or hover", because it i
 | D3 Accessibility | ★★☆ | ★☆☆ | ★★★ | ★★★ | ★★★ |
 | D4 All problems visible | ★★☆ | ☆☆☆ | ★★★ | ★★★ | ★★★ |
 | D5 Browser independence | ★★★ | ☆☆☆ | ★★★ | ★★★ | ★★★ |
-| D6 Effort and maintenance | ★★☆ | ★★☆ | ★★☆ | ★★☆ | ★☆☆ |
 
 ### The style
 
@@ -69,7 +67,6 @@ Chosen option: "Red borders plus a bubble shown on focus or hover", because it i
 ### Native browser validation everywhere
 
 * Good, because **D2 Polish**: the browser draws a bubble that looks finished, with no CSS of our own.
-* Good, because **D6 Effort and maintenance**: a `required` attribute per field is all the presence checks need.
 * Bad, because **D1 Consistency**: cross-field rules and daylight-saving checks still need custom messages, so two styles coexist inside one form, which is the problem today.
 * Bad, because **D3 Accessibility**: the bubble disappears after a few seconds or on any click, and screen readers announce it inconsistently.
 * Bad, because **D4 All problems visible**: the browser reports one field at a time.
@@ -82,21 +79,18 @@ Chosen option: "Red borders plus a bubble shown on focus or hover", because it i
 * Good, because **D4 All problems visible**: every failing field shows its message at once.
 * Good, because **D5 Browser independence**: plain text renders the same everywhere.
 * Bad, because **D2 Polish**: body text in the default colour under the field, with nothing marking the field itself and no focus move, looks unfinished; the owner rejected it on the screenshot.
-* Neutral, because **D6 Effort and maintenance**: the event form has it already; the task form must still migrate.
 
 ### Styled inline text under each field
 
 * Good, because **D1 Consistency**, **D3 Accessibility**, **D4 All problems visible** and **D5 Browser independence**: the same mechanics as plain inline text, with the field marked and focus moved to the first problem.
 * Good, because **D2 Polish**: a red border, a red message with a warning mark and the focus move make it look deliberate.
 * Bad, because **D2 Polish**: each message adds a line under its field, so the form grows and shifts when an error appears, which the owner did not want.
-* Neutral, because **D6 Effort and maintenance**: a shared field component and two CSS rules, the same as the chosen option without the positioning.
 
 ### Styled inline text plus an error summary at the top of the form
 
 * Good, because **D3 Accessibility**: a summary that lists every problem as a link to its field is the strongest pattern for screen-reader users on long forms.
 * Good, because **D1 Consistency**, **D4 All problems visible** and **D5 Browser independence**: as for styled inline text.
 * Bad, because **D2 Polish**: these dialogs have five to seven fields, so the summary repeats what is already visible and pushes the first field down.
-* Bad, because **D6 Effort and maintenance**: the summary, its links and its focus management are extra code and tests for little gain on short forms.
 
 ### Red borders plus a bubble shown on focus or hover
 
@@ -106,7 +100,6 @@ Chosen option: "Red borders plus a bubble shown on focus or hover", because it i
 * Good, because **D4 All problems visible**: every invalid field is bordered at once, and cross-field rules are ordinary messages.
 * Bad, because **D4 All problems visible**: only one message is readable at a time.
 * Bad, because **D3 Accessibility**: a bubble shown on hover or focus must not be the only carrier of the message; the always-present accessible description and the focus move on submit cover keyboard, touch and screen-reader users, and that wiring has to be tested.
-* Neutral, because **D6 Effort and maintenance**: the same shared component as styled inline text plus the positioning CSS and the overflow care noted above.
 
 ## More Information
 

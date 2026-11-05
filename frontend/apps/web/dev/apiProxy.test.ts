@@ -1,12 +1,14 @@
+import { readFileSync } from 'node:fs';
 import { createServer as createHttpServer, request, type Server } from 'node:http';
 import type { AddressInfo } from 'node:net';
 import { createServer, type ViteDevServer } from 'vite';
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import {
   apiProxy,
   DEFAULT_API_URL,
   isSameOriginRequest,
+  PLACEHOLDER_SEED_KEY,
   SEED_KEY_HEADER,
   type Env,
 } from './apiProxy.ts';
@@ -41,6 +43,38 @@ describe('apiProxy', () => {
 
   it('refuses a missing key', () => {
     expect(() => apiProxy({ CALENDAR_DEV_SIGN_IN: 'true' })).toThrow(/needs Auth__DevSeedKey/);
+  });
+
+  it('tells you to generate a key when it is missing', () => {
+    expect(() => apiProxy({ CALENDAR_DEV_SIGN_IN: 'true' })).toThrow(/openssl rand -hex 32/);
+  });
+
+  it('warns, but still signs in, when the key is the public placeholder from .env.example', () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+    try {
+      const options = apiProxy({ ...SIGNED_IN, Auth__DevSeedKey: PLACEHOLDER_SEED_KEY });
+      expect(options.configure).toBeTypeOf('function');
+      expect(warn).toHaveBeenCalledOnce();
+      expect(warn.mock.calls[0]?.[0]).toMatch(/placeholder.*openssl rand -hex 32/s);
+    } finally {
+      warn.mockRestore();
+    }
+  });
+
+  it('does not warn about a generated key, or when dev sign-in is off', () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+    try {
+      apiProxy(SIGNED_IN);
+      apiProxy({ Auth__DevSeedKey: PLACEHOLDER_SEED_KEY });
+      expect(warn).not.toHaveBeenCalled();
+    } finally {
+      warn.mockRestore();
+    }
+  });
+
+  it('knows the placeholder that .env.example commits', () => {
+    const example = readFileSync(new URL('../../../../.env.example', import.meta.url), 'utf8');
+    expect(example).toMatch(new RegExp(`^Auth__DevSeedKey=${PLACEHOLDER_SEED_KEY}$`, 'm'));
   });
 
   it('refuses a key shorter than the API minimum', () => {

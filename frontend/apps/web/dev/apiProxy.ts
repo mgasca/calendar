@@ -7,6 +7,12 @@ export const DEFAULT_API_URL = 'http://localhost:5041';
 /** The API's minimum seed key length (`DevSeedAuthenticationHandler.MinimumKeyLength`). */
 export const MINIMUM_SEED_KEY_LENGTH = 32;
 
+/**
+ * The public seed key committed in `.env.example`. Anyone can read it, so dev sign-in warns when
+ * `.env` still holds it (#243).
+ */
+export const PLACEHOLDER_SEED_KEY = 'local-development-seed-key-change-me-123456';
+
 /** The header the API's Development-only seed scheme reads. */
 export const SEED_KEY_HEADER = 'X-Dev-Seed-Key';
 
@@ -30,7 +36,8 @@ export type Env = Readonly<Record<string, string | undefined>>;
  * responses, so a key on every request would sign other local pages in too.
  *
  * Throws when the mode is on and the key is missing or too short, or the target is not a loopback
- * host, so the key never goes to a remote API.
+ * host, so the key never goes to a remote API. Warns, but carries on, when the key is still
+ * `PLACEHOLDER_SEED_KEY`.
  */
 export function apiProxy(env: Env): ProxyOptions {
   const target = env.CALENDAR_API_URL ?? DEFAULT_API_URL;
@@ -40,7 +47,7 @@ export function apiProxy(env: Env): ProxyOptions {
   const key = env.Auth__DevSeedKey ?? '';
   if (key === '') {
     throw new Error(
-      'Dev sign-in needs Auth__DevSeedKey, the API seed key. Set it in .env (.env.example has one) and restart.',
+      'Dev sign-in needs Auth__DevSeedKey, the API seed key. Set it in .env to the output of openssl rand -hex 32, then restart the API and this recipe.',
     );
   }
   if (key.length < MINIMUM_SEED_KEY_LENGTH) {
@@ -51,6 +58,11 @@ export function apiProxy(env: Env): ProxyOptions {
   if (!isLoopback(target)) {
     throw new Error(
       `Dev sign-in sends the seed key only to a loopback API (localhost, 127.0.0.1 or [::1]), but CALENDAR_API_URL is ${target}.`,
+    );
+  }
+  if (key === PLACEHOLDER_SEED_KEY) {
+    console.warn(
+      'Warning: Auth__DevSeedKey is still the public placeholder from .env.example, so anyone who can reach the API can act as your account. Replace it in .env with the output of openssl rand -hex 32, then restart the API and this recipe.',
     );
   }
   return {

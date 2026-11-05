@@ -8,9 +8,17 @@ import remarkParse from 'remark-parse';
 import { unified } from 'unified';
 import { it } from 'vitest';
 import { parseLog, parseStories } from '../src/lib/adr';
-import { decisionsDirectory, readDocuments, storiesDirectory } from '../src/lib/docs-loader';
+import {
+  decisionsDirectory,
+  docsLoader,
+  readDocuments,
+  resetDocumentRoutes,
+  storiesDirectory,
+} from '../src/lib/docs-loader';
+import { fakeLoaderContext } from '../src/lib/fakeLoaderContext';
 
 // Benchmark 0001: what loading the ADRs and stories costs, and where it goes.
+// Benchmark 0003: what one loader sync costs with the remark plugin rewriting every link (#273).
 // Run with `just docs bench`; set BENCH_OUT=<file> to also write the Markdown table to a file.
 // Record results in docs/benchmarks/ (see its README for what to note).
 
@@ -55,6 +63,11 @@ it('parsing the ADRs and stories', async () => {
     })
     .add('readDocuments, disk + both collections', async () => {
       await readDocuments();
+    })
+    // The whole loader against a stand-in context: every entry rendered through remarkDocLinks.
+    .add('loader sync, every entry rendered with link rewriting', async () => {
+      resetDocumentRoutes();
+      await docsLoader().load(fakeLoaderContext().context);
     });
   await bench.run();
 

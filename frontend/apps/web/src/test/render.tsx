@@ -79,3 +79,23 @@ export async function settle(queryClient: QueryClient) {
     await new Promise((resolve) => setTimeout(resolve, 0));
   });
 }
+
+/**
+ * Polls `assertion` until it passes, like Testing Library's `waitFor`, but on Vitest's timers, so
+ * it also works while `setInterval` is faked (Testing Library polls with it). Like `waitFor`, it
+ * switches the React act environment off while it polls: the state updates that land meanwhile,
+ * such as TanStack Query's notifications, are the behaviour being awaited, not updates the test
+ * forgot to wrap, so they must not warn.
+ */
+export async function eventually(assertion: () => void, { timeout = 5000 } = {}) {
+  const env = globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean | undefined };
+  const previous = env.IS_REACT_ACT_ENVIRONMENT;
+  env.IS_REACT_ACT_ENVIRONMENT = false;
+  try {
+    await vi.waitFor(assertion, { timeout });
+    // Let an update already queued on a real timer land before the act environment comes back.
+    await new Promise((resolve) => setTimeout(resolve, 0));
+  } finally {
+    env.IS_REACT_ACT_ENVIRONMENT = previous;
+  }
+}

@@ -5,7 +5,13 @@ import userEvent from '@testing-library/user-event';
 import { http, HttpResponse } from 'msw';
 import { Profiler } from 'react';
 
-import { renderApp, renderInRouter, type RetryOption, settle } from '../../test/render.tsx';
+import {
+  eventually,
+  renderApp,
+  renderInRouter,
+  type RetryOption,
+  settle,
+} from '../../test/render.tsx';
 import { server } from '../../test/server.ts';
 import { DayView } from './DayView.tsx';
 import { useToday } from '../agenda/useNow.ts';
@@ -173,15 +179,13 @@ function renderDay(date: string) {
 
 /**
  * Freezes the clock at `iso`. `setTimeout` always stays real so MSW keeps working. `setInterval` is
- * only faked on request: Testing Library's `waitFor` polls with it, so tests that fake it must use
- * `vi.waitFor` (see `eventually`).
+ * only faked on request: Testing Library's `waitFor` polls with it, so tests that fake it wait with
+ * `eventually` instead.
  */
 function useFakeClock(iso: string, { intervals = false } = {}) {
   vi.useFakeTimers({ toFake: intervals ? ['Date', 'setInterval', 'clearInterval'] : ['Date'] });
   vi.setSystemTime(new Date(iso));
 }
-
-const eventually = (assertion: () => void) => vi.waitFor(assertion, { timeout: 5000 });
 
 function itemFor(text: string): HTMLElement {
   const item = screen.getByText(text).closest('li');
@@ -589,7 +593,7 @@ describe('DayView', () => {
           <DayView date="2026-10-26" timeZone={ZONE} locale="en-GB" />
         </Profiler>,
       );
-      await vi.waitFor(() => expect(screen.getByText('Design review')).toBeInTheDocument());
+      await eventually(() => expect(screen.getByText('Design review')).toBeInTheDocument());
       await settle(queryClient);
       onRender.mockClear();
       act(() => {

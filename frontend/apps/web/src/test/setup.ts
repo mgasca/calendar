@@ -19,12 +19,24 @@ HTMLDialogElement.prototype.close = function close(this: HTMLDialogElement) {
   this.removeAttribute('open');
 };
 
+// Requests no handler matched during the current test. MSW only prints them and fails the fetch,
+// which a test rarely notices; the check after each test makes an unmodelled request a failure.
+const unhandled: string[] = [];
+
 beforeAll(() => {
-  server.listen({ onUnhandledFrame: 'error' });
+  server.listen({
+    onUnhandledFrame({ frame, defaults }) {
+      const request = (frame.data as { request?: Request }).request;
+      unhandled.push(request ? `${request.method} ${request.url}` : frame.protocol);
+      defaults.error();
+    },
+  });
 });
 afterEach(() => {
   server.resetHandlers();
   cleanup();
+  const requests = unhandled.splice(0);
+  expect(requests, 'requests without an MSW handler; add one with server.use(...)').toEqual([]);
 });
 afterAll(() => {
   server.close();

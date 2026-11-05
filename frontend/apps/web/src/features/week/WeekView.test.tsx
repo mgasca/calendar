@@ -4,7 +4,7 @@ import userEvent from '@testing-library/user-event';
 import { http, HttpResponse } from 'msw';
 import { Profiler } from 'react';
 
-import { renderApp, renderInRouter, settle } from '../../test/render.tsx';
+import { eventually, renderApp, renderInRouter, settle } from '../../test/render.tsx';
 import { server } from '../../test/server.ts';
 import { emptyWeek, madridMidnight, TEST_ZONE as ZONE } from '../../test/weekAgenda.ts';
 import { agendaKey } from '../day/useDayAgenda.ts';
@@ -155,7 +155,7 @@ describe('clock rendering', () => {
         <WeekView weekStart="2026-10-19" timeZone={ZONE} locale="en-GB" />
       </Profiler>,
     );
-    await vi.waitFor(() => expect(screen.getByText('Review on 2026-10-19')).toBeInTheDocument());
+    await eventually(() => expect(screen.getByText('Review on 2026-10-19')).toBeInTheDocument());
     await settle(queryClient);
     onRender.mockClear();
     act(() => {
@@ -171,7 +171,7 @@ describe('clock rendering', () => {
     const { queryClient } = await renderInRouter(
       <WeekView weekStart={THIS_WEEK} timeZone={ZONE} locale="en-GB" />,
     );
-    await vi.waitFor(() => expect(screen.getByText('Design review')).toBeInTheDocument());
+    await eventually(() => expect(screen.getByText('Design review')).toBeInTheDocument());
     await settle(queryClient);
     const line = document.querySelector('.week-now');
     expect(line).toHaveStyle({ top: `${String(minuteToPx(630))}px` });
@@ -776,7 +776,7 @@ describe('WeekView', () => {
       expect(screen.getByRole('checkbox', { name: 'Book flights' })).toBeChecked();
       expect(screen.getByText('5 events · 4 tasks (2 open)')).toBeInTheDocument();
       release();
-      await vi.waitFor(() => {
+      await eventually(() => {
         expect(getCount()).toBe(2);
       });
       expect(screen.getByRole('checkbox', { name: 'Book flights' })).toBeChecked();
@@ -789,7 +789,7 @@ describe('WeekView', () => {
 
       await userEvent.click(within(panel).getByRole('checkbox', { name: 'File expenses' }));
 
-      await vi.waitFor(() => {
+      await eventually(() => {
         expect(within(panel).getByRole('checkbox', { name: 'File expenses' })).toBeChecked();
       });
     });
@@ -804,7 +804,7 @@ describe('WeekView', () => {
         'Couldn’t update the task. Your change was undone.',
       );
       expect(screen.getByRole('checkbox', { name: 'Call bank' })).not.toBeChecked();
-      await vi.waitFor(() => {
+      await eventually(() => {
         expect(getCount()).toBe(2);
       });
     });
@@ -817,7 +817,7 @@ describe('WeekView', () => {
 
       await userEvent.click(await screen.findByRole('checkbox', { name: 'Book flights' }));
 
-      await vi.waitFor(() => {
+      await eventually(() => {
         expect(queryClient.getQueryState(agendaKey('2026-10-29', ZONE))?.isInvalidated).toBe(true);
       });
     });

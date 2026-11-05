@@ -280,6 +280,7 @@ describe('tasks', () => {
   });
 
   it('keeps the task dialog open and disables controls while saving', async () => {
+    serveTasks(); // the day agenda the view loads, and refetches once the task is saved
     let finish: (() => void) | undefined;
     server.use(
       http.post('*/api/tasks', async () => {

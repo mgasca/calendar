@@ -10,6 +10,7 @@ Reference measurements for performance work. A benchmark here is a repeatable ha
 | [0004](0004-docs-ci-job.md) | The docs site in its own CI job (#274): job, step and critical-path durations, before #273 | `tools/ci-timings/ci-timings.cs` |
 | [0005](0005-web-test-suite.md) | The web test suite: one jsdom per worker and a unit-level batching test (#275) | `tools/ci-timings/ci-timings.cs` |
 | [0006](0006-web-build-without-tsc.md) | The web build step of the Frontend job without the repeated tsc -b (#276) | `tools/ci-timings/ci-timings.cs` |
+| [0007](0007-frontend-ci-job-after.md) | The Frontend CI job and the whole run after the four fixes of #272 | `tools/ci-timings/ci-timings.cs` |
 
 ## Running one
 

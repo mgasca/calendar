@@ -58,6 +58,7 @@ If the push is rejected, someone added images meanwhile: run the block again, wh
 
 ## Resume and close out
 
+- The PR that completes an issue carries `Closes #N` in its body: "delivering #N" or "child of #N" links nothing, and the merge then leaves the issue open (#274, #275, #276). A stacked PR gets its `Closes` when it is retargeted to `main`; merged into another branch it closes nothing.
 - Stack delivery PRs wherever you can. Open each later PR on the previous PR's branch (`gh pr create --base <previous-branch>`) instead of waiting for that PR to merge, so review of the next step can start straight away. This includes a delivery PR on its card PR. Base a PR on fresh `origin/main` only when it neither builds on nor touches the files of an open PR in the story.
 - Acceptance is the signal to start, whatever the channel. Once the owner accepts the card, the ADR or the design, in a GitHub comment or directly in conversation (recorded on the issue as such), begin the next step at once on a branch stacked on the accepted PR's branch. Do not wait for that PR's checks, review or merge. When it merges, rebase or retarget the stacked branch onto `main`.
 - Answers, approvals, check results and merge notices trigger the next authorized step.

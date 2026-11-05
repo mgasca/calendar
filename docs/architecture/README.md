@@ -27,6 +27,8 @@ The documentation build checks that every entry matches the decision log (file, 
 
 `just docs architecture` validates the model against the CALM schema with the pinned `@finos/calm-cli` (a dev dependency of `frontend/apps/docs`); it is part of `just lint`, so `just check` and CI run it. The docs-site tests (`corepack pnpm --dir frontend --filter @calendar/docs test`) check the references, and `just docs build` renders the pages and checks their links.
 
+After a change to how the diagrams render (the Mermaid configuration, ELK layout or diagram styles), open a page with a rendered diagram in `just docs dev` and switch the site theme light → dark → light before opening the PR: the theme switch re-renders every diagram (`autoTheme` in `frontend/apps/docs/astro.config.ts`), and a merged diagram change once failed only then.
+
 To run the CLI directly from this folder:
 
 ```bash

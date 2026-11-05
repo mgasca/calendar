@@ -40,7 +40,7 @@ dev:
     set -euo pipefail
     if [ ! -f "{{ justfile_directory() }}/.env" ]; then echo "No .env found: copy .env.example to .env"; fi
     if [ -z "${Auth__Google__ClientId:-}" ] || [ -z "${Auth__Google__ClientSecret:-}" ]; then
-        echo "Warning: Auth__Google__ClientId/ClientSecret are not set in .env, so 'Sign in with Google' will return 503 (see README)."
+        echo "Warning: Auth__Google__ClientId/ClientSecret are not set in .env, so 'Sign in with Google' will return 503 (see backend/README.md, 'Google sign-in setup')."
     fi
     dotnet watch --project src/Calendar.Api
 

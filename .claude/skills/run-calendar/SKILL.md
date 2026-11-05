@@ -169,7 +169,7 @@ lsof -ti:55173 -sTCP:LISTEN | xargs -r kill; lsof -ti:55041 -sTCP:LISTEN | xargs
 ## Run (human path)
 
 `just db up`, `just db migrate`, `just backend dev`, `just frontend dev`, then open http://localhost:5173. With
-`just frontend dev`, sign-in is Google only, so it needs a real OAuth client and allow-listed email in `.env` (README,
+`just frontend dev`, sign-in is Google only, so it needs a real OAuth client and allow-listed email in `.env` (`backend/README.md`,
 "Google sign-in setup"); without them the sign-in button returns 503. To sign in without Google, set
 `Auth__AllowedEmails__0` in `.env` and run `just frontend dev-signed-in` instead. Its Vite proxy adds `Auth__DevSeedKey`
 to every `/api` request (story 0021). This path uses the shared `calendar` Compose project, so it touches the same

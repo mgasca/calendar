@@ -23,7 +23,7 @@ internal static class AuthEndpoints
         statusCode: StatusCodes.Status503ServiceUnavailable,
         title: "Google sign-in is not configured.",
         detail: "Set Auth__Google__ClientId and Auth__Google__ClientSecret for the API, then restart it. "
-          + "See the README, 'Google sign-in'."))
+          + "See backend/README.md, 'Google sign-in setup'."))
       .AllowAnonymous()
       .ExcludeFromDescription();
     app.MapGet("/api/auth/me", Results<Ok<AuthUserResponse>, UnauthorizedHttpResult> (ClaimsPrincipal user) =>

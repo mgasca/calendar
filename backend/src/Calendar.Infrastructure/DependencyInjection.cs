@@ -25,7 +25,7 @@ public static class DependencyInjection
       var connectionString = configuration.GetConnectionString(ConnectionStringName)
               ?? throw new InvalidOperationException(
                   $"Connection string 'ConnectionStrings:{ConnectionStringName}' is not configured. " +
-                  "Set it with 'dotnet user-secrets' or the ConnectionStrings__Calendar environment variable (see README).");
+                  "Set it with 'dotnet user-secrets' or the ConnectionStrings__Calendar environment variable (see backend/README.md).");
       CalendarDbContextOptions.Configure(options, connectionString);
     });
     return services;

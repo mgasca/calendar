@@ -81,7 +81,7 @@ catch (Exception e) when (e is HttpRequestException or TaskCanceledException)
   await Console.Error.WriteLineAsync($"""
         The API at {apiUrl} is not reachable ({e.Message}).
         Start it first:  just db up && just db migrate && just backend dev
-        (set the connection string as described in the README, "Local database").
+        (set the connection string as described in backend/README.md, "Local database").
         """);
   return 1;
 }

@@ -1,5 +1,5 @@
 ---
-status: planned
+status: implemented
 date: 2026-11-05
 issue: https://github.com/mgasca/calendar/issues/262
 pr:
@@ -17,9 +17,9 @@ Tracked in issue #262. The product owner chose the style on mock-ups in a conver
 
 ## Background
 
-Since [0006](0006-modal-dialogs-for-adding.md) both forms open in the same modal dialog, but each still validates the way its own story left it. **Add task** ([0003](0003-add-todo-tasks.md)) relies on the browser: the title, due date and due time carry the HTML `required` attribute, so submitting with an empty title shows the browser's own bubble ("Please fill out this field.") under the field and moves focus there. Anything the browser cannot check, such as a daylight-saving time that does not exist or a failed save, is a plain sentence under the buttons. **Add event** ([0004](0004-add-event-entries.md)) turns browser validation off, checks the values itself when the form is submitted, and prints a plain sentence in the ordinary text colour under every failing field, while focus stays on **Save event**. Story 0006 deliberately left both as they were.
+Since [0006](0006-modal-dialogs-for-adding.md) both forms open in the same modal dialog, but each still validated the way its own story left it. **Add task** ([0003](0003-add-todo-tasks.md)) relied on the browser: the title, due date and due time carried the HTML `required` attribute, so submitting with an empty title showed the browser's own bubble ("Please fill out this field.") under the field and moved focus there. Anything the browser could not check, such as a daylight-saving time that does not exist or a failed save, was a plain sentence under the buttons. **Add event** ([0004](0004-add-event-entries.md)) turned browser validation off, checked the values itself when the form was submitted, and printed a plain sentence in the ordinary text colour under every failing field, while focus stayed on **Save event**. Story 0006 deliberately left both as they were.
 
-Five styles were compared on screenshots and mock-ups built with the app's own stylesheet: the browser bubble everywhere, plain inline text everywhere, styled inline text, styled inline text with an error summary, and red borders with a bubble. The owner chose the last one, and the reasons are in [ADR-0043](../decisions/0043-form-validation-red-borders-and-bubble.md). This story delivers it.
+Five styles were compared on screenshots and mock-ups built with the app's own stylesheet: the browser bubble everywhere, plain inline text everywhere, styled inline text, styled inline text with an error summary, and red borders with a bubble. The owner chose the last one, and the reasons are in [ADR-0043](../decisions/0043-form-validation-red-borders-and-bubble.md). This story delivered it.
 
 ### Agreed scope
 
@@ -36,23 +36,23 @@ Five styles were compared on screenshots and mock-ups built with the app's own s
 * Changing which values are valid, the messages' wording, or the daylight-saving rules. Those stay as 0003 and 0004 defined them.
 * Validating while typing or on leaving a field. Errors appear on **Save** and clear as the field is edited.
 * An error summary at the top of the dialog. ADR-0043 names it as the next step if a form grows long.
-* The **All day** checkbox rendering above its label in **Add event** (#259), which is fixed on its own first.
+* The **All day** checkbox rendering above its label in **Add event** (#259), which was fixed on its own first.
 * Editing existing tasks or events, and creating from the week view ([XXXX](XXXX-create-events-and-tasks-from-week-view.md)).
 
 ### Dependencies
 
-* #259 merges first, because its fix touches the same label styles in the modal dialog.
+* #259 merged first, because its fix touches the same label styles in the modal dialog.
 
 ### Acceptance criteria
 
-1. **Given** either dialog is open, **when** I press **Save** with an empty title, **then** the form does not submit, the title field is outlined in the danger colour, focus moves to it, and a bubble under it says "Enter a title.".
-2. **Given** the event dialog has an empty title and an end before the start, **when** I press **Save**, **then** both fields are outlined, focus is on the title with its bubble, and hovering or focusing the end field shows "End must be after the start." in its bubble.
-3. **Given** a field is marked invalid, **when** I edit it, **then** its outline and bubble disappear without pressing **Save** again.
-4. **Given** either dialog, **when** I use the keyboard or a screen reader, **then** each invalid field is reported as invalid with its message as the field's description, and the first message is announced when I press **Save**.
-5. **Given** the task dialog with **Exact date and time**, **when** I save a local time that does not exist, or one that occurs twice without choosing an occurrence, **then** the message appears in the bubble of the time or occurrence field, not under the buttons.
-6. **Given** either dialog, **when** the server rejects a field (400) or the save fails for another reason, **then** a field error shows on its field and any other failure shows as one message under the buttons; what I typed is kept and I can save again.
-7. **Given** either dialog, **when** no field has a browser `required`, `min` or `max` attribute, **then** no browser validation bubble ever appears, in any browser.
-8. **Given** the change is complete, **when** I run `just check`, **then** it passes, with tests for criteria 1 to 6 in both forms.
+1. **Given** either dialog is open, **when** I press **Save** with an empty title, **then** the form does not submit, the title field is outlined in the danger colour, focus moves to it, and a bubble under it says "Enter a title.". [Task](../../frontend/apps/web/src/features/tasks/Tasks.test.tsx#L130) (`marks a blank title, describes it, moves focus there, and clears it once edited`); [event](../../frontend/apps/web/src/features/events/EventForm.test.tsx#L87) (`shows field errors for a blank title and an end before the start`) and [focus](../../frontend/apps/web/src/features/events/EventForm.test.tsx#L104). The outline and the bubble are CSS, which jsdom does not apply: they were checked by hand in the running app (screenshots on the issue and the PR).
+2. **Given** the event dialog has an empty title and an end before the start, **when** I press **Save**, **then** both fields are outlined, focus is on the title with its bubble, and hovering or focusing the end field shows "End must be after the start." in its bubble. [Both fields marked, focus on the title](../../frontend/apps/web/src/features/events/EventForm.test.tsx#L104); the hover itself was checked by hand.
+3. **Given** a field is marked invalid, **when** I edit it, **then** its outline and bubble disappear without pressing **Save** again. [Task](../../frontend/apps/web/src/features/tasks/Tasks.test.tsx#L130), [event](../../frontend/apps/web/src/features/events/EventForm.test.tsx#L104), [the helper](../../frontend/apps/web/src/components/Field.test.tsx#L28).
+4. **Given** either dialog, **when** I use the keyboard or a screen reader, **then** each invalid field is reported as invalid with its message as the field's description, and the first message is announced when I press **Save**. [Component](../../frontend/apps/web/src/components/Field.test.tsx#L7) (`aria-invalid`, accessible description, `role="alert"`); [task](../../frontend/apps/web/src/features/tasks/Tasks.test.tsx#L130); [event](../../frontend/apps/web/src/features/events/EventForm.test.tsx#L87). Every bubble is an alert, so a screen reader hears each message as it appears, the first one first; a real screen reader was not run.
+5. **Given** the task dialog with **Exact date and time**, **when** I save a local time that does not exist, or one that occurs twice without choosing an occurrence, **then** the message appears in the bubble of the time or occurrence field, not under the buttons. [Skipped time](../../frontend/apps/web/src/features/tasks/Tasks.test.tsx#L157), [repeated time](../../frontend/apps/web/src/features/tasks/Tasks.test.tsx#L172), [pure checks](../../frontend/apps/web/src/features/tasks/taskForm.test.ts#L27); the event form's occurrence selects likewise: [repeated start and end](../../frontend/apps/web/src/features/events/EventForm.test.tsx#L147).
+6. **Given** either dialog, **when** the server rejects a field (400) or the save fails for another reason, **then** a field error shows on its field and any other failure shows as one message under the buttons; what I typed is kept and I can save again. [Task 400 on the title](../../frontend/apps/web/src/features/tasks/Tasks.test.tsx#L59), [task network failure](../../frontend/apps/web/src/features/tasks/Tasks.test.tsx#L187), [mapping](../../frontend/apps/web/src/features/tasks/taskForm.test.ts#L65); [event 400](../../frontend/apps/web/src/features/events/EventForm.test.tsx#L62), [event network failure](../../frontend/apps/web/src/features/events/EventForm.test.tsx#L179).
+7. **Given** either dialog, **when** no field has a browser `required`, `min` or `max` attribute, **then** no browser validation bubble ever appears, in any browser. [Task](../../frontend/apps/web/src/features/tasks/Tasks.test.tsx#L122), [event](../../frontend/apps/web/src/features/events/EventForm.test.tsx#L126) (the form carries `novalidate` and no field carries those attributes); only Chromium was run by hand.
+8. **Given** the change is complete, **when** I run `just check`, **then** it passes, with tests for criteria 1 to 6 in both forms. Recorded in the delivery PR: frontend lint, type-check, the web and docs test suites and the format check passed locally on the delivered revision, and CI passed on the PR.
 
 ## Design decisions
 
@@ -68,42 +68,49 @@ ADR-0043 is the new record for this story, accepted by the product owner on 2026
 
 ### Other decisions (not ADR-worthy)
 
-* **Where the task form's messages go:** "Enter a due date." and "Enter a due time." are new only in the sense that the browser used to say them; the daylight-saving messages move from under the buttons to the time or occurrence field. Nothing else changes wording.
-* **Bubble placement:** under the field, left-aligned, with a pointer, like the browser's. The dialog scrolls, so the implementation leaves room under the last field or flips the bubble above it rather than letting the dialog clip it.
-* **Focus on the first invalid field:** in document order, so the user reads the form top to bottom.
+* **Where the task form's messages go:** "Enter a due date." and "Enter a due time." are new only in the sense that the browser used to say them; the daylight-saving messages moved from under the buttons to the time or occurrence field. Nothing else changed wording.
+* **Bubble placement:** under the field, left-aligned, with a pointer, like the browser's. The dialog scrolls, but the last field is **Notes**, whose bubble sits over the buttons rather than past the dialog's edge, so no flipping was needed.
+* **Focus on the first invalid field:** in document order, so the user reads the form top to bottom. After a failed save the focus waits one render, because the controls are still disabled when the error arrives.
+* **The message is hidden like `.visually-hidden`, not with `display: none`:** a `display: none` element leaves the accessibility tree and would break the description and the announcement; the bubble is clipped to a pixel until the field is focused or hovered.
+* **Every message is an alert:** each bubble carries `role="alert"`, so assistive technology hears every message as it appears instead of only the first. Simpler than tracking which one is first, and the first still comes first.
 * **No change to the API or the generated client.**
 
 ## Implementation notes
 
-*Planned. This section is completed as the story is built.*
+Delivered in one PR after the card ([#266](https://github.com/mgasca/calendar/pull/266) added the card and ADR-0043).
 
 ### Where things live
 
 | Area | Location |
 | --- | --- |
-| Shared field component and bubble styles | `frontend/apps/web/src/components/`, `frontend/apps/web/src/index.css` |
-| Task form validation and fields | `frontend/apps/web/src/features/tasks/TaskForm.tsx` (plus a `taskForm.ts` for the pure checks) |
-| Event form validation and fields | `frontend/apps/web/src/features/events/EventForm.tsx`, `eventForm.ts` |
-| Tests | `features/tasks/Tasks.test.tsx`, `features/events/EventForm.test.tsx`, `features/events/eventForm.test.ts` |
+| Shared field component, error helpers | `frontend/apps/web/src/components/Field.tsx` (`Field`, `withoutError`, `focusFirstInvalid`) |
+| Border, bubble and mark styles | `frontend/apps/web/src/index.css` (`.field`, `.field-bubble`, `.field-mark`) |
+| Task form checks, request body, server-error mapping | `frontend/apps/web/src/features/tasks/taskForm.ts` (`validate`, `requestBody`, `serverErrors`, `SaveTaskError`) |
+| Task form | `frontend/apps/web/src/features/tasks/TaskForm.tsx` |
+| Event form checks | `frontend/apps/web/src/features/events/eventForm.ts` (occurrence errors now on `startOccurrence` and `endOccurrence`) |
+| Event form | `frontend/apps/web/src/features/events/EventForm.tsx` |
+| Tests | `components/Field.test.tsx`, `features/tasks/taskForm.test.ts`, `features/tasks/Tasks.test.tsx`, `features/events/EventForm.test.tsx` |
 
 ### API
 
-No changes expected.
+No changes.
 
 ### Testing
 
-* Pure tests for the task form's `validate()` (blank title, missing date or time, skipped and repeated times) next to the event form's existing ones.
-* Component tests with Testing Library for both forms: accessible description and `aria-invalid` on the failing field, focus on the first invalid field, the bubble shown on focus and hover, the error clearing on edit, and that no field carries a native validation attribute.
+* Pure tests for the task form's `validate()`, `requestBody()` and `serverErrors()` (blank title, missing date or time, skipped and repeated times, length limits, field mapping) next to the event form's existing ones.
+* Component tests with Testing Library for both forms: `aria-invalid` and the accessible description on the failing field, focus on the first invalid field (including after a server 400), the error clearing on edit, the occurrence message on the occurrence select, and that the form carries `novalidate` and no field carries `required`, `min` or `max`.
 * MSW tests for a server 400 mapped to a field and for a network failure shown as the form-level message, with the values kept.
-* A screenshot of both dialogs in the running app, light and dark, before the card is completed.
+* Negative control: with the old `TaskForm.tsx` and `EventForm.tsx` restored from `main`, nine of the tests fail (the blank-title, deadline, skipped-time, occurrence, network, no-native-attribute and focus cases); all pass with the change.
+* By hand in the running app (Chromium through the `run-calendar` driver): both dialogs after **Save** with an empty title, the end-before-start case, and the hover on a second invalid field; screenshots are on the issue and the PR. Not run by hand: Firefox, Safari, dark mode and a screen reader.
 
 ### Lessons learned, known issues and follow-ups
 
-* Filled in on delivery.
+* **Focus after a failed save has to wait a render.** The mutation's `onError` runs while the `<fieldset>` is still disabled, so `focus()` is ignored; a flag checked in an effect after the next render fixes it, and the task test for a server 400 caught it.
+* **Hiding the message with `display: none` would silence it.** The accessible description and the alert need the element in the accessibility tree, so the bubble is clipped off-screen until shown, like `.visually-hidden`.
+* **Known limits:** the bubble shows one message at a time, as decided; the other invalid fields show only their border until focused or hovered. The task form no longer limits the date input to 1900 to 2200 in the browser; the server still validates the date.
+* **Follow-ups:** none opened. ADR-0043 names an error summary as the step to take if a form grows past about ten fields.
 
 ## User guide
-
-*Planned behaviour. This section is finalised when the story is implemented.*
 
 ### Fixing a problem before saving
 

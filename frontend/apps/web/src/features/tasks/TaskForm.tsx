@@ -2,7 +2,8 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useMemo, useRef, useState } from 'react';
 
 import { api } from '../../api/client.ts';
-import { Field, focusFirstInvalid, withoutError } from '../../components/Field.tsx';
+import { Field } from '../../components/Field.tsx';
+import { focusFirstInvalid, withoutError } from '../../components/fieldErrors.ts';
 import { ModalDialog } from '../../components/ModalDialog.tsx';
 import { browserTimeZone, formatDateTime } from '../agenda/dayTime.ts';
 import { deadlineInstants } from '../agenda/deadline.ts';
@@ -63,12 +64,6 @@ export function TaskForm({
     setErrors(found);
     focusPending.current = true;
   };
-  useEffect(() => {
-    if (focusPending.current && !save.isPending) {
-      focusPending.current = false;
-      focusFirstInvalid(errors, order);
-    }
-  });
   const save = useMutation({
     mutationFn: async () => {
       const { data, error, response } = await api.POST('/api/tasks', {
@@ -96,6 +91,12 @@ export function TaskForm({
           : { form: 'Couldn’t save the task. Try again.' },
       );
     },
+  });
+  useEffect(() => {
+    if (focusPending.current && !save.isPending) {
+      focusPending.current = false;
+      focusFirstInvalid(errors, order);
+    }
   });
   return (
     <ModalDialog

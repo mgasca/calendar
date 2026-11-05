@@ -1,7 +1,8 @@
 import { render, screen } from '@testing-library/react';
 import { createRef } from 'react';
 
-import { Field, focusFirstInvalid, withoutError } from './Field.tsx';
+import { Field } from './Field.tsx';
+import { focusFirstInvalid, withoutError } from './fieldErrors.ts';
 
 describe('Field', () => {
   it('links the message to the control as its description, marks it invalid and announces it', () => {
@@ -25,16 +26,17 @@ describe('Field', () => {
   });
 });
 
+type Errors = Partial<Record<'title' | 'notes', string>>;
+
 describe('withoutError', () => {
   it('returns the same object when the field has no error', () => {
-    const errors = { title: 'Enter a title.' };
+    const errors: Errors = { title: 'Enter a title.' };
     expect(withoutError(errors, 'notes')).toBe(errors);
   });
 
   it('drops the edited field and keeps the others', () => {
-    expect(withoutError({ title: 'Enter a title.', notes: 'Too long.' }, 'title')).toEqual({
-      notes: 'Too long.',
-    });
+    const errors: Errors = { title: 'Enter a title.', notes: 'Too long.' };
+    expect(withoutError(errors, 'title')).toEqual({ notes: 'Too long.' });
   });
 });
 

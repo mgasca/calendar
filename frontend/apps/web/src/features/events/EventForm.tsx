@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Field, focusFirstInvalid, withoutError } from '../../components/Field.tsx';
+import { Field } from '../../components/Field.tsx';
+import { focusFirstInvalid, withoutError } from '../../components/fieldErrors.ts';
 import { ModalDialog } from '../../components/ModalDialog.tsx';
 import { formatDateTime } from '../agenda/dayTime.ts';
 import { deadlineInstants } from '../agenda/deadline.ts';

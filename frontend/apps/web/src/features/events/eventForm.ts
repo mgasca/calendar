@@ -61,9 +61,9 @@ export function moveStart(values: EventValues, start: string): EventValues {
   };
 }
 
-export type FieldErrors = Partial<
-  Record<'title' | 'start' | 'end' | 'location' | 'notes' | 'form', string>
->;
+export type EventField =
+  'title' | 'start' | 'startOccurrence' | 'end' | 'endOccurrence' | 'location' | 'notes' | 'form';
+export type FieldErrors = Partial<Record<EventField, string>>;
 export function validate(values: EventValues): FieldErrors {
   const errors: FieldErrors = {};
   if (!values.title.trim()) errors.title = 'Enter a title.';
@@ -81,9 +81,11 @@ export function validate(values: EventValues): FieldErrors {
       if (!candidates.length)
         errors[field] = 'This local time does not exist. Choose another time.';
       else if (candidates.length > 1 && !candidates.includes(values[`${field}Occurrence`]))
-        errors[field] = 'Choose which occurrence of this time you mean.';
+        errors[`${field}Occurrence`] = 'Choose which occurrence of this time you mean.';
     }
-    if (!errors.start && !errors.end && instant(values, 'end') <= instant(values, 'start'))
+    const timesResolved =
+      !errors.start && !errors.end && !errors.startOccurrence && !errors.endOccurrence;
+    if (timesResolved && instant(values, 'end') <= instant(values, 'start'))
       errors.end = 'End must be after the start.';
   }
   return errors;

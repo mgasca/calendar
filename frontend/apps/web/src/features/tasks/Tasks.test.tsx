@@ -68,6 +68,8 @@ describe('task creation', () => {
     await user.type(screen.getByLabelText('Title'), 'Remember this');
     await user.click(screen.getByRole('button', { name: 'Save task' }));
     expect(await screen.findByRole('alert')).toHaveTextContent('Try again later.');
+    expect(screen.getByLabelText('Title')).toHaveAccessibleDescription('Try again later.');
+    expect(screen.getByLabelText('Title')).toHaveFocus();
     expect(screen.getByLabelText('Title')).toHaveValue('Remember this');
     server.use(
       http.post('/api/tasks', async ({ request }) => {
@@ -109,6 +111,92 @@ describe('task creation', () => {
       notes: '',
       dueAt: new Date('2026-10-27T14:30').toISOString(),
     });
+  });
+});
+
+describe('task validation (story 0024)', () => {
+  afterEach(() => {
+    vi.unstubAllEnvs();
+  });
+
+  it('leaves no browser validation attribute on any field', async () => {
+    renderWithProviders(<TaskForm initialDate="2026-10-27" onClose={vi.fn()} />);
+    await userEvent.selectOptions(screen.getByLabelText('Deadline'), 'time');
+    const dialog = screen.getByRole('dialog');
+    expect(dialog.querySelector('form')).toHaveAttribute('novalidate');
+    expect(dialog.querySelectorAll('[required], [min], [max]')).toHaveLength(0);
+  });
+
+  it('marks a blank title, describes it, moves focus there, and clears it once edited', async () => {
+    const close = vi.fn();
+    renderWithProviders(<TaskForm onClose={close} />);
+    const user = userEvent.setup();
+    await user.click(screen.getByRole('button', { name: 'Save task' }));
+    const title = screen.getByLabelText('Title');
+    expect(title).toHaveAttribute('aria-invalid', 'true');
+    expect(title).toHaveAccessibleDescription('Enter a title.');
+    expect(screen.getByRole('alert')).toHaveTextContent('Enter a title.');
+    expect(title).toHaveFocus();
+    expect(close).not.toHaveBeenCalled();
+    await user.type(title, 'F');
+    expect(title).toHaveAttribute('aria-invalid', 'false');
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+  });
+
+  it('asks for the due date and time of an exact deadline, focusing the first', async () => {
+    renderWithProviders(<TaskForm onClose={vi.fn()} />);
+    const user = userEvent.setup();
+    await user.type(screen.getByLabelText('Title'), 'Call');
+    await user.selectOptions(screen.getByLabelText('Deadline'), 'time');
+    await user.click(screen.getByRole('button', { name: 'Save task' }));
+    expect(screen.getByLabelText('Due date')).toHaveAccessibleDescription('Enter a due date.');
+    expect(screen.getByLabelText('Due time')).toHaveAccessibleDescription('Enter a due time.');
+    expect(screen.getByLabelText('Due date')).toHaveFocus();
+  });
+
+  it('puts a skipped local time on the time field', async () => {
+    vi.stubEnv('TZ', 'America/New_York');
+    renderWithProviders(<TaskForm initialDate="2026-03-08" onClose={vi.fn()} />);
+    const user = userEvent.setup();
+    await user.type(screen.getByLabelText('Title'), 'Gap');
+    await user.selectOptions(screen.getByLabelText('Deadline'), 'time');
+    await user.type(screen.getByLabelText('Due time'), '02:15');
+    await user.click(screen.getByRole('button', { name: 'Save task' }));
+    const time = screen.getByLabelText('Due time');
+    expect(time).toHaveAccessibleDescription(
+      'This local time does not exist. Choose another time.',
+    );
+    expect(time).toHaveFocus();
+  });
+
+  it('asks which occurrence is meant on the occurrence field', async () => {
+    vi.stubEnv('TZ', 'America/New_York');
+    renderWithProviders(<TaskForm initialDate="2026-11-01" onClose={vi.fn()} />);
+    const user = userEvent.setup();
+    await user.type(screen.getByLabelText('Title'), 'Overlap');
+    await user.selectOptions(screen.getByLabelText('Deadline'), 'time');
+    await user.type(screen.getByLabelText('Due time'), '01:15');
+    await user.click(screen.getByRole('button', { name: 'Save task' }));
+    const occurrence = screen.getByLabelText('This time occurs twice. Choose an occurrence');
+    expect(occurrence).toHaveAccessibleDescription(
+      'Choose which occurrence of this time you mean.',
+    );
+    expect(occurrence).toHaveFocus();
+  });
+
+  it('shows a network failure under the buttons and keeps the values', async () => {
+    server.use(http.post('/api/tasks', () => HttpResponse.error()));
+    const close = vi.fn();
+    renderWithProviders(<TaskForm onClose={close} />);
+    const user = userEvent.setup();
+    await user.type(screen.getByLabelText('Title'), 'Retry');
+    await user.click(screen.getByRole('button', { name: 'Save task' }));
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'Couldn’t save the task. Try again.',
+    );
+    expect(screen.getByLabelText('Title')).toHaveValue('Retry');
+    expect(screen.getByLabelText('Title')).toHaveAttribute('aria-invalid', 'false');
+    expect(close).not.toHaveBeenCalled();
   });
 });
 

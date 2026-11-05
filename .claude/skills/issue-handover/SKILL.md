@@ -42,6 +42,7 @@ The root `AGENTS.md` still applies, in particular its rule for public posts: rep
 - Put each open question in its own PR comment, with context and a recommendation. Post independent questions together, and follow quoted replies back to their question.
 - This mode overrides the `adr-draft` and `story-draft` instructions to put open questions in documents or PR bodies. Agreed answers still belong in the card or ADR.
 - Propose concrete changes in PRs, and post substantive progress where the feedback is being handled.
+- When a hook, skill or watch misbehaves during the handover (fires wrongly, repeats, goes silent), open an issue for it in the same session, as #254 did for the repeating contract check, rather than only working around it.
 - A poll, an empty check or a watch re-arm warrants no GitHub comment.
 - When a turn starts real tasks or subagents and counts are requested, post one count comment on the issue. No count post for a poll-only turn.
 - Disclose a model switch in the next substantive post if attribution would otherwise be misleading.

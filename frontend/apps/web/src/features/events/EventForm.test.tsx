@@ -274,4 +274,12 @@ describe('validation and request handling', () => {
     renderWithProviders(<EventForm date="2026-10-29" timeZone="Asia/Kolkata" onClose={vi.fn()} />);
     expect(screen.getByText('Time zone: Asia/Kolkata')).toBeVisible();
   });
+  it('lays the All day checkbox out beside its text like the task checkboxes', () => {
+    // jsdom does not compute layout, so the test pins the class that gives the label its row
+    // layout (#259): without it the dialog's column rule for labels stacks the box above the text.
+    renderWithProviders(<EventForm date="2026-10-29" timeZone="UTC" onClose={vi.fn()} />);
+    const checkbox = screen.getByLabelText('All day');
+    expect(checkbox).toHaveAttribute('type', 'checkbox');
+    expect(checkbox.closest('label')).toHaveClass('task-label');
+  });
 });

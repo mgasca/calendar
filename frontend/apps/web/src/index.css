@@ -264,6 +264,12 @@ button[aria-pressed='true'] {
   margin-bottom: 0.75rem;
 }
 
+/* A checkbox keeps its text beside the box, as in the task lists, not above it. */
+.modal-dialog .task-label {
+  flex-direction: row;
+  gap: 0.75rem;
+}
+
 input:not([type='checkbox']),
 textarea,
 select {

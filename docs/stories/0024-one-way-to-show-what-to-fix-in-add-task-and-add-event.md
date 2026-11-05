@@ -64,7 +64,7 @@ Five styles were compared on screenshots and mock-ups built with the app's own s
 | [0003](../decisions/0003-react-vite-typescript-web-ui.md) | React, Vite and TypeScript for the web UI | The shared field component is a React component with no form library |
 | [0008](../decisions/0008-frontend-testing-stack.md) | Vitest, Testing Library and MSW | The confirmation tests assert accessible descriptions, focus and server responses |
 
-ADR-0043 is the new record for this story. It is proposed in the same PR as this card and becomes accepted when the owner approves it.
+ADR-0043 is the new record for this story, accepted by the product owner on 2026-11-05 in the PR that added this card.
 
 ### Other decisions (not ADR-worthy)
 

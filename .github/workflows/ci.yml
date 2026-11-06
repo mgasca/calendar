@@ -309,10 +309,16 @@ jobs:
     if: ${{ always() }}
     needs: [backend, frontend, docs, tooling, image]
     runs-on: ubuntu-latest
-    # actions: read lets the step below read this run's job conclusions from the API.
+    # actions: read lets the steps below read this run's jobs from the API; contents: read checks out .github/ only,
+    # for the run-time gate and its baseline from the commit under test.
     permissions:
       actions: read
+      contents: read
     steps:
+      - uses: actions/checkout@v7
+        with:
+          sparse-checkout: .github
+          persist-credentials: false
       # Passes only when every needed job succeeded: failed, cancelled, skipped or anything else fails (#368). The jobs
       # API is checked as well, because in run 42270142424 a job that failed in "Set up job" did not show as failed in
       # `needs`, and this check turned green.
@@ -327,11 +333,13 @@ jobs:
             exit 1
           fi
           # Every other job of this run attempt, except this one and the optional Cancel superseded runs. Up to three tries,
-          # 5 s apart, while the API errs or still shows a job as running; whatever the last try finds decides.
+          # 5 s apart, while the API errs or still shows a job as running; whatever the last try finds decides. The last
+          # response is kept in $RUNNER_TEMP/jobs.json for the run-time gate below.
           for try in 1 2 3; do
-            if others=$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID/attempts/$GITHUB_RUN_ATTEMPT/jobs?per_page=100" \
-              --jq '.jobs[] | select(.name != "CI result" and .name != "Cancel superseded runs")
-                | select(.conclusion != "success") | "\(.name): \(.status) \(.conclusion)"'); then
+            if gh api "repos/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID/attempts/$GITHUB_RUN_ATTEMPT/jobs?per_page=100" \
+              > "$RUNNER_TEMP/jobs.json"; then
+              others=$(jq -r '.jobs[] | select(.name != "CI result" and .name != "Cancel superseded runs")
+                | select(.conclusion != "success") | "\(.name): \(.status) \(.conclusion)"' "$RUNNER_TEMP/jobs.json")
               if [ -z "$others" ] || ! grep -qv ': completed ' <<< "$others"; then break; fi
             else
               others="the jobs API could not be read"
@@ -344,3 +352,11 @@ jobs:
             exit 1
           fi
           echo "All CI jobs passed."
+      # ADR 0045: fails a pull request or merge-queue run when a job took longer than its pinned threshold in
+      # .github/ci-baseline.json, and only reports on pushes, dispatches and provisional baselines. All of the logic is in
+      # .github/ci-gate.jq, which tools/ci-timings/tests/GateTests.cs runs; this step only feeds it the saved response.
+      - name: Job run times are within the baseline (ADR 0045)
+        run: |
+          gate=(jq -r -f .github/ci-gate.jq --slurpfile baseline .github/ci-baseline.json --arg event "$GITHUB_EVENT_NAME")
+          "${gate[@]}" --arg format summary "$RUNNER_TEMP/jobs.json" >> "$GITHUB_STEP_SUMMARY"
+          "${gate[@]}" "$RUNNER_TEMP/jobs.json"

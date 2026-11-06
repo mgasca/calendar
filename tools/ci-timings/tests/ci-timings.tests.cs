@@ -4,6 +4,7 @@
 #:include ../CiTimings.cs
 #:include ../Baseline.cs
 #:include BaselineTests.cs
+#:include GateTests.cs
 
 // Tests for the CI timing sampler. Run: dotnet run tools/ci-timings/tests/ci-timings.tests.cs
 // The GitHub CLI is never called: the tests feed the parser the JSON shapes gh returns.

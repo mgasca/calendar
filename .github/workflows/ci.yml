@@ -141,7 +141,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
         run: |
-          files=$(gh api --paginate "repos/$GITHUB_REPOSITORY/pulls/$PR_NUMBER/files" --jq '.[].filename')
+          files=$(gh api --paginate "repos/$GITHUB_REPOSITORY/pulls/$PR_NUMBER/files?per_page=100" --jq '.[].filename')
           if [ -n "$files" ] && ! grep -qvE '^(docs|frontend/apps/docs)/' <<< "$files"; then
             echo "result=true" >> "$GITHUB_OUTPUT"
             echo "Docs-only pull request: the publication artifact is built below."

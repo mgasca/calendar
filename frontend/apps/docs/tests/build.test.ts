@@ -3,7 +3,7 @@ import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { deployment, runbookSlug, storySlug } from '../src/lib/adr';
 import { architecturePages, pageRoute } from '../src/lib/architecture';
-import { readDocuments } from '../src/lib/docs-loader';
+import { readAgentThoughts, readDocuments } from '../src/lib/docs-loader';
 
 const { base } = deployment(process.env.DOCS_SITE_URL);
 
@@ -95,7 +95,8 @@ describe('published agent thoughts', () => {
   });
 
   it('renders every report with navigation, its date, author, revision and edit link', async () => {
-    const { agentThought } = await readDocuments();
+    // Only the reports are needed: reading the whole corpus costs about half a second per call.
+    const agentThought = await readAgentThoughts();
     const reportRoutes = agentThought.records.map(
       (record) => `${base}agent-thoughts/${record.number}/`,
     );

@@ -43,7 +43,7 @@ Agreed with the maintainer on epic #380 (in a Claude Code session, recorded on t
 * **Gating queue time or a run's wall clock as a whole:** the trend check may report them, but no check fails on them.
 * **Updating the baseline automatically:** it moves only with a deliberate PR and a record.
 * **Gating CodeQL, dependency review, Pages or the infrastructure workflows:** only the jobs of `ci.yml` that `CI result` needs.
-* **A skip switch for runner incidents:** open question 1 of ADR-0045; until the maintainer decides, the remedy is re-running all jobs.
+* **A skip switch for runner incidents:** the maintainer chose none for now (#391); re-running all jobs is the only remedy.
 
 ### Dependencies
 

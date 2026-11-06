@@ -79,6 +79,7 @@ public sealed class PullRequestLinkCheckTests
   public void A_body_from_a_heredoc_on_stdin_is_read()
   {
     Describe("gh pr create --title t --body-file - <<'EOF'\nSummary\nEOF").ShouldNotBeNull();
+    Describe("GH_PROMPT_DISABLED=1 gh pr create --title t --body 'Summary only'").ShouldNotBeNull();
     Describe("gh pr create --title t --body-file - <<'EOF'\nSummary\nRefs #318\nEOF").ShouldBeNull();
   }
 

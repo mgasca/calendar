@@ -457,4 +457,41 @@ public sealed class BashGuardTests
     BashGuard.Evaluate(command, Root, _probe).ShouldNotBeNull().Decision.ShouldBe("deny");
     _probe.PullRequestQueries.ShouldBe([("/repo/other", "feature")]);
   }
+
+  // #376: an assignment prefix or a wrapper no longer hides the command from its guard.
+  [Theory]
+  [InlineData("FOO=1 gh pr comment 1 --body 'see /home/me/x'")]
+  [InlineData("env -i GH_TOKEN=x gh pr comment 1 --body 'see /home/me/x'")]
+  [InlineData("command gh pr comment 1 --body 'see /home/me/x'")]
+  [InlineData("nohup /usr/bin/gh pr comment 1 --body 'see /home/me/x'")]
+  [InlineData("sudo -u me gh pr comment 1 --body 'see /home/me/x'")]
+  [InlineData("timeout -k 5 30 gh pr comment 1 --body 'see /home/me/x'")]
+  [InlineData("time -p nice -n 5 gh pr comment 1 --body 'see /home/me/x'")]
+  [InlineData("exec -a x builtin gh pr comment 1 --body 'see /home/me/x'")]
+  [InlineData("env -- gh pr comment 1 --body 'see /home/me/x'")]
+  public void A_post_behind_a_prefix_or_wrapper_is_denied(string command) =>
+    BashGuard.Evaluate(command, Root, _probe).ShouldNotBeNull().Reason.ShouldContain("/home/me/x");
+
+  [Fact]
+  public void Every_bash_guard_sees_through_a_prefix_or_wrapper()
+  {
+    _probe.Dirty.Add("/repo/AGENTS.md");
+    _probe.Dirty.Add("/repo/backend/src/X.cs");
+    _probe.Branches["/repo"] = "feature";
+
+    BashGuard.Evaluate("GIT_PAGER=cat git restore AGENTS.md", Root, _probe).ShouldNotBeNull().Decision.ShouldBe("deny");
+    BashGuard.Evaluate("env -C backend git restore src/X.cs", Root, _probe).ShouldNotBeNull().Decision.ShouldBe("deny");
+    BashGuard.Evaluate("GIT_TRACE=1 git push", Root, _probe).ShouldNotBeNull().Reason.ShouldContain("#186");
+    _probe.LinkedWorktree = true;
+    BashGuard.Evaluate("COMPOSE_PROJECT_NAME=x docker compose up", Root, _probe).ShouldNotBeNull().Decision.ShouldBe("ask");
+    BashGuard.Evaluate("env just db up", Root, _probe).ShouldNotBeNull().Decision.ShouldBe("ask");
+  }
+
+  [Theory]
+  [InlineData("command -v gh")]
+  [InlineData("env")]
+  [InlineData("FOO=1 BAR=2")]
+  [InlineData("env -S 'gh pr list'")]
+  public void A_lookup_a_bare_wrapper_or_assignments_alone_pass(string command) =>
+    BashGuard.Evaluate(command, Root, _probe).ShouldBeNull();
 }

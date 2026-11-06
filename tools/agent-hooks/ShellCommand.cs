@@ -34,9 +34,95 @@ public static class ShellCommand
         current = Path.GetFullPath(Path.Combine(current, parsed.Words[1]));
         continue;
       }
-      segments.Add(new Segment(parsed.Words, current, stdin, parsed.Piped));
+      (IReadOnlyList<string> words, var dir) = Unwrap(parsed.Words, current);
+      segments.Add(new Segment(words, dir, stdin, parsed.Piped));
     }
     return segments;
+  }
+
+  // Commands that run the command after them, with their options that take the next word as a value (#376).
+  private static readonly Dictionary<string, string[]> Wrappers = new(StringComparer.Ordinal)
+  {
+    ["env"] = ["-u", "--unset", "-C", "--chdir"],
+    ["command"] = [],
+    ["builtin"] = [],
+    ["exec"] = ["-a"],
+    ["nohup"] = [],
+    ["time"] = ["-f", "--format", "-o", "--output"],
+    ["nice"] = ["-n", "--adjustment"],
+    ["timeout"] = ["-s", "--signal", "-k", "--kill-after"],
+    ["sudo"] =
+    [
+      "-u", "--user", "-g", "--group", "-C", "-D", "--chdir", "-h", "--host", "-p", "--prompt", "-r", "-t", "-U", "-T", "-R",
+    ],
+  };
+
+  /// <summary>
+  /// The words of the command a simple command really runs, and the directory it runs in: leading <c>NAME=value</c>
+  /// assignments and wrappers such as <c>env</c>, <c>command</c>, <c>sudo</c> or <c>timeout</c> are removed with their options,
+  /// and a path to the command (<c>/usr/bin/git</c>) becomes its name, so every guard sees the command first (#376). Words
+  /// with nothing left to run (assignments alone, a bare <c>env</c>), <c>command -v</c> and <c>env -S</c> stay as they are.
+  /// </summary>
+  internal static (IReadOnlyList<string> Words, string Cwd) Unwrap(IReadOnlyList<string> words, string cwd)
+  {
+    var i = 0;
+    var dir = cwd;
+    while (i < words.Count)
+    {
+      if (IsAssignment(words[i]))
+      {
+        i++;
+        continue;
+      }
+      var name = Path.GetFileName(words[i]);
+      if (!Wrappers.TryGetValue(name, out var withValue))
+      {
+        break;
+      }
+      var j = i + 1;
+      while (j < words.Count && words[j].Length > 1 && words[j][0] == '-')
+      {
+        var option = words[j];
+        if (option == "--")
+        {
+          j++;
+          break;
+        }
+        // A lookup (command -v) runs nothing, and env -S runs a string this lexer does not split.
+        if ((name == "command" && option is "-v" or "-V") || (name == "env" && option.StartsWith("-S", StringComparison.Ordinal))
+          || option.StartsWith("--split-string", StringComparison.Ordinal))
+        {
+          return (words, cwd);
+        }
+        var takesValue = withValue.Contains(option);
+        if (name is "env" or "sudo" && (option is "-C" or "--chdir" || option.StartsWith("--chdir=", StringComparison.Ordinal)))
+        {
+          var target = option.StartsWith("--chdir=", StringComparison.Ordinal) ? option["--chdir=".Length..] : ValueAfter(words, j);
+          dir = target is null ? dir : Path.GetFullPath(Path.Combine(dir, target));
+        }
+        j += takesValue ? 2 : 1;
+      }
+      // timeout's first word after its options is the duration.
+      i = name == "timeout" ? j + 1 : j;
+    }
+    if (i == 0 && !words[0].Contains('/', StringComparison.Ordinal))
+    {
+      return (words, cwd);
+    }
+    if (i >= words.Count)
+    {
+      return (words, cwd);
+    }
+    return ([Path.GetFileName(words[i]), .. words.Skip(i + 1)], dir);
+  }
+
+  private static string? ValueAfter(IReadOnlyList<string> words, int i) => i + 1 < words.Count ? words[i + 1] : null;
+
+  private static bool IsAssignment(string word)
+  {
+    var equals = word.IndexOf('=', StringComparison.Ordinal);
+    return equals > 0 && (char.IsAsciiLetter(word[0]) || word[0] == '_')
+      && word.Take(equals).All(c => char.IsAsciiLetterOrDigit(c) || c == '_');
   }
 
   /// <summary>Splits one simple command into words, honouring quotes, escapes, substitutions and heredocs.</summary>

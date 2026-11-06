@@ -14,7 +14,7 @@ Epics #272 and #347 cut what an author waits for on a pull request run from a me
 
 * **D1 Bounded false failures**: at most about 1 % of pull request runs with no regression fail on time, across all gated jobs together, and the bound can be calibrated and back-tested on held-out runs. A gate that cries wolf gets re-run until green and stops meaning anything.
 * **D2 Catches a clear regression in one run**: a slowdown of the size the epics removed (tens of seconds on a job of about 1:20) fails the pull request that adds it, not some later one. Smaller creep is the trend check's job.
-* **D3 Estimable from a 30-run baseline**: the epic requires at least 30 successful runs per job and path. Each extra baseline run on the PR path is a dispatched CI run, so the method must work at that size rather than need hundreds.
+* **D3 Estimable from a 30-run baseline**: the epic requires at least 30 successful runs per job and path. Each extra baseline run on the check path is a dispatched CI run, so the method must work at that size rather than need hundreds.
 * **D4 Robust to skew and outliers**: job durations are right-skewed, a slow runner now and then lands in the baseline, and timestamps have one-second resolution. One odd run must not move the threshold much.
 * **D5 Explainable failure**: the failure names the job, its time, the threshold and the baseline median, so an author can tell a regression from noise without reading statistics.
 * **D6 Cheap and stateless on the critical path**: the gate runs inside the run it judges, adds about a second to the 1:29 it protects, and needs nothing from earlier runs.
@@ -66,22 +66,35 @@ An illustration, **inferred** rather than measured: if Backend's median is 79 s 
 
 * **Quantity:** each job's execution time, `started_at` to `completed_at` from `GET /actions/runs/{id}/attempts/{attempt}/jobs`. Queue time is not gated. Skipped jobs are ignored.
 * **Gated jobs:** Backend, Frontend, Docs site, Tooling and Container image (`J = 5`). Not `CI result` itself, and not `Cancel superseded runs`, which only pull requests run and which `CI result` does not wait for. A job with no baseline entry (new or renamed) passes with a warning that names it, until the next baseline update adds it, and `J` counts the jobs the baseline holds.
-* **Paths:** a run takes the **PR path** (`pull_request`, `merge_group`, `workflow_dispatch`) or the **push path** (`push` to `main`). The Docs site job takes the push path whenever its publication steps ran, which includes docs-only pull requests, because those steps add about 20 s (record 0012). So a bimodal job never widens one band with two clusters.
-* **Fails or annotates:** the gate fails `CI result` on `pull_request` and `merge_group` runs. On pushes and dispatches it only writes the comparison to the step summary, because those runs measure `main` and feed the trend check.
+* **Paths, from what the run did:** a run is on the **publication** path when the Docs site step "Build and verify publication artifact" ran (`conclusion: success`), and on the **check** path when it was skipped. A push to `main` and a docs-only pull request are publication; a dispatch and every other pull request are check. That step adds about 20 s (record 0012), so a bimodal job never widens one band with two clusters. The gate classifies its own run the same way, from the jobs API response it already reads, so no list of events or docs-only rule is repeated in the gate. Record 0012's "PR path" and "push to `main`" are these two paths, except that a docs-only pull request is now on the path it actually takes. Every gated job has a baseline entry on both paths, even where its steps do not differ, so the rule is the same for all of them.
+* **Fails or reports:** the gate fails `CI result` on `pull_request` and `merge_group` runs, on either path. On pushes and dispatches it only writes the comparison to the step summary, because those runs measure `main` and feed the trend check.
 
 ### Where the gate runs
 
-A step in `CI result`, the single required check of [ADR-0012](0012-ci-and-dependency-updates.md), after "All needed jobs succeeded" and reading the same jobs API response. The thresholds are precomputed in the baseline file, so the step compares numbers and adds about a second; the derivation, the statistics and the back-test live in `tools/ci-timings` with xUnit tests ([ADR-0017](0017-dotnet-file-based-apps-for-repo-tooling.md)).
+A step in `CI result`, the single required check of [ADR-0012](0012-ci-and-dependency-updates.md), after "All needed jobs succeeded" and reading the same jobs API response. The thresholds are precomputed in the baseline file, so the step only classifies the run, looks up each job and compares numbers, and adds about a second. The derivation, the statistics and the back-test live in `tools/ci-timings` with xUnit tests ([ADR-0017](0017-dotnet-file-based-apps-for-repo-tooling.md)).
 
 * **Not a job of its own:** a separate job only gates if `CI result` needs it, so it would add a job start and a runner to the end of every run. It can only start once every gated job has ended, exactly like `CI result`.
-* **Not the .NET tool inside `CI result`:** that would add `setup-dotnet` (3–12 s on Backend, record 0012) and a compile to the critical path, 5–20 % of the 1:29 the gate protects. Revisit if the comparison grows beyond comparing numbers.
+* **Not the .NET tool inside `CI result`:** that would add `setup-dotnet` (3–12 s on Backend, record 0012) and a compile to the critical path, 5–20 % of the 1:29 the gate protects. Revisit if the comparison grows beyond what is listed below.
 * **Measured cost:** #385 reports the step's added time on the critical path, on the same basis as record 0012.
+
+**The gate's code and its tests.** The comparison is a jq program in one committed file, `.github/ci-gate.jq`. The step runs it with `jq -f` on the jobs API response, with the baseline file and the event name as arguments. It never writes the logic inline in the workflow. The program does only five things: it classifies the path, picks the gated jobs, looks up each job's threshold, compares, and formats the messages (a failure, a missing baseline entry, or the summary on a report-only run). Anything more belongs in the tool. `jq` is preinstalled on the runners, and the existing `CI result` step already uses it.
+
+* **Tested in the repo, not only in the PR:** `tools/ci-timings` tests run that exact file with `jq` against canned jobs API responses and baseline files. They cover:
+  * a slow job that fails, and an ordinary run that passes;
+  * the publication and check paths;
+  * a job with no baseline entry;
+  * a push run that only reports.
+
+  Another test reads `ci.yml` and fails unless the gate step runs `.github/ci-gate.jq`, so the program the tests exercise is the one CI runs. Each test is proved to fail without the logic it covers. When `jq` is missing, the tests fail and name it; they do not skip. #368's stub tests were run in its PR and never committed, and this gate must not repeat that.
+* **Rejected: an inline `run:` script tested by hand in the PR.** That is the #368 pattern: nothing stops a later edit from breaking it.
+* **Rejected: the comparison in C#, run by the gate step.** It is covered by xUnit like the rest of the tool, but it costs the `setup-dotnet` and compile time above on every run.
+* **Rejected: the comparison in C#, mirrored in jq.** It keeps two implementations of one rule, and they can disagree.
 
 ### The baseline file
 
 * **Location:** `.github/ci-baseline.json`, beside the workflow it describes, read from the commit under test (the merge commit of a pull request).
 * **Content:** a schema version, the method and constants (`α`, `J`, `z`, `floor`, `r`), the benchmark record it came from, and per job and path: `n`, the window, the first and last commit, the run IDs, the median, the log-MAD, p90, the maximum and the threshold in seconds.
-* **Source:** measured from runs on `main`: push runs for the push path, and `workflow_dispatch` runs on `main` for the PR path, which take the same steps as a pull request run (record 0012). Record 0014 states which runs and whether pull request runs can join the PR-path sample. Dispatches run one at a time, with the maintainer's approval on the issue, as in #347.
+* **Source:** measured from runs on `main`: push runs for the publication path, and `workflow_dispatch` runs on `main` for the check path, which take the same steps as a non-docs pull request run (record 0012). Pull request runs carry the PR's own change, so they are not in the baseline; they are the held-out set of the check-path back-test. Dispatches run one at a time and only with the maintainer's approval on the issue, as in #347. They are spread over the day rather than back to back, because a baseline from one hour understates how runner speed varies. Record 0014 states the window's span, and how much of the held-out set falls outside the baseline's hours.
 * **Written by** `ci-timings baseline`, never by hand, so the thresholds always follow from the stated sample and constants.
 
 ### Updating the baseline deliberately
@@ -92,7 +105,7 @@ A suspected false failure is retried with **Re-run all jobs**. "Re-run failed jo
 
 ### The trend check on `main`
 
-A scheduled workflow (daily, and on demand) compares the last `N = 20` successful push runs per job with the push-path baseline:
+A scheduled workflow (daily, and on demand) compares the last `N = 20` successful push runs per job with the publication-path baseline:
 
 * **Test:** a one-sided Mann–Whitney U test that the recent durations are stochastically larger than the baseline's, at `p < 0.01` per job. It needs no assumption about the shape of the distribution, which suits skewed durations, and it is exact and deterministic at these sizes (a bootstrap would be neither at `n = 20` without a fixed seed).
 * **Effect:** the Hodges–Lehmann estimate of the shift (the median of all pairwise differences, recent minus baseline), the estimator that goes with the Mann–Whitney test. It reports only when the test is significant **and** the shift is at least `max(10 s, 5 %)` of the baseline median, so a significant but negligible shift raises nothing.
@@ -106,13 +119,13 @@ A scheduled workflow (daily, and on demand) compares the last `N = 20` successfu
 * Good, because the gate adds about a second and no job to the critical path, and needs no state across runs.
 * Good, because the trend check catches creep below the per-run threshold without failing anyone's PR.
 * Bad, because a regression smaller than the band (a few seconds per PR) passes every PR gate; only the trend check, days later, sees the sum.
-* Bad, because the PR-path baseline costs about 30 dispatched runs each time it is re-measured.
+* Bad, because the check-path baseline costs about 30 dispatched runs each time it is re-measured.
 * Bad, because a runner incident (a slow image, a degraded region) can fail several PRs on one day; the remedy is re-running all jobs, and a pattern of them is a reason to recalibrate.
 * Neutral: timing records stay evidence. The pinned baseline is the one timing artefact a check asserts, and it changes only with a record.
 
 ### Confirmation
 
-* `tools/ci-timings` tests cover the threshold formula, the path rules and the back-test (#384), and the trend test on a constructed history (#386).
+* `tools/ci-timings` tests cover the threshold formula, the path rules and the back-test (#384), the gate program `.github/ci-gate.jq` run with `jq` against canned jobs API responses and the test that `ci.yml` runs that file (#385), and the trend test on a constructed history (#386).
 * Record 0014 reports the observed false-failure rate on held-out runs, per job and across jobs, with its one-sided 95 % upper bound.
 * #385 proves the gate both ways: a scratch branch with an injected `sleep` fails it, and an ordinary run passes. It reports the step's added time.
 * Review: a change to `.github/ci-baseline.json` comes with a benchmark record in the same PR.

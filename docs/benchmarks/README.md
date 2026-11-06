@@ -4,7 +4,7 @@ Reference measurements for performance work. A benchmark here is a repeatable ha
 
 ## The pinned CI baseline
 
-Being built in epic #380 (story [0034](../stories/0034-gate-ci-job-run-times-against-a-pinned-baseline.md)); until the file exists, nothing gates on time.
+Delivered in epic #380 (story [0034](../stories/0034-gate-ci-job-run-times-against-a-pinned-baseline.md)). A path that the file marks `provisional` (fewer than 30 runs) only reports, and the gate fails a pull request only on a `pinned` path.
 
 `.github/ci-baseline.json` is the one timing a check asserts. It holds, per CI job and path (publication, when the run built the docs publication artifact, or check), the statistics of at least 30 successful runs on `main` and the threshold derived from them; `CI result` fails a pull request whose job takes longer than its threshold, and a scheduled trend check on `main` reports smaller slowdowns as an issue. The method, the paths and the constants are in ADR-0045; the measurement and the back-test of each version of the file are in a benchmark record.
 
@@ -12,6 +12,18 @@ Being built in epic #380 (story [0034](../stories/0034-gate-ci-job-run-times-aga
 - **A slower job that is necessary:** regenerate the file in the same PR that adds the time, and add a record here with the new sample, the back-test, the reason, and the before and after distributions. The gate reads the file from the commit under test, so the new thresholds apply to that PR's own run, and the diff shows the reviewer every threshold that moved.
 - **Nothing else moves it:** runs on `main` never update it, so it cannot creep upward. Re-measure it when a record's reconsideration condition arrives, for example a new job or new runner hardware.
 - **A failure you think is noise:** use **Re-run all jobs**. **Re-run failed jobs** repeats only `CI result` on the same durations.
+
+## What protects a record
+
+A record's gain is kept in two ways.
+
+- **The run-time gate** fails when a job is slower than its baseline. It covers every gated job: Backend, Frontend, Docs site, Tooling and Container image. Queue time is not gated, so a record about a wait (0008) relies on its guard alone.
+- **A mechanism guard** fails when the cause of a fixed slowdown comes back, so its failure says why. Guards live in `tools/delivery-guards` (`just tools test`), or in the suite of the code they guard.
+
+The `delivery-performance` control on `github-actions` in `docs/architecture/calendar.architecture.json` is the map: each guard names the issue it protects, its record and its test. A record about local tooling with no CI job (0001, 0013) has neither, and its reconsideration condition is the only check.
+
+- **A fix with a new mechanism** adds its guard in the same PR, with a test that fails when the fix is reverted. It also adds the guard to the control, with its record.
+- **A guard that stops matching after an intended change** is updated in that PR, with the reason in its message.
 
 ## Performance issues
 

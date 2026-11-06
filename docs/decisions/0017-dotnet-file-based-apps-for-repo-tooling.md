@@ -63,6 +63,16 @@ A tool whose job is to diagnose a missing or broken toolchain can't depend on th
 * **Quality:** linted with **shellcheck** in CI.
 * **Hand-off:** anything that can assume the toolchain exists, including richer checks the doctor might want later, is written in .NET.
 
+### Exception: scripts a technology requires in its own language (amendment, 2026-11-06)
+
+A script that exists only to be run by a technology that dictates its language is not repo tooling in the sense of this record, and this record does not apply to it. The first case is a Claude Code workflow (`.claude/workflows/*.js`), which the harness runs in its own JavaScript runtime with functions no other language can call; story [0035](../stories/0035-review-before-merge-with-a-workflow-and-a-skeptic-per-finding.md) adds the first. The same holds for any other harness- or platform-owned script whose language is fixed by what runs it, such as a GitHub Actions expression or a `just` recipe body.
+
+* **What qualifies:** the technology that runs the script fixes its language, and the script runs only inside that technology. A script that could be a .NET file-based app invoked from a shell does not qualify, whatever it calls.
+* **What still applies:** the quality bar in spirit. Keep the script small, keep its logic in the harness's calls, and put anything testable (parsing, filtering, state) in a .NET tool under `tools/` that the script invokes, so `just tools test` covers it.
+* **Record it:** the story card that adds such a script names this exception, so the choice of language is visibly deliberate.
+
+The maintainer gave this reading on the review of story 0035's card, in conversation on 2026-11-06: harness code must be in the harness's language, so it is outside the scope of this record. The decision itself is unchanged, so this record is amended, not superseded.
+
 ### Evidence gathered for this ADR
 
 Measured on 2026-10-26 with .NET SDK 10.0.403, Node 24.22.1 and Python 3.12.3 on WSL2:
@@ -219,4 +229,5 @@ All steps are implemented. Step 5 showed that Dependabot doesn't support file-ba
   * The ADR covers all tooling scripts, with non-skill tools in `tools/<name>/`.
   * Sharing skills with non-.NET repos is deferred.
 * **Amendment, 2026-11-03:** the minimum SDK was corrected from ".NET 10" to 10.0.300, after `just tools adr`, `just tools test`, `just tools versions` and `just db seed` failed locally on SDK 10.0.114 while CI passed. The decision itself is unchanged, so this ADR was amended, not superseded. The evidence was gathered on 10.0.403, which is why the gap went unnoticed.
+* **Amendment, 2026-11-06:** scripts whose language is fixed by the technology that runs them (Claude Code workflows first) are outside this record's scope; see the exception above. Given by the maintainer in conversation on the review of story 0035's card. The decision itself is unchanged.
 * **Deferred:** if a skill must be shared with non-.NET repos, reconsider the language for that skill only, in a new ADR.

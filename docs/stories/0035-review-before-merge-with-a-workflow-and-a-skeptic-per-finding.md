@@ -31,7 +31,7 @@ This story builds on [0027](0027-focus-agent-guidance-on-claude-code-for-a-while
 * **Both lists reach the PR.** The session posts each confirmed finding on the issue or PR with the `agent-found` label, as today, and posts the refuted findings under one collapsed section with the skeptics' reasons, so a wrong refutation can be caught by a person. Unexamined findings are named in the same post.
 * **The step still exists without the workflow.** The reviewer agents and their checklists are unchanged. The review line in `issue-handover` gains half a sentence: in Claude Code, run the saved workflow; elsewhere, run the two reviewers by hand. The workflow is marked Claude Code only where it is described, as ADR-0044 asks.
 * **Code changes only.** The workflow is not run on docs-only PRs (cards, ADRs, posts, READMEs); the review step already applies to code changes.
-* **Measured.** A benchmark record under `docs/benchmarks/` compares, on the same PRs, the wall-clock time and the agent count of the workflow against the two sequential reviews it replaced, and reports how often the skeptics were right for the first ten refuted findings, checked by a person.
+* **Measured.** A benchmark record under `docs/benchmarks/` compares, on the same PRs, the wall-clock time and the agent count of the workflow against the two sequential reviews it replaced, and reports, for every refuted finding on those PRs, whether a person agreed with the skeptics.
 
 ### Not in this story
 
@@ -49,7 +49,7 @@ This story builds on [0027](0027-focus-agent-guidance-on-claude-code-for-a-while
 4. **Given** the workflow's result, **when** the session posts it, **then** each confirmed finding is a comment with the `agent-found` label as today, the refuted findings appear in one collapsed section with their reasons, unexamined findings are named, and nothing is posted that the public-post guard would refuse.
 5. **Given** the `issue-handover` skill, **when** an agent reaches the review step, **then** the skill names the workflow for Claude Code and the by-hand run of both reviewers for any other harness, and the reviewer agents are unchanged on `main`.
 6. **Given** a docs-only PR, **when** the handover reaches the review step, **then** the workflow is not run.
-7. **Given** three real code PRs, **when** the record is written, **then** it gives for each the measured wall-clock time and agent count of the workflow and of the two sequential reviews, the number of confirmed, refuted and unexamined findings, and the human check of the first ten refutations with how many the skeptics got right.
+7. **Given** three real code PRs, **when** the record is written, **then** it gives for each the measured wall-clock time and agent count of the workflow and of the two sequential reviews, the number of confirmed, refuted and unexamined findings, and the human check of every refutation on those PRs with how many the skeptics got right.
 8. **Given** the change is complete, **when** I run `just check`, **then** it passes. The workflow is a script and the skill is Markdown; the docs corpus tests and site build cover this card, the record and the skill.
 
 ## Design decisions
@@ -60,7 +60,7 @@ This story builds on [0027](0027-focus-agent-guidance-on-claude-code-for-a-while
 | --- | --- | --- |
 | [0044](../decisions/0044-claude-first-agent-automation.md) | Focus new agent automation on Claude Code for a while, keeping the guidance files agent-neutral | A saved workflow is Claude Code only; this story marks it so, keeps the by-hand path in the skill, and is the period's first workflow. |
 | [0042](../decisions/0042-layered-agent-guidance-and-hooks.md) | Layer agent guidance by scope and enforce its invariants with hooks | The reviewer subagents and the skill are layers of this decision; the workflow sits inside the skill's step and the public-post guard stays in front of every post. |
-| [0017](../decisions/0017-dotnet-file-based-apps-for-repo-tooling.md) | .NET file-based apps for repo tooling | The workflow script is harness code, not repo tooling: it runs only inside Claude Code's workflow runtime and is not a `tools/` app. The record says so, so the exception is deliberate. |
+| [0017](../decisions/0017-dotnet-file-based-apps-for-repo-tooling.md) | .NET file-based apps for repo tooling | The workflow script is harness code in the language the harness dictates, which the record's 2026-11-06 amendment places outside its scope; anything testable the script needs goes in a `tools/` app it calls. |
 
 No new ADR is expected.
 

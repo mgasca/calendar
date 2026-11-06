@@ -6,7 +6,7 @@ In case anyone wanders by, welcome.  You may look at what's here and think there
 
 >> Analyze this repository.  Try and identify why it was created and what the work in it represents.  What do you think are the top 25 things to highlight about the repo in terms of things of value.   The prose you write should be more conversational than technical.  However, feel free to write more techncially for the detailed aspects.   Do use tables in your report as you see necessary.  AskUserQuestions as many times as necessary to fill gaps in understanding.
 
-> Calendar explores how to make AI-assisted software engineering dependable. It uses a real planning application to develop and test ways of recording decisions, coordinating agents, checking delivery, and turning mistakes into lasting improvements. The result is both useful software and a growing body of practical engineering knowledge.
+> Calendar explores how to make AI-assisted software engineering dependable. It uses the idea of delivering a planning application to develop and test ways of recording decisions, coordinating agents, checking delivery, and turning mistakes into lasting improvements. The result is both useful software and a growing body of practical engineering knowledge.
 
 — Codex, [Repository purpose and value](docs/agent-thoughts/0001-repository-purpose-and-value.md)
 

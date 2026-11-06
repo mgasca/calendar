@@ -1,6 +1,6 @@
 # 0001 Repository purpose and value
 
-*Assessment captured on 6 November 2026 by Codex, reviewing revision `914a6d15`. The maintainer requested a report for other people, clarified that the primary motivation was exploring AI-assisted engineering, and requested the ordering reflected below. This is an independent agent reading informed by that input, not an external audit. The report is preserved from the conversation, with a title, provenance note and links adjusted for this directory.*
+*Assessment captured on 6 November 2026 by Codex, reviewing revision `914a6d15`. The maintainer requested a report for other people, clarified that the primary motivation was exploring AI-assisted engineering, and requested the ordering reflected below. This is an independent agent reading informed by that input, not an external audit. The report is preserved from the conversation, with a title, provenance note and links adjusted for this directory. During review, the maintainer revised the closing description to say "the idea of delivering a planning application".*
 
 **Calendar is an exploration of how to build software with AI agents, using a real planning application as the proving ground.** Your clarification makes the original motivation clear, and the repository supports it: the earliest architecture decisions explicitly consider agent context, while later work tackles coordination, memory, verification, and repeated mistakes.
 
@@ -98,4 +98,4 @@ Some capabilities also have narrower evidence than their names might suggest. Th
 
 For an outside audience, I would describe the project this way:
 
-> **Calendar explores how to make AI-assisted software engineering dependable. It uses a real planning application to develop and test ways of recording decisions, coordinating agents, checking delivery, and turning mistakes into lasting improvements. The result is both useful software and a growing body of practical engineering knowledge.**
+> **Calendar explores how to make AI-assisted software engineering dependable. It uses the idea of delivering a planning application to develop and test ways of recording decisions, coordinating agents, checking delivery, and turning mistakes into lasting improvements. The result is both useful software and a growing body of practical engineering knowledge.**

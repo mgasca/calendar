@@ -111,9 +111,7 @@ public static partial class Guards
   {
     var workflow = Workflow.Parse(files.Workflow);
     var group = workflow.Root.Map("concurrency")?.Text("group") ?? "";
-    string[] parts = ["github.run_id", "github.event_name == 'pull_request'",
-      "github.event.pull_request.head.repo.full_name == github.repository"];
-    foreach (var part in parts.Where(p => !group.Contains(p, StringComparison.Ordinal)))
+    foreach (var part in SameRepositoryPullRequest.Append("github.run_id").Where(p => !group.Contains(p, StringComparison.Ordinal)))
     {
       yield return $"concurrency.group does not contain `{part}`, so a same-repository pull request run shares a group "
         + "with the run it supersedes and queues until GitHub stops it.";
@@ -125,19 +123,26 @@ public static partial class Guards
       yield break;
     }
 
-    if (!(job.Body.Text("if") ?? "").Contains("pull_request", StringComparison.Ordinal))
+    // The job holds actions: write, so the guard also keeps what makes that safe: same-repository pull requests only,
+    // no other permission, and no step that fetches the pull request's code.
+    var condition = job.Body.Text("if") ?? "";
+    if (!Array.TrueForAll(SameRepositoryPullRequest, p => condition.Contains(p, StringComparison.Ordinal))
+      || condition.Contains("!=", StringComparison.Ordinal) || condition.Contains("pull_request_target", StringComparison.Ordinal))
     {
-      yield return $"`{SupersedeJobName}` does not run only for pull requests (its `if` does not mention pull_request).";
+      yield return $"`{SupersedeJobName}` does not run only for same-repository pull requests (its `if` must require "
+        + $"`{SameRepositoryPullRequest[0]}` and `{SameRepositoryPullRequest[1]}`).";
     }
 
-    if (job.Body.Map("permissions")?.Text("actions") != "write")
+    YamlMapping? permissions = job.Body.Map("permissions");
+    if (permissions is null || permissions.Entries.Count != 1 || permissions.Text("actions") != "write")
     {
-      yield return $"`{SupersedeJobName}` lacks `permissions: actions: write`, so it cannot cancel runs.";
+      yield return $"`{SupersedeJobName}` must have exactly `permissions: actions: write`: it cannot cancel runs without it, "
+        + "and any other scope is more than it needs.";
     }
 
-    if (job.Steps.Any(s => (s.Text("uses") ?? "").StartsWith("actions/checkout", StringComparison.Ordinal)))
+    if (job.Steps.Any(FetchesCode))
     {
-      yield return $"`{SupersedeJobName}` checks code out; with actions: write it must run no code from the pull request.";
+      yield return $"`{SupersedeJobName}` fetches code; with actions: write it must run no code from the pull request.";
     }
 
     if (!job.Steps.Any(s => Workflow.Run(s).Contains("gh run cancel", StringComparison.Ordinal)))
@@ -145,6 +150,13 @@ public static partial class Guards
       yield return $"`{SupersedeJobName}` has no step that runs `gh run cancel`.";
     }
   }
+
+  private static readonly string[] SameRepositoryPullRequest =
+    ["github.event_name == 'pull_request'", "github.event.pull_request.head.repo.full_name == github.repository"];
+
+  private static bool FetchesCode(YamlMapping step) =>
+    (step.Text("uses") ?? "").StartsWith("actions/checkout", StringComparison.OrdinalIgnoreCase)
+    || FetchCommand().IsMatch(Workflow.Run(step));
 
   private static IEnumerable<string> FormatWhitespaceOnly(RepoFiles files)
   {
@@ -395,6 +407,9 @@ public static partial class Guards
 
     return [.. lines.Skip(start + 1).TakeWhile(l => l.Length == 0 || l[0] is ' ' or '\t')];
   }
+
+  [GeneratedRegex(@"\b(git\s+(clone|fetch|checkout|pull|worktree)|gh\s+(repo\s+clone|pr\s+checkout))\b", RegexOptions.None, 1000)]
+  private static partial Regex FetchCommand();
 
   [GeneratedRegex(@"\bdotnet\s+format\b", RegexOptions.None, 1000)]
   private static partial Regex DotnetFormat();

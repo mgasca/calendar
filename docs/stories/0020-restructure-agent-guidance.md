@@ -13,6 +13,7 @@ pr:
   - https://github.com/mgasca/calendar/pull/236
   - https://github.com/mgasca/calendar/pull/235
   - https://github.com/mgasca/calendar/pull/240
+  - https://github.com/mgasca/calendar/pull/373
 adrs: ["0017", "0042"]
 ---
 
@@ -22,7 +23,7 @@ adrs: ["0017", "0042"]
 
 > As a calendar maintainer, I need the shared agent guidance to be short where every session reads it, disclosed on demand where only some sessions need it, and enforced mechanically where a rule must always hold, so that agents follow it reliably and each session pays only for the guidance it uses.
 
-Tracked in [epic #216](https://github.com/mgasca/calendar/issues/216). Card PR: [#220](https://github.com/mgasca/calendar/pull/220); delivery PRs [#221](https://github.com/mgasca/calendar/pull/221) (skill), [#222](https://github.com/mgasca/calendar/pull/222) (hooks and ADR-0042), [#223](https://github.com/mgasca/calendar/pull/223) (restructure) and [#226](https://github.com/mgasca/calendar/pull/226) (a review suggestion on #221 that missed its merge); close-out [#229](https://github.com/mgasca/calendar/pull/229); after close-out, [#233](https://github.com/mgasca/calendar/pull/233) (the session-start line names the SDK, #231) and [#236](https://github.com/mgasca/calendar/pull/236) (the ESLint follow-up, #228).
+Tracked in [epic #216](https://github.com/mgasca/calendar/issues/216). Card PR: [#220](https://github.com/mgasca/calendar/pull/220); delivery PRs [#221](https://github.com/mgasca/calendar/pull/221) (skill), [#222](https://github.com/mgasca/calendar/pull/222) (hooks and ADR-0042), [#223](https://github.com/mgasca/calendar/pull/223) (restructure) and [#226](https://github.com/mgasca/calendar/pull/226) (a review suggestion on #221 that missed its merge); close-out [#229](https://github.com/mgasca/calendar/pull/229); after close-out, [#233](https://github.com/mgasca/calendar/pull/233) (the session-start line names the SDK, #231) [#236](https://github.com/mgasca/calendar/pull/236) (the ESLint follow-up, #228) and [#373](https://github.com/mgasca/calendar/pull/373) (the public-post guard reads `gh api` bodies, #369).
 
 ## Background
 
@@ -126,7 +127,7 @@ The story shipped as four delivery PRs after the card, each squash-merged on 202
 | Event | Rule | Decision |
 | --- | --- | --- |
 | PreToolUse `Bash` (`git`, `gh`, `just`, `docker`) | `git restore` or `git checkout [--]` over paths with unstaged changes, following `cd` | deny |
-| | `gh` issue, PR, comment, edit, review or `api` posts whose body (or `--body-file` contents) carries an absolute machine path, a worktree path, a session, task or agent handle, or a UUID | deny |
+| | `gh` issue, PR, comment, edit, review or `api` posts whose body (or what `--body-file`, and since #373 `gh api --input` and `-F key=@file`, name) carries an absolute machine path, a worktree path, a session, task or agent handle, or a UUID | deny |
 | | `just db` `up`, `down`, `reset`, `migrate` or `psql` (also `db::up`; `db-*` before story 0019), or `docker compose`, from a linked worktree | ask |
 | PreToolUse `Edit\|Write` | `contracts/openapi.json`, `schema.gen.ts`, `packages.lock.json`, `pnpm-lock.yaml` | deny |
 | PostToolUse `Edit\|Write` | `.cs` lines over 140 characters outside `Migrations/` | inform |
@@ -159,6 +160,13 @@ No changes.
 * **Hooks load at session start:** the session that builds or changes them can't observe them live. Plan a fresh-session check, as criteria 7 and 8 did.
 * **Nested guidance loads on Read or Edit only:** Claude Code injects `backend/` or `frontend/` guidance when its own Read or Edit tool touches a file there. A Bash `ls` did not trigger it, so an agent that explores only through the shell may miss the area practice until it reads a file.
 * **The SessionStart line named only the runtime:** it showed `Environment.Version` (10.0.14 in the live check), while the minimum that matters is SDK 10.0.300 (10.0.403 here), so the figure read as too old. The tool's header comment and parameter name said SDK. Fixed after close-out by [#233](https://github.com/mgasca/calendar/pull/233) ([#231](https://github.com/mgasca/calendar/issues/231)): the line now names both (`.NET SDK 10.0.403, runtime 10.0.14`), which keeps ADR-0042's "names the runtime" true. It costs about 0.3 s once a session, for `dotnet --version`.
+* **The public-post guard did not read `gh api` bodies:** it scanned only the words of a `gh api` post, never the file or heredoc that `--input` or a typed field's `@` value (`-F body=@file`) sends. A post made that way skipped the check. Found while delivering #321 and fixed after close-out by [#373](https://github.com/mgasca/calendar/pull/373) ([#369](https://github.com/mgasca/calendar/issues/369)): the guard reads those sources as it reads `--body-file`, and no longer scans the local path of a source it can read. The security and performance reviews of that PR found four defects in the change, recorded on #369 and fixed in the same PR:
+  * the hook read any file whole, which took 16.4 s for 50 MB;
+  * it denied a binary upload on its bytes;
+  * it dropped the words naming a source it could not read, where `main` scanned them;
+  * it took an option-like word as a source path.
+
+  `GitProbe.ReadFile` now reads only a regular text file of at most 1 MiB. A source it cannot read is scanned by the words that name it. Known gap: such a source's contents are never scanned. That covers a file the same command writes first, a path with an unexpanded `~` or `$`, a `< file` redirect and a pipe from a command other than a heredoc. Whether that gap becomes its own issue was asked on #369.
 * **Limits:** the hooks are Claude Code only; other agents follow the *(hook)* lines by hand. Below SDK 10.0.300 the tool fails to compile, Claude Code treats that as a non-blocking error, and the rules stay prose (ADR-0042).
 * **Follow-up:** [#228](https://github.com/mgasca/calendar/issues/228), delivered in [#236](https://github.com/mgasca/calendar/pull/236), turned two code rules that `frontend/AGENTS.md` stated as prose into ESLint rules (`frontend/eslint.config.js`): no `new QueryClient(` outside `createQueryClient`, and no `Intl.DateTimeFormat` or `toLocale*String` outside `features/agenda/dayTime.ts` (the four `toLocaleString` calls moved onto a cached `formatDateTime`, and the one test that called `new QueryClient(` now uses `createQueryClient`). `frontend/AGENTS.md` marks them *(lint)*. `useNow()` placement stays prose: no selector can judge "the smallest component".
 

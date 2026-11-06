@@ -153,7 +153,7 @@ No. The maintainer has not stated an end to the Claude-first period, so ADR-0044
 * **The watch interval changed from 60 s to 5 minutes**, approved on #319. Ticks that find nothing were the common case, and each one costs a turn.
 * **The docs build's link test is close to its timeout locally.** `tests/build.test.ts` "resolves every internal link and anchor" uses Vitest's default 5 s timeout. It hit that timeout once on #356, at a load average of about 8, and twice more on #366 at about 2.7. Run alone with a 60 s timeout it passed in 12.2 s over 129 pages (measured), so it is slow rather than flaky; CI has not hit it. It is not filed.
 * **Known gap:** the PreToolUse note of #358 has not been seen live. The first session that runs `gh pr create` with such a body on the new `main` can confirm it.
-* **Filed outside the epic:** the public-post guard does not read the body of `gh api --input`, a file or stdin ([#369](https://github.com/mgasca/calendar/issues/369), `bug`, `agent-found`). This predates the epic and was found while delivering #321.
+* **Filed outside the epic:** the public-post guard does not read the body of `gh api --input`, a file or stdin ([#369](https://github.com/mgasca/calendar/issues/369), `bug`, `agent-found`). This predates the epic and was found while delivering #321. It was delivered in [#373](https://github.com/mgasca/calendar/pull/373) and is recorded on card [0020](0020-restructure-agent-guidance.md), where the guard comes from.
 * **Follow-ups:** #363 (one GraphQL query per watch tick). The saved Claude Code workflows deferred on #318 (close-out checks across a stack, review bursts, the issue sweep) can now call the tool and the hook.
 
 ## User guide

@@ -26,7 +26,7 @@ From the request: the surfaces (default all five below), a focus (a workflow, jo
 | --- | --- | --- | --- |
 | `report` (default) | No mode named | Only a scratch directory and a scratch worktree, removed at the end | The report |
 | `issues` | "file issues", "make an epic", after the report | One epic and one child issue per accepted opportunity | Report plus issue links |
-| `deliver` | "deliver", "take them to merge", after the report | Through `issue-handover` or `epic-delivery` only | Report, issues, PRs |
+| `deliver` | "deliver", "take them to merge", after the report | Only through a forked `epic-delivery` session, which hands each child to `issue-handover` | Report, issues, PRs |
 
 **Report first, always.** Even when the request names `issues` or `deliver`, finish the report, then ask before filing. The maintainer decided this on #342. A report can show that the slow thing is off the critical path, and then the right number of issues is zero. Merges stay with the maintainer.
 
@@ -106,7 +106,7 @@ Only when the maintainer asks, after reading the report:
   - a reserved benchmark record number;
   - the files it owns, and which sibling owns shared files (for example the `docs/benchmarks/README.md` index row, which every sibling adding a record edits).
   - The instruction to carry `Closes #N` in a PR against `main`. Three of #272's four children merged without it, and those issues stayed open.
-- **Deliver** through `issue-handover` (one child) or `epic-delivery` (several, in parallel sessions). Don't re-implement either skill here. The handover's rules for performance issues apply: baseline on the issue before implementing, same quantity after, a record, and close on evidence.
+- **Deliver** by forking a session that runs `epic-delivery` on the epic, even when there is only one child. `epic-delivery` launches the delivery sessions, and each one works its child with `issue-handover`. This skill doesn't coordinate or implement the children itself. Give the forked session the epic link and say that the briefs below are already on the children. The handover's rules for performance issues apply: baseline on the issue before implementing, same quantity after, a record, and close on evidence.
 - **Dispatch budget:** for after-samples, run extra CI one at a time. The workflow's concurrency group keeps only one pending run per ref, so a second dispatch cancels the queued one. Stop at the sample size the spread justifies ([references/measurement.md](references/measurement.md)). Sample by head commit.
 
 ## Honesty rules

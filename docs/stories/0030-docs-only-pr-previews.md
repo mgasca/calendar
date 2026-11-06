@@ -83,7 +83,7 @@ No changes.
 
 ### Lessons learned, known issues and follow-ups
 
-* **The publisher runs from `main`**, so a change to it cannot be exercised by its own pull request. While the delivery PR was open, the publisher on `main` still expected an artifact from every same-repository PR and failed at the download for the delivery PR's CI runs; that run is not a PR check, and it stopped with the merge. A change that alters what CI uploads should land with the publisher change that tolerates it, as here, and expect that transient failure.
+* **The publisher runs from `main`**, so a change to it cannot be exercised by its own pull request. While the delivery PR was stacked on the card branch, the publisher on `main` returned early for its CI runs, because a PR whose base is not `main` was never eligible; once retargeted to `main` and until merged, that publisher expected an artifact from every same-repository PR and failed at the download for the delivery PR's CI runs. That run is not a PR check, and it stops with the merge. A change that alters what CI uploads should land with the publisher change that tolerates it, as here, and expect that short window.
 * **A preview outlives its docs-only status.** The publisher removes previews on close only, so a PR that was docs-only and then adds code keeps the last preview. Removing it would cost a publish per code PR, the opposite of this story's aim.
 * **Fewer publishes, not unique ones.** This story reduces the Pages deployments that collided in #285 but does not prevent the collision; that prevention item stays with #285.
 

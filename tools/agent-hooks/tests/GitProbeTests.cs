@@ -115,4 +115,34 @@ public sealed class GitProbeTests : IDisposable
     probe.ReadFile(_root, "body.md").ShouldBe("hello");
     probe.ReadFile(_root, "missing.md").ShouldBeNull();
   }
+
+  // Performance review of #369: gh api --input also sends uploads, which are no post body and must not be read whole.
+  [Fact]
+  public void ReadFile_reads_an_empty_oversized_or_binary_file_as_empty()
+  {
+    var probe = new GitProbe();
+    File.WriteAllText(Path.Combine(_root, "empty.md"), string.Empty);
+    File.WriteAllText(Path.Combine(_root, "limit.md"), new string('a', (int)GitProbe.MaxTextFileBytes));
+    File.WriteAllText(Path.Combine(_root, "big.md"), new string('a', (int)GitProbe.MaxTextFileBytes) + "/home/me/x");
+    File.WriteAllBytes(Path.Combine(_root, "asset.bin"), [0x7f, .. "ELF"u8, 0, .. "/tmp/"u8, 0, .. "build"u8]);
+
+    probe.ReadFile(_root, "empty.md").ShouldBe(string.Empty);
+    probe.ReadFile(_root, "limit.md").ShouldNotBeNull().Length.ShouldBe((int)GitProbe.MaxTextFileBytes);
+    probe.ReadFile(_root, "big.md").ShouldBe(string.Empty);
+    probe.ReadFile(_root, "asset.bin").ShouldBe(string.Empty);
+  }
+
+  // A pipe with no writer blocks an open until one comes; it reports no length, so it reads as empty at once.
+  [Fact(Timeout = 10_000)]
+  public async Task ReadFile_reads_a_named_pipe_as_empty_without_waiting()
+  {
+    var pipe = Path.Combine(_root, "body.fifo");
+    using System.Diagnostics.Process mkfifo = System.Diagnostics.Process.Start("mkfifo", [pipe]).ShouldNotBeNull();
+    await mkfifo.WaitForExitAsync(TestContext.Current.CancellationToken);
+    mkfifo.ExitCode.ShouldBe(0);
+
+    var text = await Task.Run(() => new GitProbe().ReadFile(_root, "body.fifo"), TestContext.Current.CancellationToken);
+
+    text.ShouldBe(string.Empty);
+  }
 }

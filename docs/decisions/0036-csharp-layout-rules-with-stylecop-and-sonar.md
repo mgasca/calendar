@@ -101,7 +101,7 @@ These rules came out of the same review and are configured in the same `.editorc
 
 * The analyzers run in every `dotnet build`, with warnings as errors, in `just lint` and in CI.
 * The tooling apps run the same rules when `just tools test` builds them.
-* `dotnet format --verify-no-changes` fails when a StyleCop code fix hasn't been applied.
+* `dotnet format --verify-no-changes` fails when a StyleCop code fix hasn't been applied. *Amended 2026-11-06:* CI no longer runs the full command (#350): the same SA1501, SA1116 and SA1117 diagnostics fail the build, and CI checks formatting with `dotnet format whitespace`.
 
 ## Pros and Cons of the Options
 

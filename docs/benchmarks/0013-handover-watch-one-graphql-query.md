@@ -1,4 +1,4 @@
-# 0010 One GraphQL query per handover-watch tick
+# 0013 One GraphQL query per handover-watch tick
 
 - **Date:** 2026-11-06
 - **Issue:** [#363](https://github.com/mgasca/calendar/issues/363), a follow-up of [#320](https://github.com/mgasca/calendar/issues/320) (story 0027) and of finding 1 of the [performance review on #360](https://github.com/mgasca/calendar/pull/360#issuecomment-6689752931)

@@ -9,7 +9,13 @@ public sealed class PostgresFixture : IAsyncLifetime
 {
   public PostgresTestDatabase Database { get; } = new();
 
-  public async ValueTask InitializeAsync() => await Database.InitializeAsync();
+  public async ValueTask InitializeAsync()
+  {
+    await Database.InitializeAsync();
+
+    // Before any test connects, so the migrated database can be copied for ApiTestBase.
+    await Database.CreateTemplateAsync();
+  }
 
   public async ValueTask DisposeAsync() => await Database.DisposeAsync();
 }

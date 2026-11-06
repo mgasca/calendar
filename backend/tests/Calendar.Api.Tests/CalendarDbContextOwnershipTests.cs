@@ -31,7 +31,7 @@ public sealed class CalendarDbContextOwnershipTests(PostgresFixture postgres) : 
     (await nobody.Tasks.IgnoreQueryFilters().CountAsync(Ct)).ShouldBe(2);
 
     // The migrator context has no user either: that is how the tests arrange rows for several users.
-    await using CalendarDbContext migrator = Postgres.Database.CreateMigratorContext();
+    await using CalendarDbContext migrator = Database.CreateMigratorContext();
     (await migrator.Events.CountAsync(Ct)).ShouldBe(0);
   }
 
@@ -54,11 +54,11 @@ public sealed class CalendarDbContextOwnershipTests(PostgresFixture postgres) : 
     asA.Tasks.Add(TodoTask.Create(UserA, "mine"));
     (await asA.SaveChangesAsync(Ct)).ShouldBe(1);
 
-    await using CalendarDbContext migrator = Postgres.Database.CreateMigratorContext();
+    await using CalendarDbContext migrator = Database.CreateMigratorContext();
     (await migrator.Tasks.IgnoreQueryFilters().Select(t => t.Title).ToListAsync(Ct)).ShouldBe(["mine"]);
     (await migrator.Events.IgnoreQueryFilters().CountAsync(Ct)).ShouldBe(0);
   }
 
   private CalendarDbContext AppContext(ICurrentUser user) =>
-    new(CalendarDbContextOptions.Create(Postgres.Database.AppConnectionString).Options, user);
+    new(CalendarDbContextOptions.Create(Database.AppConnectionString).Options, user);
 }

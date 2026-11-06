@@ -71,8 +71,8 @@ public sealed class UserDirectoryTests(PostgresFixture postgres) : ApiTestBase(p
   {
     // Another request inserts the same person's row between this one's lookup and its insert.
     var interposed = Guid.NewGuid();
-    var interceptor = new InterposingInterceptor(Postgres.Database.MigratorConnectionString, interposed, subjectOfTheRowThatWon);
-    DbContextOptions<CalendarDbContext> options = CalendarDbContextOptions.Create(Postgres.Database.AppConnectionString)
+    var interceptor = new InterposingInterceptor(Database.MigratorConnectionString, interposed, subjectOfTheRowThatWon);
+    DbContextOptions<CalendarDbContext> options = CalendarDbContextOptions.Create(Database.AppConnectionString)
       .AddInterceptors(interceptor)
       .Options;
     await using var db = new CalendarDbContext(options, FixedCurrentUser.None);
@@ -128,7 +128,7 @@ public sealed class UserDirectoryTests(PostgresFixture postgres) : ApiTestBase(p
     User other = await ResolveAsync(Other, "sub-3", null, null);
     other.Id.ShouldNotBe(User.LegacyOwnerId);
 
-    await using CalendarDbContext db = Postgres.Database.CreateMigratorContext();
+    await using CalendarDbContext db = Database.CreateMigratorContext();
     User placeholder = await db.Users.SingleAsync(u => u.Id == User.LegacyOwnerId, Ct);
     placeholder.IsUnclaimedPlaceholder.ShouldBeTrue();
   }
@@ -153,14 +153,14 @@ public sealed class UserDirectoryTests(PostgresFixture postgres) : ApiTestBase(p
 
   private async Task InsertLegacyPlaceholderAsync()
   {
-    await using CalendarDbContext db = Postgres.Database.CreateMigratorContext();
+    await using CalendarDbContext db = Database.CreateMigratorContext();
     await db.Database.ExecuteSqlAsync($"INSERT INTO users (id, created_at) VALUES ({User.LegacyOwnerId}, now())", Ct);
   }
 
   /// <summary>Users in the table; the base class seeds two.</summary>
   private async Task<int> CountUsersAsync()
   {
-    await using CalendarDbContext db = Postgres.Database.CreateMigratorContext();
+    await using CalendarDbContext db = Database.CreateMigratorContext();
     return await db.Users.CountAsync(Ct);
   }
 

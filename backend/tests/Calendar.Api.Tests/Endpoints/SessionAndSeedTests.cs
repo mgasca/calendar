@@ -104,7 +104,7 @@ public sealed class SessionAndSeedTests(PostgresFixture postgres) : ApiTestBase(
   [Fact]
   public async Task SeedScheme_StillWorks_AfterTheOwnerHasSignedInForReal()
   {
-    await using (CalendarDbContext db = Postgres.Database.CreateMigratorContext())
+    await using (CalendarDbContext db = Database.CreateMigratorContext())
     {
       // The owner's row after a real Google sign-in: subject and email set.
       db.Users.Add(User.Create(Clock.GetUtcNow(), FirstAllowed, "sub-owner", "The Owner", null));
@@ -116,7 +116,7 @@ public sealed class SessionAndSeedTests(PostgresFixture postgres) : ApiTestBase(
     using HttpResponseMessage created = await SendSeedAsync(client, HttpMethod.Post, "/api/tasks", SeedKey, new { title = "seeded later" });
     created.StatusCode.ShouldBe(HttpStatusCode.Created);
 
-    await using CalendarDbContext check = Postgres.Database.CreateMigratorContext();
+    await using CalendarDbContext check = Database.CreateMigratorContext();
     User owner = await check.Users.SingleAsync(u => u.Email == "owner@example.com", Ct);
     owner.GoogleSubject.ShouldBe("sub-owner");
     (await check.Tasks.IgnoreQueryFilters().SingleAsync(t => t.Title == "seeded later", Ct)).OwnerId.ShouldBe(owner.Id);
@@ -125,7 +125,7 @@ public sealed class SessionAndSeedTests(PostgresFixture postgres) : ApiTestBase(
   [Fact]
   public async Task SeededRows_BelongToTheFirstAllowListedEmail_WhoAlsoClaimsTheLegacyOwner()
   {
-    await using (CalendarDbContext db = Postgres.Database.CreateMigratorContext())
+    await using (CalendarDbContext db = Database.CreateMigratorContext())
     {
       await db.Database.ExecuteSqlAsync($"INSERT INTO users (id, created_at) VALUES ({User.LegacyOwnerId}, now())", Ct);
       db.Tasks.Add(TodoTask.Create(User.LegacyOwnerId, "from before ownership"));
@@ -138,7 +138,7 @@ public sealed class SessionAndSeedTests(PostgresFixture postgres) : ApiTestBase(
     created.StatusCode.ShouldBe(HttpStatusCode.Created);
     Guid seededId = (await created.Content.ReadFromJsonAsync<TaskResponse>(Ct))!.Id;
 
-    await using CalendarDbContext check = Postgres.Database.CreateMigratorContext();
+    await using CalendarDbContext check = Database.CreateMigratorContext();
     User owner = await check.Users.SingleAsync(u => u.Email == "owner@example.com", Ct);
     owner.Id.ShouldBe(User.LegacyOwnerId);
     owner.GoogleSubject.ShouldBeNull();

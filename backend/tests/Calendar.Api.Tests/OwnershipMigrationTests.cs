@@ -6,8 +6,8 @@ namespace Calendar.Api.Tests;
 
 /// <summary>
 /// The ownership migration (ADR-0041) on a database with rows from before it: every row ends up owned by the
-/// legacy placeholder, which exists unclaimed, and new rows must name an owner. Runs in the database collection
-/// and leaves the schema at the latest migration.
+/// legacy placeholder, which exists unclaimed, and new rows must name an owner. Migrates the test's own database
+/// down and back up, leaving it at the latest migration.
 /// </summary>
 public sealed class OwnershipMigrationTests(PostgresFixture postgres) : ApiTestBase(postgres)
 {
@@ -16,7 +16,7 @@ public sealed class OwnershipMigrationTests(PostgresFixture postgres) : ApiTestB
   [Fact]
   public async Task PreExistingRows_AreBackfilledToTheUnclaimedLegacyOwner()
   {
-    await using CalendarDbContext db = Postgres.Database.CreateMigratorContext();
+    await using CalendarDbContext db = Database.CreateMigratorContext();
     try
     {
       await db.Database.MigrateAsync(BeforeOwnership, Ct);

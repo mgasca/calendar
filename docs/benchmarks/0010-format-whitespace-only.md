@@ -8,7 +8,7 @@
 
 ## Question
 
-After the Release build, the Backend job ran `dotnet format --verify-no-changes --no-restore`, which took as long as the build itself (24 s median). That command runs three passes: whitespace, code style and third-party analyzers. The build already enforces code style (`EnforceCodeStyleInBuild`) and the analyzers, with warnings as errors (`backend/Directory.Build.props`). Does the full command catch anything that the build and a whitespace-only pass would miss? If not, how much does the narrower check save?
+After the Release build, the Backend job ran `dotnet format --verify-no-changes --no-restore`, which took slightly longer than the build itself (24 s median, against 21 s). That command runs three passes: whitespace, code style and third-party analyzers. The build already enforces code style (`EnforceCodeStyleInBuild`) and the analyzers, with warnings as errors (`backend/Directory.Build.props`). Does the full command catch anything that the build and a whitespace-only pass would miss? If not, how much does the narrower check save?
 
 ## Method
 
@@ -35,6 +35,8 @@ After the Release build, the Backend job ran `dotnet format --verify-no-changes 
 | `if (x) return;` (IDE0011) | fail: IDE0011, S3626 | pass | fail |
 | unused `using` (IDE0005) | fail: IDE0005 | pass | fail |
 | `s.Contains("b")` (CA1307) | fail: CA1307, CA1847 | pass | fail |
+| parameters wrapped onto a shared line (SA1116) | fail: SA1116, S2190 | pass | fail |
+| camelCase `private static readonly` field (IDE1006) | fail: IDE1006 | pass | fail |
 
 ### Duration (local, seconds, rounds 1 / 2 / 3)
 
@@ -123,11 +125,11 @@ The misformatted file passed the build and failed the new whitespace step. The m
 
 ## Reading
 
-- **Measured: the full command only repeated the build for style and analyzers.** Every code-style and analyzer violation tried failed the Release build. Every whitespace violation passed the build and failed `dotnet format whitespace`. No violation failed the full command without failing one of the two. The negative control shows the same on CI.
+- **Measured on the ten violations probed; inferred for the other configured rules: the full command only repeated the build for style and analyzers.** Every code-style and analyzer violation tried failed the Release build. They covered a rule set only through a `:warning` option suffix (IDE0011), a naming rule (IDE1006) and a StyleCop layout rule (SA1116), the probe of these last two run on 2026-11-06 after review on a fresh copy of the same commit. Every whitespace violation passed the build and failed `dotnet format whitespace`. No violation failed the full command without failing one of the two. The negative control shows the same on CI.
 - **Measured: the format step went from 24 s to 8 s median** (15–31 s before, n=40; 6–13 s after, n=5). The Release build control was 21 s before and 24 s after, inside its before range (15–34 s). The Backend job also went from 1:52 to 1:26, but that includes #349 (PR #359, merged before these runs), which took `dotnet test` from 41 s to 31 s. The step level is therefore the measure for this change.
 - **Inferred: about 16 s off Backend** on every run. #349 and #350 together brought Backend under Tooling (1:28 median on the same runs), so the Tooling job is now the critical path, as #347 predicted. #351 works on it.
 - **CI runs used:** 4 `workflow_dispatch` runs of this PR's head and 2 for the negative control, plus 2 organic PR runs. One dispatch, [42270142424](https://github.com/mgasca/calendar/actions/runs/42270142424), is not in the sample: its Tooling job failed to download an action. In that run `CI result` reported success anyway, which is filed as #368.
-- **Not chosen:** `dotnet format whitespace --folder` was about 4 s faster locally, but it also reads `bin/` and `obj/`, whereas workspace mode covers the same documents as the old check.
+- **Not chosen:** `dotnet format whitespace --folder` was about 4 s faster locally. Workspace mode was kept because it checks the same project documents as the old command; that `--folder` would also check files outside the projects, such as `obj/`, is inferred, not probed.
 
 ## Reconsider when
 

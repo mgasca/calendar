@@ -80,6 +80,20 @@ public sealed class GitProbe : IRepoProbe
   public PullRequest? PullRequestFor(string cwd, string branch) =>
     PullRequestLookup.Find(cwd, branch, "gh", PullRequestLookup.Timeout);
 
+  /// <inheritdoc/>
+  public string? DefaultBranch(string cwd)
+  {
+    ExternalCommand.Output? output = ExternalCommand.Run(
+      GitExecutable.Value, ["symbolic-ref", "--quiet", "--short", "refs/remotes/origin/HEAD"], cwd, BranchTimeout);
+    var head = output is { ExitCode: 0 } ? output.Stdout.Trim() : string.Empty;
+    var slash = head.IndexOf('/', StringComparison.Ordinal);
+    return slash > 0 && slash < head.Length - 1 ? head[(slash + 1)..] : null;
+  }
+
+  /// <inheritdoc/>
+  public PullRequestText? PullRequestTextFor(string cwd, string? selector, string? repo) =>
+    PullRequestLookup.FindText(cwd, selector, repo, "gh", PullRequestLookup.InformTimeout);
+
   private static readonly TimeSpan BranchTimeout = TimeSpan.FromSeconds(5);
 
   /// <summary>git resolved on PATH once, so the process start uses an absolute path.</summary>

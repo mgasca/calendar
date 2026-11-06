@@ -33,5 +33,8 @@ coverage/
 
 .pnpm-store/
 
+# Local agent plans and state (root AGENTS.md), including the handover watch's seen-ID records
+.plan/
+
 # Claude Code: personal hook/permission overrides stay local (the shared file is .claude/settings.json)
 .claude/settings.local.json

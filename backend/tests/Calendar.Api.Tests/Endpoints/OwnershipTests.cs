@@ -104,7 +104,7 @@ public sealed class OwnershipTests(PostgresFixture postgres) : ApiTestBase(postg
     Guid eventId = (await createdEvent.Content.ReadFromJsonAsync<EventResponse>(Ct))!.Id;
     Guid taskId = (await createdTask.Content.ReadFromJsonAsync<TaskResponse>(Ct))!.Id;
 
-    await using CalendarDbContext db = Postgres.Database.CreateMigratorContext();
+    await using CalendarDbContext db = Database.CreateMigratorContext();
     (await db.Events.IgnoreQueryFilters().SingleAsync(e => e.Id == eventId, Ct)).OwnerId.ShouldBe(UserB);
     (await db.Tasks.IgnoreQueryFilters().SingleAsync(t => t.Id == taskId, Ct)).OwnerId.ShouldBe(UserB);
 
@@ -128,7 +128,7 @@ public sealed class OwnershipTests(PostgresFixture postgres) : ApiTestBase(postg
       .ShouldBe(HttpStatusCode.NotFound);
     (await Client.DeleteAsync(new Uri($"/api/tasks/{open.Id}", UriKind.Relative), Ct)).StatusCode.ShouldBe(HttpStatusCode.NotFound);
 
-    await using CalendarDbContext db = Postgres.Database.CreateMigratorContext();
+    await using CalendarDbContext db = Database.CreateMigratorContext();
     List<TodoTask> rows = await db.Tasks.IgnoreQueryFilters().OrderBy(t => t.Title).ToListAsync(Ct);
     rows.Select(t => (t.Title, t.IsCompleted)).ShouldBe([("B completed", true), ("B open", false)]);
 
@@ -156,7 +156,7 @@ public sealed class OwnershipTests(PostgresFixture postgres) : ApiTestBase(postg
     body.Applied.ShouldBe(1);
     body.NotFound.ShouldBe(1);
 
-    await using CalendarDbContext db = Postgres.Database.CreateMigratorContext();
+    await using CalendarDbContext db = Database.CreateMigratorContext();
     (await db.Tasks.IgnoreQueryFilters().SingleAsync(t => t.Id == theirs.Id, Ct)).IsCompleted.ShouldBeFalse();
     (await db.Tasks.IgnoreQueryFilters().SingleAsync(t => t.Id == mine.Id, Ct)).IsCompleted.ShouldBeTrue();
   }
@@ -178,7 +178,7 @@ public sealed class OwnershipTests(PostgresFixture postgres) : ApiTestBase(postg
     response.StatusCode.ShouldBe(HttpStatusCode.OK);
     (await response.Content.ReadFromJsonAsync<BulkTaskResponse>(Ct))!.Applied.ShouldBe(1);
 
-    await using CalendarDbContext db = Postgres.Database.CreateMigratorContext();
+    await using CalendarDbContext db = Database.CreateMigratorContext();
     List<string> remaining = await db.Tasks.IgnoreQueryFilters().OrderBy(t => t.Title).Select(t => t.Title).ToListAsync(Ct);
     remaining.ShouldBe(["B overdue", "B overdue too"]);
   }

@@ -105,7 +105,7 @@ No changes.
 
 ### Working with an agent on an issue
 
-The maintainer starts a handover by asking the agent for it and naming the issue. The agent sets up a recurring check on a fixed interval using the harness, so the maintainer does not need to keep the session in view. Each check reads only comments and reviews that are new since the last check, across the issue and every pull request of the story, and stays silent when there is nothing new.
+The maintainer starts a handover by asking the agent, in the Claude Code session that delivers the work, for an issue-driven handover of the issue by number. The agent starts a loop in that session with `/loop 5m` (shorter on request, never below a minute), so the maintainer does not need to keep the session in view. Each tick runs `just tools handover-watch <issue>`, which prints only the comments, reviews and pull-request state changes that are new since the last tick, across the issue and every pull request of the story; a tick with nothing new posts nothing. The loop lives in the session, not in a scheduled cloud routine, and stops after the close-out or when the session closes. An agent without such a loop runs the same command by hand every five minutes while the work is active.
 
 When the maintainer answers a question, approves a step or merges a pull request on GitHub, the next check picks it up and the agent continues. Before a pull request to the main branch is created or retargeted, the agent is reminded if the description names no issue it refers to or closes, so the issue is not left open after the merge.
 

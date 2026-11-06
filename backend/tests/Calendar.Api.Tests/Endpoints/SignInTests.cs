@@ -34,7 +34,7 @@ public sealed class SignInTests(PostgresFixture postgres) : ApiTestBase(postgres
 
     context.Result.ShouldBeNull();
     Guid id = CalendarClaims.UserIdOf(context.Principal).ShouldNotBeNull();
-    await using CalendarDbContext db = Postgres.Database.CreateMigratorContext();
+    await using CalendarDbContext db = Database.CreateMigratorContext();
     User user = await db.Users.SingleAsync(u => u.Id == id, Ct);
     user.GoogleSubject.ShouldBe("sub-new");
     user.Email.ShouldBe("new@example.com");
@@ -45,7 +45,7 @@ public sealed class SignInTests(PostgresFixture postgres) : ApiTestBase(postgres
   [Fact]
   public async Task AttachUser_LetsTheFirstAllowListedEmail_ClaimTheLegacyOwner()
   {
-    await using (CalendarDbContext db = Postgres.Database.CreateMigratorContext())
+    await using (CalendarDbContext db = Database.CreateMigratorContext())
     {
       await db.Database.ExecuteSqlAsync($"INSERT INTO users (id, created_at) VALUES ({User.LegacyOwnerId}, now())", Ct);
     }
@@ -57,7 +57,7 @@ public sealed class SignInTests(PostgresFixture postgres) : ApiTestBase(postgres
     await ApiAuthentication.AttachUserAsync(context, "First@Example.com");
 
     CalendarClaims.UserIdOf(context.Principal).ShouldBe(User.LegacyOwnerId);
-    await using CalendarDbContext check = Postgres.Database.CreateMigratorContext();
+    await using CalendarDbContext check = Database.CreateMigratorContext();
     User owner = await check.Users.SingleAsync(u => u.Id == User.LegacyOwnerId, Ct);
     owner.GoogleSubject.ShouldBe("sub-first");
     owner.Email.ShouldBe(First);
@@ -74,7 +74,7 @@ public sealed class SignInTests(PostgresFixture postgres) : ApiTestBase(postgres
 
     context.Result.ShouldNotBeNull().Failure.ShouldNotBeNull();
     CalendarClaims.UserIdOf(context.Principal).ShouldBeNull();
-    await using CalendarDbContext db = Postgres.Database.CreateMigratorContext();
+    await using CalendarDbContext db = Database.CreateMigratorContext();
     (await db.Users.AnyAsync(u => u.Email == "nosub@example.com", Ct)).ShouldBeFalse();
   }
 

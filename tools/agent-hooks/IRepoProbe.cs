@@ -29,4 +29,13 @@ public interface IRepoProbe
 
   /// <summary>The pull request whose head is <paramref name="branch"/>, or null when there is none or gh cannot answer.</summary>
   PullRequest? PullRequestFor(string cwd, string branch);
+
+  /// <summary>The remote's default branch (<c>origin/HEAD</c> without <c>origin/</c>), or null when git cannot tell.</summary>
+  string? DefaultBranch(string cwd);
+
+  /// <summary>
+  /// The base and body of the PR that <c>gh pr view [<paramref name="selector"/>]</c> finds (the current branch's when null),
+  /// in <paramref name="repo"/> when given; null when there is none or gh cannot answer.
+  /// </summary>
+  PullRequestText? PullRequestTextFor(string cwd, string? selector, string? repo);
 }

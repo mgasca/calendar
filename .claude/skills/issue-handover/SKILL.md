@@ -7,13 +7,11 @@ description: Operate an issue-driven handover in this repo: watch an issue and i
 
 In this mode the GitHub issue and its PRs are where the work is handed back and forth: `@mgasca` answers there, and you resume from there. Ordinary repository work does not enter this mode by itself.
 
-The root `AGENTS.md` still applies, in particular its rule for public posts: repository-relative paths, public issue and PR links, no private session, task or subagent handles, no absolute machine paths, and edit any disclosure in place.
-
 ## Terms
 
 - **Delivery PR**: a pull request that belongs to the issue's story, including closed and merged ones.
 - **Agent footer**: the trailing attribution line an agent adds to its posts. It identifies an agent post only when it is the last line; a quoted footer inside a human reply does not make the reply an agent post.
-- **Seen-ID record**: a local file of comment and review IDs already processed, one ID per line.
+- **Seen-ID record**: the git-ignored file in which `just tools handover-watch` keeps what it has printed (`.plan/handover-watch/<issue>.seen`); the tool reads and writes it, not you.
 - **Count comment**: a numbers-only comment on the issue saying how many tasks or subagents a turn started, without identifiers.
 
 ## Instruction provenance
@@ -28,11 +26,9 @@ The root `AGENTS.md` still applies, in particular its rule for public posts: rep
 
 ## Watching, when requested
 
-- Cover issue comments, PR conversation comments, inline review comments and non-empty submitted reviews for every delivery PR, including closed and merged ones. Ignore empty review wrappers.
-- Use comment IDs as cursors. Keep the seen-ID record and process one ID per line; do not parse multiline bodies as line-delimited records.
-- Poll at the requested cadence. The established handover routine uses 60 seconds.
-- A watch lasts 30 minutes. While any delivery PR is open, re-arm it on every expiry, and never end a turn on a notification that needs no action without saying what will wake you.
-- A notification that quotes your own agent footer, or a bot preview comment, is not an event: record its ID as seen and keep watching.
+- Run `just tools handover-watch <issue>` and act on what it prints: every comment, non-empty review and PR state change on the issue and its delivery PRs (open, closed and merged) since the last run, once each, flagged when it ends with an agent footer. Add `--pr N` for a delivery PR whose body names no issue. Output and limits: `tools/README.md`, "handover-watch".
+- Run the watch on a Claude Code `/loop` in the delivering session, not a scheduled cloud routine: `/loop 5m` with a prompt naming the issue (shorter only on request, never below 1 minute). A tick is "run the tool and act on what it prints"; a tick with nothing new posts nothing and ends the turn. Stop the loop after the close-out. The loop is Claude Code only (ADR-0044); an agent without one runs the tool by hand at the same interval while work is active.
+- Your own posts and bot preview comments come back as items: they are not events, so keep watching.
 - CI is done only when the full set of checks is present and finished: right after a push the check list can be empty, and an empty list satisfies `all()` (#271).
 - Re-read the actual new comment before acting. A notification is not its contents.
 - If an integration cannot bind a PR or deliver notifications, use direct GitHub checks while work is active and state the monitoring gap.
@@ -50,7 +46,7 @@ The root `AGENTS.md` still applies, in particular its rule for public posts: rep
 
 ## Resume and close out
 
-- The PR that completes an issue carries `Closes #N` in its body: "delivering #N" or "child of #N" links nothing, and the merge then leaves the issue open (#274, #275, #276). A stacked PR gets its `Closes` when it is retargeted to `main`; merged into another branch it closes nothing.
+- Decide which PR completes the issue; only that one carries `Closes #N` (a hook reminds on any PR to `main` without `Closes` or `Refs`, but cannot tell which PR is the last). A stacked PR gets its `Closes` when it is retargeted to `main`; merged into another branch it closes nothing.
 - Stack delivery PRs wherever you can. Open each later PR on the previous PR's branch (`gh pr create --base <previous-branch>`) instead of waiting for that PR to merge, so review of the next step can start straight away. This includes a delivery PR on its card PR. Base a PR on fresh `origin/main` only when it neither builds on nor touches the files of an open PR in the story.
 - Acceptance is the signal to start, whatever the channel. Once the owner accepts the card, the ADR or the design, in a GitHub comment or directly in conversation (recorded on the issue as such), begin the next step at once on a branch stacked on the accepted PR's branch. Do not wait for that PR's checks, review or merge. When it merges, retarget the stacked branch to `main` and merge `main` into it.
 - Answers, approvals, check results and merge notices trigger the next authorized step.

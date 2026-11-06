@@ -11,6 +11,7 @@ Reference measurements for performance work. A benchmark here is a repeatable ha
 | [0005](0005-web-test-suite.md) | The web test suite: one jsdom per worker and a unit-level batching test (#275) | `tools/ci-timings/ci-timings.cs` |
 | [0006](0006-web-build-without-tsc.md) | The web build step of the Frontend job without the repeated tsc -b (#276) | `tools/ci-timings/ci-timings.cs` |
 | [0007](0007-frontend-ci-job-after.md) | The Frontend CI job and the whole run after the four fixes of #272 | `tools/ci-timings/ci-timings.cs` |
+| [0010](0010-format-whitespace-only.md) | The Backend format check runs whitespace only (#350) | `tools/ci-timings/ci-timings.cs` |
 
 ## Performance issues
 

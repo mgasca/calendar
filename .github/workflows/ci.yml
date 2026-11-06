@@ -10,8 +10,14 @@ on:
 permissions:
   contents: read
 
+# A pull request run from this repository gets a group of its own, so it never queues behind the run it supersedes:
+# GitHub takes up to a minute to stop a cancelled run, and a run in the same group waits for that (#348, record 0008).
+# The `supersede` job cancels the older run instead. Other runs (fork pull requests, pushes to main, the merge queue,
+# dispatch) keep one group per ref, and a fork pull request still cancels its older run.
 concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
+  group: >-
+    ${{ github.workflow }}-${{ github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository
+    && github.run_id || github.ref }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 env:
@@ -35,7 +41,9 @@ jobs:
           cache-dependency-path: backend/**/packages.lock.json
       - run: dotnet restore --locked-mode
       - run: dotnet build --no-restore -c Release
-      - run: dotnet format --verify-no-changes --no-restore
+      # Whitespace only: the build above already enforces code style (EnforceCodeStyleInBuild) and the analyzers, with
+      # warnings as errors; only formatting needs dotnet format (#350, record 0010).
+      - run: dotnet format whitespace --verify-no-changes --no-restore
       - name: EF Core model matches migrations
         run: |
           dotnet tool restore
@@ -263,14 +271,71 @@ jobs:
         if: ${{ failure() }}
         run: docker logs calendar-smoke
 
+  # Cancels this pull request's older runs, which no longer share a concurrency group with this one (see `concurrency`).
+  # It is the only job with actions: write; it checks nothing out and runs no code from the pull request. `CI result`
+  # does not wait for it: a cancel that fails costs runner time, not correctness.
+  supersede:
+    name: Cancel superseded runs
+    if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      actions: write
+    steps:
+      - name: Cancel older runs of this branch
+        env:
+          GH_TOKEN: ${{ github.token }}
+          HEAD_REF: ${{ github.head_ref }}
+        run: |
+          ids=$(gh api -X GET "repos/$GITHUB_REPOSITORY/actions/workflows/ci.yml/runs" \
+            -f event=pull_request -f branch="$HEAD_REF" -F per_page=30 \
+            --jq '.workflow_runs[]
+              | select(.status != "completed" and .id < (env.GITHUB_RUN_ID | tonumber)
+                and .head_repository.full_name == env.GITHUB_REPOSITORY)
+              | .id')
+          [ -n "$ids" ] || { echo "No older run of this branch is still in progress."; exit 0; }
+          for id in $ids; do
+            gh run cancel "$id" --repo "$GITHUB_REPOSITORY" || echo "::warning::Could not cancel run $id; it may have finished meanwhile."
+          done
+
   # Single stable check for branch protection, so adding/renaming jobs doesn't require ruleset changes.
   result:
     name: CI result
     if: ${{ always() }}
     needs: [backend, frontend, docs, tooling, image]
     runs-on: ubuntu-latest
+    # actions: read lets the step below read this run's job conclusions from the API.
+    permissions:
+      actions: read
     steps:
-      - name: All jobs succeeded
-        if: ${{ contains(needs.*.result, 'failure') || contains(needs.*.result, 'cancelled') }}
-        run: exit 1
-      - run: echo "All CI jobs passed."
+      # Passes only when every needed job succeeded: failed, cancelled, skipped or anything else fails (#368). The jobs
+      # API is checked as well, because in run 42270142424 a job that failed in "Set up job" did not show as failed in
+      # `needs`, and this check turned green.
+      - name: All needed jobs succeeded
+        env:
+          NEEDS: ${{ toJSON(needs) }}
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          jq -r 'to_entries[] | "\(.key): \(.value.result)"' <<< "$NEEDS"
+          if ! jq -e 'length > 0 and all(.[]; .result == "success")' <<< "$NEEDS" > /dev/null; then
+            echo "::error::A needed job did not succeed."
+            exit 1
+          fi
+          # Every other job of this run attempt, except this one and the optional Cancel superseded runs. Up to three tries,
+          # 5 s apart, while the API errs or still shows a job as running; whatever the last try finds decides.
+          for try in 1 2 3; do
+            if others=$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID/attempts/$GITHUB_RUN_ATTEMPT/jobs?per_page=100" \
+              --jq '.jobs[] | select(.name != "CI result" and .name != "Cancel superseded runs")
+                | select(.conclusion != "success") | "\(.name): \(.status) \(.conclusion)"'); then
+              if [ -z "$others" ] || ! grep -qv ': completed ' <<< "$others"; then break; fi
+            else
+              others="the jobs API could not be read"
+            fi
+            [ "$try" = 3 ] || sleep 5
+          done
+          if [ -n "$others" ]; then
+            echo "::error::The jobs API reports jobs that did not succeed:"
+            echo "$others"
+            exit 1
+          fi
+          echo "All CI jobs passed."

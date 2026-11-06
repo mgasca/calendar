@@ -11,14 +11,16 @@ namespace CiTimings;
 /// <param name="Conclusion">success, failure, cancelled, … (empty while the run is not completed).</param>
 /// <param name="CreatedAt">When the run was created.</param>
 /// <param name="Event">push, pull_request, merge_group, …</param>
-public sealed record WorkflowRun(long Id, string Status, string Conclusion, DateTimeOffset CreatedAt, string Event);
+/// <param name="HeadBranch">The branch the run was for (a pull request's head branch); empty when not listed.</param>
+public sealed record WorkflowRun(long Id, string Status, string Conclusion, DateTimeOffset CreatedAt, string Event, string HeadBranch = "");
 
 /// <summary>A step of a job with the wall-clock span GitHub recorded for it.</summary>
 /// <param name="Number">The step's position in the job.</param>
 /// <param name="Name">The step's name.</param>
 /// <param name="StartedAt">When the step started.</param>
 /// <param name="CompletedAt">When the step completed.</param>
-public sealed record StepTiming(int Number, string Name, DateTimeOffset StartedAt, DateTimeOffset CompletedAt)
+/// <param name="Conclusion">success, failure, cancelled or skipped; empty when not reported.</param>
+public sealed record StepTiming(int Number, string Name, DateTimeOffset StartedAt, DateTimeOffset CompletedAt, string Conclusion = "")
 {
   /// <summary>Seconds between start and completion.</summary>
   public double Seconds => (CompletedAt - StartedAt).TotalSeconds;
@@ -31,13 +33,15 @@ public sealed record StepTiming(int Number, string Name, DateTimeOffset StartedA
 /// <param name="StartedAt">When the job started on a runner.</param>
 /// <param name="CompletedAt">When the job completed.</param>
 /// <param name="Steps">The steps that ran, with their spans; skipped steps are left out.</param>
+/// <param name="CreatedAt">When GitHub created the job (for a job with <c>needs</c>, when they finished); null if not reported.</param>
 public sealed record JobTiming(
   long RunId,
   string Name,
   string Conclusion,
   DateTimeOffset StartedAt,
   DateTimeOffset CompletedAt,
-  IReadOnlyList<StepTiming> Steps)
+  IReadOnlyList<StepTiming> Steps,
+  DateTimeOffset? CreatedAt = null)
 {
   /// <summary>Seconds between start and completion.</summary>
   public double Seconds => (CompletedAt - StartedAt).TotalSeconds;
@@ -58,7 +62,7 @@ public static class Parser
   private const string StartedAt = "started_at";
   private const string CompletedAt = "completed_at";
 
-  /// <summary>Parses <c>gh run list --json databaseId,status,conclusion,createdAt,event</c>.</summary>
+  /// <summary>Parses <c>gh run list --json databaseId,status,conclusion,createdAt,event</c>, plus <c>headBranch</c> when listed.</summary>
   /// <param name="json">The JSON array.</param>
   /// <returns>The runs in the order listed (newest first).</returns>
   public static IReadOnlyList<WorkflowRun> ParseRuns(string json)
@@ -71,7 +75,8 @@ public static class Parser
         Text(run, "status"),
         Text(run, "conclusion"),
         run.GetProperty("createdAt").GetDateTimeOffset(),
-        Text(run, "event"))),
+        Text(run, "event"),
+        Text(run, "headBranch"))),
     ];
   }
 
@@ -94,10 +99,12 @@ public static class Parser
       {
         if (TryTime(step, StartedAt, out DateTimeOffset stepStarted) && TryTime(step, CompletedAt, out DateTimeOffset stepCompleted))
         {
-          steps.Add(new StepTiming(step.GetProperty("number").GetInt32(), Text(step, "name"), stepStarted, stepCompleted));
+          var number = step.GetProperty("number").GetInt32();
+          steps.Add(new StepTiming(number, Text(step, "name"), stepStarted, stepCompleted, Text(step, "conclusion")));
         }
       }
-      jobs.Add(new JobTiming(runId, Text(job, "name"), Text(job, "conclusion"), started, completed, steps));
+      DateTimeOffset? created = TryTime(job, "created_at", out DateTimeOffset createdAt) ? createdAt : null;
+      jobs.Add(new JobTiming(runId, Text(job, "name"), Text(job, "conclusion"), started, completed, steps, created));
     }
     return jobs;
   }
@@ -143,9 +150,224 @@ public static class Statistics
   }
 }
 
+/// <summary>
+/// A cancelled pull request run and the run that superseded it. Times are seconds after T0, the moment the superseding
+/// run was created, which is when its push cancelled the old run.
+/// </summary>
+/// <param name="CancelledRunId">The run that was cancelled.</param>
+/// <param name="SupersedingRunId">The next pull request run of the same branch.</param>
+/// <param name="SupersededAt">T0: when the superseding run was created.</param>
+/// <param name="PushGap">Seconds from the cancelled run's creation to T0, which is how far apart the two pushes were.</param>
+/// <param name="Wait">T0 to the superseding run's first job starting; null when none of its jobs started.</param>
+/// <param name="AllStarted">
+/// T0 to the last of the superseding run's first jobs starting: the jobs GitHub created with the run, not those that
+/// wait on <c>needs</c>. It exceeds <paramref name="Wait"/> when the jobs queue for runners. Null when job creation
+/// times are not reported.
+/// </param>
+/// <param name="CancelNotHeardAt">
+/// The latest start of a step in a job GitHub marked cancelled, leaving out skipped steps and the runner's set-up and
+/// clean-up. The runner had not yet heard of the cancel when it started that step, so this is a lower bound on the
+/// cancel's delivery. Null when no such step started after T0.
+/// </param>
+/// <param name="CancelHeardBy">
+/// The earliest end of a step that ended cancelled. The runner had heard of the cancel by then, so this is an upper
+/// bound on its delivery. Null when no step ended cancelled.
+/// </param>
+/// <param name="CancelledJobsEnd">The last end of the old run's jobs that GitHub marked cancelled; null when there are none.</param>
+/// <param name="RunEnd">The last end of any of the old run's jobs, including those that run whatever happens (<c>if: always()</c>).</param>
+/// <param name="JobsNotCancelled">The old run's jobs GitHub did not mark cancelled, as "name conclusion", comma-separated.</param>
+public sealed record SupersededPair(
+  long CancelledRunId,
+  long SupersedingRunId,
+  DateTimeOffset SupersededAt,
+  double PushGap,
+  double? Wait,
+  double? AllStarted,
+  double? CancelNotHeardAt,
+  double? CancelHeardBy,
+  double? CancelledJobsEnd,
+  double RunEnd,
+  string JobsNotCancelled);
+
+/// <summary>Pairs cancelled pull request runs with the runs that superseded them, and times how the hand-over went.</summary>
+public static class Supersession
+{
+  private const string Cancelled = "cancelled";
+
+  /// <summary>Pairs each cancelled <c>pull_request</c> run with the next <c>pull_request</c> run of the same branch.</summary>
+  /// <param name="runs">Runs in any order, with their head branches.</param>
+  /// <returns>(cancelled, superseding) pairs, newest first.</returns>
+  public static IReadOnlyList<(WorkflowRun Cancelled, WorkflowRun Superseding)> Pair(IEnumerable<WorkflowRun> runs)
+  {
+    List<WorkflowRun> pullRequestRuns =
+    [
+      .. runs.Where(run => string.Equals(run.Event, "pull_request", StringComparison.Ordinal)).OrderBy(run => run.CreatedAt),
+    ];
+    var pairs = new List<(WorkflowRun Cancelled, WorkflowRun Superseding)>();
+    for (var index = 0; index < pullRequestRuns.Count; index++)
+    {
+      WorkflowRun run = pullRequestRuns[index];
+      if (!string.Equals(run.Conclusion, Cancelled, StringComparison.Ordinal))
+      {
+        continue;
+      }
+      WorkflowRun? next = pullRequestRuns.Skip(index + 1)
+        .FirstOrDefault(later => string.Equals(later.HeadBranch, run.HeadBranch, StringComparison.Ordinal));
+      if (next is not null)
+      {
+        pairs.Add((run, next));
+      }
+    }
+    pairs.Reverse();
+    return pairs;
+  }
+
+  /// <summary>Times one pair from the jobs of both runs.</summary>
+  /// <param name="cancelled">The cancelled run.</param>
+  /// <param name="superseding">The run created after it on the same branch.</param>
+  /// <param name="cancelledJobs">The cancelled run's jobs.</param>
+  /// <param name="supersedingJobs">The superseding run's jobs.</param>
+  /// <returns>The pair, or null when the old run had already ended at T0 (it was cancelled by hand, not superseded).</returns>
+  public static SupersededPair? Measure(
+    WorkflowRun cancelled,
+    WorkflowRun superseding,
+    IReadOnlyList<JobTiming> cancelledJobs,
+    IReadOnlyList<JobTiming> supersedingJobs)
+  {
+    DateTimeOffset t0 = superseding.CreatedAt;
+    if (cancelledJobs.Count == 0 || cancelledJobs.Max(job => job.CompletedAt) <= t0)
+    {
+      return null;
+    }
+    double After(DateTimeOffset time) => (time - t0).TotalSeconds;
+    List<JobTiming> stopped = [.. cancelledJobs.Where(job => string.Equals(job.Conclusion, Cancelled, StringComparison.Ordinal))];
+    var notHeardAt = stopped
+      .SelectMany(job => job.Steps)
+      .Where(step => step.Conclusion is "success" or "failure" or Cancelled && !IsBookkeeping(step.Name) && step.StartedAt > t0)
+      .Select(step => (double?)After(step.StartedAt))
+      .Max();
+    var heardBy = cancelledJobs
+      .SelectMany(job => job.Steps)
+      .Where(step => string.Equals(step.Conclusion, Cancelled, StringComparison.Ordinal) && step.CompletedAt > t0)
+      .Select(step => (double?)After(step.CompletedAt))
+      .Min();
+    double? stoppedEnd = stopped.Count == 0 ? null : After(stopped.Max(job => job.CompletedAt));
+    double? wait = supersedingJobs.Count == 0 ? null : After(supersedingJobs.Min(job => job.StartedAt));
+    DateTimeOffset? allStarted = FirstJobsStarted(supersedingJobs);
+    var others = string.Join(
+      ", ",
+      cancelledJobs
+        .Where(job => !string.Equals(job.Conclusion, Cancelled, StringComparison.Ordinal))
+        .Select(job => $"{job.Name} {job.Conclusion}"));
+    return new SupersededPair(
+      cancelled.Id,
+      superseding.Id,
+      t0,
+      (t0 - cancelled.CreatedAt).TotalSeconds,
+      wait,
+      allStarted is null ? null : After(allStarted.Value),
+      notHeardAt,
+      heardBy,
+      stoppedEnd,
+      After(cancelledJobs.Max(job => job.CompletedAt)),
+      others);
+  }
+
+  /// <summary>
+  /// When the last of a run's first jobs started: those GitHub created within a few seconds of its earliest job, which
+  /// leaves out jobs created later because they wait on <c>needs</c>.
+  /// </summary>
+  /// <param name="jobs">The run's jobs.</param>
+  /// <returns>The latest start among the first jobs, or null when no job reports its creation time.</returns>
+  public static DateTimeOffset? FirstJobsStarted(IReadOnlyCollection<JobTiming> jobs)
+  {
+    List<(DateTimeOffset Created, DateTimeOffset Started)> created =
+    [
+      .. jobs.Where(job => job.CreatedAt is not null).Select(job => (job.CreatedAt!.Value, job.StartedAt)),
+    ];
+    if (created.Count == 0)
+    {
+      return null;
+    }
+    DateTimeOffset firstWave = created.Min(job => job.Created).AddSeconds(5);
+    return created.Where(job => job.Created <= firstWave).Max(job => job.Started);
+  }
+
+  /// <summary>Whether a step is the runner's own set-up or clean-up, which also runs after a cancel.</summary>
+  /// <param name="name">The step's name.</param>
+  /// <returns>True for set-up, post and clean-up steps.</returns>
+  public static bool IsBookkeeping(string name) =>
+    name.StartsWith("Post ", StringComparison.Ordinal)
+    || name is "Set up job" or "Complete job" or "Initialize containers" or "Stop containers";
+}
+
 /// <summary>Renders the sample as Markdown tables.</summary>
 public static class Report
 {
+  private const string None = "–";
+
+  /// <summary>One row per superseded pair, newest first. Times are whole seconds after the superseding run was created.</summary>
+  /// <param name="pairs">The timed pairs.</param>
+  /// <returns>A Markdown table.</returns>
+  public static string SupersededTable(IEnumerable<SupersededPair> pairs)
+  {
+    var text = new StringBuilder();
+    text.Append("| Cancelled | Superseding | Push gap s | Wait s | All started s | Cancel heard s |")
+      .AppendLine(" Old jobs end s | Old run ends s | Not cancelled |");
+    text.AppendLine("| --- | --- | --: | --: | --: | --: | --: | --: | --- |");
+    foreach (SupersededPair pair in pairs)
+    {
+      var heard = $"{WholeOrDash(pair.CancelNotHeardAt)}..{WholeOrDash(pair.CancelHeardBy)}";
+      text.Append(CultureInfo.InvariantCulture, $"| {pair.CancelledRunId} | {pair.SupersedingRunId} | {Whole(pair.PushGap)} |")
+        .Append(CultureInfo.InvariantCulture, $" {WholeOrDash(pair.Wait)} | {WholeOrDash(pair.AllStarted)} | {heard} |")
+        .Append(CultureInfo.InvariantCulture, $" {WholeOrDash(pair.CancelledJobsEnd)} | {Whole(pair.RunEnd)} |")
+        .Append(CultureInfo.InvariantCulture, $" {(pair.JobsNotCancelled.Length == 0 ? None : pair.JobsNotCancelled)} |")
+        .AppendLine();
+    }
+    return text.ToString();
+  }
+
+  /// <summary>Statistics of each segment of the hand-over, and the control: pull request runs that superseded nothing.</summary>
+  /// <param name="pairs">The timed pairs.</param>
+  /// <param name="controlFirstJob">Seconds from creation to the first job starting, for pull request runs that superseded none.</param>
+  /// <param name="controlAllStarted">Seconds from creation to the last of their first jobs starting.</param>
+  /// <returns>A Markdown table; a segment no pair has a value for shows n = 0.</returns>
+  public static string SupersessionSummary(
+    IReadOnlyCollection<SupersededPair> pairs,
+    IEnumerable<double> controlFirstJob,
+    IEnumerable<double> controlAllStarted)
+  {
+    var text = new StringBuilder();
+    text.AppendLine("| Seconds after the superseding run was created | n | min | median | p90 | max |");
+    text.AppendLine("| --- | --: | --: | --: | --: | --: |");
+    (string Label, IEnumerable<double> Values)[] rows =
+    [
+      ("Wait: the superseding run's first job starts", Values(pairs, pair => pair.Wait)),
+      ("All of the superseding run's first jobs have started", Values(pairs, pair => pair.AllStarted)),
+      ("The old run's runners had not yet heard of the cancel (lower bound)", Values(pairs, pair => pair.CancelNotHeardAt)),
+      ("The old run's runners had heard of it (upper bound)", Values(pairs, pair => pair.CancelHeardBy)),
+      ("The old run's cancelled jobs end", Values(pairs, pair => pair.CancelledJobsEnd)),
+      ("The old run ends", pairs.Select(pair => pair.RunEnd)),
+      ("Control: a pull request run that superseded nothing, created → first job", controlFirstJob),
+      ("Control: the same runs, created → all first jobs started", controlAllStarted),
+    ];
+    foreach ((string Label, IEnumerable<double> Values) row in rows)
+    {
+      Summary stats = Statistics.Summarize(row.Values);
+      text.Append(CultureInfo.InvariantCulture, $"| {row.Label} | {stats.Count} |")
+        .Append(stats.Count == 0
+          ? $" {None} | {None} | {None} | {None} |"
+          : $" {Whole(stats.Min)} | {Whole(stats.Median)} | {Whole(stats.P90)} | {Whole(stats.Max)} |")
+        .AppendLine();
+    }
+    return text.ToString();
+  }
+
+  private static IEnumerable<double> Values(IEnumerable<SupersededPair> pairs, Func<SupersededPair, double?> select) =>
+    pairs.Select(select).OfType<double>();
+
+  private static string WholeOrDash(double? seconds) => seconds is null ? None : Whole(seconds.Value);
+
   /// <summary>Jobs by name, slowest median first: count, min, median, p90 and max as m:ss.</summary>
   /// <param name="jobs">The jobs of every sampled run.</param>
   /// <returns>A Markdown table.</returns>

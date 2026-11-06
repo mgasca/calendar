@@ -16,7 +16,7 @@ Tracked in issue #329. The maintainer accepted this docs-only scope in conversat
 
 ## Background
 
-Calendar is primarily an exploration of AI-assisted engineering, with a real planning application providing meaningful delivery work. Its stories record agreed intent and delivery, while its decision records explain choices. An independent reading adds something different: an account of what the accumulated work communicates to someone encountering it afresh, including strengths, tensions and limits in the evidence.
+Calendar is primarily an exploration of AI-assisted engineering, with the diea of delivering a planning application providing meaningful delivery work. Its stories record agreed intent and delivery, while its decision records explain choices. An independent reading adds something different: an account of what the accumulated work communicates to someone encountering it afresh, including strengths, tensions and limits in the evidence.
 
 The first assessment was requested for other people learning about the project. After reading it, the maintainer asked to preserve the full report, bringing architecture and documentation to positions 12–13 and reusable assets to 14 in its ordered table. Keeping that perspective in the repository makes it reviewable, discoverable and available for comparison with later assessments, rather than leaving it in a conversation.
 

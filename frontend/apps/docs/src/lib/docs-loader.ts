@@ -4,6 +4,7 @@ import { relative, resolve } from 'node:path';
 import type { Loader } from 'astro/loaders';
 import type { Adr, Story } from './adr';
 import {
+  parseAgentThoughts,
   parseBenchmarks,
   parseLog,
   parseRunbooks,
@@ -32,12 +33,14 @@ export const decisionsDirectory = new URL('docs/decisions/', repositoryRoot);
 export const storiesDirectory = new URL('docs/stories/', repositoryRoot);
 export const runbooksDirectory = new URL('docs/runbooks/', repositoryRoot);
 export const benchmarksDirectory = new URL('docs/benchmarks/', repositoryRoot);
+export const agentThoughtsDirectory = new URL('docs/agent-thoughts/', repositoryRoot);
 /** The folder under `docs/` behind each Markdown collection, for edit links. */
 const folders = new Map([
   [decisionsDirectory.href, 'decisions'],
   [storiesDirectory.href, 'stories'],
   [runbooksDirectory.href, 'runbooks'],
   [benchmarksDirectory.href, 'benchmarks'],
+  [agentThoughtsDirectory.href, 'agent-thoughts'],
 ]);
 
 async function readSources(directory: URL, pattern: RegExp) {
@@ -83,6 +86,13 @@ export async function readBenchmarks() {
   return { index, records };
 }
 
+/** Reads the agent thoughts in index order, which is number order; there is no template (story 0031). */
+export async function readAgentThoughts() {
+  const sources = await readSources(agentThoughtsDirectory, /^\d{4}-.+\.md$/);
+  const index = await readFile(new URL('README.md', agentThoughtsDirectory), 'utf8');
+  return { index, records: parseAgentThoughts(index, sources) };
+}
+
 /**
  * Reads the CALM model (ADR-0039) and checks its references against the decision log and the
  * stories. `url-mapping.json` must map every control requirement URL to a schema that exists.
@@ -115,7 +125,8 @@ export async function readDocuments() {
   const architecture = await readArchitecture(adr.records, story.records);
   const runbook = await readRunbooks();
   const benchmark = await readBenchmarks();
-  return { adr, story, architecture, runbook, benchmark };
+  const agentThought = await readAgentThoughts();
+  return { adr, story, architecture, runbook, benchmark, agentThought };
 }
 
 type Documents = Awaited<ReturnType<typeof readDocuments>>;
@@ -141,13 +152,14 @@ export function resetDocumentRoutes() {
   routes = undefined;
 }
 
-function routesOf({ adr, story, architecture, runbook, benchmark }: Documents) {
+function routesOf({ adr, story, architecture, runbook, benchmark, agentThought }: Documents) {
   // The decision log index has no page of its own: the sidebar lists every ADR with its status,
   // so a link to docs/decisions/README.md goes to the repository.
   const routes = new Map([
     ['docs/stories/README.md', 'stories/'],
     ['docs/runbooks/README.md', 'runbooks/'],
     ['docs/benchmarks/README.md', 'benchmarks/'],
+    ['docs/agent-thoughts/README.md', 'agent-thoughts/'],
   ]);
   for (const record of adr.records)
     routes.set(`docs/decisions/${record.file}`, `adr/${record.number}/`);
@@ -159,6 +171,9 @@ function routesOf({ adr, story, architecture, runbook, benchmark }: Documents) {
   }
   for (const record of benchmark.records) {
     routes.set(`docs/benchmarks/${record.file}`, `benchmarks/${record.number}/`);
+  }
+  for (const record of agentThought.records) {
+    routes.set(`docs/agent-thoughts/${record.file}`, `agent-thoughts/${record.number}/`);
   }
   for (const page of architecturePages(architecture, { stories: story.records })) {
     routes.set(pagePath(page.id), pageRoute(page.id));
@@ -187,7 +202,7 @@ export function docsLoader(): Loader {
     async load(context) {
       const sync = async () => {
         const documents = await readDocuments();
-        const { adr, story, architecture, runbook, benchmark } = documents;
+        const { adr, story, architecture, runbook, benchmark, agentThought } = documents;
         // One read serves the entries below and every link the remark plugin rewrites in them.
         routes = Promise.resolve(routesOf(documents));
         const adrFiles = new Map(adr.records.map((record) => [record.number, record.file]));
@@ -267,6 +282,37 @@ export function docsLoader(): Loader {
             sidebar: page.sidebar,
           })),
           {
+            id: 'agent-thoughts',
+            title: 'Agent thoughts',
+            body: agentThought.index.replace(/^# Agent thoughts\s*/m, ''),
+            directory: agentThoughtsDirectory,
+            file: 'README.md',
+            sidebar: { order: -1, label: 'Agent thoughts', hidden: true },
+          },
+          // Each report opens with what the index records about it: when, by whom, of which revision.
+          ...agentThought.records.map((record, order) => ({
+            id: `agent-thoughts/${record.number}`,
+            title: `${record.number} · ${record.title}`,
+            body: [
+              [
+                `**Date:** ${record.date}`,
+                `**Author:** ${record.author}`,
+                `**Reviewed revision:** [\`${record.revision}\`](${repository}/tree/${record.revision})`,
+              ].join(' · '),
+              record.body,
+            ].join('\n\n'),
+            directory: agentThoughtsDirectory,
+            file: record.file,
+            sidebar: {
+              order,
+              label: record.title,
+              attrs: {
+                'data-doc-number': record.number,
+                'aria-label': `${record.number} · ${record.title}`,
+              },
+            },
+          })),
+          {
             id: 'runbooks',
             title: 'Runbooks',
             body: runbook.index.replace(/^# Runbooks\s*/m, ''),
@@ -335,6 +381,7 @@ export function docsLoader(): Loader {
           architectureDirectory,
           runbooksDirectory,
           benchmarksDirectory,
+          agentThoughtsDirectory,
         ].map((url) => fileURLToPath(url));
         for (const directory of directories) context.watcher.add(directory);
         let pending = Promise.resolve();

@@ -282,6 +282,87 @@ export function parseBenchmarks(index: string, sources: Map<string, string>): Be
   return records;
 }
 
+export interface AgentThought {
+  number: string;
+  file: string;
+  /** The report's title without its number. */
+  title: string;
+  /** When the perspective was captured, as the index gives it (YYYY-MM-DD). */
+  date: string;
+  author: string;
+  /** The revision the report reviewed. */
+  revision: string;
+  body: string;
+}
+
+/**
+ * Parses the agent-thoughts index (`Report|Date|Author|Reviewed revision`) against the reports.
+ * The link text is the report's title; rows are in number order, so the first row is the first
+ * report everywhere the site shows one (story 0031). There is no template and no `XXXX` report.
+ */
+export function parseAgentThoughts(index: string, sources: Map<string, string>): AgentThought[] {
+  const table = findTable(index, 'Report|Date|Author|Reviewed revision', 'agent thoughts index');
+  const seen = new Set<string>();
+  const records = table.children.slice(1).map((row) => {
+    const [reportCell, dateCell, authorCell, revisionCell] = row.children;
+    const link = reportCell?.children[0];
+    if (
+      row.children.length !== 4 ||
+      reportCell?.children.length !== 1 ||
+      link?.type !== 'link' ||
+      !dateCell ||
+      !authorCell ||
+      !revisionCell
+    ) {
+      throw new Error('Malformed agent thoughts index row');
+    }
+    const file = link.url;
+    const number = /^(\d{4})-[a-z0-9-]+\.md$/.exec(file)?.[1];
+    if (number === undefined) throw new Error(`Invalid agent thought filename: ${file}`);
+    if (seen.has(number)) throw new Error(`Duplicate agent thought: ${number}`);
+    const previous = [...seen].at(-1);
+    if (previous !== undefined && previous > number) {
+      throw new Error(`Agent thoughts index is out of number order: ${file}`);
+    }
+    seen.add(number);
+    const source = sources.get(file);
+    if (source === undefined) throw new Error(`Missing agent thought: ${file}`);
+    const { title: heading, body } = parseDocument(source, file);
+    if (!heading.startsWith(`${number} `)) {
+      throw new Error(`Agent thought title must start with its number: ${file}`);
+    }
+    if (toString(link) !== heading) {
+      throw new Error(`Agent thought title differs from index: ${file}`);
+    }
+    const date = toString(dateCell);
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+      throw new Error(`Agent thought date must be YYYY-MM-DD: ${file}`);
+    }
+    const author = toString(authorCell).trim();
+    if (!author) throw new Error(`Agent thought without an author: ${file}`);
+    const revision = toString(revisionCell);
+    if (!/^[0-9a-f]{7,40}$/.test(revision)) {
+      throw new Error(`Agent thought revision must be a commit hash: ${file}`);
+    }
+    return {
+      number,
+      file,
+      title: heading.slice(number.length + 1),
+      date,
+      author,
+      revision,
+      body,
+    };
+  });
+  if (!records.length) throw new Error('Agent thoughts index is empty');
+  for (const file of sources.keys()) {
+    if (!records.some((record) => record.file === file)) {
+      throw new Error(`Unlisted agent thought: ${file}`);
+    }
+  }
+  return records;
+}
+
 /** URL segment for a story: its number, or its slug while it is unnumbered. */
 export function storySlug(file: string) {
   const number = /^(\d{4})-/.exec(file)?.[1];
@@ -303,14 +384,15 @@ export function deployment(url = 'http://localhost:4321/') {
   return { site: parsed.origin, base: `${parsed.pathname.replace(/\/$/, '')}/` };
 }
 
-// Paths that name an ADR, story, benchmark record or runbook: linking one that is not published is an error.
+// Paths that name an ADR, story, benchmark record, agent thought or runbook: linking one that is
+// not published is an error.
 const brokenDocumentLink =
-  /^docs\/(?:(?:decisions|stories|benchmarks)\/(?:\d{4}|XXXX)-[^/]*|runbooks\/[a-z0-9-]+)\.md$/;
+  /^docs\/(?:(?:decisions|stories|benchmarks|agent-thoughts)\/(?:\d{4}|XXXX)-[^/]*|runbooks\/[a-z0-9-]+)\.md$/;
 
 /**
  * Rewrites one link in the document at `from`, a repository-relative path. `links` maps
- * repository-relative document paths (ADRs, stories, runbooks, benchmarks and their indexes) to
- * routes under `base`.
+ * repository-relative document paths (ADRs, stories, runbooks, benchmarks, agent thoughts and
+ * their indexes) to routes under `base`.
  */
 export function rewriteLink(
   url: string,

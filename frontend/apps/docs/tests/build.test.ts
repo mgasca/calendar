@@ -3,7 +3,7 @@ import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { deployment, runbookSlug, storySlug } from '../src/lib/adr';
 import { architecturePages, pageRoute } from '../src/lib/architecture';
-import { readDocuments } from '../src/lib/docs-loader';
+import { readAgentThoughts, readDocuments } from '../src/lib/docs-loader';
 
 const { base } = deployment(process.env.DOCS_SITE_URL);
 
@@ -24,6 +24,12 @@ function builtFile(href: string): string | undefined {
   if (!href.startsWith(base)) return undefined;
   const path = href.slice(base.length).split(/[?#]/)[0] ?? '';
   return join('dist', path.endsWith('/') || path === '' ? join(path, 'index.html') : path);
+}
+
+/** The labels of the sidebar's groups, nested ones included, in page order. */
+function sidebarGroups(html: string) {
+  const sidebar = /<sl-sidebar-pane\b[^>]*>([\s\S]*?)<\/sl-sidebar-pane>/.exec(html)?.[1] ?? '';
+  return [...sidebar.matchAll(/<span class="large[^"]*">([^<]*)<\/span>/g)].map((m) => m[1] ?? '');
 }
 
 function sidebarRoutes(html: string) {
@@ -73,6 +79,46 @@ describe('site root', () => {
     expect(routes.indexOf(`${base}architecture/controls/`)).toBeLessThan(
       routes.findIndex((href) => href.startsWith(`${base}adr/`)),
     );
+  });
+});
+
+describe('published agent thoughts', () => {
+  it('puts the Agent thoughts group directly after Architecture in the sidebar', async () => {
+    const overview = await readFile('dist/architecture/index.html', 'utf8');
+    const routes = sidebarRoutes(overview);
+    // Everything before the first route outside Architecture belongs to it; the group follows.
+    const next = routes.find((href) => !href.startsWith(`${base}architecture/`));
+    expect(next).toBe(`${base}agent-thoughts/`);
+    const groups = sidebarGroups(overview);
+    expect(groups[0]).toBe('Architecture');
+    expect(groups.indexOf('Agent thoughts')).toBe(groups.indexOf('Any decision records') - 1);
+  });
+
+  it('renders every report with navigation, its date, author, revision and edit link', async () => {
+    // Only the reports are needed: reading the whole corpus costs about half a second per call.
+    const agentThought = await readAgentThoughts();
+    const reportRoutes = agentThought.records.map(
+      (record) => `${base}agent-thoughts/${record.number}/`,
+    );
+    const index = await readFile('dist/agent-thoughts/index.html', 'utf8');
+    for (const route of reportRoutes) expect(index).toContain(`href="${route}"`);
+    for (const record of agentThought.records) {
+      const route = `${base}agent-thoughts/${record.number}/`;
+      const html = await readFile(`dist/agent-thoughts/${record.number}/index.html`, 'utf8');
+      const routes = sidebarRoutes(html);
+      expect(routes.filter((href) => href.startsWith(`${base}agent-thoughts/`))).toEqual([
+        `${base}agent-thoughts/`,
+        ...reportRoutes,
+      ]);
+      const activeLinks = html.match(/<a\b[^>]*aria-current="page"[^>]*>/g) ?? [];
+      expect(activeLinks.length).toBeGreaterThan(0);
+      expect(activeLinks.every((link) => link.includes(`href="${route}"`))).toBe(true);
+      expect(html).toMatch(new RegExp(`<h1[^>]*>${record.number} · `));
+      expect(html).toContain(`<strong>Date:</strong> ${record.date}`);
+      expect(html).toContain(`<strong>Author:</strong> ${record.author}`);
+      expect(html).toContain(`href="https://github.com/mgasca/calendar/tree/${record.revision}"`);
+      expect(html).toContain(`/edit/main/docs/agent-thoughts/${record.file}"`);
+    }
   });
 });
 

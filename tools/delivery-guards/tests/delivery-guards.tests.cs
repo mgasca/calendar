@@ -1,0 +1,467 @@
+#!/usr/bin/env -S dotnet run
+#:package xunit.v3.mtp-v2@4.0.2
+#:package Shouldly@4.3.0
+#:include ../WorkflowYaml.cs
+#:include ../DeliveryGuards.cs
+
+// Tests for the delivery mechanism guards. Run: dotnet run tools/delivery-guards/tests/delivery-guards.tests.cs
+// CheckoutTests run every guard against this checkout, so `just tools test` fails when a fix's mechanism is reverted.
+// The other tests feed each guard a small fixture of its own, passing and then broken in each way the guard catches.
+
+using System.Runtime.CompilerServices;
+using Shouldly;
+using Xunit;
+
+namespace DeliveryGuards.Tests;
+
+public sealed class CheckoutTests
+{
+  private static readonly RepoFiles Files = RepoFiles.Load(RepoRoot());
+
+  public static TheoryData<string> GuardIds() => [.. Guards.All.Select(g => g.Id)];
+
+  [Theory]
+  [MemberData(nameof(GuardIds))]
+  public void Guard_PassesOnThisCheckout(string id)
+  {
+    Guard guard = Guards.All.Single(g => g.Id == id);
+    Guards.Run(guard, Files).ShouldBeEmpty($"{guard.Id} ({guard.Fix}): {guard.Mechanism}");
+  }
+
+  [Fact]
+  public void Guards_HaveDistinctIdsAndCiteAFix()
+  {
+    Guards.All.Select(g => g.Id).ShouldBeUnique();
+    Guards.All.ShouldAllBe(g => g.Fix.StartsWith('#') && (g.Record == "none" || g.Record.Length == 4));
+  }
+
+  [Fact]
+  public void Workflow_IsReadAsTheJobsItHolds()
+  {
+    var workflow = Workflow.Parse(Files.Workflow);
+    workflow.JobNamed("CI result").ShouldNotBeNull();
+    workflow.Jobs.Count.ShouldBeGreaterThan(5);
+    workflow.Jobs.ShouldAllBe(j => j.Steps.Count > 0);
+  }
+
+  private static string RepoRoot([CallerFilePath] string path = "")
+  {
+    for (var dir = new DirectoryInfo(Path.GetDirectoryName(path)!); dir is not null; dir = dir.Parent)
+    {
+      if (File.Exists(Path.Combine(dir.FullName, ".just-version")))
+      {
+        return dir.FullName;
+      }
+    }
+
+    throw new InvalidOperationException($"No repo root above {path}.");
+  }
+}
+
+/// <summary>A small repo that every guard passes; each test breaks one thing with a text replacement.</summary>
+internal static class Fixture
+{
+  public const string Workflow = """
+    name: CI
+    on:
+      pull_request:
+    concurrency:
+      group: >-
+        ${{ github.workflow }}-${{ github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository
+        && github.run_id || github.ref }}
+      cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+    jobs:
+      backend:
+        name: Backend
+        steps:
+          - uses: actions/checkout@v7
+          - run: dotnet build --no-restore -c Release
+          - run: dotnet format whitespace --verify-no-changes --no-restore
+      frontend:
+        name: Frontend
+        steps:
+          - run: pnpm install --frozen-lockfile
+          - run: pnpm -r --filter '!@calendar/docs' typecheck
+          - run: pnpm -r --filter '!@calendar/docs' test:coverage
+          - name: Build the web app
+            run: pnpm --filter @calendar/web exec vite build
+      docs:
+        name: Docs site
+        steps:
+          - run: pnpm --filter @calendar/docs build
+          - run: pnpm --filter @calendar/docs typecheck --noSync
+      tooling:
+        name: Tooling
+        steps:
+          - uses: actions/setup-dotnet@v6
+            with:
+              dotnet-version: 10.0.x
+              cache: true
+              cache-dependency-path: |
+                tools/**/packages.lock.json
+          - name: Test and lint tooling
+            run: just tools test
+      supersede:
+        name: Cancel superseded runs
+        if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository
+        permissions:
+          actions: write
+        steps:
+          - run: |
+              for id in $ids; do
+                gh run cancel "$id"
+              done
+      result:
+        name: CI result
+        if: ${{ always() }}
+        needs: [backend, frontend, docs, tooling]
+        steps:
+          - run: |
+              jq -e 'length > 0 and all(.[]; .result == "success")' <<< "$NEEDS"
+              gh api "repos/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID/jobs" --jq '.jobs[] | select(.conclusion != "success")'
+    """;
+
+  public const string BackendJustfile = """
+    # Analyzers and code style
+    lint:
+        dotnet build --no-restore
+        dotnet format whitespace --verify-no-changes --no-restore
+
+    # Auto-format the backend
+    format:
+        dotnet format
+    """;
+
+  public const string ToolsJustfile = """
+    tool_dirs := "tools"
+
+    # Test and lint repo tooling
+    test:
+        #!/usr/bin/env bash
+        printf '%s\n' $tests | xargs -P "${TOOLS_TEST_JOBS:-4}" -I{} bash -c 'dotnet run "$1"' _ {}
+    """;
+
+  public const string Props = """
+    <Project>
+      <PropertyGroup>
+        <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
+        <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+      </PropertyGroup>
+    </Project>
+    """;
+
+  public static RepoFiles Files(
+    Func<string, string>? workflow = null,
+    Func<string, string>? backendJust = null,
+    Func<string, string>? toolsJust = null,
+    Func<string, string>? props = null,
+    string? project = null)
+  {
+    var msbuild = new Dictionary<string, string> { [RepoFiles.BackendPropsPath] = (props ?? Same)(Props) };
+    if (project is not null)
+    {
+      msbuild["backend/src/Calendar.Api/Calendar.Api.csproj"] = project;
+    }
+
+    return new RepoFiles((workflow ?? Same)(Workflow), (backendJust ?? Same)(BackendJustfile), (toolsJust ?? Same)(ToolsJustfile), msbuild);
+  }
+
+  public static IReadOnlyList<string> Failures(string id, RepoFiles files) => Guards.Run(Guards.All.Single(g => g.Id == id), files);
+
+  private static string Same(string text) => text;
+}
+
+public sealed class FixtureTests
+{
+  public static TheoryData<string> GuardIds() => [.. Guards.All.Select(g => g.Id)];
+
+  [Theory]
+  [MemberData(nameof(GuardIds))]
+  public void Guard_PassesOnTheFixture(string id) => Fixture.Failures(id, Fixture.Files()).ShouldBeEmpty();
+
+  [Fact]
+  public void AnUnreadableWorkflow_FailsTheGuard() =>
+    Fixture.Failures("superseded-runs", Fixture.Files(workflow: w => w + "\n  &anchor x\n")).ShouldHaveSingleItem()
+      .ShouldContain("could not be read");
+}
+
+public sealed class SupersededRunsTests
+{
+  private static IReadOnlyList<string> Failures(Func<string, string> workflow) =>
+    Fixture.Failures("superseded-runs", Fixture.Files(workflow: workflow));
+
+  [Fact]
+  public void AGroupPerRef_Fails() =>
+    Failures(w => w.Replace(
+      ">-\n    ${{ github.workflow }}-${{ github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name"
+        + " == github.repository\n    && github.run_id || github.ref }}",
+      "${{ github.workflow }}-${{ github.ref }}",
+      StringComparison.Ordinal))
+      .ShouldContain(f => f.Contains("github.run_id", StringComparison.Ordinal));
+
+  [Fact]
+  public void NoCancelJob_Fails() =>
+    Failures(w => w.Replace("name: Cancel superseded runs", "name: Something else", StringComparison.Ordinal))
+      .ShouldHaveSingleItem().ShouldContain("no job is named");
+
+  [Fact]
+  public void ACancelJobWithoutActionsWrite_Fails() =>
+    Failures(w => w.Replace("actions: write", "actions: read", StringComparison.Ordinal))
+      .ShouldHaveSingleItem().ShouldContain("actions: write");
+
+  [Fact]
+  public void ACancelJobThatChecksOut_Fails() =>
+    Failures(w => w.Replace(
+      "      - run: |\n          for id", "      - uses: actions/checkout@v7\n      - run: |\n          for id", StringComparison.Ordinal))
+      .ShouldHaveSingleItem().ShouldContain("checks code out");
+
+  [Fact]
+  public void ACancelJobThatCancelsNothing_Fails() =>
+    Failures(w => w.Replace("gh run cancel", "echo", StringComparison.Ordinal)).ShouldHaveSingleItem().ShouldContain("gh run cancel");
+
+  [Fact]
+  public void ACancelJobOnEveryEvent_Fails() =>
+    Failures(w => w.Replace(
+      "    if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository\n",
+      "",
+      StringComparison.Ordinal)).ShouldHaveSingleItem().ShouldContain("only for pull requests");
+}
+
+public sealed class FormatWhitespaceOnlyTests
+{
+  [Fact]
+  public void TheFullFormatCommandInCi_Fails() =>
+    Fixture.Failures("format-whitespace-only", Fixture.Files(workflow: w => w.Replace(
+      "dotnet format whitespace --verify-no-changes", "dotnet format --verify-no-changes", StringComparison.Ordinal)))
+      .ShouldBe([
+        "the Backend job has no `dotnet format whitespace --verify-no-changes` step.",
+        "the Backend job runs `dotnet format --verify-no-changes --no-restore`: the build already enforces code style and the "
+          + "analyzers, so only `dotnet format whitespace` is needed.",
+      ]);
+
+  [Fact]
+  public void AnExtraStyleCheckInCi_Fails() =>
+    Fixture.Failures("format-whitespace-only", Fixture.Files(workflow: w => w.Replace(
+      "      - run: dotnet format whitespace --verify-no-changes --no-restore\n",
+      "      - run: dotnet format whitespace --verify-no-changes --no-restore\n      - run: dotnet format style --verify-no-changes\n",
+      StringComparison.Ordinal)))
+      .ShouldHaveSingleItem().ShouldContain("dotnet format style");
+
+  [Fact]
+  public void TheFullFormatCommandInTheLintRecipe_Fails() =>
+    Fixture.Failures("format-whitespace-only", Fixture.Files(backendJust: j => j.Replace(
+      "dotnet format whitespace --verify-no-changes", "dotnet format --verify-no-changes", StringComparison.Ordinal)))
+      .ShouldAllBe(f => f.StartsWith("backend/mod.just `lint`", StringComparison.Ordinal));
+
+  [Fact]
+  public void TheFormatRecipe_IsNotTheLintRecipe() =>
+    Guards.JustRecipe(Fixture.BackendJustfile, "lint").ShouldNotBeNull().ShouldNotContain(l => l.Trim() == "dotnet format");
+
+  [Theory]
+  [InlineData("<EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>", "", "EnforceCodeStyleInBuild")]
+  [InlineData(
+    "<TreatWarningsAsErrors>true</TreatWarningsAsErrors>",
+    "<TreatWarningsAsErrors>false</TreatWarningsAsErrors>",
+    "TreatWarningsAsErrors")]
+  [InlineData(
+    "<EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>",
+    "<EnforceCodeStyleInBuild Condition=\"'$(CI)' == 'true'\">true</EnforceCodeStyleInBuild>",
+    "EnforceCodeStyleInBuild")]
+  public void ASharedSwitchOff_Fails(string from, string to, string name) =>
+    Fixture.Failures("format-whitespace-only", Fixture.Files(props: p => p.Replace(from, to, StringComparison.Ordinal)))
+      .ShouldContain(f => f.Contains(name, StringComparison.Ordinal));
+
+  [Fact]
+  public void AProjectThatTurnsASwitchOff_Fails() =>
+    Fixture.Failures("format-whitespace-only", Fixture.Files(project: """
+      <Project Sdk="Microsoft.NET.Sdk">
+        <PropertyGroup><TreatWarningsAsErrors>false</TreatWarningsAsErrors></PropertyGroup>
+      </Project>
+      """)).ShouldHaveSingleItem().ShouldStartWith("backend/src/Calendar.Api/Calendar.Api.csproj sets `TreatWarningsAsErrors`");
+}
+
+public sealed class ParallelToolTestsTests
+{
+  [Fact]
+  public void ASerialLoop_Fails() =>
+    Fixture.Failures("parallel-tool-tests", Fixture.Files(toolsJust: j => j.Replace(
+      """printf '%s\n' $tests | xargs -P "${TOOLS_TEST_JOBS:-4}" -I{} bash -c 'dotnet run "$1"' _ {}""",
+      """for t in $tests; do dotnet run "$t"; done""",
+      StringComparison.Ordinal)))
+      .ShouldHaveSingleItem().ShouldContain("xargs -P");
+
+  [Fact]
+  public void ADefaultOfOne_Fails() =>
+    Fixture.Failures("parallel-tool-tests", Fixture.Files(toolsJust: j => j.Replace(":-4}", ":-1}", StringComparison.Ordinal)))
+      .ShouldHaveSingleItem().ShouldContain("defaults TOOLS_TEST_JOBS to 1");
+
+  [Theory]
+  [InlineData("        run: just tools test", "        run: just tools test\n        env:\n          TOOLS_TEST_JOBS: 1")]
+  [InlineData("        run: just tools test", "        run: just tools test\n        env:\n          TOOLS_TEST_JOBS: ${{ vars.JOBS }}")]
+  [InlineData("        run: just tools test", "        run: TOOLS_TEST_JOBS=1 just tools test")]
+  public void AWorkflowThatSerialises_Fails(string from, string to) =>
+    Fixture.Failures("parallel-tool-tests", Fixture.Files(workflow: w => w.Replace(from, to, StringComparison.Ordinal)))
+      .ShouldHaveSingleItem().ShouldContain("TOOLS_TEST_JOBS");
+
+  [Fact]
+  public void NoNuGetCache_Fails() =>
+    Fixture.Failures(
+      "parallel-tool-tests", Fixture.Files(workflow: w => w.Replace("cache: true", "cache: false", StringComparison.Ordinal)))
+      .ShouldHaveSingleItem().ShouldContain("NuGet cache");
+}
+
+public sealed class CiResultNeedsAllTests
+{
+  private static IReadOnlyList<string> Failures(Func<string, string> workflow) =>
+    Fixture.Failures("ci-result-needs-all", Fixture.Files(workflow: workflow));
+
+  [Fact]
+  public void AJobLeftOutOfNeeds_Fails() =>
+    Failures(w => w.Replace("[backend, frontend, docs, tooling]", "[backend, frontend, docs]", StringComparison.Ordinal))
+      .ShouldHaveSingleItem().ShouldContain("does not need `tooling` (Tooling)");
+
+  [Fact]
+  public void ANewJobNotNeeded_Fails() =>
+    Failures(w => w.Replace(
+      "  supersede:\n",
+      "  gate:\n    name: Run-time gate\n    steps:\n      - run: echo\n  supersede:\n",
+      StringComparison.Ordinal)).ShouldHaveSingleItem().ShouldContain("does not need `gate` (Run-time gate)");
+
+  [Fact]
+  public void ANewJobNeeded_Passes() =>
+    Failures(w => w.Replace(
+      "  supersede:\n",
+      "  gate:\n    name: Run-time gate\n    steps:\n      - run: echo\n  supersede:\n",
+      StringComparison.Ordinal).Replace("tooling]", "tooling, gate]", StringComparison.Ordinal)).ShouldBeEmpty();
+
+  [Fact]
+  public void NeedsAsABlockList_IsRead() =>
+    Failures(w => w.Replace(
+      "needs: [backend, frontend, docs, tooling]",
+      "needs:\n      - backend\n      - frontend\n      - docs\n      - tooling",
+      StringComparison.Ordinal)).ShouldBeEmpty();
+
+  [Fact]
+  public void NeedingTheOptionalCancelJob_Fails() =>
+    Failures(w => w.Replace("tooling]", "tooling, supersede]", StringComparison.Ordinal))
+      .ShouldHaveSingleItem().ShouldContain("needs `supersede`");
+
+  [Fact]
+  public void NotAlways_Fails() =>
+    Failures(w => w.Replace("    if: ${{ always() }}\n", "", StringComparison.Ordinal)).ShouldHaveSingleItem().ShouldContain("always()");
+
+  [Fact]
+  public void AResultCheckThatAcceptsSkipped_Fails() =>
+    Failures(w => w.Replace("all(.[]; .result == \"success\")", "all(.[]; .result != \"failure\")", StringComparison.Ordinal))
+      .ShouldHaveSingleItem().ShouldContain("result to be success");
+
+  [Fact]
+  public void NoJobsApiCheck_Fails() =>
+    Failures(w => w.Replace(
+      """          gh api "repos/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID/jobs" --jq '.jobs[] | select(.conclusion != "success")'""",
+      "",
+      StringComparison.Ordinal)).ShouldHaveSingleItem().ShouldContain("jobs API");
+}
+
+public sealed class SingleWebTypecheckTests
+{
+  private static IReadOnlyList<string> Failures(Func<string, string> workflow) =>
+    Fixture.Failures("single-web-typecheck", Fixture.Files(workflow: workflow));
+
+  [Theory]
+  [InlineData("pnpm --filter @calendar/web exec vite build", "pnpm --filter @calendar/web build")]
+  [InlineData("pnpm --filter @calendar/web exec vite build", "pnpm -r --filter '!@calendar/docs' build")]
+  [InlineData(
+    "pnpm --filter @calendar/web exec vite build",
+    "pnpm --filter @calendar/web exec tsc -b && pnpm --filter @calendar/web exec vite build")]
+  public void ASecondTypecheck_Fails(string from, string to) =>
+    Failures(w => w.Replace(from, to, StringComparison.Ordinal))
+      .ShouldContain(f => f.Contains("type-checks in 2 steps", StringComparison.Ordinal));
+
+  [Fact]
+  public void NoTypecheckStep_Fails() =>
+    Failures(w => w.Replace("      - run: pnpm -r --filter '!@calendar/docs' typecheck\n", "", StringComparison.Ordinal))
+      .ShouldHaveSingleItem().ShouldContain("type-checks in 0 steps");
+
+  [Fact]
+  public void TheBuildBeforeTheTypecheck_Fails() =>
+    Failures(w => w.Replace("      - run: pnpm -r --filter '!@calendar/docs' typecheck\n", "", StringComparison.Ordinal)
+      .Replace(
+        "run: pnpm --filter @calendar/web exec vite build",
+        "run: pnpm --filter @calendar/web exec vite build\n      - run: pnpm -r --filter '!@calendar/docs' typecheck",
+        StringComparison.Ordinal))
+      .ShouldHaveSingleItem().ShouldContain("before its typecheck step");
+}
+
+public sealed class DocsSiteJobTests
+{
+  private static IReadOnlyList<string> Failures(Func<string, string> workflow) =>
+    Fixture.Failures("docs-site-job", Fixture.Files(workflow: workflow));
+
+  [Theory]
+  [InlineData("pnpm -r --filter '!@calendar/docs' typecheck", "pnpm -r typecheck", "`typecheck`")]
+  [InlineData("pnpm -r --filter '!@calendar/docs' test:coverage", "pnpm -r test:coverage", "`test:coverage`")]
+  public void FrontendRunningTheDocsSite_Fails(string from, string to, string step) =>
+    Failures(w => w.Replace(from, to, StringComparison.Ordinal)).ShouldHaveSingleItem().ShouldContain(step);
+
+  [Fact]
+  public void ADocsTypecheckThatSyncsAgain_Fails() =>
+    Failures(w => w.Replace(" --noSync", "", StringComparison.Ordinal)).ShouldHaveSingleItem().ShouldContain("--noSync");
+
+  [Fact]
+  public void NoDocsJob_Fails() =>
+    Failures(w => w.Replace("name: Docs site", "name: Docs", StringComparison.Ordinal)).ShouldHaveSingleItem().ShouldContain("Docs site");
+}
+
+public sealed class WorkflowYamlTests
+{
+  [Fact]
+  public void Parse_ReadsMappingsSequencesAndScalars()
+  {
+    YamlMapping root = WorkflowYaml.Parse("""
+      # comment
+      on:
+        push:
+          branches: [main, 'release']
+      env:
+        A: "quoted # not a comment"
+        B: plain # a comment
+      jobs:
+        x:
+          needs:
+          - a
+          - b
+          steps:
+            - uses: actions/checkout@v7 # v7.0.0
+            - name: Two lines
+              run: |
+                echo one # kept
+                # also kept
+
+                echo two
+            - run: >-
+                folded
+                text
+      """).ShouldBeOfType<YamlMapping>();
+
+    root.Map("on")!.Map("push")!.List("branches").Cast<YamlScalar>().Select(s => s.Value).ShouldBe(["main", "release"]);
+    root.Map("env")!.Text("A").ShouldBe("quoted # not a comment");
+    root.Map("env")!.Text("B").ShouldBe("plain");
+    YamlMapping job = root.Map("jobs")!.Map("x")!;
+    job.List("needs").Cast<YamlScalar>().Select(s => s.Value).ShouldBe(["a", "b"]);
+    var steps = job.List("steps").Cast<YamlMapping>().ToList();
+    steps[0].Text("uses").ShouldBe("actions/checkout@v7");
+    steps[1].Text("name").ShouldBe("Two lines");
+    steps[1].Text("run").ShouldBe("echo one # kept\n# also kept\n\necho two\n");
+    steps[2].Text("run").ShouldBe("folded text");
+  }
+
+  [Theory]
+  [InlineData("a: &x 1")]
+  [InlineData("a: { b: 1 }")]
+  [InlineData("a: 1\na: 2")]
+  [InlineData("a:\n  b: 1\n    c: 2")]
+  [InlineData("a: \"two\n  lines\"")]
+  [InlineData("a: 1\n---\nb: 2")]
+  public void Parse_RejectsWhatItDoesNotSupport(string yaml) => Should.Throw<FormatException>(() => WorkflowYaml.Parse(yaml));
+}

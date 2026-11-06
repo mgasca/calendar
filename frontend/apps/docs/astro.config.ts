@@ -92,12 +92,20 @@ export default defineConfig({
     starlight({
       title: 'Calendar · Docs',
       description:
-        'Any decision records, user stories, the architecture model, runbooks and benchmarks for Calendar, ' +
+        'Agent thoughts, any decision records, user stories, the architecture model, runbooks and benchmarks for Calendar, ' +
         'with their context, alternatives, consequences and user guides.',
       social: [{ icon: 'github', label: 'GitHub', href: repository }],
       customCss: ['./src/styles/docs.css'],
       sidebar: [
         { label: 'Architecture', items: architectureSidebar(flows) },
+        // Directly after Architecture: the agent perspectives on why the work exists (story 0031).
+        {
+          label: 'Agent thoughts',
+          items: [
+            { slug: 'agent-thoughts', label: 'All agent thoughts' },
+            { autogenerate: { directory: '../../../docs/agent-thoughts' } },
+          ],
+        },
         {
           label: 'Any decision records',
           items: [{ autogenerate: { directory: '../../../docs/decisions' } }],

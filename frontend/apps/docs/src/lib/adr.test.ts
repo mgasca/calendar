@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   deployment,
+  parseAgentThoughts,
   parseBenchmarks,
   parseLog,
   parseRunbooks,
@@ -434,6 +435,102 @@ describe('runbook and benchmark links', () => {
       ),
     ).toBe(
       'https://github.com/mgasca/calendar/blob/main/frontend/apps/docs/benchmarks/parse.bench.ts',
+    );
+  });
+});
+
+describe('canonical agent thoughts index', () => {
+  const header = ['| Report | Date | Author | Reviewed revision |', '| --- | --- | --- | --- |'];
+  const row = (number: string, slug: string, title: string) =>
+    `| [${number} ${title}](${number}-${slug}.md) | 2026-11-06 | Codex | \`914a6d15\` |`;
+  const index = [...header, row('0001', 'purpose', 'Repository purpose')].join('\n');
+  const report = '# 0001 Repository purpose\n\n*Captured on 6 November.*\n\n## Why\n';
+  const files = () => new Map([['0001-purpose.md', report]]);
+  it('reads the number, title, date, author and reviewed revision', () => {
+    expect(parseAgentThoughts(index, files())).toEqual([
+      {
+        number: '0001',
+        file: '0001-purpose.md',
+        title: 'Repository purpose',
+        date: '2026-11-06',
+        author: 'Codex',
+        revision: '914a6d15',
+        body: '\n\n*Captured on 6 November.*\n\n## Why\n',
+      },
+    ]);
+  });
+  it('keeps the rows in number order, so the first row is the first report', () => {
+    const two = [
+      ...header,
+      row('0001', 'purpose', 'Repository purpose'),
+      row('0002', 'later', 'Later'),
+    ];
+    const sources = new Map([...files(), ['0002-later.md', '# 0002 Later\n\nBody\n']]);
+    expect(parseAgentThoughts(two.join('\n'), sources).map((record) => record.number)).toEqual([
+      '0001',
+      '0002',
+    ]);
+  });
+  it.each([
+    ['missing table', 'hello', files()],
+    ['empty index', header.join('\n'), new Map<string, string>()],
+    ['missing file', index, new Map<string, string>()],
+    ['unlisted report', index, new Map([...files(), ['0002-extra.md', '# 0002 Extra\n']])],
+    ['duplicate', `${index}\n${row('0001', 'purpose', 'Repository purpose')}`, files()],
+    [
+      'rows out of number order',
+      [...header, row('0002', 'later', 'Later'), row('0001', 'purpose', 'Repository purpose')].join(
+        '\n',
+      ),
+      new Map([...files(), ['0002-later.md', '# 0002 Later\n']]),
+    ],
+    [
+      'title differing from the index',
+      index,
+      new Map([['0001-purpose.md', report.replace('purpose', 'value')]]),
+    ],
+    [
+      'title without the number',
+      index.replaceAll('0001 Repository', 'Repository'),
+      new Map([['0001-purpose.md', '# Repository purpose\n']]),
+    ],
+    ['two titles', index, new Map([['0001-purpose.md', `${report}\n# Again\n`]])],
+    ['malformed row', index.replace('[0001 Repository purpose](0001-purpose.md)', '0001'), files()],
+    [
+      'template-style placeholder',
+      index.replaceAll('0001', 'XXXX'),
+      new Map([['XXXX-purpose.md', '# XXXX Repository purpose\n']]),
+    ],
+    ['malformed date', index.replace('2026-11-06', '6 November'), files()],
+    ['missing author', index.replace('| Codex |', '|  |'), files()],
+    ['revision that is not a commit', index.replace('`914a6d15`', 'main'), files()],
+  ])('rejects %s', (_label, text, sources) => {
+    expect(() => parseAgentThoughts(text, sources)).toThrow();
+  });
+});
+
+describe('agent thought links', () => {
+  const base = '/calendar/';
+  const links = new Map([
+    ['docs/agent-thoughts/README.md', 'agent-thoughts/'],
+    ['docs/agent-thoughts/0001-purpose.md', 'agent-thoughts/0001/'],
+    ['docs/stories/0025-consolidate.md', 'stories/0025/'],
+  ]);
+  const rewrite = (url: string, from: string) => rewriteLink(url, base, links, from);
+  it('routes links between the reports, their index and the other collections', () => {
+    expect(rewrite('0001-purpose.md', 'docs/agent-thoughts/README.md')).toBe(
+      `${base}agent-thoughts/0001/`,
+    );
+    expect(rewrite('../stories/0025-consolidate.md', 'docs/agent-thoughts/0001-purpose.md')).toBe(
+      `${base}stories/0025/`,
+    );
+    expect(rewrite('docs/agent-thoughts/0001-purpose.md', 'README.md')).toBe(
+      `${base}agent-thoughts/0001/`,
+    );
+  });
+  it('fails links to reports that are not published', () => {
+    expect(() => rewrite('0002-missing.md', 'docs/agent-thoughts/README.md')).toThrow(
+      'Broken document link',
     );
   });
 });

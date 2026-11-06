@@ -1,7 +1,12 @@
 import { beforeAll, describe, expect, it } from 'vitest';
 import { readdirSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
-import { readDocuments, runbooksDirectory, storiesDirectory } from './docs-loader';
+import {
+  agentThoughtsDirectory,
+  readDocuments,
+  runbooksDirectory,
+  storiesDirectory,
+} from './docs-loader';
 
 // Parsing every ADR and story costs seconds, so load them once for the file. These tests live apart
 // from adr.test.ts so Vitest runs them in their own worker, beside the cheap unit tests.
@@ -17,6 +22,10 @@ const storyFiles = readdirSync(fileURLToPath(storiesDirectory))
 
 const runbookFiles = readdirSync(fileURLToPath(runbooksDirectory))
   .filter((name) => /^[a-z0-9-]+\.md$/.test(name))
+  .sort();
+
+const agentThoughtFiles = readdirSync(fileURLToPath(agentThoughtsDirectory))
+  .filter((name) => /^\d{4}-.+\.md$/.test(name))
   .sort();
 
 const required = [
@@ -78,6 +87,21 @@ describe('repository runbooks and benchmarks', () => {
     });
     for (const record of records) {
       expect(record.body, record.file).toMatch(/^- \*\*Harness:\*\*/m);
+    }
+  });
+});
+
+describe('repository agent thoughts', () => {
+  it('reads every report in number order, each with its date, author and reviewed revision', () => {
+    const { records } = documents.agentThought;
+    expect(agentThoughtFiles.length).toBeGreaterThan(0);
+    // Number order is file order, so the first row is the first report everywhere (story 0031).
+    expect(records.map((record) => record.file)).toEqual(agentThoughtFiles);
+    for (const record of records) {
+      expect(record.file.startsWith(`${record.number}-`), record.file).toBe(true);
+      expect(record.date, record.file).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+      expect(record.author, record.file).not.toBe('');
+      expect(record.revision, record.file).toMatch(/^[0-9a-f]{7,40}$/);
     }
   });
 });

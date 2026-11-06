@@ -46,23 +46,7 @@ The root `AGENTS.md` still applies, in particular its rule for public posts: rep
 - A poll, an empty check or a watch re-arm warrants no GitHub comment.
 - When a turn starts real tasks or subagents and counts are requested, post one count comment on the issue. No count post for a poll-only turn.
 - Disclose a model switch in the next substantive post if attribution would otherwise be misleading.
-
-## Screenshots on GitHub
-
-`gh` cannot attach an image to an issue or PR, so images live on the orphan branch `screenshots` and posts link them there.
-
-- One directory per GitHub number, bare: `259/add-event-before.png`. Issues and PRs share one number sequence, so numbers never collide. Images taken for a delivery PR go under the issue it delivers; use the PR number only when there is no issue.
-- Name a file by what it shows (`add-event-before.png`, `week-after.png`), never by a session or task handle.
-- The branch is never merged, rebased, force-pushed or deleted, and a file is never replaced or removed: a retaken screenshot gets a new name, so earlier links keep showing what the reviewer saw.
-- Add images with git plumbing from any checkout, without checking the branch out. With the number in `N` and the PNGs in `DIR`, and the commit message ending with the usual agent attribution:
-
-```bash
-git fetch -q origin screenshots && P=$(git rev-parse origin/screenshots) && export GIT_INDEX_FILE=$(mktemp) && git read-tree "$P" && for f in "$DIR"/*.png; do git update-index --add --cacheinfo 100644,$(git hash-object -w "$f"),"$N/$(basename "$f")"; done && C=$(git commit-tree "$(git write-tree)" -p "$P" -m "Screenshots for #$N") && unset GIT_INDEX_FILE && git update-ref refs/heads/screenshots "$C" "$P" && git push -q origin screenshots && echo "$C"
-```
-
-If the push is rejected, someone added images meanwhile: run the block again, which starts from the new tip. The branch exists; never recreate it with `--orphan`.
-- Link each image by the commit the block printed, `https://raw.githubusercontent.com/<owner>/<repo>/<commit>/N/<file>.png`, as a Markdown image whose alt text says what it shows. The link is immutable; a link by branch name is not pinned and is not used.
-- A UI change's PR description shows before and after side by side (a table with one image per cell) and says which revision each was taken at. The `run-calendar` skill takes the screenshots.
+- An image in a post goes on the `screenshots` branch under the issue number and is linked by commit: the `github-screenshots` skill.
 
 ## Resume and close out
 
@@ -77,22 +61,4 @@ If the push is rejected, someone added images meanwhile: run the block again, wh
 - After a squash merge in a stack, update the next branch from fresh `main`, preserve the union of delivered PR links in the card, rerun the relevant checks, and propagate the update through the children. Retarget each child to `main` when appropriate.
 - The maintainer updates open PR branches from `main` with GitHub's "Update branch". Before every push, `git fetch` and merge the remote head; a rejected push means the branch moved, not a conflict. Never rewrite a pushed branch.
 - Finish substantive issue and PR reporting, then clean up only this task's merged resources.
-
-## Performance issues
-
-A `performance` issue is closed on evidence, not on a merged diff.
-
-- Before implementing, the issue states the baseline: the quantity, its value, how it was measured (CI job or step medians over a stated number of runs, or a harness run) and the commit. `just tools ci-timings` samples CI job and step durations; `just docs bench` runs the docs harness.
-- The delivery PR reports the same quantity after the change on the same basis, says which numbers are measured and which inferred, and adds a benchmark record under `docs/benchmarks/` following its `README.md` (next number, a harness that exists in the repository, commit, machine, iterations, median and spread, a control the change should not move). A measured decision to leave code unchanged gets a record too, with its reconsideration condition.
-- Close out only when the record is merged and the after measurement is on the issue; the card links the record.
-
-## Reopened decisions
-
-Before re-rating a decision, ask whether the decision drivers and their weights changed, as well as checking changed facts. Story 0011 records why familiarity changed the task-runner decision.
-
-## Local operations stay local
-
-- Scheduler units, host-specific paths, logs, previous sweep reports and recovery commands belong in dated local operations notes, not in the repository.
-- A sweep compares with the previous report and distinguishes unchanged backlog from new actionable work.
-- Verify the installed timer and script before asserting cadence or scheduler support.
-- Re-probe tool versions and capabilities for the current environment. An old Node or SDK limitation is evidence about that observation, not a permanent repository constraint.
+- A `performance` issue closes on evidence, not on a merged diff: baseline on the issue first, the same quantity after, and a record (`docs/benchmarks/README.md`, "Performance issues").

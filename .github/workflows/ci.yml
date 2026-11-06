@@ -319,10 +319,18 @@ jobs:
             echo "::error::A needed job did not succeed."
             exit 1
           fi
-          # Every other job of this run attempt, except this one and the optional Cancel superseded runs.
-          others=$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID/attempts/$GITHUB_RUN_ATTEMPT/jobs?per_page=100" \
-            --jq '.jobs[] | select(.name != "CI result" and .name != "Cancel superseded runs")
-              | select(.conclusion != "success") | "\(.name): \(.status) \(.conclusion)"')
+          # Every other job of this run attempt, except this one and the optional Cancel superseded runs. Up to three tries,
+          # 5 s apart, while the API errs or still shows a job as running; whatever the last try finds decides.
+          for try in 1 2 3; do
+            if others=$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID/attempts/$GITHUB_RUN_ATTEMPT/jobs?per_page=100" \
+              --jq '.jobs[] | select(.name != "CI result" and .name != "Cancel superseded runs")
+                | select(.conclusion != "success") | "\(.name): \(.status) \(.conclusion)"'); then
+              if [ -z "$others" ] || ! grep -qv ': completed ' <<< "$others"; then break; fi
+            else
+              others="the jobs API could not be read"
+            fi
+            [ "$try" = 3 ] || sleep 5
+          done
           if [ -n "$others" ]; then
             echo "::error::The jobs API reports jobs that did not succeed:"
             echo "$others"

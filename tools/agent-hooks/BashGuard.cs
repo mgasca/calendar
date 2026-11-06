@@ -241,17 +241,21 @@ public static partial class BashGuard
     while (i < tokens.Count)
     {
       (var source, var words) = api ? ApiBodySource(tokens, i) : BodyFileSource(tokens, i);
-      if (source is null)
+      // A source's own path stays on this machine, so what it holds is scanned instead. When the hook cannot read it (not
+      // written yet, or a path the shell has still to expand), the words that name it are scanned like any other (#369).
+      var contents = source is null ? null : BodyFile(segment, source, probe);
+      if (contents is null)
       {
-        text.AppendLine(tokens[i]);
-        i++;
+        foreach (var word in tokens.Skip(i).Take(words))
+        {
+          text.AppendLine(word);
+        }
       }
       else
       {
-        // The source's own path stays on this machine, so only what it holds is scanned (#369).
-        text.AppendLine(BodyFile(segment, source, probe) ?? string.Empty);
-        i += words;
+        text.AppendLine(contents);
       }
+      i += words;
     }
     List<string> hits = [.. PrivateDetailRegex().Matches(text.ToString()).Select(m => m.Value).Distinct(StringComparer.Ordinal)];
     return hits.Count == 0
@@ -269,7 +273,7 @@ public static partial class BashGuard
   private static (string? Source, int Words) BodyFileSource(IReadOnlyList<string> tokens, int i) =>
     tokens[i] switch
     {
-      "--body-file" or "-F" when i + 1 < tokens.Count => (tokens[i + 1], 2),
+      "--body-file" or "-F" when SourceWord(tokens, i + 1) is { } file => (file, 2),
       var word when word.StartsWith("--body-file=", StringComparison.Ordinal) => (word["--body-file=".Length..], 1),
       _ => (null, 1),
     };
@@ -288,7 +292,7 @@ public static partial class BashGuard
   private static (string? Source, int Words) ApiBodySource(IReadOnlyList<string> tokens, int i)
   {
     var word = tokens[i];
-    var next = i + 1 < tokens.Count ? tokens[i + 1] : null;
+    var next = SourceWord(tokens, i + 1);
     return word switch
     {
       "--input" when next is not null => (next, 2),
@@ -299,6 +303,14 @@ public static partial class BashGuard
       _ => (null, 1),
     };
   }
+
+  /// <summary>
+  /// The word at <paramref name="i"/> as an option's separate value, or null when there is none or it looks like an option.
+  /// An option before may take the option word as its own value (<c>-t --input -fbody=x</c> posts the raw field), so a word
+  /// starting with <c>-</c>, other than <c>-</c> for stdin, is never taken as a source path and is scanned as written.
+  /// </summary>
+  private static string? SourceWord(IReadOnlyList<string> tokens, int i) =>
+    i < tokens.Count && (tokens[i] == "-" || !tokens[i].StartsWith('-')) ? tokens[i] : null;
 
   /// <summary>The file a typed field <c>key=@file</c> reads its value from (<c>-</c> for stdin), or null for a plain value.</summary>
   private static string? FieldFile(string field)

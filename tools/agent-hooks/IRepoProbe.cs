@@ -12,7 +12,10 @@ public interface IRepoProbe
   /// <summary>True when the checkout containing <paramref name="cwd"/> is a linked worktree (its .git is a file).</summary>
   bool IsLinkedWorktree(string cwd);
 
-  /// <summary>The file's text, or null when it cannot be read.</summary>
+  /// <summary>
+  /// The file's text, or null when it cannot be read. A file that is no text (empty, a pipe or a device, over 1 MiB, or holding
+  /// a NUL byte) reads as empty, without waiting for it to end.
+  /// </summary>
   string? ReadFile(string cwd, string path);
 
   /// <summary>

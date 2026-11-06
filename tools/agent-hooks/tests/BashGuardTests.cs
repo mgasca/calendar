@@ -171,6 +171,31 @@ public sealed class BashGuardTests
     BashGuard.Evaluate(command, Root, _probe).ShouldBeNull();
   }
 
+  // Security review of #369: a source the hook cannot read leaves the words that name it to scan, as main did for gh api.
+  [Theory]
+  [InlineData("cat > /tmp/b.json <<'EOF'\n{\"body\": \"see /home/me/x\"}\nEOF\ngh api repos/o/r/issues/1/comments --input /tmp/b.json")]
+  [InlineData("gh api repos/o/r/issues/1/comments --input ~/tmp/b.json")]
+  [InlineData("gh api repos/o/r/issues/1/comments -F body=@\"$HOME\"/tmp/b.json")]
+  [InlineData("gh pr comment 1 --body-file /tmp/b.json")]
+  public void An_unreadable_source_is_scanned_by_the_words_that_name_it(string command) =>
+    BashGuard.Evaluate(command, Root, _probe).ShouldNotBeNull().Reason.ShouldContain("/tmp/b.json");
+
+  // Security review of #369: an earlier option can take the option word as its value, and gh then sends the next word as written.
+  [Theory]
+  [InlineData("gh api repos/o/r/issues/1/comments -t --input -fbody=/home/me/x")]
+  [InlineData("gh api repos/o/r/issues/1/comments -t -F -fbody=@/home/me/x")]
+  [InlineData("gh pr create -t -F -b/home/me/x")]
+  public void A_word_that_looks_like_an_option_is_not_taken_as_a_source_path(string command)
+  {
+    // Every name is readable and clean, so only scanning the word as written finds the path.
+    foreach (var name in new[] { "-fbody=/home/me/x", "/home/me/x", "-b/home/me/x" })
+    {
+      _probe.Files[name] = "clean";
+    }
+
+    BashGuard.Evaluate(command, Root, _probe).ShouldNotBeNull().Reason.ShouldContain("/home/me/x");
+  }
+
   [Theory]
   [InlineData("git status # what's changed\ngh pr comment 5 --body \"see /home/me/x.md\"")]
   [InlineData("echo $'it\\'s' && gh pr comment 5 --body 'see /home/me/x.md'")]

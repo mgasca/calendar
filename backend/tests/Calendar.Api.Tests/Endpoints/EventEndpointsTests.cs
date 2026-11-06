@@ -194,7 +194,7 @@ public sealed class EventEndpointsTests(PostgresFixture postgres) : ApiTestBase(
     JsonObject errors = JsonNode.Parse(await response.Content.ReadAsStringAsync(Ct))!["errors"]!.AsObject();
     errors.ContainsKey(field).ShouldBeTrue($"{scenario}: expected an error for '{field}' but got {errors.ToJsonString()}");
 
-    await using CalendarDbContext db = Postgres.Database.CreateMigratorContext();
+    await using CalendarDbContext db = Database.CreateMigratorContext();
     (await db.Events.IgnoreQueryFilters().CountAsync(Ct)).ShouldBe(0);
   }
 
@@ -213,7 +213,7 @@ public sealed class EventEndpointsTests(PostgresFixture postgres) : ApiTestBase(
     response.StatusCode.ShouldBe(HttpStatusCode.BadRequest);
     response.Content.Headers.ContentType!.MediaType.ShouldBe("application/problem+json");
     JsonNode.Parse(await response.Content.ReadAsStringAsync(Ct))!["errors"]!.AsObject().ContainsKey(field).ShouldBeTrue();
-    await using CalendarDbContext db = Postgres.Database.CreateMigratorContext();
+    await using CalendarDbContext db = Database.CreateMigratorContext();
     (await db.Events.IgnoreQueryFilters().CountAsync(Ct)).ShouldBe(0);
   }
 

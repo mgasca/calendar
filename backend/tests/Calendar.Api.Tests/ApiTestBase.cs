@@ -3,19 +3,19 @@ using Calendar.Api.Contracts;
 using Calendar.Domain.Events;
 using Calendar.Domain.Tasks;
 using Calendar.Infrastructure;
+using Calendar.Testing;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Time.Testing;
 
 namespace Calendar.Api.Tests;
 
 /// <summary>
-/// Starts the API on the shared PostgreSQL container with a controllable clock (2026-10-26T15:00Z) and
-/// empties the tables before each test. Two users exist: <see cref="Client"/> acts as <see cref="UserA"/>
-/// (also <see cref="Owner"/>, the owner of everything <see cref="SeedAsync"/> inserts by default), and
-/// <see cref="ClientAs"/> gives a client for another user, such as <see cref="UserB"/>.
+/// Starts the API with a controllable clock (2026-10-26T15:00Z) on a database of its own, a copy of the migrated one
+/// rented from the shared PostgreSQL container, and empties it before each test. Two users exist: <see cref="Client"/>
+/// acts as <see cref="UserA"/> (also <see cref="Owner"/>, the owner of everything <see cref="SeedAsync"/> inserts by
+/// default), and <see cref="ClientAs"/> gives a client for another user, such as <see cref="UserB"/>.
 /// </summary>
-// All tests that write share one database, so their classes run one at a time.
-[Collection("Database")]
+// Each test has its own database, so test classes run in parallel; the tests of one class run one at a time.
 public abstract class ApiTestBase(PostgresFixture postgres) : IAsyncLifetime
 {
   public const string UserAEmail = "a@example.com";
@@ -32,7 +32,8 @@ public abstract class ApiTestBase(PostgresFixture postgres) : IAsyncLifetime
 
   protected FakeTimeProvider Clock { get; } = new(new DateTimeOffset(2026, 10, 26, 15, 0, 0, TimeSpan.Zero));
 
-  protected PostgresFixture Postgres { get; } = postgres;
+  /// <summary>This test's own database: a copy of the migrated one, emptied before the test.</summary>
+  protected PostgresTestDatabase Database { get; private set; } = null!;
 
   protected CalendarApiFactory Factory { get; private set; } = null!;
 
@@ -40,18 +41,33 @@ public abstract class ApiTestBase(PostgresFixture postgres) : IAsyncLifetime
 
   protected static CancellationToken Ct => TestContext.Current.CancellationToken;
 
+  private int _released;
+
   public async ValueTask InitializeAsync()
   {
-    await Postgres.Database.ResetAsync(Ct);
-    await using (CalendarDbContext db = Postgres.Database.CreateMigratorContext())
+    Database = await postgres.Database.RentCopyAsync(Ct);
+    try
     {
-      await db.Database.ExecuteSqlAsync(
-        $"INSERT INTO users (id, email, created_at) VALUES ({UserA}, {UserAEmail}, now()), ({UserB}, {UserBEmail}, now())",
-        Ct);
+      await Database.ResetAsync(Ct);
+      await SeedUsersAsync();
+      Factory = new CalendarApiFactory(Database, Clock);
+      Client = Factory.CreateClient();
     }
+    catch
+    {
+      // Release the copy here too, in case xUnit skips DisposeAsync after a failed InitializeAsync.
+      ReleaseDatabase(reusable: true);
+      throw;
+    }
+  }
 
-    Factory = new CalendarApiFactory(Postgres.Database, Clock);
-    Client = Factory.CreateClient();
+  /// <summary>Inserts <see cref="UserA"/> and <see cref="UserB"/>; overridable only to test a failing setup.</summary>
+  internal virtual async Task SeedUsersAsync()
+  {
+    await using CalendarDbContext db = Database.CreateMigratorContext();
+    await db.Database.ExecuteSqlAsync(
+      $"INSERT INTO users (id, email, created_at) VALUES ({UserA}, {UserAEmail}, now()), ({UserB}, {UserBEmail}, now())",
+      Ct);
   }
 
   /// <summary>A client whose requests act as <paramref name="user"/>.</summary>
@@ -64,10 +80,43 @@ public abstract class ApiTestBase(PostgresFixture postgres) : IAsyncLifetime
 
   public async ValueTask DisposeAsync()
   {
-    Client.Dispose();
-    await Factory.DisposeAsync();
-    await Postgres.Database.ResetAsync(CancellationToken.None);
-    GC.SuppressFinalize(this);
+    var clean = false;
+    try
+    {
+      Client?.Dispose();
+      if (Factory is not null)
+      {
+        await Factory.DisposeAsync();
+      }
+
+      clean = true;
+    }
+    finally
+    {
+      // The next test resets the database before using it, so one reset per test is enough (#349). A copy whose
+      // test could not shut down cleanly is discarded rather than handed to the next test.
+      ReleaseDatabase(reusable: clean);
+      GC.SuppressFinalize(this);
+    }
+  }
+
+  // Exactly once per rented copy, whether InitializeAsync or DisposeAsync gets here first, so a failing test never
+  // keeps a pool slot (#359: eight leaked slots would hang the run until the CI timeout).
+  private void ReleaseDatabase(bool reusable)
+  {
+    if (Database is null || Interlocked.Exchange(ref _released, 1) == 1)
+    {
+      return;
+    }
+
+    if (reusable)
+    {
+      postgres.Database.ReturnCopy(Database);
+    }
+    else
+    {
+      postgres.Database.DiscardCopy(Database);
+    }
   }
 
   protected static DateTimeOffset Utc(int year, int month, int day, int hour = 0, int minute = 0) =>
@@ -79,7 +128,7 @@ public abstract class ApiTestBase(PostgresFixture postgres) : IAsyncLifetime
   /// </summary>
   protected async Task SeedAsync(IEnumerable<CalendarEvent>? events = null, IEnumerable<TodoTask>? tasks = null)
   {
-    await using CalendarDbContext db = Postgres.Database.CreateMigratorContext();
+    await using CalendarDbContext db = Database.CreateMigratorContext();
     db.Events.AddRange(events ?? []);
     db.Tasks.AddRange(tasks ?? []);
     await db.SaveChangesAsync(Ct);

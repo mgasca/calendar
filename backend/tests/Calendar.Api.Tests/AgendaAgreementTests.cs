@@ -37,7 +37,7 @@ public sealed class AgendaAgreementTests(PostgresFixture postgres) : ApiTestBase
 
     await SeedAsync(BuildEvents(date, zoneId, window), BuildTasks(date, window));
 
-    await using CalendarDbContext db = Postgres.Database.CreateMigratorContext();
+    await using CalendarDbContext db = Database.CreateMigratorContext();
     // The migrator context has no current user, so the rows are read with the filter explicitly off.
     List<CalendarEvent> events = await db.Events.IgnoreQueryFilters().ToListAsync(Ct);
     List<TodoTask> tasks = await db.Tasks.IgnoreQueryFilters().ToListAsync(Ct);

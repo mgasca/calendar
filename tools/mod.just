@@ -47,6 +47,10 @@ versions *args:
 ci-timings *args:
     dotnet run tools/ci-timings/ci-timings.cs -- {{ args }}
 
+# Print new comments, reviews and PR states on an issue and its delivery PRs since the last run (e.g. just tools handover-watch 320)
+handover-watch *args:
+    dotnet run tools/handover-watch/handover-watch.cs -- {{ args }}
+
 # Validate ADRs in docs/decisions (e.g. just tools adr --fix-links)
 adr *args:
     dotnet run {{ adr_skill }}/scripts/check-adr/check-adr.cs -- {{ args }}

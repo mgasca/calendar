@@ -193,10 +193,15 @@ jobs:
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@v7
-      # No repo-root global.json: tools target the latest .NET 10 SDK (ADR-0017).
+      # No repo-root global.json: tools target the latest .NET 10 SDK (ADR-0017). The NuGet cache holds the tools'
+      # #:package pins, which the first test app otherwise downloads on every run (#351, record 0011).
       - uses: actions/setup-dotnet@v6
         with:
           dotnet-version: 10.0.x
+          cache: true
+          cache-dependency-path: |
+            tools/**/packages.lock.json
+            .claude/skills/**/packages.lock.json
       - name: Ensure shellcheck
         run: command -v shellcheck || (sudo apt-get update -q && sudo apt-get install -yq shellcheck)
       - name: Read the pinned just version

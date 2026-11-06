@@ -33,7 +33,7 @@ What ended is the exploration of cross-harness *subagents*, not cross-harness wo
 * **Scheduled work stays cross-harness.** Sweeps and other routines are scheduled and run in mj on a non-Claude harness, and the epics and child issues their reports lead to are created there too.
 * **Delivery happens mostly in Claude Code.** Epics and single issues are managed and delivered there, which is where the Claude-first automation of [ADR-0044](../decisions/0044-claude-first-agent-automation.md) runs.
 
-So the skills that scheduled work runs, such as `dream-weaver`, `issue-sweep` and `adr-sweep`, are still read by a non-Claude harness and stay in harness-neutral prose. The delivery skills and hooks may be Claude Code only.
+An inference from that split, not a decision: the skills that scheduled work runs (for example `dream-weaver`, `issue-sweep` and `adr-sweep`) are read by a non-Claude harness too, so their prose may need to stay harness-neutral, while the delivery skills and hooks may be Claude Code only. The maintainer deferred the question of which skills, if any, must stay harness-neutral ([#366](https://github.com/mgasca/calendar/pull/366#issuecomment-6692829765)).
 
 The `issue-handover` skill shows the cost. It has grown to cover polling cadence, a seen-ID record, public-post rules a hook already enforces, screenshots, performance evidence, reopened decisions and local operations, all stated as prose that loads on every handover turn, including a poll that finds nothing. Each part has a better home once Claude Code is the target: the harness for timing, a repo tool for mechanics, a hook for invariants, and reference documents for conventions people read too. Epic #318 holds those moves as children; this card is the story they deliver, and the record of what the Claude-first period teaches.
 
@@ -142,7 +142,7 @@ Acceptance criteria:
 
 ### Has the period ended?
 
-No. The maintainer has not stated an end to the Claude-first period as of this PR, so ADR-0044 stands. Ending it is a new ADR.
+No. The maintainer has not stated an end to the Claude-first period, so ADR-0044 stands. The maintainer will say when it ends ([#366](https://github.com/mgasca/calendar/pull/366#issuecomment-6692824098)), and ending it is a new ADR.
 
 ### Lessons learned, known issues and follow-ups
 
@@ -151,9 +151,9 @@ No. The maintainer has not stated an end to the Claude-first period as of this P
 * **The maintainer updates branches from GitHub.** #356 got a GitHub "Update branch" merge right after its stacked base, #354, merged. Fetching and merging the remote head before the push, as the skill says, kept both.
 * **A guidance claim was untrue.** The root `AGENTS.md` said `.plan/` was git-ignored, but it was not until #360 added it.
 * **The watch interval changed from 60 s to 5 minutes**, approved on #319. Ticks that find nothing were the common case, and each one costs a turn.
-* **A slow-machine flake:** once, under a load average of about 8, the docs build's link test hit its 5 s timeout and then passed on a rerun (#356). This was seen once and not filed.
+* **The docs build's link test is close to its timeout locally.** `tests/build.test.ts` "resolves every internal link and anchor" uses Vitest's default 5 s timeout. It hit that timeout once on #356, at a load average of about 8, and twice more on #366 at about 2.7. Run alone with a 60 s timeout it passed in 12.2 s over 129 pages (measured), so it is slow rather than flaky; CI has not hit it. It is not filed.
 * **Known gap:** the PreToolUse note of #358 has not been seen live. The first session that runs `gh pr create` with such a body on the new `main` can confirm it.
-* **Not filed:** the public-post guard does not scan the stdin of `gh api --input -`. This predates the epic and was found while delivering #321.
+* **Filed outside the epic:** the public-post guard does not read the body of `gh api --input`, a file or stdin ([#369](https://github.com/mgasca/calendar/issues/369), `bug`, `agent-found`). This predates the epic and was found while delivering #321.
 * **Follow-ups:** #363 (one GraphQL query per watch tick). The saved Claude Code workflows deferred on #318 (close-out checks across a stack, review bursts, the issue sweep) can now call the tool and the hook.
 
 ## User guide

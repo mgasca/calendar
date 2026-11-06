@@ -122,6 +122,22 @@ public sealed class BashGuardTests
     BashGuard.Evaluate(command, Root, _probe).ShouldNotBeNull().Reason.ShouldContain("/home/me/repo");
   }
 
+  [Theory]
+  [InlineData("git status # what's changed\ngh pr comment 5 --body \"see /home/me/x.md\"")]
+  [InlineData("echo $'it\\'s' && gh pr comment 5 --body 'see /home/me/x.md'")]
+  [InlineData("cat <<'EOF' | gh pr comment 1 --body-file -\nSummary\nsee /home/me/x.md\nEOF")]
+  public void A_comment_an_ansi_quote_or_a_piped_heredoc_does_not_hide_a_private_detail(string command) =>
+    BashGuard.Evaluate(command, Root, _probe).ShouldNotBeNull().Reason.ShouldContain("/home/me/x.md");
+
+  [Fact]
+  public void A_comment_with_an_apostrophe_does_not_hide_the_next_command()
+  {
+    _probe.Dirty.Add("/repo/AGENTS.md");
+
+    BashGuard.Evaluate("gh pr comment 5 --body ok # PR's note\ngit restore AGENTS.md", Root, _probe)
+      .ShouldNotBeNull().Decision.ShouldBe("deny");
+  }
+
   [Fact]
   public void A_line_of_a_multi_line_body_is_not_run_as_a_command()
   {

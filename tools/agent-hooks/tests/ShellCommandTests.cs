@@ -41,6 +41,26 @@ public sealed class ShellCommandTests
   }
 
   [Fact]
+  public void A_comment_runs_to_the_end_of_its_line_and_a_hash_inside_a_word_is_kept()
+  {
+    IReadOnlyList<ShellCommand.Segment> segments = ShellCommand.Split("a # it's (x\nb c#d 'e # f' \"#5\"", "/repo");
+
+    segments.Select(s => s.Tokens).ShouldBe([["a"], ["b", "c#d", "e # f", "#5"]]);
+  }
+
+  [Fact]
+  public void An_ansi_c_quote_honours_escaped_quotes() =>
+    ShellCommand.Split("echo $'it\\'s' && git status", "/repo").Select(s => s.Tokens[0]).ShouldBe(["echo", "git"]);
+
+  [Fact]
+  public void A_command_reading_a_pipe_gets_the_heredoc_of_the_command_before_it()
+  {
+    IReadOnlyList<ShellCommand.Segment> segments = ShellCommand.Split("cat <<'EOF' | gh pr comment 1 --body-file -\nbody\nEOF", "/repo");
+
+    segments[1].Stdin.ShouldBe("body\n");
+  }
+
+  [Fact]
   public void Backslashes_escape_and_join_lines()
   {
     ShellCommand.Split("git commit -m \"say \\\"hi\\\"\" \\\n  --amend a\\ b", "/repo")

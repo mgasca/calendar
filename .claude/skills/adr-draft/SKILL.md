@@ -200,7 +200,7 @@ For user-requested issue-driven handovers, the `issue-handover` skill (`.claude/
 
 - **Answers change the ADR:** update the drafts on the same branch, run the validator again, and update the PR description with what changed. If the user asks for a split, `git rm` the combined file, renumber, and fix every link and the architecture model entry.
 - **The user approves:** set `status: accepted` in the front matter **and** in the architecture model entry, in the same PR, *before* it merges. ADRs 0014–0016 merged still marked `proposed`. Do not repeat that. Taking a decision is separate from delivering it. Accept as soon as the user approves the decision. Never keep `proposed` until the implementation, build or rollout exists. The implementation issues and PRs track delivery, not the ADR status.
-- **Superseding an ADR:** the new ADR explains what changed. The old one becomes `status: superseded by [ADR-NNNN](NNNN-….md)`, and its architecture model entry becomes `superseded`. Do not edit the substance of the old decision.
+- **Superseding an ADR:** first ask whether the drivers and their weights changed, not only the facts (`docs/decisions/README.md`, "Reopening a decision"). The new ADR explains what changed. The old one becomes `status: superseded by [ADR-NNNN](NNNN-….md)`, and its architecture model entry becomes `superseded`. Do not edit the substance of the old decision.
 - **Implementation:** goes in a separate PR that links to the ADR. It does not change the ADR's status. An accepted ADR with no implementation yet is normal. If the implementation shows the decision was wrong, supersede it with a new ADR. Do not leave it `proposed`.
 
 ## Bundled tooling

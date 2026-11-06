@@ -12,6 +12,14 @@ Reference measurements for performance work. A benchmark here is a repeatable ha
 | [0006](0006-web-build-without-tsc.md) | The web build step of the Frontend job without the repeated tsc -b (#276) | `tools/ci-timings/ci-timings.cs` |
 | [0007](0007-frontend-ci-job-after.md) | The Frontend CI job and the whole run after the four fixes of #272 | `tools/ci-timings/ci-timings.cs` |
 
+## Performance issues
+
+An issue labelled `performance` is closed on evidence, not on a merged diff.
+
+- Before implementing, the issue states the baseline: the quantity, its value, how it was measured (CI job or step medians over a stated number of runs, or a harness run) and the commit. `just tools ci-timings` samples CI job and step durations; `just docs bench` runs the docs harness.
+- The delivery PR reports the same quantity after the change on the same basis, says which numbers are measured and which inferred, and adds a record here following "Writing a record" below. A measured decision to leave code unchanged gets a record too, with its reconsideration condition.
+- Close the issue only when the record is merged and the after measurement is on the issue; the story card links the record.
+
 ## Running one
 
 `just tools ci-timings --job <name>` samples a workflow's job and step durations from the runs GitHub keeps (needs `gh` signed in) and prints the tables for a record. `just docs bench` runs the docs harness with [tinybench](https://github.com/tinylibs/tinybench) inside Vitest (`vitest.bench.config.ts`). Set `BENCH_OUT=<file>` to also write the Markdown table to a file. `just test`, `just check` and CI never run benchmarks.

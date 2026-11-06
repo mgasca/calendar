@@ -27,6 +27,7 @@ This complements [0018](0018-preserve-transcript-insights.md) and [0025](0025-co
 * **First report:** preserve the full agreed report as `docs/agent-thoughts/0001-repository-purpose-and-value.md`, with a title, date, author attribution, reviewed revision and assessment limitations.
 * **Agreed ordering:** retain all 25 highlights, with architecture at 12, documentation at 13 and reusable assets at 14.
 * **Discoverability:** add a short folder README explaining the purpose, numbered filenames and an index of reports; link the folder from the root README.
+* **Repository purpose:** put a "Why does this repo exist?" section below the root README title, with literal `<Replace me>` as its first content line for the maintainer's thoughts, followed by a direct attributed quote from the report.
 * **Historical context:** keep the report's findings anchored to revision `914a6d15`; distinguish observations, interpretation and maintainer-supplied motivation. Adjust relative links for the report's location.
 * **Docs-only delivery:** add this card and its index/model entries first, followed by a stacked report-delivery PR and completed card. Reports remain repository Markdown.
 

@@ -1,5 +1,13 @@
 # Calendar
 
+## Why does this repo exist?
+
+<Replace me>
+
+> Calendar explores how to make AI-assisted software engineering dependable. It uses a real planning application to develop and test ways of recording decisions, coordinating agents, checking delivery, and turning mistakes into lasting improvements. The result is both useful software and a growing body of practical engineering knowledge.
+
+— Codex, [Repository purpose and value](docs/agent-thoughts/0001-repository-purpose-and-value.md)
+
 [![Documentation](https://img.shields.io/badge/Documentation-blue?style=flat-square&logo=readme)](https://mgasca.github.io/calendar/)
 
 Monorepo for the Calendar application: a .NET backend and a web front end, with room for more UIs.

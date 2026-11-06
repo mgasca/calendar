@@ -15,7 +15,7 @@
 //                                                                            long the newer run waited, and where the wait went
 //                                                                            (up to --runs pairs from the last 5 × --runs runs)
 //   dotnet run tools/ci-timings/ci-timings.cs -- --baseline --created "2026-11-06T20:04:00Z..2026-11-07T20:00:00Z" \
-//     --holdout ">2026-11-07T20:00:00Z"   pins each job's baseline per path (pr, push) from the successful push and dispatch
+//     --holdout ">2026-11-07T20:00:00Z"   pins each job's baseline per path (check, publication) from the push and dispatch
 //                                         runs on main in --created, writes .github/ci-baseline.json (--out) and back-tests
 //                                         its thresholds on the runs in --holdout, on main and on pull requests (ADR 0045)
 //     [--min-runs 30] [--alpha 0.01] [--floor 15] [--margin 0.1] [--record docs/benchmarks/0014-….md]

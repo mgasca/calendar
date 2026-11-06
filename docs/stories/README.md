@@ -54,5 +54,5 @@ Front matter: `status` (`planned`, `in-progress` or `implemented`), `date` (`YYY
 | [0030](0030-docs-only-pr-previews.md) | Publish a docs-site preview only for docs-only pull requests | implemented |
 | [0031](0031-open-the-docs-site-on-why-the-repository-exists.md) | Open the docs site on why the repository exists | implemented |
 | [0032](0032-unique-pages-publication-versions.md) | Give each Pages publication attempt a distinct build version | implemented |
-| [0033](0033-review-how-long-delivery-automation-makes-us-wait.md) | Review how long delivery automation makes us wait | planned |
+| [0033](0033-review-how-long-delivery-automation-makes-us-wait.md) | Review how long delivery automation makes us wait | implemented |
 | [XXXX](XXXX-create-events-and-tasks-from-week-view.md) | Create events and tasks from the week view | planned |

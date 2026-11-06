@@ -38,7 +38,7 @@ From the request: the surfaces (default all five below), a focus (a workflow, jo
 | Task-runner recipes | the local loop people run (`just check`, `just <module> dev` start-up, `just test`), and where recipes duplicate or diverge from what CI runs |
 | Test suites | environment set-up per file, long-pole tests, contention when suites run concurrently, log noise (warnings, unhandled requests) |
 | Builds and publication | the same input built or synced more than once per run, and work that grows with the repository's own content (pages, ADRs, stories, migrations) |
-| Agent delivery loops | wake-ups that need no action (own posts, bot previews, empty checks), CI runs dispatched only to measure, idle waits on checks, usage-limit stalls |
+| Agent delivery loops | pushes that cancel a run already in progress (and make the next one wait), wake-ups that need no action (own posts, bot previews, empty checks), CI runs dispatched only to measure, idle waits on checks, usage-limit stalls |
 
 ## Steps
 
@@ -48,7 +48,7 @@ Write down what someone waits for and how often: "a PR author waits for CI resul
 
 ### 2. Baseline from history
 
-Run `just tools ci-timings --job <name>` (repeat `--job`; `--branch`, `--runs`, `--workflow` narrow it) and keep its tables unchanged for the record. Then, per [references/measurement.md](references/measurement.md):
+Run `just tools ci-timings --job <name>` (repeat `--job`; `--branch`, `--runs`, `--workflow` narrow it) and keep its tables unchanged for the record. For a job name with a space, run the harness directly, `dotnet run tools/ci-timings/ci-timings.cs -- --job "Docs site"`: the recipe splits quoted arguments (#345). Then, per [references/measurement.md](references/measurement.md):
 
 - Name the critical path from the job table and the workflow's `needs`. If the slow job isn't on it, say so first.
 - Compute both lenses. Get queue time from the jobs API (`created_at` against `started_at`). The harness doesn't report it, so mark it as sampled by hand.
@@ -56,7 +56,7 @@ Run `just tools ci-timings --job <name>` (repeat `--job`; `--branch`, `--runs`, 
 
 ### 3. Static pass: delegate it
 
-Launch the `delivery-performance-reviewer` agent with a brief that names the surfaces, the focus, the commit, and whether it may sample CI. Don't hand it your hypothesis: its value is a read that isn't anchored on yours. While it runs, don't read the same files yourself. Do the history work of step 2, or the agent-loop work of step 5. When it returns, treat each hypothesis marked *inferred* as a lead to confirm in step 4, not as a finding.
+Launch the `delivery-performance-reviewer` agent with a brief. An agent type added during a session is registered only in later sessions. Until then, launch a general-purpose agent whose prompt is the agent file's body plus the brief, and say that you did. Write a brief that names the surfaces, the focus, the commit, and whether it may sample CI. Don't hand it your hypothesis: its value is a read that isn't anchored on yours. While it runs, don't read the same files yourself. Do the history work of step 2, or the agent-loop work of step 5. When it returns, treat each hypothesis marked *inferred* as a lead to confirm in step 4, not as a finding.
 
 ### 4. Confirm by counting, in a scratch worktree
 
@@ -68,7 +68,9 @@ Pick the two or three leads with the largest critical-path effect and confirm th
 
 ### 5. The agent loop, when in scope
 
-Use the session-history tool the environment provides (the `dream-weaver` skill lists them). If there is none, say this surface wasn't covered. For the delivery sessions in the window, count: wake-ups, and how many led to no action (own posts, bot previews, empty check lists); CI runs dispatched only to measure; turns spent waiting on checks; usage-limit stops and the work redone after them. Report counts, not impressions. Then route each fix to where it belongs. Self-echo filtering belongs in the watch (#320), not in model turns. A dispatch budget belongs in the review's plan (step 7).
+Start with what CI history shows without any transcript. Count runs cancelled by a later push to the same ref, how long each ran first, and how long its superseding run waited before its first job started. In this repo's first live test of the skill, 14 of about 60 runs in one day were cancelled this way. One run in five waited 20–85 s, because the cancelled run kept going until its `if: always()` result job had finished. Pushing several commits a minute apart is a delivery-loop habit, and its fix (batching commits before pushing) belongs in the delivery skills, not the workflow.
+
+Then use the session-history tool the environment provides (the `dream-weaver` skill lists them). If there is none, say that the transcript part of this surface wasn't covered. For the delivery sessions in the window, count: wake-ups, and how many led to no action (own posts, bot previews, empty check lists); CI runs dispatched only to measure; turns spent waiting on checks; usage-limit stops and the work redone after them. Report counts, not impressions. Then route each fix to where it belongs. Self-echo filtering belongs in the watch (#320), not in model turns. A dispatch budget belongs in the review's plan (step 7).
 
 ### 6. Rank
 

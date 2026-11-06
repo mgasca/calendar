@@ -72,7 +72,11 @@ public sealed record Options(int Issue, IReadOnlyList<int> PullRequests, bool Pe
 /// <param name="State">open, closed (without merging) or merged.</param>
 /// <param name="ChangedAt">When it reached that state: merged_at, closed_at or created_at.</param>
 /// <param name="Url">The PR's web address.</param>
-public sealed record PullRequest(int Number, string State, DateTimeOffset ChangedAt, string Url);
+public sealed record PullRequest(int Number, string State, DateTimeOffset ChangedAt, string Url)
+{
+  /// <summary>Gets the login of the PR's author.</summary>
+  public string Author { get; init; } = string.Empty;
+}
 
 /// <summary>One comment, review or PR state the watch can print.</summary>
 /// <param name="Kind">One of <see cref="Kinds"/>.</param>
@@ -118,7 +122,13 @@ public static class Parser
   private const string MergedAt = "merged_at";
   private const string Number = "number";
 
-  /// <summary>The delivery PRs in an issue's timeline: PRs that cross-reference it with a keyword in their body.</summary>
+  /// <summary>Author associations whose PRs count as delivery PRs without --pr.</summary>
+  private static readonly HashSet<string> TrustedAuthors = new(["OWNER", "MEMBER", "COLLABORATOR"], StringComparer.Ordinal);
+
+  /// <summary>
+  /// The delivery PRs in an issue's timeline: PRs that cross-reference it with a keyword in their body, opened by the owner, a
+  /// member or a collaborator. Anyone can open a PR that says <c>Refs #N</c>; such a PR is watched only when named with --pr.
+  /// </summary>
   /// <param name="issue">The watched issue.</param>
   /// <param name="json">The slurped pages of <c>GET /repos/{owner}/{repo}/issues/{issue}/timeline</c>.</param>
   /// <returns>One entry per PR, by number, with its current state.</returns>
@@ -131,6 +141,7 @@ public static class Parser
         || !source.TryGetProperty("issue", out JsonElement referrer)
         || !referrer.TryGetProperty("pull_request", out JsonElement pullRequest)
         || pullRequest.ValueKind != JsonValueKind.Object
+        || !TrustedAuthors.Contains(Text(referrer, "author_association"))
         || !References.Names(Text(referrer, Body), issue))
       {
         return null;
@@ -244,13 +255,17 @@ public static class Parser
   {
     var number = pullRequest.GetProperty(Number).GetInt32();
     DateTimeOffset created = Time(pullRequest, CreatedAt) ?? DateTimeOffset.MinValue;
+    var author = pullRequest.TryGetProperty("user", out JsonElement user) && user.ValueKind == JsonValueKind.Object
+      ? Text(user, "login")
+      : string.Empty;
+    var url = Text(pullRequest, HtmlUrl);
     if (mergedAt is { } merged)
     {
-      return new PullRequest(number, "merged", merged, Text(pullRequest, HtmlUrl));
+      return new PullRequest(number, "merged", merged, url) { Author = author };
     }
     return string.Equals(Text(pullRequest, "state"), "closed", StringComparison.Ordinal)
-      ? new PullRequest(number, "closed", Time(pullRequest, "closed_at") ?? created, Text(pullRequest, HtmlUrl))
-      : new PullRequest(number, "open", created, Text(pullRequest, HtmlUrl));
+      ? new PullRequest(number, "closed", Time(pullRequest, "closed_at") ?? created, url) { Author = author }
+      : new PullRequest(number, "open", created, url) { Author = author };
   }
 
   private static string Text(JsonElement element, string property) =>
@@ -328,7 +343,7 @@ public static class Watch
         Kinds.PrState,
         string.Create(CultureInfo.InvariantCulture, $"{pr.Number}:{pr.State}"),
         pr.Number,
-        string.Empty,
+        pr.Author,
         IsBot: false,
         pr.ChangedAt,
         pr.Url,
@@ -422,9 +437,9 @@ public static class Report
         CultureInfo.InvariantCulture,
         $"{(string.Equals(item.Kind, Kinds.IssueComment, StringComparison.Ordinal) ? "#" : "PR #")}{item.Number}"),
     ];
+    parts.Add(item.IsBot ? item.Author + " (bot)" : item.Author);
     if (!string.Equals(item.Kind, Kinds.PrState, StringComparison.Ordinal))
     {
-      parts.Add(item.IsBot ? item.Author + " (bot)" : item.Author);
       parts.Add(item.HasAgentFooter ? "agent-footer: yes" : "agent-footer: no");
     }
     if (item.ReviewState is { } state)
@@ -440,10 +455,13 @@ public static class Report
     {
       parts.Add(string.Create(CultureInfo.InvariantCulture, $"reply-to {Kinds.ReviewComment}:{replyTo}"));
     }
-    return Clean(string.Join(Separator, parts));
+    return SingleLine(string.Join(Separator, parts));
   }
 
-  /// <summary>Normalises line endings to <c>\n</c> and replaces other control characters, such as terminal escapes, with U+FFFD.</summary>
+  /// <summary>
+  /// Normalises line endings to <c>\n</c> and replaces other control characters (such as terminal escapes) and bidirectional
+  /// overrides with U+FFFD, so printed text shows what it says.
+  /// </summary>
   /// <param name="text">Text from GitHub.</param>
   /// <returns>Text that is safe to print.</returns>
   public static string Clean(string text)
@@ -452,10 +470,29 @@ public static class Report
     var clean = new StringBuilder(normalised.Length);
     foreach (var character in normalised)
     {
-      clean.Append(character is '\n' or '\t' || !char.IsControl(character) ? character : '�');
+      var unsafeCharacter = (char.IsControl(character) && character is not ('\n' or '\t')) || IsBidiControl(character);
+      clean.Append(unsafeCharacter ? '\uFFFD' : character);
     }
     return clean.ToString();
   }
+
+  /// <summary>Like <see cref="Clean"/>, and also replaces line breaks and tabs, for a header line built from GitHub fields.</summary>
+  /// <param name="text">A header, which may hold a file path or login from GitHub.</param>
+  /// <returns>One line.</returns>
+  public static string SingleLine(string text)
+  {
+    var clean = new StringBuilder(Clean(text));
+    for (var index = 0; index < clean.Length; index++)
+    {
+      if (clean[index] is '\n' or '\t' or '\u2028' or '\u2029')
+      {
+        clean[index] = '\uFFFD';
+      }
+    }
+    return clean.ToString();
+  }
+
+  private static bool IsBidiControl(char character) => character is (>= '\u202A' and <= '\u202E') or (>= '\u2066' and <= '\u2069');
 }
 
 /// <summary>Runs the GitHub CLI, found on PATH, and returns its standard output.</summary>

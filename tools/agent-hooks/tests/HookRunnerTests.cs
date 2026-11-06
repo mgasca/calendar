@@ -58,6 +58,29 @@ public sealed class HookRunnerTests
   }
 
   [Fact]
+  public void Pre_bash_informs_on_a_pr_to_main_without_closes_or_refs_and_makes_no_decision()
+  {
+    HookResult result = HookRunner.Run(
+      "pre-bash", Json("Bash", "command", "gh pr create --title t --body \"$(cat <<'EOF'\nSummary\nEOF\n)\""), _probe, "10.0.0");
+
+    result.ExitCode.ShouldBe(0);
+    JsonElement output = JsonDocument.Parse(result.Stdout!).RootElement.GetProperty("hookSpecificOutput");
+    output.GetProperty("hookEventName").GetString().ShouldBe("PreToolUse");
+    output.TryGetProperty("permissionDecision", out _).ShouldBeFalse();
+    (output.GetProperty("additionalContext").GetString() ?? string.Empty).ShouldContain("neither `Closes #N` nor `Refs #N`");
+  }
+
+  [Fact]
+  public void Pre_bash_deny_wins_over_the_pr_link_note()
+  {
+    HookResult result =
+      HookRunner.Run("pre-bash", Json("Bash", "command", "gh pr create --title t --body 'see /home/me/x'"), _probe, "10.0.0");
+
+    (result.Stdout ?? string.Empty).ShouldContain("\"permissionDecision\":\"deny\"");
+    (result.Stdout ?? string.Empty).ShouldNotContain("additionalContext");
+  }
+
+  [Fact]
   public void Pre_edit_denies_generated_files_and_passes_sources()
   {
     HookResult deny = HookRunner.Run("pre-edit", Json("Edit", "file_path", "/repo/contracts/openapi.json"), _probe, "10.0.0");

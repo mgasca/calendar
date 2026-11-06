@@ -237,12 +237,12 @@ public static partial class BashGuard
     {
       if (tokens[i] is "--body-file" or "-F" && tokens[1] != "api" && i + 1 < tokens.Count)
       {
-        text.AppendLine(probe.ReadFile(segment.Cwd, tokens[i + 1]) ?? string.Empty);
+        text.AppendLine(BodyFile(segment, tokens[i + 1], probe) ?? string.Empty);
         i += 2;
       }
       else if (tokens[i].StartsWith("--body-file=", StringComparison.Ordinal))
       {
-        text.AppendLine(probe.ReadFile(segment.Cwd, tokens[i]["--body-file=".Length..]) ?? string.Empty);
+        text.AppendLine(BodyFile(segment, tokens[i]["--body-file=".Length..], probe) ?? string.Empty);
         i++;
       }
       else
@@ -259,6 +259,10 @@ public static partial class BashGuard
         $"The post would publish private details: {string.Join(", ", hits)}. Use repository-relative paths and public "
         + "issue/PR links, and leave session, task and subagent handles out (AGENTS.md: public GitHub posts).");
   }
+
+  /// <summary>The text a <c>--body-file</c> names: the command's heredoc for <c>-</c> (stdin), otherwise the file's contents.</summary>
+  internal static string? BodyFile(ShellCommand.Segment segment, string path, IRepoProbe probe) =>
+    path == "-" ? segment.Stdin : probe.ReadFile(segment.Cwd, path);
 
   private static Verdict? SharedDatabase(ShellCommand.Segment segment, IRepoProbe probe, bool touchesSharedDatabase) =>
     touchesSharedDatabase && probe.IsLinkedWorktree(segment.Cwd)

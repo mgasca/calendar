@@ -1,8 +1,8 @@
 ---
-status: planned
+status: in-progress
 date: 2026-11-06
 issue: https://github.com/mgasca/calendar/issues/285
-pr: []
+pr: [https://github.com/mgasca/calendar/pull/338, https://github.com/mgasca/calendar/pull/339]
 adrs: ["0025"]
 ---
 
@@ -35,7 +35,7 @@ The pinned deploy-pages action reads its build version from `process.env.GITHUB_
 
 ## Implementation notes
 
-Planned in `.github/workflows/pages.yml`, with regression coverage executing its current-snapshot script. Confirm the test fails against the old workflow and passes after restoring the fix. Live GitHub behavior cannot be proved locally.
+Implemented in `.github/workflows/pages.yml`, with [regression coverage](../../frontend/apps/docs/src/lib/pages-workflow.test.ts) executing its current-snapshot script for acceptance criteria 1–3. The identity test failed against the old workflow and passed after restoring the fix. The local docs suite passed 175 tests, with targeted ESLint and Prettier checks also passing. Live GitHub behavior cannot be proved locally; criterion 4 remains open until publication after merge is observed.
 
 ## User guide
 

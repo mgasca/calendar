@@ -154,7 +154,7 @@ No changes.
 2. Check your toolchain with `./tools/doctor/doctor.sh`. After `just` is installed, `just doctor` runs the same script.
 3. Run `just` with no arguments to list the recipes and what they do.
 4. Common recipes: `just setup` (first time), `just backend dev` and `just frontend dev` (run the app), `just test`, `just lint`, `just check` (everything CI runs) and `just format`.
-5. Arguments follow the recipe name: for example `just infra migrate staging --client-ip <ipv4>` or `just image run Development`. The recipe's comment in the list shows what it takes.
+5. Arguments follow the recipe name: for example `just infra migrate staging --client-ip <ipv4>` or `just image start Development`. The recipe's comment in the list shows what it takes.
 6. To run several recipes in one command, use it only for recipes that take no arguments, and write each as `module::recipe` (`just db::up db::migrate`). Otherwise run them separately.
 
 The old `make` commands no longer exist. The recipe names above are those of the module layout from story [0019](0019-split-the-justfile-into-modules.md); the measurements earlier in this card quote the flat names that existed when they were taken.

@@ -16,6 +16,8 @@ adrs: ["0017", "0038", "0042"]
 
 Tracked in issue #247. Delivery PR: [#248](https://github.com/mgasca/calendar/pull/248), opened before this card; card PR: [#249](https://github.com/mgasca/calendar/pull/249), written afterwards at the maintainer's request. #248 also completes the card.
 
+**Naming update:** [story 0026](0026-read-module-recipe-chains-with-run.md) renames the shared recipe to `run` and container startup to `image start`. The scope, design and measured commands below record the original delivery using `do`; the user guide uses the current spelling. The shared recipe now lives in `just/run.just`.
+
 ## Background
 
 [Story 0019](0019-split-the-justfile-into-modules.md) moved the recipes into seven modules (`backend`, `frontend`, `docs`, `db`, `image`, `infra`, `tools`), called as `just <module> <recipe>`. To chain recipes it recorded the `::` form: `just db::up db::migrate` works and `just db up migrate` fails. That form has two costs, measured on `just` 1.59.0 on 2026-11-05:
@@ -133,12 +135,12 @@ No changes.
 
 ### Running several recipes of one module
 
-1. Write the module, then `do`, then the recipes in the order you want: `just backend do build test`. The tests run only if the build passed.
-2. To pass arguments, put them after the last recipe. They go to that recipe only: `just backend do restore build test --filter-method "*Overdue*"`.
-3. If the argument does not start with `-`, such as an environment name, put `--` before it: `just image do build run -- Development` or `just infra do what-if -- staging`.
-4. To see what would run without running it, put `-n` right after `do`: `just db do -n up migrate`.
+1. Write the module, then `run`, then the recipes in the order you want: `just backend run build test`. The tests run only if the build passed.
+2. To pass arguments, put them after the last recipe. They go to that recipe only: `just backend run restore build test --filter-method "*Overdue*"`.
+3. If the argument does not start with `-`, such as an environment name, put `--` before it: `just image run build start -- Development` or `just infra run what-if -- staging`.
+4. To see what would run without running it, put `-n` right after `run`: `just db run -n up migrate`.
 5. A mistyped name stops the command before anything runs, and the error says which name it did not find.
 
-Without `do`, only the first recipe comes from the module: `just backend build test` builds the backend and then runs the **whole** test suite, frontend included. The older form `just backend::build backend::test` still works when only the last recipe takes arguments.
+Without `run`, only the first recipe comes from the module: `just backend build test` builds the backend and then runs the **whole** test suite, frontend included. The older form `just backend::build backend::test` still works when only the last recipe takes arguments.
 
-Current limitations: `-n` must come after `do`, not before the module, and a `just` option that takes a value is written with `=`.
+Current limitations: `-n` must come after `run`, not before the module, and a `just` option that takes a value is written with `=`.

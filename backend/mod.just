@@ -3,7 +3,7 @@
 
 set shell := ["bash", "-euo", "pipefail", "-c"]
 
-import '../just/do.just'
+import '../just/run.just'
 
 # List this module's recipes
 [default]

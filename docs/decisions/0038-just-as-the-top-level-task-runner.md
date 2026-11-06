@@ -107,25 +107,27 @@ The decision above is unchanged: `just` stays the runner, every recipe stays a t
 * Bad, because the rename reaches up to 59 tracked files and the 6 CI call sites (an upper bound, counted by searching for the real recipe names), and contributors and agents relearn the names.
 * Neutral: [ADR-0017](0017-dotnet-file-based-apps-for-repo-tooling.md)'s choice of language for tool scripts, and the minimum `just` version in `.just-version`, do not change.
 
-### Amendment, 2026-11-05: chaining a module's recipes with `do`
+### Amendment, 2026-11-05: chaining a module's recipes with `run`
 
 `just backend build test` runs `backend::build`, then the **root** `test`, because only the first word after a module name is looked up in the module (issue #247). The `::` form works, but it repeats the module, and a recipe that takes `*args` swallows the names after it: `just backend::restore backend::build` passes `backend::build` to `dotnet restore`.
 
-* **One recipe, imported by every module.** `just/do.just` defines `do`, and each module file pulls it in with `import`. An imported recipe belongs to the importing module, and `module_path()` names that module, so the root `justfile` does not change.
-* **Words.** `just <module> do [options] <recipe>... [arguments]`: leading words that start with `-` are `just` options for every call (`-n`, `--yes`; an option with a value uses the `=` form), then come the recipe names, and from the next word that starts with `-` the words are arguments of the last recipe (`just backend do restore build test --project tests/Calendar.Domain.Tests`). A `--` after the names ends them and is dropped, so an argument that does not start with `-` can follow it (`just infra do what-if -- staging`); a second `--` reaches the recipe. Without the `--`, such a word is read as a recipe name, and the error says to use `--`.
+* **One recipe, imported by every module.** `just/run.just` defines `run`, and each module file pulls it in with `import`. An imported recipe belongs to the importing module, and `module_path()` names that module, so the root `justfile` does not change.
+* **Words.** `just <module> run [options] <recipe>... [arguments]`: leading words that start with `-` are `just` options for every call (`-n`, `--yes`; an option with a value uses the `=` form), then come the recipe names, and from the next word that starts with `-` the words are arguments of the last recipe (`just backend run restore build test --project tests/Calendar.Domain.Tests`). A `--` after the names ends them and is dropped, so an argument that does not start with `-` can follow it (`just infra run what-if -- staging`); a second `--` reaches the recipe. Without the `--`, such a word is read as a recipe name, and the error says to use `--`.
 * **Fail fast.** Every name is checked with `just --show` before anything runs. The recipes run in order, each in its own `just` call, and the first failure stops the chain with its exit code.
-* **Named `do`,** because `image run` already exists.
-* **Preview with `do -n`.** `just -n backend do …` previews only the runner, because a recipe cannot tell that `just` was started with `--dry-run`.
-* **The shared-database hook** of [ADR-0042](0042-layered-agent-guidance-and-hooks.md) also asks before a `db do` chain that names `up`, `down`, `reset`, `migrate` or `psql`.
+* **Named `run`** for readability across recipes ([story 0026](../stories/0026-read-module-recipe-chains-with-run.md), #315). It was originally `do` because `image run` existed; container startup is now `image start`. This naming update leaves the runner design unchanged and requires no new ADR.
+* **Preview with `run -n`.** `just -n backend run …` previews only the runner, because a recipe cannot tell that `just` was started with `--dry-run`.
+* **The shared-database hook** of [ADR-0042](0042-layered-agent-guidance-and-hooks.md) also asks before a `db run` chain that names `up`, `down`, `reset`, `migrate` or `psql`.
 
 **Evidence**
+
+The commands below record the original delivery using `do`, before the naming update in story 0026.
 
 * **Measured on `just` 1.59.0, 2026-11-05, in scratch directories and then in the repository:** a recipe from a file that a module imports is listed under that module (`just --list backend`); `module_path()` returns the module's name; `just backend do build test` in an unrestored checkout stopped at the failing build without running the tests, exit 1; `just backend do restore build test --project tests/Calendar.Domain.Tests` ran all three and passed 180 domain tests, with the arguments reaching only `dotnet test`; `just backend do clean nope test` stopped on `nope` before `clean` ran; `just image do -n build run -- Development` and `just infra do -n what-if -- staging` passed `Development` and `staging` to the last recipe, and `just infra do -n what-if staging` stopped on `staging` with the hint; `just db do -n up migrate`, `just docs do -n build test` and `just tools do -n versions adr` printed each recipe's commands; `just --fmt --check --justfile` passed on every module file and on `just/do.just`.
 
 **Consequences of this amendment**
 
 * Good, because **D4 Expressiveness**: a module's recipes chain without the module prefix, and arguments reach the last recipe instead of being swallowed by the first.
-* Good, because **D3 Discoverability**: `do` is listed in every module, with its usage in the comment.
+* Good, because **D3 Discoverability**: `run` is listed in every module, with its usage in the comment.
 * Bad, because **D2 Thin over native tools**: about 30 lines of bash logic sit in a recipe, and `just -n` before the module name does not preview the chain.
 * Bad, because a dependency that two chained recipes share runs twice. Only `db reset` declares a dependency today (`&& up`).
 

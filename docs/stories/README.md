@@ -48,5 +48,5 @@ Front matter: `status` (`planned`, `in-progress` or `implemented`), `date` (`YYY
 | [0024](0024-one-way-to-show-what-to-fix-in-add-task-and-add-event.md) | One way to show what to fix in Add task and Add event | implemented |
 | [0025](0025-consolidate-what-agent-sessions-learned-into-guidance.md) | Consolidate what agent sessions learned into guidance | in-progress |
 | [0026](0026-read-module-recipe-chains-with-run.md) | Read module recipe chains with run | implemented |
-| [0028](0028-coordinate-epic-delivery-across-agent-sessions.md) | Coordinate epic delivery across agent sessions | planned |
+| [0028](0028-coordinate-epic-delivery-across-agent-sessions.md) | Coordinate epic delivery across agent sessions | implemented |
 | [XXXX](XXXX-create-events-and-tasks-from-week-view.md) | Create events and tasks from the week view | planned |

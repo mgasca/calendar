@@ -1,5 +1,5 @@
 ---
-status: planned
+status: implemented
 date: 2026-11-06
 issue: https://github.com/mgasca/calendar/issues/325
 pr:
@@ -48,6 +48,8 @@ The maintainer also clarified that they intentionally used GitHub's native stack
 7. **Given** the skill package, **when** its instructions and refined prompt are validated, **then** its references resolve and its behaviour is consistent across the supported agent environments without assuming unavailable tools.
 8. **Given** the change is complete, **when** I run `just check`, **then** it passes.
 
+Criteria 1 and 7 were checked by reading the [skill](../../.claude/skills/epic-delivery/SKILL.md) and [refined prompt](../../.claude/skills/epic-delivery/references/coordinator-prompt.md), validating the skill package and resolving its two local references. Criteria 2–6 were exercised in an independent read-only scenario evaluation: a stopped worker with a conflicting PR, a new head without checks, a native top-of-stack merge followed by stale issue tracking, and completed epic work with an unrelated follow-up. The evaluator correctly steered the existing worker, kept pending CI quiet, waited for stack reconciliation, and stopped the completed epic's watch. This was simulated decision testing, not live orchestration or an actual stack merge. Criterion 8's final-revision results are recorded in the delivery PR; targeted skill checks alone do not establish it.
+
 ## Design decisions
 
 ### Any Decision Records
@@ -66,8 +68,6 @@ No new ADR is expected. The user explicitly requested support for Claude Code an
 
 ## Implementation notes
 
-*Planned. This section is completed as the story is built.*
-
 ### Where things live
 
 | Area | Location |
@@ -82,14 +82,15 @@ No changes.
 
 ### Testing
 
-Validate the skill package and references; use read-only scenarios for native stack merge events, a stopped worker, new-head CI and completion with an unrelated follow-up. Run docs corpus and publication checks for this card. Distinguish simulated decisions from actual live orchestration and native stack merges.
+The skill-creator package validator passed. Independent scenario testing used the committed skill and its references without parent-conversation guidance or external mutations. The original transcript and the maintainer's explicit choices informed the skill; current GitHub documentation supports the [stack reference](../../.claude/skills/epic-delivery/references/stacked-prs.md). Docs corpus/publication checks and the repository acceptance check are recorded for the final delivery revision in its PR. No persistent watch, real worker session, GitHub stack merge or phone notification was exercised by these tests, and no automated orchestration harness was added.
 
 ### Lessons learned, known issues and follow-ups
 
-To be completed during delivery. Native GitHub stack support must be inspected rather than inferred from an immediate base branch.
+* The maintainer intentionally used native top-of-stack merging. The original monitor treated grouped events as accidental folding; the skill now waits for reconciliation and verifies trunk content before diagnosing a gap.
+* Native stacks evaluate protections and Actions against their trunk. A historical immediate base does not establish reduced CI; inspect the applicable check set on the current revision.
+* A stopped worker can usually be steered directly under the accepted authority. A launcher requiring a maintainer click must still be reported honestly, as must watch and notification gaps.
+* Related handover refactoring remains with #318. This skill neither introduces a new polling tool nor changes the existing protocol's rules.
 
 ## User guide
-
-*Planned behaviour. This section is finalised when the story is implemented.*
 
 Ask: **Use epic-delivery to coordinate &lt;epic URL&gt;.** The coordinator reads the epic and story, groups and steers workers, and reports decisions or milestones in tables. You approve scope changes and merge PRs, including native stack groups from the top. The coordinator verifies completion and stops; related unfinished work is listed separately.

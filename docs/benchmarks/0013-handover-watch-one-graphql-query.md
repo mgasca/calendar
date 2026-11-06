@@ -1,7 +1,7 @@
 # 0013 One GraphQL query per handover-watch tick
 
 - **Date:** 2026-11-06
-- **Issue:** [#363](https://github.com/mgasca/calendar/issues/363), a follow-up of [#320](https://github.com/mgasca/calendar/issues/320) (story 0027) and of finding 1 of the [performance review on #360](https://github.com/mgasca/calendar/pull/360#issuecomment-6689752931)
+- **Issue:** [#363](https://github.com/mgasca/calendar/issues/363), a follow-up of [#320](https://github.com/mgasca/calendar/issues/320) (story 0027) and of finding 1 of the [performance review on #360](https://github.com/mgasca/calendar/pull/360#issuecomment-6689752931); PR [#375](https://github.com/mgasca/calendar/pull/375)
 - **Harness:** `tools/handover-watch/handover-watch.cs`, run as `dotnet run tools/handover-watch/handover-watch.cs -- <issue> --peek`. `--peek` prints without recording, so every run fetches and prints the same. A `gh` shim on `PATH` counts calls and bytes, as described under Method.
 - **Baseline commit:** `b609b438` (main)
 - **After commit:** `9f55989d` (the code of the change). The record commit after it changes only `docs/`.

@@ -278,3 +278,40 @@ public sealed class BaselineIoTests
       .ShouldContain("| check | provisional | 5 | workflow_dispatch | 2026-11-06 20:04Z | 2026-11-06 21:24Z | 1.3 h | 5 |");
   }
 }
+
+public sealed class BaselineSampleTests
+{
+  [Fact]
+  public void Derive_KeepsTheSampleAscending() =>
+    Baselines.Derive([90, 70, 80], GateConstants.Default).Seconds.ShouldBe([70, 80, 90]);
+
+  [Fact]
+  public void Equals_ComparesTheSampleByValue()
+  {
+    JobBaseline first = Baselines.Derive([90, 70, 80], GateConstants.Default);
+
+    first.ShouldBe(Baselines.Derive([80, 90, 70], GateConstants.Default));
+    first.ShouldNotBe(first with { Seconds = [70, 80, 91] });
+  }
+
+  [Fact]
+  public void Write_ThenRead_KeepsTheSample()
+  {
+    var t0 = DateTimeOffset.Parse("2026-11-06T20:04:12Z", CultureInfo.InvariantCulture);
+    BaselineFile file = BaselineRuns.Build(
+      "ci.yml",
+      "r.md",
+      1,
+      GateConstants.Default,
+      [
+        new SampledRun(
+          new WorkflowRun(1, "completed", "success", t0, "push", "main", "a"),
+          [new PathSample(1, "Backend", "publication", 81)]),
+        new SampledRun(
+          new WorkflowRun(2, "completed", "success", t0, "push", "main", "b"),
+          [new PathSample(2, "Backend", "publication", 79)]),
+      ]);
+
+    BaselineIo.Read(BaselineIo.Write(file)).Paths["publication"].Jobs["Backend"].Seconds.ShouldBe([79, 81]);
+  }
+}

@@ -121,7 +121,7 @@
             "backend-checks": [
               "Roslyn analyzers at latest-recommended + SonarAnalyzer.CSharp + StyleCop subset (SA1501, SA1116, SA1117) + S103 140-char lines",
               "BannedApiAnalyzers: DateTime.Now/UtcNow/Today, DateTimeOffset.Now/UtcNow, TimeZoneInfo.Local banned in backend/src",
-              "dotnet format --verify-no-changes",
+              "dotnet format whitespace --verify-no-changes (code style and analyzers fail the build)",
               "dotnet restore --locked-mode",
               "dotnet ef migrations has-pending-model-changes",
               "xUnit v3 tests on Microsoft.Testing.Platform with coverage (API tests on Testcontainers PostgreSQL)"

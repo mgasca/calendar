@@ -33,7 +33,6 @@ function readSources(directory: URL, pattern: RegExp) {
 
 const adrSources = readSources(decisionsDirectory, /^\d{4}-.+\.md$/);
 const storySources = readSources(storiesDirectory, /^(\d{4}|XXXX)-.+\.md$/);
-const storyIndex = readFileSync(fileURLToPath(storiesDirectory) + 'README.md', 'utf8');
 const sources = [...adrSources.values(), ...storySources.values()];
 const bodies = sources.map((source) => matter(source).content);
 const withGfm = unified().use(remarkParse).use(remarkGfm);
@@ -58,8 +57,8 @@ it('parsing the ADRs and stories', async () => {
     .add(`parseLog, ${String(adrSources.size)} ADRs`, () => {
       parseLog(adrSources);
     })
-    .add(`parseStories, ${String(storySources.size)} stories + index`, () => {
-      parseStories(storyIndex, storySources, adrFiles);
+    .add(`parseStories, ${String(storySources.size)} stories`, () => {
+      parseStories(storySources, adrFiles);
     })
     .add('readDocuments, disk + both collections', async () => {
       await readDocuments();

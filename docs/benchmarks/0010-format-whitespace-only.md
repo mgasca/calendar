@@ -1,3 +1,8 @@
+---
+subject: "The Backend format check runs whitespace only (#350)"
+harness: "tools/ci-timings/ci-timings.cs"
+---
+
 # 0010 The Backend format check runs whitespace only
 
 - **Date:** 2026-11-06

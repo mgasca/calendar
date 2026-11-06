@@ -307,3 +307,16 @@ describe('published benchmarks', () => {
     }
   });
 });
+
+describe('conventions pages', () => {
+  it.each(['stories', 'benchmarks', 'agent-thoughts', 'runbooks'])(
+    'publishes %s without a maintained inventory',
+    async (area) => {
+      const html = await readFile(`dist/${area}/index.html`, 'utf8');
+      const article = html.split('class="sl-markdown-content"')[1]?.split('</main>')[0];
+      expect(article).toBeDefined();
+      expect(article).not.toContain('<table');
+      expect(article).not.toContain('<ol');
+    },
+  );
+});

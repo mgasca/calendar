@@ -61,21 +61,21 @@ export async function readLog() {
 export async function readStories(adrs: Map<string, string>) {
   const sources = await readSources(storiesDirectory, /^(\d{4}|XXXX)-.+\.md$/);
   const index = await readFile(new URL('README.md', storiesDirectory), 'utf8');
-  return { index, records: parseStories(index, sources, adrs) };
+  return { index, records: parseStories(sources, adrs) };
 }
 
-/** Reads the runbooks in the order their index gives; `README.md` is the index, not a runbook. */
+/** Reads runbooks in their per-file operational order; README contains conventions. */
 export async function readRunbooks() {
   const sources = await readSources(runbooksDirectory, /^[a-z0-9-]+\.md$/);
   const index = await readFile(new URL('README.md', runbooksDirectory), 'utf8');
-  return { index, records: parseRunbooks(index, sources) };
+  return { index, records: parseRunbooks(sources) };
 }
 
 /** Reads the benchmark records; the harness each one names must exist in the repository. */
 export async function readBenchmarks() {
   const sources = await readSources(benchmarksDirectory, /^\d{4}-.+\.md$/);
   const index = await readFile(new URL('README.md', benchmarksDirectory), 'utf8');
-  const records = parseBenchmarks(index, sources);
+  const records = parseBenchmarks(sources);
   for (const record of records) {
     try {
       await access(new URL(record.harness, repositoryRoot));
@@ -86,11 +86,11 @@ export async function readBenchmarks() {
   return { index, records };
 }
 
-/** Reads the agent thoughts in index order, which is number order; there is no template (story 0031). */
+/** Reads agent thoughts in filename order; there is no template (story 0031). */
 export async function readAgentThoughts() {
   const sources = await readSources(agentThoughtsDirectory, /^\d{4}-.+\.md$/);
   const index = await readFile(new URL('README.md', agentThoughtsDirectory), 'utf8');
-  return { index, records: parseAgentThoughts(index, sources) };
+  return { index, records: parseAgentThoughts(sources) };
 }
 
 /**
@@ -289,7 +289,7 @@ export function docsLoader(): Loader {
             file: 'README.md',
             sidebar: { order: -1, label: 'Agent thoughts', hidden: true },
           },
-          // Each report opens with what the index records about it: when, by whom, of which revision.
+          // Each report opens with its front matter provenance: when, by whom, of which revision.
           ...agentThought.records.map((record, order) => ({
             id: `agent-thoughts/${record.number}`,
             title: `${record.number} · ${record.title}`,
@@ -320,7 +320,7 @@ export function docsLoader(): Loader {
             file: 'README.md',
             sidebar: { order: -1, label: 'Runbooks', hidden: true },
           },
-          // Runbooks keep the order of their index, which is the order to follow them in.
+          // Runbooks follow their per-file operational order.
           ...runbook.records.map((record, order) => ({
             id: `runbooks/${runbookSlug(record.file)}`,
             title: record.title,

@@ -16,6 +16,8 @@ The reusable invocation is in [references/coordinator-prompt.md](references/coor
 3. Inventory current delivery sessions and work before starting replacements. Map issues to sessions, owned files, dependencies, PRs and stack/trunk relationships. Treat session status as a hint: inspect the worker's last report and GitHub state before deciding whether work is stalled.
 4. Group work by overlap and dependencies. One session can own several children that edit the same file and produce separate dependent PRs. Independent files can proceed in parallel; adjacent edits may still conflict. Five sessions was an example, not a target. Assign shared story updates explicitly.
 5. Present the grouping and dependency map, then launch work within the accepted epic scope. Ask when a grouping changes scope or requires a product decision, not for routine coordination already authorized by this skill.
+6.  Add the dependency map as a mermaid diagram to the epic issue.  If there is sequencing in the delivery due to dependency and there are multiple paths ensure to highlight the critical path with bold arrows.
+ 
 
 ## Launch and steer delivery sessions
 

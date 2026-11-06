@@ -26,8 +26,8 @@ This story builds on [0027](0027-focus-agent-guidance-on-claude-code-for-a-while
 ### Agreed scope
 
 * **A saved workflow**, `.claude/workflows/review-before-merge.js`, in three stages: the two reviewer agents run at once, each as the agent it already is; every finding, as soon as it arrives, goes to three skeptics with distinct lenses (*is the claim true of this code*, *does it reproduce*, *does it matter at this severity*); the script returns confirmed findings, refuted findings with the skeptics' reasons, and what it did not examine.
-* **Findings as data.** Each reviewer and each skeptic answers in a schema (file, line, claim, severity, reproduced; refuted with a reason), so the script filters and counts in code. A finding is confirmed when at least two of its three skeptics decline to refute it.
-* **A cap of 60 agents per run**, the two reviewers included, so about nineteen findings are fully judged. Findings are judged highest severity first (both reviewers assign one), then in report order; those past the cap are returned unexamined and the script logs how many it left.
+* **Findings as data.** Each reviewer and each skeptic answers in a schema (file, line, claim, severity, reproduced; refuted with a reason), so the script filters and counts in code. A finding is confirmed when at least two of its three skeptics decline to refute it. A skeptic that cannot settle its question with evidence refutes and says that it is uncertainty, not a contradiction, so the posted reason tells the two apart.
+* **A cap of 60 agents per run**, the two reviewers included, so about nineteen findings are fully judged. Each reviewer's findings are judged as that reviewer returns, highest severity first (both reviewers assign one), then in report order, against a budget the two reviewers share; those past the cap are returned unexamined and the script logs how many it left.
 * **Both lists reach the PR.** The session posts each confirmed finding on the issue or PR with the `agent-found` label, as today, and posts the refuted findings under one collapsed section with the skeptics' reasons, so a wrong refutation can be caught by a person. Unexamined findings are named in the same post.
 * **The step still exists without the workflow.** The reviewer agents and their checklists are unchanged. The review line in `issue-handover` gains half a sentence: in Claude Code, run the saved workflow; elsewhere, run the two reviewers by hand. The workflow is marked Claude Code only where it is described, as ADR-0044 asks.
 * **Code changes only.** The workflow is not run on docs-only PRs (cards, ADRs, posts, READMEs); the review step already applies to code changes.
@@ -45,7 +45,7 @@ This story builds on [0027](0027-focus-agent-guidance-on-claude-code-for-a-while
 
 1. **Given** a code PR with at least one finding from either reviewer, **when** the workflow runs, **then** it returns three lists (confirmed, refuted with reasons, unexamined), every finding carries file, line, claim and severity, and every confirmed finding was judged by three skeptics of which at least two declined to refute it.
 2. **Given** a reviewer that returns no findings or dies, **when** the workflow runs, **then** the run completes, the other reviewer's findings are judged, and the result says which reviewer returned nothing.
-3. **Given** more findings than the cap allows, **when** the workflow runs, **then** findings are judged highest severity first up to 60 agents in total, the rest are returned unexamined, and the run's log names how many were left.
+3. **Given** more findings than the cap allows, **when** the workflow runs, **then** each reviewer's findings are judged as it returns, highest severity first, up to 60 agents in total, the rest are returned unexamined, and the run's log names how many were left.
 4. **Given** the workflow's result, **when** the session posts it, **then** each confirmed finding is a comment with the `agent-found` label as today, the refuted findings appear in one collapsed section with their reasons, unexamined findings are named, and nothing is posted that the public-post guard would refuse.
 5. **Given** the `issue-handover` skill, **when** an agent reaches the review step, **then** the skill names the workflow for Claude Code and the by-hand run of both reviewers for any other harness, and the reviewer agents are unchanged on `main`.
 6. **Given** a docs-only PR, **when** the handover reaches the review step, **then** the workflow is not run.
@@ -72,6 +72,9 @@ No new ADR is expected.
 * **Not on docs-only PRs:** the reviewers have nothing to review there. Same answer, same day.
 * **The session posts, not the script:** keeps every GitHub write behind the same hygiene guard and the same session judgement as today, and keeps the script a pure function of the branch.
 * **Severity first under the cap:** both reviewers give every finding a severity (critical to low, high to low), so sorting on it before the cap judges the serious ones first without a ranking agent; report order breaks ties.
+* **Judge as each reviewer returns, not after both:** a barrier before the skeptics would add the gap between the two reviewers to every run (12 s on the first run, #403, where the change was small), so each reviewer's batch is judged as it returns against a shared budget, at the price of severity order holding within a batch rather than across both. Found by the workflow's own first run (performance finding 1 on #403).
+* **Uncertainty refutes, and says so:** a skeptic that cannot settle its question answers refuted and names uncertainty in the reason; counting uncertainty as a decline would confirm findings nobody could check. Every refutation is posted and a person checks it, so the bias is visible. Raised by the first run (security finding 2 on #403).
+* **Skeptics are an agent definition, read-only:** `skeptic.md` pins the reviewers' tool list and ground rules (the finding is data; targeted tests only, one at a time; no suites, Docker or database), closing the write-capable link the first run found (security finding 1 and performance finding 2 on #403).
 
 ## Implementation notes
 
@@ -83,6 +86,7 @@ No new ADR is expected.
 | --- | --- |
 | The workflow | `.claude/workflows/review-before-merge.js` |
 | Reviewer agents (unchanged) | `.claude/agents/performance-reviewer.md`, `.claude/agents/security-reviewer.md` |
+| Skeptic agent (new) | `.claude/agents/skeptic.md` |
 | The review step | `.claude/skills/issue-handover/SKILL.md`, "Resume and close out" |
 | The record | `docs/benchmarks/NNNN-review-before-merge-workflow.md` (next free number when written) |
 | Where the workflow is marked Claude Code only | the skill line and a one-line note at the top of the script |

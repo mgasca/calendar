@@ -28,6 +28,7 @@ public sealed record GateConstants(double Alpha, int Jobs, double FloorSeconds, 
 /// <param name="P95">The nearest-rank 95th percentile, in seconds.</param>
 /// <param name="Max">The largest baseline duration, in seconds.</param>
 /// <param name="Threshold">The whole number of seconds above which a run of the job fails the gate.</param>
+/// <param name="Seconds">The sample itself, ascending, so the trend check (#386) can test later runs against it without the API.</param>
 public sealed record JobBaseline(
   int Count,
   double Median,
@@ -36,7 +37,21 @@ public sealed record JobBaseline(
   double P90,
   double P95,
   double Max,
-  double Threshold);
+  double Threshold,
+  IReadOnlyList<double> Seconds)
+{
+  /// <summary>Equal when every statistic and every sampled duration are equal.</summary>
+  /// <param name="other">The other baseline.</param>
+  /// <returns>True when equal.</returns>
+  public bool Equals(JobBaseline? other) =>
+    other is not null
+    && (Count, Median, LogMedian, LogMad) == (other.Count, other.Median, other.LogMedian, other.LogMad)
+    && (P90, P95, Max, Threshold) == (other.P90, other.P95, other.Max, other.Threshold)
+    && Seconds.SequenceEqual(other.Seconds);
+
+  /// <inheritdoc/>
+  public override int GetHashCode() => HashCode.Combine(Count, Median, Threshold, Seconds.Count);
+}
 
 /// <summary>The baseline of one path: which runs it came from, and every job's statistics.</summary>
 /// <param name="Path"><c>check</c> or <c>publication</c>.</param>
@@ -141,7 +156,8 @@ public static class Baselines
       Statistics.Percentile(sorted, 0.9),
       Statistics.Percentile(sorted, 0.95),
       sorted[^1],
-      Threshold(median, logMedian, logMad, constants));
+      Threshold(median, logMedian, logMad, constants),
+      sorted);
   }
 
   /// <summary>
@@ -406,7 +422,8 @@ public static class BaselineIo
           value.GetProperty("p90").GetDouble(),
           value.GetProperty("p95").GetDouble(),
           value.GetProperty("max").GetDouble(),
-          value.GetProperty("threshold").GetDouble());
+          value.GetProperty("threshold").GetDouble(),
+          [.. value.GetProperty("seconds").EnumerateArray().Select(seconds => seconds.GetDouble())]);
       }
       List<WorkflowRun> runs =
       [
@@ -461,6 +478,12 @@ public static class BaselineIo
       writer.WriteNumber("p95", job.P95);
       writer.WriteNumber("max", job.Max);
       writer.WriteNumber("threshold", job.Threshold);
+      writer.WriteStartArray("seconds");
+      foreach (var seconds in job.Seconds)
+      {
+        writer.WriteNumberValue(seconds);
+      }
+      writer.WriteEndArray();
       writer.WriteEndObject();
     }
     writer.WriteEndObject();

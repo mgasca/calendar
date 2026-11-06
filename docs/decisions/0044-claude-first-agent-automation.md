@@ -1,5 +1,5 @@
 ---
-status: proposed
+status: accepted
 date: 2026-11-06
 decision-makers: mgasca, Claude (AI assistant)
 ---
@@ -28,7 +28,7 @@ decision-makers: mgasca, Claude (AI assistant)
 
 ## Decision Outcome
 
-Chosen option: "Claude-first period: new automation may be Claude Code only, the guidance files stay agent-neutral, with a revisit trigger", because it gives new automation the native mechanisms (D1) and stops the cost of twins (D2) while keeping the files other agents read unchanged (D3) and every existing invariant enforced or stated (D5), says in one place what is Claude-only (D6), and names the event that reopens the question (D4). Full neutrality keeps paying for twins the exploration no longer needs; a Claude-only repository throws away the neutral layer that costs nothing to keep; a neutral automation layer is the most work for the least native benefit.
+Chosen option: "Claude-first period: new automation may be Claude Code only, the guidance files stay agent-neutral, with a revisit trigger", because it gives new automation the native mechanisms (D1) and stops the cost of twins (D2) while keeping the files other agents read unchanged (D3) and every existing invariant enforced or stated (D5), says in one place what is Claude-only (D6), and says what reopens the question (D4). Full neutrality keeps paying for twins the exploration no longer needs; a Claude-only repository throws away the neutral layer that costs nothing to keep; a neutral automation layer is the most work for the least native benefit.
 
 | Driver | **Claude-first period (chosen)** | Full neutrality (status quo) | Claude-only repository | Neutral automation layer |
 | --- | :---: | :---: | :---: | :---: |
@@ -59,7 +59,7 @@ Chosen option: "Claude-first period: new automation may be Claude Code only, the
 
 ### The period and its end
 
-* The period is revisited when either event happens first: a second harness is used for real work in this repository for more than one story, or the closing PR of epic #318 records that the exploration of Claude Code's native benefits is over. The trigger is recorded here and in `tools/README.md` next to the agent-hooks revisit triggers from [ADR-0042](0042-layered-agent-guidance-and-hooks.md); the `adr-sweep` skill reports deferred decisions whose trigger has arrived.
+* The period is revisited when the maintainer states it, on an issue, a PR or in conversation recorded on an issue; neither a date nor a repository event ends it by itself. The trigger is recorded here and in `tools/README.md` next to the agent-hooks revisit triggers from [ADR-0042](0042-layered-agent-guidance-and-hooks.md); the `adr-sweep` skill reports a statement that has no new ADR after it.
 * Ending the period is a new ADR, not an edit of this one: it either returns to [ADR-0042](0042-layered-agent-guidance-and-hooks.md) as written or supersedes both records with what the period taught.
 
 ### Consequences
@@ -75,7 +75,7 @@ Chosen option: "Claude-first period: new automation may be Claude Code only, the
 
 * `just tools adr` validates this record and the amendment note in [ADR-0042](0042-layered-agent-guidance-and-hooks.md); the docs build fails if the architecture model entry differs from this file.
 * Review rule: a PR that adds a hook, skill, subagent or workflow either marks it Claude-only where it is described or, for a deny hook, adds the one-line root statement. Reviewers check the root sentence still points here.
-* The closing PR of epic #318 states whether the revisit trigger has arrived; the `adr-sweep` skill reports it if that PR does not.
+* The closing PR of epic #318 records whether the maintainer has stated the period's end; the `adr-sweep` skill reports a recorded statement that no new ADR has followed.
 
 ## Pros and Cons of the Options
 
@@ -118,5 +118,5 @@ Chosen option: "Claude-first period: new automation may be Claude Code only, the
 ## More Information
 
 * Related: [ADR-0042](0042-layered-agent-guidance-and-hooks.md) (the layers and the agent-neutrality driver this record relaxes; it carries an amendment note pointing here), [ADR-0017](0017-dotnet-file-based-apps-for-repo-tooling.md) (repo tools stay shell-callable), story [0027](../stories/0027-focus-agent-guidance-on-claude-code-for-a-while.md) and epic #318 (first uses), story [0020](../stories/0020-restructure-agent-guidance.md) (the restructuring that created the layers).
-* Open questions for the reviewer: (1) is the revisit trigger right, a second harness in real use or the epic's closing PR, or should it be a date; (2) should new **deny** hooks keep a one-line root statement, as proposed, or may they too be Claude-only; (3) may the existing *(hook)* lines in the root be removed during the period, or do they stay as proposed.
-* Revisit when the trigger above fires, and also if a second harness is tried for even one story: that trial is the moment to measure what the Claude-only pieces cost it.
+* Answers from review, given by the maintainer in conversation on 2026-11-06 and recorded on [#318](https://github.com/mgasca/calendar/issues/318#issuecomment-6689158337): (1) the revisit trigger is the maintainer's statement, replacing the proposed "a second harness in real use, or the epic's closing PR"; (2) new **deny** hooks keep a one-line root statement; (3) the existing *(hook)* lines in the root stay. The record is accepted as it merged in [#324](https://github.com/mgasca/calendar/pull/324), with only the trigger changed.
+* Revisit when the maintainer states it (see "The period and its end"). A second harness tried for a story before then does not end the period by itself, but it is the moment to measure what the Claude-only pieces cost it.

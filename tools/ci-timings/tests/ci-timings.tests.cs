@@ -50,6 +50,13 @@ public sealed class ParserTests
   }
 
   [Fact]
+  public void ParseRuns_ReadsTheHeadBranchWhenListed() =>
+    Parser.ParseRuns("""
+      [{ "databaseId": 1, "status": "completed", "conclusion": "cancelled", "createdAt": "2026-11-06T14:47:51Z",
+         "event": "pull_request", "headBranch": "docs/story-0033" }]
+      """).ShouldHaveSingleItem().HeadBranch.ShouldBe("docs/story-0033");
+
+  [Fact]
   public void ParseJobs_KeepsCompletedJobsAndSteps_AndSkipsTheRest()
   {
     IReadOnlyList<JobTiming> jobs = Parser.ParseJobs(7, JobsJson);
@@ -61,6 +68,122 @@ public sealed class ParserTests
     frontend.Steps.Select(step => step.Name).ShouldBe(["Set up job", "Run pnpm lint"]);
     frontend.Steps[1].Seconds.ShouldBe(16);
   }
+
+  [Fact]
+  public void ParseJobs_KeepsEachStepsConclusion()
+  {
+    IReadOnlyList<JobTiming> jobs = Parser.ParseJobs(7, """
+      { "jobs": [{ "name": "Backend", "conclusion": "cancelled",
+        "started_at": "2026-11-06T14:47:53Z", "completed_at": "2026-11-06T14:49:24Z",
+        "steps": [{ "number": 8, "name": "Run dotnet test", "conclusion": "cancelled",
+          "started_at": "2026-11-06T14:49:02Z", "completed_at": "2026-11-06T14:49:21Z" }] }] }
+      """);
+
+    jobs.ShouldHaveSingleItem().Steps.ShouldHaveSingleItem().Conclusion.ShouldBe("cancelled");
+  }
+}
+
+// The example pair is run 42237120711, superseded by run 42237172093 at 14:48:11 on 2026-11-06 (#348), cut to the
+// steps that bound when its runners heard of the cancel.
+public sealed class SupersessionTests
+{
+  private static readonly DateTimeOffset T0 = At("14:48:11");
+
+  [Fact]
+  public void Pair_MatchesEachCancelledPullRequestRunWithTheNextRunOfItsBranch_NewestFirst()
+  {
+    WorkflowRun first = Run(1, "cancelled", "14:26:33", "docs/nav");
+    WorkflowRun second = Run(2, "cancelled", "14:27:02", "docs/nav");
+    WorkflowRun otherBranch = Run(3, "success", "14:27:30", "fix/pages");
+    WorkflowRun third = Run(4, "success", "14:28:36", "docs/nav");
+    WorkflowRun push = Run(5, "cancelled", "14:29:00", "main", "push");
+    WorkflowRun lastOfItsBranch = Run(6, "cancelled", "14:30:00", "fix/pages");
+
+    Supersession.Pair([third, push, first, otherBranch, lastOfItsBranch, second])
+      .Select(pair => (pair.Cancelled.Id, pair.Superseding.Id))
+      .ShouldBe([(2L, 4L), (1L, 2L)]);
+  }
+
+  [Fact]
+  public void Measure_BoundsWhenTheRunnersHeardOfTheCancel()
+  {
+    SupersededPair pair = Supersession.Measure(
+      Run(42237120711, "cancelled", "14:47:51", "docs/story-0033"),
+      Run(42237172093, "success", "14:48:11", "docs/story-0033"),
+      [
+        // Kept going after T0: three steps ran to success, so the runner had not heard of the cancel at 14:48:54.
+        Job("Tooling", "cancelled", "14:47:53", "14:48:58", Step("ADRs follow conventions", "success", "14:48:54", "14:48:56")),
+        // Started a step at 14:49:08 that ended cancelled at 14:49:09: the cancel had arrived by then.
+        Job(
+          "Docs site",
+          "cancelled",
+          "14:47:53",
+          "14:49:11",
+          Step("Verify ADR site at a project subpath", "success", "14:48:52", "14:49:08"),
+          Step("Decide whether this pull request is docs-only", "cancelled", "14:49:08", "14:49:09"),
+          Step("Post Run actions/checkout@v7", "success", "14:49:09", "14:49:10")),
+        Job("Backend", "cancelled", "14:47:53", "14:49:24", Step("Run dotnet test", "cancelled", "14:49:02", "14:49:21")),
+        Job("Frontend", "success", "14:47:56", "14:48:10"),
+        Job("CI result", "failure", "14:49:26", "14:49:29", Step("All jobs succeeded", "failure", "14:49:27", "14:49:28")),
+      ],
+      [Job("Backend", "success", "14:49:31", "14:51:00"), Job("Docs site", "success", "14:49:31", "14:50:40")])
+      .ShouldNotBeNull();
+
+    pair.SupersededAt.ShouldBe(T0);
+    pair.PushGap.ShouldBe(20);
+    pair.Wait.ShouldBe(80);
+    pair.CancelNotHeardAt.ShouldBe(57, "the docs-only step started at 14:49:08; a post step that starts later does not count");
+    pair.CancelHeardBy.ShouldBe(58);
+    pair.CancelledJobsEnd.ShouldBe(73);
+    pair.RunEnd.ShouldBe(78, "CI result runs whatever happens (if: always()), so the run ends after it");
+    pair.JobsNotCancelled.ShouldBe("Frontend success, CI result failure");
+  }
+
+  [Fact]
+  public void Measure_LeavesTheBoundsEmpty_WhenNoStepShowsThem()
+  {
+    SupersededPair pair = Supersession.Measure(
+      Run(1, "cancelled", "14:47:51", "b"),
+      Run(2, "success", "14:48:11", "b"),
+      [Job("Backend", "cancelled", "14:47:53", "14:48:20", Step("Run dotnet build", "success", "14:48:00", "14:48:18"))],
+      [])
+      .ShouldNotBeNull();
+
+    pair.CancelNotHeardAt.ShouldBeNull("the only step started before T0");
+    pair.CancelHeardBy.ShouldBeNull();
+    pair.Wait.ShouldBeNull("the superseding run has no started job");
+    pair.CancelledJobsEnd.ShouldBe(9);
+  }
+
+  [Fact]
+  public void Measure_SkipsARunThatHadEndedBeforeTheNextPush() =>
+    Supersession.Measure(
+      Run(1, "cancelled", "14:40:00", "b"),
+      Run(2, "success", "14:48:11", "b"),
+      [Job("Backend", "cancelled", "14:40:02", "14:41:00")],
+      [Job("Backend", "success", "14:48:13", "14:50:00")])
+      .ShouldBeNull("a run cancelled by hand before the next push was not superseded");
+
+  [Theory]
+  [InlineData("Set up job", true)]
+  [InlineData("Post Run actions/cache@v6", true)]
+  [InlineData("Stop containers", true)]
+  [InlineData("Run dotnet test", false)]
+  [InlineData("Postgres smoke test", false)]
+  public void IsBookkeeping_RecognisesTheRunnersOwnSteps(string name, bool expected) =>
+    Supersession.IsBookkeeping(name).ShouldBe(expected);
+
+  internal static DateTimeOffset At(string time) =>
+    DateTimeOffset.Parse($"2026-11-06T{time}Z", CultureInfo.InvariantCulture);
+
+  internal static WorkflowRun Run(long id, string conclusion, string created, string branch, string trigger = "pull_request") =>
+    new(id, "completed", conclusion, At(created), trigger, branch);
+
+  internal static JobTiming Job(string name, string conclusion, string started, string completed, params StepTiming[] steps) =>
+    new(1, name, conclusion, At(started), At(completed), steps);
+
+  internal static StepTiming Step(string name, string conclusion, string started, string completed) =>
+    new(1, name, At(started), At(completed), conclusion);
 }
 
 public sealed class StatisticsTests
@@ -125,6 +248,51 @@ public sealed class ReportTests
 
       """);
   }
+
+  [Fact]
+  public void SupersededTable_ShowsOneRowPerPair_WithADashForAMissingBound()
+  {
+    var table = Report.SupersededTable(
+    [
+      new SupersededPair(11, 12, T0, 20.4, 80, 57, 58, 73, 78, "CI result failure"),
+      new SupersededPair(21, 22, T0, 40, 2, null, 46.6, 50, 50, ""),
+    ]);
+
+    table.ShouldBe("""
+      | Cancelled run | Superseded by | Pushes apart s | Wait s | Cancel heard s | Cancelled jobs end s | Old run ends s | Not cancelled |
+      | --- | --- | --: | --: | --: | --: | --: | --- |
+      | 11 | 12 | 20 | 80 | 57..58 | 73 | 78 | CI result failure |
+      | 21 | 22 | 40 | 2 | –..47 | 50 | 50 | – |
+
+      """);
+  }
+
+  [Fact]
+  public void SupersessionSummary_CountsEachSegmentOverThePairsThatHaveIt()
+  {
+    var table = Report.SupersessionSummary(
+    [
+      new SupersededPair(11, 12, T0, 20, 80, 57, 58, 73, 78, ""),
+      new SupersededPair(21, 22, T0, 40, 2, null, 46, 50, 50, ""),
+    ],
+    [2, 3, 2]);
+
+    table.ShouldBe("""
+      | Seconds after the superseding run was created | n | min | median | p90 | max |
+      | --- | --: | --: | --: | --: | --: |
+      | Wait: the superseding run's first job starts | 2 | 2 | 2 | 80 | 80 |
+      | The old run's runners had not yet heard of the cancel (lower bound) | 1 | 57 | 57 | 57 | 57 |
+      | The old run's runners had heard of it (upper bound) | 2 | 46 | 46 | 58 | 58 |
+      | The old run's cancelled jobs end | 2 | 50 | 50 | 73 | 73 |
+      | The old run ends | 2 | 50 | 50 | 78 | 78 |
+      | Control: a pull request run that superseded nothing, created → first job | 3 | 2 | 2 | 3 | 3 |
+
+      """);
+  }
+
+  [Fact]
+  public void SupersessionSummary_ShowsDashesForASegmentWithNoValues() =>
+    Report.SupersessionSummary([], []).ShouldContain("| The old run ends | 0 | – | – | – | – |");
 
   [Fact]
   public void Clock_RendersMinutesAndSeconds()

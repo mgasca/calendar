@@ -30,7 +30,7 @@ A scratch build that drops the folder's `Directory.Build.props`, `.editorconfig`
 
 ## ci-timings
 
-`tools/ci-timings/` samples how long a workflow's jobs and steps take from the runs GitHub keeps (`just tools ci-timings --job Frontend`, needs `gh auth status` to pass). Only completed, successful runs count; `--branch <name>` keeps only the runs of one branch, which is how a PR measures itself against `main`. It prints Markdown tables for a benchmark record (`docs/benchmarks/README.md`): one row per job with min, median, p90 and max, and, for each `--job`, one row per step. `CiTimings.cs` holds the parsing, the nearest-rank statistics and the rendering, which the tests cover; the entry file only calls `gh`.
+`tools/ci-timings/` samples how long a workflow's jobs and steps take from the runs GitHub keeps (`just tools ci-timings --job Frontend`, needs `gh auth status` to pass). Only completed, successful runs count; `--branch <name>` keeps only the runs of one branch, which is how a PR measures itself against `main`. It prints Markdown tables for a benchmark record (`docs/benchmarks/README.md`): one row per job with min, median, p90 and max, and, for each `--job`, one row per step. `--superseded` reports on cancelled runs instead. It pairs each cancelled pull request run with the next run of its branch, and times how long that run waited to start, when the old run's runners heard of the cancel (bounded by the steps they still started and the first step that ended cancelled), and when the old run ended. A control row covers pull request runs that superseded nothing (record 0008). `CiTimings.cs` holds the parsing, the pairing, the nearest-rank statistics and the rendering, which the tests cover; the entry file only calls `gh`.
 
 ## agent-hooks
 

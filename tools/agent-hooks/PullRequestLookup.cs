@@ -9,6 +9,9 @@ public sealed record PullRequest(int Number, string State)
   public bool IsMergedOrClosed => State is "MERGED" or "CLOSED";
 }
 
+/// <summary>A pull request's base branch and body, as <c>gh pr view --json number,baseRefName,body</c> reports them.</summary>
+public sealed record PullRequestText(int Number, string BaseRefName, string Body);
+
 /// <summary>Asks <c>gh</c> for the pull request of a branch; any answer other than a PR is null, so the guard fails open.</summary>
 public static class PullRequestLookup
 {
@@ -32,6 +35,47 @@ public static class PullRequestLookup
   {
     ExternalCommand.Output? output = ExternalCommand.Run(gh, ["pr", "view", branch, "--json", "number,state"], cwd, timeout, Environment);
     return output is { ExitCode: 0 } ? Parse(output.Stdout) : null;
+  }
+
+  /// <summary>
+  /// Runs <c>gh pr view [&lt;selector&gt;] [--repo &lt;repo&gt;] --json number,baseRefName,body</c> in <paramref name="cwd"/>;
+  /// without a selector gh picks the current branch's PR. Null on the same failures as <see cref="Find"/>.
+  /// </summary>
+  public static PullRequestText? FindText(string cwd, string? selector, string? repo, string gh, TimeSpan timeout)
+  {
+    List<string> args = ["pr", "view"];
+    if (selector is not null)
+    {
+      args.Add(selector);
+    }
+    if (repo is not null)
+    {
+      args.AddRange(["--repo", repo]);
+    }
+    args.AddRange(["--json", "number,baseRefName,body"]);
+    ExternalCommand.Output? output = ExternalCommand.Run(gh, args, cwd, timeout, Environment);
+    return output is { ExitCode: 0 } ? ParseText(output.Stdout) : null;
+  }
+
+  /// <summary>The PR's number, base and body in gh's JSON, or null when any of them is missing.</summary>
+  public static PullRequestText? ParseText(string json)
+  {
+    try
+    {
+      using var doc = JsonDocument.Parse(json);
+      JsonElement root = doc.RootElement;
+      return root.ValueKind == JsonValueKind.Object
+        && root.TryGetProperty("number", out JsonElement number) && number.ValueKind == JsonValueKind.Number
+        && number.TryGetInt32(out var value)
+        && root.TryGetProperty("baseRefName", out JsonElement baseRef) && baseRef.ValueKind == JsonValueKind.String
+        && root.TryGetProperty("body", out JsonElement body) && body.ValueKind == JsonValueKind.String
+          ? new PullRequestText(value, baseRef.GetString()!, body.GetString()!)
+          : null;
+    }
+    catch (JsonException)
+    {
+      return null;
+    }
   }
 
   /// <summary>The PR in gh's JSON, or null when the text is not an object with a number and a known state.</summary>

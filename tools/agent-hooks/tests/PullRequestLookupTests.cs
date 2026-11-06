@@ -81,6 +81,39 @@ public sealed class PullRequestLookupTests : IDisposable
     PullRequestLookup.Find(_root, "feature", gh, PullRequestLookup.Timeout).ShouldBe(new PullRequest(1, "OPEN"));
   }
 
+  [Fact]
+  public void Find_text_asks_gh_for_the_base_and_body_of_the_named_pr_in_the_named_repo()
+  {
+    var gh = FakeGh("echo \"$@\" > \"$0.args\"; echo '{\"number\":358,\"baseRefName\":\"main\",\"body\":\"Refs #318\"}'");
+
+    PullRequestLookup.FindText(_root, "358", "mgasca/calendar", gh, PullRequestLookup.Timeout)
+      .ShouldBe(new PullRequestText(358, "main", "Refs #318"));
+
+    File.ReadAllText(gh + ".args").Trim().ShouldBe("pr view 358 --repo mgasca/calendar --json number,baseRefName,body");
+  }
+
+  [Fact]
+  public void Find_text_without_a_selector_asks_for_the_current_branch_pr()
+  {
+    var gh = FakeGh("echo \"$@\" > \"$0.args\"; echo '{\"number\":1,\"baseRefName\":\"main\",\"body\":\"\"}'");
+
+    PullRequestLookup.FindText(_root, null, null, gh, PullRequestLookup.Timeout).ShouldBe(new PullRequestText(1, "main", ""));
+
+    File.ReadAllText(gh + ".args").Trim().ShouldBe("pr view --json number,baseRefName,body");
+  }
+
+  [Theory]
+  [InlineData("")]
+  [InlineData("{\"number\":1,\"baseRefName\":\"main\"}")]
+  [InlineData("{\"number\":1,\"body\":\"x\"}")]
+  [InlineData("{\"number\":1,\"baseRefName\":\"main\",\"body\":null}")]
+  public void Parse_text_rejects_anything_without_a_number_base_and_body(string text) =>
+    PullRequestLookup.ParseText(text).ShouldBeNull();
+
+  [Fact]
+  public void Find_text_is_null_when_gh_fails() =>
+    PullRequestLookup.FindText(_root, "358", null, FakeGh("exit 1"), PullRequestLookup.Timeout).ShouldBeNull();
+
   /// <summary>An executable shell script standing in for gh, in the test's temporary directory.</summary>
   private string FakeGh(string body)
   {

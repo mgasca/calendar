@@ -1,8 +1,9 @@
 ---
-status: planned
+status: implemented
 date: 2026-11-06
 issue: https://github.com/mgasca/calendar/issues/332
-pr: []
+pr:
+  - https://github.com/mgasca/calendar/pull/333
 adrs: ["0023", "0025"]
 ---
 
@@ -60,11 +61,32 @@ No new ADR is expected; ADR-0025 is amended with the narrowed eligibility.
 
 ## Implementation notes
 
-*Planned. This section is completed as the story is built.*
+Delivered in the PRs listed in the front matter: the card, then the workflow, ADR and guidance changes.
+
+### Where things live
+
+| Area | Location |
+| --- | --- |
+| The docs-only decision and the artifact gate | `.github/workflows/ci.yml`, Docs site job: the step "Decide whether this pull request is docs-only" and the `if` of "Read GitHub Pages configuration", which the publication build and the `adr-site` upload depend on |
+| The publisher's exit without an artifact | `.github/workflows/pages.yml`, assemble job, step "Validate source run and current revision", preview branch |
+| Eligibility rule in the guidance | [ADR-0025](../decisions/0025-github-pages-pr-previews.md) amendment of 2026-11-06, `frontend/apps/docs/README.md` ("Pull request previews"), `docs/architecture/calendar.architecture.json` (docs site, Pages, the publication flow) |
+
+### API
+
+No changes.
+
+### Testing
+
+* Nothing in the repository executes the workflows, so the rule has no unit test; a step of shell in a workflow is not repository tooling in the sense of [ADR-0017](../decisions/0017-dotnet-file-based-apps-for-repo-tooling.md), and ADR-0025's own confirmation is a live pull request. The story's PRs are that confirmation: PR 0 is docs-only and gets a preview (criterion 1); the delivery PR changes workflows and gets none (criterion 2). Criteria 3 and 4 are confirmed after the merge, on the production publish for the merge commit and the removal of PR 0's preview.
+* `just docs test`, `just docs build`, `just tools adr` and the workspace format check cover the card, the ADR amendment, the architecture model and the README.
+
+### Lessons learned, known issues and follow-ups
+
+* **The publisher runs from `main`**, so a change to it cannot be exercised by its own pull request. While the delivery PR was open, the publisher on `main` still expected an artifact from every same-repository PR and failed at the download for the delivery PR's CI runs; that run is not a PR check, and it stopped with the merge. A change that alters what CI uploads should land with the publisher change that tolerates it, as here, and expect that transient failure.
+* **A preview outlives its docs-only status.** The publisher removes previews on close only, so a PR that was docs-only and then adds code keeps the last preview. Removing it would cost a publish per code PR, the opposite of this story's aim.
+* **Fewer publishes, not unique ones.** This story reduces the Pages deployments that collided in #285 but does not prevent the collision; that prevention item stays with #285.
 
 ## User guide
-
-*Planned behaviour. This section is finalised when the story is implemented.*
 
 ### Getting a hosted preview for a documentation change
 

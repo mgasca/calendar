@@ -67,8 +67,11 @@ const judge = (f) =>
       { agentType: SKEPTIC, label: `${lens}:${f.file}:${f.line}`, phase: 'Verify', schema: VERDICT },
     ).then((v) => ({ lens, refuted: v ? v.refuted : null, reason: v ? v.reason : 'skeptic returned nothing' })),
   )).then((votes) => {
+    const answered = votes.filter((v) => v && v.refuted !== null).length
     const declined = votes.filter((v) => v && v.refuted === false).length
-    return { ...f, votes, confirmed: declined >= 2 }
+    // Fewer than two answers cannot confirm or fairly refute: the finding stays unexamined.
+    const verdict = answered < 2 ? 'unexamined' : declined >= 2 ? 'confirmed' : 'refuted'
+    return { ...f, votes, verdict }
   })
 
 phase('Review')
@@ -99,10 +102,13 @@ const results = done.flatMap((b) => b.judged)
 const failed = done.flatMap((b) => b.toJudge.filter((f) => !b.judged.some((r) => sameFinding(r, f))))
 const pastCap = done.flatMap((b) => b.pastCap)
 if (failed.length > 0) log(`${failed.length} finding(s) failed during verification and are listed as unexamined`)
-const confirmed = results.filter((f) => f.confirmed)
-const refuted = results.filter((f) => !f.confirmed)
-const unexamined = [...pastCap, ...failed]
-const agents = reviewers.filter((r) => r.status === 'reported').length + results.length * LENSES.length
+const confirmed = results.filter((f) => f.verdict === 'confirmed')
+const refuted = results.filter((f) => f.verdict === 'refuted')
+const unanswered = results.filter((f) => f.verdict === 'unexamined')
+if (unanswered.length > 0) log(`${unanswered.length} finding(s) had fewer than two skeptics answer and are listed as unexamined`)
+const unexamined = [...pastCap, ...failed, ...unanswered]
+const agents = reviewers.filter((r) => r.status === 'reported').length
+  + results.reduce((n, f) => n + f.votes.filter((v) => v && v.refuted !== null).length, 0)
 log(`${confirmed.length} confirmed, ${refuted.length} refuted, ${unexamined.length} unexamined; ${agents} agents answered`)
 
 return { confirmed, refuted, unexamined, reviewers, cap: CAP, agents }

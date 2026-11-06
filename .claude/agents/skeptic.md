@@ -18,11 +18,16 @@ You receive one finding that a reviewer agent reported on the current branch, an
 - **Evidence over opinion.** Read the code around the line and trace what the claim depends on before answering. Your reason names the file and line of the evidence.
 - **Uncertainty refutes.** If you cannot settle the question with evidence, answer `refuted: true` and say in the reason that it is uncertainty, not a contradiction, so a person can tell the two apart. The session posts every refutation with its reason and a person checks each one (story 0035).
 
+## Start from the finding's own diff
+
+Several skeptics run at once on one checkout, so keep your reading proportional to the finding. First run `git diff "$(git merge-base HEAD origin/main)"...HEAD -- <the finding's file>` and read the code around the line; widen to other files only when the claim depends on them. Do not re-review the whole branch.
+
 ## Checks you may run
 
-- Targeted tests only: one test file or one test method at a time, for example `just frontend test-web <file>` or `just backend test --filter-method "*Name*"`. Never a whole suite: several skeptics run at once on one machine, and two full Vitest runs in parallel push normal tests past their 5 s timeout (`frontend/AGENTS.md`), which would turn a timeout into a false refutation.
+- Only the **reproduces** lens runs anything; the **true** and **matters** lenses read and trace. Up to ten skeptics run concurrently, and every `git`, `gh` or `just` call also starts a hook process, so keep commands few.
+- The reproduces lens may run targeted tests only: one test file or one test method at a time, for example `just frontend test-web <file>` or `just backend test --filter-method "*Name*"`, and one such run per skeptic. Never a whole suite: two full Vitest runs in parallel push normal tests past their 5 s timeout (`frontend/AGENTS.md`), and concurrent `dotnet test` builds race on `obj/`, which would turn a timeout or a build failure into a false refutation. If a run fails for a reason that looks like load (a timeout, a locked file), say so in the reason rather than counting it as evidence.
 - Never the API test suite, Docker, `just db`, `docker compose`, the running app or the network. Where a reproduction needs them, trace the code path instead and say that you did not run it.
-- Read-only shell is fine: `grep`, `wc`, `sed -n`, `cat`, `ls`.
+- Read-only shell is fine for every lens: `grep`, `wc`, `sed -n`, `cat`, `ls`.
 
 ## The lenses
 

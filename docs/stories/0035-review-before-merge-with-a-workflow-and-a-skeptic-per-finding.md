@@ -26,7 +26,7 @@ This story builds on [0027](0027-focus-agent-guidance-on-claude-code-for-a-while
 ### Agreed scope
 
 * **A saved workflow**, `.claude/workflows/review-before-merge.js`, in three stages: the two reviewer agents run at once, each as the agent it already is; every finding, as soon as it arrives, goes to three skeptics with distinct lenses (*is the claim true of this code*, *does it reproduce*, *does it matter at this severity*); the script returns confirmed findings, refuted findings with the skeptics' reasons, and what it did not examine.
-* **Findings as data.** Each reviewer and each skeptic answers in a schema (file, line, claim, severity, reproduced; refuted with a reason), so the script filters and counts in code. A finding is confirmed when at least two of its three skeptics decline to refute it. A skeptic that cannot settle its question with evidence refutes and says that it is uncertainty, not a contradiction, so the posted reason tells the two apart.
+* **Findings as data.** Each reviewer and each skeptic answers in a schema (file, line, claim, severity, reproduced; refuted with a reason), so the script filters and counts in code. A finding is confirmed when at least two of its three skeptics decline to refute it. A skeptic that cannot settle its question with evidence refutes and says that it is uncertainty, not a contradiction, so the posted reason tells the two apart. A finding that fewer than two skeptics answered is unexamined, not refuted.
 * **A cap of 60 agents per run**, the two reviewers included, so about nineteen findings are fully judged. Each reviewer's findings are judged as that reviewer returns, highest severity first (both reviewers assign one), then in report order, against a budget the two reviewers share; those past the cap are returned unexamined and the script logs how many it left.
 * **Both lists reach the PR.** The session posts each confirmed finding on the issue or PR with the `agent-found` label, as today, and posts the refuted findings under one collapsed section with the skeptics' reasons, so a wrong refutation can be caught by a person. Unexamined findings are named in the same post.
 * **The step still exists without the workflow.** The reviewer agents and their checklists are unchanged. The review line in `issue-handover` gains half a sentence: in Claude Code, run the saved workflow; elsewhere, run the two reviewers by hand. The workflow is marked Claude Code only where it is described, as ADR-0044 asks.
@@ -104,7 +104,11 @@ No changes.
 
 ### Lessons learned, known issues and follow-ups
 
-* Filled in on delivery, with the record's numbers and the human check of the refutations.
+* **An agent definition added mid-session is unknown to that session's workflows.** The harness loads `.claude/agents/` at session start, so run 2 on #403, the first with `skeptic.md`, had every skeptic call fail with "agent type not found" while both reviewers answered. A run that exercises a new agent needs a session started after the definition exists.
+* **Fewer than two answers is unexamined, not refuted.** Run 2 listed its three unanswered findings as refuted because the first script only counted declines. Fixed on #403 before any run with answering skeptics.
+* **Runs so far** (measured from transcripts, one laptop): run 1 on #403, revision 897f042c, 14 agents, 301 s, reviewers 114 s and 102 s in parallel, skeptics 15 to 182 s, 4 confirmed of 4; run 2, revision 3e6aea2f, reviewers only (3 findings, all unexamined), 124 s. The record waits for runs with answering skeptics.
+* **Follow-up:** a defect both reviewers report at the same file and line is judged twice (run 2, performance finding 3, low; bounded at twice the cost). Pool such findings into one judged item once a real duplicate is seen.
+* Filled in further on delivery, with the record's numbers and the human check of the refutations.
 
 ## User guide
 

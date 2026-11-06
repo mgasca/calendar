@@ -1,0 +1,11 @@
+schema_version: "1.1"
+name: bimodal-sample-is-checked-against-a-control
+expected_outcome: |
+  Given a synthetic CI sample whose Web job durations fall into two clusters,
+  the skill checks steps the change cannot affect (set up, Setup Node, Install)
+  and finds they move with the cluster, so it attributes the split to runner
+  hardware or load rather than to commit bbbb222, reports the clusters
+  separately, and does not recommend the revert. It also works out the
+  critical path per cluster (Api in the fast cluster; undetermined in the slow
+  one, because Api's median mixes both clusters) without claiming more than
+  the data shows. It reads the fixture only and does not touch GitHub.

@@ -92,7 +92,7 @@ public sealed class GitProbe : IRepoProbe
 
   /// <inheritdoc/>
   public PullRequestText? PullRequestTextFor(string cwd, string? selector, string? repo) =>
-    PullRequestLookup.FindText(cwd, selector, repo, "gh", PullRequestLookup.Timeout);
+    PullRequestLookup.FindText(cwd, selector, repo, "gh", PullRequestLookup.InformTimeout);
 
   private static readonly TimeSpan BranchTimeout = TimeSpan.FromSeconds(5);
 

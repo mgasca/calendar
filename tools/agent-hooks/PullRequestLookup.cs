@@ -18,6 +18,12 @@ public static class PullRequestLookup
   /// <summary>How long gh may take (a call takes about 1.2 s; the hook's own limit is 30 s).</summary>
   public static readonly TimeSpan Timeout = TimeSpan.FromSeconds(10);
 
+  /// <summary>
+  /// How long the PR link check's lookup may take: it only reminds, so it gives up sooner (the call took 0.67-0.92 s over
+  /// eight runs on 2026-11-06).
+  /// </summary>
+  public static readonly TimeSpan InformTimeout = TimeSpan.FromSeconds(3);
+
   private static readonly string[] States = ["OPEN", "MERGED", "CLOSED"];
 
   private static readonly Dictionary<string, string> Environment = new(StringComparer.Ordinal)

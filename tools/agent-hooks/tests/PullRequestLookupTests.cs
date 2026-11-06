@@ -111,6 +111,18 @@ public sealed class PullRequestLookupTests : IDisposable
     PullRequestLookup.ParseText(text).ShouldBeNull();
 
   [Fact]
+  public void Find_text_gives_up_at_its_time_limit_which_is_shorter_than_the_push_guards()
+  {
+    var gh = FakeGh("sleep 10; echo '{\"number\":1,\"baseRefName\":\"main\",\"body\":\"\"}'");
+    var clock = Stopwatch.StartNew();
+
+    PullRequestLookup.FindText(_root, "358", null, gh, TimeSpan.FromMilliseconds(300)).ShouldBeNull();
+
+    clock.Elapsed.ShouldBeLessThan(TimeSpan.FromSeconds(5));
+    PullRequestLookup.InformTimeout.ShouldBeLessThanOrEqualTo(TimeSpan.FromSeconds(3));
+  }
+
+  [Fact]
   public void Find_text_is_null_when_gh_fails() =>
     PullRequestLookup.FindText(_root, "358", null, FakeGh("exit 1"), PullRequestLookup.Timeout).ShouldBeNull();
 

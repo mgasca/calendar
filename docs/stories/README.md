@@ -48,6 +48,8 @@ Front matter: `status` (`planned`, `in-progress` or `implemented`), `date` (`YYY
 | [0024](0024-one-way-to-show-what-to-fix-in-add-task-and-add-event.md) | One way to show what to fix in Add task and Add event | implemented |
 | [0025](0025-consolidate-what-agent-sessions-learned-into-guidance.md) | Consolidate what agent sessions learned into guidance | in-progress |
 | [0026](0026-read-module-recipe-chains-with-run.md) | Read module recipe chains with run | implemented |
+| [0027](0027-focus-agent-guidance-on-claude-code-for-a-while.md) | Focus agent guidance on Claude Code for a while | planned |
 | [0028](0028-coordinate-epic-delivery-across-agent-sessions.md) | Coordinate epic delivery across agent sessions | implemented |
 | [0029](0029-preserve-independent-perspectives-on-our-work.md) | Preserve independent perspectives on our work | implemented |
+| [0030](0030-docs-only-pr-previews.md) | Publish a docs-site preview only for docs-only pull requests | planned |
 | [XXXX](XXXX-create-events-and-tasks-from-week-view.md) | Create events and tasks from the week view | planned |

@@ -74,6 +74,10 @@ Chosen option: "Layered guidance (root, nested `AGENTS.md` with `CLAUDE.md` shim
 * Story 0020 (card in [PR #220](https://github.com/mgasca/calendar/pull/220)) records the acceptance criteria: file budgets, rule preservation, one *(hook)* line per hooked rule, and a live check that a hook refuses `git restore` on a dirty file and an edit of `contracts/openapi.json`.
 * Reviewers check that a new rule added to `AGENTS.md` goes to the layer this ADR names: an invariant becomes a hook with a one-line statement, area practice goes to the nested file, a procedure to a skill or README.
 
+### Amendment, 2026-11-06: agent neutrality relaxed for a Claude-first period
+
+[ADR-0044](0044-claude-first-agent-automation.md) lets new ask and inform hooks, skills, subagents and workflows be Claude Code only for a stated period, while the root and nested `AGENTS.md`, the existing *(hook)* lines and the one-line statement of every new deny hook stay agent-neutral. The layers and the hook policy above are unchanged, so this record is amended, not superseded; D3 records the weighing at the time of the original decision.
+
 ## Pros and Cons of the Options
 
 ### Layered guidance (root, nested `AGENTS.md` with `CLAUDE.md` shims, skills) and hooks as a .NET file-based tool

@@ -1,6 +1,6 @@
 # AGENTS.md
 
-Guidance for AI coding agents (Claude Code, Codex, Cursor, …) working in this repository. Area practice lives in `backend/AGENTS.md` and `frontend/AGENTS.md`: read the one for the stack you touch (Claude Code loads it when you read or edit a file there; other agents read it natively). Rules marked *(hook)* are also enforced for Claude Code by `tools/agent-hooks` (ADR-0042); other agents follow them by hand.
+Guidance for AI coding agents (Claude Code, Codex, Cursor, …) working in this repository. Area practice lives in `backend/AGENTS.md` and `frontend/AGENTS.md`: read the one for the stack you touch (Claude Code loads it when you read or edit a file there; other agents read it natively). Rules marked *(hook)* are also enforced for Claude Code by `tools/agent-hooks` (ADR-0042); other agents follow them by hand. During the Claude-first period of ADR-0044 (`docs/decisions/0044-claude-first-agent-automation.md`), automation under `.claude/` and `tools/agent-hooks` may be Claude Code only; the guidance files stay readable by every agent.
 
 ## Overview
 

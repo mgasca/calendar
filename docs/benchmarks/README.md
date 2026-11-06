@@ -14,6 +14,7 @@ Reference measurements for performance work. A benchmark here is a repeatable ha
 | [0008](0008-superseded-run-wait.md) | A superseding pull request run no longer waits for the old one to stop (#348) | `tools/ci-timings/ci-timings.cs` |
 | [0009](0009-api-tests-in-parallel.md) | API test classes in parallel, a database copy per test, one reset per test (#349) | `tools/ci-timings/ci-timings.cs` |
 | [0010](0010-format-whitespace-only.md) | The Backend format check runs whitespace only (#350) | `tools/ci-timings/ci-timings.cs` |
+| [0011](0011-tooling-cache-and-parallel-tests.md) | The Tooling job with a NuGet cache and parallel test apps (#351) | `tools/ci-timings/ci-timings.cs` |
 
 ## Performance issues
 

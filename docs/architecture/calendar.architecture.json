@@ -68,7 +68,8 @@
       { "id": "ADR-0040", "title": "Derive the decision log from the ADR files instead of an index table", "status": "accepted", "file": "docs/decisions/0040-derive-the-decision-log-from-the-adr-files.md", "url": "https://mgasca.github.io/calendar/adr/0040/" },
       { "id": "ADR-0041", "title": "Per-user data ownership: scope every query and write with an EF Core global query filter keyed by the signed-in user", "status": "accepted", "file": "docs/decisions/0041-per-user-data-ownership.md", "url": "https://mgasca.github.io/calendar/adr/0041/" },
       { "id": "ADR-0042", "title": "Layer agent guidance by scope and enforce its invariants with Claude Code hooks built as repo tools", "status": "accepted", "file": "docs/decisions/0042-layered-agent-guidance-and-hooks.md", "url": "https://mgasca.github.io/calendar/adr/0042/" },
-      { "id": "ADR-0043", "title": "Show form errors as red borders with a bubble, from the forms' own on-submit validation", "status": "accepted", "file": "docs/decisions/0043-form-validation-red-borders-and-bubble.md", "url": "https://mgasca.github.io/calendar/adr/0043/" }
+      { "id": "ADR-0043", "title": "Show form errors as red borders with a bubble, from the forms' own on-submit validation", "status": "accepted", "file": "docs/decisions/0043-form-validation-red-borders-and-bubble.md", "url": "https://mgasca.github.io/calendar/adr/0043/" },
+      { "id": "ADR-0044", "title": "Focus new agent automation on Claude Code for a while, keeping the guidance files agent-neutral", "status": "proposed", "file": "docs/decisions/0044-claude-first-agent-automation.md", "url": "https://mgasca.github.io/calendar/adr/0044/" }
     ],
     "stories": [
       { "id": "0001", "title": "Today view", "status": "implemented", "url": "https://mgasca.github.io/calendar/stories/0001/" },
@@ -85,6 +86,7 @@
       { "id": "0017", "title": "Per-user calendar ownership", "status": "implemented", "url": "https://mgasca.github.io/calendar/stories/0017/" },
       { "id": "0024", "title": "One way to show what to fix in Add task and Add event", "status": "implemented", "url": "https://mgasca.github.io/calendar/stories/0024/" },
       { "id": "0029", "title": "Preserve independent perspectives on our work", "status": "implemented", "url": "https://mgasca.github.io/calendar/stories/0029/" },
+      { "id": "0030", "title": "Publish a docs-site preview only for docs-only pull requests", "status": "implemented", "url": "https://mgasca.github.io/calendar/stories/0030/" },
       { "id": "0031", "title": "Open the docs site on why the repository exists", "status": "in-progress", "url": "https://mgasca.github.io/calendar/stories/0031/" },
       { "id": "XXXX", "title": "Create events and tasks from the week view", "status": "planned", "url": "https://mgasca.github.io/calendar/stories/create-events-and-tasks-from-week-view/" }
     ]
@@ -722,7 +724,7 @@
       "unique-id": "docs-site",
       "node-type": "webclient",
       "name": "Documentation site (Calendar · Docs)",
-      "description": "Astro Starlight site (frontend/apps/docs) built from the agent thoughts, the decision log, the story cards, the CALM model, the runbooks and the benchmark records; each agent thought has the stable route agent-thoughts/NNNN/, listed directly after the Architecture section, each ADR adr/NNNN/, each story stories/NNNN/, each runbook runbooks/<name>/ and each benchmark record benchmarks/NNNN/. Production is published from main; pull requests from this repository get previews at pr-preview/pr-N/. The site holds no authentication or sensitive state.",
+      "description": "Astro Starlight site (frontend/apps/docs) built from the agent thoughts, the decision log, the story cards, the CALM model, the runbooks and the benchmark records; each agent thought has the stable route agent-thoughts/NNNN/, listed directly after the Architecture section, each ADR adr/NNNN/, each story stories/NNNN/, each runbook runbooks/<name>/ and each benchmark record benchmarks/NNNN/. Production is published from main; docs-only pull requests from this repository (every changed file under docs/ or frontend/apps/docs/) get previews at pr-preview/pr-N/. The site holds no authentication or sensitive state.",
       "interfaces": [
         { "unique-id": "docs-site-url", "url": "https://mgasca.github.io/calendar/" },
         { "unique-id": "docs-preview-url", "url": "https://mgasca.github.io/calendar/pr-preview/pr-<number>/" }
@@ -1291,15 +1293,15 @@
     {
       "unique-id": "publish-docs-flow",
       "name": "Publish the decision log",
-      "description": "Merging to main (or opening a PR from this repository) builds the documentation site from the ADRs, story cards, architecture model, runbooks and benchmark records in CI and publishes it, or a PR preview, to GitHub Pages through a publisher that never runs untrusted code (ADR-0023, ADR-0025, ADR-0028).",
+      "description": "Merging to main (or opening a docs-only PR from this repository) builds the documentation site from the ADRs, story cards, architecture model, runbooks and benchmark records in CI and publishes it, or a PR preview, to GitHub Pages through a publisher that never runs untrusted code (ADR-0023, ADR-0025, ADR-0028).",
       "requirement-url": "https://mgasca.github.io/calendar/adr/0023/",
       "transitions": [
         { "relationship-unique-id": "operator-operates-platform", "sequence-number": 1, "description": "A PR adds or changes an ADR, a story card, the architecture model, a runbook or a benchmark record (just tools adr and the docs tests pass locally) and is merged to main" },
         { "relationship-unique-id": "docs-site-built-from-decision-log", "sequence-number": 2, "description": "The CI Docs site job builds the Astro Starlight site from docs/decisions, docs/stories, docs/architecture, docs/runbooks and docs/benchmarks, verifies it at the root path and at a project subpath, and uploads the adr-site artifact" },
-        { "relationship-unique-id": "ci-publishes-docs", "sequence-number": 3, "description": "After CI succeeds, the Publish ADR site workflow's assemble job validates the source run, revision and PR state, downloads the exact artifact, assembles the retained production snapshot plus open-PR previews and uploads it; a separate deploy job deploys it with the github-pages environment, unless gh-pages has moved on to a later publication" },
-        { "relationship-unique-id": "docs-site-on-github-pages", "sequence-number": 4, "description": "The site is live at https://mgasca.github.io/calendar/ with each agent thought at agent-thoughts/NNNN/, each ADR at adr/NNNN/, each story at stories/NNNN/, each runbook at runbooks/<name>/ and each benchmark record at benchmarks/NNNN/; a PR gets an 'ADR preview' check and a sticky comment linking to pr-preview/pr-<number>/" }
+        { "relationship-unique-id": "ci-publishes-docs", "sequence-number": 3, "description": "After CI succeeds, the Publish ADR site workflow's assemble job validates the source run, revision and PR state and that CI uploaded a publication artifact (only main pushes and docs-only PRs build one), downloads the exact artifact, assembles the retained production snapshot plus open-PR previews and uploads it; a separate deploy job deploys it with the github-pages environment, unless gh-pages has moved on to a later publication" },
+        { "relationship-unique-id": "docs-site-on-github-pages", "sequence-number": 4, "description": "The site is live at https://mgasca.github.io/calendar/ with each agent thought at agent-thoughts/NNNN/, each ADR at adr/NNNN/, each story at stories/NNNN/, each runbook at runbooks/<name>/ and each benchmark record at benchmarks/NNNN/; a docs-only PR gets an 'ADR preview' check and a sticky comment linking to pr-preview/pr-<number>/" }
       ],
-      "metadata": { "adrs": ["ADR-0000", "ADR-0022", "ADR-0023", "ADR-0025", "ADR-0028"], "stories": ["0010", "0031"], "workflows": [".github/workflows/ci.yml", ".github/workflows/pages.yml"] }
+      "metadata": { "adrs": ["ADR-0000", "ADR-0022", "ADR-0023", "ADR-0025", "ADR-0028"], "stories": ["0010", "0030", "0031"], "workflows": [".github/workflows/ci.yml", ".github/workflows/pages.yml"] }
     }
   ]
 }

@@ -1,9 +1,11 @@
 ---
-status: in-progress
+status: implemented
 date: 2026-11-06
 issue: https://github.com/mgasca/calendar/issues/332
 pr:
   - https://github.com/mgasca/calendar/pull/335
+  - https://github.com/mgasca/calendar/pull/336
+  - https://github.com/mgasca/calendar/pull/337
 adrs: ["0028", "0040"]
 ---
 
@@ -60,11 +62,35 @@ No new ADR is expected: the site gains one more folder in an established pattern
 
 ## Implementation notes
 
-*Planned. This section is completed as the story is built.*
+Delivered in the PRs listed in the front matter: the card, the collection with its nav group, then the landing page. All three were stacked on #331, which added the folder and its first report.
+
+### Where things live
+
+| Area | Location |
+| --- | --- |
+| Index parser and its rules | `frontend/apps/docs/src/lib/adr.ts` (`parseAgentThoughts`, and the unpublished-link rule) |
+| Pages, routes and edit links | `frontend/apps/docs/src/lib/docs-loader.ts` (`readAgentThoughts`, the `agent-thoughts` entries) |
+| Nav group and landing redirect | `frontend/apps/docs/astro.config.ts` |
+| Conventions and index | [`docs/agent-thoughts/README.md`](../agent-thoughts/README.md) |
+
+### API
+
+No changes.
+
+### Testing
+
+* **Criterion 1:** the publication check "renders every report with navigation, its date, author, revision and edit link" in `frontend/apps/docs/tests/build.test.ts`, derived from the folder; the corpus test "reads every report in number order" in `src/lib/corpus.test.ts`; link routing in "agent thought links" in `src/lib/adr.test.ts`.
+* **Criterion 2:** "puts the Agent thoughts group directly after Architecture in the sidebar". Negative control: with the group moved to the end of the sidebar it failed with `expected '/adr/0000/' to be '/agent-thoughts/'`, and passed once the saved config was restored.
+* **Criterion 3:** the rejection cases of "canonical agent thoughts index" in `src/lib/adr.test.ts`: missing table, empty index, missing file, unlisted report, duplicate, rows out of order, title differing from the index, title without the number, two titles, malformed row, `XXXX` placeholder, malformed date, missing author and a revision that is not a commit.
+* **Criterion 4:** "redirects to the first agent thought and lists Architecture first in the sidebar", checked at the root path and at a project subpath. Negative control: with the old redirect to the architecture overview it failed, and passed once the saved config was restored.
+
+### Lessons learned, known issues and follow-ups
+
+* **A negative control must rebuild what it tests.** The first control of the redirect ran against a build left at a project subpath, after a failed edit had skipped the rebuild, and failed for that reason instead. It was redone with a rebuild at the root path; check the built output, not only the test result.
+* **Read only what a check needs.** The performance review found the two new publication checks reading the whole corpus to get the report list, about half a second each. They use `readAgentThoughts()` instead; measured on one build, the publication checks took 3.6 s instead of 4.0 to 4.5 s (alternating A, B, A, B). CI runs them three times per Docs site job.
+* **Stacked on another story's open PR.** The folder and its first report arrived with #331 (story 0029), so this story's PRs were stacked on it and are retargeted as it merges.
 
 ## User guide
-
-*Planned behaviour. This section is finalised when the story is implemented.*
 
 ### Reading the agent thoughts
 

@@ -17,8 +17,8 @@ The Tooling job's "Test and lint tooling" step (`just tools test`) took 48 s med
 
 The CI sampler measured job and step durations on GitHub-hosted `ubuntu-latest` runners (nearest-rank). Four samples:
 
-- **Before:** the last 40 successful runs created before the first run of this branch. Most of them predate #360 (merged at 17:18Z), which added an eleventh test app (`handover-watch`). Treat the before row as one app lighter.
-- **Uncached control:** the 5 successful runs of the #350 branch, 18:19Z–18:56Z, on the same 11 apps and in the same hour, without the cache. #350 does not touch the Tooling job.
+- **Before:** the last 40 successful runs created before the first run of this branch. Most of them predate #360 (merged at 17:18Z), which added a tenth test app (`handover-watch`). Treat the before row as one app lighter.
+- **Uncached control:** the 5 successful runs of the #350 branch, 18:19Z–18:56Z, on the same 10 apps and in the same hour, without the cache. #350 does not touch the Tooling job.
 - **Cache only:** this branch's first 6 runs. The first run missed and saved the cache; the other five each restored it.
 - **Cache and parallel tests:** this branch's 5 runs after the `tools/mod.just` change.
 
@@ -174,9 +174,9 @@ Every cached run logged `Cache restored successfully`, at about 242 MB.
 
 ## Reading
 
-- **Measured: the cache alone did not shorten the step.** The step took 55 s median with the cache (50–62 s) against 58 s uncached in the same hour (39–85 s). The first app fell from 19 s to 14 s median, but restoring 242 MB made `setup-dotnet` take 6 s instead of 1 s, which cancels out the saving. The issue's lead was half right. Downloading the packages was part of the first app's cost. The rest, about 14 s, is the first `dotnet run` of the job starting the SDK's build servers and compiling, which a NuGet cache cannot remove.
+- **Measured: the cache alone did not shorten the step.** The step took 55 s median with the cache (50–62 s) against 58 s uncached in the same hour (39–85 s). Restoring 242 MB made `setup-dotnet` take 6 s instead of 1 s. The first app took 14 s median with the cache and 19 s without, but the uncached runs range from 10 to 46 s, and the one run that missed the cache and downloaded took 16 s. So at these sample sizes (5 and 8), the share of downloading in the first app's cost is not shown. That most of it is the job's first `dotnet run` starting the SDK's build servers and compiling is inferred.
 - **Measured: running the test apps four at a time cut the step to 30 s median** (29–41 s, n=5), against 55 s for the cache alone and 58 s for the uncached control. The Tooling job fell from 1:25–1:28 to **1:03** (0:58–1:20). The control step did not move (17 s against 15–18 s).
-- **Critical path:** in the same hour, Backend took 1:26 median with #349 and #350 applied (the #350 branch). With Tooling at 1:03, Tooling is no longer the cap; that is inferred across samples, and record 0012 measures it on `main`.
+- **Critical path:** in the same five runs, Tooling took 1:03 median and Backend 1:46 (this branch has #349 but not #350). On the #350 branch, which has both, Backend took 1:26 and Tooling 1:28, the only sample where Tooling's median led. These are per-job medians, not the per-run critical path; record 0012 measures that on `main` after every child has merged.
 - **Kept the cache, but its value is not shown.** With parallel apps, it is unmeasured whether the cache still helps (four apps restoring cold at once could contend for downloads) or only costs its 5 s restore. Tooling is now off the critical path, so that 5 s does not lengthen a run. Removing the cache is the next candidate if Tooling becomes the cap again.
 - **Local loop:** `just tools test` also runs the apps four at a time (`TOOLS_TEST_JOBS` changes the number). Locally, from a cold build, that took 34–61 s instead of 73–90 s. The output stays in app order, and a failing app still fails the recipe and is named; both were checked by hand.
 
@@ -185,5 +185,7 @@ Every cached run logged `Cache restored successfully`, at about 242 MB.
 - The Tooling job's median rises above Backend's again: then measure parallel runs without the cache, and consider more jobs at once or caching the compiled test apps.
 - A tool's tests start sharing state (a port, a file, a database) so that they can no longer run side by side: set `TOOLS_TEST_JOBS=1` for that run, and fix the tests.
 - The cache restore grows well beyond 242 MB or 5 s.
+- A test app hangs: the parallel recipe prints each app's output only once all of them have finished, so a hang shows nothing until the job's 10-minute timeout. Print each log as its app finishes, or add a per-app timeout.
+- `tools/infra/tests/database.tests.cs` and `infra.tests.cs` share one `packages.lock.json` and restore at the same time. That is safe while their pins are identical (CI restores in locked mode); if they diverge, a local run could write the file twice at once.
 
 Re-run the harness commands above and compare; never edit this record.

@@ -57,6 +57,22 @@ Chosen option: "Combined Pages artifact backed by a retained static snapshot", b
 * These previews share the production browser origin. A numbered path separates content but does not isolate arbitrary HTML or JavaScript. Limit previews to same-repository contributors and keep the documentation site free of authentication or sensitive application state.
 * GitHub Pages remains the production host. This decision extends [ADR-0023](0023-static-adr-log-publication.md) by moving deployment orchestration to a trusted follow-on workflow that combines verified production and preview artifacts; it does not change the canonical Markdown source or production's main-only content rule.
 
+### Amendment, 2026-11-06: previews for docs-only pull requests only
+
+The decision above is unchanged: the combined artifact, the retained snapshot and the trusted publisher stay as they are, and the ratings of D1 to D5 stand. What changes is which pull requests are eligible. Every pull request from this repository used to get a preview, so a backend or frontend change published a site identical to production, with a check and a comment on the PR, and each publish was a Pages deployment of the kind that collided in issue #285. Story [0030](../stories/0030-docs-only-pr-previews.md) (issue #332) narrows eligibility.
+
+* **Eligible** is an open pull request from this repository whose every changed file, as GitHub lists them against the merge base, is under `docs/` or `frontend/apps/docs/`: the sources the site is built from, and the site itself.
+* **CI decides.** The Docs site job lists the pull request's files and builds and uploads the publication artifact only for `main` pushes and docs-only pull requests. Every pull request still builds and verifies the site at the root path and at a project subpath.
+* **The publisher follows the artifact.** In preview mode it ends without publishing when the CI run uploaded no artifact. A pull request could already change what CI builds into the artifact, so letting it decide whether there is one moves no trust boundary: the publisher still validates the run, the revision and the live pull-request state, and never executes downloaded content.
+* **Unchanged:** production publication, removal on close, reconciliation of closed previews and the fork exclusion. A pull request that was docs-only and later adds code keeps its last preview until it closes.
+
+**Consequences of the amendment**
+
+* Good, because **D1 Review convenience**: a preview appears exactly when there is documentation to review, and a code pull request no longer carries a preview check and comment that show nothing new.
+* Good, because **D3 Content preservation**: fewer publishes mean fewer serialized snapshot updates and fewer Pages deployments that can collide (#285).
+* Neutral, because **D4 Trusted publication**: the eligibility rule runs in the untrusted CI job, but all it can do is withhold an artifact the publisher had to validate anyway.
+* Bad, because **D1 Review convenience**: a pull request that changes code and documentation together gets no hosted preview; its documentation is reviewed locally with `just docs dev`, or in a pull request of its own.
+
 ### Consequences
 
 * Good, because reviewers get stable preview URLs with no additional hosting account.
@@ -107,4 +123,5 @@ Test that production updates preserve previews, preview updates preserve product
 
 * Verified on 2026-10-27: [`actions/deploy-pages`](https://github.com/actions/deploy-pages) documents its normal artifact deployment; its experimental preview input is not a generally available preview-hosting solution. [GitHub workflow events](https://docs.github.com/en/actions/reference/workflows-and-actions/events-that-trigger-workflows#workflow_run) documents the trusted follow-on workflow mechanism and its security considerations.
 * Alternative: [Cloudflare preview deployments](https://developers.cloudflare.com/pages/configuration/preview-deployments/).
+* **Amendment, 2026-11-06:** previews are published for docs-only pull requests only, in issue #332 and story [0030](../stories/0030-docs-only-pr-previews.md). The decision itself is unchanged, so this ADR was amended, not superseded, as [ADR-0038](0038-just-as-the-top-level-task-runner.md) was for its module layout.
 * This remains a proposed decision while the requested implementation is prepared for review.

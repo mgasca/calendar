@@ -43,6 +43,8 @@ Keep resumable local state outside the committed skill: scope; issue/session/fil
 
 Use supported bounded watches and re-arm on expiry while scoped work remains incomplete. If only foreground polling is available, state its lifetime and what can wake the session; do not promise monitoring after it stops. Report lost access, expired watches or unavailable push notifications once, with their impact and recovery action. Do not install a scheduler, enable Remote Control or change user settings merely to preserve the watch.
 
+A watch that reports differences must take its baseline from the current state when it starts, before its first wait, and from the recorded state when it is re-armed. Otherwise every start reports every known PR and comment as new. Find the epic's PRs by the issue links in their title or body, filtered locally, not by a search for issue numbers, which matches unrelated PRs that mention those numbers in passing (#380).
+
 ## Notify in actionable tables
 
 Notify only when the maintainer needs to act or a significant milestone changes: a review-ready PR/group, a requested decision, a blocker requiring intervention, an important scope departure, verified delivery, or epic completion. Routine CI starts and unchanged pending work are not alerts. Handle worker-actionable problems directly and notify when resolution or escalation matters.

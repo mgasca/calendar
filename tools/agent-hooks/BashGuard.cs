@@ -243,21 +243,24 @@ public static partial class BashGuard
     var i = 1;
     while (i < tokens.Count)
     {
-      (var source, var words) = RedirectSource(tokens, i) ?? (api ? ApiBodySource(tokens, i) : BodyFileSource(tokens, i));
+      (string? Source, int Words)? redirect = RedirectSource(tokens, i);
+      (var source, var words) = redirect ?? (api ? ApiBodySource(tokens, i) : BodyFileSource(tokens, i));
       // A source's own path stays on this machine, so what it holds is scanned instead: as an earlier segment of the
       // command wrote it, after expanding the variables the command assigns (#374). When the hook still cannot read it, the
       // words that name it are scanned like any other (#369).
-      var contents = source is null ? null : sources.Read(segment, source);
-      if (contents is null)
+      // What a model of the command gives (a variable, a recorded write, a redirect, a pipe) is scanned with those words,
+      // never instead of them, so nothing main denied passes (security review of #374).
+      BodySources.Body? body = source is null ? null : sources.Read(segment, source, redirect is not null);
+      if (body is null || body.KeepWords)
       {
         foreach (var word in tokens.Skip(i).Take(words))
         {
           text.AppendLine(word);
         }
       }
-      else
+      if (body is not null)
       {
-        text.AppendLine(contents);
+        text.AppendLine(body.Text);
       }
       i += words;
     }

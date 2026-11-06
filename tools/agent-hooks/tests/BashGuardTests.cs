@@ -218,6 +218,25 @@ public sealed class BashGuardTests
     BashGuard.Evaluate(command, Root, _probe).ShouldNotBeNull().Reason.ShouldContain("/home/me/x");
   }
 
+  // Security review of #374: what the command is modelled to write or redirect only adds text to scan; it never replaces
+  // the words main scanned or the file the post really reads.
+  [Theory]
+  [InlineData("cat > /tmp/body.md <<EOF\nChecked in $(pwd)\nEOF\ngh pr comment 1 --body-file /tmp/body.md")]
+  [InlineData("echo \"Checked in $PWD\" > /tmp/body.md && gh pr comment 1 --body-file /tmp/body.md")]
+  [InlineData("echo /tmp/note.md > /tmp/note.md && gh pr comment 1 --body-file /tmp/note.md")]
+  [InlineData("echo Done >> notes.md && gh pr comment 1 --body-file notes.md")]
+  [InlineData("cat > /tmp/b.md <<'EOF'\nSummary\nEOF\npwd >> /tmp/b.md\ngh pr comment 1 --body-file /tmp/b.md")]
+  [InlineData("test -f notes.md || echo TBD > notes.md; gh pr comment 1 --body-file notes.md")]
+  [InlineData("echo ok > /tmp/note && gh pr comment 1 --body '</tmp/note'")]
+  [InlineData("gh pr comment 1 --body-file '$HOME/x'")]
+  public void A_modelled_source_never_hides_what_main_scanned(string command)
+  {
+    _probe.Files["notes.md"] = "see /home/me/x";
+    _probe.Files["$HOME/x"] = "see /home/me/x";
+
+    BashGuard.Evaluate(command, Root, _probe).ShouldNotBeNull().Decision.ShouldBe("deny");
+  }
+
   [Fact]
   public void A_home_path_is_expanded_from_the_environment()
   {
@@ -229,14 +248,12 @@ public sealed class BashGuardTests
   }
 
   [Theory]
-  [InlineData("gh api repos/o/r/issues/1/comments --input - < /tmp/clean.json")]
   [InlineData("S=$(mktemp -d) && gh pr comment 1 --body-file \"$S/b.md\"")]
   [InlineData("gh pr comment 1 --body-file \"$NOT_SET_ANYWHERE_374/b.md\"")]
   [InlineData("gh pr comment 1 --body-file b.md && cat > b.md <<'EOF'\nsee /home/me/x\nEOF")]
   [InlineData("echo 'see /home/me/x' > other.md && gh pr comment 1 --body-file b.md")]
   public void A_clean_or_unresolvable_source_passes_as_before(string command)
   {
-    _probe.Files["/tmp/clean.json"] = "{\"body\": \"Refs #374\"}";
     _probe.Files["b.md"] = "clean";
 
     BashGuard.Evaluate(command, Root, _probe).ShouldBeNull();

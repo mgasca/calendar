@@ -27,7 +27,7 @@ The building blocks exist. `tools/ci-timings` samples job and step durations fro
 
 Agreed with the maintainer on epic #380 (in a Claude Code session, recorded on the epic's first comment).
 
-* **A run-time gate per job and path:** Backend, Frontend, Docs site, Tooling and Container image each have a threshold per path: the PR path (pull request, merge group and dispatch runs) and the push path (pushes to `main`, and Docs site whenever it builds the publication artifact). The quantity is the job's start-to-end time; queue time and skipped jobs are not gated.
+* **A run-time gate per job and path:** Backend, Frontend, Docs site, Tooling and Container image each have a threshold per path: the **publication** path, when the run built the docs publication artifact (pushes to `main` and docs-only pull requests), and the **check** path otherwise (dispatches and every other pull request). A run is classified by what it did, not by its event. The quantity is the job's start-to-end time; queue time and skipped jobs are not gated.
 * **Fails only on a clear outlier:** the threshold is the robust log-normal bound of ADR-0045 (median and MAD of log time, with `z` from a budget of about 1 % of PR runs across all gated jobs), and never less than an absolute floor and a relative margin above the median. Its constants are provisional until record 0014 calibrates them.
 * **A pinned, committed baseline:** `.github/ci-baseline.json`, measured from at least 30 successful runs per job and path on `main`, with n, window, commits and robust statistics (median, MAD, nearest-rank percentiles), written by `ci-timings baseline` and backed by benchmark record 0014 (#384). Runs on `main` never move it.
 * **A back-test:** the threshold is evaluated on runs held out of the baseline, and record 0014 reports the observed false-failure rate per job and across jobs.
@@ -56,7 +56,7 @@ ADR-0045 must be accepted before any gate merges. Delivery order: #383 (this car
 3. **Given** a pull request run in which one gated job takes longer than its threshold (for example a `sleep` injected on a scratch branch), **when** `CI result` runs, **then** it fails and names the job, its time, the threshold and the baseline median.
 4. **Given** a pull request run in which every gated job is within its threshold, **when** `CI result` runs, **then** the gate passes.
 5. **Given** a job that is only a few seconds slower than its median, **when** the gate compares it, **then** it passes, because the threshold is never less than the floor and margin above the median.
-6. **Given** a docs-only pull request, **when** the gate judges the Docs site job, **then** it uses the push-path baseline, because the publication steps ran.
+6. **Given** a docs-only pull request, **when** the gate judges the Docs site job, **then** it uses the publication-path baseline for every gated job, because the publication steps ran.
 7. **Given** a push to `main` or a dispatch run, **when** a job exceeds its threshold, **then** `CI result` reports it in the step summary and does not fail.
 8. **Given** a PR that regenerates the baseline with a new benchmark record, **when** its CI runs, **then** the gate uses the PR's own baseline file.
 9. **Given** the gate, **when** its time on the critical path is measured on the same basis as record 0012, **then** the delivery PR reports it.
@@ -83,7 +83,7 @@ ADR-0045 is new in this story.
 
 * **The gate before the guards:** the maintainer ranked "no job gets slower" first; a guard covers only a regression whose cause someone foresaw.
 * **One session per stack of work:** session A owns the decision, the card, the README and the model; session B the baseline, gate and trend check, which share `tools/ci-timings` and `ci.yml`; session C the guards. Numbers ADR 0045, story 0034 and record 0014 were allocated on the epic.
-* **Dispatched runs need approval:** the PR-path baseline needs about 30 dispatch runs on `main`; they run one at a time and only with the maintainer's approval on #384, as in #347.
+* **Dispatched runs need approval:** the check-path baseline needs about 30 dispatch runs on `main`; they run one at a time, spread over the day, and only with the maintainer's approval on #384, as in #347.
 
 ## Implementation notes
 
@@ -97,7 +97,7 @@ ADR-0045 is new in this story.
 | Baseline, back-test and trend logic | `tools/ci-timings/` |
 | Pinned baseline | `.github/ci-baseline.json` |
 | Baseline record | `docs/benchmarks/0014-*.md` |
-| PR gate | `CI result` in `.github/workflows/ci.yml` |
+| PR gate | `CI result` in `.github/workflows/ci.yml`, running `.github/ci-gate.jq` |
 | Trend check | a scheduled workflow in `.github/workflows/` |
 | Mechanism guards | a structure-test tool under `tools/`, and guards inside existing suites |
 | CALM control | `docs/architecture/calendar.architecture.json`, `docs/architecture/controls/delivery-performance.requirement.json` |
@@ -109,6 +109,7 @@ No changes.
 ### Testing
 
 * xUnit tests in `tools/ci-timings` for the threshold formula, the path rules, the baseline file and the back-test; the trend test on a constructed history.
+* `tools/ci-timings` tests that run `.github/ci-gate.jq` with `jq` against canned jobs API responses (a slow job fails, an ordinary run passes, both paths, a missing baseline entry, a report-only push run), and a test that the `CI result` step runs that file.
 * The PR gate proved both ways on CI: an injected slowdown on a scratch branch fails it, an ordinary run passes.
 * Each mechanism guard proved by reverting its fix locally (a negative control).
 * The CALM model validated by the Docs site job.

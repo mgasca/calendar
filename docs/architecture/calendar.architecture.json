@@ -724,7 +724,7 @@
       "unique-id": "docs-site",
       "node-type": "webclient",
       "name": "Documentation site (Calendar · Docs)",
-      "description": "Astro Starlight site (frontend/apps/docs) built from the agent thoughts, the decision log, the story cards, the CALM model, the runbooks and the benchmark records; the root redirects to the first agent thought, the report on why the repository exists; each agent thought has the stable route agent-thoughts/NNNN/, listed directly after the Architecture section, each ADR adr/NNNN/, each story stories/NNNN/, each runbook runbooks/<name>/ and each benchmark record benchmarks/NNNN/. Production is published from main; docs-only pull requests from this repository (every changed file under docs/ or frontend/apps/docs/) get previews at pr-preview/pr-N/. The site holds no authentication or sensitive state.",
+      "description": "Astro Starlight site (frontend/apps/docs) built from the agent thoughts, the decision log, the story cards, the CALM model, the runbooks and the benchmark records; the root redirects to the first agent thought, the report on why the repository exists; each agent thought has the stable route agent-thoughts/NNNN/, each ADR adr/NNNN/, each story stories/NNNN/, each runbook runbooks/<name>/ and each benchmark record benchmarks/NNNN/. Production is published from main; docs-only pull requests from this repository (every changed file under docs/ or frontend/apps/docs/) get previews at pr-preview/pr-N/. The site holds no authentication or sensitive state.",
       "interfaces": [
         { "unique-id": "docs-site-url", "url": "https://mgasca.github.io/calendar/" },
         { "unique-id": "docs-preview-url", "url": "https://mgasca.github.io/calendar/pr-preview/pr-<number>/" }

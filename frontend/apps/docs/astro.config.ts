@@ -106,8 +106,6 @@ export default defineConfig({
       social: [{ icon: 'github', label: 'GitHub', href: repository }],
       customCss: ['./src/styles/docs.css'],
       sidebar: [
-        { label: 'Architecture', items: architectureSidebar(flows) },
-        // Directly after Architecture: the agent perspectives on why the work exists (story 0031).
         {
           label: 'Agent thoughts',
           items: [
@@ -115,6 +113,7 @@ export default defineConfig({
             { autogenerate: { directory: '../../../docs/agent-thoughts' } },
           ],
         },
+        { label: 'Architecture', items: architectureSidebar(flows) },
         {
           label: 'Any decision records',
           items: [{ autogenerate: { directory: '../../../docs/decisions' } }],

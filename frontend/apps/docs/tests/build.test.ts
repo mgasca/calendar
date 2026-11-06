@@ -67,7 +67,7 @@ describe('published documentation links', () => {
 });
 
 describe('site root', () => {
-  it('redirects to the first agent thought and lists Architecture first in the sidebar', async () => {
+  it('redirects to the first agent thought', async () => {
     const agentThought = await readAgentThoughts();
     const first = agentThought.records[0]?.number;
     expect(first).toBeDefined();
@@ -77,7 +77,6 @@ describe('site root', () => {
     await access(`dist/agent-thoughts/${first ?? ''}/index.html`);
     const overview = await readFile('dist/architecture/index.html', 'utf8');
     const routes = sidebarRoutes(overview);
-    expect(routes[0]).toBe(`${base}architecture/`);
     // The decision log has no page of its own, so nothing in the sidebar links to the root.
     expect(routes).not.toContain(base);
     expect(routes.indexOf(`${base}architecture/controls/`)).toBeLessThan(
@@ -87,15 +86,14 @@ describe('site root', () => {
 });
 
 describe('published agent thoughts', () => {
-  it('puts the Agent thoughts group directly after Architecture in the sidebar', async () => {
+  it('puts Agent thoughts before Architecture in the sidebar', async () => {
     const overview = await readFile('dist/architecture/index.html', 'utf8');
     const routes = sidebarRoutes(overview);
-    // Everything before the first route outside Architecture belongs to it; the group follows.
-    const next = routes.find((href) => !href.startsWith(`${base}architecture/`));
-    expect(next).toBe(`${base}agent-thoughts/`);
+    expect(routes[0]).toBe(`${base}agent-thoughts/`);
+    const next = routes.find((href) => !href.startsWith(`${base}agent-thoughts/`));
+    expect(next).toBe(`${base}architecture/`);
     const groups = sidebarGroups(overview);
-    expect(groups[0]).toBe('Architecture');
-    expect(groups.indexOf('Agent thoughts')).toBe(groups.indexOf('Any decision records') - 1);
+    expect(groups.slice(0, 2)).toEqual(['Agent thoughts', 'Architecture']);
   });
 
   it('renders every report with navigation, its date, author, revision and edit link', async () => {

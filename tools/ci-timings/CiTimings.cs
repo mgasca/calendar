@@ -123,6 +123,15 @@ public static class Parser
     return jobs;
   }
 
+  /// <summary>Parses <c>gh issue list --json number,title</c>.</summary>
+  /// <param name="json">The JSON array.</param>
+  /// <returns>(number, title) per issue, in the order listed.</returns>
+  public static IReadOnlyList<(int Number, string Title)> ParseIssues(string json)
+  {
+    using var document = JsonDocument.Parse(json);
+    return [.. document.RootElement.EnumerateArray().Select(issue => (issue.GetProperty("number").GetInt32(), Text(issue, "title")))];
+  }
+
   private static string Text(JsonElement element, string property) =>
     element.TryGetProperty(property, out JsonElement value) && value.ValueKind == JsonValueKind.String
       ? value.GetString() ?? string.Empty

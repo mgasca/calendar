@@ -1,6 +1,7 @@
 #!/usr/bin/env -S dotnet run
 #:include CiTimings.cs
 #:include Baseline.cs
+#:include Trend.cs
 
 // Samples how long a GitHub Actions workflow's jobs and steps take, from the runs GitHub keeps, and prints Markdown
 // tables for a benchmark record (docs/benchmarks/README.md). Only completed, successful runs count, so cancelled and
@@ -19,6 +20,10 @@
 //                                         runs on main in --created, writes .github/ci-baseline.json (--out) and back-tests
 //                                         its thresholds on the runs in --holdout, on main and on pull requests (ADR 0045)
 //     [--min-runs 30] [--alpha 0.01] [--floor 15] [--margin 0.1] [--record docs/benchmarks/0014-….md]
+//   dotnet run tools/ci-timings/ci-timings.cs -- --trend [--issue]   the last 20 successful push runs on main not in the
+//                                         baseline against .github/ci-baseline.json (--out): exact one-sided Mann–Whitney at
+//                                         p < 0.002 and a Hodges–Lehmann shift of at least max(10 s, 5 %); --issue comments on
+//                                         the open trend issue (label performance) or opens it, only when a job is slower
 
 using System.Globalization;
 using CiTimings;
@@ -30,6 +35,8 @@ string? branch = null;
 string? created = null;
 var superseded = false;
 var baseline = false;
+var trend = false;
+var issue = false;
 string? holdout = null;
 var output = ".github/ci-baseline.json";
 var record = "docs/benchmarks/0014-ci-job-baseline.md";
@@ -65,6 +72,12 @@ while (pending.TryDequeue(out var arg))
     case "--baseline":
       baseline = true;
       break;
+    case "--trend":
+      trend = true;
+      break;
+    case "--issue":
+      issue = true;
+      break;
     case "--holdout" when pending.Count > 0:
       holdout = pending.Dequeue();
       break;
@@ -92,7 +105,7 @@ while (pending.TryDequeue(out var arg))
       await Console.Error.WriteLineAsync(
         "usage: ci-timings [--workflow FILE] [--runs N] [--repo OWNER/NAME] [--branch NAME] [--created RANGE] [--job NAME]... "
         + "[--superseded] [--baseline --created RANGE [--holdout RANGE] [--out FILE] [--record FILE] [--min-runs N]"
-        + " [--alpha A] [--floor S] [--margin R]]");
+        + " [--alpha A] [--floor S] [--margin R]] [--trend [--out FILE] [--issue]]");
       return 2;
   }
 }
@@ -100,6 +113,48 @@ while (pending.TryDequeue(out var arg))
 List<string> repoArguments = repo is null ? [] : ["--repo", repo];
 List<string> branchArguments = branch is null ? [] : ["--branch", branch];
 List<string> createdArguments = created is null ? [] : ["--created", created];
+if (trend)
+{
+  // The trend check: the newest successful push runs on main not in the baseline, against .github/ci-baseline.json
+  // (--out). With --issue, a regression comments on the open trend issue or opens it; nothing else is ever posted.
+  var trendRepo = repo ?? (await Gh.RunAsync(["repo", "view", "--json", "nameWithOwner", "--jq", ".nameWithOwner"])).Trim();
+  BaselineFile pinned = BaselineIo.Read(await File.ReadAllTextAsync(output));
+  TrendConstants trendConstants = TrendConstants.Default;
+  IReadOnlyList<WorkflowRun> pushes = Parser.ParseRuns(await Gh.RunAsync(
+  [
+    "run", "list", "--workflow", workflow, "--branch", "main", "--event", "push", "--limit", "200", "--repo", trendRepo,
+    "--json", "databaseId,status,conclusion,createdAt,event,headBranch,headSha",
+  ]));
+  List<SampledRun> recent = [];
+  foreach (WorkflowRun run in Trend.RecentRuns(pinned, pushes, trendConstants))
+  {
+    var jobsJson = await Gh.RunAsync(["api", $"repos/{trendRepo}/actions/runs/{run.Id}/jobs?per_page=50"]);
+    recent.Add(new SampledRun(run, [.. Baselines.Samples(run, Parser.ParseJobs(run.Id, jobsJson))]));
+  }
+  TrendResult result = Trend.Evaluate(pinned, recent, trendConstants);
+  var trendReport = Trend.Report(result, pinned, trendConstants);
+  await Console.Out.WriteAsync(trendReport);
+  if (issue)
+  {
+    var openJson = await Gh.RunAsync(
+    [
+      "issue", "list", "--repo", trendRepo, "--state", "open", "--label", Trend.IssueLabel, "--limit", "100", "--json", "number,title",
+    ]);
+    var action = Trend.IssueAction(result, Parser.ParseIssues(openJson));
+    if (action is not null)
+    {
+      var bodyPath = Path.Combine(Path.GetTempPath(), $"ci-trend-{Environment.ProcessId}.md");
+      await File.WriteAllTextAsync(bodyPath, trendReport + "\nPosted by the scheduled trend check, `.github/workflows/ci-trend.yml`.\n");
+      List<string> post = action == 0
+        ? ["issue", "create", "--repo", trendRepo, "--title", Trend.IssueTitle, "--label", Trend.IssueLabel, "--body-file", bodyPath]
+        : ["issue", "comment", action.Value.ToString(CultureInfo.InvariantCulture), "--repo", trendRepo, "--body-file", bodyPath];
+      await Console.Out.WriteLineAsync((await Gh.RunAsync(post)).Trim());
+      File.Delete(bodyPath);
+    }
+  }
+  return 0;
+}
+
 if (baseline)
 {
   // The baseline: successful runs on main (push and dispatch) created in --created, written to --out; the back-test:

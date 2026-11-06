@@ -607,7 +607,7 @@
       "unique-id": "github-actions",
       "node-type": "service",
       "name": "GitHub Actions (CI/CD)",
-      "description": "Workflows in .github/workflows: CI (backend, frontend, tooling, container image + smoke test, 'CI result'), CodeQL, dependency review, Infrastructure preview (Bicep what-if), Azure OIDC check, Database migration (manual, per environment, OIDC login) and Publish ADR site (trusted workflow_run publisher for production and PR previews).",
+      "description": "Workflows in .github/workflows: CI (backend, frontend, docs site, tooling, container image + smoke test, cancelling a pull request's superseded runs, 'CI result'), CodeQL, dependency review, Infrastructure preview (Bicep what-if), Azure OIDC check, Database migration (manual, per environment, OIDC login) and Publish ADR site (trusted workflow_run publisher for production and PR previews).",
       "interfaces": [
         { "unique-id": "ci-workflows", "workflows": ["ci.yml", "codeql.yml", "dependency-review.yml", "infra-whatif.yml", "azure-oidc-check.yml", "migrate.yml", "pages.yml"] }
       ],

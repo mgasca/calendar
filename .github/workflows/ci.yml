@@ -10,8 +10,14 @@ on:
 permissions:
   contents: read
 
+# A pull request run from this repository gets a group of its own, so it never queues behind the run it supersedes:
+# GitHub takes up to a minute to stop a cancelled run, and a run in the same group waits for that (#348, record 0008).
+# The `supersede` job cancels the older run instead. Other runs (fork pull requests, pushes to main, the merge queue,
+# dispatch) keep one group per ref, and a fork pull request still cancels its older run.
 concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
+  group: >-
+    ${{ github.workflow }}-${{ github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository
+    && github.run_id || github.ref }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 env:
@@ -264,6 +270,33 @@ jobs:
       - name: Container logs
         if: ${{ failure() }}
         run: docker logs calendar-smoke
+
+  # Cancels this pull request's older runs, which no longer share a concurrency group with this one (see `concurrency`).
+  # It is the only job with actions: write; it checks nothing out and runs no code from the pull request. `CI result`
+  # does not wait for it: a cancel that fails costs runner time, not correctness.
+  supersede:
+    name: Cancel superseded runs
+    if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      actions: write
+    steps:
+      - name: Cancel older runs of this branch
+        env:
+          GH_TOKEN: ${{ github.token }}
+          HEAD_REF: ${{ github.head_ref }}
+        run: |
+          ids=$(gh api -X GET "repos/$GITHUB_REPOSITORY/actions/workflows/ci.yml/runs" \
+            -f event=pull_request -f branch="$HEAD_REF" -F per_page=30 \
+            --jq '.workflow_runs[]
+              | select(.status != "completed" and .id < (env.GITHUB_RUN_ID | tonumber)
+                and .head_repository.full_name == env.GITHUB_REPOSITORY)
+              | .id')
+          [ -n "$ids" ] || { echo "No older run of this branch is still in progress."; exit 0; }
+          for id in $ids; do
+            gh run cancel "$id" --repo "$GITHUB_REPOSITORY" || echo "::warning::Could not cancel run $id; it may have finished meanwhile."
+          done
 
   # Single stable check for branch protection, so adding/renaming jobs doesn't require ruleset changes.
   result:

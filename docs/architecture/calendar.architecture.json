@@ -84,6 +84,7 @@
       { "id": "0011", "title": "Review the top-level task runner", "status": "implemented", "url": "https://mgasca.github.io/calendar/stories/0011/" },
       { "id": "0017", "title": "Per-user calendar ownership", "status": "implemented", "url": "https://mgasca.github.io/calendar/stories/0017/" },
       { "id": "0024", "title": "One way to show what to fix in Add task and Add event", "status": "implemented", "url": "https://mgasca.github.io/calendar/stories/0024/" },
+      { "id": "0029", "title": "Preserve independent perspectives on our work", "status": "planned", "url": "https://mgasca.github.io/calendar/stories/0029/" },
       { "id": "XXXX", "title": "Create events and tasks from the week view", "status": "planned", "url": "https://mgasca.github.io/calendar/stories/create-events-and-tasks-from-week-view/" }
     ]
   },

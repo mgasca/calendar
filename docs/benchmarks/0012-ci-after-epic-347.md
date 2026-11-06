@@ -1,3 +1,8 @@
+---
+subject: "A CI run on main after the five fixes of #347: critical path, wall clock and compute"
+harness: "tools/ci-timings/ci-timings.cs"
+---
+
 # 0012 A CI run on main after the five fixes of #347
 
 - **Date:** 2026-11-06

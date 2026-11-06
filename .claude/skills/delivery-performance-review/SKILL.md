@@ -111,7 +111,7 @@ Only when the maintainer asks, after reading the report:
   - its baseline table and the after-quantities its PR must report on the same basis;
   - the proof the fix needs;
   - a reserved benchmark record number;
-  - the files it owns, and which sibling owns shared files (for example the `docs/benchmarks/README.md` index row, which every sibling adding a record edits);
+  - the files it owns, and which sibling owns any shared files. Benchmark records are discovered from files; do not add a README inventory row;
   - the durable record from the delivery plan, so its session doesn't stop to ask for a story card;
   - the instruction to carry `Closes #N` in a PR against `main`. Three of #272's four children merged without it, and those issues stayed open.
 - **Dispatch budget:** for after-samples, run extra CI one at a time. The workflow's concurrency group keeps only one pending run per ref, so a second dispatch cancels the queued one. Stop at the sample size the spread justifies ([references/measurement.md](references/measurement.md)). Sample by head commit.

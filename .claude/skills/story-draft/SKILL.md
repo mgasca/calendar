@@ -1,6 +1,6 @@
 ---
 name: story-draft
-description: Draft or update a user story card in docs/stories for review, following this repo's conventions (story statement, agreed scope, Given-When-Then acceptance criteria, ADR table, implementation notes, user guide), keep the stories index and the docs-site validation green, and open a review PR. Use when the user asks to draft, write, add, plan, split or schedule a story or story card, turns a GitHub issue or feature idea into a story, or asks to finish, update or mark implemented an existing story card (test links, lessons learned, user guide), even if they don't say "card".
+description: Draft or update a user story card in docs/stories for review, following this repo's conventions (story statement, agreed scope, Given-When-Then acceptance criteria, ADR table, implementation notes, user guide), keep filesystem discovery and docs-site validation green, and open a review PR. Use when the user asks to draft, write, add, plan, split or schedule a story or story card, turns a GitHub issue or feature idea into a story, or asks to finish, update or mark implemented an existing story card (test links, lessons learned, user guide), even if they don't say "card".
 ---
 
 # Story draft
@@ -12,7 +12,7 @@ A story card is the long-lived record of a feature: what was asked, what was agr
 - **Card**: one Markdown file in `docs/stories/` that describes one story.
 - **PR 0**: the first pull request of a story. It is docs-only and adds the card.
 - **ADR**: Any Decision Record, a file in `docs/decisions/` that records a significant decision (architecture, product, process or tooling). Cards link to ADRs by number (for example 0018).
-- **Index**: the table in `docs/stories/README.md` that lists every card.
+- **Discovery**: the site discovers cards from their filenames; README holds conventions only.
 - **Front matter**: the `key: value` lines between the two `---` lines at the top of a card.
 - **Given-When-Then**: the format of one acceptance criterion: a starting state, an action, an observable result.
 - **`XXXX` card**: a planned story that has no number yet because it is not scheduled.
@@ -23,7 +23,7 @@ When the user requests issue-driven handover mode, follow the `issue-handover` s
 
 At the start of every run, read only these parts. They win over anything restated here.
 
-- `docs/stories/README.md`: the whole file (it is short). It covers naming, "Source of truth", sections, front matter, and the index table.
+- `docs/stories/README.md`: the whole file (it is short). It covers naming, "Source of truth", sections, front matter, and publication conventions.
 - `docs/stories/story-template.md`: the whole file. It is the skeleton to copy. Its leading comment holds the front matter rules.
 - `AGENTS.md`: the "Stories and issues" section (the PR 0 workflow). In "Architecture", read only the **Backend**, **Frontend** and **ADRs** bullets. The card must not contradict their conventions. The practices live in `backend/AGENTS.md` and `frontend/AGENTS.md`; read them only if the story touches that stack.
 - `README.md`: only the opening paragraphs before `## Layout`. Use them to describe the story in the terms of the product.
@@ -58,9 +58,9 @@ If the answer changes the scope or the acceptance criteria (who the user is, wha
 
 The file name is `docs/stories/NNNN-lowercase-kebab-title.md`.
 
-- Numbers follow delivery order. A story that is not yet scheduled is `XXXX-…md` with the heading `# XXXX Title`. It gets the next number when it is scheduled. To schedule it, rename the file, then fix the heading, the index row and every link.
+- Numbers follow delivery order. A story that is not yet scheduled is `XXXX-…md` with the heading `# XXXX Title`. It gets the next number when it is scheduled. To schedule it, rename the file, then fix the heading and every link.
 - The next number is the highest existing number plus 1, found **after fetching** (`git fetch`) and coordinated with other active story work as described below.
-- A fetch is a snapshot, not a reservation: #166, #167 and #188 needed repeated renumbering as other cards merged. Also inspect open story PRs and their changed card files (`gh pr list`, then `gh pr view N --json files`); coordinate any claim on the next number before publishing. Record the chosen number on the source issue and PR, and use the issue link as the stable reference while the number is provisional. An issue comment does not make allocation atomic. Re-fetch and compare main and active card PRs before pushing or merging. If another story takes the number, retain both stories and renumber the unmerged card to the next available number in coordination with the other active work. Update its file name, H1, index row, document/model links, PR title/body and issue references together; rerun the docs tests and build. Keep the existing delivery-order convention; do not introduce permanent gaps merely to reserve numbers.
+- A fetch is a snapshot, not a reservation: #166, #167 and #188 needed repeated renumbering as other cards merged. Also inspect open story PRs and their changed card files (`gh pr list`, then `gh pr view N --json files`); coordinate any claim on the next number before publishing. Record the chosen number on the source issue and PR, and use the issue link as the stable reference while the number is provisional. An issue comment does not make allocation atomic. Re-fetch and compare main and active card PRs before pushing or merging. If another story takes the number, retain both stories and renumber the unmerged card to the next available number in coordination with the other active work. Update its file name, H1, document/model links, PR title/body and issue references together; rerun the docs tests and build. Keep the existing delivery-order convention; do not introduce permanent gaps merely to reserve numbers.
 - If an `XXXX` story must come after other stories, say so in the card.
 
 ### 4. Write the card
@@ -71,13 +71,13 @@ A docs test requires the five `##` sections in this order: Story, Background, De
 
 **Front matter** (`parseStories` in `frontend/apps/docs/src/lib/adr.ts` validates it)
 
-- `status`: `planned`, `in-progress` or `implemented`. It must equal the index row.
+- `status`: `planned`, `in-progress` or `implemented`.
 - `date`: `YYYY-MM-DD`, the day that you create the card.
 - `issue`: the URL of the GitHub issue that the story started from (`https://github.com/<owner>/<repo>/issues/N`, validated). Omit the line only if there was no issue.
 - `pr`: a **list** of PR URLs in delivery order. Use `[]` while there are none. The build rejects a scalar (a single value that is not a list). Add each PR when it is opened, including the PR 0 of the card.
 - `adrs`: **quoted** four-digit strings, for example `["0018", "0021"]`. YAML reads a bare `0016` as a different number. Every number must exist. Use `[]` if there are none.
 
-**`# NNNN Title`**: this must equal the index title with the number in front. Phrase it as the outcome, not the implementation. Example: "Add event entries so I know when my appointments are".
+**`# NNNN Title`**: this must begin with the filename number. Phrase it as the outcome, not the implementation. Example: "Add event entries so I know when my appointments are".
 
 **`## Story`**: one blockquote, `> As a <role>, I need <capability> so that <benefit>.` Use the role names that the existing cards use (calendar editor, forward planner, calendar owner), unless the user gives another. Below the blockquote, add "Tracked in issue #N." when there is an issue. If the wording is derived, add a note such as "to be confirmed by the product owner".
 
@@ -111,19 +111,13 @@ Check paths and endpoint names against the code. Do not guess them.
 
 **`## User guide`**: write it for end users, because these sections are mined for user documentation. For a planned card, start with the italic line *Planned behaviour. This section is finalised when the story is implemented.* Then describe the behaviour in plain language: bold UI labels (**Add event**), steps, what the user sees, and current limitations. Use no file paths and no jargon from the codebase.
 
-### 5. Index
+### 5. Filesystem discovery
 
-Add a row to `docs/stories/README.md`. The title and status must equal the heading and the front matter of the card exactly.
-
-```markdown
-| [NNNN](NNNN-title.md) | <title without the number> | planned |
-```
-
-Keep the rows in number order, with `XXXX` rows last. If the card relies on a convention that README.md or AGENTS.md describes, link to it. Do not restate it. Update the product summary in `README.md` only when the story is delivered and visible to users, as story 0003 did.
+The site discovers cards from their filenames and reads the title and status from each card. Do not add a README inventory. If a card relies on a convention in README.md or AGENTS.md, link to it instead of repeating it. Update the product summary in the root README only when the story is delivered and visible to users.
 
 ### 6. Validate
 
-The parser of the docs site checks the story files: index against files, status, date, quoted `adrs` that exist, and links between documents. Run this from the repo root:
+The parser of the docs site checks the story files: filenames, titles, status, date, quoted `adrs` that exist, and links between documents. Run this from the repo root:
 
 ```sh
 corepack pnpm --dir frontend --filter @calendar/docs test
@@ -174,7 +168,7 @@ Tell the user, in plain language:
 
 Do this in the PR that delivers the story, or in a card-only PR. A story is not done until its card is. `Closes #N` goes on the PR that completes the story. Before you edit, read the issue comments again and read the merged PRs (`gh pr view`, `git log`). The delivered behaviour can differ from the plan.
 
-1. **Front matter:** set `status: implemented` (or `in-progress` while you deliver in stages). Append every delivering PR to the `pr` list. Update `adrs` if the story relied on new ADRs. Update the status of the index row to match. Remove the "(proposed)" markers and the *Planned* italic lines.
+1. **Front matter:** set `status: implemented` (or `in-progress` while you deliver in stages). Append every delivering PR to the `pr` list. Update `adrs` if the story relied on new ADRs. Remove the "(proposed)" markers and the *Planned* italic lines.
 2. **Scope and criteria:** change them only to record what was agreed and shipped. If scope was dropped, move it to "Not in this story" or to the follow-ups. Do not delete it silently.
 3. **Link every criterion to its tests.** Use a relative link to the file and line, or to the test name. Example: `[Redirect to sign-in](../../frontend/apps/web/src/features/auth/auth.test.tsx) (`redirects signed-out visitors…`)`. Make sure that each link points at a test that exists and asserts the criterion. If a criterion has no automatic test, say so plainly ("checked by hand", "not exercised in a real browser"). An honest gap is better than a clean-looking card.
 4. **Implementation notes:** write where the code lives (key files and symbols), the API surface (endpoints, status codes, contract regenerated), persistence and migrations, testing, and the delivery plan with the PRs. Add what future contributors need: lessons learned, measurements (state whether you measured or inferred them, and with what data), known issues and limits, and follow-up stories. For deferred scope, open an `XXXX` card or an issue. Do not leave it as a loose sentence.
@@ -183,7 +177,7 @@ Do this in the PR that delivers the story, or in a card-only PR. A story is not 
 
 ## Pitfalls seen in this repo
 
-- A bare `0016` in `adrs`, a title that differs from the index, or an index status that differs from the card fails the docs build.
+- A bare `0016` in `adrs`, a title without its filename number, or an unknown status fails the docs build.
 - Do not hard-code the list of stories in tests. Derive it from `docs/stories/`.
 - Links to ADRs or other stories must be relative file links with a real file name. The site rewrites them to routes.
 - People read cards long after the issue is gone. Write out the reasoning behind scope decisions. Do not write "as discussed".

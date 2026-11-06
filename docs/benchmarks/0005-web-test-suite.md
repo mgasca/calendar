@@ -1,3 +1,8 @@
+---
+subject: "The web test suite: one jsdom per worker and a unit-level batching test (#275)"
+harness: "tools/ci-timings/ci-timings.cs"
+---
+
 # 0005 The web test suite: one jsdom per worker and a unit-level batching test
 
 - **Date:** 2026-11-05

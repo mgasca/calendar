@@ -5,11 +5,10 @@ import remarkParse from 'remark-parse';
 import remarkGfm from 'remark-gfm';
 import { toString } from 'mdast-util-to-string';
 import { visit } from 'unist-util-visit';
-import type { Definition, List, Root, Table } from 'mdast';
+import type { Definition, Root } from 'mdast';
 
 const parser = unified().use(remarkParse).use(remarkGfm);
-// Document bodies are parsed only to find the title. GFM is for the story, runbook and benchmark
-// index tables and roughly doubles the parse cost (docs/benchmarks/0001-docs-parse.md).
+// Document bodies need only title parsing; GFM remains available for status and link handling.
 const titleParser = unified().use(remarkParse);
 export const repository = 'https://github.com/mgasca/calendar';
 export interface Adr {
@@ -37,19 +36,6 @@ function parseDocument(source: string, file: string) {
     title: toString(heading),
     body: parsed.content.slice(0, start) + parsed.content.slice(end),
   };
-}
-
-/** Finds the one index table whose header is exactly `header`, e.g. `ADR|Title|Status`. */
-function findTable(index: string, header: string, name: string): Table {
-  let table: Table | undefined;
-  visit(parser.parse(index), 'table', (node) => {
-    if (node.children[0]?.children.map((cell) => toString(cell)).join('|') === header) {
-      if (table) throw new Error(`Duplicate ${name} table`);
-      table = node;
-    }
-  });
-  if (!table) throw new Error(`Missing ${name} table`);
-  return table;
 }
 
 const adrFileName = /^(\d{4})-[a-z0-9-]+\.md$/;
@@ -103,40 +89,24 @@ export interface Story {
   body: string;
 }
 
-/**
- * Parses the stories index against the story sources. `adrs` maps each ADR number to its
- * filename, so front matter can only reference ADRs that exist.
- */
-export function parseStories(
-  index: string,
-  sources: Map<string, string>,
-  adrs: Map<string, string>,
-): Story[] {
-  const table = findTable(index, 'Story|Title|Status', 'story index');
+/** Reads story titles and metadata from the discovered files. */
+export function parseStories(sources: Map<string, string>, adrs: Map<string, string>): Story[] {
   const seen = new Set<string>();
-  const records = table.children.slice(1).map((row) => {
-    const [numberCell, titleCell, statusCell] = row.children;
-    const link = numberCell?.children[0];
-    if (row.children.length !== 3 || link?.type !== 'link' || !titleCell || !statusCell) {
-      throw new Error('Malformed story index row');
-    }
-    const number = toString(link);
-    const file = link.url;
-    if (!/^(\d{4}|XXXX)$/.test(number) || !new RegExp(`^${number}-[a-z0-9-]+\\.md$`).test(file)) {
-      throw new Error(`Invalid story filename: ${file}`);
-    }
+  const records = [...sources.keys()].sort().map((file) => {
+    const number = /^(\d{4}|XXXX)-[a-z0-9-]+\.md$/.exec(file)?.[1];
+    if (number === undefined) throw new Error(`Invalid story filename: ${file}`);
     const slug = storySlug(file);
     if (seen.has(slug)) throw new Error(`Duplicate story: ${file}`);
     seen.add(slug);
     const source = sources.get(file);
     if (source === undefined) throw new Error(`Missing story: ${file}`);
     const { metadata, title: heading, body } = parseDocument(source, file);
-    const title = toString(titleCell);
-    const status = toString(statusCell);
-    if (heading !== `${number} ${title}`)
-      throw new Error(`Story title differs from index: ${file}`);
-    if (metadata.status !== status || !storyStatuses.includes(status)) {
-      throw new Error(`Story status differs from index or is unknown: ${file}`);
+    if (!heading.startsWith(`${number} `))
+      throw new Error(`Story title must start with its number: ${file}`);
+    const title = heading.slice(number.length + 1);
+    const status = metadata.status;
+    if (typeof status !== 'string' || !storyStatuses.includes(status)) {
+      throw new Error(`Unknown story status: ${file}`);
     }
     // YAML reads an unquoted 0016 as the octal 14, so require quoted four-digit strings.
     const date =
@@ -164,10 +134,7 @@ export function parseStories(
     }
     return { number, file, title, status, date, issue, pr, adrs: metadata.adrs, body };
   });
-  if (!records.length) throw new Error('Story index is empty');
-  for (const file of sources.keys()) {
-    if (!records.some((record) => record.file === file)) throw new Error(`Unlisted story: ${file}`);
-  }
+  if (!records.length) throw new Error('Story collection is empty');
   return records;
 }
 
@@ -177,47 +144,28 @@ export interface Runbook {
   body: string;
 }
 
-/** Finds the one ordered list in the runbooks index: the order in which to follow them. */
-function findOrderedList(index: string, name: string): List {
-  let list: List | undefined;
-  visit(parser.parse(index), 'list', (node) => {
-    if (!node.ordered) return;
-    if (list) throw new Error(`Duplicate ${name} list`);
-    list = node;
-  });
-  if (!list) throw new Error(`Missing ${name} list`);
-  return list;
-}
-
-/**
- * Parses the runbooks index against the runbook sources. Each list item starts with a link whose
- * text is the runbook's title; what follows the link is the index's own summary and stays there.
- */
-export function parseRunbooks(index: string, sources: Map<string, string>): Runbook[] {
-  const seen = new Set<string>();
-  const records = findOrderedList(index, 'runbook').children.map((item) => {
-    const paragraph = item.children[0];
-    const link = paragraph?.type === 'paragraph' ? paragraph.children[0] : undefined;
-    if (item.children.length !== 1 || link?.type !== 'link') {
-      throw new Error('Malformed runbook list item');
-    }
-    const file = link.url;
-    if (!/^[a-z0-9-]+\.md$/.test(file)) throw new Error(`Invalid runbook filename: ${file}`);
-    if (seen.has(file)) throw new Error(`Duplicate runbook: ${file}`);
-    seen.add(file);
-    const source = sources.get(file);
-    if (source === undefined) throw new Error(`Missing runbook: ${file}`);
-    const { title: heading, body } = parseDocument(source, file);
-    const title = toString(link);
-    if (heading !== title) throw new Error(`Runbook title differs from index: ${file}`);
-    return { file, title, body };
-  });
-  if (!records.length) throw new Error('Runbook list is empty');
-  for (const file of sources.keys()) {
-    if (!records.some((record) => record.file === file))
-      throw new Error(`Unlisted runbook: ${file}`);
-  }
-  return records;
+/** Discovers runbooks from their files, ordered by their explicit operational sequence. */
+export function parseRunbooks(sources: Map<string, string>): Runbook[] {
+  const orders = new Set<number>();
+  const records = [...sources]
+    .map(([file, source]) => {
+      if (!/^[a-z0-9-]+\.md$/.test(file)) throw new Error(`Invalid runbook filename: ${file}`);
+      const { metadata, title, body } = parseDocument(source, file);
+      const order = metadata.order;
+      if (
+        typeof order !== 'number' ||
+        !Number.isSafeInteger(order) ||
+        order < 1 ||
+        orders.has(order)
+      ) {
+        throw new Error(`Runbook order must be a unique positive integer: ${file}`);
+      }
+      orders.add(order);
+      return { file, title, body, order };
+    })
+    .sort((a, b) => a.order - b.order);
+  if (!records.length) throw new Error('Runbook collection is empty');
+  return records.map(({ file, title, body }) => ({ file, title, body }));
 }
 
 /** URL segment for a runbook: its filename without the extension. */
@@ -230,55 +178,45 @@ export interface Benchmark {
   file: string;
   /** The record's title without its number. */
   title: string;
-  /** What the index says the record measures. */
+  /** What the record measures. */
   subject: string;
   /** Repository-relative path of the harness that produced the record. */
   harness: string;
   body: string;
 }
 
-/** Parses the benchmark index (`Record|Subject|Harness`) against the record sources. */
-export function parseBenchmarks(index: string, sources: Map<string, string>): Benchmark[] {
-  const table = findTable(index, 'Record|Subject|Harness', 'benchmark index');
-  const seen = new Set<string>();
-  const records = table.children.slice(1).map((row) => {
-    const [numberCell, subjectCell, harnessCell] = row.children;
-    const link = numberCell?.children[0];
-    if (row.children.length !== 3 || link?.type !== 'link' || !subjectCell || !harnessCell) {
-      throw new Error('Malformed benchmark index row');
-    }
-    const number = toString(link);
-    const file = link.url;
-    if (!/^\d{4}$/.test(number) || !new RegExp(`^${number}-[a-z0-9-]+\\.md$`).test(file)) {
-      throw new Error(`Invalid benchmark filename: ${file}`);
-    }
-    if (seen.has(number)) throw new Error(`Duplicate benchmark: ${number}`);
-    seen.add(number);
-    const source = sources.get(file);
-    if (source === undefined) throw new Error(`Missing benchmark: ${file}`);
-    const { title: heading, body } = parseDocument(source, file);
-    if (!heading.startsWith(`${number} `)) {
-      throw new Error(`Benchmark title must start with its number: ${file}`);
-    }
-    const harness = toString(harnessCell);
-    if (!/^[\w./-]+$/.test(harness) || harness.split('/').includes('..')) {
+/** Reads benchmark metadata from each record. */
+export function parseBenchmarks(sources: Map<string, string>): Benchmark[] {
+  return numberedDocuments(sources).map(({ number, file, title, body, metadata }) => {
+    const { subject, harness } = metadata;
+    if (typeof subject !== 'string' || !subject.trim())
+      throw new Error(`Missing benchmark subject: ${file}`);
+    if (
+      typeof harness !== 'string' ||
+      !/^[\w.-][\w./-]*$/.test(harness) ||
+      harness.split('/').includes('..')
+    ) {
       throw new Error(`Benchmark harness must be a repository-relative path: ${file}`);
     }
-    return {
-      number,
-      file,
-      title: heading.slice(number.length + 1),
-      subject: toString(subjectCell),
-      harness,
-      body,
-    };
+    return { number, file, title, body, subject, harness };
   });
-  if (!records.length) throw new Error('Benchmark index is empty');
-  for (const file of sources.keys()) {
-    if (!records.some((record) => record.file === file)) {
-      throw new Error(`Unlisted benchmark: ${file}`);
-    }
-  }
+}
+
+function numberedDocuments(sources: Map<string, string>) {
+  const seen = new Set<string>();
+  const records = [...sources]
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([file, source]) => {
+      const number = adrFileName.exec(file)?.[1];
+      if (!number || seen.has(number))
+        throw new Error(`Invalid or duplicate document number: ${file}`);
+      seen.add(number);
+      const { title, body, metadata } = parseDocument(source, file);
+      if (!title.startsWith(`${number} `))
+        throw new Error(`Title must start with its number: ${file}`);
+      return { number, file, title: title.slice(number.length + 1), body, metadata };
+    });
+  if (!records.length) throw new Error('Document collection is empty');
   return records;
 }
 
@@ -287,7 +225,7 @@ export interface AgentThought {
   file: string;
   /** The report's title without its number. */
   title: string;
-  /** When the perspective was captured, as the index gives it (YYYY-MM-DD). */
+  /** When the perspective was captured, as its front matter gives it (YYYY-MM-DD). */
   date: string;
   author: string;
   /** The revision the report reviewed. */
@@ -295,72 +233,20 @@ export interface AgentThought {
   body: string;
 }
 
-/**
- * Parses the agent-thoughts index (`Report|Date|Author|Reviewed revision`) against the reports.
- * The link text is the report's title; rows are in number order, so the first row is the first
- * report everywhere the site shows one (story 0031). There is no template and no `XXXX` report.
- */
-export function parseAgentThoughts(index: string, sources: Map<string, string>): AgentThought[] {
-  const table = findTable(index, 'Report|Date|Author|Reviewed revision', 'agent thoughts index');
-  const seen = new Set<string>();
-  const records = table.children.slice(1).map((row) => {
-    const [reportCell, dateCell, authorCell, revisionCell] = row.children;
-    const link = reportCell?.children[0];
-    if (
-      row.children.length !== 4 ||
-      reportCell?.children.length !== 1 ||
-      link?.type !== 'link' ||
-      !dateCell ||
-      !authorCell ||
-      !revisionCell
-    ) {
-      throw new Error('Malformed agent thoughts index row');
-    }
-    const file = link.url;
-    const number = /^(\d{4})-[a-z0-9-]+\.md$/.exec(file)?.[1];
-    if (number === undefined) throw new Error(`Invalid agent thought filename: ${file}`);
-    if (seen.has(number)) throw new Error(`Duplicate agent thought: ${number}`);
-    const previous = [...seen].at(-1);
-    if (previous !== undefined && previous > number) {
-      throw new Error(`Agent thoughts index is out of number order: ${file}`);
-    }
-    seen.add(number);
-    const source = sources.get(file);
-    if (source === undefined) throw new Error(`Missing agent thought: ${file}`);
-    const { title: heading, body } = parseDocument(source, file);
-    if (!heading.startsWith(`${number} `)) {
-      throw new Error(`Agent thought title must start with its number: ${file}`);
-    }
-    if (toString(link) !== heading) {
-      throw new Error(`Agent thought title differs from index: ${file}`);
-    }
-    const date = toString(dateCell);
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) {
-      throw new Error(`Agent thought date must be YYYY-MM-DD: ${file}`);
-    }
-    const author = toString(authorCell).trim();
-    if (!author) throw new Error(`Agent thought without an author: ${file}`);
-    const revision = toString(revisionCell);
-    if (!/^[0-9a-f]{7,40}$/.test(revision)) {
-      throw new Error(`Agent thought revision must be a commit hash: ${file}`);
-    }
-    return {
-      number,
-      file,
-      title: heading.slice(number.length + 1),
-      date,
-      author,
-      revision,
-      body,
-    };
+/** Reads report provenance from each report's front matter, in filename order. */
+export function parseAgentThoughts(sources: Map<string, string>): AgentThought[] {
+  return numberedDocuments(sources).map(({ number, file, title, body, metadata }) => {
+    const date =
+      metadata.date instanceof Date ? metadata.date.toISOString().slice(0, 10) : metadata.date;
+    const { author, revision } = metadata;
+    if (typeof date !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(date))
+      throw new Error(`Invalid report date: ${file}`);
+    if (typeof author !== 'string' || !author.trim())
+      throw new Error(`Missing report author: ${file}`);
+    if (typeof revision !== 'string' || !/^[0-9a-f]{7,40}$/.test(revision))
+      throw new Error(`Invalid report revision: ${file}`);
+    return { number, file, title, body, date, author, revision };
   });
-  if (!records.length) throw new Error('Agent thoughts index is empty');
-  for (const file of sources.keys()) {
-    if (!records.some((record) => record.file === file)) {
-      throw new Error(`Unlisted agent thought: ${file}`);
-    }
-  }
-  return records;
 }
 
 /** URL segment for a story: its number, or its slug while it is unnumbered. */

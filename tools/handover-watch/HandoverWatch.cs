@@ -149,19 +149,24 @@ public enum ListKind
 public sealed record PendingPage(ListKind Kind, string NodeId, string Cursor, int Number);
 
 /// <summary>
-/// The GraphQL documents of a tick: one query for the issue, its cross-referencing PRs with their comments, reviews and
-/// review threads, and any PR named with <c>--pr</c>; and, only for a list longer than a page, follow-up pages by node ID.
+/// The GraphQL documents of a tick. The first query asks for the issue's comments, its cross-references with only the fields
+/// that decide whether a PR is a delivery PR, and any PR named with <c>--pr</c> in full. Each later query asks, in one call,
+/// for the delivery PRs found so far in full and for the next page of every list longer than a page. A PR that is not a
+/// delivery PR therefore costs only its number, state and body, however many comments it has.
 /// </summary>
 public static class Query
 {
   /// <summary>Items per page of the issue's comments and cross-references, and of each PR's comments and reviews.</summary>
   public const int PageSize = 100;
 
+  /// <summary>Review threads per page of a PR. Small because each holds a list: no PR in the repository has more than 3.</summary>
+  public const int ThreadPageSize = 10;
+
   /// <summary>
-  /// Review threads per page of a PR, and comments per page of a thread. Smaller because they nest: with these sizes the first
-  /// query asks for at most about 275,000 nodes, under GitHub's limit of 500,000.
+  /// Comments per page of a review thread. With these sizes a PR asks for at most about 710 nodes, so even a hundred aliased PRs
+  /// stay under GitHub's limit of 500,000, and the documented cost formula gives about 3 points per PR.
   /// </summary>
-  public const int ThreadPageSize = 50;
+  public const int ThreadCommentPageSize = 50;
 
   private const string PageInfo = "pageInfo { hasNextPage endCursor }";
   private const string Author = "author { __typename login }";
@@ -170,32 +175,42 @@ public static class Query
   private const string ThreadCommentFields =
     $"fullDatabaseId state createdAt url body path line originalLine replyTo {{ fullDatabaseId }} {Author}";
 
-  /// <summary>The first query of a tick, which for most issues is the only one.</summary>
+  /// <summary>What a cross-reference brings of its PR: what <see cref="Snapshot.IsDeliveryPullRequest"/> and the state need.</summary>
+  private const string PullRequestHeader = $"id number state createdAt closedAt mergedAt url body authorAssociation {Author}";
+
+  private const string Repository = "repository(owner: $owner, name: $name)";
+
+  /// <summary>The first query of a tick.</summary>
   /// <param name="issue">The watched issue (or PR).</param>
-  /// <param name="pullRequests">The PRs named with <c>--pr</c>, each fetched as an alias <c>prN</c>.</param>
+  /// <param name="pullRequests">The PRs named with <c>--pr</c>, each fetched in full as an alias <c>prN</c>.</param>
   /// <returns>The request.</returns>
   public static GraphQlRequest First(int issue, IReadOnlyList<int> pullRequests)
   {
     var issueFields = $"id {Comments(FirstPage(PageSize))} {CrossReferences(FirstPage(PageSize))}";
-    var text = new StringBuilder("query($owner: String!, $name: String!) { repository(owner: $owner, name: $name) { ");
+    var text = new StringBuilder($"query($owner: String!, $name: String!) {{ {Repository} {{ ");
     text.Append(CultureInfo.InvariantCulture, $"target: issueOrPullRequest(number: {issue}) {{ ");
     text.Append(CultureInfo.InvariantCulture, $"... on Issue {{ {issueFields} }} ... on PullRequest {{ {issueFields} }} }} ");
-    foreach (var number in pullRequests)
-    {
-      text.Append(CultureInfo.InvariantCulture, $"{NamedAlias(number)}: pullRequest(number: {number}) {{ {PullRequestFields} }} ");
-    }
+    AppendPullRequests(text, pullRequests, $"{PullRequestHeader} {PullRequestLists}");
     return new GraphQlRequest(text.Append("} }").ToString(), [], InRepository: true);
   }
 
-  /// <summary>One follow-up query for the next page of every list that has one, as aliases <c>p0</c>, <c>p1</c>, ….</summary>
+  /// <summary>
+  /// One follow-up query: the next page of every list that has one, as aliases <c>p0</c>, <c>p1</c>, …, and the delivery PRs
+  /// found but not yet read, in full, as aliases <c>prN</c> under <c>repository</c>.
+  /// </summary>
   /// <param name="pages">The lists to continue.</param>
+  /// <param name="pullRequests">The delivery PRs to read in full.</param>
   /// <returns>The request, with the node IDs and cursors as variables.</returns>
-  public static GraphQlRequest Next(IReadOnlyList<PendingPage> pages)
+  public static GraphQlRequest Next(IReadOnlyList<PendingPage> pages, IReadOnlyList<int> pullRequests)
   {
-    var declarations = string.Join(
-      ", ",
+    List<string> declarations = [];
+    if (pullRequests.Count > 0)
+    {
+      declarations.Add("$owner: String!, $name: String!");
+    }
+    declarations.AddRange(
       pages.Select(static (_, index) => string.Create(CultureInfo.InvariantCulture, $"$n{index}: ID!, $a{index}: String!")));
-    var text = new StringBuilder($"query({declarations}) {{ ");
+    var text = new StringBuilder($"query({string.Join(", ", declarations)}) {{ ");
     List<KeyValuePair<string, string>> variables = [];
     for (var index = 0; index < pages.Count; index++)
     {
@@ -205,13 +220,19 @@ public static class Query
       variables.Add(new(string.Create(CultureInfo.InvariantCulture, $"n{index}"), page.NodeId));
       variables.Add(new(string.Create(CultureInfo.InvariantCulture, $"a{index}"), page.Cursor));
     }
-    return new GraphQlRequest(text.Append('}').ToString(), variables, InRepository: false);
+    if (pullRequests.Count > 0)
+    {
+      text.Append(CultureInfo.InvariantCulture, $"{Repository} {{ ");
+      AppendPullRequests(text, pullRequests, PullRequestLists);
+      text.Append("} ");
+    }
+    return new GraphQlRequest(text.Append('}').ToString(), variables, InRepository: pullRequests.Count > 0);
   }
 
-  /// <summary>The alias of a PR named with <c>--pr</c> in the first query.</summary>
+  /// <summary>The alias of a PR read in full.</summary>
   /// <param name="number">The PR number.</param>
   /// <returns>For example <c>pr361</c>.</returns>
-  public static string NamedAlias(int number) => string.Create(CultureInfo.InvariantCulture, $"pr{number}");
+  public static string PullRequestAlias(int number) => string.Create(CultureInfo.InvariantCulture, $"pr{number}");
 
   /// <summary>The alias of a follow-up page.</summary>
   /// <param name="index">The page's position in <see cref="Next"/>.</param>
@@ -229,11 +250,24 @@ public static class Query
     _ => "comments",
   };
 
-  private static string PullRequestFields =>
-    $"id number state createdAt closedAt mergedAt url body authorAssociation {Author} "
-    + $"{Comments(FirstPage(PageSize))} {Reviews(FirstPage(PageSize))} {ReviewThreads(FirstPage(ThreadPageSize))}";
+  // A delivery PR found on the timeline already brought its header, so the follow-up asks only for its lists.
+  private static string PullRequestLists =>
+    $"id number {Comments(FirstPage(PageSize))} {Reviews(FirstPage(PageSize))} {ReviewThreads(FirstPage(ThreadPageSize))}";
 
-  private static int SizeOf(ListKind kind) => kind is ListKind.ReviewThreads or ListKind.ThreadComments ? ThreadPageSize : PageSize;
+  private static void AppendPullRequests(StringBuilder text, IReadOnlyList<int> pullRequests, string fields)
+  {
+    foreach (var number in pullRequests)
+    {
+      text.Append(CultureInfo.InvariantCulture, $"{PullRequestAlias(number)}: pullRequest(number: {number}) {{ {fields} }} ");
+    }
+  }
+
+  private static int SizeOf(ListKind kind) => kind switch
+  {
+    ListKind.ReviewThreads => ThreadPageSize,
+    ListKind.ThreadComments => ThreadCommentPageSize,
+    _ => PageSize,
+  };
 
   private static string FirstPage(int size) => string.Create(CultureInfo.InvariantCulture, $"first: {size}");
 
@@ -253,27 +287,30 @@ public static class Query
   private static string Reviews(string arguments) => $"reviews({arguments}) {{ {PageInfo} nodes {{ {ReviewFields} }} }}";
 
   private static string ReviewThreads(string arguments) =>
-    $"reviewThreads({arguments}) {{ {PageInfo} nodes {{ id {ThreadComments(FirstPage(ThreadPageSize))} }} }}";
+    $"reviewThreads({arguments}) {{ {PageInfo} nodes {{ id {ThreadComments(FirstPage(ThreadCommentPageSize))} }} }}";
 
   private static string ThreadComments(string arguments) =>
     $"comments({arguments}) {{ {PageInfo} nodes {{ {ThreadCommentFields} }} }}";
 
   private static string CrossReferences(string arguments) =>
     $"timelineItems({arguments}, itemTypes: [CROSS_REFERENCED_EVENT]) {{ {PageInfo} nodes {{ ... on CrossReferencedEvent {{ "
-    + $"isCrossRepository source {{ ... on PullRequest {{ {PullRequestFields} }} }} }} }} }}";
+    + $"isCrossRepository source {{ ... on PullRequest {{ {PullRequestHeader} }} }} }} }} }}";
 }
 
-/// <summary>Runs the queries of one tick: the first, then follow-up pages until no list has one left.</summary>
+/// <summary>Runs the queries of one tick: the first, then follow-ups until every delivery PR and every list is read.</summary>
 public static class Fetch
 {
-  /// <summary>Follow-up rounds allowed before the tick fails, so a list that never ends cannot loop for ever.</summary>
+  /// <summary>
+  /// Follow-up rounds before the tick stops following what is left. What was read is still reported, and
+  /// <see cref="Snapshot.Unfinished"/> names the lists that were cut short, so a flood of items cannot silence the watch.
+  /// </summary>
   public const int MaxFollowUps = 20;
 
   /// <summary>Fetches everything the watch reports on.</summary>
   /// <param name="options">The issue and the PRs named with <c>--pr</c>.</param>
   /// <param name="send">Sends one request and returns the response JSON (gh in the tool, canned responses in the tests).</param>
-  /// <returns>The delivery PRs and their items, with every page read.</returns>
-  /// <exception cref="InvalidOperationException">GitHub reported an error, or a list ran past <see cref="MaxFollowUps"/>.</exception>
+  /// <returns>The delivery PRs and their items, with every page read or named in <see cref="Snapshot.Unfinished"/>.</returns>
+  /// <exception cref="InvalidOperationException">GitHub reported an error, or the issue or a PR does not exist.</exception>
   public static async Task<Snapshot> RunAsync(Options options, Func<GraphQlRequest, Task<string>> send)
   {
     var snapshot = new Snapshot(options.Issue);
@@ -283,16 +320,18 @@ public static class Fetch
     {
       if (++rounds > MaxFollowUps)
       {
-        throw new InvalidOperationException($"a list on #{options.Issue} needs more than {MaxFollowUps} follow-up pages");
+        snapshot.StopFollowing();
+        break;
       }
       IReadOnlyList<PendingPage> pages = snapshot.TakePending();
-      snapshot.ReadNext(pages, await send(Query.Next(pages)));
+      IReadOnlyList<int> pullRequests = snapshot.TakeUnread();
+      snapshot.ReadNext(pages, pullRequests, await send(Query.Next(pages, pullRequests)));
     }
     return snapshot;
   }
 }
 
-/// <summary>What a tick has read so far: the delivery PRs, their items and the lists that have more pages.</summary>
+/// <summary>What a tick has read so far: the delivery PRs, their items and what is still to read.</summary>
 /// <param name="issue">The watched issue.</param>
 public sealed class Snapshot(int issue)
 {
@@ -300,8 +339,11 @@ public sealed class Snapshot(int issue)
   private static readonly HashSet<string> TrustedAuthors = new(["OWNER", "MEMBER", "COLLABORATOR"], StringComparer.Ordinal);
 
   private readonly Dictionary<int, PullRequest> _pullRequests = [];
+  private readonly HashSet<int> _read = [];
+  private readonly List<int> _unread = [];
   private readonly List<WatchItem> _items = [];
   private readonly List<PendingPage> _pending = [];
+  private readonly List<string> _unfinished = [];
 
   /// <summary>Gets the delivery PRs, by number.</summary>
   public IReadOnlyList<PullRequest> PullRequests => [.. _pullRequests.Values.OrderBy(static pr => pr.Number)];
@@ -309,8 +351,11 @@ public sealed class Snapshot(int issue)
   /// <summary>Gets the comments and reviews read so far, in reading order; an item can appear twice.</summary>
   public IReadOnlyList<WatchItem> Items => _items;
 
-  /// <summary>Gets a value indicating whether any list has a page not read yet.</summary>
-  public bool HasPending => _pending.Count > 0;
+  /// <summary>Gets the lists the tick stopped following before their end, empty when everything was read.</summary>
+  public IReadOnlyList<string> Unfinished => _unfinished;
+
+  /// <summary>Gets a value indicating whether a list has a page not read yet, or a delivery PR has not been read in full.</summary>
+  public bool HasPending => _pending.Count > 0 || _unread.Count > 0;
 
   /// <summary>Hands over the lists that have another page, once each, and forgets them.</summary>
   /// <returns>The pages to request next.</returns>
@@ -321,9 +366,26 @@ public sealed class Snapshot(int issue)
     return pages;
   }
 
+  /// <summary>Hands over the delivery PRs found on the timeline that are not read in full yet, and forgets them.</summary>
+  /// <returns>The PR numbers to request in full next.</returns>
+  public IReadOnlyList<int> TakeUnread()
+  {
+    List<int> numbers = [.. _unread.Where(number => !_read.Contains(number)).Distinct()];
+    _unread.Clear();
+    return numbers;
+  }
+
+  /// <summary>Gives up on what is still to read and names it in <see cref="Unfinished"/>.</summary>
+  public void StopFollowing()
+  {
+    _unfinished.AddRange(TakePending().Select(Describe).Distinct(StringComparer.Ordinal));
+    _unfinished.AddRange(TakeUnread().Select(static number => string.Create(CultureInfo.InvariantCulture, $"the lists of PR #{number}")));
+  }
+
   /// <summary>
   /// Reads the first query's response: the issue's comments, the delivery PRs among its cross-references (see
-  /// <see cref="IsDeliveryPullRequest"/>) and every PR named with <c>--pr</c>, whoever opened it.
+  /// <see cref="IsDeliveryPullRequest"/>), which a later query reads in full, and every PR named with <c>--pr</c>, whoever
+  /// opened it.
   /// </summary>
   /// <param name="json">The response of <see cref="Query.First"/>.</param>
   /// <param name="named">The PRs named with <c>--pr</c>.</param>
@@ -333,19 +395,17 @@ public sealed class Snapshot(int issue)
     using var document = JsonDocument.Parse(json);
     JsonElement repository = Data(document).GetProperty("repository");
     JsonElement target = Node(repository, "target") ?? throw new InvalidOperationException($"#{issue} was not found");
+    ReadPullRequests(repository, named);
     ReadList(target, ListKind.IssueComments, Text(target, "id"), issue);
     ReadList(target, ListKind.CrossReferences, Text(target, "id"), issue);
-    foreach (var number in named)
-    {
-      ReadPullRequest(Node(repository, Query.NamedAlias(number)) ?? throw new InvalidOperationException($"PR #{number} was not found"));
-    }
   }
 
-  /// <summary>Reads a follow-up response, whose aliases answer <paramref name="pages"/> in order.</summary>
+  /// <summary>Reads a follow-up response: aliases <c>p0</c>, … answer <paramref name="pages"/> in order, <c>prN</c> the PRs.</summary>
   /// <param name="pages">The pages that were requested.</param>
+  /// <param name="pullRequests">The PRs that were requested in full.</param>
   /// <param name="json">The response of <see cref="Query.Next"/>.</param>
   /// <exception cref="InvalidOperationException">GitHub reported an error, or a requested node is missing.</exception>
-  public void ReadNext(IReadOnlyList<PendingPage> pages, string json)
+  public void ReadNext(IReadOnlyList<PendingPage> pages, IReadOnlyList<int> pullRequests, string json)
   {
     using var document = JsonDocument.Parse(json);
     JsonElement data = Data(document);
@@ -353,8 +413,12 @@ public sealed class Snapshot(int issue)
     {
       PendingPage page = pages[index];
       JsonElement owner = Node(data, Query.NextAlias(index))
-        ?? throw new InvalidOperationException($"the next page of {page.Kind} on #{page.Number} was not returned");
+        ?? throw new InvalidOperationException($"the next page of {Describe(page)} was not returned");
       ReadList(owner, page.Kind, page.NodeId, page.Number);
+    }
+    if (pullRequests.Count > 0)
+    {
+      ReadPullRequests(Node(data, "repository") ?? throw new InvalidOperationException("GitHub GraphQL: no repository"), pullRequests);
     }
   }
 
@@ -374,6 +438,19 @@ public sealed class Snapshot(int issue)
       && TrustedAuthors.Contains(Text(source, "authorAssociation"))
       && References.Names(Text(source, "body"), issue);
 
+  /// <summary>Names a list for a message, for example <c>the review threads of PR #361</c>.</summary>
+  /// <param name="page">The list.</param>
+  /// <returns>The description.</returns>
+  public static string Describe(PendingPage page) => page.Kind switch
+  {
+    ListKind.IssueComments => string.Create(CultureInfo.InvariantCulture, $"the comments of #{page.Number}"),
+    ListKind.CrossReferences => string.Create(CultureInfo.InvariantCulture, $"the cross-references of #{page.Number}"),
+    ListKind.PrComments => string.Create(CultureInfo.InvariantCulture, $"the comments of PR #{page.Number}"),
+    ListKind.Reviews => string.Create(CultureInfo.InvariantCulture, $"the reviews of PR #{page.Number}"),
+    ListKind.ReviewThreads => string.Create(CultureInfo.InvariantCulture, $"the review threads of PR #{page.Number}"),
+    _ => string.Create(CultureInfo.InvariantCulture, $"a review thread of PR #{page.Number}"),
+  };
+
   private static JsonElement Data(JsonDocument document)
   {
     JsonElement root = document.RootElement;
@@ -383,6 +460,16 @@ public sealed class Snapshot(int issue)
       throw new InvalidOperationException($"GitHub GraphQL: {messages}");
     }
     return Node(root, "data") ?? throw new InvalidOperationException("GitHub GraphQL: no data");
+  }
+
+  private void ReadPullRequests(JsonElement repository, IReadOnlyList<int> numbers)
+  {
+    foreach (var number in numbers)
+    {
+      JsonElement pullRequest = Node(repository, Query.PullRequestAlias(number))
+        ?? throw new InvalidOperationException($"PR #{number} was not found");
+      ReadPullRequest(pullRequest);
+    }
   }
 
   private void ReadList(JsonElement owner, ListKind kind, string nodeId, int number)
@@ -419,7 +506,7 @@ public sealed class Snapshot(int issue)
         Add(Item(Kinds.PrComment, number, node, "createdAt"));
         break;
       case ListKind.CrossReferences when IsDeliveryPullRequest(node, issue):
-        ReadPullRequest(node.GetProperty("source"));
+        FoundOnTimeline(node.GetProperty("source"));
         break;
       case ListKind.Reviews:
         Add(Review(number, node));
@@ -435,18 +522,33 @@ public sealed class Snapshot(int issue)
     }
   }
 
-  // A PR is read once a tick, even when it cross-references the issue twice or is also named with --pr.
+  // A delivery PR on the timeline brings only its state; its lists come with the next query, unless it was named and read.
+  private void FoundOnTimeline(JsonElement source)
+  {
+    PullRequest pr = ToPullRequest(source);
+    if (_pullRequests.TryAdd(pr.Number, pr))
+    {
+      _unread.Add(pr.Number);
+    }
+  }
+
+  // A PR is read in full once a tick, even when it cross-references the issue twice or is also named with --pr. A PR found on
+  // the timeline keeps the state read there, because the follow-up asks only for its lists.
   private void ReadPullRequest(JsonElement pullRequest)
   {
-    PullRequest pr = ToPullRequest(pullRequest);
-    if (!_pullRequests.TryAdd(pr.Number, pr))
+    var number = pullRequest.GetProperty("number").GetInt32();
+    if (!_read.Add(number))
     {
       return;
     }
+    if (!_pullRequests.ContainsKey(number))
+    {
+      _pullRequests[number] = ToPullRequest(pullRequest);
+    }
     var id = Text(pullRequest, "id");
-    ReadList(pullRequest, ListKind.PrComments, id, pr.Number);
-    ReadList(pullRequest, ListKind.Reviews, id, pr.Number);
-    ReadList(pullRequest, ListKind.ReviewThreads, id, pr.Number);
+    ReadList(pullRequest, ListKind.PrComments, id, number);
+    ReadList(pullRequest, ListKind.Reviews, id, number);
+    ReadList(pullRequest, ListKind.ReviewThreads, id, number);
   }
 
   private void Add(WatchItem? item)

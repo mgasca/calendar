@@ -4,8 +4,8 @@
 // Prints the comments and reviews that are new since the last run on an issue and its delivery PRs (open, closed and
 // merged), plus each PR's state when it changes, and records what it printed in .plan/handover-watch/<issue>.seen so the
 // next run prints only what came after. A delivery PR is one that cross-references the issue with Closes, Fixes,
-// Resolves or Refs in its body. One GraphQL query per run, plus one per round of follow-up pages for a list longer than a
-// page. Needs the GitHub CLI signed in (gh auth status). See tools/README.md, "handover-watch".
+// Resolves or Refs in its body. Usually two GraphQL queries per run: the issue and its cross-references, then the delivery
+// PRs in full; long lists add follow-up rounds. Needs the GitHub CLI signed in (gh auth status). See tools/README.md, "handover-watch".
 //
 //   dotnet run tools/handover-watch/handover-watch.cs -- 320            new items on #320 and its delivery PRs
 //   dotnet run tools/handover-watch/handover-watch.cs -- 320 --pr 361   also watch PR #361 (repeatable)
@@ -42,6 +42,16 @@ try
   {
     Directory.CreateDirectory(Path.GetDirectoryName(recordPath)!);
     await File.AppendAllTextAsync(recordPath, SeenRecord.Lines(fresh));
+  }
+
+  // A flood of items stops the following, not the report: what was read is printed and recorded, and the run says what it
+  // left unread and fails, so the agent notices.
+  if (snapshot.Unfinished.Count > 0)
+  {
+    var unread = string.Join(", ", snapshot.Unfinished);
+    await Console.Error.WriteLineAsync(
+      $"handover-watch: stopped after {Fetch.MaxFollowUps} follow-up rounds; not read to the end: {unread}");
+    return 1;
   }
   return 0;
 }

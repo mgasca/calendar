@@ -12,7 +12,15 @@ namespace CiTimings;
 /// <param name="CreatedAt">When the run was created.</param>
 /// <param name="Event">push, pull_request, merge_group, …</param>
 /// <param name="HeadBranch">The branch the run was for (a pull request's head branch); empty when not listed.</param>
-public sealed record WorkflowRun(long Id, string Status, string Conclusion, DateTimeOffset CreatedAt, string Event, string HeadBranch = "");
+/// <param name="HeadSha">The commit the run tested; empty when not listed.</param>
+public sealed record WorkflowRun(
+  long Id,
+  string Status,
+  string Conclusion,
+  DateTimeOffset CreatedAt,
+  string Event,
+  string HeadBranch = "",
+  string HeadSha = "");
 
 /// <summary>A step of a job with the wall-clock span GitHub recorded for it.</summary>
 /// <param name="Number">The step's position in the job.</param>
@@ -62,7 +70,10 @@ public static class Parser
   private const string StartedAt = "started_at";
   private const string CompletedAt = "completed_at";
 
-  /// <summary>Parses <c>gh run list --json databaseId,status,conclusion,createdAt,event</c>, plus <c>headBranch</c> when listed.</summary>
+  /// <summary>
+  /// Parses <c>gh run list --json databaseId,status,conclusion,createdAt,event</c>, plus <c>headBranch</c> and <c>headSha</c>
+  /// when listed.
+  /// </summary>
   /// <param name="json">The JSON array.</param>
   /// <returns>The runs in the order listed (newest first).</returns>
   public static IReadOnlyList<WorkflowRun> ParseRuns(string json)
@@ -76,7 +87,8 @@ public static class Parser
         Text(run, "conclusion"),
         run.GetProperty("createdAt").GetDateTimeOffset(),
         Text(run, "event"),
-        Text(run, "headBranch"))),
+        Text(run, "headBranch"),
+        Text(run, "headSha"))),
     ];
   }
 

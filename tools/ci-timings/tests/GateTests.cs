@@ -266,14 +266,12 @@ public sealed class GateTests
   }
 
   [Fact]
-  public void TheCommittedBaseline_IsReadableByTheTool_WhenPresent()
+  public void TheCommittedBaseline_IsReadableByTheTool_AndHoldsBothPaths()
   {
-    var path = Path.Combine(Root, ".github", "ci-baseline.json");
-    if (File.Exists(path))
-    {
-      BaselineFile file = BaselineIo.Read(File.ReadAllText(path, Encoding.UTF8));
-      file.Paths.ShouldNotBeEmpty();
-      file.Paths.Values.SelectMany(baseline => baseline.Jobs.Values).ShouldAllBe(job => job.Threshold > job.Median);
-    }
+    // The gate step reads this file on every run; a missing or unreadable file would fail CI result.
+    BaselineFile file = BaselineIo.Read(File.ReadAllText(Path.Combine(Root, ".github", "ci-baseline.json"), Encoding.UTF8));
+
+    file.Paths.Keys.ShouldBe([Baselines.CheckPath, Baselines.PublicationPath]);
+    file.Paths.Values.SelectMany(baseline => baseline.Jobs.Values).ShouldAllBe(job => job.Threshold > job.Median);
   }
 }

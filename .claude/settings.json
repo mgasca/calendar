@@ -38,6 +38,36 @@
             "if": "Bash(docker *)",
             "command": "dotnet run \"$CLAUDE_PROJECT_DIR\"/tools/agent-hooks/agent-hooks.cs -- pre-bash",
             "timeout": 30
+          },
+          {
+            "type": "command",
+            "if": "Bash(env *)",
+            "command": "dotnet run \"$CLAUDE_PROJECT_DIR\"/tools/agent-hooks/agent-hooks.cs -- pre-bash",
+            "timeout": 30
+          },
+          {
+            "type": "command",
+            "if": "Bash(sudo *)",
+            "command": "dotnet run \"$CLAUDE_PROJECT_DIR\"/tools/agent-hooks/agent-hooks.cs -- pre-bash",
+            "timeout": 30
+          },
+          {
+            "type": "command",
+            "if": "Bash(exec *)",
+            "command": "dotnet run \"$CLAUDE_PROJECT_DIR\"/tools/agent-hooks/agent-hooks.cs -- pre-bash",
+            "timeout": 30
+          },
+          {
+            "type": "command",
+            "if": "Bash(builtin *)",
+            "command": "dotnet run \"$CLAUDE_PROJECT_DIR\"/tools/agent-hooks/agent-hooks.cs -- pre-bash",
+            "timeout": 30
+          },
+          {
+            "type": "command",
+            "if": "Bash(command *)",
+            "command": "dotnet run \"$CLAUDE_PROJECT_DIR\"/tools/agent-hooks/agent-hooks.cs -- pre-bash",
+            "timeout": 30
           }
         ]
       },

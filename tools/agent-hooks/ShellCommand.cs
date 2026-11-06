@@ -29,14 +29,158 @@ public static class ShellCommand
       {
         continue;
       }
-      if (parsed.Words[0] == "cd" && parsed.Words.Count > 1)
+      Unwrapped run = Unwrap(parsed.Words, current);
+      // cd changes the shell's directory only when it runs in the shell (cd, builtin cd), not under sudo or env.
+      if (run.Words[0] == "cd" && run.Words.Count > 1 && run.InShell)
       {
-        current = Path.GetFullPath(Path.Combine(current, parsed.Words[1]));
+        current = Path.GetFullPath(Path.Combine(current, run.Words[1]));
         continue;
       }
-      segments.Add(new Segment(parsed.Words, current, stdin, parsed.Piped));
+      segments.Add(new Segment(run.Words, run.Cwd, stdin, parsed.Piped));
     }
     return segments;
+  }
+
+  /// <summary>
+  /// A command that runs the command after it: its options that take a value (the next word, or the rest of a short
+  /// option), its option that changes the directory, and whether the command it runs stays in the shell.
+  /// </summary>
+  private sealed record Wrapper(string[] WithValue, string? ChdirShort, bool InShell);
+
+  // The wrappers unwrapped for the guards (#376). Only command and builtin run a builtin in the shell itself.
+  private static readonly Dictionary<string, Wrapper> Wrappers = new(StringComparer.Ordinal)
+  {
+    ["env"] = new(["-u", "--unset", "-C", "--chdir"], "-C", InShell: false),
+    ["command"] = new([], null, InShell: true),
+    ["builtin"] = new([], null, InShell: true),
+    ["exec"] = new(["-a"], null, InShell: false),
+    ["nohup"] = new([], null, InShell: false),
+    ["time"] = new(["-f", "--format", "-o", "--output"], null, InShell: false),
+    ["nice"] = new(["-n", "--adjustment"], null, InShell: false),
+    ["timeout"] = new(["-s", "--signal", "-k", "--kill-after"], null, InShell: false),
+    ["sudo"] = new(
+      [
+        "-u", "--user", "-g", "--group", "-C", "--close-from", "-D", "--chdir", "-h", "--host", "-p", "--prompt", "-r",
+        "--role", "-t", "--type", "-U", "--other-user", "-T", "--command-timeout", "-R", "--chroot",
+      ],
+      "-D",
+      InShell: false),
+  };
+
+  // Builtins that assign shell variables; behind a wrapper that runs a separate process they assign nothing.
+  private static readonly string[] AssignmentBuiltins = ["export", "declare", "readonly", "local", "typeset"];
+
+  /// <summary>The command a simple command really runs, the directory it runs in, and whether it runs in the shell.</summary>
+  internal sealed record Unwrapped(IReadOnlyList<string> Words, string Cwd, bool InShell);
+
+  /// <summary>
+  /// The words of the command a simple command really runs: leading <c>NAME=value</c> assignments and wrappers such as
+  /// <c>env</c>, <c>command</c>, <c>sudo</c> or <c>timeout</c> are removed with their options, read as each wrapper reads
+  /// them (bundles such as <c>-Eu root</c>, attached values such as <c>-Cdir</c>, <c>env -C</c> and <c>sudo -D</c> changing
+  /// the directory), and a path to the command becomes its name, so every guard sees the command first (#376). Words with
+  /// nothing left to run, <c>command -v</c>, <c>env -S</c>, and an assignment builtin behind a wrapper that leaves the shell
+  /// stay as they are.
+  /// </summary>
+  internal static Unwrapped Unwrap(IReadOnlyList<string> words, string cwd)
+  {
+    var unchanged = new Unwrapped(words, cwd, InShell: true);
+    var i = 0;
+    var dir = cwd;
+    var inShell = true;
+    while (i < words.Count)
+    {
+      if (IsAssignment(words[i]))
+      {
+        i++;
+        continue;
+      }
+      var name = Path.GetFileName(words[i]);
+      if (!Wrappers.TryGetValue(name, out Wrapper? wrapper))
+      {
+        break;
+      }
+      inShell &= wrapper.InShell;
+      var j = i + 1;
+      while (j < words.Count && words[j].Length > 1 && words[j][0] == '-')
+      {
+        if (words[j] == "--")
+        {
+          j++;
+          break;
+        }
+        if (Option(name, wrapper, words, j) is not { } option)
+        {
+          return unchanged;
+        }
+        if (option.Chdir is { } target)
+        {
+          dir = Path.GetFullPath(Path.Combine(dir, target));
+        }
+        j += option.Words;
+      }
+      // timeout's first word after its options is the duration.
+      i = name == "timeout" ? j + 1 : j;
+    }
+    if (i >= words.Count || (i == 0 && !words[0].Contains('/', StringComparison.Ordinal))
+      || (!inShell && AssignmentBuiltins.Contains(words[i])))
+    {
+      return unchanged;
+    }
+    return new Unwrapped([Path.GetFileName(words[i]), .. words.Skip(i + 1)], dir, inShell);
+  }
+
+  /// <summary>An option word read as its wrapper reads it: how many words it spans and the directory it moves to.</summary>
+  private sealed record ParsedOption(int Words, string? Chdir);
+
+  /// <summary>
+  /// The option at <paramref name="j"/>, or null when the wrapper runs nothing the guards can see: a lookup
+  /// (<c>command -v</c>) or a command string (<c>env -S</c>).
+  /// </summary>
+  private static ParsedOption? Option(string name, Wrapper wrapper, IReadOnlyList<string> words, int j)
+  {
+    var option = words[j];
+    if (option.StartsWith("--", StringComparison.Ordinal))
+    {
+      var equals = option.IndexOf('=', StringComparison.Ordinal);
+      var key = equals < 0 ? option : option[..equals];
+      if (key == "--split-string")
+      {
+        return null;
+      }
+      var separate = equals < 0 && wrapper.WithValue.Contains(key);
+      var value = separate ? ValueAfter(words, j) : null;
+      if (equals >= 0)
+      {
+        value = option[(equals + 1)..];
+      }
+      var span = separate ? 2 : 1;
+      return new ParsedOption(span, key == "--chdir" ? value : null);
+    }
+    // A bundle of short options: the first that takes a value takes the rest of the word, or the next word.
+    for (var k = 1; k < option.Length; k++)
+    {
+      var flag = "-" + option[k];
+      if ((name == "command" && option[k] is 'v' or 'V') || (name == "env" && option[k] == 'S'))
+      {
+        return null;
+      }
+      if (wrapper.WithValue.Contains(flag))
+      {
+        var attached = k + 1 < option.Length;
+        var value = attached ? option[(k + 1)..] : ValueAfter(words, j);
+        return new ParsedOption(attached ? 1 : 2, flag == wrapper.ChdirShort ? value : null);
+      }
+    }
+    return new ParsedOption(1, null);
+  }
+
+  private static string? ValueAfter(IReadOnlyList<string> words, int i) => i + 1 < words.Count ? words[i + 1] : null;
+
+  private static bool IsAssignment(string word)
+  {
+    var equals = word.IndexOf('=', StringComparison.Ordinal);
+    return equals > 0 && (char.IsAsciiLetter(word[0]) || word[0] == '_')
+      && word.Take(equals).All(c => char.IsAsciiLetterOrDigit(c) || c == '_');
   }
 
   /// <summary>Splits one simple command into words, honouring quotes, escapes, substitutions and heredocs.</summary>

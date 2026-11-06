@@ -457,4 +457,69 @@ public sealed class BashGuardTests
     BashGuard.Evaluate(command, Root, _probe).ShouldNotBeNull().Decision.ShouldBe("deny");
     _probe.PullRequestQueries.ShouldBe([("/repo/other", "feature")]);
   }
+
+  // #376: an assignment prefix or a wrapper no longer hides the command from its guard.
+  [Theory]
+  [InlineData("FOO=1 gh pr comment 1 --body 'see /home/me/x'")]
+  [InlineData("env -i GH_TOKEN=x gh pr comment 1 --body 'see /home/me/x'")]
+  [InlineData("command gh pr comment 1 --body 'see /home/me/x'")]
+  [InlineData("nohup /usr/bin/gh pr comment 1 --body 'see /home/me/x'")]
+  [InlineData("sudo -u me gh pr comment 1 --body 'see /home/me/x'")]
+  [InlineData("timeout -k 5 30 gh pr comment 1 --body 'see /home/me/x'")]
+  [InlineData("time -p nice -n 5 gh pr comment 1 --body 'see /home/me/x'")]
+  [InlineData("exec -a x builtin gh pr comment 1 --body 'see /home/me/x'")]
+  [InlineData("env -- gh pr comment 1 --body 'see /home/me/x'")]
+  public void A_post_behind_a_prefix_or_wrapper_is_denied(string command) =>
+    BashGuard.Evaluate(command, Root, _probe).ShouldNotBeNull().Reason.ShouldContain("/home/me/x");
+
+  [Fact]
+  public void Every_bash_guard_sees_through_a_prefix_or_wrapper()
+  {
+    _probe.Dirty.Add("/repo/AGENTS.md");
+    _probe.Dirty.Add("/repo/backend/src/X.cs");
+    _probe.Branches["/repo"] = "feature";
+
+    BashGuard.Evaluate("GIT_PAGER=cat git restore AGENTS.md", Root, _probe).ShouldNotBeNull().Decision.ShouldBe("deny");
+    BashGuard.Evaluate("env -C backend git restore src/X.cs", Root, _probe).ShouldNotBeNull().Decision.ShouldBe("deny");
+    BashGuard.Evaluate("GIT_TRACE=1 git push", Root, _probe).ShouldNotBeNull().Reason.ShouldContain("#186");
+    _probe.LinkedWorktree = true;
+    BashGuard.Evaluate("COMPOSE_PROJECT_NAME=x docker compose up", Root, _probe).ShouldNotBeNull().Decision.ShouldBe("ask");
+    BashGuard.Evaluate("env just db up", Root, _probe).ShouldNotBeNull().Decision.ShouldBe("ask");
+  }
+
+  [Theory]
+  [InlineData("command -v gh")]
+  [InlineData("env")]
+  [InlineData("FOO=1 BAR=2")]
+  [InlineData("env -S 'gh pr list'")]
+  public void A_lookup_a_bare_wrapper_or_assignments_alone_pass(string command) =>
+    BashGuard.Evaluate(command, Root, _probe).ShouldBeNull();
+
+  // Security review of #376: wrapper options and wrapped builtins are read as the wrapper reads them.
+  [Theory]
+  [InlineData("sudo -D backend git restore src/X.cs")]
+  [InlineData("env -Cbackend git restore src/X.cs")]
+  [InlineData("sudo -Eu root git restore AGENTS.md")]
+  [InlineData("env -iu HOME git restore AGENTS.md")]
+  [InlineData("sudo -C 3 git restore AGENTS.md")]
+  [InlineData("builtin cd backend && git restore src/X.cs")]
+  public void Wrapper_options_are_parsed_as_the_wrapper_parses_them(string command)
+  {
+    _probe.Dirty.Add("/repo/AGENTS.md");
+    _probe.Dirty.Add("/repo/backend/src/X.cs");
+
+    BashGuard.Evaluate(command, Root, _probe).ShouldNotBeNull().Decision.ShouldBe("deny");
+  }
+
+  [Theory]
+  [InlineData("cat > f <<'EOF'\nsee /home/me/x\nEOF\nsudo -D backend tee f <<'EOF'\nclean\nEOF\ngh pr comment 1 --body-file f")]
+  [InlineData("sudo export HOME=/s; gh pr comment 1 --body-file ~/notes.md")]
+  [InlineData("timeout 1 export HOME=/s; gh pr comment 1 --body-file ~/notes.md")]
+  public void A_wrapped_write_or_assignment_does_not_shadow_the_real_one(string command)
+  {
+    var home = Environment.GetEnvironmentVariable("HOME").ShouldNotBeNull();
+    _probe.Files[$"{home}/notes.md"] = "see /home/me/x";
+
+    BashGuard.Evaluate(command, Root, _probe).ShouldNotBeNull().Reason.ShouldContain("/home/me/x");
+  }
 }

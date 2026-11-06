@@ -88,4 +88,19 @@ public sealed class ShellCommandTests
   [Fact]
   public void Tokenize_honours_quotes() =>
     ShellCommand.Tokenize("gh pr create --body \"a b && c\" -t 'x y'").ShouldBe(["gh", "pr", "create", "--body", "a b && c", "-t", "x y"]);
+
+  [Theory]
+  [InlineData("FOO=1 BAR=x gh pr list", "gh pr list")]
+  [InlineData("env -i -u HOME X=1 /usr/bin/git status", "git status")]
+  [InlineData("sudo -u me -- nohup git status", "git status")]
+  [InlineData("timeout --signal KILL 30 git status", "git status")]
+  [InlineData("S=/s", "S=/s")]
+  [InlineData("command -v gh", "command -v gh")]
+  [InlineData("env", "env")]
+  public void Split_unwraps_assignment_prefixes_and_wrappers(string command, string expected) =>
+    string.Join(' ', ShellCommand.Split(command, "/repo").Single().Tokens).ShouldBe(expected);
+
+  [Fact]
+  public void Env_chdir_moves_the_segment() =>
+    ShellCommand.Split("env -C backend git status", "/repo").Single().Cwd.ShouldBe("/repo/backend");
 }

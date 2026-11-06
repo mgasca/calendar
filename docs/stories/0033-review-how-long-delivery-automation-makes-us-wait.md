@@ -44,7 +44,7 @@ Agreed with the maintainer on #342. The answers were given in conversation and r
 * **Changing `issue-handover`:** epic #318 and its children own that file. #322 moves its performance section to `docs/benchmarks/README.md`, and this skill points there.
 * **New repo tooling:** the skill uses `just tools ci-timings` as it is. A queue-time or critical-path option for that tool would be a follow-up issue (ADR-0017 tooling).
 * **Running a review:** reviewing today's pipeline, the Backend job included, is a later use of the skill, not part of building it.
-* **Gating CI on timings:** records stay evidence, not gates, as `docs/benchmarks/README.md` says.
+* **Gating CI on timings:** not part of this story; the review's records stay evidence. Amended after delivery: epic #380 later chose to gate each CI job's run time against a pinned baseline, decided in [ADR-0045](../decisions/0045-run-time-regression-gates-for-ci-jobs.md) and tracked in story [0034](0034-gate-ci-job-run-times-against-a-pinned-baseline.md).
 * **Changing `performance-reviewer`:** it stays the diff reviewer. The skill names it as the tool for reviewing a delivery PR's diff.
 
 ### Acceptance criteria

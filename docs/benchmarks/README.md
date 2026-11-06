@@ -1,6 +1,17 @@
 # Benchmarks
 
-Reference measurements for performance work. A benchmark here is a repeatable harness in the code base plus a dated record of what it measured. Records are not asserted in tests or CI: timings only compare on one machine, so a record is evidence for a change, not a gate.
+Reference measurements for performance work. A benchmark here is a repeatable harness in the code base plus a dated record of what it measured. Records are not asserted in tests or CI: timings only compare on one machine, so a record is evidence for a change, not a gate. The one exception is the pinned CI baseline below ([ADR-0045](../decisions/0045-run-time-regression-gates-for-ci-jobs.md)).
+
+## The pinned CI baseline
+
+Being built in epic #380 (story [0034](../stories/0034-gate-ci-job-run-times-against-a-pinned-baseline.md)); until the file exists, nothing gates on time.
+
+`.github/ci-baseline.json` is the one timing a check asserts. It holds, per CI job and path (pull request or push to `main`), the statistics of at least 30 successful runs on `main` and the threshold derived from them; `CI result` fails a pull request whose job takes longer than its threshold, and a scheduled trend check on `main` reports smaller slowdowns as an issue. The method, the paths and the constants are in ADR-0045; the measurement and the back-test of each version of the file are in a benchmark record.
+
+- **Never edit the file by hand.** `ci-timings baseline` writes it from the sample and constants it states.
+- **A slower job that is necessary:** regenerate the file in the same PR that adds the time, and add a record here that names the change, the before and after distributions and the new thresholds. The gate reads the file from the commit under test, so the PR's own run uses the new thresholds, and the reviewer sees them in the diff.
+- **Nothing else moves it:** runs on `main` never update it, so it cannot creep upward. Re-measure it when a record's reconsideration condition arrives, for example a new job or new runner hardware.
+- **A failure you think is noise:** use **Re-run all jobs**. **Re-run failed jobs** repeats only `CI result` on the same durations.
 
 ## Performance issues
 

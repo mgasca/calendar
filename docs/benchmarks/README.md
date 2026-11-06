@@ -15,6 +15,7 @@ Reference measurements for performance work. A benchmark here is a repeatable ha
 | [0009](0009-api-tests-in-parallel.md) | API test classes in parallel, a database copy per test, one reset per test (#349) | `tools/ci-timings/ci-timings.cs` |
 | [0010](0010-format-whitespace-only.md) | The Backend format check runs whitespace only (#350) | `tools/ci-timings/ci-timings.cs` |
 | [0011](0011-tooling-cache-and-parallel-tests.md) | The Tooling job with a NuGet cache and parallel test apps (#351) | `tools/ci-timings/ci-timings.cs` |
+| [0012](0012-ci-after-epic-347.md) | A CI run on main after the five fixes of #347: critical path, wall clock and compute | `tools/ci-timings/ci-timings.cs` |
 
 ## Performance issues
 

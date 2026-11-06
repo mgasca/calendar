@@ -1,9 +1,10 @@
 ---
-status: planned
+status: implemented
 date: 2026-11-06
 issue: https://github.com/mgasca/calendar/issues/342
 pr:
   - https://github.com/mgasca/calendar/pull/343
+  - https://github.com/mgasca/calendar/pull/344
 adrs: ["0017", "0042"]
 ---
 
@@ -25,11 +26,11 @@ The `performance-reviewer` agent reviews a branch's diff, read-only, in a fresh 
 
 ### Agreed scope
 
-Agreed with the maintainer on #342 (answers given in conversation and recorded on the issue).
+Agreed with the maintainer on #342. The answers were given in conversation and recorded on the issue.
 
 * **A skill that orchestrates, and a read-only agent for the static pass:** the skill `delivery-performance-review` (`.claude/skills/`) runs in the session that invokes it, because the review needs long measurements, a scratch worktree for probes, and (on request) issue and PR writes. The agent `delivery-performance-reviewer` (`.claude/agents/`) reads workflows, recipes, test and build configs and CI history in a fresh context and returns hypotheses with invocation counts and evidence marks, so the file dumps stay out of the orchestrating session. The agent never edits, probes or posts.
 * **Five surfaces:** CI workflows, task-runner recipes, test suites, builds and publication, and agent delivery loops (watch wake-ups that need no action, CI runs dispatched only to measure, waits on checks). Backend and frontend alike.
-* **Three modes, report first:** `report` (default) writes nothing outside a scratch directory or worktree. `issues` files an epic and one child per opportunity, each child stating its baseline. `deliver` forks to  `epic-delivery`., which hands the children to `issue-handover`.  The skill always reports first and files only when the maintainer says so after reading the report, even when the invoking prompt names a mode. Merges stay with the maintainer.
+* **Three modes, report first:** `report` (default) writes nothing outside a scratch directory or worktree. `issues` files an epic and one child per opportunity, each child stating its baseline. `deliver` forks to `epic-delivery`, which hands the children to `issue-handover`. The skill always reports first and files only when the maintainer says so after reading the report, even when the invoking prompt names a mode. Merges stay with the maintainer.
 * **Two lenses, kept apart:** latency (the critical path of a run, what a person waits for) and compute (the sum of job time per run). A change can improve one and worsen the other.
 * **Evidence rules:** every number says whether it is measured or inferred, and gives its sample (runs, commits, window, machine). A sample is filtered by head commit. A bimodal sample is checked for runner hardware before it is blamed on code. Interacting changes are measured together at the end.
 * **Cost of measuring:** the report states how many CI runs a proposed after-measurement would dispatch, and sizes the sample from the spread it observed.
@@ -78,16 +79,19 @@ No new ADR is expected.
 
 ## Implementation notes
 
-*Planned. This section is completed as the story is built.*
+Delivered in #344, stacked on the card PR #343.
 
 ### Where things live
 
 | Area | Location |
 | --- | --- |
-| Skill | `.claude/skills/delivery-performance-review/SKILL.md` |
+| Skill (steps, modes, honesty rules, limits) | `.claude/skills/delivery-performance-review/SKILL.md` |
 | Static-pass agent | `.claude/agents/delivery-performance-reviewer.md` |
-| Measurement reference | `.claude/skills/delivery-performance-review/references/` |
-| Evals | `.claude/skills/delivery-performance-review/evals/` |
+| Sampling, statistics, lenses, A/B, dispatching | `.claude/skills/delivery-performance-review/references/measurement.md` |
+| The #272 case study and the evidence for each rule | `.claude/skills/delivery-performance-review/references/case-272.md` |
+| Report shape | `.claude/skills/delivery-performance-review/references/report-template.md` |
+| Eval cases | `.claude/skills/delivery-performance-review/evals/` |
+| Reviewer-subagent line | `AGENTS.md` ("Testing principles") |
 
 ### API
 
@@ -95,16 +99,28 @@ No changes.
 
 ### Testing
 
-* The eval cases in the skill's `evals/`, run with `claude plugin eval`; their results are recorded in the delivery PR.
-* The docs-site tests and build, for this card and any links from it.
-* No live review of the pipeline is part of the tests; the first real run is a later use of the skill.
+`claude plugin eval` was not installed where this was built, so the eval cases were exercised as scenario runs. A fresh agent was given only the skill and the case prompt, not the graders or the author's conclusions, and its answer was graded against the case's graders by hand. Results are on #344.
+
+| Case | Run | Result |
+| --- | --- | --- |
+| [bimodal-sample-is-checked-against-a-control](../../.claude/skills/delivery-performance-review/evals/bimodal-sample-is-checked-against-a-control/case.yaml) | offline, synthetic fixture | both graders pass: control steps checked before blame, the revert advised against, the critical path worked out per cluster with its uncertainty |
+| [report-mode-is-read-only](../../.claude/skills/delivery-performance-review/evals/report-mode-is-read-only/case.yaml) | live, read-only review of `ci.yml` on `origin/main` 3c3304d1, 40 runs | all five graders pass: no writes or dispatches, critical path and both lenses, every number with its basis, static pass delegated without a hypothesis, Not covered and the review's cost |
+| [names-the-mode-but-reports-first](../../.claude/skills/delivery-performance-review/evals/names-the-mode-but-reports-first/case.yaml) | not run | not exercised |
+
+Acceptance criteria against that evidence:
+- Criteria 1, 2 and 4–6, 8 and 9 are covered by the two runs above. For criterion 2 the static pass ran as a general-purpose agent with the agent file's body, because a new agent type is registered only in later sessions.
+- Criterion 3 has a case that was not run.
+- Criterion 7 (filing) was not exercised: no issues were filed from either run.
+- Criterion 10's result for the final revision is recorded on #344.
 
 ### Lessons learned, known issues and follow-ups
 
-*Filled in on delivery.*
+* **The live test found what the case study could not.** About one PR run in five waited 20–85 s before its first job started. A new push had cancelled the previous run, but that run kept going until its `if: always()` result job had finished. Pushing several commits a minute apart is the agent-loop habit behind it. The skill now counts this from CI history, with no transcript needed.
+* **`just tools ci-timings` splits quoted job names** (`--job "Docs site"`). Filed as #345; the skill and the agent give the direct `dotnet run` form until it is fixed.
+* **A new agent type is not available in the session that adds it.** The skill says to fall back to a general-purpose agent with the agent's body, and to say so.
+* **The live run is itself a review of today's pipeline.** Job medians are within a few seconds of record 0007, and Backend (1:55) is the critical path in 37 of 40 runs. It found four opportunities: the superseded-run wait; serial API test classes with two database resets per case; `dotnet format` repeating the build's analyzer pass; and a Tooling job without a NuGet cache. They are reported on #344 but not filed, because the skill files only when asked.
+* **One case study.** The rules come from one epic, as the skill's Limits section says. Revise them when a review contradicts them.
 
 ## User guide
-
-*Planned behaviour. This section is finalised when the story is implemented.*
 
 Ask: **Use delivery-performance-review on the CI pipeline** (or on the backend tests, the `just` recipes, or the agent watch loop). The skill samples recent runs, reads the workflows, recipes and test setup, probes what it suspects, and reports: what a run costs and what you wait for, where the time goes, and the opportunities in order with the evidence each one rests on. Nothing is filed until you ask. Say **file issues** to get an epic with one child per opportunity, or **deliver** to have the children taken through to merged, measured PRs.

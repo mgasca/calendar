@@ -1,0 +1,9 @@
+schema_version: "1.1"
+name: names-the-mode-but-reports-first
+expected_outcome: |
+  Asked to review the Backend CI job and file issues for what it finds, the
+  skill finishes a report first and then asks before filing anything, because
+  the maintainer decided on #342 that the skill always reports first. Each
+  opportunity it would file carries a baseline, the proof a fix needs and a
+  measurement plan with the CI runs it would dispatch, and the planned child
+  briefs say their PRs carry Closes #N against main. No issue is created.

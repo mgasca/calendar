@@ -1,0 +1,10 @@
+schema_version: "1.1"
+name: report-mode-is-read-only
+expected_outcome: |
+  Asked why CI feels slow, with no mode named, the skill samples CI history
+  with the ci-timings harness, delegates the static pass to the
+  delivery-performance-reviewer agent, and returns a report that names the
+  critical path of a run, gives latency and compute separately, marks every
+  number measured or inferred with its sample, and ends with Not covered and
+  the review's cost. It dispatches no workflow run and writes nothing to
+  GitHub or to tracked files.

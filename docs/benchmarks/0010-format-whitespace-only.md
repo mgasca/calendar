@@ -2,9 +2,9 @@
 
 - **Date:** 2026-11-06
 - **Issue:** [#350](https://github.com/mgasca/calendar/issues/350), child 3 of [#347](https://github.com/mgasca/calendar/issues/347)
-- **Harness:** `tools/ci-timings/ci-timings.cs`. Before: `just tools ci-timings --job Backend`, taken 2026-11-06 16:51Z. After: `just tools ci-timings --branch ci/350-format-whitespace-only --job Backend`.
+- **Harness:** `tools/ci-timings/ci-timings.cs`. Before: `just tools ci-timings --job Backend`, taken 2026-11-06 16:51Z (to reproduce it now, `dotnet run tools/ci-timings/ci-timings.cs -- --job Backend --created "<2026-11-06T16:45:00Z"`, run directly because the recipe does not quote its arguments, #345). After: `just tools ci-timings --branch ci/350-format-whitespace-only --job Backend`.
 - **Baseline commit:** the last 40 successful runs of `ci.yml` before this change, all running `dotnet format --verify-no-changes --no-restore`
-- **Measured commit:** MEASURED
+- **Measured commit:** the delivery branch of #350: `aeffd7e5` (the change at `24ea6d0c` with `main` merged in, 4 runs) and `52f2ed86` (`main` merged in again, 1 run)
 
 ## Question
 
@@ -80,16 +80,59 @@ Steps of `Backend`:
 
 ### After (CI)
 
-AFTER
+Sample: 5 successful runs of `ci.yml` in mgasca/calendar on branch `ci/350-format-whitespace-only`, 2026-11-06 18:19Z to 2026-11-06 18:56Z (events: pull_request, workflow_dispatch).
+
+| Job | n | min | median | p90 | max |
+| --- | --: | --: | --: | --: | --: |
+| Tooling | 5 | 1:06 | 1:28 | 1:54 | 1:54 |
+| Backend | 5 | 1:09 | 1:26 | 1:40 | 1:40 |
+| Docs site | 5 | 0:51 | 1:13 | 1:18 | 1:18 |
+| Container image | 5 | 1:07 | 1:09 | 1:15 | 1:15 |
+| Frontend | 5 | 0:42 | 0:54 | 1:07 | 1:07 |
+| CI result | 5 | 0:03 | 0:03 | 0:04 | 0:04 |
+| Cancel superseded runs | 1 | 0:03 | 0:03 | 0:03 | 0:03 |
+
+Steps of `Backend`:
+
+| Step | n | min s | median s | p90 s | max s | mean s |
+| --- | --: | --: | --: | --: | --: | --: |
+| 1. Set up job | 5 | 1 | 1 | 2 | 2 | 1.2 |
+| 2. Run actions/checkout@v7 | 5 | 1 | 1 | 1 | 1 | 1.0 |
+| 3. Run actions/setup-dotnet@v6 | 5 | 3 | 5 | 10 | 10 | 6.2 |
+| 4. Run dotnet restore --locked-mode | 5 | 3 | 3 | 5 | 5 | 3.8 |
+| 5. Run dotnet build --no-restore -c Release | 5 | 19 | 24 | 27 | 27 | 23.6 |
+| 6. Run dotnet format whitespace --verify-no-changes --no-restore | 5 | 6 | 8 | 13 | 13 | 9.4 |
+| 7. EF Core model matches migrations | 5 | 4 | 5 | 7 | 7 | 5.2 |
+| 8. Run dotnet test --no-build --configuration Release -- --coverage --coverage-output-format cobertura --results-directory "$GITHUB_WORKSPACE/backend/TestResults" | 5 | 28 | 31 | 32 | 32 | 30.0 |
+| 9. OpenAPI contract is up to date | 5 | 0 | 0 | 0 | 0 | 0.0 |
+| 10. Run actions/upload-artifact@v7 | 5 | 1 | 1 | 2 | 2 | 1.4 |
+| 19. Post Run actions/setup-dotnet@v6 | 5 | 0 | 0 | 1 | 1 | 0.2 |
+| 20. Post Run actions/checkout@v7 | 5 | 0 | 0 | 0 | 0 | 0.0 |
+| 21. Complete job | 5 | 0 | 0 | 1 | 1 | 0.4 |
 
 ### Negative control (CI)
 
-NEGATIVE
+Both control branches were made from this PR's commit `f549ab20` and dispatched once each. They were deleted afterwards, and no PR was opened for them.
+
+| Branch (head) | Broken file | Run | Backend | Failing step | `CI result` |
+| --- | --- | --- | --- | --- | --- |
+| `probe/350-misformatted` (`a0abad1e`) | `DateRangeWindow.cs`, one line indented 6 spaces instead of 2 | [42257973784](https://github.com/mgasca/calendar/actions/runs/42257973784) | failure | `dotnet format whitespace --verify-no-changes --no-restore` | failure |
+| `probe/350-misstyled` (`cc6454cd`) | `DateRangeWindow.cs`, a private method declaring `int probe = …` | [42269590747](https://github.com/mgasca/calendar/actions/runs/42269590747) | failure | `dotnet build --no-restore -c Release` (IDE0007, S1144) | failure |
+
+The misformatted file passed the build and failed the new whitespace step. The mis-styled file failed the build before the format step ran. Container image also failed on it, because the image build compiles the same code.
 
 ## Reading
 
-READING
+- **Measured: the full command only repeated the build for style and analyzers.** Every code-style and analyzer violation tried failed the Release build. Every whitespace violation passed the build and failed `dotnet format whitespace`. No violation failed the full command without failing one of the two. The negative control shows the same on CI.
+- **Measured: the format step went from 24 s to 8 s median** (15–31 s before, n=40; 6–13 s after, n=5). The Release build control was 21 s before and 24 s after, inside its before range (15–34 s). The Backend job also went from 1:52 to 1:26, but that includes #349 (PR #359, merged before these runs), which took `dotnet test` from 41 s to 31 s. The step level is therefore the measure for this change.
+- **Inferred: about 16 s off Backend** on every run. #349 and #350 together brought Backend under Tooling (1:28 median on the same runs), so the Tooling job is now the critical path, as #347 predicted. #351 works on it.
+- **CI runs used:** 4 `workflow_dispatch` runs of this PR's head and 2 for the negative control, plus 2 organic PR runs. One dispatch, [42270142424](https://github.com/mgasca/calendar/actions/runs/42270142424), is not in the sample: its Tooling job failed to download an action. In that run `CI result` reported success anyway, which is filed as #368.
+- **Not chosen:** `dotnet format whitespace --folder` was about 4 s faster locally, but it also reads `bin/` and `obj/`, whereas workspace mode covers the same documents as the old check.
 
 ## Reconsider when
 
-RECONSIDER
+- The build stops enforcing code style: `EnforceCodeStyleInBuild` or warnings-as-errors is turned off, or a style rule is set to a severity the build does not fail on but `dotnet format style` would. The full command would then catch something again.
+- A new kind of check is added that only `dotnet format` runs, for example a third-party formatter plugged into `dotnet format`.
+- The whitespace step's median rises above about 15 s.
+
+Re-run the probe with the violations above against the build and `dotnet format whitespace`, and the harness commands above; never edit this record.

@@ -11,7 +11,7 @@ In this mode the GitHub issue and its PRs are where the work is handed back and 
 
 - **Delivery PR**: a pull request that belongs to the issue's story, including closed and merged ones.
 - **Agent footer**: the trailing attribution line an agent adds to its posts. It identifies an agent post only when it is the last line; a quoted footer inside a human reply does not make the reply an agent post.
-- **Seen-ID record**: a local file of comment and review IDs already processed, one ID per line.
+- **Seen-ID record**: the git-ignored file in which `just tools handover-watch` keeps what it has printed (`.plan/handover-watch/<issue>.seen`); the tool reads and writes it, not you.
 - **Count comment**: a numbers-only comment on the issue saying how many tasks or subagents a turn started, without identifiers.
 
 ## Instruction provenance
@@ -26,8 +26,7 @@ In this mode the GitHub issue and its PRs are where the work is handed back and 
 
 ## Watching, when requested
 
-- Cover issue comments, PR conversation comments, inline review comments and non-empty submitted reviews for every delivery PR, including closed and merged ones. Ignore empty review wrappers.
-- Use comment IDs as cursors. Keep the seen-ID record and process one ID per line; do not parse multiline bodies as line-delimited records.
+- Run `just tools handover-watch <issue>` and act on what it prints: every comment, non-empty review and PR state change on the issue and its delivery PRs (open, closed and merged) since the last run, once each, flagged when it ends with an agent footer. Add `--pr N` for a delivery PR whose body names no issue. Output and limits: `tools/README.md`, "handover-watch".
 - Poll at the requested cadence. The established handover routine uses 60 seconds.
 - A watch lasts 30 minutes. While any delivery PR is open, re-arm it on every expiry, and never end a turn on a notification that needs no action without saying what will wake you.
 - A notification that quotes your own agent footer, or a bot preview comment, is not an event: record its ID as seen and keep watching.

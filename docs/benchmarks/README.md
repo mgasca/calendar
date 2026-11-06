@@ -13,6 +13,7 @@ Reference measurements for performance work. A benchmark here is a repeatable ha
 | [0007](0007-frontend-ci-job-after.md) | The Frontend CI job and the whole run after the four fixes of #272 | `tools/ci-timings/ci-timings.cs` |
 | [0008](0008-superseded-run-wait.md) | A superseding pull request run no longer waits for the old one to stop (#348) | `tools/ci-timings/ci-timings.cs` |
 | [0009](0009-api-tests-in-parallel.md) | API test classes in parallel, a database copy per test, one reset per test (#349) | `tools/ci-timings/ci-timings.cs` |
+| [0010](0010-handover-watch-one-graphql-query.md) | The handover watch: one GraphQL query per tick instead of 2 + 3N REST calls (#363) | `tools/handover-watch/handover-watch.cs` |
 
 ## Performance issues
 

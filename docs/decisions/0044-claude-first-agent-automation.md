@@ -10,6 +10,14 @@ decision-makers: mgasca, Claude (AI assistant)
 
 [ADR-0042](0042-layered-agent-guidance-and-hooks.md) layered the agent guidance and made **agent neutrality** a decision driver (its D3): every rule, including one a Claude Code hook enforces, keeps a form that Codex, Cursor and other agents can read and follow by hand. Since then the exploration of cross-harness subagent dispatch that motivated neutrality has ended, and the repository already holds automation only Claude Code runs: the hooks in `tools/agent-hooks`, the reviewer subagents, the parallel-children pattern and the skills that drive issue handovers. Each new piece still pays for a portable twin, and Claude Code mechanisms that have no hand-followable form (recurring loops, scheduled routines, workflows, hooks that act rather than remind) stay at arm's length. Story [0027](../stories/0027-focus-agent-guidance-on-claude-code-for-a-while.md) asks for a period in which the guidance focuses on Claude Code so its native benefits can be explored. How much neutrality should the repository keep during that period, and what ends it?
 
+What ended is the exploration of cross-harness *subagents*, not cross-harness work (the maintainer's clarification on [#324](https://github.com/mgasca/calendar/pull/324#issuecomment-6683737468), recorded here when epic #318 closed):
+
+* mj stays the multi-harness session manager. Each session it manages uses its own harness's native subagents, not mjolnir subagents.
+* Scheduled work stays cross-harness. It is scheduled and run in mj on a non-Claude harness, and the epic and child issues its reports lead to are created there too.
+* Epics and single issues are managed and delivered mostly in Claude Code.
+
+"Claude Code only" in this record is aimed at the delivery side, the automation that runs where epics and issues are delivered. Whether the skills that scheduled work runs, which a non-Claude harness reads too, must stay harness-neutral is an open question the maintainer deferred on [#366](https://github.com/mgasca/calendar/pull/366#issuecomment-6692829765); it is not decided here.
+
 ## Decision Drivers
 
 * **D1 Native capability**: new automation can use Claude Code mechanisms directly (hooks that deny, ask or inform; loops and routines; workflows; subagents) instead of the subset that has a portable equivalent.
@@ -120,3 +128,4 @@ Chosen option: "Claude-first period: new automation may be Claude Code only, the
 * Related: [ADR-0042](0042-layered-agent-guidance-and-hooks.md) (the layers and the agent-neutrality driver this record relaxes; it carries an amendment note pointing here), [ADR-0017](0017-dotnet-file-based-apps-for-repo-tooling.md) (repo tools stay shell-callable), story [0027](../stories/0027-focus-agent-guidance-on-claude-code-for-a-while.md) and epic #318 (first uses), story [0020](../stories/0020-restructure-agent-guidance.md) (the restructuring that created the layers).
 * Answers from review, given by the maintainer in conversation on 2026-11-06 and recorded on [#318](https://github.com/mgasca/calendar/issues/318#issuecomment-6689158337): (1) the revisit trigger is the maintainer's statement, replacing the proposed "a second harness in real use, or the epic's closing PR"; (2) new **deny** hooks keep a one-line root statement; (3) the existing *(hook)* lines in the root stay. The record is accepted as it merged in [#324](https://github.com/mgasca/calendar/pull/324), with only the trigger changed.
 * Revisit when the maintainer states it (see "The period and its end"). A second harness tried for a story before then does not end the period by itself, but it is the moment to measure what the Claude-only pieces cost it.
+* First uses delivered: story [0027](../stories/0027-focus-agent-guidance-on-claude-code-for-a-while.md) is implemented, and its card records what the period made possible and what it cost. When epic #318 closed, the maintainer had not stated an end to the period, so the period continues.

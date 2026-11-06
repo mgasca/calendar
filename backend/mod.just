@@ -23,10 +23,10 @@ build:
 test *args:
     dotnet test {{ args }}
 
-# Analyzers, formatting check and the EF Core model check
+# Analyzers and code style (in the build), the formatting check and the EF Core model check
 lint:
     dotnet build --no-restore
-    dotnet format --verify-no-changes --no-restore
+    dotnet format whitespace --verify-no-changes --no-restore
     dotnet tool restore
     dotnet ef migrations has-pending-model-changes --project src/Calendar.Infrastructure --no-build
 

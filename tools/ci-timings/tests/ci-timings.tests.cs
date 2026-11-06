@@ -126,12 +126,17 @@ public sealed class SupersessionTests
         Job("Frontend", "success", "14:47:56", "14:48:10"),
         Job("CI result", "failure", "14:49:26", "14:49:29", Step("All jobs succeeded", "failure", "14:49:27", "14:49:28")),
       ],
-      [Job("Backend", "success", "14:49:31", "14:51:00"), Job("Docs site", "success", "14:49:31", "14:50:40")])
+      [
+        Job("Backend", "success", "14:49:31", "14:51:00") with { CreatedAt = At("14:49:30") },
+        Job("Docs site", "success", "14:49:33", "14:50:40") with { CreatedAt = At("14:49:30") },
+        Job("CI result", "success", "14:51:03", "14:51:07") with { CreatedAt = At("14:51:01") },
+      ])
       .ShouldNotBeNull();
 
     pair.SupersededAt.ShouldBe(T0);
     pair.PushGap.ShouldBe(20);
     pair.Wait.ShouldBe(80);
+    pair.AllStarted.ShouldBe(82, "CI result waits on needs, so it is not one of the first jobs");
     pair.CancelNotHeardAt.ShouldBe(57, "the docs-only step started at 14:49:08; a post step that starts later does not count");
     pair.CancelHeardBy.ShouldBe(58);
     pair.CancelledJobsEnd.ShouldBe(73);
@@ -152,6 +157,7 @@ public sealed class SupersessionTests
     pair.CancelNotHeardAt.ShouldBeNull("the only step started before T0");
     pair.CancelHeardBy.ShouldBeNull();
     pair.Wait.ShouldBeNull("the superseding run has no started job");
+    pair.AllStarted.ShouldBeNull();
     pair.CancelledJobsEnd.ShouldBe(9);
   }
 
@@ -163,6 +169,10 @@ public sealed class SupersessionTests
       [Job("Backend", "cancelled", "14:40:02", "14:41:00")],
       [Job("Backend", "success", "14:48:13", "14:50:00")])
       .ShouldBeNull("a run cancelled by hand before the next push was not superseded");
+
+  [Fact]
+  public void FirstJobsStarted_IsNull_WithoutJobCreationTimes() =>
+    Supersession.FirstJobsStarted([Job("Backend", "success", "14:49:31", "14:51:00")]).ShouldBeNull();
 
   [Theory]
   [InlineData("Set up job", true)]
@@ -254,15 +264,15 @@ public sealed class ReportTests
   {
     var table = Report.SupersededTable(
     [
-      new SupersededPair(11, 12, T0, 20.4, 80, 57, 58, 73, 78, "CI result failure"),
-      new SupersededPair(21, 22, T0, 40, 2, null, 46.6, 50, 50, ""),
+      new SupersededPair(11, 12, T0, 20.4, 80, 82, 57, 58, 73, 78, "CI result failure"),
+      new SupersededPair(21, 22, T0, 40, 2, null, null, 46.6, 50, 50, ""),
     ]);
 
     table.ShouldBe("""
-      | Cancelled run | Superseded by | Pushes apart s | Wait s | Cancel heard s | Cancelled jobs end s | Old run ends s | Not cancelled |
-      | --- | --- | --: | --: | --: | --: | --: | --- |
-      | 11 | 12 | 20 | 80 | 57..58 | 73 | 78 | CI result failure |
-      | 21 | 22 | 40 | 2 | –..47 | 50 | 50 | – |
+      | Cancelled | Superseding | Push gap s | Wait s | All started s | Cancel heard s | Old jobs end s | Old run ends s | Not cancelled |
+      | --- | --- | --: | --: | --: | --: | --: | --: | --- |
+      | 11 | 12 | 20 | 80 | 82 | 57..58 | 73 | 78 | CI result failure |
+      | 21 | 22 | 40 | 2 | – | –..47 | 50 | 50 | – |
 
       """);
   }
@@ -272,27 +282,30 @@ public sealed class ReportTests
   {
     var table = Report.SupersessionSummary(
     [
-      new SupersededPair(11, 12, T0, 20, 80, 57, 58, 73, 78, ""),
-      new SupersededPair(21, 22, T0, 40, 2, null, 46, 50, 50, ""),
+      new SupersededPair(11, 12, T0, 20, 80, 82, 57, 58, 73, 78, ""),
+      new SupersededPair(21, 22, T0, 40, 2, 9, null, 46, 50, 50, ""),
     ],
-    [2, 3, 2]);
+    [2, 3, 2],
+    [9, 4]);
 
     table.ShouldBe("""
       | Seconds after the superseding run was created | n | min | median | p90 | max |
       | --- | --: | --: | --: | --: | --: |
       | Wait: the superseding run's first job starts | 2 | 2 | 2 | 80 | 80 |
+      | All of the superseding run's first jobs have started | 2 | 9 | 9 | 82 | 82 |
       | The old run's runners had not yet heard of the cancel (lower bound) | 1 | 57 | 57 | 57 | 57 |
       | The old run's runners had heard of it (upper bound) | 2 | 46 | 46 | 58 | 58 |
       | The old run's cancelled jobs end | 2 | 50 | 50 | 73 | 73 |
       | The old run ends | 2 | 50 | 50 | 78 | 78 |
       | Control: a pull request run that superseded nothing, created → first job | 3 | 2 | 2 | 3 | 3 |
+      | Control: the same runs, created → all first jobs started | 2 | 4 | 4 | 9 | 9 |
 
       """);
   }
 
   [Fact]
   public void SupersessionSummary_ShowsDashesForASegmentWithNoValues() =>
-    Report.SupersessionSummary([], []).ShouldContain("| The old run ends | 0 | – | – | – | – |");
+    Report.SupersessionSummary([], [], []).ShouldContain("| The old run ends | 0 | – | – | – | – |");
 
   [Fact]
   public void Clock_RendersMinutesAndSeconds()

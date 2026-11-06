@@ -118,7 +118,7 @@ Only when the maintainer asks, after reading the report:
 
 ### Delivering
 
-Delivery always runs `epic-delivery` on the epic, even when there is only one child. `epic-delivery` launches the delivery sessions, and each one works its child with `issue-handover`. The handover's rules for performance issues apply: baseline on the issue before implementing, the same quantity after, a record, and close on evidence. Who runs `epic-delivery` depends on how the request arrives:
+Delivery always runs `epic-delivery` on the epic, even when there is only one child. `epic-delivery` launches the delivery sessions, and each one works its child with `issue-handover`. The rules for performance issues in `docs/benchmarks/README.md` apply: baseline on the issue before implementing, the same quantity after, a record, and close on evidence. Who runs `epic-delivery` depends on how the request arrives:
 
 - **After a report in this session:** fork a session that runs `epic-delivery`, so the coordinator starts without the review's context. Give it the epic link and say that the briefs are already on the children. This skill doesn't coordinate or implement the children itself.
 - **A request only to deliver an epic filed earlier:** run `epic-delivery` in this session. The maintainer chose this on #347. Read the epic's delivery plan and the children's briefs, and ask only about what they leave open: the launcher when more than one is available, and anything the plan doesn't settle.

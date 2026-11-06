@@ -46,7 +46,13 @@ public static class HookRunner
       return new HookResult(0, Stderr: "agent-hooks pre-bash: no tool_input.command; letting it through");
     }
     Verdict? verdict = BashGuard.Evaluate(input.Command, input.Cwd, probe);
-    return verdict is null ? HookResult.Pass : new HookResult(0, HookOutput.PreToolUse(verdict));
+    if (verdict is not null)
+    {
+      return new HookResult(0, HookOutput.PreToolUse(verdict));
+    }
+    // An inform: context with no permissionDecision, so the command goes through the normal permission flow.
+    var note = PullRequestLinkCheck.Describe(input.Command, input.Cwd, probe);
+    return note is null ? HookResult.Pass : new HookResult(0, HookOutput.Context("PreToolUse", note));
   }
 
   private static HookResult PreEdit(HookInput input)

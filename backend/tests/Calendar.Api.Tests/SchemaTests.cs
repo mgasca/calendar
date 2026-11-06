@@ -12,7 +12,7 @@ public sealed class SchemaTests(PostgresFixture postgres) : ApiTestBase(postgres
   [InlineData("ix_tasks_open_due_at", "due_at")]
   public async Task OpenTaskDueIndex_ExcludesCompletedAndUndatedTasks(string indexName, string column)
   {
-    await using CalendarDbContext db = Postgres.Database.CreateMigratorContext();
+    await using CalendarDbContext db = Database.CreateMigratorContext();
     var definition = await db.Database.SqlQuery<string>(
         $"SELECT indexdef AS \"Value\" FROM pg_indexes WHERE tablename = 'tasks' AND indexname = {indexName}").SingleAsync(Ct);
 
@@ -27,7 +27,7 @@ public sealed class SchemaTests(PostgresFixture postgres) : ApiTestBase(postgres
   [InlineData("ix_users_email", "email")]
   public async Task UsersIndex_IsUniqueAmongRowsThatHaveTheValue(string indexName, string column)
   {
-    await using CalendarDbContext db = Postgres.Database.CreateMigratorContext();
+    await using CalendarDbContext db = Database.CreateMigratorContext();
     var definition = await db.Database.SqlQuery<string>(
         $"SELECT indexdef AS \"Value\" FROM pg_indexes WHERE tablename = 'users' AND indexname = {indexName}").SingleAsync(Ct);
 
@@ -47,7 +47,7 @@ public sealed class SchemaTests(PostgresFixture postgres) : ApiTestBase(postgres
   [Fact]
   public async Task UsersEmail_MustBeLowerCase()
   {
-    await using CalendarDbContext db = Postgres.Database.CreateMigratorContext();
+    await using CalendarDbContext db = Database.CreateMigratorContext();
 
     PostgresException ex = await Should.ThrowAsync<PostgresException>(async () => await db.Database.ExecuteSqlRawAsync(
         "INSERT INTO users (id, email, created_at) VALUES (gen_random_uuid(), 'Mixed@Example.com', now())",
@@ -60,7 +60,7 @@ public sealed class SchemaTests(PostgresFixture postgres) : ApiTestBase(postgres
   [Fact]
   public async Task EventsOwner_IsIndexed()
   {
-    await using CalendarDbContext db = Postgres.Database.CreateMigratorContext();
+    await using CalendarDbContext db = Database.CreateMigratorContext();
     var definition = await db.Database.SqlQueryRaw<string>(
         "SELECT indexdef AS \"Value\" FROM pg_indexes WHERE tablename = 'events' AND indexname = 'ix_events_owner_id'").SingleAsync(Ct);
 
@@ -72,7 +72,7 @@ public sealed class SchemaTests(PostgresFixture postgres) : ApiTestBase(postgres
   [InlineData("tasks", "fk_tasks_owner")]
   public async Task OwnerId_IsANonNullForeignKeyToUsers(string table, string constraint)
   {
-    await using CalendarDbContext db = Postgres.Database.CreateMigratorContext();
+    await using CalendarDbContext db = Database.CreateMigratorContext();
 
     var nullable = await db.Database.SqlQuery<string>(
         $"""
@@ -99,7 +99,7 @@ public sealed class SchemaTests(PostgresFixture postgres) : ApiTestBase(postgres
   [Fact]
   public async Task Task_WithBothDueValues_IsRejected()
   {
-    await using CalendarDbContext db = Postgres.Database.CreateMigratorContext();
+    await using CalendarDbContext db = Database.CreateMigratorContext();
 
     PostgresException ex = await Should.ThrowAsync<PostgresException>(async () => await db.Database.ExecuteSqlAsync(
         $"INSERT INTO tasks (id, owner_id, title, due_date, due_at) VALUES (gen_random_uuid(), {UserA}, 't', '2026-10-26', now())",
@@ -118,7 +118,7 @@ public sealed class SchemaTests(PostgresFixture postgres) : ApiTestBase(postgres
   [InlineData("(gen_random_uuid(), '  ', true, NULL, NULL, NULL, '2026-10-26', '2026-10-27')")] // blank title
   public async Task Event_ViolatingTheShapeRules_IsRejected(string values)
   {
-    await using CalendarDbContext db = Postgres.Database.CreateMigratorContext();
+    await using CalendarDbContext db = Database.CreateMigratorContext();
 
 #pragma warning disable EF1003 // values are fixed literals from the InlineData above, not user input
     PostgresException ex = await Should.ThrowAsync<PostgresException>(async () => await db.Database.ExecuteSqlRawAsync(
@@ -134,7 +134,7 @@ public sealed class SchemaTests(PostgresFixture postgres) : ApiTestBase(postgres
   [Fact]
   public async Task EventSpan_IsAGistIndexedGeneratedRange_OnlyForTimedEvents()
   {
-    await using CalendarDbContext db = Postgres.Database.CreateMigratorContext();
+    await using CalendarDbContext db = Database.CreateMigratorContext();
 
     var gist = await db.Database.SqlQueryRaw<string>(
         "SELECT indexdef AS \"Value\" FROM pg_indexes WHERE tablename = 'events' AND indexname = 'ix_events_span'").SingleAsync(Ct);
@@ -162,7 +162,7 @@ public sealed class SchemaTests(PostgresFixture postgres) : ApiTestBase(postgres
   [Fact]
   public async Task EventDateSpan_IsAPartialGistIndexedGeneratedRange_OnlyForAllDayEvents()
   {
-    await using CalendarDbContext db = Postgres.Database.CreateMigratorContext();
+    await using CalendarDbContext db = Database.CreateMigratorContext();
 
     var gist = await db.Database.SqlQueryRaw<string>(
         "SELECT indexdef AS \"Value\" FROM pg_indexes WHERE tablename = 'events' AND indexname = 'ix_events_date_span'").SingleAsync(Ct);
@@ -190,7 +190,7 @@ public sealed class SchemaTests(PostgresFixture postgres) : ApiTestBase(postgres
   [Fact]
   public async Task AppRole_CannotChangeTheSchema()
   {
-    await using CalendarDbContext db = Postgres.Database.CreateAppContext();
+    await using CalendarDbContext db = Database.CreateAppContext();
 
     PostgresException ex = await Should.ThrowAsync<PostgresException>(
       async () => await db.Database.ExecuteSqlRawAsync("DROP TABLE tasks", Ct));

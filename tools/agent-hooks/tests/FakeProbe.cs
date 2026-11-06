@@ -49,4 +49,20 @@ internal sealed class FakeProbe : IRepoProbe
     PullRequestQueries.Add((cwd, branch));
     return PullRequests.TryGetValue(branch, out PullRequest? pr) ? pr : null;
   }
+
+  /// <summary>The remote's default branch; null when git cannot tell.</summary>
+  public string? Default { get; set; } = "main";
+
+  public string? DefaultBranch(string cwd) => Default;
+
+  /// <summary>The base and body of each PR, by the selector gh is given ("" for the current branch's PR).</summary>
+  public Dictionary<string, PullRequestText> PullRequestTexts { get; } = new(StringComparer.Ordinal);
+
+  public List<(string? Selector, string? Repo)> PullRequestTextQueries { get; } = [];
+
+  public PullRequestText? PullRequestTextFor(string cwd, string? selector, string? repo)
+  {
+    PullRequestTextQueries.Add((selector, repo));
+    return PullRequestTexts.TryGetValue(selector ?? string.Empty, out PullRequestText? pr) ? pr : null;
+  }
 }

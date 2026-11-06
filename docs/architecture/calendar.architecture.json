@@ -69,7 +69,7 @@
       { "id": "ADR-0041", "title": "Per-user data ownership: scope every query and write with an EF Core global query filter keyed by the signed-in user", "status": "accepted", "file": "docs/decisions/0041-per-user-data-ownership.md", "url": "https://mgasca.github.io/calendar/adr/0041/" },
       { "id": "ADR-0042", "title": "Layer agent guidance by scope and enforce its invariants with Claude Code hooks built as repo tools", "status": "accepted", "file": "docs/decisions/0042-layered-agent-guidance-and-hooks.md", "url": "https://mgasca.github.io/calendar/adr/0042/" },
       { "id": "ADR-0043", "title": "Show form errors as red borders with a bubble, from the forms' own on-submit validation", "status": "accepted", "file": "docs/decisions/0043-form-validation-red-borders-and-bubble.md", "url": "https://mgasca.github.io/calendar/adr/0043/" },
-      { "id": "ADR-0044", "title": "Focus new agent automation on Claude Code for a while, keeping the guidance files agent-neutral", "status": "proposed", "file": "docs/decisions/0044-claude-first-agent-automation.md", "url": "https://mgasca.github.io/calendar/adr/0044/" }
+      { "id": "ADR-0044", "title": "Focus new agent automation on Claude Code for a while, keeping the guidance files agent-neutral", "status": "accepted", "file": "docs/decisions/0044-claude-first-agent-automation.md", "url": "https://mgasca.github.io/calendar/adr/0044/" }
     ],
     "stories": [
       { "id": "0001", "title": "Today view", "status": "implemented", "url": "https://mgasca.github.io/calendar/stories/0001/" },

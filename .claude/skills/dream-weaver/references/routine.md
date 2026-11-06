@@ -92,4 +92,9 @@ The weaver reads sessions; the sweep reads issues. Run the weaver after the day'
 
 ## What stays local
 
-The timer unit, the filled-in script, the log, the state directory and any recovery commands belong in a dated local memory (`type: project`) on the machine that runs them. The repository keeps only this sketch.
+The timer unit, the filled-in script, the log, the state directory and any recovery commands belong in a dated local memory (`type: project`) on the machine that runs them. The repository keeps only this sketch. The same holds for every scheduled routine and sweep, whichever harness runs it:
+
+- Scheduler units, host-specific paths, logs, previous sweep reports and recovery commands belong in dated local operations notes, not in the repository.
+- A sweep compares with the previous report and distinguishes unchanged backlog from new actionable work.
+- Verify the installed timer and script before asserting a cadence or that a scheduler runs the routine.
+- Re-probe tool versions and capabilities in the current environment. An old Node or SDK limitation is evidence about that observation, not a permanent repository constraint.

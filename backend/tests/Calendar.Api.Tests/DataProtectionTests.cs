@@ -12,17 +12,17 @@ public sealed class DataProtectionTests(PostgresFixture postgres) : ApiTestBase(
   [Fact]
   public async Task KeysAreStoredInPostgresAndVisibleToAnotherInstance()
   {
-    using var first = new CalendarApiFactory(Postgres.Database);
+    using var first = new CalendarApiFactory(Database);
     using HttpClient firstClient = first.CreateClient();
     first.Services.GetRequiredService<IDataProtectionProvider>()
       .CreateProtector("key-ring-test").Protect("create a key");
     IReadOnlyCollection<IKey> keysA = first.Services.GetRequiredService<IKeyManager>().GetAllKeys();
     keysA.Count.ShouldBeGreaterThan(0);
-    await using CalendarDbContext database = Postgres.Database.CreateAppContext();
+    await using CalendarDbContext database = Database.CreateAppContext();
     List<DataProtectionKey> stored = await database.DataProtectionKeys.AsNoTracking().ToListAsync(Ct);
     stored.Count.ShouldBeGreaterThan(0);
 
-    using var second = new CalendarApiFactory(Postgres.Database);
+    using var second = new CalendarApiFactory(Database);
     using HttpClient secondClient = second.CreateClient();
     IReadOnlyCollection<IKey> keysB = second.Services.GetRequiredService<IKeyManager>().GetAllKeys();
     keysB.Select(key => key.KeyId).ShouldBe(keysA.Select(key => key.KeyId), ignoreOrder: true);
@@ -31,14 +31,14 @@ public sealed class DataProtectionTests(PostgresFixture postgres) : ApiTestBase(
   [Fact]
   public async Task ProtectedPayloadSurvivesAnotherInstance()
   {
-    using var first = new CalendarApiFactory(Postgres.Database);
+    using var first = new CalendarApiFactory(Database);
     using HttpClient firstClient = first.CreateClient();
     var protectedValue = first.Services.GetRequiredService<IDataProtectionProvider>()
       .CreateProtector("cross-instance-test").Protect("calendar session");
-    await using CalendarDbContext database = Postgres.Database.CreateAppContext();
+    await using CalendarDbContext database = Database.CreateAppContext();
     (await database.DataProtectionKeys.CountAsync(Ct)).ShouldBeGreaterThan(0);
 
-    using var second = new CalendarApiFactory(Postgres.Database);
+    using var second = new CalendarApiFactory(Database);
     using HttpClient secondClient = second.CreateClient();
     var value = second.Services.GetRequiredService<IDataProtectionProvider>()
       .CreateProtector("cross-instance-test").Unprotect(protectedValue);

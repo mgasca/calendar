@@ -1,0 +1,222 @@
+{
+  "schema": 1,
+  "workflow": "ci.yml",
+  "record": "docs/benchmarks/0014-ci-job-baseline.md",
+  "method": "threshold = ceil(max(exp(logMedian + z * 1.4826 * logMad), median + max(floorSeconds, relativeMargin * median))); z = NormalQuantile(1 - alpha / jobs); nearest-rank statistics of each job's start-to-end seconds (ADR 0045)",
+  "minRuns": 30,
+  "constants": {
+    "alpha": 0.01,
+    "jobs": 5,
+    "z": 2.8782,
+    "floorSeconds": 15,
+    "relativeMargin": 0.1
+  },
+  "paths": {
+    "check": {
+      "status": "provisional",
+      "n": 4,
+      "window": {
+        "from": "2026-11-06T20:14:15Z",
+        "to": "2026-11-06T20:21:24Z",
+        "firstCommit": "209f497fa3cd3113ec7142258f87bdc8c7ebf534",
+        "lastCommit": "a0d3b4daebfb3fe91a2e58013ee2e61362b742df"
+      },
+      "jobs": {
+        "Backend": {
+          "n": 4,
+          "median": 76,
+          "logMedian": 4.330733,
+          "logMad": 0.054067,
+          "p90": 98,
+          "p95": 98,
+          "max": 98,
+          "threshold": 96
+        },
+        "Container image": {
+          "n": 4,
+          "median": 73,
+          "logMedian": 4.290459,
+          "logMad": 0.066249,
+          "p90": 79,
+          "p95": 79,
+          "max": 79,
+          "threshold": 97
+        },
+        "Docs site": {
+          "n": 4,
+          "median": 71,
+          "logMedian": 4.26268,
+          "logMad": 0.094029,
+          "p90": 80,
+          "p95": 80,
+          "max": 80,
+          "threshold": 107
+        },
+        "Frontend": {
+          "n": 4,
+          "median": 42,
+          "logMedian": 3.73767,
+          "logMad": 0.04879,
+          "p90": 46,
+          "p95": 46,
+          "max": 46,
+          "threshold": 57
+        },
+        "Tooling": {
+          "n": 4,
+          "median": 68,
+          "logMedian": 4.219508,
+          "logMad": 0.043172,
+          "p90": 76,
+          "p95": 76,
+          "max": 76,
+          "threshold": 83
+        }
+      },
+      "runs": [
+        {
+          "id": 42286613929,
+          "createdAt": "2026-11-06T20:14:15Z",
+          "event": "workflow_dispatch",
+          "commit": "209f497fa3cd3113ec7142258f87bdc8c7ebf534"
+        },
+        {
+          "id": 42286877700,
+          "createdAt": "2026-11-06T20:16:03Z",
+          "event": "workflow_dispatch",
+          "commit": "209f497fa3cd3113ec7142258f87bdc8c7ebf534"
+        },
+        {
+          "id": 42287131208,
+          "createdAt": "2026-11-06T20:17:49Z",
+          "event": "workflow_dispatch",
+          "commit": "209f497fa3cd3113ec7142258f87bdc8c7ebf534"
+        },
+        {
+          "id": 42287647050,
+          "createdAt": "2026-11-06T20:21:24Z",
+          "event": "workflow_dispatch",
+          "commit": "a0d3b4daebfb3fe91a2e58013ee2e61362b742df"
+        }
+      ]
+    },
+    "publication": {
+      "status": "provisional",
+      "n": 9,
+      "window": {
+        "from": "2026-11-06T20:04:12Z",
+        "to": "2026-11-06T22:14:30Z",
+        "firstCommit": "209f497fa3cd3113ec7142258f87bdc8c7ebf534",
+        "lastCommit": "897c048968617ba2c026193c98e928aa94139268"
+      },
+      "jobs": {
+        "Backend": {
+          "n": 9,
+          "median": 85,
+          "logMedian": 4.442651,
+          "logMad": 0.073203,
+          "p90": 99,
+          "p95": 99,
+          "max": 99,
+          "threshold": 117
+        },
+        "Container image": {
+          "n": 9,
+          "median": 70,
+          "logMedian": 4.248495,
+          "logMad": 0.089612,
+          "p90": 84,
+          "p95": 84,
+          "max": 84,
+          "threshold": 103
+        },
+        "Docs site": {
+          "n": 9,
+          "median": 97,
+          "logMedian": 4.574711,
+          "logMad": 0.020834,
+          "p90": 100,
+          "p95": 100,
+          "max": 100,
+          "threshold": 112
+        },
+        "Frontend": {
+          "n": 9,
+          "median": 52,
+          "logMedian": 3.951244,
+          "logMad": 0.056089,
+          "p90": 60,
+          "p95": 60,
+          "max": 60,
+          "threshold": 67
+        },
+        "Tooling": {
+          "n": 9,
+          "median": 70,
+          "logMedian": 4.248495,
+          "logMad": 0.145954,
+          "p90": 94,
+          "p95": 94,
+          "max": 94,
+          "threshold": 131
+        }
+      },
+      "runs": [
+        {
+          "id": 42285139981,
+          "createdAt": "2026-11-06T20:04:12Z",
+          "event": "push",
+          "commit": "209f497fa3cd3113ec7142258f87bdc8c7ebf534"
+        },
+        {
+          "id": 42287301827,
+          "createdAt": "2026-11-06T20:19:02Z",
+          "event": "push",
+          "commit": "a0d3b4daebfb3fe91a2e58013ee2e61362b742df"
+        },
+        {
+          "id": 42289655903,
+          "createdAt": "2026-11-06T20:35:33Z",
+          "event": "push",
+          "commit": "c4841f7fb872c5d4c83ca1ad547a6fd7071f840b"
+        },
+        {
+          "id": 42290319750,
+          "createdAt": "2026-11-06T20:40:23Z",
+          "event": "push",
+          "commit": "14b9a1dcfba1eb271a4451b897096811015e913d"
+        },
+        {
+          "id": 42290998175,
+          "createdAt": "2026-11-06T20:45:14Z",
+          "event": "push",
+          "commit": "0e16e2c339c6140bd594832fb4f1ed89f7950a4f"
+        },
+        {
+          "id": 42292343606,
+          "createdAt": "2026-11-06T20:54:56Z",
+          "event": "push",
+          "commit": "787d866b529a288cf7164ea15f4ef536ed315730"
+        },
+        {
+          "id": 42295163177,
+          "createdAt": "2026-11-06T21:15:07Z",
+          "event": "push",
+          "commit": "310fb31295d94c8235887bf7838cd8f6ffdf5e80"
+        },
+        {
+          "id": 42300654452,
+          "createdAt": "2026-11-06T21:55:29Z",
+          "event": "push",
+          "commit": "377e2bda0edc41cc85c09966909e4195da096353"
+        },
+        {
+          "id": 42303170684,
+          "createdAt": "2026-11-06T22:14:30Z",
+          "event": "push",
+          "commit": "897c048968617ba2c026193c98e928aa94139268"
+        }
+      ]
+    }
+  }
+}

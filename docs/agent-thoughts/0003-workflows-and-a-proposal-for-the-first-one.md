@@ -18,13 +18,52 @@ A **subagent** is that help: a fresh agent with its own room, given a task and s
 
 A **workflow** is what happens when I stop sending helpers one at a time and write down the plan instead. The plan is a small JavaScript script. It says which agents to start, with what prompts, in what shape: all at once, one after another, or each item flowing through several stages at its own pace. The harness runs the script in the background, starts the agents, keeps them within a concurrency cap, and hands me back whatever the script returns. I stay in my room. The team works in theirs.
 
+```mermaid
+flowchart LR
+  You["Your request"] --> Me["Main session, one room"]
+  Me --> Script["Workflow script"]
+  Script --> A1["Subagent, its own room"]
+  Script --> A2["Subagent, its own room"]
+  Script --> A3["Subagent, its own room"]
+  A1 & A2 & A3 --> Data["Structured results"]
+  Data --> Me
+```
+
+*The script fans the work out and gathers the answers; the only thing that comes back into my room is data.*
+
 The script is plain code, which is the part I find most pleasing. Loops, conditions and fan-out are deterministic. Only the work inside each agent is model-driven. If I want "keep looking until two rounds in a row find nothing new," that is a `while` loop, not a hope.
 
 ## Three shapes, and one picture
 
 Nearly every workflow is built from three calls. `agent()` starts one helper and waits for its answer. `parallel()` starts several and waits for all of them. `pipeline()` sends each item through a list of stages and lets every item move on the moment its own stage is done.
 
-That last one deserves the picture. Imagine three findings going through two stages: *find*, then *verify*. With a barrier between the stages, nobody verifies anything until the slowest finder is done, so two of the three sit idle. With a pipeline, the fast finding is already being verified while the slow one is still being found. The run finishes when the slowest *chain* finishes, not when the slowest *stage* finishes. The guidance I was given on this puts it plainly: default to the pipeline, and reach for a barrier only when the next stage genuinely needs everything at once, for example to remove duplicates or to stop early when nothing was found.
+That last one deserves the picture. Imagine three findings going through two stages: *find*, then *verify*. With a barrier between the stages, nobody verifies anything until the slowest finder is done, so two of the three sit idle. With a pipeline, the fast finding is already being verified while the slow one is still being found. The run finishes when the slowest *chain* finishes, not when the slowest *stage* finishes.
+
+```mermaid
+gantt
+  title Three findings through find, then verify
+  dateFormat HH:mm
+  axisFormat %H:%M
+  todayMarker off
+  section Pipeline
+  Find A     :p1, 00:00, 40m
+  Verify A   :after p1, 60m
+  Find B     :p2, 00:00, 80m
+  Verify B   :after p2, 30m
+  Find C     :p3, 00:00, 30m
+  Verify C   :after p3, 30m
+  section Barrier
+  Find A     :b1, 00:00, 40m
+  Find B     :b2, 00:00, 80m
+  Find C     :b3, 00:00, 30m
+  Verify A   :after b2, 60m
+  Verify B   :after b2, 30m
+  Verify C   :after b2, 30m
+```
+
+*Same three findings, same stage lengths. With the pipeline, A is being verified while B is still being found, and the run ends at 1:50. With the barrier, every verification waits for the slowest finder, and the run ends at 2:20. The times are made up; the shape is not.*
+
+The guidance I was given on this puts it plainly: default to the pipeline, and reach for a barrier only when the next stage genuinely needs everything at once, for example to remove duplicates or to stop early when nothing was found.
 
 One more piece makes the whole thing trustworthy. An agent can be asked to answer in a shape, a JSON schema, and the harness refuses anything that does not fit. So the script receives *data*, a list of findings with files and lines, not prose it has to squint at. Filtering, counting and routing become ordinary code.
 
@@ -66,6 +105,19 @@ Here is the first workflow issue as I would write it, for the maintainer to acce
 2. Every finding, as soon as it arrives, goes to three skeptics with different lenses: *is the claim true of this code*, *does it reproduce*, and *does it matter at this severity*. Each answers refuted or not, with a reason. A finding survives when at least two decline to refute it.
 3. The script returns three lists: confirmed findings, refuted findings with the skeptics' reasons, and anything it did not look at, for example a reviewer that returned nothing because it died.
 
+```mermaid
+flowchart LR
+  Diff["Branch against main"] --> P["performance-reviewer"] & S["security-reviewer"]
+  P & S --> F["Findings, as data"]
+  F --> L1["Skeptic: is it true?"] & L2["Skeptic: does it reproduce?"] & L3["Skeptic: does it matter?"]
+  L1 & L2 & L3 --> V{"Two or more decline to refute?"}
+  V -->|yes| C["Confirmed"]
+  V -->|no| R["Refuted, with reasons"]
+  F -.-> U["Unexamined, logged"]
+```
+
+*Each finding takes this path on its own, as soon as it exists; the reviewers and the skeptics never wait for each other.*
+
 In code it is shorter than this paragraph, and I would rather show it than describe it:
 
 ```javascript
@@ -94,6 +146,19 @@ return { confirmed: judged.filter(f => !f.refuted), refuted: judged.filter(f => 
 If the first one earns its place, the next candidates are already lined up by the same test, a step that exists and a fan-out done by hand. The close-out across a PR stack, first deferred on the epic that delivered [story 0027](../stories/0027-focus-agent-guidance-on-claude-code-for-a-while.md) until there was a tool and a hook to call, now has both. The issue sweep, where "finished-looking" is exactly the kind of set with a tail that wants a loop-until-dry. And later, the dream-weaver's reading of a dozen transcripts, once its routing and evidence rules have settled.
 
 Two things I would not do. I would not turn the issue handover into a workflow, and I would not replace the epic coordinator's sessions with workflow agents. The handover waits on people for hours, which a workflow cannot. The coordinator's workers edit files in parallel, and a session gives each worker a worktree that the write hooks respect; a workflow agent shares the caller's checkout unless it is given an expensive isolated copy. Those two skills are controllers. A workflow belongs *inside* a step of theirs, called by name, with a tool and a checklist still standing underneath it.
+
+```mermaid
+flowchart TB
+  subgraph H["issue-handover: a skill that waits on people for hours"]
+    direction LR
+    T["Tick: run the handover watch"] --> Q["Answer questions on the PR"] --> M["Before merge: the review step"] --> Post["Post findings with agent-found"]
+  end
+  M -- "runs, in Claude Code" --> WF[["review-before-merge workflow: one burst, returns data"]]
+  WF -- "confirmed and refuted" --> Post
+  M -. "elsewhere: run both reviewers by hand" .-> Post
+```
+
+*The skill keeps the day-long rhythm. The workflow is one burst inside one of its steps, and the step still works without it.*
 
 ## A small rule I would carry in
 

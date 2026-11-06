@@ -4,7 +4,7 @@ date: 2026-11-06
 issue: https://github.com/mgasca/calendar/issues/318
 pr:
   - https://github.com/mgasca/calendar/pull/324
-adrs: ["0042", "0017"]
+adrs: ["0042", "0017", "0044"]
 ---
 
 # 0027 Focus agent guidance on Claude Code for a while
@@ -27,7 +27,7 @@ This story builds on [0020](0020-restructure-agent-guidance.md), which created t
 
 ### Agreed scope
 
-* **The decision change, as an ADR.** A new record amends ADR-0042's agent-neutrality driver for a stated period: new agent guidance and automation may target Claude Code alone, without a portable twin, while the root `AGENTS.md` and the nested area files stay readable by any agent. The record names the condition on which the decision is revisited (for example a second harness in regular use, or the end of the exploration the maintainer sets) and is `accepted` before this story's children merge code that relies on it.
+* **The decision change, as an ADR.** [ADR-0044](../decisions/0044-claude-first-agent-automation.md) amends ADR-0042's agent-neutrality driver for a stated period: new agent guidance and automation may target Claude Code alone, without a portable twin, while the root `AGENTS.md` and the nested area files stay readable by any agent. The record names the condition on which the decision is revisited (for example a second harness in regular use, or the end of the exploration the maintainer sets) and is `accepted` before this story's children merge code that relies on it.
 * **Polling and re-arm to the harness** ([#319](https://github.com/mgasca/calendar/issues/319)): the handover watch runs on a Claude Code loop or scheduled routine, and the skill says what a tick does, not how to sleep.
 * **The handover watch as a repo tool** ([#320](https://github.com/mgasca/calendar/issues/320)): a .NET file-based app under `tools/` (ADR-0017) fetches new comments and reviews across an issue and its delivery PRs and keeps the seen-ID record, with tests.
 * **Invariants as hooks** ([#321](https://github.com/mgasca/calendar/issues/321)): an inform hook for a PR to `main` without `Closes` or `Refs`, and the public-post hygiene paragraph dropped from the skill in favour of the hook that already enforces it.
@@ -60,8 +60,9 @@ This story builds on [0020](0020-restructure-agent-guidance.md), which created t
 | --- | --- | --- |
 | [0042](../decisions/0042-layered-agent-guidance-and-hooks.md) | Layer agent guidance by scope and enforce invariants with hooks | Its layers are where each part of the skill moves; its agent-neutrality driver is what this story amends. |
 | [0017](../decisions/0017-dotnet-file-based-apps-for-repo-tooling.md) | .NET file-based apps for repo tooling | The handover watch tool and the new hook handler are built this way, with tests run by `just tools test`. |
+| [0044](../decisions/0044-claude-first-agent-automation.md) | Focus new agent automation on Claude Code for a while, keeping the guidance files agent-neutral | The decision this story asks for: which layers stay agent-neutral, what may be Claude Code only, and the trigger that ends the period. |
 
-A new ADR is expected: amend ADR-0042's agent-neutrality driver for a Claude-first period, with the revisit condition. Draft it with the `adr-draft` skill as the first delivery PR of the epic, before the children that rely on it.
+The new ADR is [0044](../decisions/0044-claude-first-agent-automation.md), drafted in PR 0 with this card. It is `proposed` until the maintainer approves it and becomes `accepted` in that PR, before the children merge code that relies on it.
 
 ### Other decisions (not ADR-worthy)
 
@@ -78,7 +79,7 @@ A new ADR is expected: amend ADR-0042's agent-neutrality driver for a Claude-fir
 
 | Area | Location |
 | --- | --- |
-| The decision change | `docs/decisions/00NN-….md` (next free number when drafted), `docs/architecture/calendar.architecture.json` |
+| The decision change | `docs/decisions/0044-claude-first-agent-automation.md`, `docs/architecture/calendar.architecture.json` |
 | The handover protocol | `.claude/skills/issue-handover/SKILL.md` |
 | Handover watch tool | `tools/<name>/` (name to confirm against `tools/README.md`), `tools/mod.just`, `tools/README.md` |
 | Hook handlers and tests | `tools/agent-hooks/BashGuard.cs`, `tools/agent-hooks/tests/` |

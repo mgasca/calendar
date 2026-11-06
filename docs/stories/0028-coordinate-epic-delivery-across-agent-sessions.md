@@ -1,0 +1,94 @@
+---
+status: planned
+date: 2026-11-06
+issue: https://github.com/mgasca/calendar/issues/325
+pr: []
+adrs: ["0042"]
+---
+
+# 0028 Coordinate epic delivery across agent sessions
+
+## Story
+
+> As a maintainer, I need a coordinator that launches and steers delivery sessions for an epic and tells me when to act, so that I can finish the epic without restarting workers or reconstructing its delivery state myself.
+
+Tracked in issue #325.
+
+## Background
+
+The first dream-weaver report in [story 0025](0025-consolidate-what-agent-sessions-learned-into-guidance.md) produced an epic whose monitoring session grouped ten children into five delivery sessions by overlapping files. That session surfaced useful decisions and delivery milestones, but left worker restarts to the maintainer and repeated unchanged reminders. The maintainer requested a reusable skill and a refined invocation prompt based on its full transcript.
+
+The maintainer also clarified that they intentionally used GitHub's native stacked PR feature to merge from the top. Historical immediate bases and grouped merge events must not be treated as proof of accidental folding. This story adds an epic coordinator alongside the existing issue-handover skill from [story 0020](0020-restructure-agent-guidance.md); it does not refactor that protocol. The separate handover refactoring work is tracked in issue #318 and its children.
+
+### Agreed scope
+
+* **Active coordination:** launch and steer independent delivery sessions and maintain issue/PR tracking within the accepted epic scope. The maintainer approves scope changes and performs merges.
+* **Work grouping:** use file overlap, dependencies and existing workers to assign ownership; do not fix the number at five or start duplicate workers.
+* **Shared instructions:** one repository skill and refined prompt usable by Claude Code and Codex/Mjolnir, with capability checks and honest reporting when a launch or watch requires user action.
+* **Actionable notifications:** reconcile every five minutes; notify only for maintainer actions or significant milestones, in Item / Change / State / Action tables. Keep unchanged reminders quiet.
+* **Native stack awareness:** distinguish native stacks from ordinary branch chains, recognise intentional top-of-stack group merges, assess current checks in trunk context, and verify final content and issue bookkeeping before diagnosing a gap.
+* **Verified finish:** stop epic monitoring after accepted delivery, delivered-revision checks, issue bookkeeping and the story record are complete; report related unfinished work separately.
+
+### Not in this story
+
+* Implementing a new scheduler, watch tool, API integration or runtime dependency.
+* Refactoring issue-handover, agent hooks or the work proposed in #318 and its children.
+* Authorising coordinator merges, unapproved product scope changes or edits to another worker's unrelated resources.
+* Installing personal skills or changing global agent settings.
+
+### Acceptance criteria
+
+1. **Given** an epic with overlapping files and active workers, **when** the coordinator plans delivery, **then** it assigns non-duplicated ownership and self-contained worker briefs without assuming a fixed session count.
+2. **Given** an authorised worker that stops before delivery, **when** its PR needs routine conflict repair, **then** the coordinator steers that worker directly where tools allow it and leaves scope decisions and merges to the maintainer.
+3. **Given** routine pending checks or unchanged reminders, **when** a five-minute reconciliation runs, **then** it stays quiet unless a maintainer action or significant milestone changes, using the agreed table when it notifies.
+4. **Given** a native stack merged from its top, **when** intermediate events mention historical parent bases, **then** the coordinator waits for stack reconciliation and verifies trunk delivery rather than reporting an accidental merge.
+5. **Given** a new PR head without checks, **when** the previous head was green, **then** the new head remains pending until its applicable checks are verified.
+6. **Given** completed epic requirements, checks, tracking and story evidence, **when** related follow-up issues remain open outside scope, **then** the coordinator reports them separately and stops the epic watch with an explicit Remaining line.
+7. **Given** the skill package, **when** its instructions and refined prompt are validated, **then** its references resolve and its behaviour is consistent across the supported agent environments without assuming unavailable tools.
+8. **Given** the change is complete, **when** I run `just check`, **then** it passes.
+
+## Design decisions
+
+### Any Decision Records
+
+| ADR | Decision | Why it matters for this story |
+| --- | --- | --- |
+| [0042](../decisions/0042-layered-agent-guidance-and-hooks.md) | Layer agent guidance by scope | This coordination procedure belongs in an on-demand skill and supporting references, not root guidance or a new tool. |
+
+No new ADR is expected. The user explicitly requested support for Claude Code and Codex/Mjolnir; the separate proposed Claude-first story does not change this story's agreed scope.
+
+### Other decisions (not ADR-worthy)
+
+* **Active coordinator:** the maintainer chose launch/steer/tracking authority instead of the original notification-only role.
+* **Five-minute reconciliation:** the maintainer selected actionable milestone notifications rather than a report on every change.
+* **Source-backed stack reference:** preserve GitHub's native stack semantics and distinguish them from conventional branch-chain behaviour.
+
+## Implementation notes
+
+*Planned. This section is completed as the story is built.*
+
+### Where things live
+
+| Area | Location |
+| --- | --- |
+| Coordinator skill | `.claude/skills/epic-delivery/SKILL.md` |
+| Refined prompt | `.claude/skills/epic-delivery/references/coordinator-prompt.md` |
+| Stack reference | `.claude/skills/epic-delivery/references/stacked-prs.md` |
+
+### API
+
+No changes.
+
+### Testing
+
+Validate the skill package and references; use read-only scenarios for native stack merge events, a stopped worker, new-head CI and completion with an unrelated follow-up. Run docs corpus and publication checks for this card. Distinguish simulated decisions from actual live orchestration and native stack merges.
+
+### Lessons learned, known issues and follow-ups
+
+To be completed during delivery. Native GitHub stack support must be inspected rather than inferred from an immediate base branch.
+
+## User guide
+
+*Planned behaviour. This section is finalised when the story is implemented.*
+
+Ask: **Use epic-delivery to coordinate &lt;epic URL&gt;.** The coordinator reads the epic and story, groups and steers workers, and reports decisions or milestones in tables. You approve scope changes and merge PRs, including native stack groups from the top. The coordinator verifies completion and stops; related unfinished work is listed separately.

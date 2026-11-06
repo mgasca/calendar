@@ -4,6 +4,7 @@ date: 2026-11-06
 issue: https://github.com/mgasca/calendar/issues/380
 pr:
   - https://github.com/mgasca/calendar/pull/391
+  - https://github.com/mgasca/calendar/pull/394
 adrs: ["0012", "0017", "0039", "0045"]
 ---
 
@@ -29,7 +30,7 @@ Agreed with the maintainer on epic #380 (in a Claude Code session, recorded on t
 
 * **A run-time gate per job and path:** Backend, Frontend, Docs site, Tooling and Container image each have a threshold per path: the **publication** path, when the run built the docs publication artifact (pushes to `main` and docs-only pull requests), and the **check** path otherwise (dispatches and every other pull request). A run is classified by what it did, not by its event. The quantity is the job's start-to-end time; queue time and skipped jobs are not gated.
 * **Fails only on a clear outlier:** the threshold is the robust log-normal bound of ADR-0045 (median and MAD of log time, with `z` from a budget of about 1 % of PR runs across all gated jobs), and never less than an absolute floor and a relative margin above the median. Its constants are provisional until record 0014 calibrates them.
-* **A pinned, committed baseline:** `.github/ci-baseline.json`, measured from at least 30 successful runs per job and path on `main`, with n, window, commits and robust statistics (median, MAD, nearest-rank percentiles), written by `ci-timings baseline` and backed by benchmark record 0014 (#384). Runs on `main` never move it.
+* **A pinned, committed baseline:** `.github/ci-baseline.json`, measured from at least 30 successful runs per job and path on `main`, with n, window, commits and robust statistics (median, MAD, nearest-rank percentiles), written by `ci-timings --baseline` and backed by benchmark record 0014 (#384). Runs on `main` never move it.
 * **A back-test:** the threshold is evaluated on runs held out of the baseline, and record 0014 reports the observed false-failure rate per job and across jobs.
 * **The gate in `CI result`:** a step in the single required check (#385). It fails pull request and merge-group runs and only reports on pushes and dispatches. Its message names the job, its time, the threshold and the baseline median. Its added time on the critical path is measured and reported.
 * **A deliberate update path:** a PR that adds necessary time regenerates the baseline and adds a benchmark record in the same PR, so the new threshold applies to its own run and shows in review. `docs/benchmarks/README.md` documents it.
@@ -43,7 +44,7 @@ Agreed with the maintainer on epic #380 (in a Claude Code session, recorded on t
 * **Gating queue time or a run's wall clock as a whole:** the trend check may report them, but no check fails on them.
 * **Updating the baseline automatically:** it moves only with a deliberate PR and a record.
 * **Gating CodeQL, dependency review, Pages or the infrastructure workflows:** only the jobs of `ci.yml` that `CI result` needs.
-* **A skip switch for runner incidents:** open question 1 of ADR-0045; until the maintainer decides, the remedy is re-running all jobs.
+* **A skip switch for runner incidents:** the maintainer chose none for now (#391); re-running all jobs is the only remedy.
 
 ### Dependencies
 

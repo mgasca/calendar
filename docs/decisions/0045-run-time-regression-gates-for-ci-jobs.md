@@ -95,11 +95,11 @@ A step in `CI result`, the single required check of [ADR-0012](0012-ci-and-depen
 * **Location:** `.github/ci-baseline.json`, beside the workflow it describes, read from the commit under test (the merge commit of a pull request).
 * **Content:** a schema version, the method and constants (`α`, `J`, `z`, `floor`, `r`), the benchmark record it came from, and per job and path: `n`, the window, the first and last commit, the run IDs, the median, the log-MAD, p90, the maximum and the threshold in seconds.
 * **Source:** measured from runs on `main`: push runs for the publication path, and `workflow_dispatch` runs on `main` for the check path, which take the same steps as a non-docs pull request run (record 0012). Pull request runs carry the PR's own change, so they are not in the baseline; they are the held-out set of the check-path back-test. Dispatches run one at a time and only with the maintainer's approval on the issue, as in #347. They are spread over the day rather than back to back, because a baseline from one hour understates how runner speed varies. Record 0014 states the window's span, and how much of the held-out set falls outside the baseline's hours.
-* **Written by** `ci-timings baseline`, never by hand, so the thresholds always follow from the stated sample and constants.
+* **Written by** `ci-timings --baseline`, never by hand, so the thresholds always follow from the stated sample and constants.
 
 ### Updating the baseline deliberately
 
-A pull request that adds necessary time (a new check, a slower but required step) regenerates `.github/ci-baseline.json` with `ci-timings baseline` and adds a benchmark record in the same PR. Because the gate reads the file from the commit under test, the new threshold applies to that PR's own run, and the change to the file is in the diff the reviewer approves. Nothing else moves the baseline: runs on `main` never update it, so it cannot creep upward.
+A pull request that adds necessary time (a new check, a slower but required step) regenerates `.github/ci-baseline.json` with `ci-timings --baseline` and adds a benchmark record in the same PR. Because the gate reads the file from the commit under test, the new threshold applies to that PR's own run, and the change to the file is in the diff the reviewer approves. Nothing else moves the baseline: runs on `main` never update it, so it cannot creep upward.
 
 A suspected false failure is retried with **Re-run all jobs**. "Re-run failed jobs" re-runs only `CI result`, which reads the same durations again. A second failure is evidence of a regression.
 
@@ -107,10 +107,10 @@ A suspected false failure is retried with **Re-run all jobs**. "Re-run failed jo
 
 A scheduled workflow (daily, and on demand) compares the last `N = 20` successful push runs per job with the publication-path baseline:
 
-* **Test:** a one-sided Mann–Whitney U test that the recent durations are stochastically larger than the baseline's, at `p < 0.01` per job. It needs no assumption about the shape of the distribution, which suits skewed durations, and it is exact and deterministic at these sizes (a bootstrap would be neither at `n = 20` without a fixed seed).
+* **Test:** a one-sided Mann–Whitney U test that the recent durations are stochastically larger than the baseline's, at `p < 0.01 / J = 0.002` per job, corrected for the five jobs as the gate is: at `p < 0.01` each, a daily check over five jobs would report a spurious shift on roughly 5 % of days before the minimum-effect rule; at `0.002`, roughly 1 %. It needs no assumption about the shape of the distribution, which suits skewed durations, and it is exact and deterministic at these sizes (a bootstrap would be neither at `n = 20` without a fixed seed).
 * **Effect:** the Hodges–Lehmann estimate of the shift (the median of all pairwise differences, recent minus baseline), the estimator that goes with the Mann–Whitney test. It reports only when the test is significant **and** the shift is at least `max(10 s, 5 %)` of the baseline median, so a significant but negligible shift raises nothing.
 * **Output:** it opens one issue labelled `performance`, or comments on the open one, naming the job, the shift and its interval, both samples and the commits in the recent window. It never fails a run. Its constants are provisional like the gate's, and #386 proves it on a constructed history.
-* Runs on `main` on one day share runner conditions, so the p-value is optimistic. The minimum effect is the guard against that.
+* Runs on `main` on one day share runner conditions, so the p-value is optimistic, and windows on consecutive days overlap, so the daily rates above are rough, not independent trials. The minimum effect is the guard against both.
 
 ### Consequences
 
@@ -184,8 +184,8 @@ A scheduled workflow (daily, and on demand) compares the last `N = 20` successfu
 * **Related:** [ADR-0012](0012-ci-and-dependency-updates.md) (`CI result` is the single required check), [ADR-0017](0017-dotnet-file-based-apps-for-repo-tooling.md) (the baseline and trend logic is a .NET file-based app), [ADR-0039](0039-architecture-model-and-visualization-tooling.md) (the `delivery-performance` control in the CALM model will carry the baseline and thresholds, #388).
 * **Supersedes in part:** the rule in `docs/benchmarks/README.md` that no timing is asserted in CI, and story 0033's out-of-scope line "Gating CI on timings". Both are amended in the PR that adds this record. No earlier ADR decided either, so no ADR is superseded.
 * **Delivery:** epic #380 and story [0034](../stories/0034-gate-ci-job-run-times-against-a-pinned-baseline.md): #384 (baseline and back-test, record 0014), #385 (the PR gate), #386 (the trend check), #387 (mechanism guards), #388 (CALM control and guard map). Nothing that gates CI merges before this record is accepted.
-* **Open questions for the reviewer:**
-  1. Should a maintainer be able to skip the gate for one run (for example a label such as `runtime-gate-skip`) during a known runner incident, or is "Re-run all jobs" the only remedy?
-  2. Is `.github/ci-baseline.json` the right place, or should the baseline live with the records in `docs/benchmarks/` (the docs site would then need to ignore it)?
-  3. Are the provisional constants (`α = 1 %`, `floor = 15 s`, `r = 10 %`; trend `N = 20`, `p < 0.01`, minimum effect `max(10 s, 5 %)`) acceptable as starting values for record 0014 to calibrate?
+* **Answered by the maintainer on #391** (in a Claude Code session, relayed by the epic coordinator):
+  1. **Skip switch:** none for now. "Re-run all jobs" is the only remedy for a suspected false failure or a runner incident.
+  2. **Baseline location:** `.github/ci-baseline.json`.
+  3. **Constants:** accepted as starting values for record 0014 to calibrate (`α = 1 %`, `floor = 15 s`, `r = 10 %`; trend `N = 20`, minimum effect `max(10 s, 5 %)`), with one change: the trend significance is `p < 0.01 / J = 0.002` per job, corrected for the five jobs as the gate is.
 * **Revisit when:** the back-test or a month of PR runs shows a false-failure rate above the budget (recalibrate, then reconsider the log-normal fit); a job is added or split (re-measure, and `J` changes); the comparison in `CI result` needs more than comparing numbers (move it into the tool and measure its cost); or GitHub changes runner hardware for `ubuntu-latest` (re-measure the baseline). Record 0014 and the baseline file carry the same conditions.

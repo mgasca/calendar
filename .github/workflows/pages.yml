@@ -216,10 +216,21 @@ jobs:
               return;
             }
             core.setOutput('deploy', 'true');
+            // deploy-pages v5 reads pages_build_version from GITHUB_SHA. Default-branch
+            // events reuse it across publications (#285), even with serialized workflows.
+            // Include the attempt so re-running only this job also gets a fresh version.
+            const { createHash } = require('node:crypto');
+            const version = createHash('sha1')
+              .update(`${process.env.SNAPSHOT}:${context.runId}:${process.env.GITHUB_RUN_ATTEMPT}`)
+              .digest('hex');
+            core.setOutput('version', version);
       - name: Deploy production and previews
         if: steps.current.outputs.deploy == 'true'
         id: deployment
         uses: actions/deploy-pages@368f82528645a54fb793d4d04e342629a3f51346 # v5.0.1
+        env:
+          # Step-local input to deploy-pages; source SHA and OIDC claims stay unchanged.
+          GITHUB_SHA: ${{ steps.current.outputs.version }}
         with:
           artifact_name: ${{ needs.assemble.outputs.artifact }}
       - name: Link published preview

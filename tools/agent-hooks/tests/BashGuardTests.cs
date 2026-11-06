@@ -99,6 +99,39 @@ public sealed class BashGuardTests
   }
 
   [Theory]
+  [InlineData("gh pr create --title t --body \"$(cat <<'EOF'\nSummary\n\nsee /home/me/x.md\nEOF\n)\"")]
+  [InlineData("gh pr create --title t --body \"$(cat <<'EOF'\nIt's \"quoted\" (a) | b && c\nsee /home/me/x.md\nEOF\n)\" && echo done")]
+  [InlineData("gh pr create --title t --body 'Summary\n\nsee /home/me/x.md'")]
+  [InlineData("gh pr comment 1 --body \"Summary;\nsee /home/me/x.md\"")]
+  [InlineData("gh pr comment 1 --body-file - <<'EOF'\nSummary\nsee /home/me/x.md\nEOF")]
+  public void Private_details_on_a_later_line_of_a_multi_line_body_are_denied(string command)
+  {
+    Verdict verdict = BashGuard.Evaluate(command, Root, _probe).ShouldNotBeNull();
+
+    verdict.Decision.ShouldBe("deny");
+    verdict.Reason.ShouldContain("/home/me/x.md");
+  }
+
+  [Theory]
+  [InlineData("gh issue comment 1 -F /tmp/body.md")]
+  [InlineData("gh issue comment 1 --body-file=/tmp/body.md")]
+  public void Body_file_contents_are_scanned_in_the_short_and_equals_forms(string command)
+  {
+    _probe.Files["/tmp/body.md"] = "ran from /home/me/repo";
+
+    BashGuard.Evaluate(command, Root, _probe).ShouldNotBeNull().Reason.ShouldContain("/home/me/repo");
+  }
+
+  [Fact]
+  public void A_line_of_a_multi_line_body_is_not_run_as_a_command()
+  {
+    _probe.Dirty.Add("/repo/AGENTS.md");
+
+    BashGuard.Evaluate("git commit -m \"$(cat <<'EOF'\nfix\ngit restore AGENTS.md\nEOF\n)\"", Root, _probe).ShouldBeNull();
+    _probe.UnstagedQueries.ShouldBeEmpty();
+  }
+
+  [Theory]
   [InlineData("just db migrate")]
   [InlineData("just db::up db::migrate")]
   [InlineData("just db reset")]

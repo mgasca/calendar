@@ -2,12 +2,6 @@
 
 This folder describes the Calendar system in the [FINOS Common Architecture Language Model](https://calm.finos.org/) (CALM 1.3), the tooling chosen in [ADR-0039](../decisions/0039-architecture-model-and-visualization-tooling.md) for story [0012](../stories/0012-architecture-visualization-on-the-documentation-site.md). The documentation site renders it as the **Architecture** section.
 
-| File | What it is |
-| --- | --- |
-| [`calendar.architecture.json`](calendar.architecture.json) | The architecture: nodes, interfaces, relationships, controls, business flows, the views the site draws and the list of every ADR and story. |
-| [`controls/*.requirement.json`](controls/) | JSON Schema 2020-12 documents that define what each control's inline `config` must contain. |
-| [`url-mapping.json`](url-mapping.json) | Maps the requirement URLs to the local files, so validation works offline and before a branch is merged. |
-
 ## How the model is organised
 
 - **Nodes** are the parts of the system: the web app, the API, the generated client and its contract, the database, the migrator, the infra tool, CI, the Azure resources, the decision log and the documentation site. Actors are the calendar user and the maintainer; Google Identity is the external identity provider.

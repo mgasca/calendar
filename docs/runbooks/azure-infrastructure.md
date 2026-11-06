@@ -1,3 +1,7 @@
+---
+order: 2
+---
+
 # Azure infrastructure
 
 This runbook creates the Azure resources for staging, then for production, in the UK South region. Each environment has its own resources. Use only synthetic (made-up) data in staging.

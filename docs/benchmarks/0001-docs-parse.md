@@ -1,3 +1,8 @@
+---
+subject: "Loading the ADRs and stories for the docs site and tests"
+harness: "frontend/apps/docs/benchmarks/parse.bench.ts"
+---
+
 # 0001 Loading the ADRs and stories
 
 - **Date:** 2026-10-31

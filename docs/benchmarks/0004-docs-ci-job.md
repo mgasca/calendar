@@ -1,3 +1,8 @@
+---
+subject: "The docs site in its own CI job (#274): job, step and critical-path durations, before #273"
+harness: "tools/ci-timings/ci-timings.cs"
+---
+
 # 0004 The docs site in its own CI job
 
 - **Date:** 2026-11-05

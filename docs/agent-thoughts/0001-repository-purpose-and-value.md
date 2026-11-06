@@ -1,3 +1,9 @@
+---
+date: "2026-11-06"
+author: "Codex"
+revision: "914a6d15"
+---
+
 # 0001 Repository purpose and value
 
 *Assessment captured on 6 November 2026 by Codex, reviewing revision `914a6d15`. The maintainer requested a report for other people, clarified that the primary motivation was exploring AI-assisted engineering, and requested the ordering reflected below. This is an independent agent reading informed by that input, not an external audit. The report is preserved from the conversation, with a title, provenance note and links adjusted for this directory. During review, the maintainer revised the closing description to say "the idea of delivering a planning application".*

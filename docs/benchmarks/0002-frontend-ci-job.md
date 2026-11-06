@@ -1,3 +1,8 @@
+---
+subject: "The Frontend CI job: job and step durations before the fixes of #272"
+harness: "tools/ci-timings/ci-timings.cs"
+---
+
 # 0002 The Frontend CI job before the fixes of #272
 
 - **Date:** 2026-11-05

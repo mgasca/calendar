@@ -309,8 +309,38 @@ jobs:
     if: ${{ always() }}
     needs: [backend, frontend, docs, tooling, image]
     runs-on: ubuntu-latest
+    # actions: read lets the step below read this run's job conclusions from the API.
+    permissions:
+      actions: read
     steps:
-      - name: All jobs succeeded
-        if: ${{ contains(needs.*.result, 'failure') || contains(needs.*.result, 'cancelled') }}
-        run: exit 1
-      - run: echo "All CI jobs passed."
+      # Passes only when every needed job succeeded: failed, cancelled, skipped or anything else fails (#368). The jobs
+      # API is checked as well, because in run 42270142424 a job that failed in "Set up job" did not show as failed in
+      # `needs`, and this check turned green.
+      - name: All needed jobs succeeded
+        env:
+          NEEDS: ${{ toJSON(needs) }}
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          jq -r 'to_entries[] | "\(.key): \(.value.result)"' <<< "$NEEDS"
+          if ! jq -e 'length > 0 and all(.[]; .result == "success")' <<< "$NEEDS" > /dev/null; then
+            echo "::error::A needed job did not succeed."
+            exit 1
+          fi
+          # Every other job of this run attempt, except this one and the optional Cancel superseded runs. Up to three tries,
+          # 5 s apart, while the API errs or still shows a job as running; whatever the last try finds decides.
+          for try in 1 2 3; do
+            if others=$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID/attempts/$GITHUB_RUN_ATTEMPT/jobs?per_page=100" \
+              --jq '.jobs[] | select(.name != "CI result" and .name != "Cancel superseded runs")
+                | select(.conclusion != "success") | "\(.name): \(.status) \(.conclusion)"'); then
+              if [ -z "$others" ] || ! grep -qv ': completed ' <<< "$others"; then break; fi
+            else
+              others="the jobs API could not be read"
+            fi
+            [ "$try" = 3 ] || sleep 5
+          done
+          if [ -n "$others" ]; then
+            echo "::error::The jobs API reports jobs that did not succeed:"
+            echo "$others"
+            exit 1
+          fi
+          echo "All CI jobs passed."

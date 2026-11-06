@@ -12,6 +12,9 @@ public static partial class BashGuard
   private static readonly string[] GhPostSubjects = ["issue", "pr"];
   private static readonly string[] GhPostVerbs = ["create", "comment", "edit", "review"];
 
+  // gh api's long options that send a body or a field; -f and -F count in any spelling (-f k=v, -fk=v).
+  private static readonly string[] GhApiBodyOptions = ["--field", "--raw-field", "--input"];
+
   // git's global options that take the next word as their value (-C is applied to the directory instead).
   private static readonly string[] GitGlobalOptionsWithValue = ["-c", "--git-dir", "--work-tree", "--namespace", "--config-env"];
 
@@ -225,8 +228,10 @@ public static partial class BashGuard
     {
       return null;
     }
-    var isPost = (GhPostSubjects.Contains(tokens[1]) && GhPostVerbs.Contains(tokens[2]))
-      || (tokens[1] == "api" && tokens.Skip(2).Any(t => t is "-f" or "-F" or "--field" or "--raw-field" or "--input"));
+    var api = tokens[1] == "api";
+    var isPost = api
+      ? tokens.Skip(2).Any(IsApiBodyOption)
+      : GhPostSubjects.Contains(tokens[1]) && GhPostVerbs.Contains(tokens[2]);
     if (!isPost)
     {
       return null;
@@ -235,20 +240,17 @@ public static partial class BashGuard
     var i = 1;
     while (i < tokens.Count)
     {
-      if (tokens[i] is "--body-file" or "-F" && tokens[1] != "api" && i + 1 < tokens.Count)
+      (var source, var words) = api ? ApiBodySource(tokens, i) : BodyFileSource(tokens, i);
+      if (source is null)
       {
-        text.AppendLine(BodyFile(segment, tokens[i + 1], probe) ?? string.Empty);
-        i += 2;
-      }
-      else if (tokens[i].StartsWith("--body-file=", StringComparison.Ordinal))
-      {
-        text.AppendLine(BodyFile(segment, tokens[i]["--body-file=".Length..], probe) ?? string.Empty);
+        text.AppendLine(tokens[i]);
         i++;
       }
       else
       {
-        text.AppendLine(tokens[i]);
-        i++;
+        // The source's own path stays on this machine, so only what it holds is scanned (#369).
+        text.AppendLine(BodyFile(segment, source, probe) ?? string.Empty);
+        i += words;
       }
     }
     List<string> hits = [.. PrivateDetailRegex().Matches(text.ToString()).Select(m => m.Value).Distinct(StringComparer.Ordinal)];
@@ -260,7 +262,55 @@ public static partial class BashGuard
         + "issue/PR links, and leave session, task and subagent handles out (AGENTS.md: public GitHub posts).");
   }
 
-  /// <summary>The text a <c>--body-file</c> names: the command's heredoc for <c>-</c> (stdin), otherwise the file's contents.</summary>
+  /// <summary>
+  /// The body file of a <c>gh issue</c> or <c>gh pr</c> post at word <paramref name="i"/> (<c>--body-file f</c>, <c>-F f</c>,
+  /// <c>--body-file=f</c>) and how many words name it; a null source for any other word.
+  /// </summary>
+  private static (string? Source, int Words) BodyFileSource(IReadOnlyList<string> tokens, int i) =>
+    tokens[i] switch
+    {
+      "--body-file" or "-F" when i + 1 < tokens.Count => (tokens[i + 1], 2),
+      var word when word.StartsWith("--body-file=", StringComparison.Ordinal) => (word["--body-file=".Length..], 1),
+      _ => (null, 1),
+    };
+
+  /// <summary>True for a <c>gh api</c> option that sends a request body or a field, in any of its spellings.</summary>
+  private static bool IsApiBodyOption(string word) =>
+    word.StartsWith("-f", StringComparison.Ordinal)
+    || word.StartsWith("-F", StringComparison.Ordinal)
+    || GhApiBodyOptions.Any(o => word == o || word.StartsWith(o + "=", StringComparison.Ordinal));
+
+  /// <summary>
+  /// The local source gh reads a <c>gh api</c> body from at word <paramref name="i"/>, and how many words name it:
+  /// <c>--input</c>'s file, or the file of a typed field's <c>@</c> value (<c>-F key=@file</c>); <c>-</c> is stdin. A null
+  /// source for any other word, a raw field included (<c>-f key=@x</c> sends the text <c>@x</c>).
+  /// </summary>
+  private static (string? Source, int Words) ApiBodySource(IReadOnlyList<string> tokens, int i)
+  {
+    var word = tokens[i];
+    var next = i + 1 < tokens.Count ? tokens[i + 1] : null;
+    return word switch
+    {
+      "--input" when next is not null => (next, 2),
+      "-F" or "--field" when next is not null && FieldFile(next) is { } file => (file, 2),
+      _ when word.StartsWith("--input=", StringComparison.Ordinal) => (word["--input=".Length..], 1),
+      _ when word.StartsWith("--field=", StringComparison.Ordinal) => (FieldFile(word["--field=".Length..]), 1),
+      _ when word.StartsWith("-F", StringComparison.Ordinal) && word.Length > 2 => (FieldFile(word[2..]), 1),
+      _ => (null, 1),
+    };
+  }
+
+  /// <summary>The file a typed field <c>key=@file</c> reads its value from (<c>-</c> for stdin), or null for a plain value.</summary>
+  private static string? FieldFile(string field)
+  {
+    var equals = field.IndexOf('=', StringComparison.Ordinal);
+    return equals >= 0 && equals + 1 < field.Length && field[equals + 1] == '@' ? field[(equals + 2)..] : null;
+  }
+
+  /// <summary>
+  /// The text a body source names (<c>--body-file</c>, <c>--input</c>, a field's <c>@file</c>): the command's heredoc for
+  /// <c>-</c> (stdin), otherwise the file's contents.
+  /// </summary>
   internal static string? BodyFile(ShellCommand.Segment segment, string path, IRepoProbe probe) =>
     path == "-" ? segment.Stdin : probe.ReadFile(segment.Cwd, path);
 

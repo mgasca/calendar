@@ -122,6 +122,55 @@ public sealed class BashGuardTests
     BashGuard.Evaluate(command, Root, _probe).ShouldNotBeNull().Reason.ShouldContain("/home/me/repo");
   }
 
+  // #369: gh api reads a body from --input or from a typed field's @ value; the guard reads the same source.
+  [Theory]
+  [InlineData("gh api repos/o/r/issues/1/comments --input body.json")]
+  [InlineData("gh api repos/o/r/issues/1/comments --input=body.json")]
+  [InlineData("gh api -X PATCH repos/o/r/issues/comments/9 --input body.json")]
+  [InlineData("gh api repos/o/r/issues/1/comments -F body=@body.json")]
+  [InlineData("gh api repos/o/r/issues/1/comments --field body=@body.json")]
+  [InlineData("gh api repos/o/r/issues/1/comments --field=body=@body.json")]
+  [InlineData("gh api repos/o/r/issues/1/comments -Fbody=@body.json")]
+  public void A_gh_api_body_read_from_a_file_is_scanned(string command)
+  {
+    _probe.Files["body.json"] = "{\"body\": \"see /home/someone/dev/x\"}";
+
+    Verdict verdict = BashGuard.Evaluate(command, Root, _probe).ShouldNotBeNull();
+
+    verdict.Decision.ShouldBe("deny");
+    verdict.Reason.ShouldContain("/home/someone/dev/x");
+  }
+
+  [Theory]
+  [InlineData("gh api repos/o/r/issues/1/comments --input - <<'EOF'\n{\"body\": \"see /home/someone/dev/x\"}\nEOF")]
+  [InlineData("cat <<'EOF' | gh api repos/o/r/issues/1/comments --input -\n{\"body\": \"see /home/someone/dev/x\"}\nEOF")]
+  [InlineData("gh api repos/o/r/issues/1/comments -F body=@- <<'EOF'\nsee /home/someone/dev/x\nEOF")]
+  public void A_gh_api_body_read_from_a_heredoc_is_scanned(string command) =>
+    BashGuard.Evaluate(command, Root, _probe).ShouldNotBeNull().Reason.ShouldContain("/home/someone/dev/x");
+
+  [Theory]
+  [InlineData("gh api repos/o/r/issues/1/comments -fbody='see /home/me/x'")]
+  [InlineData("gh api repos/o/r/issues/1/comments --raw-field=body='see /home/me/x'")]
+  [InlineData("gh api repos/o/r/issues/1/comments --field=body='see /home/me/x'")]
+  [InlineData("gh api repos/o/r/issues/1/comments -f body=@/home/me/x")]
+  public void A_gh_api_field_in_any_spelling_is_a_post_and_a_raw_at_value_is_scanned_as_written(string command) =>
+    BashGuard.Evaluate(command, Root, _probe).ShouldNotBeNull().Reason.ShouldContain("/home/me/x");
+
+  [Theory]
+  [InlineData("gh api repos/o/r/issues/1/comments --input /tmp/body.json")]
+  [InlineData("gh api repos/o/r/issues/1/comments --input=/tmp/body.json")]
+  [InlineData("gh api repos/o/r/issues/1/comments -F body=@/tmp/body.json")]
+  [InlineData(
+    "gh api -X PUT repos/o/r/environments/staging --input - <<'JSON'\n{\"deployment_branch_policy\":{\"protected_branches\":false}}\nJSON")]
+  [InlineData("jq -n '{reviewers:[{type:\"User\",id:1}]}' | gh api -X PUT repos/o/r/environments/production --input -")]
+  [InlineData("gh api repos/o/r/issues/1/comments -F body=@missing.md")]
+  public void A_clean_gh_api_body_passes_and_the_local_path_of_its_source_is_not_scanned(string command)
+  {
+    _probe.Files["/tmp/body.json"] = "{\"body\": \"Refs #369, see docs/stories/0020.md\"}";
+
+    BashGuard.Evaluate(command, Root, _probe).ShouldBeNull();
+  }
+
   [Theory]
   [InlineData("git status # what's changed\ngh pr comment 5 --body \"see /home/me/x.md\"")]
   [InlineData("echo $'it\\'s' && gh pr comment 5 --body 'see /home/me/x.md'")]

@@ -1,6 +1,6 @@
 ---
 name: delivery-performance-review
-description: Review how long the delivery automation makes people wait and what it costs, from measured history rather than a diff. Covers CI workflows (jobs, steps, critical path, queue, repeated work), task-runner recipes and the local loop, test suites, builds and publication, and the agent sessions that drive delivery (watch wake-ups, CI runs dispatched only to measure). Samples CI, delegates the static pass to the delivery-performance-reviewer agent, probes suspects in a scratch worktree, and reports opportunities with baselines, critical-path effect and the proof each fix needs. Report-only by default; files an epic and children, or hands them to delivery, only when asked after the report. Use when the user says CI, a job, the build, the tests, `just check` or a recipe is slow, asks where pipeline time goes, wants run-time history sampled, or asks for a performance review of CI, delivery or the agent workflow, even without the word "performance". For a branch's diff use the performance-reviewer agent instead.
+description: Review how long the delivery automation makes people wait and what it costs, from measured history rather than a diff. Covers CI workflows (jobs, steps, critical path, queue, repeated work), task-runner recipes and the local loop, test suites, builds and publication, and the agent sessions that drive delivery (watch wake-ups, CI runs dispatched only to measure). Samples CI, delegates the static pass to the delivery-performance-reviewer agent, probes suspects in a scratch worktree, and reports opportunities with baselines, critical-path effect and the proof each fix needs. Report-only by default; files an epic and children, or hands them to delivery, only when asked after the report. Also delivers an epic that an earlier review filed, when asked to. Use when the user says CI, a job, the build, the tests, `just check` or a recipe is slow, asks where pipeline time goes, wants run-time history sampled, or asks for a performance review of CI, delivery or the agent workflow, even without the word "performance". For a branch's diff use the performance-reviewer agent instead.
 ---
 
 # Delivery performance review
@@ -26,9 +26,9 @@ From the request: the surfaces (default all five below), a focus (a workflow, jo
 | --- | --- | --- | --- |
 | `report` (default) | No mode named | Only a scratch directory and a scratch worktree, removed at the end | The report |
 | `issues` | "file issues", "make an epic", after the report | One epic and one child issue per accepted opportunity | Report plus issue links |
-| `deliver` | "deliver", "take them to merge", after the report | Only through a forked `epic-delivery` session, which hands each child to `issue-handover` | Report, issues, PRs |
+| `deliver` | "deliver", "take them to merge", after the report; or "deliver epic #N" for an epic filed earlier | Only through `epic-delivery`, which hands each child to `issue-handover` (see "Delivering") | Report, issues, PRs |
 
-**Report first, always.** Even when the request names `issues` or `deliver`, finish the report, then ask before filing. The maintainer decided this on #342. A report can show that the slow thing is off the critical path, and then the right number of issues is zero. Merges stay with the maintainer.
+**Report first, always.** Even when the request names `issues` or `deliver`, finish the report, then ask before filing. The maintainer decided this on #342. A report can show that the slow thing is off the critical path, and then the right number of issues is zero. Merges stay with the maintainer. The one exception is a request to deliver an epic that an earlier review filed. Its report and briefs are already on the epic, so go straight to "Delivering" below.
 
 ## Surfaces
 
@@ -100,14 +100,30 @@ End with **Not covered**: surfaces, jobs or sessions not examined, the measureme
 Only when the maintainer asks, after reading the report:
 
 - **Epic:** the report's sample, tables and analysis, then a children table (issue, problem, baseline, predicted saving, record number, PR). Use the `performance` label and the area labels (`gh label list`), and link the children as sub-issues.
+- **Delivery plan on the epic**, so delivery can start without questions. The first delivery (#347) had to ask the maintainer each of these. The defaults below are the answers given there.
+  - *Durable record:* the epic's children table plus its benchmark records. A performance epic needs no story card unless the maintainer asks for one (#272, #347).
+  - *Grouping:* children that edit the same file go to one delivery session, which delivers them in a stated order. Every other child gets its own session.
+  - *PR shape:* each child opens its own PR against `main`, with its `Closes #N` from the start. This holds even when siblings edit different parts of one file, such as different CI jobs. After one merges, its session merges `main` into the others. Stack a child only when it builds on a sibling's change or edits the same lines. This replaces `issue-handover`'s default of stacking PRs that touch the same file, so say so on the epic and in each child.
+  - *CI budget:* each child's dispatch budget. Asking to file the children approves their budgets, and delivery asks again only to exceed one.
+  - *Negative controls:* when a proof needs CI to fail on purpose (a deliberately broken file), it runs on a short-lived branch through `workflow_dispatch`, with no PR, and the branch is deleted afterwards. The run IDs go in the record, and the runs count against the child's budget.
+  - *Combined after-record:* one more reserved record number for the measurement on `main` once every child has merged, and the session that writes it.
 - **One child per opportunity**, each with:
   - its baseline table and the after-quantities its PR must report on the same basis;
   - the proof the fix needs;
   - a reserved benchmark record number;
-  - the files it owns, and which sibling owns any shared files. Benchmark records are discovered from files; do not add a README inventory row.
-  - The instruction to carry `Closes #N` in a PR against `main`. Three of #272's four children merged without it, and those issues stayed open.
-- **Deliver** by forking a session that runs `epic-delivery` on the epic, even when there is only one child. `epic-delivery` launches the delivery sessions, and each one works its child with `issue-handover`. This skill doesn't coordinate or implement the children itself. Give the forked session the epic link and say that the briefs below are already on the children. The handover's rules for performance issues apply: baseline on the issue before implementing, same quantity after, a record, and close on evidence.
+  - the files it owns, and which sibling owns any shared files. Benchmark records are discovered from files; do not add a README inventory row;
+  - the durable record from the delivery plan, so its session doesn't stop to ask for a story card;
+  - the instruction to carry `Closes #N` in a PR against `main`. Three of #272's four children merged without it, and those issues stayed open.
 - **Dispatch budget:** for after-samples, run extra CI one at a time. The workflow's concurrency group keeps only one pending run per ref, so a second dispatch cancels the queued one. Stop at the sample size the spread justifies ([references/measurement.md](references/measurement.md)). Sample by head commit.
+
+### Delivering
+
+Delivery always runs `epic-delivery` on the epic, even when there is only one child. `epic-delivery` launches the delivery sessions, and each one works its child with `issue-handover`. The handover's rules for performance issues apply: baseline on the issue before implementing, the same quantity after, a record, and close on evidence. Who runs `epic-delivery` depends on how the request arrives:
+
+- **After a report in this session:** fork a session that runs `epic-delivery`, so the coordinator starts without the review's context. Give it the epic link and say that the briefs are already on the children. This skill doesn't coordinate or implement the children itself.
+- **A request only to deliver an epic filed earlier:** run `epic-delivery` in this session. The maintainer chose this on #347. Read the epic's delivery plan and the children's briefs, and ask only about what they leave open: the launcher when more than one is available, and anything the plan doesn't settle.
+
+Record every delivery answer on the epic before launching. When an answer was given in conversation rather than on GitHub, say so and give the date.
 
 ## Honesty rules
 

@@ -2,7 +2,9 @@
 
 ## Why does this repo exist?
 
-<Replace me>
+In case anyone wanders by, welcome.  You may look at what's here and think there's not much actual delivery to show across the amount of code (including markdown) committed so far.  That would be correct.  I thought I would see what an independent review of the repo by an agent would say about why it exists and what value may lay here.  The prompt I used is as follows and below it is the agents own quote of itself from it's thoughts compiled after review.  If you're still sticking around I hope you find something of value.  Gaining value in knowledge and capability in the field of software engineering is not a zero sum game.  If I make value someone doesn't lose value.  If we share our value with others we don't lose value, it's amplified across others.  Even better if it can better enable multi  agent (human or ai) collaboration in my thoughts.
+
+>> Analyze this repository.  Try and identify why it was created and what the work in it represents.  What do you think are the top 25 things to highlight about the repo in terms of things of value.   The prose you write should be more conversational than technical.  However, feel free to write more techncially for the detailed aspects.   Do use tables in your report as you see necessary.  AskUserQuestions as many times as necessary to fill gaps in understanding.
 
 > Calendar explores how to make AI-assisted software engineering dependable. It uses a real planning application to develop and test ways of recording decisions, coordinating agents, checking delivery, and turning mistakes into lasting improvements. The result is both useful software and a growing body of practical engineering knowledge.
 

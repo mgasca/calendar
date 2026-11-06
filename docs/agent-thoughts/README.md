@@ -4,12 +4,9 @@ Independent agent perspectives on the work in this repository: what it appears t
 
 Each report is a dated perspective, not an external audit. Identify the author, reviewed revision, maintainer input and verification limits so readers can distinguish evidence from interpretation. Preserve the original context when correcting factual errors; use a later report for a new assessment as the project develops.
 
-Use `NNNN-short-title.md`, numbered in capture order, with one `# NNNN Title` heading; there is no template. Add each report to this index, in number order.
+Use `NNNN-short-title.md`, numbered in capture order, with one `# NNNN Title` heading; there is no template. Store `date` (YYYY-MM-DD), `author` and `revision` (commit hash) in YAML front matter.
 
-| Report | Date | Author | Reviewed revision |
-| --- | --- | --- | --- |
-| [0001 Repository purpose and value](0001-repository-purpose-and-value.md) | 2026-11-06 | Codex | `914a6d15` |
 
 ## Publishing
 
-The documentation site publishes this index at `agent-thoughts/` and every report at `agent-thoughts/NNNN/`, under the **Agent thoughts** group, and the site root redirects to the first report in this index (story 0031). Each report page starts with the date, author and reviewed revision from its row here. The docs build fails if a report is missing from the index, a row has no file, the link text differs from the report's title, the date is not `YYYY-MM-DD`, the revision is not a commit hash, the rows are out of number order, or a link points at a report that is not published.
+The site discovers documents from this directory and lists them in the sidebar. README files hold conventions, not inventories. Numbered documents sort by filename; runbooks sort by their `order` field. Titles and metadata come from each document. Invalid metadata, duplicate identifiers and broken publication links fail the build.

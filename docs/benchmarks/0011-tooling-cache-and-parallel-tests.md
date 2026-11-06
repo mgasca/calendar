@@ -1,3 +1,8 @@
+---
+subject: "The Tooling job with a NuGet cache and parallel test apps (#351)"
+harness: "tools/ci-timings/ci-timings.cs"
+---
+
 # 0011 The Tooling job with a NuGet cache and parallel test apps
 
 - **Date:** 2026-11-06

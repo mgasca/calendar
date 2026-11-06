@@ -1,3 +1,8 @@
+---
+subject: "The Frontend CI job and the whole run after the four fixes of #272"
+harness: "tools/ci-timings/ci-timings.cs"
+---
+
 # 0007 The Frontend CI job after the fixes of #272
 
 - **Date:** 2026-11-05

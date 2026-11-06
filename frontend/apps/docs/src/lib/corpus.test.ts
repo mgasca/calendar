@@ -37,13 +37,13 @@ const required = [
 ];
 
 describe('repository documents', () => {
-  it('reads every repository ADR and index together', () => {
+  it('reads every repository ADR from its file', () => {
     const { records } = documents.adr;
     expect(records.length).toBeGreaterThanOrEqual(18);
     expect(records[0]?.number).toBe('0000');
   });
 
-  it('reads every repository story and both indexes together', () => {
+  it('reads every repository story from its file', () => {
     const { records } = documents.story;
     expect(storyFiles.length).toBeGreaterThan(0);
     expect(records.map((record) => record.file).sort()).toEqual(storyFiles);
@@ -64,7 +64,7 @@ describe('repository documents', () => {
 });
 
 describe('repository runbooks and benchmarks', () => {
-  it('reads every runbook in the order of its index, each with a Before you start section', () => {
+  it('reads every runbook in the operational order, each with a Before you start section', () => {
     const { records } = documents.runbook;
     expect(runbookFiles.length).toBeGreaterThan(0);
     expect(records.map((record) => record.file).sort()).toEqual(runbookFiles);

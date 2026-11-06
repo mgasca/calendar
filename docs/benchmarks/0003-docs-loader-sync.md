@@ -1,3 +1,8 @@
+---
+subject: "One corpus read per docs-site sync instead of one per document (#273)"
+harness: "frontend/apps/docs/benchmarks/parse.bench.ts"
+---
+
 # 0003 One corpus read per docs sync
 
 - **Date:** 2026-11-05

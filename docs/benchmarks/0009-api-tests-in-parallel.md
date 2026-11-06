@@ -1,3 +1,8 @@
+---
+subject: "API test classes in parallel, a database copy per test, one reset per test (#349)"
+harness: "tools/ci-timings/ci-timings.cs"
+---
+
 # 0009 API test classes in parallel, a database copy per test
 
 - **Date:** 2026-11-06

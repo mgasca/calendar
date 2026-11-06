@@ -20,8 +20,7 @@ const { flows } = parseArchitecture(
   readFileSync(new URL(modelFile, architectureDirectory), 'utf8'),
 );
 // The site opens on the first agent thought, which says why the repository exists (story 0031).
-// The index lists the reports in number order, so the first file is its first row; the loader
-// validates the index and fails the build on anything this does not cover.
+// The loader uses the same filename order and validates each report.
 const firstAgentThought = readdirSync(new URL('../../../docs/agent-thoughts/', import.meta.url))
   .filter((name) => /^\d{4}-.+\.md$/.test(name))
   .sort()[0]

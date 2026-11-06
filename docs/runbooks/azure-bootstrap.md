@@ -1,3 +1,7 @@
+---
+order: 1
+---
+
 # Azure bootstrap
 
 This runbook prepares Azure and GitHub for deployments. It creates one deployment identity each for staging and production, and proves that GitHub can get short-lived Azure credentials without a stored password. It does not deploy the app. The design is in [ADR-0034](../decisions/0034-github-actions-oidc-deployment.md). When you finish, continue with [Azure infrastructure](azure-infrastructure.md).

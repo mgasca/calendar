@@ -19,8 +19,6 @@ const source = '---\nstatus: proposed\n---\n# Test `code`\n\n## Context\nBody';
 const sources = () => new Map([[file, source]]);
 
 const storyFile = '0002-test-story.md';
-const storyRow = '| [0002](0002-test-story.md) | Test story | implemented |';
-const storyIndex = `| Story | Title | Status |\n| --- | --- | --- |\n${storyRow}`;
 const storySource = [
   '---',
   'status: implemented',
@@ -74,7 +72,7 @@ describe('canonical ADR log', () => {
 
 describe('canonical story index', () => {
   it('keeps index order, front matter and the article beneath the title', () => {
-    expect(parseStories(storyIndex, storySources(), adrs)).toEqual([
+    expect(parseStories(storySources(), adrs)).toEqual([
       {
         number: '0002',
         file: storyFile,
@@ -94,15 +92,13 @@ describe('canonical story index', () => {
       'https://github.com/mgasca/calendar/pull/2',
     ];
     const several = storySource.replace(/^pr: .*$/m, `pr: ["${urls.join('", "')}"]`);
-    expect(parseStories(storyIndex, new Map([[storyFile, several]]), adrs)[0]?.pr).toEqual(urls);
+    expect(parseStories(new Map([[storyFile, several]]), adrs)[0]?.pr).toEqual(urls);
     const none = storySource.replace(/^pr: .*\n/m, '');
-    expect(parseStories(storyIndex, new Map([[storyFile, none]]), adrs)[0]?.pr).toEqual([]);
+    expect(parseStories(new Map([[storyFile, none]]), adrs)[0]?.pr).toEqual([]);
   });
   it('accepts an unnumbered planned story', () => {
     const planned = storySource.replace('implemented', 'planned');
-    const index = `| Story | Title | Status |\n| --- | --- | --- |\n| [XXXX](XXXX-test-story.md) | Test story | planned |`;
     const [story] = parseStories(
-      index,
       new Map([['XXXX-test-story.md', planned.replace('# 0002', '# XXXX')]]),
       adrs,
     );
@@ -110,35 +106,28 @@ describe('canonical story index', () => {
     expect(storySlug('XXXX-test-story.md')).toBe('test-story');
   });
   it.each([
-    ['missing table', 'hello', storySources()],
-    ['missing file', storyIndex, new Map<string, string>()],
-    ['unlisted story', storyIndex, new Map([...storySources(), ['0003-extra.md', storySource]])],
-    ['title mismatch', storyIndex.replace('Test story', 'Other'), storySources()],
-    ['status mismatch', storyIndex.replace('implemented |', 'planned |'), storySources()],
-    ['unknown status', storySource.replace('implemented', 'done'), storySources()],
-    ['unquoted ADR number', storySource.replace('"0001"', '0001'), storySources()],
-    ['unknown ADR', storySource.replace('"0001"', '"0009"'), storySources()],
-    ['bad date', storySource.replace('2026-10-28', 'soon'), storySources()],
-    [
-      'bad pull request',
-      storySource.replace('https://github.com/mgasca/calendar/pull/1', 'x'),
-      storySources(),
-    ],
-    [
-      'bad issue',
-      storySource.replace('https://github.com/mgasca/calendar/issues/7', 'x'),
-      storySources(),
-    ],
-    [
-      'scalar pull request',
-      storySource.replace(
-        '["https://github.com/mgasca/calendar/pull/1"]',
-        'https://github.com/mgasca/calendar/pull/1',
-      ),
-      storySources(),
-    ],
-  ])('rejects %s', (_label, index, files) => {
-    expect(() => parseStories(index, files, adrs)).toThrow();
+    ['implemented', 'unknown'],
+    ['"0001"', '0001'],
+    ['"0001"', '"0009"'],
+    ['2026-10-28', 'soon'],
+    ['https://github.com/mgasca/calendar/pull/1', 'x'],
+    ['https://github.com/mgasca/calendar/issues/7', 'x'],
+  ])('rejects invalid metadata %s', (from, to) => {
+    expect(() =>
+      parseStories(new Map([[storyFile, storySource.replace(from, to)]]), adrs),
+    ).toThrow();
+  });
+  it('discovers new files without a shared index and sorts them', () => {
+    const files = new Map([
+      ['0003-extra.md', storySource.replace('# 0002', '# 0003')],
+      ...storySources(),
+    ]);
+    expect(parseStories(files, adrs).map((record) => record.number)).toEqual(['0002', '0003']);
+  });
+  it('rejects duplicate story numbers', () => {
+    expect(() =>
+      parseStories(new Map([...storySources(), ['0002-extra.md', storySource]]), adrs),
+    ).toThrow();
   });
   it('keeps the story template in the structure that cards follow', async () => {
     // Comments need no stripping: none of their lines starts with a heading marker.
@@ -302,90 +291,61 @@ it.each([
   expect(storyStatusCategory(status)).toBe(category);
 });
 
-describe('canonical runbook index', () => {
-  const index = [
-    '# Runbooks',
-    '',
-    'Follow them in this order:',
-    '',
-    '1. [Azure bootstrap](azure-bootstrap.md) — create identities.',
-    '2. [Azure database](azure-database.md) — set up roles.',
-  ].join('\n');
-  const bootstrap = '# Azure bootstrap\n\nThis runbook prepares Azure.\n\n## Terms\n';
-  const database = '# Azure database\n\n## Before you start\n';
-  const files = () =>
-    new Map([
-      ['azure-bootstrap.md', bootstrap],
-      ['azure-database.md', database],
-    ]);
-  it('keeps the order of the list, matches titles and strips the title from the body', () => {
-    expect(parseRunbooks(index, files())).toEqual([
-      {
-        file: 'azure-bootstrap.md',
-        title: 'Azure bootstrap',
-        body: '\n\nThis runbook prepares Azure.\n\n## Terms\n',
-      },
-      { file: 'azure-database.md', title: 'Azure database', body: '\n\n## Before you start\n' },
-    ]);
-    expect(runbookSlug('azure-bootstrap.md')).toBe('azure-bootstrap');
+describe('filesystem runbooks', () => {
+  const source = '---\norder: 1\n---\n# First\n';
+  it('uses per-file operational order', () => {
+    expect(
+      parseRunbooks(
+        new Map([
+          ['a.md', source.replace('1', '2')],
+          ['z.md', source],
+        ]),
+      ).map((record) => record.file),
+    ).toEqual(['z.md', 'a.md']);
+    expect(runbookSlug('first.md')).toBe('first');
   });
-  it.each([
-    ['missing list', 'hello', files()],
-    ['bulleted list', index.replaceAll(/^\d\. /gm, '- '), files()],
-    ['two lists', `${index}\n\nMore:\n\n1. [X](azure-bootstrap.md)`, files()],
-    ['missing file', index, new Map([['azure-bootstrap.md', bootstrap]])],
-    ['unlisted runbook', index, new Map([...files(), ['extra.md', '# Extra\n']])],
-    ['title mismatch', index.replace('Azure database', 'Other'), files()],
-    ['duplicate', index.replace('azure-database.md', 'azure-bootstrap.md'), files()],
-    ['item without a link', index.replace('[Azure database](azure-database.md)', 'text'), files()],
-    ['unsafe path', index.replace('(azure-database.md)', '(../azure-database.md)'), files()],
-    ['two titles', index, new Map([...files(), ['azure-database.md', `${database}\n# Again\n`]])],
-  ])('rejects %s', (_label, text, sources) => {
-    expect(() => parseRunbooks(text, sources)).toThrow();
+  it.each(['0', '-1', '1.5', 'text'])('rejects invalid order %s', (order) => {
+    expect(() => parseRunbooks(new Map([['a.md', source.replace('1', order)]]))).toThrow();
+  });
+  it('rejects duplicate order', () => {
+    expect(() =>
+      parseRunbooks(
+        new Map([
+          ['a.md', source],
+          ['b.md', source],
+        ]),
+      ),
+    ).toThrow();
   });
 });
 
-describe('canonical benchmark index', () => {
-  const index = [
-    '| Record | Subject | Harness |',
-    '| --- | --- | --- |',
-    '| [0001](0001-parse.md) | Loading the documents | `frontend/apps/docs/benchmarks/parse.bench.ts` |',
-  ].join('\n');
-  const record = '# 0001 Loading the ADRs\n\n- **Date:** 2026-10-31\n\n## Question\n';
-  const files = () => new Map([['0001-parse.md', record]]);
-  it('reads the number, title, subject and harness', () => {
-    expect(parseBenchmarks(index, files())).toEqual([
-      {
-        number: '0001',
-        file: '0001-parse.md',
-        title: 'Loading the ADRs',
-        subject: 'Loading the documents',
-        harness: 'frontend/apps/docs/benchmarks/parse.bench.ts',
-        body: '\n\n- **Date:** 2026-10-31\n\n## Question\n',
-      },
-    ]);
+describe('filesystem benchmarks', () => {
+  const source = '---\nsubject: Parsing\nharness: tools/harness.cs\n---\n# 0001 Parse\n';
+  it('reads record metadata without an index', () => {
+    expect(parseBenchmarks(new Map([['0001-parse.md', source]]))[0]).toMatchObject({
+      number: '0001',
+      title: 'Parse',
+      subject: 'Parsing',
+      harness: 'tools/harness.cs',
+    });
   });
-  it.each([
-    ['missing table', 'hello', files()],
-    ['missing file', index, new Map<string, string>()],
-    ['unlisted record', index, new Map([...files(), ['0002-extra.md', record]])],
-    ['duplicate', `${index}\n${index.split('\n')[2] ?? ''}`, files()],
-    ['title without the number', index, new Map([['0001-parse.md', record.replace('0001 ', '')]])],
-    [
-      'wrong number in the title',
-      index,
-      new Map([['0001-parse.md', record.replace('0001', '0002')]]),
-    ],
-    ['malformed row', index.replace('[0001](0001-parse.md)', '0001'), files()],
-    [
-      'filename not matching the number',
-      index.replace('(0001-parse.md)', '(0002-parse.md)'),
-      files(),
-    ],
-    ['harness escaping the repository', index.replace('frontend/', '../frontend/'), files()],
-    ['harness with spaces', index.replace('frontend/', 'front end/'), files()],
-  ])('rejects %s', (_label, text, sources) => {
-    expect(() => parseBenchmarks(text, sources)).toThrow();
+  it.each(['../harness.cs', '/tmp/harness.cs', 'tools/../harness.cs', 'has spaces'])(
+    'rejects unsafe harness %s',
+    (harness) => {
+      expect(() =>
+        parseBenchmarks(new Map([['0001-parse.md', source.replace('tools/harness.cs', harness)]])),
+      ).toThrow();
+    },
+  );
+  it('rejects duplicate numbers', () => {
+    expect(() =>
+      parseBenchmarks(
+        new Map([
+          ['0001-parse.md', source],
+          ['0001-other.md', source],
+        ]),
+      ),
+    ).toThrow();
   });
 });
 
@@ -439,73 +399,28 @@ describe('runbook and benchmark links', () => {
   });
 });
 
-describe('canonical agent thoughts index', () => {
-  const header = ['| Report | Date | Author | Reviewed revision |', '| --- | --- | --- | --- |'];
-  const row = (number: string, slug: string, title: string) =>
-    `| [${number} ${title}](${number}-${slug}.md) | 2026-11-06 | Codex | \`914a6d15\` |`;
-  const index = [...header, row('0001', 'purpose', 'Repository purpose')].join('\n');
-  const report = '# 0001 Repository purpose\n\n*Captured on 6 November.*\n\n## Why\n';
-  const files = () => new Map([['0001-purpose.md', report]]);
-  it('reads the number, title, date, author and reviewed revision', () => {
-    expect(parseAgentThoughts(index, files())).toEqual([
-      {
-        number: '0001',
-        file: '0001-purpose.md',
-        title: 'Repository purpose',
-        date: '2026-11-06',
-        author: 'Codex',
-        revision: '914a6d15',
-        body: '\n\n*Captured on 6 November.*\n\n## Why\n',
-      },
-    ]);
-  });
-  it('keeps the rows in number order, so the first row is the first report', () => {
-    const two = [
-      ...header,
-      row('0001', 'purpose', 'Repository purpose'),
-      row('0002', 'later', 'Later'),
-    ];
-    const sources = new Map([...files(), ['0002-later.md', '# 0002 Later\n\nBody\n']]);
-    expect(parseAgentThoughts(two.join('\n'), sources).map((record) => record.number)).toEqual([
-      '0001',
-      '0002',
-    ]);
+describe('filesystem agent thoughts', () => {
+  const source =
+    '---\ndate: "2026-11-06"\nauthor: Codex\nrevision: "914a6d15"\n---\n# 0001 Purpose\n';
+  it('reads provenance without an index and sorts by number', () => {
+    const records = parseAgentThoughts(
+      new Map([
+        ['0002-next.md', source.replace('0001', '0002')],
+        ['0001-purpose.md', source],
+      ]),
+    );
+    expect(records.map((record) => record.number)).toEqual(['0001', '0002']);
+    expect(records[0]).toMatchObject({ date: '2026-11-06', author: 'Codex', revision: '914a6d15' });
   });
   it.each([
-    ['missing table', 'hello', files()],
-    ['empty index', header.join('\n'), new Map<string, string>()],
-    ['missing file', index, new Map<string, string>()],
-    ['unlisted report', index, new Map([...files(), ['0002-extra.md', '# 0002 Extra\n']])],
-    ['duplicate', `${index}\n${row('0001', 'purpose', 'Repository purpose')}`, files()],
-    [
-      'rows out of number order',
-      [...header, row('0002', 'later', 'Later'), row('0001', 'purpose', 'Repository purpose')].join(
-        '\n',
-      ),
-      new Map([...files(), ['0002-later.md', '# 0002 Later\n']]),
-    ],
-    [
-      'title differing from the index',
-      index,
-      new Map([['0001-purpose.md', report.replace('purpose', 'value')]]),
-    ],
-    [
-      'title without the number',
-      index.replaceAll('0001 Repository', 'Repository'),
-      new Map([['0001-purpose.md', '# Repository purpose\n']]),
-    ],
-    ['two titles', index, new Map([['0001-purpose.md', `${report}\n# Again\n`]])],
-    ['malformed row', index.replace('[0001 Repository purpose](0001-purpose.md)', '0001'), files()],
-    [
-      'template-style placeholder',
-      index.replaceAll('0001', 'XXXX'),
-      new Map([['XXXX-purpose.md', '# XXXX Repository purpose\n']]),
-    ],
-    ['malformed date', index.replace('2026-11-06', '6 November'), files()],
-    ['missing author', index.replace('| Codex |', '|  |'), files()],
-    ['revision that is not a commit', index.replace('`914a6d15`', 'main'), files()],
-  ])('rejects %s', (_label, text, sources) => {
-    expect(() => parseAgentThoughts(text, sources)).toThrow();
+    ['2026-11-06', 'soon'],
+    ['Codex', ''],
+    ['914a6d15', 'main'],
+    ['# 0001', '# 0002'],
+  ])('rejects invalid provenance or title %s', (from, to) => {
+    expect(() =>
+      parseAgentThoughts(new Map([['0001-purpose.md', source.replace(from, to)]])),
+    ).toThrow();
   });
 });
 

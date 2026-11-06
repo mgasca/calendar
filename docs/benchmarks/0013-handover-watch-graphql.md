@@ -1,3 +1,8 @@
+---
+subject: "The handover watch: two GraphQL queries per tick instead of 2 + 3N REST calls (#363)"
+harness: "tools/handover-watch/handover-watch.cs"
+---
+
 # 0013 Two GraphQL queries per handover-watch tick instead of 2 + 3N REST calls
 
 - **Date:** 2026-11-06

@@ -26,7 +26,9 @@ public sealed class ParserTests
             { "number": 3, "name": "Skipped", "conclusion": "skipped", "started_at": null, "completed_at": null }
           ]
         },
-        { "name": "Pending", "conclusion": null, "started_at": "2026-11-05T17:01:12Z", "completed_at": null, "steps": [] }
+        { "name": "Pending", "conclusion": null, "started_at": "2026-11-05T17:01:12Z", "completed_at": null, "steps": [] },
+        { "name": "Cancel superseded runs", "conclusion": "skipped",
+          "started_at": "2026-11-05T17:01:13Z", "completed_at": "2026-11-05T17:01:12Z", "steps": [] }
       ]
     }
     """;
@@ -57,7 +59,7 @@ public sealed class ParserTests
       """).ShouldHaveSingleItem().HeadBranch.ShouldBe("docs/story-0033");
 
   [Fact]
-  public void ParseJobs_KeepsCompletedJobsAndSteps_AndSkipsTheRest()
+  public void ParseJobs_KeepsCompletedJobsAndSteps_AndLeavesOutPendingAndSkippedJobs()
   {
     IReadOnlyList<JobTiming> jobs = Parser.ParseJobs(7, JobsJson);
 

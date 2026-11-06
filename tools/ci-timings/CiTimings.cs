@@ -83,14 +83,16 @@ public static class Parser
   /// <summary>Parses <c>GET /repos/{owner}/{repo}/actions/runs/{id}/jobs</c>.</summary>
   /// <param name="runId">The run the jobs belong to.</param>
   /// <param name="json">The JSON object with a <c>jobs</c> array.</param>
-  /// <returns>Every job that has both a start and a completion time, with its completed steps.</returns>
+  /// <returns>Every job that ran (not skipped) and has both a start and a completion time, with its completed steps.</returns>
   public static IReadOnlyList<JobTiming> ParseJobs(long runId, string json)
   {
     using var document = JsonDocument.Parse(json);
     var jobs = new List<JobTiming>();
     foreach (JsonElement job in document.RootElement.GetProperty("jobs").EnumerateArray())
     {
-      if (!TryTime(job, StartedAt, out DateTimeOffset started) || !TryTime(job, CompletedAt, out DateTimeOffset completed))
+      // A job skipped by its `if` reports start and end times that mean nothing (the end can come before the start).
+      if (string.Equals(Text(job, "conclusion"), "skipped", StringComparison.Ordinal)
+        || !TryTime(job, StartedAt, out DateTimeOffset started) || !TryTime(job, CompletedAt, out DateTimeOffset completed))
       {
         continue;
       }

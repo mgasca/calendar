@@ -95,11 +95,11 @@ A step in `CI result`, the single required check of [ADR-0012](0012-ci-and-depen
 * **Location:** `.github/ci-baseline.json`, beside the workflow it describes, read from the commit under test (the merge commit of a pull request).
 * **Content:** a schema version, the method and constants (`α`, `J`, `z`, `floor`, `r`), the benchmark record it came from, and per job and path: `n`, the window, the first and last commit, the run IDs, the median, the log-MAD, p90, the maximum and the threshold in seconds.
 * **Source:** measured from runs on `main`: push runs for the publication path, and `workflow_dispatch` runs on `main` for the check path, which take the same steps as a non-docs pull request run (record 0012). Pull request runs carry the PR's own change, so they are not in the baseline; they are the held-out set of the check-path back-test. Dispatches run one at a time and only with the maintainer's approval on the issue, as in #347. They are spread over the day rather than back to back, because a baseline from one hour understates how runner speed varies. Record 0014 states the window's span, and how much of the held-out set falls outside the baseline's hours.
-* **Written by** `ci-timings baseline`, never by hand, so the thresholds always follow from the stated sample and constants.
+* **Written by** `ci-timings --baseline`, never by hand, so the thresholds always follow from the stated sample and constants.
 
 ### Updating the baseline deliberately
 
-A pull request that adds necessary time (a new check, a slower but required step) regenerates `.github/ci-baseline.json` with `ci-timings baseline` and adds a benchmark record in the same PR. Because the gate reads the file from the commit under test, the new threshold applies to that PR's own run, and the change to the file is in the diff the reviewer approves. Nothing else moves the baseline: runs on `main` never update it, so it cannot creep upward.
+A pull request that adds necessary time (a new check, a slower but required step) regenerates `.github/ci-baseline.json` with `ci-timings --baseline` and adds a benchmark record in the same PR. Because the gate reads the file from the commit under test, the new threshold applies to that PR's own run, and the change to the file is in the diff the reviewer approves. Nothing else moves the baseline: runs on `main` never update it, so it cannot creep upward.
 
 A suspected false failure is retried with **Re-run all jobs**. "Re-run failed jobs" re-runs only `CI result`, which reads the same durations again. A second failure is evidence of a regression.
 

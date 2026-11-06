@@ -27,6 +27,14 @@ public sealed class ShellCommandTests
   }
 
   [Fact]
+  public void A_segment_after_a_single_pipe_is_marked_piped()
+  {
+    IReadOnlyList<ShellCommand.Segment> segments = ShellCommand.Split("jq -n x | gh api a --input - || echo no", "/repo");
+
+    segments.Select(s => s.Piped).ShouldBe([false, true, false]);
+  }
+
+  [Fact]
   public void A_top_level_heredoc_is_the_segment_stdin()
   {
     IReadOnlyList<ShellCommand.Segment> segments = ShellCommand.Split(

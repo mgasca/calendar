@@ -27,12 +27,14 @@ public static partial class BashGuard
   {
     // Branches that earlier segments of this command switch to, by directory; null when the switch detaches HEAD.
     var switchedTo = new Dictionary<string, string?>(StringComparer.Ordinal);
+    // Variables that earlier segments assign and files they write, for the body sources a post reads (#374).
+    var sources = new BodySources(probe);
     foreach (ShellCommand.Segment segment in ShellCommand.Split(command, cwd))
     {
       Verdict? verdict = segment.Tokens[0] switch
       {
         "git" => Git(segment, probe, switchedTo),
-        "gh" => GhPost(segment, probe),
+        "gh" => GhPost(segment, sources),
         "just" => SharedDatabase(segment, probe, DbRecipeRegex().IsMatch(string.Join(' ', segment.Tokens.Skip(1)))),
         "docker" => SharedDatabase(segment, probe, segment.Tokens.Count > 1 && segment.Tokens[1] == "compose"),
         _ => null,
@@ -41,6 +43,7 @@ public static partial class BashGuard
       {
         return verdict;
       }
+      sources.Observe(segment);
     }
     return null;
   }
@@ -221,7 +224,7 @@ public static partial class BashGuard
         + "first, then restore the saved version explicitly (AGENTS.md: preserve the fix when proving a regression test).")
       : null;
 
-  private static Verdict? GhPost(ShellCommand.Segment segment, IRepoProbe probe)
+  private static Verdict? GhPost(ShellCommand.Segment segment, BodySources sources)
   {
     IReadOnlyList<string> tokens = segment.Tokens;
     if (tokens.Count < 3)
@@ -240,10 +243,11 @@ public static partial class BashGuard
     var i = 1;
     while (i < tokens.Count)
     {
-      (var source, var words) = api ? ApiBodySource(tokens, i) : BodyFileSource(tokens, i);
-      // A source's own path stays on this machine, so what it holds is scanned instead. When the hook cannot read it (not
-      // written yet, or a path the shell has still to expand), the words that name it are scanned like any other (#369).
-      var contents = source is null ? null : BodyFile(segment, source, probe);
+      (var source, var words) = RedirectSource(tokens, i) ?? (api ? ApiBodySource(tokens, i) : BodyFileSource(tokens, i));
+      // A source's own path stays on this machine, so what it holds is scanned instead: as an earlier segment of the
+      // command wrote it, after expanding the variables the command assigns (#374). When the hook still cannot read it, the
+      // words that name it are scanned like any other (#369).
+      var contents = source is null ? null : sources.Read(segment, source);
       if (contents is null)
       {
         foreach (var word in tokens.Skip(i).Take(words))
@@ -264,6 +268,16 @@ public static partial class BashGuard
         Deny,
         $"The post would publish private details: {string.Join(", ", hits)}. Use repository-relative paths and public "
         + "issue/PR links, and leave session, task and subagent handles out (AGENTS.md: public GitHub posts).");
+  }
+
+  /// <summary>The file of a <c>&lt; file</c> (two words) or <c>&lt;file</c> stdin redirect at word <paramref name="i"/>, or null.</summary>
+  private static (string? Source, int Words)? RedirectSource(IReadOnlyList<string> tokens, int i)
+  {
+    if (tokens[i] == "<")
+    {
+      return i + 1 < tokens.Count ? (tokens[i + 1], 2) : null;
+    }
+    return BodySources.RedirectedFrom([tokens[i]]) is { } file ? (file, 1) : null;
   }
 
   /// <summary>

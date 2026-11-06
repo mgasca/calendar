@@ -2,6 +2,7 @@
 #:include HookProtocol.cs
 #:include IRepoProbe.cs
 #:include ShellCommand.cs
+#:include BodySources.cs
 #:include BashGuard.cs
 #:include EditGuard.cs
 #:include LineLengthCheck.cs

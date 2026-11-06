@@ -172,8 +172,8 @@ public sealed class BashGuardTests
   }
 
   // Security review of #369: a source the hook cannot read leaves the words that name it to scan, as main did for gh api.
+  // (A file the same command writes first is read since #374.)
   [Theory]
-  [InlineData("cat > /tmp/b.json <<'EOF'\n{\"body\": \"see /home/me/x\"}\nEOF\ngh api repos/o/r/issues/1/comments --input /tmp/b.json")]
   [InlineData("gh api repos/o/r/issues/1/comments --input ~/tmp/b.json")]
   [InlineData("gh api repos/o/r/issues/1/comments -F body=@\"$HOME\"/tmp/b.json")]
   [InlineData("gh pr comment 1 --body-file /tmp/b.json")]
@@ -194,6 +194,52 @@ public sealed class BashGuardTests
     }
 
     BashGuard.Evaluate(command, Root, _probe).ShouldNotBeNull().Reason.ShouldContain("/home/me/x");
+  }
+
+  // #374: a source the shell has yet to expand or create is read through what the command itself states.
+  [Theory]
+  [InlineData("S=/s && gh issue comment 1 --body-file \"$S/b.md\"")]
+  [InlineData("export S=/s; gh pr comment 1 --body-file \"${S}/b.md\"")]
+  [InlineData("R=/s\nS=$R\ngh api repos/o/r/issues/1/comments -F body=@\"$S\"/b.md")]
+  [InlineData("cat > b.md <<'EOF'\nsee /home/me/x\nEOF\ngh pr comment 1 --body-file b.md")]
+  [InlineData("cat <<'EOF' > b.md\nsee /home/me/x\nEOF\ngh pr comment 1 --body-file /repo/b.md")]
+  [InlineData("tee b.md >/dev/null <<'EOF'\nsee /home/me/x\nEOF\ngh pr comment 1 --body-file b.md")]
+  [InlineData("echo 'see /home/me/x' > b.md && gh pr comment 1 --body-file b.md")]
+  [InlineData("printf '%s\\n' 'see /home/me/x' >b.json && gh api repos/o/r/issues/1/comments --input b.json")]
+  [InlineData("gh api repos/o/r/issues/1/comments --input - < /s/b.md")]
+  [InlineData("gh pr comment 1 --body-file - </s/b.md")]
+  [InlineData("cat /s/b.md | gh pr comment 1 --body-file -")]
+  [InlineData("jq -n '{body: \"see /home/me/x\"}' | gh api repos/o/r/issues/1/comments --input -")]
+  [InlineData("echo 'see /home/me/x' | gh pr comment 1 --body-file -")]
+  public void A_source_the_command_assigns_writes_or_redirects_is_read(string command)
+  {
+    _probe.Files["/s/b.md"] = "see /home/me/x";
+
+    BashGuard.Evaluate(command, Root, _probe).ShouldNotBeNull().Reason.ShouldContain("/home/me/x");
+  }
+
+  [Fact]
+  public void A_home_path_is_expanded_from_the_environment()
+  {
+    var home = Environment.GetEnvironmentVariable("HOME").ShouldNotBeNull();
+    _probe.Files[$"{home}/b.md"] = "see /home/me/x";
+
+    BashGuard.Evaluate("gh pr comment 1 --body-file ~/b.md", Root, _probe).ShouldNotBeNull().Reason.ShouldContain("/home/me/x");
+    BashGuard.Evaluate("gh pr comment 1 --body-file \"$HOME/b.md\"", Root, _probe).ShouldNotBeNull();
+  }
+
+  [Theory]
+  [InlineData("gh api repos/o/r/issues/1/comments --input - < /tmp/clean.json")]
+  [InlineData("S=$(mktemp -d) && gh pr comment 1 --body-file \"$S/b.md\"")]
+  [InlineData("gh pr comment 1 --body-file \"$NOT_SET_ANYWHERE_374/b.md\"")]
+  [InlineData("gh pr comment 1 --body-file b.md && cat > b.md <<'EOF'\nsee /home/me/x\nEOF")]
+  [InlineData("echo 'see /home/me/x' > other.md && gh pr comment 1 --body-file b.md")]
+  public void A_clean_or_unresolvable_source_passes_as_before(string command)
+  {
+    _probe.Files["/tmp/clean.json"] = "{\"body\": \"Refs #374\"}";
+    _probe.Files["b.md"] = "clean";
+
+    BashGuard.Evaluate(command, Root, _probe).ShouldBeNull();
   }
 
   [Theory]

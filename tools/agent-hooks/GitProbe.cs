@@ -30,11 +30,31 @@ public sealed class GitProbe : IRepoProbe
     return false;
   }
 
+  /// <summary>The largest file read as text: far above GitHub's 65,536-character body limit, even JSON-escaped (#369).</summary>
+  internal const long MaxTextFileBytes = 1 << 20;
+
   /// <inheritdoc/>
   public string? ReadFile(string cwd, string path)
   {
-    var full = Path.Combine(cwd, path);
-    return File.Exists(full) ? File.ReadAllText(full) : null;
+    var file = new FileInfo(Path.Combine(cwd, path));
+    if (!file.Exists)
+    {
+      return null;
+    }
+    // A pipe or a device reports no length and may never end; a larger file or a binary one is no post body.
+    if (file.Length == 0 || file.Length > MaxTextFileBytes)
+    {
+      return string.Empty;
+    }
+    try
+    {
+      var text = File.ReadAllText(file.FullName);
+      return text.Contains('\0', StringComparison.Ordinal) ? string.Empty : text;
+    }
+    catch (Exception e) when (e is IOException or UnauthorizedAccessException)
+    {
+      return null;
+    }
   }
 
   /// <inheritdoc/>

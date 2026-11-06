@@ -51,6 +51,6 @@ Front matter: `status` (`planned`, `in-progress` or `implemented`), `date` (`YYY
 | [0027](0027-focus-agent-guidance-on-claude-code-for-a-while.md) | Focus agent guidance on Claude Code for a while | planned |
 | [0028](0028-coordinate-epic-delivery-across-agent-sessions.md) | Coordinate epic delivery across agent sessions | implemented |
 | [0029](0029-preserve-independent-perspectives-on-our-work.md) | Preserve independent perspectives on our work | implemented |
-| [0030](0030-docs-only-pr-previews.md) | Publish a docs-site preview only for docs-only pull requests | planned |
+| [0030](0030-docs-only-pr-previews.md) | Publish a docs-site preview only for docs-only pull requests | implemented |
 | [0031](0031-open-the-docs-site-on-why-the-repository-exists.md) | Open the docs site on why the repository exists | planned |
 | [XXXX](XXXX-create-events-and-tasks-from-week-view.md) | Create events and tasks from the week view | planned |

@@ -91,11 +91,15 @@ jobs:
           if-no-files-found: ignore
 
   # The documentation site, once per URL variant: the root path (what `just docs build` produces), a
-  # project subpath and the GitHub Pages URL whose build becomes the published artifact.
+  # project subpath and, for main and docs-only PRs, the GitHub Pages URL whose build becomes the published artifact.
   docs:
     name: Docs site
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    # Listing a pull request's files, to tell a docs-only PR apart, needs pull-requests: read.
+    permissions:
+      contents: read
+      pull-requests: read
     defaults:
       run:
         working-directory: frontend
@@ -127,9 +131,27 @@ jobs:
           pnpm --filter @calendar/docs verify:build
         env:
           DOCS_SITE_URL: https://example.org/calendar/
+      # A PR gets a preview only when every file it changes is a docs-site source (story 0030, #332).
+      # Any other same-repository PR runs the checks above but builds no publication artifact, so the
+      # Publish ADR site workflow has nothing to publish for it.
+      - name: Decide whether this pull request is docs-only
+        id: docs-only
+        if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: |
+          files=$(gh api --paginate "repos/$GITHUB_REPOSITORY/pulls/$PR_NUMBER/files?per_page=100" --jq '.[].filename')
+          if [ -n "$files" ] && ! grep -qvE '^(docs|frontend/apps/docs)/' <<< "$files"; then
+            echo "result=true" >> "$GITHUB_OUTPUT"
+            echo "Docs-only pull request: the publication artifact is built below."
+          else
+            echo "result=false" >> "$GITHUB_OUTPUT"
+            echo "Not a docs-only pull request: no publication artifact and no preview."
+          fi
       - name: Read GitHub Pages configuration
         id: pages
-        if: (github.event_name == 'push' && github.ref == 'refs/heads/main') || (github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository)
+        if: (github.event_name == 'push' && github.ref == 'refs/heads/main') || steps.docs-only.outputs.result == 'true'
         uses: actions/configure-pages@45bfe0192ca1faeb007ade9deae92b16b8254a0d # v6.0.0
       - name: Build and verify publication artifact
         if: steps.pages.outcome == 'success'

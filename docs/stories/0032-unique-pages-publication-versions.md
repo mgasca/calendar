@@ -1,5 +1,5 @@
 ---
-status: in-progress
+status: implemented
 date: 2026-11-06
 issue: https://github.com/mgasca/calendar/issues/285
 pr: [https://github.com/mgasca/calendar/pull/338, https://github.com/mgasca/calendar/pull/339]
@@ -35,7 +35,9 @@ The pinned deploy-pages action reads its build version from `process.env.GITHUB_
 
 ## Implementation notes
 
-Implemented in `.github/workflows/pages.yml`, with [regression coverage](../../frontend/apps/docs/src/lib/pages-workflow.test.ts) executing its current-snapshot script for acceptance criteria 1–3. The identity test failed against the old workflow and passed after restoring the fix. The local docs suite passed 175 tests, with targeted ESLint and Prettier checks also passing. Live GitHub behavior cannot be proved locally; criterion 4 remains open until publication after merge is observed.
+Implemented in `.github/workflows/pages.yml`, with [regression coverage](../../frontend/apps/docs/src/lib/pages-workflow.test.ts) executing its current-snapshot script for acceptance criteria 1–3. The identity test failed against the old workflow and passed after restoring the fix. The local docs suite passed 175 tests, with targeted ESLint and Prettier checks also passing.
+
+The fix was delivered in PR #339. [CI for the merged revision](https://github.com/mgasca/calendar/actions/runs/42232965801) passed. On 2026-11-06 the owner confirmed that they had verified publication, satisfying criterion 4. This is owner-reported live verification: the agent's separate check of [production publication run 42233313111](https://github.com/mgasca/calendar/actions/runs/42233313111) still returned `pending` at close-out. Successful publication does not establish GitHub's internal cause or guarantee the lock cannot recur; reopen #285 if the symptom returns.
 
 ## User guide
 

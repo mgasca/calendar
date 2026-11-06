@@ -17,14 +17,25 @@ shell_tools := "tools/doctor/doctor.sh"
 list:
     @just --list tools
 
-# Test and lint repo tooling (skill scripts, tools/)
+# Test and lint repo tooling (skill scripts, tools/); test apps run TOOLS_TEST_JOBS at a time (default 4)
 test:
     #!/usr/bin/env bash
     set -euo pipefail
-    for t in $(find {{ tool_dirs }} -name '*.tests.cs' -not -path '*/fixtures/*' | sort); do
+    # Each test app compiles and runs on its own, so they run in parallel; each one's output is kept and printed in
+    # order afterwards, so the log reads as if they had run one after another (#351, record 0011).
+    logs=$(mktemp -d)
+    trap 'rm -rf "$logs"' EXIT
+    tests=$(find {{ tool_dirs }} -name '*.tests.cs' -not -path '*/fixtures/*' | sort)
+    printf '%s\n' $tests | xargs -P "${TOOLS_TEST_JOBS:-4}" -I{} bash -c \
+        'log="$2/$(tr / _ <<< "$1")"; dotnet run "$1" > "$log.log" 2>&1 || touch "$log.failed"' _ {} "$logs"
+    failed=0
+    for t in $tests; do
+        log="$logs/$(tr / _ <<< "$t")"
         echo "dotnet run $t"
-        dotnet run "$t"
+        cat "$log.log"
+        if [ -e "$log.failed" ]; then failed=1; echo "FAILED: $t" >&2; fi
     done
+    [ "$failed" = 0 ]
     for d in {{ tool_dirs }}; do
         echo "dotnet format whitespace $d"
         dotnet format whitespace --folder --verify-no-changes "$d"

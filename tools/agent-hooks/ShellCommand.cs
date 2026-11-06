@@ -6,9 +6,10 @@ namespace AgentHooks;
 public static class ShellCommand
 {
   /// <summary>
-  /// One simple command: its words, the directory it runs in, and the body of a heredoc that feeds it (null when none).
+  /// One simple command: its words, the directory it runs in, the body of a heredoc that feeds it (null when none), and
+  /// whether a pipe feeds it the output of the command before.
   /// </summary>
-  public sealed record Segment(IReadOnlyList<string> Tokens, string Cwd, string? Stdin = null);
+  public sealed record Segment(IReadOnlyList<string> Tokens, string Cwd, string? Stdin = null, bool Piped = false);
 
   /// <summary>
   /// Splits on <c>&amp;&amp;</c>, <c>||</c>, <c>;</c>, <c>|</c> and newlines, applying <c>cd</c> to later segments. A separator
@@ -33,7 +34,7 @@ public static class ShellCommand
         current = Path.GetFullPath(Path.Combine(current, parsed.Words[1]));
         continue;
       }
-      segments.Add(new Segment(parsed.Words, current, stdin));
+      segments.Add(new Segment(parsed.Words, current, stdin, parsed.Piped));
     }
     return segments;
   }

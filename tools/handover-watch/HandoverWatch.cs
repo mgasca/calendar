@@ -164,7 +164,7 @@ public static class Query
 
   /// <summary>
   /// Comments per page of a review thread. With these sizes a PR asks for at most about 710 nodes, so even a hundred aliased PRs
-  /// stay under GitHub's limit of 500,000, and the documented cost formula gives about 3 points per PR.
+  /// stay under GitHub's limit of 500,000; GitHub charges about 13 points per hundred PRs (measured).
   /// </summary>
   public const int ThreadCommentPageSize = 50;
 

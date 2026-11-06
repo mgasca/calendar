@@ -4,7 +4,7 @@
 - **Issue:** [#363](https://github.com/mgasca/calendar/issues/363), a follow-up of [#320](https://github.com/mgasca/calendar/issues/320) (story 0027) and of finding 1 of the [performance review on #360](https://github.com/mgasca/calendar/pull/360#issuecomment-6689752931); PR [#375](https://github.com/mgasca/calendar/pull/375)
 - **Harness:** `tools/handover-watch/handover-watch.cs`, run as `dotnet run tools/handover-watch/handover-watch.cs -- <issue> --peek`. `--peek` prints without recording, so every run fetches and prints the same. A `gh` shim on `PATH` counts calls and bytes, as described under Method.
 - **Baseline commit:** `b609b438` (main)
-- **After commit:** `f7dec6cc` (the code of the change). The record commit after it changes only `docs/`.
+- **After commit:** `f7dec6cc` (the code of the change). The commits after it change only `docs/` and one code comment.
 
 ## Question
 
@@ -56,17 +56,17 @@ API requests equal `gh` processes in every row: no call needed a second page.
 | Query on #318 | Charged cost | Nodes | Response |
 | --- | --: | --: | --: |
 | First: the issue and its cross-references | 1 point | 200 | 52 KB |
-| Second: the lists of 9 delivery PRs | 1 point | 6,390 | 57 KB with the header fields; the tool asks for the lists alone |
+| Second: the lists of 9 delivery PRs | 1 point | 6,390 | 32 KB (measured by the performance review on a later run) |
 
 The first version of #375 (one query, `9f55989d`) was measured the same way at 19:45Z to 19:47Z, with the same old version. On #262, #332 and #318 it took 1.42 s, 1.53 s and 1.86 s and received 29, 37 and 95 KB in one call each.
 
 ## Reading
 
-- **Measured, wall time:** a tick on an issue with delivery PRs is two calls instead of 2 + 3N, and the saving grows with N. Wall time fell by 0.5 s for #262, 1.4 s for #332 and 2.1 s for #318. Neither control moved.
-- **Measured, the second call's price:** the second query is a second round trip, so these ticks are about 0.5–0.9 s slower than with the one-query version. That was the price of keeping strangers' PRs from deciding the download.
+- **Measured, wall time:** a tick on an issue with delivery PRs is two calls instead of 2 + 3N, and the saving grows with N. Wall time fell by 0.5 s for #262, 1.4 s for #332 and 2.1 s for #318. The #262 ranges overlap (2.30–2.89 s against 2.10–2.74 s), so its saving is the least firm. Neither control moved.
+- **Inferred across two sessions, the second call's price:** the second query is a second round trip. Comparing this session with the one-query session of 19:45Z (load 2.1–2.5 against 1.3–1.8), these ticks are about 0.5–0.9 s slower than with the one-query version. That was the price of keeping strangers' PRs from deciding the download.
 - **Measured, issues without delivery PRs:** a tick is 0.2–0.25 s slower than before (#155, #272). One GraphQL call takes longer than the old two small REST calls, which ran in parallel. At a 5-minute cadence this is negligible.
-- **Measured, bytes:** a tick on an issue with delivery PRs receives 75–80% fewer bytes. On #272 it receives 84% fewer, because the REST timeline embedded every cross-referencing issue in full. What a PR that is not a delivery PR now costs is its header, mostly its body: GraphQL cannot filter PRs on their body, so every cross-reference brings one. Its comments, reviews and threads are no longer fetched. In the one-query version, the 7 PRs #318 drops were 37 KB of whole objects, 17 KB of them their lists (measured by the performance review).
-- **Measured, cost:** both queries cost 1 point each, and the first asks for 200 nodes whatever the issue, because cross-references no longer nest lists. This no longer relies on GitHub skipping connections nested under the timeline union. The one-query version did rely on that: by the documented formula it would have cost 53 points.
+- **Measured, bytes:** a tick on an issue with delivery PRs receives 75–80% fewer bytes. On #272 it receives 84% fewer, because the REST timeline embedded every cross-referencing issue in full. What a PR that is not a delivery PR now costs is its header, mostly its body: GraphQL cannot filter PRs on their body, so every cross-reference brings one. Its comments, reviews and threads are no longer fetched. In the one-query version, the 7 PRs #318 drops were 37 KB of whole objects (measured in this session). The performance review later measured 39 KB of whole objects, 16.5 KB of them their lists.
+- **Measured, cost:** both queries cost 1 point each, and the first asks for 200 nodes whatever the issue, because cross-references no longer nest lists. Each `--pr` PR adds about 710 nodes, and each delivery PR in the second query about 710 nodes and 0.13 points (9 PRs cost 1 point, 100 would cost 13). This no longer relies on GitHub skipping connections nested under the timeline union. The one-query version did rely on that: by the documented formula it would have cost 53 points.
 - **Inferred from the counts:** at the 5-minute cadence of #319, watching #318 costs 24 GraphQL points an hour instead of 348 REST requests. Each limit allows 5,000 an hour. At a 60-second cadence it costs 120 points instead of 1,740 requests.
 - **Measured, output:** the output did not change. Follow-up pages and the second query were exercised against the real API only by the scratch copy with small page sizes, because no real list is longer than a page.
 
@@ -77,6 +77,8 @@ Reconsider when one of these happens:
 - A tick takes more than about 3 s again.
 - Cross-reference headers pass about 250 KB in one response.
 - A query costs more than a few points, or GitHub reports a node-limit error.
+- A list needs more than 20 follow-up rounds, so its tail stays unread on every tick, at 21 calls per tick. Comments are read oldest first, so reading them newest first (`last:`, `before:`) would fix it. This is inferred and needs about 2,000 items in one list; the repository maximum is 26.
+- A round names more than about 200 delivery PRs, which would bring its query text near Linux's 128 KB limit for a single argument. Capping the PRs per round would fix it. This is inferred.
 - The extra round trip on issues with delivery PRs is felt in sessions. The performance review's alternative is to name the PRs already in the seen record (`pr-state:N` keys) in the first query. That would make a steady-state tick one call again, at the price of the record deciding what is fetched.
 
 Repeat the method above on both versions, alternating them, compare with this record, and never edit it.

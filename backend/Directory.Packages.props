@@ -41,4 +41,10 @@
     <PackageVersion Include="Testcontainers.PostgreSql" Version="4.16.0" />
     <PackageVersion Include="xunit.v3.mtp-v2" Version="4.0.2" />
   </ItemGroup>
+
+  <!-- Used only by repo tooling (tools/delivery-guards, #387). Pinned here so Dependabot updates it, and
+       `just tools versions` keeps the tools' #:package pins in step (ADR-0017). No backend project references it. -->
+  <ItemGroup Label="Repo tooling">
+    <PackageVersion Include="YamlDotNet" Version="18.1.0" />
+  </ItemGroup>
 </Project>

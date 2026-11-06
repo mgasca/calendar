@@ -1,4 +1,4 @@
-import { readFileSync } from 'node:fs';
+import { readdirSync, readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import type { AstroIntegration } from 'astro';
 import { defineConfig } from 'astro/config';
@@ -19,6 +19,15 @@ const { site, base } = deployment(process.env.DOCS_SITE_URL);
 const { flows } = parseArchitecture(
   readFileSync(new URL(modelFile, architectureDirectory), 'utf8'),
 );
+// The site opens on the first agent thought, which says why the repository exists (story 0031).
+// The index lists the reports in number order, so the first file is its first row; the loader
+// validates the index and fails the build on anything this does not cover.
+const firstAgentThought = readdirSync(new URL('../../../docs/agent-thoughts/', import.meta.url))
+  .filter((name) => /^\d{4}-.+\.md$/.test(name))
+  .sort()[0]
+  ?.slice(0, 4);
+if (firstAgentThought === undefined)
+  throw new Error('docs/agent-thoughts has no report to open on');
 
 /**
  * Turns off Mermaid's own render-on-load the moment the module evaluates. Mermaid adds a window
@@ -46,9 +55,9 @@ export default defineConfig({
   site,
   base,
   trailingSlash: 'always',
-  // The site has no landing page of its own: the root opens the architecture overview. Astro does
-  // not prefix redirect targets with the base, so it is added here.
-  redirects: { '/': `${base}architecture/` },
+  // The site has no landing page of its own: the root opens the first agent thought. Astro does not
+  // prefix redirect targets with the base, so it is added here.
+  redirects: { '/': `${base}agent-thoughts/${firstAgentThought}/` },
   markdown: {
     processor: unified({
       remarkPlugins: [

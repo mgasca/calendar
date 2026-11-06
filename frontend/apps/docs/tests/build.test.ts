@@ -67,10 +67,14 @@ describe('published documentation links', () => {
 });
 
 describe('site root', () => {
-  it('redirects to the architecture overview and lists Architecture first in the sidebar', async () => {
+  it('redirects to the first agent thought and lists Architecture first in the sidebar', async () => {
+    const { agentThought } = await readDocuments();
+    const first = agentThought.records[0]?.number;
+    expect(first).toBeDefined();
     const index = await readFile('dist/index.html', 'utf8');
     expect(index).toContain(`http-equiv="refresh"`);
-    expect(index).toContain(`url=${base}architecture/`);
+    expect(index).toContain(`url=${base}agent-thoughts/${first ?? ''}/`);
+    await access(`dist/agent-thoughts/${first ?? ''}/index.html`);
     const overview = await readFile('dist/architecture/index.html', 'utf8');
     const routes = sidebarRoutes(overview);
     expect(routes[0]).toBe(`${base}architecture/`);

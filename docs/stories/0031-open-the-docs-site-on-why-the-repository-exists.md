@@ -87,6 +87,7 @@ No changes.
 ### Lessons learned, known issues and follow-ups
 
 * **A negative control must rebuild what it tests.** The first control of the redirect ran against a build left at a project subpath, after a failed edit had skipped the rebuild, and failed for that reason instead. It was redone with a rebuild at the root path; check the built output, not only the test result.
+* **Read only what a check needs.** The performance review found the two new publication checks reading the whole corpus to get the report list, about half a second each. They use `readAgentThoughts()` instead; measured on one build, the publication checks took 3.6 s instead of 4.0 to 4.5 s (alternating A, B, A, B). CI runs them three times per Docs site job.
 * **Stacked on another story's open PR.** The folder and its first report arrived with #331 (story 0029), so this story's PRs were stacked on it and are retargeted as it merges.
 
 ## User guide

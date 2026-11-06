@@ -68,7 +68,7 @@ describe('published documentation links', () => {
 
 describe('site root', () => {
   it('redirects to the first agent thought and lists Architecture first in the sidebar', async () => {
-    const { agentThought } = await readDocuments();
+    const agentThought = await readAgentThoughts();
     const first = agentThought.records[0]?.number;
     expect(first).toBeDefined();
     const index = await readFile('dist/index.html', 'utf8');

@@ -21,6 +21,7 @@ Each area's README covers its projects, recipes and configuration.
 | [`docs/stories/`](docs/stories/README.md) | User stories: background, decisions, implementation notes, user guide |
 | [`docs/runbooks/`](docs/runbooks/README.md) | Operations runbooks (Azure bootstrap, infrastructure, database) |
 | [`docs/benchmarks/`](docs/benchmarks/README.md) | Benchmark records |
+| [`docs/agent-thoughts/`](docs/agent-thoughts/README.md) | Independent agent perspectives on the repository's purpose, value and evidence limits |
 | `infra/` | Azure infrastructure as Bicep; see the [runbooks](docs/runbooks/README.md) |
 | [`tools/`](tools/README.md) | Repo tooling: .NET file-based apps and the doctor script |
 | `compose.yaml`, `docker/` | Local backing services (PostgreSQL) and their init scripts |

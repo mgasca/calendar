@@ -1,5 +1,5 @@
 ---
-status: planned
+status: implemented
 date: 2026-11-06
 issue: https://github.com/mgasca/calendar/issues/329
 pr: ["https://github.com/mgasca/calendar/pull/330"]
@@ -62,7 +62,7 @@ No new ADR is expected.
 
 ## Implementation notes
 
-*Planned. This section is completed as the story is built.*
+The report, collection index and repository navigation are delivered together in the stacked documentation PR after the card PR #330. The report preserves the agreed prose and ordering, adding only a title/provenance note and correcting links for its new location.
 
 ### Where things live
 
@@ -79,14 +79,14 @@ No changes.
 
 ### Testing
 
-Run the docs corpus tests and publication build. Manually inspect all 25 rows, provenance, report fidelity and relative links. Run the full repository check if the environment permits; report any unavailable checks explicitly. No new automated tests are needed for static prose and navigation.
+Acceptance criteria 1–4 are checked by source review of the [collection index](../agent-thoughts/README.md), [report](../agent-thoughts/0001-repository-purpose-and-value.md) and [repository navigation](../../README.md): all 25 rows are consecutive, positions 12–14 match the request, the provenance and assessment limitations are explicit, and all four report links resolve to existing files. No new automated tests were added for static prose and navigation.
+
+The card-only tree with PR #330 recorded passed `just docs test` (150 tests) and `JUST_TEMPDIR=/tmp just docs build` (120 pages; 9 publication checks). Final delivery-tree validation and the full `just check` result for criterion 5 are recorded in the delivery PR; the card-only result does not establish them.
 
 ### Lessons learned, known issues and follow-ups
 
 The report's assessment limitations remain part of the preserved document. Later delivery checks do not retroactively turn that assessment into a runtime audit.
 
 ## User guide
-
-*Planned behaviour. This section is finalised when the story is implemented.*
 
 Open **Agent thoughts** from the repository's layout table, then choose **Repository purpose and value**. Read the assessment date and revision before treating its observations as current. The report explains what the author found valuable and where the evidence remains limited.

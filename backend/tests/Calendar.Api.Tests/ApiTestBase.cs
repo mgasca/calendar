@@ -41,19 +41,33 @@ public abstract class ApiTestBase(PostgresFixture postgres) : IAsyncLifetime
 
   protected static CancellationToken Ct => TestContext.Current.CancellationToken;
 
+  private int _released;
+
   public async ValueTask InitializeAsync()
   {
     Database = await postgres.Database.RentCopyAsync(Ct);
-    await Database.ResetAsync(Ct);
-    await using (CalendarDbContext db = Database.CreateMigratorContext())
+    try
     {
-      await db.Database.ExecuteSqlAsync(
-        $"INSERT INTO users (id, email, created_at) VALUES ({UserA}, {UserAEmail}, now()), ({UserB}, {UserBEmail}, now())",
-        Ct);
+      await Database.ResetAsync(Ct);
+      await SeedUsersAsync();
+      Factory = new CalendarApiFactory(Database, Clock);
+      Client = Factory.CreateClient();
     }
+    catch
+    {
+      // Release the copy here too, in case xUnit skips DisposeAsync after a failed InitializeAsync.
+      ReleaseDatabase(reusable: true);
+      throw;
+    }
+  }
 
-    Factory = new CalendarApiFactory(Database, Clock);
-    Client = Factory.CreateClient();
+  /// <summary>Inserts <see cref="UserA"/> and <see cref="UserB"/>; overridable only to test a failing setup.</summary>
+  internal virtual async Task SeedUsersAsync()
+  {
+    await using CalendarDbContext db = Database.CreateMigratorContext();
+    await db.Database.ExecuteSqlAsync(
+      $"INSERT INTO users (id, email, created_at) VALUES ({UserA}, {UserAEmail}, now()), ({UserB}, {UserBEmail}, now())",
+      Ct);
   }
 
   /// <summary>A client whose requests act as <paramref name="user"/>.</summary>
@@ -66,12 +80,43 @@ public abstract class ApiTestBase(PostgresFixture postgres) : IAsyncLifetime
 
   public async ValueTask DisposeAsync()
   {
-    Client.Dispose();
-    await Factory.DisposeAsync();
+    var clean = false;
+    try
+    {
+      Client?.Dispose();
+      if (Factory is not null)
+      {
+        await Factory.DisposeAsync();
+      }
 
-    // The next test resets the database before using it, so one reset per test is enough (#349).
-    postgres.Database.ReturnCopy(Database);
-    GC.SuppressFinalize(this);
+      clean = true;
+    }
+    finally
+    {
+      // The next test resets the database before using it, so one reset per test is enough (#349). A copy whose
+      // test could not shut down cleanly is discarded rather than handed to the next test.
+      ReleaseDatabase(reusable: clean);
+      GC.SuppressFinalize(this);
+    }
+  }
+
+  // Exactly once per rented copy, whether InitializeAsync or DisposeAsync gets here first, so a failing test never
+  // keeps a pool slot (#359: eight leaked slots would hang the run until the CI timeout).
+  private void ReleaseDatabase(bool reusable)
+  {
+    if (Database is null || Interlocked.Exchange(ref _released, 1) == 1)
+    {
+      return;
+    }
+
+    if (reusable)
+    {
+      postgres.Database.ReturnCopy(Database);
+    }
+    else
+    {
+      postgres.Database.DiscardCopy(Database);
+    }
   }
 
   protected static DateTimeOffset Utc(int year, int month, int day, int hour = 0, int minute = 0) =>

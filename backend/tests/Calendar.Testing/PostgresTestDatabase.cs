@@ -16,15 +16,17 @@ namespace Calendar.Testing;
 /// </summary>
 public sealed class PostgresTestDatabase : IAsyncDisposable
 {
+  /// <summary>
+  /// The most copies <see cref="RentCopyAsync"/> keeps. Each holds a few pooled connections per role, so this keeps a run
+  /// well under PostgreSQL's default max_connections of 100 on any machine; CI runners have 4 cores and never reach it.
+  /// </summary>
+  public const int MaxCopies = 8;
+
   private const string Database = "calendar";
   private const string Template = "calendar_template";
   private const string AdminPassword = "test-admin-password";
   private const string MigratorPassword = "test-migrator-password";
   private const string AppPassword = "test-app-password";
-
-  // Each copy holds a few pooled connections per role, so this keeps a run well under PostgreSQL's default
-  // max_connections of 100 on any machine. CI runners have 4 cores, so they never reach it.
-  private const int MaxCopies = 8;
 
   private readonly PostgreSqlContainer _container;
   private readonly string _database;
@@ -118,13 +120,18 @@ public sealed class PostgresTestDatabase : IAsyncDisposable
   /// <summary>Returns a copy from <see cref="RentCopyAsync"/>, for the next test to rent.</summary>
   public void ReturnCopy(PostgresTestDatabase copy)
   {
-    ArgumentNullException.ThrowIfNull(copy);
-    if (copy._origin != this)
-    {
-      throw new ArgumentException("The database was not rented from this one.", nameof(copy));
-    }
-
+    EnsureRentedFromThis(copy);
     _idleCopies.Add(copy);
+    _copySlots.Release();
+  }
+
+  /// <summary>
+  /// Gives up a copy from <see cref="RentCopyAsync"/> that may be in an unknown state, such as after a test failed to
+  /// shut down: no test rents it again, and its slot goes to a new copy.
+  /// </summary>
+  public void DiscardCopy(PostgresTestDatabase copy)
+  {
+    EnsureRentedFromThis(copy);
     _copySlots.Release();
   }
 
@@ -185,6 +192,15 @@ public sealed class PostgresTestDatabase : IAsyncDisposable
   {
     await using var command = new NpgsqlCommand(sql, connection);
     await command.ExecuteNonQueryAsync(cancellationToken);
+  }
+
+  private void EnsureRentedFromThis(PostgresTestDatabase copy)
+  {
+    ArgumentNullException.ThrowIfNull(copy);
+    if (copy._origin != this)
+    {
+      throw new ArgumentException("The database was not rented from this one.", nameof(copy));
+    }
   }
 
   private async Task<PostgresTestDatabase> CreateCopyAsync(CancellationToken cancellationToken)

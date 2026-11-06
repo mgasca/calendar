@@ -18,8 +18,12 @@ public static class ShellCommand
   {
     var segments = new List<Segment>();
     var current = cwd;
+    string? previousStdin = null;
     foreach (Scanner.Command parsed in new Scanner(command).Commands())
     {
+      // A command at the end of a pipe reads what the one before it was fed (cat <<'EOF' | gh ... --body-file -).
+      var stdin = parsed.Stdin?.ToString() ?? (parsed.Piped ? previousStdin : null);
+      previousStdin = stdin;
       if (parsed.Words.Count == 0)
       {
         continue;
@@ -29,7 +33,7 @@ public static class ShellCommand
         current = Path.GetFullPath(Path.Combine(current, parsed.Words[1]));
         continue;
       }
-      segments.Add(new Segment(parsed.Words, current, parsed.Stdin?.ToString()));
+      segments.Add(new Segment(parsed.Words, current, stdin));
     }
     return segments;
   }
@@ -49,6 +53,9 @@ public static class ShellCommand
       public List<string> Words { get; } = [];
 
       public StringBuilder? Stdin { get; set; }
+
+      /// <summary>True when a <c>|</c> (not <c>||</c>) comes before the command, so it reads the previous one's output.</summary>
+      public bool Piped { get; init; }
     }
 
     private sealed record Heredoc(string Delimiter, bool StripTabs, Command Owner);
@@ -82,12 +89,17 @@ public static class ShellCommand
           {
             ReadHeredocBodies();
           }
-          commands.Add(new Command());
+          commands.Add(new Command { Piped = c == '|' && separator == 1 });
         }
         else if (char.IsWhiteSpace(c))
         {
           EndWord();
           _pos++;
+        }
+        else if (c == '#' && !inWord)
+        {
+          // A comment: an apostrophe in it must not open a quote that hides the commands after it.
+          SkipComment();
         }
         else if (StartsHeredoc())
         {
@@ -145,6 +157,11 @@ public static class ShellCommand
         }
         word.Append(escaped);
       }
+      else if (Next("$'"))
+      {
+        _pos += 2;
+        ReadAnsiQuoted(word);
+      }
       else if (Next("$("))
       {
         var start = _pos;
@@ -157,6 +174,28 @@ public static class ShellCommand
         _pos++;
       }
       return true;
+    }
+
+    /// <summary>Moves to the end of a <c>#</c> comment's line, leaving the newline to end the command.</summary>
+    private void SkipComment()
+    {
+      var end = text.IndexOf('\n', _pos);
+      _pos = end < 0 ? text.Length : end;
+    }
+
+    /// <summary>Reads a <c>$'...'</c> word, in which a backslash escapes the next character, a quote included.</summary>
+    private void ReadAnsiQuoted(StringBuilder word)
+    {
+      while (_pos < text.Length && text[_pos] != '\'')
+      {
+        if (text[_pos] == '\\' && _pos + 1 < text.Length)
+        {
+          _pos++;
+        }
+        word.Append(text[_pos]);
+        _pos++;
+      }
+      _pos = Math.Min(_pos + 1, text.Length);
     }
 
     private void ReadDoubleQuoted(StringBuilder word)
@@ -220,7 +259,11 @@ public static class ShellCommand
         {
           _pending.Add(ReadHeredocOperator(owner: null));
         }
-        else if (c is '\'' or '"' or '\\' || Next("$("))
+        else if (c == '#' && (char.IsWhiteSpace(text[_pos - 1]) || text[_pos - 1] is '(' or ';'))
+        {
+          SkipComment();
+        }
+        else if (c is '\'' or '"' or '\\' || Next("$(") || Next("$'"))
         {
           ReadWordPart(scratch);
           scratch.Clear();

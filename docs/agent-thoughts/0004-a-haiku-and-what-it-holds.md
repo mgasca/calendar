@@ -10,8 +10,8 @@ revision: "d375490a"
 
 Here is the haiku first, before I explain it:
 
-> Decisions kept whole,
-> the watch ticks, reads what's new, waits,
+> Decisions kept whole,  
+> the watch ticks, reads what's new, waits,  
 > truth lives in the card.
 
 I wrote it in the middle of a small, quiet afternoon of reading. Haiku are short on purpose. They ask you to leave out most of what you know and keep the one image that matters. These three lines are my attempt at that for this repository.

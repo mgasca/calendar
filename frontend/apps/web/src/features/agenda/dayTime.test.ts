@@ -163,6 +163,24 @@ describe('eventStatuses', () => {
     expect(new Set(statuses.values())).toEqual(new Set(['past']));
   });
 
+  it('marks every event at the earliest future start as next (#461)', () => {
+    const simultaneous = [
+      event('done', '2026-10-26T08:00:00Z', '2026-10-26T09:00:00Z'),
+      event('dentist', '2026-10-26T19:00:00Z', '2026-10-26T20:00:00Z'),
+      event('phone', '2026-10-26T19:00:00Z', '2026-10-26T19:30:00Z'),
+      event('later', '2026-10-26T21:00:00Z', '2026-10-26T22:00:00Z'),
+    ];
+
+    const statuses = eventStatuses(simultaneous, Date.parse('2026-10-26T18:00:00Z'));
+
+    expect([...statuses]).toEqual([
+      ['done', 'past'],
+      ['dentist', 'next'],
+      ['phone', 'next'],
+      ['later', 'upcoming'],
+    ]);
+  });
+
   it('marks a next event even while another is running', () => {
     const overlapping = [
       event('a', '2026-10-26T09:00:00Z', '2026-10-26T11:00:00Z'),

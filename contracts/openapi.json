@@ -137,6 +137,117 @@
             }
           }
         }
+      },
+      "put": {
+        "tags": [
+          "Events"
+        ],
+        "operationId": "UpdateEvent",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateEventRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EventResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HttpValidationProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Events"
+        ],
+        "operationId": "DeleteEvent",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
       }
     },
     "/api/tasks": {
@@ -1094,7 +1205,8 @@
         "required": [
           "id",
           "title",
-          "allDay"
+          "allDay",
+          "version"
         ],
         "type": "object",
         "properties": {
@@ -1163,6 +1275,15 @@
             ],
             "description": "All-day events: exclusive end date; `null` for timed events.",
             "format": "date"
+          },
+          "version": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "description": "Opaque version of the stored event; send it back to update the event.",
+            "format": "uint32"
           }
         },
         "description": "An event as stored. Fields of the other kind are `null`."
@@ -1446,6 +1567,86 @@
           }
         },
         "description": "A timed event in the day agenda."
+      },
+      "UpdateEventRequest": {
+        "required": [
+          "title",
+          "version"
+        ],
+        "type": "object",
+        "properties": {
+          "title": {
+            "type": "string",
+            "description": "Event title; required, at most 200 characters after trimming."
+          },
+          "allDay": {
+            "type": "boolean",
+            "description": "`true` for an all-day event (`startDate`/`endDate`),\n`false` for a timed one (`start`/`end`/`timeZone`)."
+          },
+          "start": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "Timed events: inclusive start instant, RFC 3339 with an explicit offset (e.g. 2026-10-26T14:00:00Z); `null` for all-day events.",
+            "format": "date-time"
+          },
+          "end": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "Timed events: exclusive end instant, after `start`; `null` for all-day events.",
+            "format": "date-time"
+          },
+          "timeZone": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "Timed events: IANA time zone the event was created in, e.g. America/New_York; `null` for all-day events."
+          },
+          "startDate": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "All-day events: first date (YYYY-MM-DD); `null` for timed events.",
+            "format": "date"
+          },
+          "endDate": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "All-day events: exclusive end date (YYYY-MM-DD), after `startDate`; a one-day event on the 26th ends on the 27th.\n`null` for timed events.",
+            "format": "date"
+          },
+          "location": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "Optional location, at most 200 characters."
+          },
+          "notes": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "Optional notes, at most 4000 characters."
+          },
+          "version": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "description": "The event's `version` as last read; the update is refused with `409` when the event has changed\nsince.",
+            "format": "uint32"
+          }
+        },
+        "description": "Replace an event: the fields and rules of `CreateEventRequest`, plus the `version` the client loaded.\nThe kind can change (timed to all-day and back)."
       },
       "WeekAgendaResponse": {
         "required": [

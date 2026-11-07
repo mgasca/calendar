@@ -76,6 +76,9 @@ public sealed record PullRequest(int Number, string State, DateTimeOffset Change
 {
   /// <summary>Gets the login of the PR's author.</summary>
   public string Author { get; init; } = string.Empty;
+
+  /// <summary>Gets the author's association with the repository, as GitHub names it (OWNER, NONE, ...).</summary>
+  public string Association { get; init; } = string.Empty;
 }
 
 /// <summary>One comment, review or PR state the watch can print.</summary>
@@ -105,6 +108,12 @@ public sealed record WatchItem(
 
   /// <summary>Gets the ID of the inline review comment this one answers.</summary>
   public long? ReplyTo { get; init; }
+
+  /// <summary>Gets the author's association with the repository, as GitHub names it (OWNER, MEMBER, COLLABORATOR, NONE, ...).</summary>
+  public string Association { get; init; } = string.Empty;
+
+  /// <summary>Gets why a maintainer hid (minimized) the item, as GitHub names it (spam, outdated, ...); null when not hidden.</summary>
+  public string? HiddenReason { get; init; }
 
   /// <summary>Gets the item's line in the seen-ID record, <c>kind:id</c>.</summary>
   public string Key => $"{Kind}:{Id}";
@@ -170,10 +179,11 @@ public static class Query
 
   private const string PageInfo = "pageInfo { hasNextPage endCursor }";
   private const string Author = "author { __typename login }";
-  private const string CommentFields = $"fullDatabaseId createdAt url body {Author}";
-  private const string ReviewFields = $"fullDatabaseId state submittedAt url body {Author}";
+  private const string Trust = "authorAssociation isMinimized minimizedReason";
+  private const string CommentFields = $"fullDatabaseId createdAt url body {Author} {Trust}";
+  private const string ReviewFields = $"fullDatabaseId state submittedAt url body {Author} {Trust}";
   private const string ThreadCommentFields =
-    $"fullDatabaseId state createdAt url body path line originalLine replyTo {{ fullDatabaseId }} {Author}";
+    $"fullDatabaseId state createdAt url body path line originalLine replyTo {{ fullDatabaseId }} {Author} {Trust}";
 
   /// <summary>What a cross-reference brings of its PR: what <see cref="Snapshot.IsDeliveryPullRequest"/> and the state need.</summary>
   private const string PullRequestHeader = $"id number state createdAt closedAt mergedAt url body authorAssociation {Author}";
@@ -604,7 +614,22 @@ public sealed class Snapshot(int issue)
       isBot,
       at,
       Text(node, "url"),
-      Text(node, "body"));
+      Text(node, "body"))
+    {
+      Association = Text(node, "authorAssociation"),
+      HiddenReason = HiddenReasonOf(node),
+    };
+  }
+
+  // A hidden item without a reason still counts as hidden: the body is what must stay out, the reason only explains it.
+  private static string? HiddenReasonOf(JsonElement node)
+  {
+    if (!node.TryGetProperty("isMinimized", out JsonElement minimized) || minimized.ValueKind != JsonValueKind.True)
+    {
+      return null;
+    }
+    var reason = Text(node, "minimizedReason");
+    return reason.Length > 0 ? reason : "unspecified";
   }
 
   // GraphQL gives a bot's login without the "[bot]" suffix that REST and the web show (github-actions, not
@@ -625,14 +650,15 @@ public sealed class Snapshot(int issue)
     var number = pullRequest.GetProperty("number").GetInt32();
     DateTimeOffset created = Time(pullRequest, "createdAt") ?? DateTimeOffset.MinValue;
     var author = Author(pullRequest).Login;
+    var association = Text(pullRequest, "authorAssociation");
     var url = Text(pullRequest, "url");
     if (Time(pullRequest, "mergedAt") is { } merged)
     {
-      return new PullRequest(number, "merged", merged, url) { Author = author };
+      return new PullRequest(number, "merged", merged, url) { Author = author, Association = association };
     }
     return string.Equals(Text(pullRequest, "state"), "CLOSED", StringComparison.Ordinal)
-      ? new PullRequest(number, "closed", Time(pullRequest, "closedAt") ?? created, url) { Author = author }
-      : new PullRequest(number, "open", created, url) { Author = author };
+      ? new PullRequest(number, "closed", Time(pullRequest, "closedAt") ?? created, url) { Author = author, Association = association }
+      : new PullRequest(number, "open", created, url) { Author = author, Association = association };
   }
 
   private static JsonElement? Node(JsonElement element, string property) =>
@@ -733,7 +759,7 @@ public static class Watch
         IsBot: false,
         pr.ChangedAt,
         pr.Url,
-        string.Empty)),
+        string.Empty) { Association = pr.Association }),
     ];
 
   /// <summary>The items whose key is not in the record, once each, oldest first.</summary>
@@ -778,8 +804,8 @@ public static class Report
   private const string Separator = " · ";
 
   /// <summary>
-  /// A summary line, then one record per new item: a header line starting with <c>===</c>, the link, and the body indented by
-  /// two spaces, so no body line can be mistaken for a header.
+  /// A summary line, then one record per new item: a header line starting with <c>===</c>, the link, and the body indented by two
+  /// spaces, so no body line can be mistaken for a header. A hidden item prints no body: only its header and link.
   /// </summary>
   /// <param name="issue">The watched issue.</param>
   /// <param name="pullRequests">The watched PRs.</param>
@@ -799,7 +825,7 @@ public static class Report
     {
       text.Append(Header(item)).Append('\n');
       text.Append(Clean(item.Url)).Append('\n');
-      if (string.IsNullOrWhiteSpace(item.Body))
+      if (item.HiddenReason is not null || string.IsNullOrWhiteSpace(item.Body))
       {
         continue;
       }
@@ -813,7 +839,7 @@ public static class Report
 
   /// <summary>The header line of one record.</summary>
   /// <param name="item">The item.</param>
-  /// <returns>For example <c>=== review:58 · PR #360 · mgasca · agent-footer: no · APPROVED · 2026-11-06T15:10:18Z</c>.</returns>
+  /// <returns>For example <c>=== review:58 · PR #360 · mgasca · OWNER · agent-footer: no · APPROVED · 2026-11-06T15:10:18Z</c>.</returns>
   public static string Header(WatchItem item)
   {
     List<string> parts =
@@ -824,6 +850,14 @@ public static class Report
         $"{(string.Equals(item.Kind, Kinds.IssueComment, StringComparison.Ordinal) ? "#" : "PR #")}{item.Number}"),
     ];
     parts.Add(item.IsBot ? item.Author + " (bot)" : item.Author);
+    if (item.Association.Length > 0)
+    {
+      parts.Add(item.Association);
+    }
+    if (item.HiddenReason is { } reason)
+    {
+      parts.Add("hidden: " + reason);
+    }
     if (!string.Equals(item.Kind, Kinds.PrState, StringComparison.Ordinal))
     {
       parts.Add(item.HasAgentFooter ? "agent-footer: yes" : "agent-footer: no");

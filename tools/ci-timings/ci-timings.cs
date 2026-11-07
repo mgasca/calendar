@@ -165,22 +165,8 @@ if (baseline)
     return 2;
   }
   var repoName = repo ?? (await Gh.RunAsync(["repo", "view", "--json", "nameWithOwner", "--jq", ".nameWithOwner"])).Trim();
-  async Task<List<SampledRun>> SampleAsync(string range)
-  {
-    IReadOnlyList<WorkflowRun> listedRuns = Parser.ParseRuns(await Gh.RunAsync(
-    [
-      "run", "list", "--workflow", workflow, "--limit", "1000", "--created", range, "--repo", repoName,
-      "--json", "databaseId,status,conclusion,createdAt,event,headBranch,headSha",
-    ]));
-    List<SampledRun> sampled = [];
-    foreach (WorkflowRun run in listedRuns.Where(BaselineRuns.IsSuccessful).OrderBy(run => run.CreatedAt))
-    {
-      var jobsJson = await Gh.RunAsync(["api", $"repos/{repoName}/actions/runs/{run.Id}/jobs?per_page=50"]);
-      sampled.Add(new SampledRun(run, [.. Baselines.Samples(run, Parser.ParseJobs(run.Id, jobsJson))]));
-    }
-    return sampled;
-  }
-  List<SampledRun> inWindow = [.. (await SampleAsync(created)).Where(item => BaselineRuns.IsMain(item.Run))];
+  // Only runs on main are read for the baseline, so a pull request run in the window costs no jobs call (#392 review).
+  List<SampledRun> inWindow = await BaselineSampler.SampleAsync(Gh.RunAsync, repoName, workflow, created, BaselineRuns.IsMain);
   BaselineFile file = BaselineRuns.Build(workflow, record, minRuns, constants, inWindow);
   await File.WriteAllTextAsync(output, BaselineIo.Write(file));
   var text = new System.Text.StringBuilder();
@@ -190,7 +176,12 @@ if (baseline)
   text.Append(BaselineReport.Table(file));
   if (holdout is not null)
   {
-    List<SampledRun> held = await SampleAsync(holdout);
+    List<SampledRun> held = await BaselineSampler.SampleAsync(
+      Gh.RunAsync,
+      repoName,
+      workflow,
+      holdout,
+      run => BaselineRuns.IsMain(run) || string.Equals(run.Event, "pull_request", StringComparison.Ordinal));
     IEnumerable<PathSample> heldMain = held.Where(item => BaselineRuns.IsMain(item.Run)).SelectMany(item => item.Samples);
     IEnumerable<PathSample> heldPullRequests = held
       .Where(item => string.Equals(item.Run.Event, "pull_request", StringComparison.Ordinal))

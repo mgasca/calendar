@@ -254,6 +254,21 @@ public sealed class BaselineIoTests
   }
 
   [Fact]
+  public void Evaluate_LeavesOutTheBaselinesOwnRuns()
+  {
+    // A hold-out window that overlaps the baseline window must not back-test the baseline on its own runs.
+    BaselineFile baseline = Sample();
+
+    BackTest test = BaselineIo.Evaluate(
+      baseline,
+      [new PathSample(100, "Backend", "check", 900), new PathSample(7, "Backend", "check", 60)]);
+
+    test.Runs.ShouldBe(1);
+    test.FailedRuns.ShouldBe(0);
+    test.JobChecks[("Backend", "check")].ShouldBe((1, 0));
+  }
+
+  [Fact]
   public void BackTestTable_ReportsTheRateAndItsUpperBound()
   {
     BaselineFile baseline = Sample();
@@ -313,5 +328,70 @@ public sealed class BaselineSampleTests
       ]);
 
     BaselineIo.Read(BaselineIo.Write(file)).Paths["publication"].Jobs["Backend"].Seconds.ShouldBe([79, 81]);
+  }
+}
+
+public sealed class BaselineSamplerTests
+{
+  private const string NoJobs = """{ "jobs": [] }""";
+
+  private static string RunsJson(params (long Id, string Event, string Branch, string Conclusion)[] runs) =>
+    "[" + string.Join(",", runs.Select(run =>
+      $$"""{ "databaseId": {{run.Id}}, "status": "completed", "conclusion": "{{run.Conclusion}}", """
+      + $$""" "createdAt": "2026-11-07T09:{{run.Id % 60:00}}:00Z", """
+      + $$""" "event": "{{run.Event}}", "headBranch": "{{run.Branch}}", "headSha": "s{{run.Id}}" }""")) + "]";
+
+  private sealed class FakeGh(string runsJson)
+  {
+    public List<string> JobsCalls { get; } = [];
+
+    public Task<string> RunAsync(IReadOnlyList<string> arguments)
+    {
+      if (arguments[0] == "api")
+      {
+        JobsCalls.Add(arguments[1]);
+        return Task.FromResult(NoJobs);
+      }
+      return Task.FromResult(runsJson);
+    }
+  }
+
+  [Fact]
+  public async Task SampleAsync_ReadsTheJobsOfKeptRunsOnly()
+  {
+    var gh = new FakeGh(RunsJson(
+      (1, "push", "main", "success"),
+      (2, "pull_request", "feature", "success"),
+      (3, "pull_request", "other", "success"),
+      (4, "pull_request", "third", "success")));
+
+    List<SampledRun> sampled = await BaselineSampler.SampleAsync(gh.RunAsync, "o/r", "ci.yml", ">=2026-11-07", BaselineRuns.IsMain);
+
+    sampled.ShouldHaveSingleItem().Run.Id.ShouldBe(1);
+    gh.JobsCalls.ShouldBe(["repos/o/r/actions/runs/1/jobs?per_page=50"]);
+  }
+
+  [Fact]
+  public async Task SampleAsync_SkipsUnsuccessfulRunsBeforeAnyJobsCall_OldestFirst()
+  {
+    var gh = new FakeGh(
+      RunsJson((9, "push", "main", "success"), (8, "push", "main", "failure"), (7, "workflow_dispatch", "main", "success")));
+
+    List<SampledRun> sampled = await BaselineSampler.SampleAsync(gh.RunAsync, "o/r", "ci.yml", "x", BaselineRuns.IsMain);
+
+    sampled.Select(item => item.Run.Id).ShouldBe([7, 9]);
+    gh.JobsCalls.Count.ShouldBe(2);
+  }
+
+  [Fact]
+  public async Task SampleAsync_RefusesAWindowThatReachesTheListLimit()
+  {
+    var gh = new FakeGh(RunsJson([.. Enumerable.Range(1, BaselineSampler.ListLimit).Select(id => ((long)id, "push", "main", "success"))]));
+
+    InvalidOperationException error = await Should.ThrowAsync<InvalidOperationException>(
+      () => BaselineSampler.SampleAsync(gh.RunAsync, "o/r", "ci.yml", ">=2026-10-01", BaselineRuns.IsMain));
+
+    error.Message.ShouldContain("holds at least 1000 runs");
+    gh.JobsCalls.ShouldBeEmpty();
   }
 }

@@ -33,8 +33,9 @@ default:
     @just --list --list-submodules
 
 # Check the toolchain (pass --infra to also check Azure CLI and Bicep)
+[positional-arguments]
 doctor *args:
-    @./tools/doctor/doctor.sh {{ args }}
+    @./tools/doctor/doctor.sh "$@"
 
 # Restore .NET packages, install frontend dependencies, configure git blame
 setup: doctor && backend::restore frontend::install

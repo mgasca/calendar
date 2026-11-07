@@ -121,7 +121,9 @@ public static class RankTest
     }
     var observed = pooled.Select((item, index) => item.Recent ? doubledRanks[index] : 0).Sum();
     var size = recent.Count;
-    var maxSum = doubledRanks.Sum();
+    // No choice of `size` ranks sums to more than the `size` largest, so the table stops there: about size · 2N columns
+    // instead of N(N + 1), and the work grows with N² rather than N³ (#398 review).
+    var maxSum = TableWidth(doubledRanks, size);
     // ways[k, s]: the number of ways to choose k of the values seen so far with doubled rank sum s.
     var ways = new double[size + 1, maxSum + 1];
     ways[0, 0] = 1;
@@ -145,6 +147,12 @@ public static class RankTest
     }
     return new TailProbabilities(atLeast / total, atMost / total);
   }
+
+  /// <summary>The largest doubled rank sum that <paramref name="size"/> of the given ranks can reach.</summary>
+  /// <param name="doubledRanks">The doubled mid-ranks of the pooled sample.</param>
+  /// <param name="size">How many are chosen.</param>
+  /// <returns>The sum of the <paramref name="size"/> largest ranks (all of them when there are fewer).</returns>
+  public static int TableWidth(IEnumerable<int> doubledRanks, int size) => doubledRanks.OrderDescending().Take(size).Sum();
 
   /// <summary>
   /// The Hodges–Lehmann shift, the median of every recent − baseline difference, with an approximate 95 % interval

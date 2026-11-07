@@ -13,98 +13,223 @@
   },
   "paths": {
     "check": {
-      "status": "provisional",
-      "n": 5,
+      "status": "pinned",
+      "n": 30,
       "window": {
         "from": "2026-11-06T20:14:15Z",
-        "to": "2026-11-06T22:21:38Z",
+        "to": "2026-11-07T12:48:02Z",
         "firstCommit": "209f497fa3cd3113ec7142258f87bdc8c7ebf534",
-        "lastCommit": "897c048968617ba2c026193c98e928aa94139268"
+        "lastCommit": "320895045833273d9eebd8748f77b0a4b887a994"
       },
       "jobs": {
         "Backend": {
-          "n": 5,
+          "n": 30,
           "median": 82,
           "logMedian": 4.406719,
           "logMad": 0.075986,
-          "p90": 98,
+          "p90": 92,
           "p95": 98,
-          "max": 98,
+          "max": 112,
           "threshold": 114,
           "seconds": [
+            56,
+            62,
+            63,
+            64,
+            68,
+            70,
             72,
+            73,
             76,
+            76,
+            76,
+            81,
+            81,
             82,
+            82,
+            83,
+            83,
+            85,
+            85,
+            87,
+            87,
             88,
-            98
+            88,
+            89,
+            89,
+            90,
+            92,
+            92,
+            98,
+            112
           ]
         },
         "Container image": {
-          "n": 5,
-          "median": 73,
-          "logMedian": 4.290459,
-          "logMad": 0.078988,
-          "p90": 79,
-          "p95": 79,
-          "max": 79,
-          "threshold": 103,
+          "n": 30,
+          "median": 64,
+          "logMedian": 4.158883,
+          "logMad": 0.115832,
+          "p90": 82,
+          "p95": 85,
+          "max": 115,
+          "threshold": 105,
           "seconds": [
             56,
+            56,
+            56,
+            57,
+            57,
+            57,
+            57,
+            58,
             59,
+            60,
+            61,
+            62,
+            64,
+            64,
+            64,
+            64,
+            66,
+            66,
+            68,
+            70,
             73,
+            76,
+            77,
+            77,
             78,
-            79
+            79,
+            82,
+            83,
+            85,
+            115
           ]
         },
         "Docs site": {
-          "n": 5,
-          "median": 71,
-          "logMedian": 4.26268,
-          "logMad": 0.094029,
-          "p90": 80,
-          "p95": 80,
-          "max": 80,
-          "threshold": 107,
+          "n": 30,
+          "median": 69,
+          "logMedian": 4.234107,
+          "logMad": 0.122602,
+          "p90": 82,
+          "p95": 277,
+          "max": 303,
+          "threshold": 117,
           "seconds": [
             50,
+            53,
+            54,
+            56,
+            57,
+            58,
+            62,
+            62,
+            64,
+            66,
+            66,
+            66,
+            69,
+            69,
             69,
             71,
+            71,
+            72,
+            73,
+            73,
             78,
-            80
+            78,
+            79,
+            80,
+            80,
+            82,
+            82,
+            89,
+            277,
+            303
           ]
         },
         "Frontend": {
-          "n": 5,
-          "median": 43,
-          "logMedian": 3.7612,
-          "logMad": 0.045462,
-          "p90": 46,
-          "p95": 46,
-          "max": 46,
-          "threshold": 58,
+          "n": 30,
+          "median": 46,
+          "logMedian": 3.828641,
+          "logMad": 0.139762,
+          "p90": 55,
+          "p95": 59,
+          "max": 59,
+          "threshold": 84,
           "seconds": [
+            37,
+            38,
+            39,
+            39,
+            39,
             40,
+            40,
+            41,
             42,
             43,
+            43,
             45,
-            46
+            45,
+            45,
+            46,
+            48,
+            48,
+            51,
+            51,
+            52,
+            52,
+            53,
+            54,
+            54,
+            54,
+            55,
+            55,
+            58,
+            59,
+            59
           ]
         },
         "Tooling": {
-          "n": 5,
-          "median": 71,
-          "logMedian": 4.26268,
-          "logMad": 0.068053,
-          "p90": 82,
-          "p95": 82,
-          "max": 82,
-          "threshold": 95,
+          "n": 30,
+          "median": 72,
+          "logMedian": 4.276666,
+          "logMad": 0.071973,
+          "p90": 79,
+          "p95": 85,
+          "max": 86,
+          "threshold": 98,
           "seconds": [
+            55,
+            57,
+            61,
+            61,
+            62,
+            62,
             63,
+            65,
+            67,
+            67,
             68,
             71,
+            71,
+            72,
+            72,
+            73,
+            73,
+            74,
+            74,
+            74,
             76,
-            82
+            76,
+            77,
+            78,
+            78,
+            79,
+            79,
+            82,
+            85,
+            86
           ]
         }
       },
@@ -138,122 +263,357 @@
           "createdAt": "2026-11-06T22:21:38Z",
           "event": "workflow_dispatch",
           "commit": "897c048968617ba2c026193c98e928aa94139268"
+        },
+        {
+          "id": 42310348160,
+          "createdAt": "2026-11-06T23:12:55Z",
+          "event": "workflow_dispatch",
+          "commit": "64a4560e1195499b9165b21afee0e63bb12b2727"
+        },
+        {
+          "id": 42311588100,
+          "createdAt": "2026-11-06T23:23:33Z",
+          "event": "workflow_dispatch",
+          "commit": "64a4560e1195499b9165b21afee0e63bb12b2727"
+        },
+        {
+          "id": 42358377051,
+          "createdAt": "2026-11-07T09:07:30Z",
+          "event": "workflow_dispatch",
+          "commit": "64a4560e1195499b9165b21afee0e63bb12b2727"
+        },
+        {
+          "id": 42359109435,
+          "createdAt": "2026-11-07T09:17:32Z",
+          "event": "workflow_dispatch",
+          "commit": "1372efb79c47c8cabcbccc1856824e8fe50078d2"
+        },
+        {
+          "id": 42359817664,
+          "createdAt": "2026-11-07T09:27:33Z",
+          "event": "workflow_dispatch",
+          "commit": "1372efb79c47c8cabcbccc1856824e8fe50078d2"
+        },
+        {
+          "id": 42360530264,
+          "createdAt": "2026-11-07T09:37:36Z",
+          "event": "workflow_dispatch",
+          "commit": "d375490a32ac15199d6928d6f64ca119d0729deb"
+        },
+        {
+          "id": 42361215930,
+          "createdAt": "2026-11-07T09:47:37Z",
+          "event": "workflow_dispatch",
+          "commit": "d375490a32ac15199d6928d6f64ca119d0729deb"
+        },
+        {
+          "id": 42361889653,
+          "createdAt": "2026-11-07T09:57:38Z",
+          "event": "workflow_dispatch",
+          "commit": "d375490a32ac15199d6928d6f64ca119d0729deb"
+        },
+        {
+          "id": 42362613026,
+          "createdAt": "2026-11-07T10:07:39Z",
+          "event": "workflow_dispatch",
+          "commit": "d375490a32ac15199d6928d6f64ca119d0729deb"
+        },
+        {
+          "id": 42363335212,
+          "createdAt": "2026-11-07T10:17:41Z",
+          "event": "workflow_dispatch",
+          "commit": "9d54b05c83a429543231466db10254e502f3b1fe"
+        },
+        {
+          "id": 42364044472,
+          "createdAt": "2026-11-07T10:27:43Z",
+          "event": "workflow_dispatch",
+          "commit": "857bb414cb2191799db9c5f4651d17d1a4f361fd"
+        },
+        {
+          "id": 42364755817,
+          "createdAt": "2026-11-07T10:37:43Z",
+          "event": "workflow_dispatch",
+          "commit": "857bb414cb2191799db9c5f4651d17d1a4f361fd"
+        },
+        {
+          "id": 42365449047,
+          "createdAt": "2026-11-07T10:47:45Z",
+          "event": "workflow_dispatch",
+          "commit": "e1c2d6977aa76b103f4f2a6dfc8830633299612b"
+        },
+        {
+          "id": 42366127840,
+          "createdAt": "2026-11-07T10:57:46Z",
+          "event": "workflow_dispatch",
+          "commit": "f91806e78eeff5ef5f3fdaf862ce1e61de280d3f"
+        },
+        {
+          "id": 42366858859,
+          "createdAt": "2026-11-07T11:07:48Z",
+          "event": "workflow_dispatch",
+          "commit": "f91806e78eeff5ef5f3fdaf862ce1e61de280d3f"
+        },
+        {
+          "id": 42367574193,
+          "createdAt": "2026-11-07T11:17:51Z",
+          "event": "workflow_dispatch",
+          "commit": "f91806e78eeff5ef5f3fdaf862ce1e61de280d3f"
+        },
+        {
+          "id": 42368279546,
+          "createdAt": "2026-11-07T11:27:52Z",
+          "event": "workflow_dispatch",
+          "commit": "0d4b1c0ea21cfb3113b99593d3c92a8bdec9668a"
+        },
+        {
+          "id": 42368989090,
+          "createdAt": "2026-11-07T11:37:53Z",
+          "event": "workflow_dispatch",
+          "commit": "aa14bd265175c0b8366b1906c686c29f937bc386"
+        },
+        {
+          "id": 42369683657,
+          "createdAt": "2026-11-07T11:47:53Z",
+          "event": "workflow_dispatch",
+          "commit": "22b75d95afc18b382c1a77d7e46a378f0202f887"
+        },
+        {
+          "id": 42370376623,
+          "createdAt": "2026-11-07T11:57:54Z",
+          "event": "workflow_dispatch",
+          "commit": "22b75d95afc18b382c1a77d7e46a378f0202f887"
+        },
+        {
+          "id": 42371111294,
+          "createdAt": "2026-11-07T12:07:55Z",
+          "event": "workflow_dispatch",
+          "commit": "22b75d95afc18b382c1a77d7e46a378f0202f887"
+        },
+        {
+          "id": 42371847631,
+          "createdAt": "2026-11-07T12:17:56Z",
+          "event": "workflow_dispatch",
+          "commit": "22b75d95afc18b382c1a77d7e46a378f0202f887"
+        },
+        {
+          "id": 42372598969,
+          "createdAt": "2026-11-07T12:27:58Z",
+          "event": "workflow_dispatch",
+          "commit": "22b75d95afc18b382c1a77d7e46a378f0202f887"
+        },
+        {
+          "id": 42373350432,
+          "createdAt": "2026-11-07T12:38:01Z",
+          "event": "workflow_dispatch",
+          "commit": "22b75d95afc18b382c1a77d7e46a378f0202f887"
+        },
+        {
+          "id": 42374069437,
+          "createdAt": "2026-11-07T12:48:02Z",
+          "event": "workflow_dispatch",
+          "commit": "320895045833273d9eebd8748f77b0a4b887a994"
         }
       ]
     },
     "publication": {
       "status": "provisional",
-      "n": 9,
+      "n": 26,
       "window": {
         "from": "2026-11-06T20:04:12Z",
-        "to": "2026-11-06T22:14:30Z",
+        "to": "2026-11-07T12:39:45Z",
         "firstCommit": "209f497fa3cd3113ec7142258f87bdc8c7ebf534",
-        "lastCommit": "897c048968617ba2c026193c98e928aa94139268"
+        "lastCommit": "320895045833273d9eebd8748f77b0a4b887a994"
       },
       "jobs": {
         "Backend": {
-          "n": 9,
-          "median": 85,
-          "logMedian": 4.442651,
-          "logMad": 0.073203,
-          "p90": 99,
-          "p95": 99,
+          "n": 26,
+          "median": 83,
+          "logMedian": 4.418841,
+          "logMad": 0.069796,
+          "p90": 92,
+          "p95": 93,
           "max": 99,
-          "threshold": 117,
+          "threshold": 112,
           "seconds": [
+            62,
             63,
+            63,
+            64,
+            67,
+            70,
+            73,
             76,
+            76,
+            77,
+            78,
             79,
+            83,
+            84,
+            84,
+            85,
             85,
             85,
             86,
+            86,
             87,
+            87,
+            89,
+            92,
             93,
             99
           ]
         },
         "Container image": {
-          "n": 9,
-          "median": 70,
-          "logMedian": 4.248495,
-          "logMad": 0.089612,
-          "p90": 84,
-          "p95": 84,
-          "max": 84,
-          "threshold": 103,
+          "n": 26,
+          "median": 72,
+          "logMedian": 4.276666,
+          "logMad": 0.057158,
+          "p90": 88,
+          "p95": 94,
+          "max": 100,
+          "threshold": 92,
           "seconds": [
+            62,
             63,
             64,
+            67,
+            68,
+            69,
+            70,
+            70,
             70,
             70,
             70,
             72,
+            72,
+            74,
+            75,
+            75,
+            76,
+            78,
             78,
             79,
-            84
+            81,
+            84,
+            85,
+            88,
+            94,
+            100
           ]
         },
         "Docs site": {
-          "n": 9,
-          "median": 97,
-          "logMedian": 4.574711,
-          "logMad": 0.020834,
-          "p90": 100,
-          "p95": 100,
-          "max": 100,
-          "threshold": 112,
+          "n": 26,
+          "median": 95,
+          "logMedian": 4.553877,
+          "logMad": 0.071096,
+          "p90": 102,
+          "p95": 105,
+          "max": 109,
+          "threshold": 129,
           "seconds": [
+            63,
+            66,
+            67,
+            68,
+            68,
+            70,
+            78,
+            81,
+            83,
+            84,
             84,
             92,
             95,
             95,
+            96,
             97,
             98,
             98,
             99,
-            100
+            99,
+            100,
+            100,
+            101,
+            102,
+            105,
+            109
           ]
         },
         "Frontend": {
-          "n": 9,
-          "median": 52,
-          "logMedian": 3.951244,
-          "logMad": 0.056089,
-          "p90": 60,
-          "p95": 60,
+          "n": 26,
+          "median": 50,
+          "logMedian": 3.912023,
+          "logMad": 0.076961,
+          "p90": 57,
+          "p95": 57,
           "max": 60,
-          "threshold": 67,
+          "threshold": 70,
           "seconds": [
+            36,
+            42,
+            44,
             44,
             45,
+            45,
+            46,
+            46,
+            47,
+            48,
+            48,
+            49,
+            50,
             50,
             50,
             52,
+            52,
+            52,
+            52,
+            52,
+            54,
             54,
             55,
+            57,
             57,
             60
           ]
         },
         "Tooling": {
-          "n": 9,
-          "median": 70,
-          "logMedian": 4.248495,
-          "logMad": 0.145954,
+          "n": 26,
+          "median": 77,
+          "logMedian": 4.343805,
+          "logMad": 0.09531,
           "p90": 94,
-          "p95": 94,
-          "max": 94,
-          "threshold": 131,
+          "p95": 96,
+          "max": 100,
+          "threshold": 116,
           "seconds": [
             57,
             57,
+            60,
             61,
             66,
             70,
+            70,
+            71,
+            72,
+            75,
+            75,
+            77,
+            77,
+            77,
+            77,
             79,
             81,
+            84,
             85,
-            94
+            85,
+            86,
+            87,
+            88,
+            94,
+            96,
+            100
           ]
         }
       },
@@ -311,6 +671,108 @@
           "createdAt": "2026-11-06T22:14:30Z",
           "event": "push",
           "commit": "897c048968617ba2c026193c98e928aa94139268"
+        },
+        {
+          "id": 42304392385,
+          "createdAt": "2026-11-06T22:23:52Z",
+          "event": "push",
+          "commit": "b2ecdd02f1ef0e86881df28a4c126c6d41d5970d"
+        },
+        {
+          "id": 42305054060,
+          "createdAt": "2026-11-06T22:29:09Z",
+          "event": "push",
+          "commit": "bad7087adf453f7ba47d8f19d3cc185c31f6d9f0"
+        },
+        {
+          "id": 42306273549,
+          "createdAt": "2026-11-06T22:38:41Z",
+          "event": "push",
+          "commit": "8b6980a14ef81d13438a59bb884f39d7aecf885d"
+        },
+        {
+          "id": 42307991140,
+          "createdAt": "2026-11-06T22:53:07Z",
+          "event": "push",
+          "commit": "07054d5b9a5d8b76b34521e6b2b1d868fff48a35"
+        },
+        {
+          "id": 42308796731,
+          "createdAt": "2026-11-06T23:00:06Z",
+          "event": "push",
+          "commit": "64a4560e1195499b9165b21afee0e63bb12b2727"
+        },
+        {
+          "id": 42358483758,
+          "createdAt": "2026-11-07T09:09:01Z",
+          "event": "push",
+          "commit": "1372efb79c47c8cabcbccc1856824e8fe50078d2"
+        },
+        {
+          "id": 42359918645,
+          "createdAt": "2026-11-07T09:29:06Z",
+          "event": "push",
+          "commit": "816dc347e43f2a757888d5149fdcd066ada8721f"
+        },
+        {
+          "id": 42360246749,
+          "createdAt": "2026-11-07T09:33:35Z",
+          "event": "push",
+          "commit": "d375490a32ac15199d6928d6f64ca119d0729deb"
+        },
+        {
+          "id": 42362926691,
+          "createdAt": "2026-11-07T10:11:56Z",
+          "event": "push",
+          "commit": "9d54b05c83a429543231466db10254e502f3b1fe"
+        },
+        {
+          "id": 42363488838,
+          "createdAt": "2026-11-07T10:19:51Z",
+          "event": "push",
+          "commit": "857bb414cb2191799db9c5f4651d17d1a4f361fd"
+        },
+        {
+          "id": 42365074470,
+          "createdAt": "2026-11-07T10:42:18Z",
+          "event": "push",
+          "commit": "e1c2d6977aa76b103f4f2a6dfc8830633299612b"
+        },
+        {
+          "id": 42365970189,
+          "createdAt": "2026-11-07T10:55:22Z",
+          "event": "push",
+          "commit": "f91806e78eeff5ef5f3fdaf862ce1e61de280d3f"
+        },
+        {
+          "id": 42367828600,
+          "createdAt": "2026-11-07T11:21:19Z",
+          "event": "push",
+          "commit": "0d4b1c0ea21cfb3113b99593d3c92a8bdec9668a"
+        },
+        {
+          "id": 42368286045,
+          "createdAt": "2026-11-07T11:27:58Z",
+          "event": "push",
+          "commit": "1d5bdc52488c0d903ea8056937ab62c576828a8a"
+        },
+        {
+          "id": 42368854235,
+          "createdAt": "2026-11-07T11:35:53Z",
+          "event": "push",
+          "commit": "aa14bd265175c0b8366b1906c686c29f937bc386"
+        },
+        {
+          "id": 42369510084,
+          "createdAt": "2026-11-07T11:45:25Z",
+          "event": "push",
+          "commit": "22b75d95afc18b382c1a77d7e46a378f0202f887"
+        },
+        {
+          "id": 42373470792,
+          "createdAt": "2026-11-07T12:39:45Z",
+          "event": "push",
+          "commit": "320895045833273d9eebd8748f77b0a4b887a994"
         }
       ]
     }

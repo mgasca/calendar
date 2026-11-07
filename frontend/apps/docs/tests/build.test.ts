@@ -115,7 +115,11 @@ describe('published agent thoughts', () => {
       const activeLinks = html.match(/<a\b[^>]*aria-current="page"[^>]*>/g) ?? [];
       expect(activeLinks.length).toBeGreaterThan(0);
       expect(activeLinks.every((link) => link.includes(`href="${route}"`))).toBe(true);
-      expect(html).toMatch(new RegExp(`<h1[^>]*>${record.number} · `));
+      // The filename carries the number, so neither the page title nor the sidebar label repeats it.
+      const heading = /<h1[^>]*>([^<]*)<\/h1>/.exec(html)?.[1] ?? '';
+      expect(heading).not.toBe('');
+      expect(heading.startsWith(record.number)).toBe(false);
+      expect(html).not.toMatch(new RegExp(`<a[^>]*href="${route}"[^>]*aria-label=`));
       expect(html).toContain(`<strong>Date:</strong> ${record.date}`);
       expect(html).toContain(`<strong>Author:</strong> ${record.author}`);
       expect(html).toContain(`href="https://github.com/mgasca/calendar/tree/${record.revision}"`);

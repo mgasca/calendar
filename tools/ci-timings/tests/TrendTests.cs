@@ -39,6 +39,29 @@ public sealed class RankTestTests
   public void MannWhitney_OfAnEmptySample_Throws() => Should.Throw<ArgumentException>(() => RankTest.MannWhitney([], [1]));
 
   [Fact]
+  public void TableWidth_IsTheLargestSumThatSizeRanksCanReach()
+  {
+    // Choosing 2 of the doubled ranks 2, 4, 6, 8 can reach at most 6 + 8 = 14, not the sum of all four (20) (#398 review).
+    RankTest.TableWidth([2, 4, 6, 8], 2).ShouldBe(14);
+    RankTest.TableWidth([8, 2, 6, 4], 4).ShouldBe(20);
+    RankTest.TableWidth([2, 4], 5).ShouldBe(6);
+  }
+
+  [Fact]
+  public void MannWhitney_OnALargeBaseline_KeepsTheTableToTheTwentyLargestRanks()
+  {
+    // At the 1000-run listing limit the table spans the 20 largest of 1020 doubled ranks (about 20 · 2 · 1020), not the
+    // sum of all of them (about 1 040 000), so a large re-pin stays inside ci-trend.yml's 10-minute timeout; the exact
+    // test itself runs here on 400 baseline values, which took about 6 s per table before the bound.
+    double[] baseline = [.. Enumerable.Range(0, 400).Select(index => 80.0 + (index % 11))];
+    double[] recent = [.. Enumerable.Range(0, 20).Select(index => 95.0 + (index % 3))];
+    int[] doubled = [.. Enumerable.Range(1, 1020).Select(rank => 2 * rank)];
+
+    RankTest.TableWidth(doubled, 20).ShouldBeLessThan(41_000);
+    RankTest.MannWhitney(recent, baseline).Slower.ShouldBeLessThan(1e-6);
+  }
+
+  [Fact]
   public void HodgesLehmann_IsTheMedianOfThePairwiseDifferences()
   {
     // Differences 9, 8, 11, 10: the median of an even count is the mean of the middle two.

@@ -35,7 +35,8 @@
             "type": "object",
             "properties": {
               "status": { "enum": ["pinned", "provisional"] },
-              "n": { "type": "integer" }
+              "n": { "type": "integer" },
+              "note": { "type": "string", "description": "What changes the status next, for a provisional path." }
             },
             "required": ["status", "n"],
             "additionalProperties": false

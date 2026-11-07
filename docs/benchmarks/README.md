@@ -4,7 +4,7 @@ Reference measurements for performance work. A benchmark here is a repeatable ha
 
 ## The pinned CI baseline
 
-Delivered in epic #380 (story [0034](../stories/0034-gate-ci-job-run-times-against-a-pinned-baseline.md)). A path that the file marks `provisional` (fewer than 30 runs) only reports, and the gate fails a pull request only on a `pinned` path.
+Delivered in epic #380 (story [0034](../stories/0034-gate-ci-job-run-times-against-a-pinned-baseline.md)); the first version of the file is record [0014](0014-ci-job-baseline.md). A path that the file marks `provisional` (fewer than 30 runs) only reports, and the gate fails a pull request only on a `pinned` path.
 
 `.github/ci-baseline.json` is the one timing a check asserts. It holds, per CI job and path (publication, when the run built the docs publication artifact, or check), the statistics of at least 30 successful runs on `main` and the threshold derived from them; `CI result` fails a pull request whose job takes longer than its threshold, and a scheduled trend check on `main` reports smaller slowdowns as an issue. The method, the paths and the constants are in ADR-0045; the measurement and the back-test of each version of the file are in a benchmark record.
 

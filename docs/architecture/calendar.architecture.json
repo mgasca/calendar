@@ -639,8 +639,8 @@
                   "record": "docs/benchmarks/0014-ci-job-baseline.md",
                   "min-runs": 30,
                   "paths": {
-                    "check": { "status": "provisional", "n": 5 },
-                    "publication": { "status": "provisional", "n": 9 }
+                    "check": { "status": "pinned", "n": 30 },
+                    "publication": { "status": "provisional", "n": 26, "note": "Only reports until #420 pins it at 30 push runs" }
                   },
                   "update": "Only by a deliberate pull request: regenerate the file with ci-timings --baseline and add a benchmark record in the same PR; runs on main never move it (docs/benchmarks/README.md, 'The pinned CI baseline')"
                 },

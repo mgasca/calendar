@@ -7,8 +7,14 @@
  * features is issue #433.
  */
 
-.event-past {
-  opacity: var(--opacity-past);
+/* The Add task / Add event buttons sit directly in main, above the view's heading. */
+main > button {
+  margin: 0 var(--space-2) var(--space-3) 0;
+}
+
+/* Earlier events are muted by colour, not faded: opacity dropped their text below 4.5:1. */
+.event-past .item-title {
+  color: var(--color-text-muted);
 }
 
 .event-current {
@@ -18,7 +24,8 @@
 
 .task-label {
   display: flex;
-  flex: 1;
+  /* Wraps the badge and Delete below the title on narrow screens instead of squeezing the title. */
+  flex: 1 1 12rem;
   align-items: center;
   gap: var(--space-3);
   min-height: var(--control-height);
@@ -271,6 +278,12 @@ body:has(.week) .app-footer {
 .week-task-list .task-label {
   gap: 0.4rem;
   min-height: 1.75rem;
+}
+
+.week-task-list button {
+  min-height: 1.75rem;
+  padding: 0 var(--space-2);
+  font-size: var(--text-xs);
 }
 
 .week-task-list .task-label input {

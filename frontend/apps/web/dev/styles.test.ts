@@ -84,6 +84,15 @@ describe('token layer guards (ADR-0047)', () => {
     expect(css).not.toMatch(/prefers-color-scheme/);
   });
 
+  it.each(nonTokenCss)('%s fades only through --opacity-stale', (file) => {
+    // Fading text lowers its contrast below 4.5:1 (found on earlier events in the running app, #435).
+    // Only the transient stale/disabled state may fade, and 0 hides a control's native input.
+    const values = [...read(file).matchAll(/(?<![-\w])opacity\s*:\s*([^;}]+)/g)].map((m) =>
+      (m[1] ?? '').trim(),
+    );
+    expect(values.filter((v) => v !== 'var(--opacity-stale)' && v !== '0')).toEqual([]);
+  });
+
   it('keeps the OS-fallback dark block identical to the data-theme dark block', () => {
     expect(osDark.size).toBeGreaterThan(20);
     expect([...osDark]).toEqual([...dark]);

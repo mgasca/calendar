@@ -2,7 +2,9 @@ import { readChoice, resolveTheme, THEME_STORAGE_KEY } from './theme.ts';
 
 import html from '../../index.html?raw';
 
-const inline = /<script>([\s\S]*?)<\/script>/.exec(html)?.[1] ?? '';
+const page = new DOMParser().parseFromString(html, 'text/html');
+const inlineScript = page.querySelector('head script:not([src])');
+const inline = inlineScript?.textContent ?? '';
 
 function runStartupScript() {
   delete document.documentElement.dataset.theme;
@@ -30,7 +32,11 @@ afterEach(() => {
 describe('inline start-up script in index.html', () => {
   it('exists, runs before the module script, and uses the storage key of the theme module', () => {
     expect(inline).not.toBe('');
-    expect(html.indexOf('<script>')).toBeLessThan(html.indexOf('type="module"'));
+    const scripts = Array.from(page.querySelectorAll('script'));
+    const moduleScript = page.querySelector('script[type="module"][src]');
+    expect(scripts.indexOf(inlineScript as HTMLScriptElement)).toBeLessThan(
+      scripts.indexOf(moduleScript as HTMLScriptElement),
+    );
     expect(inline).toContain(`'${THEME_STORAGE_KEY}'`);
   });
 

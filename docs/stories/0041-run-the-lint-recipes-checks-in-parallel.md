@@ -7,7 +7,7 @@ pr:
 adrs: ["0038"]
 ---
 
-# 0040 Run the lint recipe's checks in parallel
+# 0041 Run the lint recipe's checks in parallel
 
 ## Story
 

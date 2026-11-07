@@ -359,6 +359,31 @@ select {
   font-weight: 400;
 }
 
+/* Editing from the day view (stories 0043 and 0044). */
+
+/* A row's title that opens the item to edit: text with an underline, not a boxed button. */
+.item-open {
+  min-height: 1.5rem;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: start;
+  text-decoration: underline dotted var(--color-border-strong);
+  text-underline-offset: 0.2em;
+}
+
+.item-open:hover:not(:disabled) {
+  background: none;
+  text-decoration-style: solid;
+  text-decoration-color: currentcolor;
+}
+
+.delete-confirmation p {
+  margin-top: 0;
+}
+
 /* Links styled as buttons (sign-in). */
 a.button-primary,
 a.button-danger {

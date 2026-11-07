@@ -1,6 +1,6 @@
 import type { Schemas } from '@calendar/api-client';
 import { Link } from '@tanstack/react-router';
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 
 import {
   browserTimeZone,
@@ -16,6 +16,7 @@ import {
   type TimedEvent,
 } from '../agenda/dayTime.ts';
 import { ApiError } from '../../api/apiError.ts';
+import { EditEvent } from '../events/EditEvent.tsx';
 import { Notes } from '../agenda/Notes.tsx';
 import { EventTimes } from '../agenda/EventTimes.tsx';
 import { TaskItem, TaskToggleError } from '../agenda/TaskItem.tsx';
@@ -51,6 +52,13 @@ export function DayView({ date, timeZone: zoneOverride, locale }: DayViewProps) 
     [agenda.data?.tasks],
   );
   const toggle = useToggleTask(agendaKey(date, timeZone), patchDayTasks);
+  /** The event open in the edit dialog, and what the last edit or delete did. */
+  const [editing, setEditing] = useState<string>();
+  const [edited, setEdited] = useState<string>();
+  const openEvent = (id: string) => {
+    setEdited(undefined);
+    setEditing(id);
+  };
   const formatHeading = (day: string) =>
     formatDate(day, locale, { withYear: day.slice(0, 4) !== today.slice(0, 4) });
   const agendaName = date === today ? 'today’s agenda' : 'the agenda for this day';
@@ -132,6 +140,23 @@ export function DayView({ date, timeZone: zoneOverride, locale }: DayViewProps) 
         </div>
       )}
       <TaskToggleError error={toggle.error} />
+      {edited && <p role="status">{edited}</p>}
+      {editing && (
+        <EditEvent
+          id={editing}
+          date={shownDate}
+          timeZone={timeZone}
+          onClose={(result) => {
+            const id = editing;
+            setEditing(undefined);
+            if (result) setEdited(`${result.title} ${result.deleted ? 'deleted' : 'saved'}.`);
+            // After a delete the row is gone, so focus moves to the day's heading.
+            requestAnimationFrame(() => {
+              focusAfterEdit(result?.deleted ? undefined : id);
+            });
+          }}
+        />
+      )}
 
       {isEmpty && (
         <p className="empty">
@@ -145,7 +170,7 @@ export function DayView({ date, timeZone: zoneOverride, locale }: DayViewProps) 
           <ul className="items">
             {allDayEvents.map((event) => (
               <li key={event.id} className="item">
-                <span className="item-title">{event.title}</span>
+                <EventTitle id={event.id} title={event.title} onOpen={openEvent} />
                 <AllDayDetail event={event} day={shownDate} />
                 <Location value={event.location} />
                 {event.hasNotes && <Notes id={event.id} kind="event" />}
@@ -159,9 +184,15 @@ export function DayView({ date, timeZone: zoneOverride, locale }: DayViewProps) 
         <section aria-labelledby="schedule-heading">
           <h2 id="schedule-heading">Schedule</h2>
           {isToday ? (
-            <TodaySchedule events={events} timeZone={timeZone} locale={locale} />
+            <TodaySchedule events={events} timeZone={timeZone} locale={locale} onOpen={openEvent} />
           ) : (
-            <Schedule events={events} nowMs={undefined} timeZone={timeZone} locale={locale} />
+            <Schedule
+              events={events}
+              nowMs={undefined}
+              timeZone={timeZone}
+              locale={locale}
+              onOpen={openEvent}
+            />
           )}
         </section>
       )}
@@ -270,17 +301,61 @@ const STATUS_LABEL: Record<EventStatus, string | null> = {
   upcoming: null,
 };
 
+/** An event's title as a button that opens it to edit (story 0043). */
+function EventTitle({
+  id,
+  title,
+  onOpen,
+}: {
+  id: string;
+  title: string;
+  onOpen: (id: string) => void;
+}) {
+  return (
+    <span className="item-title">
+      <button
+        type="button"
+        id={eventTitleId(id)}
+        className="item-open"
+        aria-haspopup="dialog"
+        onClick={() => {
+          onOpen(id);
+        }}
+      >
+        {title}
+      </button>
+    </span>
+  );
+}
+
+const eventTitleId = (id: string) => `event-title-${id}`;
+
+/** Focuses the event's title button, or the day heading when there is no such row any more. */
+function focusAfterEdit(id: string | undefined) {
+  const title = id ? document.getElementById(eventTitleId(id)) : null;
+  if (title) {
+    title.focus();
+    return;
+  }
+  const heading = document.getElementById('day-heading');
+  if (!heading) return;
+  if (!heading.hasAttribute('tabindex')) heading.setAttribute('tabindex', '-1');
+  heading.focus();
+}
+
 function Schedule({
   events,
   nowMs,
   timeZone,
   locale,
+  onOpen,
 }: {
   events: TimedEvent[];
   /** The current time when the day shown is today; without it no event gets a status. */
   nowMs: number | undefined;
   timeZone: string;
   locale?: string | undefined;
+  onOpen: (id: string) => void;
 }) {
   const statuses = nowMs === undefined ? undefined : eventStatuses(events, nowMs);
   const relative = nowMs !== undefined;
@@ -294,7 +369,7 @@ function Schedule({
             <span className="item-time">
               <EventTimes event={event} relative={relative} timeZone={timeZone} locale={locale} />
             </span>
-            <span className="item-title">{event.title}</span>
+            <EventTitle id={event.id} title={event.title} onOpen={onOpen} />
             {label && <span className={`badge badge-${status}`}>{label}</span>}
             <Location value={event.location} />
             {event.hasNotes && <Notes id={event.id} kind="event" />}
@@ -309,6 +384,7 @@ function TodaySchedule(props: {
   events: TimedEvent[];
   timeZone: string;
   locale?: string | undefined;
+  onOpen: (id: string) => void;
 }) {
   const now = useNow();
   return <Schedule {...props} nowMs={now} />;

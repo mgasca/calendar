@@ -66,8 +66,11 @@ export function TaskItem({
       {confirmDelete && (
         <ConfirmDialog
           count={1}
+          title={task.title}
+          error={deletion.isError ? 'Couldn’t delete the task. Try again, or cancel.' : null}
           pending={deletion.isPending}
           onCancel={() => {
+            deletion.reset();
             setConfirmDelete(false);
           }}
           onConfirm={() => {

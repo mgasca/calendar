@@ -1,5 +1,4 @@
 import { useNavigate } from '@tanstack/react-router';
-import { useState } from 'react';
 
 import { AddEvent } from '../events/AddEvent.tsx';
 import { AddTask } from '../tasks/AddTask.tsx';
@@ -15,7 +14,6 @@ interface DayPageProps {
 /** A day route: a date picker, "Add task" prefilled with the shown date, and the day's agenda. */
 export function DayPage({ date, timeZone, locale }: DayPageProps) {
   const navigate = useNavigate();
-  const [statusContainer, setStatusContainer] = useState<HTMLDivElement | null>(null);
   return (
     <>
       <div className="actions">
@@ -35,13 +33,12 @@ export function DayPage({ date, timeZone, locale }: DayPageProps) {
           />
         </label>
       </div>
-      {/* The buttons share one row and their confirmations go below it, so saving one never
-          moves the other (#459). */}
+      {/* The buttons share one row; their confirmations are notifications outside the page flow,
+          so saving one never moves the other (#459, #463). */}
       <div className="actions">
-        <AddTask initialDate={date} statusContainer={statusContainer} />
-        <AddEvent date={date} timeZone={timeZone} statusContainer={statusContainer} />
+        <AddTask initialDate={date} />
+        <AddEvent date={date} timeZone={timeZone} />
       </div>
-      <div ref={setStatusContainer} className="add-confirmations" />
       <DayView date={date} timeZone={timeZone} locale={locale} />
     </>
   );

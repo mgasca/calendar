@@ -93,6 +93,16 @@ describe('token layer guards (ADR-0047)', () => {
     expect(values.filter((v) => v !== 'var(--opacity-stale)' && v !== '0')).toEqual([]);
   });
 
+  it.each(cssFiles)('%s animates only when reduced motion is not requested', (file) => {
+    // Story 0042 (#463): with reduced motion, the notification appears and disappears without
+    // animating. Every animation and transition sits in a `no-preference` block.
+    const outside = read(file).replace(
+      /@media \(prefers-reduced-motion: no-preference\) \{(?:[^{}]*\{[^{}]*\})*[^{}]*\}/g,
+      '',
+    );
+    expect(outside).not.toMatch(/(?<![-\w])(animation|transition)(-[a-z-]+)?\s*:/);
+  });
+
   it('keeps the OS-fallback dark block identical to the data-theme dark block', () => {
     expect(osDark.size).toBeGreaterThan(20);
     expect([...osDark]).toEqual([...dark]);

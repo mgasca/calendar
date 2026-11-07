@@ -491,6 +491,12 @@ public sealed class ChangesRulesTests
   [InlineData("contracts/openapi.json", "backend frontend image")]
   [InlineData("frontend/apps/web/src/main.tsx", "frontend image")]
   [InlineData("frontend/packages/api-client/src/index.ts", "frontend image")]
+  // The shared theme package (story 0046, issue #518): the docs site builds from it, and so do the web app and the image.
+  [InlineData("frontend/packages/theme/src/tokens.css", "docs frontend image")]
+  [InlineData("frontend/packages/theme/package.json", "docs frontend image")]
+  [InlineData("frontend/packages/theme-extra/src/tokens.css", "frontend image")]
+  [InlineData("frontend/packages/theme.css", "frontend image")]
+  [InlineData("frontend/apps/web/src/styles/tokens.css", "frontend image")]
   [InlineData("frontend/pnpm-lock.yaml", "docs frontend image")]
   [InlineData("frontend/mod.just", "docs frontend tooling image")]
   [InlineData("frontend/AGENTS.md", "")]
@@ -524,6 +530,25 @@ public sealed class ChangesRulesTests
     Run("merge_group", true, "docs/runbooks/x.md", "backend/src/A.cs").ShouldBe(Expected("backend docs image"));
 
   [Fact]
+  public void AThemeOnlyChange_RunsTheDocsSite() =>
+    Run("pull_request", true, "frontend/packages/theme/src/tokens.css").ShouldBe(Expected("docs frontend image"));
+
+  [Fact]
+  public void ARenameOutOfTheThemePackage_RunsTheDocsSite() =>
+    Run("pull_request", true, "frontend/packages/theme/tokens.css", "frontend/apps/web/src/tokens.css")
+      .ShouldBe(Expected("docs frontend image"));
+
+  [Fact]
+  public void ThemeAndAppFilesTogether_RunTheDocsSiteThroughTheNamedFile() =>
+    Run("pull_request", true, "frontend/apps/web/src/main.tsx", "frontend/packages/theme/src/fonts.css")
+      .ShouldBe(Expected("docs frontend image"));
+
+  [Fact]
+  public void UnrelatedFrontendFilesTogether_DoNotRunTheDocsSite() =>
+    Run("pull_request", true, "frontend/apps/web/src/main.tsx", "frontend/packages/api-client/src/index.ts", "contracts/openapi.json")
+      .ShouldBe(Expected("backend frontend image"));
+
+  [Fact]
   public void AnIncompleteListing_RunsEverything() =>
     Run("pull_request", false, "README.md").ShouldBe(Expected(string.Join(' ', AllJobs)));
 
@@ -531,6 +556,25 @@ public sealed class ChangesRulesTests
   [InlineData("push")]
   [InlineData("workflow_dispatch")]
   public void APushOrDispatch_RunsEverything(string @event) => Run(@event, true).ShouldBe(Expected(string.Join(' ', AllJobs)));
+
+  // Forks (ADR-0025): the rules above only decide whether the Docs site job runs. The publication artifact is built and
+  // uploaded only after the Pages configuration step, which runs for main and same-repository pull requests only, so a
+  // fork that touches the theme package still gets the checks and no preview.
+  [Fact]
+  public void ThePublicationArtifact_IsBuiltOnlyForMainAndSameRepositoryPullRequests()
+  {
+    var workflow = Workflow.Parse(File.ReadAllText(Path.Combine(Root, RepoFiles.WorkflowPath)));
+    List<YamlMapping> steps = [.. workflow.JobNamed("Docs site")!.Steps.OfType<YamlMapping>()];
+    YamlMapping configure = steps.Single(s => s.Text("name") == "Read GitHub Pages configuration");
+    var condition = configure.Text("if") ?? "";
+    condition.ShouldContain("github.event.pull_request.head.repo.full_name == github.repository");
+    condition.ShouldContain("github.event_name == 'push' && github.ref == 'refs/heads/main'");
+    configure.Text("id").ShouldBe("pages");
+    foreach (var name in new[] { "Build and verify publication artifact", "Upload verified publication artifact" })
+    {
+      steps.Single(s => s.Text("name") == name).Text("if").ShouldBe("steps.pages.outcome == 'success'", name);
+    }
+  }
 
   [Fact]
   public void SkippedNames_AreTheJobNamesInCi()

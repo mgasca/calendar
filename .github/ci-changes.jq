@@ -29,10 +29,15 @@ def just_files: . == "justfile" or . == ".just-version" or endswith(".just");
 def tooling_github:
   [".github/ci-gate.jq", ".github/ci-baseline.json", ".github/workflows/ci-trend.yml", ".github/pull_request_template.md"];
 
+# Docs site: its suite tests the publisher, .github/workflows/pages.yml (pages-workflow.test.ts), and it builds from the
+# shared theme package, so that one named directory is an input too (ADR-0025, third amendment; story 0046, issue #518).
+# The trailing slash keeps look-alike directories out. No other frontend/packages/ directory and nothing under
+# frontend/apps/web/ makes a run build the docs site by itself.
+def docs_theme_package: "frontend/packages/theme/";
+
 # Whether the file at `.` is an input of job `$job`.
-# Docs site: its suite tests the publisher, .github/workflows/pages.yml (pages-workflow.test.ts).
 def needs($job):
-  if $job == "docs" then under(["docs/", "frontend/apps/docs/"]) or frontend_root or . == ".github/workflows/pages.yml"
+  if $job == "docs" then under(["docs/", "frontend/apps/docs/", docs_theme_package]) or frontend_root or . == ".github/workflows/pages.yml"
   elif $job == "backend" then under(["backend/", "contracts/"])
   elif $job == "frontend" then under(["frontend/apps/web/", "frontend/packages/", "contracts/"]) or frontend_root
   elif $job == "tooling" then

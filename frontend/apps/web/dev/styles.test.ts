@@ -93,6 +93,31 @@ describe('token layer guards (ADR-0047)', () => {
     expect(values.filter((v) => v !== 'var(--opacity-stale)' && v !== '0')).toEqual([]);
   });
 
+  it('gives dialog headings no top margin, so the gap above matches the padding (#464)', () => {
+    expect(read('styles/components.css')).toMatch(
+      /\.modal-dialog > h2\s*\{[^}]*margin-top:\s*0;[^}]*\}/,
+    );
+  });
+
+  it('keeps Refresh one width and each day-summary part on one line (#464)', () => {
+    const css = read('index.css');
+    // Both labels share one grid cell; the inactive one is hidden but still takes its space.
+    expect(css).toMatch(/\.refresh\s*\{[^}]*display:\s*inline-grid;[^}]*\}/);
+    expect(css).toMatch(/\.refresh > \*\s*\{[^}]*grid-area:\s*1 \/ 1;[^}]*\}/);
+    expect(css).toMatch(/\.refresh > \[aria-hidden='true'\]\s*\{[^}]*visibility:\s*hidden;[^}]*\}/);
+    expect(css).toMatch(/\.summary-part\s*\{[^}]*white-space:\s*nowrap;[^}]*\}/);
+  });
+
+  it.each(cssFiles)('%s animates only when reduced motion is not requested', (file) => {
+    // Story 0042 (#463): with reduced motion, the notification appears and disappears without
+    // animating. Every animation and transition sits in a `no-preference` block.
+    const outside = read(file).replace(
+      /@media \(prefers-reduced-motion: no-preference\) \{(?:[^{}]*\{[^{}]*\})*[^{}]*\}/g,
+      '',
+    );
+    expect(outside).not.toMatch(/(?<![-\w])(animation|transition)(-[a-z-]+)?\s*:/);
+  });
+
   it('keeps the OS-fallback dark block identical to the data-theme dark block', () => {
     expect(osDark.size).toBeGreaterThan(20);
     expect([...osDark]).toEqual([...dark]);

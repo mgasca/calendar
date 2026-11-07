@@ -2,9 +2,9 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link, Outlet, RouterProvider, useLocation, useNavigate } from '@tanstack/react-router';
 import { useEffect } from 'react';
 
+import { NotificationProvider } from './components/Notification.tsx';
 import { getUser, safeReturnTo } from './features/auth/auth.ts';
 
-import { ApiStatus } from './features/health/ApiStatus.tsx';
 import type { AppRouter } from './router.tsx';
 import { ThemeControl } from './theme/ThemeControl.tsx';
 
@@ -12,7 +12,7 @@ export function App({ router }: { router: AppRouter }) {
   return <RouterProvider router={router} />;
 }
 
-/** The shell around every route: navigation, the current page and the footer. */
+/** The shell around every route: navigation, the current page and the save notifications. */
 export function AppLayout() {
   const location = useLocation();
   const navigate = useNavigate();
@@ -71,7 +71,7 @@ export function AppLayout() {
   if (user.isError) return <main role="alert">Unable to check your session.</main>;
 
   return (
-    <>
+    <NotificationProvider>
       <nav className="app-nav" aria-label="Main">
         <Link to="/" activeProps={{ 'aria-current': 'page' }} activeOptions={{ exact: true }}>
           Today
@@ -101,10 +101,7 @@ export function AppLayout() {
       <main>
         <Outlet />
       </main>
-      <footer className="app-footer">
-        <ApiStatus />
-      </footer>
-    </>
+    </NotificationProvider>
   );
 }
 

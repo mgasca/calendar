@@ -22,7 +22,7 @@ export function TaskForm({
   onClose,
 }: {
   initialDate?: string;
-  onClose: (saved?: boolean) => void;
+  onClose: (saved?: { title: string; date?: string }) => void;
 }) {
   const client = useQueryClient();
   const titleInput = useRef<HTMLInputElement>(null);
@@ -82,7 +82,7 @@ export function TaskForm({
         client.invalidateQueries({ queryKey: ['tasks'] }),
         client.invalidateQueries({ queryKey: ['agenda'] }),
       ]);
-      onClose(true);
+      onClose({ title: values.title.trim(), ...(values.kind !== 'none' && { date: values.date }) });
     },
     onError: (error) => {
       show(

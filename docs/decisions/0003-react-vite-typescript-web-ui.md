@@ -51,7 +51,19 @@ Related implementation choices:
 
 ### Confirmation
 
-`frontend/apps/web` builds to `dist/` with `pnpm build` in CI. Once the container follow-up from [ADR-0002](0002-dotnet-10-minimal-api-backend.md) is done, the API image serves those assets.
+`frontend/apps/web` builds to `dist/` in CI: the `Frontend` job type-checks the app with `tsc -b`, then runs `vite build`. The API image serves those assets: the CI `Container image` job builds the root `Dockerfile`, which copies `dist/` into the API's `wwwroot/`, and smoke-tests the running image with `just image smoke`. The amendment below records when that was delivered and what is still unverified.
+
+### Amendment, 2026-11-07: the API image serves the web UI
+
+Recorded for the ADR sweep epic [#473](https://github.com/mgasca/calendar/issues/473) in [issue #477](https://github.com/mgasca/calendar/issues/477), with the maintainer's approval. The decision is unchanged and is not re-rated. The context above describes the web UI as decided on 2026-10-26, when the API did not yet serve it. Confirmation used to say that the API image would serve the built assets once the container follow-up from [ADR-0002](0002-dotnet-10-minimal-api-backend.md) was done. That follow-up has since been delivered:
+
+* **SPA serving**, [PR #108](https://github.com/mgasca/calendar/pull/108) (merged 2026-10-29). `backend/src/Calendar.Api/Program.cs` serves the built files from the web root outside `/api`, and answers other paths without a file extension with `index.html`.
+* **Image**, [PR #114](https://github.com/mgasca/calendar/pull/114) (merged 2026-10-29, closes #75). The root `Dockerfile` builds `@calendar/web` with the pinned Node and pnpm, and copies its `dist/` into the runtime image's `wwwroot/`.
+* **Verified by automated checks:**
+  * `HostingTests.SpaRoutingAndCacheHeaders` (`backend/tests/Calendar.Api.Tests/Endpoints/HostingTests.cs`) runs the API in-process against a temporary web root, not the real `dist/`. It checks `index.html` for `/` and a deep link, the cache headers of a hashed asset, and a 404 for a missing asset.
+  * The CI `Container image` job builds the image from the real web build and runs `just image smoke` (`image.just`). The smoke test checks that `/` returns an HTML document and that `/week` returns the same `index.html`. It doesn't fetch a JavaScript or CSS asset.
+  * Both checks passed on `main` at `082c64e08` (CI run [42406004961](https://github.com/mgasca/calendar/actions/runs/42406004961)). Under [ADR-0046](0046-run-ci-jobs-only-for-the-paths-they-check.md) the image job runs only when a pull request changes the image's inputs, and on every push to `main`.
+* **Not verified:** no Azure deployment has run, so serving the web UI from Azure Container Apps, including picking up new hashed assets after a release, is a deployment check (#79, #83).
 
 ## Pros and Cons of the Options
 
@@ -91,3 +103,7 @@ Related implementation choices:
 * Good, because **D4**, **D5**: static output and the same fast Vite tooling.
 * Bad, because **D3 Reuse for future UIs**: no native mobile path comparable to React Native.
 * Bad, because **D1 AI-agent proficiency** and **D2 Calendar ecosystem**: smaller communities than React.
+
+## More Information
+
+* **Amendment, 2026-11-07:** the API image serves the built web UI since PR #108 and PR #114. Confirmation now names the CI build and the image smoke test that check it; no Azure deployment has verified it yet. The decision is unchanged and not re-rated, so this ADR was amended, not superseded.

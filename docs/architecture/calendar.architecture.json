@@ -331,7 +331,7 @@
       "name": "OpenAPI contract",
       "description": "contracts/openapi.json: the committed OpenAPI 3 document emitted by the API build. It is the single contract between the backend and every client; CI fails when it is stale.",
       "interfaces": [
-        { "unique-id": "openapi-document", "path": "contracts/openapi.json", "operations": ["GET /api/health", "GET /api/auth/me", "POST /api/auth/logout", "POST /api/events", "GET /api/events/{id}", "PUT /api/events/{id}", "DELETE /api/events/{id}", "GET /api/tasks", "POST /api/tasks", "GET /api/tasks/{id}", "DELETE /api/tasks/{id}", "POST /api/tasks/bulk", "POST /api/tasks/{id}/complete", "POST /api/tasks/{id}/reopen", "GET /api/agenda/day", "GET /api/agenda/week"] }
+        { "unique-id": "openapi-document", "path": "contracts/openapi.json", "operations": ["GET /api/health", "GET /api/auth/me", "POST /api/auth/logout", "POST /api/events", "GET /api/events/{id}", "PUT /api/events/{id}", "DELETE /api/events/{id}", "GET /api/tasks", "POST /api/tasks", "GET /api/tasks/{id}", "PUT /api/tasks/{id}", "DELETE /api/tasks/{id}", "POST /api/tasks/bulk", "POST /api/tasks/{id}/complete", "POST /api/tasks/{id}/reopen", "GET /api/agenda/day", "GET /api/agenda/week"] }
       ],
       "metadata": { "adrs": ["ADR-0004"], "regenerate": "just contracts" }
     },
@@ -345,7 +345,7 @@
         { "unique-id": "api-health", "path": "/api/health", "operations": ["GET /api/health"], "authentication": "anonymous" },
         { "unique-id": "api-auth", "path": "/api/auth", "operations": ["GET /api/auth/login?returnUrl=", "GET /api/auth/callback/google", "GET /api/auth/me", "POST /api/auth/logout"], "authentication": "login and callback anonymous; me and logout require the session cookie" },
         { "unique-id": "api-events", "path": "/api/events", "operations": ["POST /api/events", "GET /api/events/{id}", "PUT /api/events/{id}", "DELETE /api/events/{id}"], "authentication": "session cookie" },
-        { "unique-id": "api-tasks", "path": "/api/tasks", "operations": ["GET /api/tasks?view=&today=&timeZone=&limit=&cursor=", "POST /api/tasks", "GET /api/tasks/{id}", "DELETE /api/tasks/{id}", "POST /api/tasks/bulk", "POST /api/tasks/{id}/complete", "POST /api/tasks/{id}/reopen"], "authentication": "session cookie" },
+        { "unique-id": "api-tasks", "path": "/api/tasks", "operations": ["GET /api/tasks?view=&today=&timeZone=&limit=&cursor=", "POST /api/tasks", "GET /api/tasks/{id}", "PUT /api/tasks/{id}", "DELETE /api/tasks/{id}", "POST /api/tasks/bulk", "POST /api/tasks/{id}/complete", "POST /api/tasks/{id}/reopen"], "authentication": "session cookie" },
         { "unique-id": "api-agenda", "path": "/api/agenda", "operations": ["GET /api/agenda/day?date=&timeZone=", "GET /api/agenda/week?date=&timeZone=&today="], "authentication": "session cookie" },
         { "unique-id": "api-static-spa", "path": "/", "description": "Static files from wwwroot (the built SPA); unknown non-file, non-/api paths return index.html with 200 and Cache-Control: no-cache; unknown /api/* paths return 404", "authentication": "anonymous" },
         { "unique-id": "api-container-image", "image": "crcalendar<suffix>.azurecr.io/calendar:<git-sha> (built from Dockerfile; mcr.microsoft.com/dotnet/aspnet:10.0 runtime, non-root APP_UID)" }
@@ -393,7 +393,7 @@
                 "fail-closed": "No signed-in user (FixedCurrentUser.None, the migrator context, the design-time factory): the filter matches no rows; IgnoreQueryFilters is used only in tests",
                 "legacy-owner": "The PerUserOwnership migration inserts users row 11111111-1111-1111-1111-111111111111 and backfills every existing event and task to it; the first sign-in or seed run by Auth:AllowedEmails[0] claims it",
                 "session-claim": "The users.id travels in the cookie as urn:calendar:user-id; OnValidatePrincipal rejects and signs out a cookie without it (401 to API callers), so sessions issued before ADR-0041 end once",
-                "cross-user-response": "404 for GET/PUT/DELETE /api/events/{id}, GET/complete/reopen/DELETE /api/tasks/{id}; notFound outcome in POST /api/tasks/bulk by ids; filter-based bulk actions and agenda counts only ever cover the caller's rows",
+                "cross-user-response": "404 for GET/PUT/DELETE /api/events/{id}, GET/PUT/complete/reopen/DELETE /api/tasks/{id}; notFound outcome in POST /api/tasks/bulk by ids; filter-based bulk actions and agenda counts only ever cover the caller's rows",
                 "client-supplied-user": false,
                 "tests": [
                   "backend/tests/Calendar.Api.Tests/Endpoints/OwnershipTests.cs (two users, every endpoint)",
@@ -455,7 +455,7 @@
               "requirement-url": "https://raw.githubusercontent.com/mgasca/calendar/main/docs/architecture/controls/concurrency-control.requirement.json",
               "config": {
                 "strategy": "Optimistic",
-                "token": "xmin (xid) concurrency token on events and tasks, read and set only in Calendar.Infrastructure (RowVersion); PUT /api/events/{id} requires the client's version from EventResponse and answers 409 when it is stale",
+                "token": "xmin (xid) concurrency token on events and tasks, read and set only in Calendar.Infrastructure (RowVersion); PUT /api/events/{id} and PUT /api/tasks/{id} require the client's version from the response and answer 409 when it is stale",
                 "conflict-status": 409,
                 "idempotent-operations": ["POST /api/tasks/{id}/complete", "POST /api/tasks/{id}/reopen", "DELETE /api/tasks/{id} (404 treated as already deleted by the client)"],
                 "bulk-filtered-writes": {

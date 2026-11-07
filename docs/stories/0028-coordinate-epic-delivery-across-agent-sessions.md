@@ -5,6 +5,7 @@ issue: https://github.com/mgasca/calendar/issues/325
 pr:
   - https://github.com/mgasca/calendar/pull/326
   - https://github.com/mgasca/calendar/pull/327
+  - https://github.com/mgasca/calendar/pull/496
 adrs: ["0042"]
 ---
 
@@ -93,6 +94,7 @@ The skill-creator package validator passed. Independent scenario testing used th
 * Native stacks evaluate protections and Actions against their trunk. A historical immediate base does not establish reduced CI; inspect the applicable check set on the current revision.
 * A stopped worker can usually be steered directly under the accepted authority. A launcher requiring a maintainer click must still be reported honestly, as must watch and notification gaps.
 * Related handover refactoring remains with #318. This skill neither introduces a new polling tool nor changes the existing protocol's rules.
+* The coordinator now watches mergeability as well as checks (2026-11-07, epic #458): after squash merges into `main`, a stacked PR whose base had merged and a parallel PR both turned `CONFLICTING`, which a watch of checks and comments alone does not report. The skill now reads each open PR's mergeable state on every pass and after each trunk merge, sends conflicts to the owning worker (resuming a finished one), and leaves a branch that is only behind alone.
 
 ## User guide
 

@@ -83,6 +83,25 @@ public sealed class TodoTask
     };
   }
 
+  /// <summary>
+  /// Replaces the title, deadline, priority and notes by the rules of <see cref="Create"/>; completion is left as it
+  /// is, so an open task stays open and a completed one stays completed. Nothing changes when a value is invalid.
+  /// </summary>
+  public void Update(
+    string title,
+    DateOnly? dueDate = null,
+    DateTimeOffset? dueAt = null,
+    string priority = "medium",
+    string? notes = null)
+  {
+    TodoTask validated = Create(OwnerId, title, dueDate, dueAt, priority, notes);
+    Title = validated.Title;
+    Priority = validated.Priority;
+    Notes = validated.Notes;
+    DueDate = validated.DueDate;
+    DueAt = validated.DueAt;
+  }
+
   /// <summary>Marks the task complete. Idempotent: an already completed task keeps its first completion time.</summary>
   public void Complete(DateTimeOffset now) => CompletedAt ??= NormalizeCompletionTime(now);
 

@@ -63,6 +63,10 @@ This replaces the first bullet of the "Source and navigation contract" in [ADR-0
 * The build test (`frontend/apps/docs/tests/build.test.ts`, `published ADRs`) checks that each record's page carries the sidebar in log order.
 * A reviewer confirms that the **Any decision records** navigation of the pull-request preview lists every record with its status.
 
+### Amendment, 2026-11-06: discover all document collections from files
+
+Approved by the maintainer in [issue #346](https://github.com/mgasca/calendar/issues/346). The same conflict-avoidance and single-source drivers now apply to every documentation area. This supersedes the earlier consequence that story, runbook and benchmark indexes retain tables, and the index requirements for those collections in [ADR-0023](0023-static-adr-log-publication.md). README files contain conventions only. Stories use their existing title and front matter; benchmarks store `subject` and `harness` in front matter; agent thoughts store `date`, `author` and `revision`; runbooks store a unique positive integer `order` to preserve the operational sequence. Numbered collections sort by filename. The site still publishes conventions pages and derives its navigation from the discovered files. Validation retains duplicate-number, metadata, harness-existence and broken-link checks without requiring a shared inventory row.
+
 ## Pros and Cons of the Options
 
 ### Derive the log from the files; `README.md` keeps only the conventions
@@ -103,7 +107,4 @@ This replaces the first bullet of the "Source and navigation contract" in [ADR-0
 * Related: [ADR-0000](0000-use-markdown-architectural-decision-records.md) (format and validator), [ADR-0023](0023-static-adr-log-publication.md) (the site builds the log from the canonical files), [ADR-0028](0028-publish-user-stories-on-the-documentation-site.md) (the story index keeps its table), [ADR-0039](0039-architecture-model-and-visualization-tooling.md) (the model's ADR list).
 * The counts above were measured with `git log --first-parent` and `git log -- docs/decisions/README.md` on 2026-11-02.
 * Revisit if the architecture model's `metadata.adrs` list turns out to conflict as often as the table did; the remedy would be to derive that list from the files too, and keep only the per-element references in the model.
-
-## Amendment: discover all document collections from files
-
-Approved by the maintainer in [issue #346](https://github.com/mgasca/calendar/issues/346). The same conflict-avoidance and single-source drivers now apply to every documentation area. This supersedes the earlier consequence that story, runbook and benchmark indexes retain tables, and the index requirements for those collections in [ADR-0023](0023-static-adr-log-publication.md). README files contain conventions only. Stories use their existing title and front matter; benchmarks store `subject` and `harness` in front matter; agent thoughts store `date`, `author` and `revision`; runbooks store a unique positive integer `order` to preserve the operational sequence. Numbered collections sort by filename. The site still publishes conventions pages and derives its navigation from the discovered files. Validation retains duplicate-number, metadata, harness-existence and broken-link checks without requiring a shared inventory row.
+* **Amendment, 2026-11-06:** every document collection, not only the decision log, is discovered from its files, and the README files keep only their conventions; approved in issue #346 and delivered by PR #353. The chosen option is unchanged and its scope is wider, so this ADR was amended, not superseded.

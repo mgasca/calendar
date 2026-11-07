@@ -5,6 +5,7 @@ issue: https://github.com/mgasca/calendar/issues/418
 pr:
   - https://github.com/mgasca/calendar/pull/419
   - https://github.com/mgasca/calendar/pull/422
+  - https://github.com/mgasca/calendar/pull/430
 adrs: ["0012", "0025", "0045", "0046"]
 ---
 

@@ -80,6 +80,18 @@ else
   fi
 fi
 
+# gh and jq: the GitHub CLI and JSON processor used by the issue, PR and CI workflows.
+if ! command -v gh >/dev/null 2>&1; then
+  fail "gh not found" "Install the GitHub CLI: https://github.com/cli/cli/blob/trunk/docs/install_linux.md (then run 'gh auth login')"
+else
+  ok "gh $(gh --version 2>/dev/null | sed -n '1s/^gh version \([0-9][0-9.]*\).*/\1/p')"
+fi
+if ! command -v jq >/dev/null 2>&1; then
+  fail "jq not found" "Install jq, e.g. 'sudo apt install jq': https://jqlang.org/download/"
+else
+  ok "jq $(jq --version 2>/dev/null)"
+fi
+
 # Azure tools are deployment prerequisites; local-only development can skip them.
 if [ "${1:-}" = "--infra" ]; then
   export AZURE_BICEP_USE_BINARY_FROM_PATH=false

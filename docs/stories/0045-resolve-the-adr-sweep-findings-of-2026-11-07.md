@@ -15,6 +15,7 @@ pr:
   - https://github.com/mgasca/calendar/pull/502
   - https://github.com/mgasca/calendar/pull/511
   - https://github.com/mgasca/calendar/pull/520
+  - https://github.com/mgasca/calendar/pull/524
 adrs: ["0000", "0002", "0003", "0011", "0014", "0019", "0021", "0025", "0026", "0029", "0030", "0031", "0032", "0035", "0037", "0045", "0048"]
 ---
 
@@ -82,7 +83,7 @@ Each PR below merged on 2026-11-07. "CI" means the `Docs site`, `Tooling` (when 
 11. **Given** this card, **when** I read "Dispositions", **then** ADR-0025 is recorded as no change because its drivers still hold, and ADR-0025 itself is not edited (#483). Recorded by #490, which closed #483. No PR of this epic edits ADR-0025; story 0046 (#523, outside this epic) later edited it for its own scope.
 12. **Given** the seven story cards that cite superseded ADRs, **when** the citations PR merges, **then** this card holds one disposition per card, only the two citations that read as a wrong current rule (0001 and 0003) were clarified, and every ADR number is kept as written (#484). Delivered by [#503](https://github.com/mgasca/calendar/pull/503), which changes one line each in [0001](0001-today-view.md) (the SQLite form, now "When this story was delivered … ADR-0037 withdrew that fallback") and [0003](0003-add-todo-tasks.md) (crediting story 0017 for per-user ownership). The dispositions are in the table below.
 13. **Given** #429, **when** its fix merges, **then** the cause found and the evidence that the fix works are linked from this card (#429). Delivered by [#520](https://github.com/mgasca/calendar/pull/520), after [#504](https://github.com/mgasca/calendar/pull/504) and its revert [#511](https://github.com/mgasca/calendar/pull/511); see "The Pages deployment fix". Verified live once: Publish ADR site run [42423849216](https://github.com/mgasca/calendar/actions/runs/42423849216), the first on the new workflow, succeeded. The long-run absence of collisions is not yet measured.
-14. **Given** the last delivery PR has merged, **when** I read this card, **then** its status is `implemented`, its `pr` list holds every PR of the epic in delivery order, each criterion above links its evidence or says plainly how it was checked, and #421 is still listed as the open follow-up. This close-out PR.
+14. **Given** the last delivery PR has merged, **when** I read this card, **then** its status is `implemented`, its `pr` list holds every PR of the epic in delivery order, each criterion above links its evidence or says plainly how it was checked, and #421 is still listed as the open follow-up. Delivered by this close-out, [#524](https://github.com/mgasca/calendar/pull/524).
 15. **Given** the change is complete, **when** I run `just check`, **then** it passes. Not run locally for the close-out; CI on the close-out PR covers the docs paths it changes.
 
 ## Dispositions
@@ -173,7 +174,7 @@ All PRs merged on 2026-11-07, in this order:
 | [#502](https://github.com/mgasca/calendar/pull/502) | #475 | ADR-0048: Dependabot correction |
 | [#511](https://github.com/mgasca/calendar/pull/511) | #429 | Revert of #504 |
 | [#520](https://github.com/mgasca/calendar/pull/520) | #429 | Delivered Pages fix: a `gh-pages` commit per publication as build version |
-| This close-out | #474 | Card status, `pr` list and evidence |
+| [#524](https://github.com/mgasca/calendar/pull/524) | #474 | This close-out: card status, `pr` list and evidence |
 
 ### The Pages deployment fix (#429)
 

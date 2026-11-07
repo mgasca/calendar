@@ -41,6 +41,8 @@ jobs:
           cache-dependency-path: backend/**/packages.lock.json
       - run: dotnet restore --locked-mode
       - run: dotnet build --no-restore -c Release
+      # SCRATCH for #385, never merged: an injected slowdown that the run-time gate must fail.
+      - run: sleep 60
       # Whitespace only: the build above already enforces code style (EnforceCodeStyleInBuild) and the analyzers, with
       # warnings as errors; only formatting needs dotnet format (#350, record 0010).
       - run: dotnet format whitespace --verify-no-changes --no-restore

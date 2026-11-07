@@ -324,3 +324,30 @@ describe('conventions pages', () => {
     },
   );
 });
+
+describe('theme control (story 0046)', () => {
+  it('renders the Calendar radio group and start-up script, and no Starlight picker, on every page', async () => {
+    const files = await pages('dist');
+    for (const file of files) {
+      const html = await readFile(file, 'utf8');
+      if (!html.includes('<sl-sidebar-pane')) continue; // redirect stubs have no site chrome
+      const groups = [...html.matchAll(/<fieldset class="theme-control">([\s\S]*?)<\/fieldset>/g)];
+      expect(groups.length, file).toBeGreaterThan(0); // header and mobile menu
+      for (const [, group = ''] of groups) {
+        expect(group, file).toContain('<legend>Theme</legend>');
+        const values = [...group.matchAll(/<input type="radio"[^>]*value="(\w+)"/g)].map(
+          (m) => m[1],
+        );
+        expect(values, file).toEqual(['light', 'dark', 'system']);
+      }
+      expect(html, file).not.toContain('starlight-theme');
+      expect(html, file).not.toContain('StarlightThemeProvider');
+      const head = /<head[\s\S]*?<\/head>/.exec(html)?.[0] ?? '';
+      const script = head.indexOf("localStorage.getItem('calendar.theme')");
+      expect(script, `${file} start-up script in <head>`).toBeGreaterThan(-1);
+      expect(script, `${file} script before the first stylesheet`).toBeLessThan(
+        head.includes('rel="stylesheet"') ? head.indexOf('rel="stylesheet"') : Infinity,
+      );
+    }
+  });
+});

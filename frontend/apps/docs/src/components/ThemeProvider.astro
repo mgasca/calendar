@@ -1,0 +1,24 @@
+---
+// Replaces Starlight's ThemeProvider (story 0046): Starlight's own picker and its storage
+// key are gone, so this start-up script and src/theme/controller.ts are the only code that sets
+// `data-theme`. Inlined so the saved theme is applied before first paint. It mirrors the web
+// app's script in index.html; theme.test.ts keeps it in step with the controller and the shared
+// storage key.
+---
+
+<script is:inline>
+  (function () {
+    var theme = 'light';
+    var choice = null;
+    try {
+      choice = localStorage.getItem('calendar.theme');
+    } catch (e) {}
+    if (choice === 'light' || choice === 'dark') theme = choice;
+    else {
+      try {
+        if (window.matchMedia('(prefers-color-scheme: dark)').matches) theme = 'dark';
+      } catch (e) {}
+    }
+    document.documentElement.dataset.theme = theme;
+  })();
+</script>

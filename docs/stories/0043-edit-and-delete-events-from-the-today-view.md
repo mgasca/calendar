@@ -1,9 +1,11 @@
 ---
-status: planned
+status: implemented
 date: 2026-11-07
 issue: https://github.com/mgasca/calendar/issues/466
 pr:
   - https://github.com/mgasca/calendar/pull/472
+  - https://github.com/mgasca/calendar/pull/488
+  - https://github.com/mgasca/calendar/pull/491
 adrs: ["0014", "0015", "0018", "0020", "0021", "0041", "0043", "0047"]
 ---
 
@@ -41,7 +43,7 @@ Every event belongs to one user ([0017](0017-per-user-calendar-ownership.md), [A
 * Merging the user's edits with the changes made elsewhere. On a conflict the latest version replaces the form, and the user re-applies their change.
 * Keeping a timed event's original zone when it is edited in a browser in another zone, or a zone picker ([0004](0004-add-event-entries.md) leaves both out).
 * Recurrence, reminders and invitations.
-* The fading save notification of #463. If it has merged when this story's UI lands, the status messages use it; otherwise they use the same plain status message as **Add event**.
+* The fading save notification itself; it came with #463, which merged before this story's UI, so saving and deleting use it.
 
 ### Dependencies
 
@@ -50,20 +52,20 @@ Every event belongs to one user ([0017](0017-per-user-calendar-ownership.md), [A
 
 ### Acceptance criteria
 
-1. **Given** a timed event "Dentist" today 15:00–16:00 on the Today view, **when** I select its title, change the start to 16:00 and save, **then** the dialog closes, "Dentist saved." is announced, and the Schedule lists Dentist at 16:00–17:00.
-2. **Given** an all-day event, **when** I open it, **then** the dialog shows **All day** checked with its first and last day (inclusive), and saving a later last day lists it on the added days.
-3. **Given** the edit dialog is open, **when** I clear the title or set the end before the start and save, **then** nothing is sent and the field says what to fix, as in **Add event**.
-4. **Given** the edit dialog is open, **when** I select **Delete event** and then **Delete**, **then** the dialog closes, "Dentist deleted." is announced, and the event is no longer listed on the day.
-5. **Given** the delete confirmation is showing, **when** I select **Keep event**, **then** nothing is deleted and the edit form is shown again with what I typed.
-6. **Given** I confirm a delete, **when** the server fails, **then** the dialog stays open, reports that the event couldn't be deleted, and the event is still listed.
-7. **Given** I opened an event and it was then changed elsewhere, **when** I save, **then** the dialog stays open, says the event was changed elsewhere, and shows the latest values; saving again succeeds.
-8. **Given** I opened an event and it was then deleted elsewhere, **when** I save or delete, **then** the dialog says the event no longer exists, and the day no longer lists it.
-9. **Given** a save is failing with a network or server error (not 400, 404 or 409), **when** it fails, **then** the dialog stays open with my values and a message, and saving again succeeds.
-10. **Given** the Today view, **when** I use the keyboard alone, **then** each event title is a button I can reach with Tab and open with Enter or Space, focus moves into the dialog when it opens, and returns to the title after a save or **Cancel**.
-11. **Given** two users, **when** one requests, updates or deletes the other's event by id, **then** the API answers 404 and the event is unchanged (API tests).
-12. **Given** an update that sends a stale version, **when** the API handles it, **then** it answers 409 and the stored event is unchanged (API tests).
-13. **Given** the dialog in the Light and Dark themes at desktop and phone widths, **when** I open, edit and delete an event, **then** the controls are legible and usable in both (checked in the running app, with screenshots in the UI PR).
-14. **Given** the change is complete, **when** I run `just check`, **then** it passes, including the regenerated contract.
+1. **Given** a timed event "Dentist" today 15:00–16:00 on the Today view, **when** I select its title, change the start to 16:00 and save, **then** the dialog closes, "Dentist saved." is announced, and the Schedule lists Dentist at 16:00–17:00. [Open, edit and save with the version](../../frontend/apps/web/src/features/events/EditEvent.test.tsx) (`opens the event from its title, prefilled, and saves a new time with its version`); [API update and agenda](../../backend/tests/Calendar.Api.Tests/Endpoints/EventEndpointsTests.cs) (`UpdateTimedEvent_ReplacesEveryField_AndReturnsANewVersion`). The new time in the Schedule was checked in the running app; the web test asserts the request and the status message.
+2. **Given** an all-day event, **when** I open it, **then** the dialog shows **All day** checked with its first and last day (inclusive), and saving a later last day lists it on the added days. [All-day prefill and save](../../frontend/apps/web/src/features/events/EditEvent.test.tsx) (`opens an all-day event with All day checked and its last day, and saves a later one`); [inclusive last day](../../frontend/apps/web/src/features/events/EditEvent.test.tsx) (`shows an all-day event with its inclusive last day`); [API kind switch](../../backend/tests/Calendar.Api.Tests/Endpoints/EventEndpointsTests.cs) (`UpdateEvent_CanSwitchATimedEventToAllDay`).
+3. **Given** the edit dialog is open, **when** I clear the title or set the end before the start and save, **then** nothing is sent and the field says what to fix, as in **Add event**. [Blank title](../../frontend/apps/web/src/features/events/EditEvent.test.tsx) (`validates like Add event and sends nothing`); end before start uses the same `validate` as **Add event**, covered by its tests; [API 400](../../backend/tests/Calendar.Api.Tests/Endpoints/EventEndpointsTests.cs) (`UpdateEvent_Invalid_Returns400WithTheField_AndLeavesTheEventUnchanged`).
+4. **Given** the edit dialog is open, **when** I select **Delete event** and then **Delete**, **then** the dialog closes, "Dentist deleted." is announced, and the event is no longer listed on the day. [Delete](../../frontend/apps/web/src/features/events/EditEvent.test.tsx) (`asks first, deletes on Delete, and moves focus to the day heading`); [API delete](../../backend/tests/Calendar.Api.Tests/Endpoints/EventEndpointsTests.cs) (`DeleteEvent_RemovesIt_FromTheResourceAndTheAgenda`).
+5. **Given** the delete confirmation is showing, **when** I select **Keep event**, **then** nothing is deleted and the edit form is shown again with what I typed. [Keep event](../../frontend/apps/web/src/features/events/EditEvent.test.tsx) (`goes back to the form with what was typed on Keep event`).
+6. **Given** I confirm a delete, **when** the server fails, **then** the dialog stays open, reports that the event couldn't be deleted, and the event is still listed. [Failed delete](../../frontend/apps/web/src/features/events/EditEvent.test.tsx) (`keeps the dialog open and the event listed when the delete fails`).
+7. **Given** I opened an event and it was then changed elsewhere, **when** I save, **then** the dialog stays open, says the event was changed elsewhere, and shows the latest values; saving again succeeds. [Conflict reload](../../frontend/apps/web/src/features/events/EditEvent.test.tsx) (`reloads the latest version when the event was changed elsewhere, then saves`); also checked in the running app with a second `PUT` from the page.
+8. **Given** I opened an event and it was then deleted elsewhere, **when** I save or delete, **then** the dialog says the event no longer exists, and the day no longer lists it. [Save](../../frontend/apps/web/src/features/events/EditEvent.test.tsx) (`says so when the event was deleted elsewhere, and the day drops it`); [delete](../../frontend/apps/web/src/features/events/EditEvent.test.tsx) (`says so when the event was already deleted elsewhere, and the day drops it`); [opening](../../frontend/apps/web/src/features/events/EditEvent.test.tsx) (`says when the event can no longer be opened`).
+9. **Given** a save is failing with a network or server error (not 400, 404 or 409), **when** it fails, **then** the dialog stays open with my values and a message, and saving again succeeds. [Server error and retry](../../frontend/apps/web/src/features/events/EditEvent.test.tsx) (`keeps the values after a server error and saves on retry`).
+10. **Given** the Today view, **when** I use the keyboard alone, **then** each event title is a button I can reach with Tab and open with Enter or Space, focus moves into the dialog when it opens, and returns to the title after a save or **Cancel**. [Keyboard](../../frontend/apps/web/src/features/events/EditEvent.test.tsx) (`opens from the keyboard`); [focus after save](../../frontend/apps/web/src/features/events/EditEvent.test.tsx) (`opens the event from its title, prefilled, and saves a new time with its version`); [after Cancel](../../frontend/apps/web/src/features/events/EditEvent.test.tsx) (`cancels without saving and returns focus to the title`). The focus trap is the browser's and isn't tested (jsdom has no modal dialogs).
+11. **Given** two users, **when** one requests, updates or deletes the other's event by id, **then** the API answers 404 and the event is unchanged (API tests). [Read](../../backend/tests/Calendar.Api.Tests/Endpoints/OwnershipTests.cs) (`AnotherUsersEvent_IsNotFound_AndTheOwnersIsFound`); [update and delete](../../backend/tests/Calendar.Api.Tests/Endpoints/OwnershipTests.cs) (`AnotherUsersEvent_IsNotFoundForUpdateAndDelete_AndStaysUnchanged`).
+12. **Given** an update that sends a stale version, **when** the API handles it, **then** it answers 409 and the stored event is unchanged (API tests). [Stale version](../../backend/tests/Calendar.Api.Tests/Endpoints/EventEndpointsTests.cs) (`UpdateEvent_WithAStaleVersion_Returns409_AndLeavesTheEventUnchanged`), which fails without the version check (negative control in PR #488).
+13. **Given** the dialog in the Light and Dark themes at desktop and phone widths, **when** I open, edit and delete an event, **then** the controls are legible and usable in both (checked in the running app, with screenshots in the UI PR). Checked by hand in the running app; screenshots in [PR #491](https://github.com/mgasca/calendar/pull/491).
+14. **Given** the change is complete, **when** I run `just check`, **then** it passes, including the regenerated contract. `just check` on the delivering revision of PR #491, and CI on each PR.
 
 ## Design decisions
 
@@ -93,47 +95,49 @@ No new ADR is expected.
 
 ## Implementation notes
 
-*Planned. This section is completed as the story is built.*
+Delivered in two PRs after the card ([#472](https://github.com/mgasca/calendar/pull/472)): the API with the regenerated contract ([#488](https://github.com/mgasca/calendar/pull/488)), then the Today view and this card's completion ([#491](https://github.com/mgasca/calendar/pull/491)). No migration: `xmin` was already the concurrency token.
 
 ### Where things live
 
 | Area | Location |
 | --- | --- |
-| Endpoints | `backend/src/Calendar.Api/Endpoints/EventEndpoints.cs` |
-| Contracts | `backend/src/Calendar.Api/Contracts/EventContracts.cs` (`UpdateEventRequest`, `version` on `EventResponse`) |
-| Version token | `backend/src/Calendar.Infrastructure` (reads and checks `xmin`) |
-| Domain | `backend/src/Calendar.Domain/Events/CalendarEvent.cs` (an update method with the create rules) |
-| Contract and client | `contracts/openapi.json`, `frontend/packages/api-client` (generated by `just contracts`) |
-| Form | `frontend/apps/web/src/features/events/EventForm.tsx`, `eventForm.ts` (edit mode, delete step) |
-| Rows | `frontend/apps/web/src/features/day/DayView.tsx` (title buttons in **All day** and **Schedule**) |
+| Endpoints | `backend/src/Calendar.Api/Endpoints/EventEndpoints.cs`: `UpdateAsync`, `DeleteAsync`, `CheckShape` (the per-kind field rules shared with create) |
+| Contracts | `backend/src/Calendar.Api/Contracts/EventContracts.cs`: `UpdateEventRequest`, `EventResponse.Version`, the internal `IEventFields` both requests implement |
+| Version token | `backend/src/Calendar.Infrastructure/RowVersion.cs`: `VersionOf` and `ExpectVersion`; the entity configurations use its property name, so API code never names `xmin` (ADR-0014) |
+| Domain | `backend/src/Calendar.Domain/Events/CalendarEvent.cs`: `Update` and `UpdateAllDay` build a validated copy with the factory rules, then take its fields, so an invalid update changes nothing |
+| Contract and client | `contracts/openapi.json`, `frontend/packages/api-client/src/schema.gen.ts` (by `just contracts`) |
+| Dialog | `frontend/apps/web/src/features/events/EditEvent.tsx` (loads the event, loading and not-found states), `EventForm.tsx` (edit mode, delete step, conflict reload), `eventForm.ts` (`fromEvent`), `useEditEvent.ts` (`eventQuery`, `useUpdateEvent`, `useDeleteEvent`) |
+| Rows | `frontend/apps/web/src/features/day/DayView.tsx`: `EventTitle`, the dialog state, the notification after a save or delete (`useNotify` from #463) and `focusTitleOrHeading` |
+| Styles | `frontend/apps/web/src/styles/components.css`, the block "Editing from the day view" (`.item-open`, `.delete-confirmation`) |
 
 ### API
 
-Planned:
-
-* `GET /api/events/{id}`: unchanged, but the response gains `version`.
-* `PUT /api/events/{id}`: body as `POST /api/events` plus the required `version`. 200 with the updated event and its new version; 400 with field errors; 404 when the event does not exist or belongs to another user; 409 when `version` is stale.
-* `DELETE /api/events/{id}`: 204; 404 when the event does not exist or belongs to another user.
+* `GET /api/events/{id}`: the response gains `version` (also on `POST` and `PUT`). The event is now loaded tracked, so the shadow token can be read.
+* `PUT /api/events/{id}` (`UpdateEvent`): body as `POST /api/events` plus the required `version`. 200 with the updated event and its new version; 400 with field errors (same keys as create; a missing `version` is a binding 400); 404 when the event does not exist or belongs to another user; 409 when `version` is stale, with nothing written. After a failed concurrency check the endpoint answers 404 if the event is gone, else 409.
+* `DELETE /api/events/{id}` (`DeleteEvent`): 204; 404 when it does not exist or belongs to another user; 409 only when another write lands between the request's read and its delete.
+* `version` is a uint32 in the contract; the generated TypeScript type is `number | string` (the API reads numbers from strings too). The client treats it as opaque and sends back what it got.
 
 ### Testing
 
-* Domain tests for the update rules (title, end after start, kinds, zone).
-* API tests with Testcontainers: update and delete of timed and all-day events, validation, stale version (409, unchanged row), and another user's event (404 on read, update and delete, row unchanged) in `OwnershipTests`.
-* Vitest with MSW: edit mode prefill (timed and all-day), save, validation, conflict reload, not found, delete confirm, keep and failure, keyboard focus.
-* The running app in both themes at desktop and phone widths.
+* Domain: `Update_ReplacesTheFields_AndKeepsIdAndOwner`, `UpdateAllDay_TurnsATimedEventIntoAnAllDayOne_AndBack`, `Update_WithInvalidValues_Throws_AndChangesNothing` in [CalendarEventTests](../../backend/tests/Calendar.Domain.Tests/Events/CalendarEventTests.cs).
+* API with Testcontainers: [EventEndpointsTests](../../backend/tests/Calendar.Api.Tests/Endpoints/EventEndpointsTests.cs) (update, kind switch, stale version, invalid, missing version, unknown, delete) and [OwnershipTests](../../backend/tests/Calendar.Api.Tests/Endpoints/OwnershipTests.cs).
+* Vitest with MSW: [EditEvent.test.tsx](../../frontend/apps/web/src/features/events/EditEvent.test.tsx) runs the routed app against a small in-memory event store with the API's version check, so save, conflict, not found and delete go through the real queries and invalidations.
+* The running app (throwaway stack, both themes, 1280×900 and 390×844): open, edit timed and all-day, delete with **Keep event** and **Delete**, and a changed-elsewhere conflict made by a second `PUT` from the page.
 
 ### Lessons learned, known issues and follow-ups
 
-* To be filled in on delivery.
+* **Don't refetch what you just deleted.** Invalidating the open dialog's event query after a delete refetched it while the dialog was still mounted, and the running app logged a 404. The event and notes queries are now only marked stale (`refetchType: 'none'`); the agenda is refetched. The browser run caught it; the MSW tests did not, because an extra 404 doesn't fail them.
+* **Wording in PR bodies.** The backend PR's body said, in prose with the closing keyword, that the UI PR would complete the issue, and the squash merge closed #466 early; it was reopened. PR bodies that must not close an issue use `Refs #N` and avoid the closing keywords anywhere in the text.
+* **Focus after a delete** goes to the day heading, which gets `tabindex="-1"` when it is first needed, so the header markup stays as it was.
+* **Confirmation message:** the fading notification of #463 (`useNotify`), which merged while this PR was open; a first version used a plain `role="status"` line.
+* **Follow-up:** editing and deleting from the Week view is [#492](https://github.com/mgasca/calendar/issues/492).
 
 ## User guide
 
-*Planned behaviour. This section is finalised when the story is implemented.*
-
 ### Changing an event
 
-1. On the day page, select the event's title, under **All day** or **Schedule**. The **Edit event** form opens with the event's details.
-2. Change what you need, then select **Save event**. The form closes and the day shows the change.
+1. On the day page, select the event's title (it is underlined with dots), under **All day** or **Schedule**. The **Edit event** form opens with the event's details.
+2. Change what you need, then select **Save event**. The form closes, a message says the event was saved, and the day shows the change.
 
 Times are in your browser's time zone, as when adding an event. If the event was changed somewhere else since you opened it, the form tells you and shows the latest version: check it, make your change again and save.
 
@@ -142,4 +146,6 @@ Times are in your browser's time zone, as when adding an event. If the event was
 1. Open the event as above and select **Delete event**.
 2. Select **Delete** to confirm, or **Keep event** to go back to the form.
 
-A deleted event can't be restored.
+The form closes and a message says the event was deleted. A deleted event can't be restored. If the event was already deleted somewhere else, the form says it no longer exists.
+
+Events can be changed only from the day page for now, not from the week.

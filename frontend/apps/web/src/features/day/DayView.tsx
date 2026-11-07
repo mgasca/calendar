@@ -17,6 +17,7 @@ import {
 } from '../agenda/dayTime.ts';
 import { ApiError } from '../../api/apiError.ts';
 import { useNotify } from '../../components/notify.ts';
+import { EditEvent } from '../events/EditEvent.tsx';
 import { EditTask } from '../tasks/EditTask.tsx';
 import { Notes } from '../agenda/Notes.tsx';
 import { EventTimes } from '../agenda/EventTimes.tsx';
@@ -53,7 +54,8 @@ export function DayView({ date, timeZone: zoneOverride, locale }: DayViewProps) 
     [agenda.data?.tasks],
   );
   const toggle = useToggleTask(agendaKey(date, timeZone), patchDayTasks);
-  /** The task open in the edit dialog (story 0044). */
+  /** The event (story 0043) or task (story 0044) open in its edit dialog. */
+  const [editing, setEditing] = useState<string>();
   const [editingTask, setEditingTask] = useState<string>();
   const notify = useNotify();
   const openTask = (task: AgendaTask) => {
@@ -159,7 +161,24 @@ export function DayView({ date, timeZone: zoneOverride, locale }: DayViewProps) 
             if (saved) notify({ message: 'Task saved.' });
             // A task moved to another day has left the list, so focus falls back to the heading.
             requestAnimationFrame(() => {
-              focusTaskTitle(id);
+              focusTitleOrHeading(taskTitleId(id));
+            });
+          }}
+        />
+      )}
+      {editing && (
+        <EditEvent
+          id={editing}
+          date={shownDate}
+          timeZone={timeZone}
+          onClose={(result) => {
+            const id = editing;
+            setEditing(undefined);
+            if (result)
+              notify({ message: `${result.title} ${result.deleted ? 'deleted' : 'saved'}.` });
+            // After a delete the row is gone, so focus moves to the day's heading.
+            requestAnimationFrame(() => {
+              focusTitleOrHeading(result?.deleted ? undefined : eventTitleId(id));
             });
           }}
         />
@@ -177,7 +196,7 @@ export function DayView({ date, timeZone: zoneOverride, locale }: DayViewProps) 
           <ul className="items">
             {allDayEvents.map((event) => (
               <li key={event.id} className="item">
-                <span className="item-title">{event.title}</span>
+                <EventTitle id={event.id} title={event.title} onOpen={setEditing} />
                 <AllDayDetail event={event} day={shownDate} />
                 <Location value={event.location} />
                 {event.hasNotes && <Notes id={event.id} kind="event" />}
@@ -191,9 +210,20 @@ export function DayView({ date, timeZone: zoneOverride, locale }: DayViewProps) 
         <section aria-labelledby="schedule-heading">
           <h2 id="schedule-heading">Schedule</h2>
           {isToday ? (
-            <TodaySchedule events={events} timeZone={timeZone} locale={locale} />
+            <TodaySchedule
+              events={events}
+              timeZone={timeZone}
+              locale={locale}
+              onOpen={setEditing}
+            />
           ) : (
-            <Schedule events={events} nowMs={undefined} timeZone={timeZone} locale={locale} />
+            <Schedule
+              events={events}
+              nowMs={undefined}
+              timeZone={timeZone}
+              locale={locale}
+              onOpen={setEditing}
+            />
           )}
         </section>
       )}
@@ -306,17 +336,64 @@ const STATUS_LABEL: Record<EventStatus, string | null> = {
   upcoming: null,
 };
 
+/** An event's title as a button that opens it to edit (story 0043). */
+function EventTitle({
+  id,
+  title,
+  onOpen,
+}: {
+  id: string;
+  title: string;
+  onOpen: (id: string) => void;
+}) {
+  return (
+    <span className="item-title">
+      <button
+        type="button"
+        id={eventTitleId(id)}
+        className="item-open"
+        aria-haspopup="dialog"
+        onClick={() => {
+          onOpen(id);
+        }}
+      >
+        {title}
+      </button>
+    </span>
+  );
+}
+
+const eventTitleId = (id: string) => `event-title-${id}`;
+
+/**
+ * After an edit, focuses the edited row's title button (by its element id), or the day heading
+ * when the row is gone: deleted, or moved to another day.
+ */
+function focusTitleOrHeading(titleId: string | undefined) {
+  const title = titleId ? document.getElementById(titleId) : null;
+  if (title) {
+    title.focus();
+    return;
+  }
+  const heading = document.getElementById('day-heading');
+  if (!heading) return;
+  if (!heading.hasAttribute('tabindex')) heading.setAttribute('tabindex', '-1');
+  heading.focus();
+}
+
 function Schedule({
   events,
   nowMs,
   timeZone,
   locale,
+  onOpen,
 }: {
   events: TimedEvent[];
   /** The current time when the day shown is today; without it no event gets a status. */
   nowMs: number | undefined;
   timeZone: string;
   locale?: string | undefined;
+  onOpen: (id: string) => void;
 }) {
   const statuses = nowMs === undefined ? undefined : eventStatuses(events, nowMs);
   const relative = nowMs !== undefined;
@@ -330,7 +407,7 @@ function Schedule({
             <span className="item-time">
               <EventTimes event={event} relative={relative} timeZone={timeZone} locale={locale} />
             </span>
-            <span className="item-title">{event.title}</span>
+            <EventTitle id={event.id} title={event.title} onOpen={onOpen} />
             {label && <span className={`badge badge-${status}`}>{label}</span>}
             <Location value={event.location} />
             {event.hasNotes && <Notes id={event.id} kind="event" />}
@@ -345,22 +422,10 @@ function TodaySchedule(props: {
   events: TimedEvent[];
   timeZone: string;
   locale?: string | undefined;
+  onOpen: (id: string) => void;
 }) {
   const now = useNow();
   return <Schedule {...props} nowMs={now} />;
-}
-
-/** Focuses a task's title button, or the day heading when the task is no longer listed. */
-function focusTaskTitle(id: string) {
-  const title = document.getElementById(taskTitleId(id));
-  if (title) {
-    title.focus();
-    return;
-  }
-  const heading = document.getElementById('day-heading');
-  if (!heading) return;
-  if (!heading.hasAttribute('tabindex')) heading.setAttribute('tabindex', '-1');
-  heading.focus();
 }
 
 function TodayTasks({

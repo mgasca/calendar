@@ -1,3 +1,5 @@
+import type { Schemas } from '@calendar/api-client';
+
 import { deadlineInstants } from '../agenda/deadline.ts';
 
 export interface EventValues {
@@ -111,6 +113,50 @@ export function requestBody(values: EventValues, timeZone: string) {
     endDate: end.toISOString().slice(0, 10),
   };
 }
+/** A stored event as the API returns it, for edit mode. */
+export type StoredEvent = Schemas['EventResponse'];
+
+/**
+ * The form's values for a stored event, in the browser's zone like everything the form shows. A
+ * repeated local time keeps the stored instant as its chosen occurrence; an all-day event shows
+ * its last day (the API's end date is exclusive).
+ */
+export function fromEvent(event: StoredEvent): EventValues {
+  const common = {
+    title: event.title,
+    location: event.location ?? '',
+    notes: event.notes ?? '',
+    startOccurrence: '',
+    endOccurrence: '',
+  };
+  if (event.allDay && event.startDate && event.endDate) {
+    const last = new Date(`${event.endDate}T00:00:00Z`);
+    last.setUTCDate(last.getUTCDate() - 1);
+    return {
+      ...common,
+      allDay: true,
+      start: `${event.startDate}T09:00`,
+      end: `${last.toISOString().slice(0, 10)}T10:00`,
+    };
+  }
+  const local = (instant: string | null | undefined) => {
+    if (!instant) return { value: '', occurrence: '' };
+    const value = localString(new Date(instant));
+    const exact = new Date(instant).toISOString();
+    return { value, occurrence: deadlineInstants(value).length > 1 ? exact : '' };
+  };
+  const start = local(event.start);
+  const end = local(event.end);
+  return {
+    ...common,
+    allDay: false,
+    start: start.value,
+    end: end.value,
+    startOccurrence: start.occurrence,
+    endOccurrence: end.occurrence,
+  };
+}
+
 export function serverErrors(body: unknown): FieldErrors {
   const result: FieldErrors = {};
   if (typeof body !== 'object' || body === null)

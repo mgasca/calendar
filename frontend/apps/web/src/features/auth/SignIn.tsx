@@ -12,11 +12,13 @@ export function SignIn({
     <section aria-labelledby="signin-heading">
       <h1 id="signin-heading">Sign in</h1>
       {error === 'access_denied' && (
-        <p role="alert">
+        <p role="alert" className="notice notice-error">
           Access denied. This Google account is not allowed to access the calendar.
         </p>
       )}
-      <a href={loginUrl}>Sign in with Google</a>
+      <a className="button-primary" href={loginUrl}>
+        Sign in with Google
+      </a>
     </section>
   );
 }

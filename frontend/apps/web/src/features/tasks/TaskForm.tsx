@@ -237,7 +237,9 @@ export function TaskForm({
             )}
           </Field>
           <div className="actions">
-            <button type="submit">{save.isPending ? 'Saving…' : 'Save task'}</button>
+            <button type="submit" className="button-primary">
+              {save.isPending ? 'Saving…' : 'Save task'}
+            </button>
             <button
               type="button"
               onClick={() => {

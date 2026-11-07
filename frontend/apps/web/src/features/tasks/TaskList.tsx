@@ -87,7 +87,7 @@ export function TaskList() {
       <h2>{view}</h2>
       {tasks.isPending && <p role="status">Loading tasks…</p>}
       {tasks.isError && (
-        <div role="alert">
+        <div role="alert" className="notice notice-error">
           <p>Couldn’t load tasks.</p>
           <button
             type="button"
@@ -100,13 +100,13 @@ export function TaskList() {
         </div>
       )}
       {toggle.isError && (
-        <p role="alert">
+        <p role="alert" className="notice notice-error">
           {toggle.error instanceof TaskUpdateError && toggle.error.status === 409
             ? 'That task changed elsewhere. The list has been refreshed; try again.'
             : 'Couldn’t update the task. Try again.'}
         </p>
       )}
-      {tasks.isSuccess && !visible.length && <p>No tasks in this view.</p>}
+      {tasks.isSuccess && !visible.length && <p className="empty">No tasks in this view.</p>}
       <ul className="items">
         {visible.map((task) => (
           <li key={task.id} className={`item task${task.isCompleted ? ' task-done' : ''}`}>

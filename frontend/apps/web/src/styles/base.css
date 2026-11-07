@@ -31,6 +31,12 @@ h3 {
   letter-spacing: var(--font-heading-tracking);
 }
 
+h1,
+h2,
+h3 {
+  overflow-wrap: anywhere;
+}
+
 h1 {
   margin: 0 0 var(--space-1);
   font-size: var(--text-2xl);

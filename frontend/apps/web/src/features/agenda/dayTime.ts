@@ -89,25 +89,29 @@ export function formatTime(iso: string, timeZone: string, locale?: string): stri
 }
 
 /**
- * Classifies events relative to `nowMs`: finished, in progress, the first one still to come
- * ("next"), or later ones ("upcoming"). Events must be sorted by start, as the API returns them.
+ * Classifies events relative to `nowMs`: finished, in progress, the ones still to come that start
+ * earliest ("next", several when they start together), or later ones ("upcoming").
  */
 export function eventStatuses(
   events: readonly TimedEvent[],
   nowMs: number,
 ): Map<string, EventStatus> {
-  const result = new Map<string, EventStatus>();
-  let nextAssigned = false;
+  let nextStart = Number.POSITIVE_INFINITY;
   for (const event of events) {
+    const start = Date.parse(event.start);
+    if (start > nowMs && start < nextStart) {
+      nextStart = start;
+    }
+  }
+  const result = new Map<string, EventStatus>();
+  for (const event of events) {
+    const start = Date.parse(event.start);
     if (Date.parse(event.end) <= nowMs) {
       result.set(event.id, 'past');
-    } else if (Date.parse(event.start) <= nowMs) {
+    } else if (start <= nowMs) {
       result.set(event.id, 'current');
-    } else if (!nextAssigned) {
-      nextAssigned = true;
-      result.set(event.id, 'next');
     } else {
-      result.set(event.id, 'upcoming');
+      result.set(event.id, start === nextStart ? 'next' : 'upcoming');
     }
   }
   return result;

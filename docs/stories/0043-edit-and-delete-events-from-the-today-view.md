@@ -37,7 +37,7 @@ Every event belongs to one user ([0017](0017-per-user-calendar-ownership.md), [A
 ### Not in this story
 
 * Editing or deleting from the week view. The endpoints and dialog are reusable; the week's entry points are a follow-up issue, like [XXXX](XXXX-create-events-and-tasks-from-week-view.md) is for creating.
-* Editing tasks. That is #467, card 0044 (planned).
+* Editing tasks. That is #467, card [0044](0044-edit-a-task-from-the-today-view.md).
 * Undo after deleting, and a recycle bin.
 * A "Discard changes?" prompt on closing an edited dialog, as for **Add event** ([0004](0004-add-event-entries.md)).
 * Merging the user's edits with the changes made elsewhere. On a conflict the latest version replaces the form, and the user re-applies their change.
@@ -107,7 +107,7 @@ Delivered in two PRs after the card ([#472](https://github.com/mgasca/calendar/p
 | Domain | `backend/src/Calendar.Domain/Events/CalendarEvent.cs`: `Update` and `UpdateAllDay` build a validated copy with the factory rules, then take its fields, so an invalid update changes nothing |
 | Contract and client | `contracts/openapi.json`, `frontend/packages/api-client/src/schema.gen.ts` (by `just contracts`) |
 | Dialog | `frontend/apps/web/src/features/events/EditEvent.tsx` (loads the event, loading and not-found states), `EventForm.tsx` (edit mode, delete step, conflict reload), `eventForm.ts` (`fromEvent`), `useEditEvent.ts` (`eventQuery`, `useUpdateEvent`, `useDeleteEvent`) |
-| Rows | `frontend/apps/web/src/features/day/DayView.tsx`: `EventTitle`, the dialog state, the notification after a save or delete (`useNotify` from #463) and `focusAfterEdit` |
+| Rows | `frontend/apps/web/src/features/day/DayView.tsx`: `EventTitle`, the dialog state, the notification after a save or delete (`useNotify` from #463) and `focusTitleOrHeading` |
 | Styles | `frontend/apps/web/src/styles/components.css`, the block "Editing from the day view" (`.item-open`, `.delete-confirmation`) |
 
 ### API

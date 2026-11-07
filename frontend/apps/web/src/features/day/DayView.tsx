@@ -19,9 +19,11 @@ import {
 import { ApiError } from '../../api/apiError.ts';
 import { useNotify } from '../../components/notify.ts';
 import { EditEvent } from '../events/EditEvent.tsx';
+import { EditTask } from '../tasks/EditTask.tsx';
 import { Notes } from '../agenda/Notes.tsx';
 import { EventTimes } from '../agenda/EventTimes.tsx';
 import { TaskItem, TaskToggleError } from '../agenda/TaskItem.tsx';
+import { taskTitleId } from '../agenda/taskTitleId.ts';
 import { useNow, useToday } from '../agenda/useNow.ts';
 import { useToggleTask } from '../agenda/useToggleTask.ts';
 import { addDays, formatDayMonth, isoWeekStart } from '../week/weekDates.ts';
@@ -54,9 +56,13 @@ export function DayView({ date, timeZone: zoneOverride, locale }: DayViewProps) 
     [agenda.data?.tasks],
   );
   const toggle = useToggleTask(agendaKey(date, timeZone), patchDayTasks);
-  /** The event open in the edit dialog. */
+  /** The event (story 0043) or task (story 0044) open in its edit dialog. */
   const [editing, setEditing] = useState<string>();
+  const [editingTask, setEditingTask] = useState<string>();
   const notify = useNotify();
+  const openTask = (task: AgendaTask) => {
+    setEditingTask(task.id);
+  };
   const formatHeading = (day: string) =>
     formatDate(day, locale, { withYear: day.slice(0, 4) !== today.slice(0, 4) });
   const agendaName = date === today ? 'today’s agenda' : 'the agenda for this day';
@@ -158,6 +164,20 @@ export function DayView({ date, timeZone: zoneOverride, locale }: DayViewProps) 
         </div>
       )}
       <TaskToggleError error={toggle.error} />
+      {editingTask && (
+        <EditTask
+          id={editingTask}
+          onClose={(saved) => {
+            const id = editingTask;
+            setEditingTask(undefined);
+            if (saved) notify({ message: 'Task saved.' });
+            // A task moved to another day has left the list, so focus falls back to the heading.
+            requestAnimationFrame(() => {
+              focusTitleOrHeading(taskTitleId(id));
+            });
+          }}
+        />
+      )}
       {editing && (
         <EditEvent
           id={editing}
@@ -170,7 +190,7 @@ export function DayView({ date, timeZone: zoneOverride, locale }: DayViewProps) 
               notify({ message: `${result.title} ${result.deleted ? 'deleted' : 'saved'}.` });
             // After a delete the row is gone, so focus moves to the day's heading.
             requestAnimationFrame(() => {
-              focusAfterEdit(result?.deleted ? undefined : id);
+              focusTitleOrHeading(result?.deleted ? undefined : eventTitleId(id));
             });
           }}
         />
@@ -240,6 +260,7 @@ export function DayView({ date, timeZone: zoneOverride, locale }: DayViewProps) 
                     overdue
                     disabled={stale}
                     onToggle={onToggle}
+                    onOpen={openTask}
                   />
                 ))}
               </ul>
@@ -256,6 +277,7 @@ export function DayView({ date, timeZone: zoneOverride, locale }: DayViewProps) 
                     locale={locale}
                     disabled={stale}
                     onToggle={onToggle}
+                    onOpen={openTask}
                   />
                 ) : (
                   tasks.dueToday.map((task) => (
@@ -267,6 +289,7 @@ export function DayView({ date, timeZone: zoneOverride, locale }: DayViewProps) 
                       locale={locale}
                       disabled={stale}
                       onToggle={onToggle}
+                      onOpen={openTask}
                     />
                   ))
                 )}
@@ -408,9 +431,12 @@ function EventTitle({
 
 const eventTitleId = (id: string) => `event-title-${id}`;
 
-/** Focuses the event's title button, or the day heading when there is no such row any more. */
-function focusAfterEdit(id: string | undefined) {
-  const title = id ? document.getElementById(eventTitleId(id)) : null;
+/**
+ * After an edit, focuses the edited row's title button (by its element id), or the day heading
+ * when the row is gone: deleted, or moved to another day.
+ */
+function focusTitleOrHeading(titleId: string | undefined) {
+  const title = titleId ? document.getElementById(titleId) : null;
   if (title) {
     title.focus();
     return;
@@ -474,12 +500,14 @@ function TodayTasks({
   locale,
   disabled,
   onToggle,
+  onOpen,
 }: {
   tasks: AgendaTask[];
   timeZone: string;
   locale?: string | undefined;
   disabled: boolean;
   onToggle: (task: AgendaTask) => void;
+  onOpen: (task: AgendaTask) => void;
 }) {
   const now = useNow();
   return tasks.map((task) => (
@@ -492,6 +520,7 @@ function TodayTasks({
       locale={locale}
       disabled={disabled}
       onToggle={onToggle}
+      onOpen={onOpen}
     />
   ));
 }

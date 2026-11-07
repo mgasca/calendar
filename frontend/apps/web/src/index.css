@@ -1,150 +1,27 @@
-:root {
-  font-family: system-ui, sans-serif;
-  color-scheme: light dark;
-  --muted: color-mix(in srgb, currentColor 65%, transparent);
-  --border: color-mix(in srgb, currentColor 18%, transparent);
-  --accent: #1a5fd0;
-  --danger: #b3261e;
-  --warn-bg: color-mix(in srgb, #b3261e 12%, transparent);
-  --now-bg: color-mix(in srgb, #1a5fd0 14%, transparent);
-}
+@import './styles/tokens.css';
+@import './styles/base.css';
+@import './styles/components.css';
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --accent: #8ab4ff;
-    --danger: #ff8a80;
-  }
-}
-
-body {
-  margin: 0;
-  padding: 1rem;
-  line-height: 1.4;
-}
-
-main,
-.app-nav,
-.app-footer {
-  max-width: 40rem;
-  margin: 0 auto;
-}
-
-.app-nav {
-  display: flex;
-  gap: 1rem;
-  margin-bottom: 1rem;
-}
-
-.app-nav a {
-  color: var(--accent);
-}
-
-.app-nav a[aria-current='page'] {
-  color: inherit;
-  font-weight: 700;
-  text-decoration: none;
-}
-
-h1 {
-  margin: 0 0 0.25rem;
-  font-size: 1.75rem;
-}
-
-h2 {
-  margin: 1.75rem 0 0.5rem;
-  font-size: 1.2rem;
-}
-
-h3 {
-  margin: 1rem 0 0.25rem;
-  font-size: 0.95rem;
-  color: var(--muted);
-}
-
-.eyebrow {
-  margin: 0;
-  font-size: 0.8rem;
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-  color: var(--muted);
-}
-
-.summary {
-  margin: 0;
-  color: var(--muted);
-}
-
-.empty {
-  margin-top: 2rem;
-  font-size: 1.1rem;
-}
-
-.items {
-  margin: 0;
-  padding: 0;
-  list-style: none;
-  border-top: 1px solid var(--border);
-}
-
-.item {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: baseline;
-  gap: 0.25rem 0.75rem;
-  padding: 0.6rem 0.5rem;
-  border-bottom: 1px solid var(--border);
-}
-
-.item-title {
-  font-weight: 500;
-}
-
-.item-time {
-  min-width: 9rem;
-  font-variant-numeric: tabular-nums;
-  color: var(--muted);
-}
-
-.item-meta {
-  flex-basis: 100%;
-  font-size: 0.85rem;
-  color: var(--muted);
-}
+/*
+ * View rules (day, week, tasks, triage). They use semantic tokens only; moving them next to their
+ * features is issue #433.
+ */
 
 .event-past {
-  opacity: 0.6;
+  opacity: var(--opacity-past);
 }
 
 .event-current {
-  background: var(--now-bg);
-  border-left: 4px solid var(--accent);
-}
-
-.badge {
-  padding: 0 0.5rem;
-  border: 1px solid currentColor;
-  border-radius: 1rem;
-  font-size: 0.75rem;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-}
-
-.badge-current,
-.badge-next {
-  color: var(--accent);
-  font-weight: 700;
-}
-
-.badge-past {
-  color: var(--muted);
+  background: var(--color-current-bg);
+  border-left: 4px solid var(--color-current-border);
 }
 
 .task-label {
   display: flex;
   flex: 1;
   align-items: center;
-  gap: 0.75rem;
-  min-height: 2.5rem;
+  gap: var(--space-3);
+  min-height: var(--control-height);
   cursor: pointer;
 }
 
@@ -152,211 +29,16 @@ h3 {
   width: 1.4rem;
   height: 1.4rem;
   flex: none;
+  accent-color: var(--color-accent);
 }
 
 .task-done .item-title {
   text-decoration: line-through;
-  color: var(--muted);
+  color: var(--color-completed-text);
 }
 
 .task-overdue {
-  background: var(--warn-bg);
-}
-
-.flag {
-  color: var(--danger);
-}
-
-.notice {
-  margin: 1rem 0;
-  padding: 0.5rem 0.75rem;
-  border: 1px solid currentColor;
-  border-radius: 0.5rem;
-}
-
-.notice p {
-  margin: 0 0 0.5rem;
-}
-
-.notice-error {
-  color: var(--danger);
-}
-
-button {
-  min-height: 2.25rem;
-  padding: 0 1rem;
-  font: inherit;
-}
-
-:focus-visible {
-  outline: 3px solid var(--accent);
-  outline-offset: 2px;
-}
-
-.app-footer {
-  margin-top: 3rem;
-  font-size: 0.8rem;
-  color: var(--muted);
-}
-
-.app-footer p {
-  margin: 0;
-}
-
-@media (min-width: 40rem) {
-  body {
-    padding: 2rem;
-  }
-}
-
-.refresh {
-  float: right;
-  min-height: 2rem;
-  padding: 0 0.75rem;
-  font-size: 0.85rem;
-}
-
-.is-stale > :not(header) {
-  opacity: 0.5;
-}
-
-.actions {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: end;
-  gap: 0.5rem;
-  margin: 1rem 0;
-}
-
-button[aria-pressed='true'] {
-  border: 2px solid var(--accent);
-  font-weight: 700;
-}
-
-/* A modal <dialog>: the browser centres it and traps focus; this only sizes and skins it. */
-.modal-dialog {
-  box-sizing: border-box;
-  width: min(36rem, calc(100vw - 2rem));
-  max-height: calc(100vh - 2rem);
-  overflow: auto;
-  padding: 1rem;
-  border: 1px solid var(--border);
-  border-radius: 0.5rem;
-  color: inherit;
-  background: Canvas;
-}
-
-.modal-dialog::backdrop {
-  background: color-mix(in srgb, black 50%, transparent);
-}
-
-.modal-dialog fieldset {
-  border: 0;
-  padding: 0;
-  min-width: 0;
-}
-
-.modal-dialog label,
-.actions label {
-  display: flex;
-  flex-direction: column;
-  gap: 0.25rem;
-  margin-bottom: 0.75rem;
-}
-
-/*
- * Form validation (ADR-0043). A field wraps its label and control; an invalid control gets the danger
- * border. Its message is always rendered as the control's description for assistive technology, kept
- * off-screen like .visually-hidden, and shown as a bubble under the control while the field is focused
- * or hovered, so the layout never moves.
- */
-.field {
-  position: relative;
-}
-
-.field [aria-invalid='true'] {
-  border: 2px solid var(--danger);
-}
-
-.field [aria-invalid='true']:focus-visible {
-  outline-color: var(--danger);
-}
-
-.field-bubble {
-  position: absolute;
-  top: 100%;
-  left: 0;
-  z-index: 1;
-  box-sizing: border-box;
-  width: 1px;
-  height: 1px;
-  margin: 0;
-  padding: 0;
-  overflow: hidden;
-  clip-path: inset(50%);
-  white-space: nowrap;
-  font-size: 0.9rem;
-  color: inherit;
-  background: Canvas;
-  border: 1px solid var(--border);
-  border-radius: 0.375rem;
-  box-shadow: 0 2px 8px rgb(0 0 0 / 0.25);
-}
-
-.field:hover > .field-bubble,
-.field:focus-within > .field-bubble {
-  width: auto;
-  max-width: 100%;
-  height: auto;
-  margin-top: 0.5rem;
-  padding: 0.5rem 0.75rem;
-  overflow: visible;
-  clip-path: none;
-  white-space: normal;
-}
-
-.field:hover > .field-bubble::before,
-.field:focus-within > .field-bubble::before {
-  content: '';
-  position: absolute;
-  top: -0.4rem;
-  left: 1rem;
-  width: 0.7rem;
-  height: 0.7rem;
-  background: Canvas;
-  border-top: 1px solid var(--border);
-  border-left: 1px solid var(--border);
-  transform: rotate(45deg);
-}
-
-.field-mark {
-  display: inline-block;
-  width: 1.1rem;
-  height: 1.1rem;
-  margin-right: 0.4rem;
-  border-radius: 0.2rem;
-  font-size: 0.85rem;
-  font-weight: 700;
-  line-height: 1.1rem;
-  text-align: center;
-  color: white;
-  background: var(--danger);
-}
-
-/* A checkbox keeps its text beside the box, as in the task lists, not above it. */
-.modal-dialog .task-label {
-  flex-direction: row;
-  gap: 0.75rem;
-}
-
-input:not([type='checkbox']),
-textarea,
-select {
-  box-sizing: border-box;
-  max-width: 100%;
-  min-height: 2.5rem;
-  padding: 0.5rem;
-  font: inherit;
+  background: var(--color-overdue-bg);
 }
 
 .task-notes {
@@ -366,29 +48,44 @@ select {
   overflow-wrap: anywhere;
 }
 
-.item-title {
-  overflow-wrap: anywhere;
+/* A checkbox keeps its text beside the box, as in the task lists, not above it. */
+.modal-dialog .task-label {
+  flex-direction: row;
+  gap: var(--space-3);
 }
 
-.visually-hidden {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  padding: 0;
-  margin: -1px;
-  overflow: hidden;
-  clip-path: inset(50%);
-  white-space: nowrap;
-  border: 0;
+.app-footer {
+  margin-top: var(--space-8);
+  font-size: 0.8rem;
+  color: var(--color-text-muted);
+}
+
+.app-footer p {
+  margin: 0;
+}
+
+.refresh {
+  float: right;
+  min-height: 2rem;
+  padding: 0 var(--space-3);
+  font-size: var(--text-sm);
+}
+
+.is-stale > :not(header) {
+  opacity: var(--opacity-stale);
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: end;
+  gap: var(--space-2);
+  margin: var(--space-4) 0;
 }
 
 .week-link {
-  margin: 0.25rem 0 0;
+  margin: var(--space-1) 0 0;
   font-size: 0.9rem;
-}
-
-.week-link a {
-  color: var(--accent);
 }
 
 /* Week view: the page widens to fit seven columns. */
@@ -400,24 +97,24 @@ body:has(.week) .app-footer {
 }
 
 .week-header {
-  margin-bottom: 1rem;
+  margin-bottom: var(--space-4);
 }
 
 .week-nav {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.5rem;
-  margin-top: 0.75rem;
+  gap: var(--space-2);
+  margin-top: var(--space-3);
 }
 
 .week-nav a {
   display: inline-flex;
   align-items: center;
-  min-height: 2.25rem;
-  padding: 0 1rem;
-  border: 1px solid var(--border);
-  border-radius: 0.5rem;
-  color: inherit;
+  min-height: var(--control-height);
+  padding: 0 var(--space-4);
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-md);
+  color: var(--color-text);
   text-decoration: none;
 }
 
@@ -427,7 +124,7 @@ body:has(.week) .app-footer {
 
 .week-body {
   display: grid;
-  gap: 1rem;
+  gap: var(--space-4);
 }
 
 @media (min-width: 64rem) {
@@ -440,11 +137,6 @@ body:has(.week) .app-footer {
   margin-top: 0;
 }
 
-.count {
-  color: var(--muted);
-  font-weight: 400;
-}
-
 /*
  * The grid is one scroll container. Day headings, the all-day band and the task strips stick to the
  * top while the hours scroll beneath them; narrow screens scroll the whole grid sideways.
@@ -453,8 +145,8 @@ body:has(.week) .app-footer {
   max-height: calc(100vh - 14rem);
   min-height: 24rem;
   overflow: auto;
-  border: 1px solid var(--border);
-  border-radius: 0.5rem;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
 }
 
 .week-grid {
@@ -477,14 +169,14 @@ body:has(.week) .app-footer {
 .week-tasks {
   position: sticky;
   z-index: 3;
-  background: Canvas;
+  background: var(--color-surface-raised);
 }
 
 .week-corner {
   grid-row: 1 / 4;
   grid-column: 1;
   top: 0;
-  border-bottom: 1px solid var(--border);
+  border-bottom: 1px solid var(--color-border);
 }
 
 .week-day-heading {
@@ -494,13 +186,13 @@ body:has(.week) .app-footer {
   align-items: center;
   justify-content: center;
   margin: 0;
-  font-size: 1rem;
-  border-left: 1px solid var(--border);
+  font-size: var(--text-base);
+  border-left: 1px solid var(--color-border);
 }
 
 .week-day-heading a {
-  padding: 0.25rem 0.5rem;
-  border-radius: 1rem;
+  padding: var(--space-1) var(--space-2);
+  border-radius: var(--radius-pill);
   color: inherit;
   text-decoration: none;
 }
@@ -511,12 +203,12 @@ body:has(.week) .app-footer {
 
 .week-dow {
   font-weight: 400;
-  color: var(--muted);
+  color: var(--color-text-muted);
 }
 
 .is-today .week-day-heading a {
-  background: var(--accent);
-  color: Canvas;
+  background: var(--color-accent);
+  color: var(--color-on-accent);
 }
 
 .is-today .week-day-heading .week-dow {
@@ -534,9 +226,9 @@ body:has(.week) .app-footer {
   display: grid;
   grid-template-columns: repeat(7, minmax(0, 1fr));
   grid-auto-rows: 1.5rem;
-  row-gap: 0.25rem;
+  row-gap: var(--space-1);
   margin: 0;
-  padding: 0.25rem 0;
+  padding: var(--space-1) 0;
   list-style: none;
 }
 
@@ -544,10 +236,10 @@ body:has(.week) .app-footer {
   margin: 0 0.15rem;
   padding: 0 0.4rem;
   overflow: hidden;
-  border-left: 3px solid var(--accent);
-  border-radius: 0.25rem;
-  background: var(--now-bg);
-  font-size: 0.85rem;
+  border-left: 3px solid var(--color-current-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-accent-soft);
+  font-size: var(--text-sm);
   line-height: 1.5rem;
   white-space: nowrap;
   text-overflow: ellipsis;
@@ -562,8 +254,8 @@ body:has(.week) .app-footer {
   top: var(--tasks-top);
   max-height: 8rem;
   overflow-y: auto;
-  border-left: 1px solid var(--border);
-  border-bottom: 1px solid var(--border);
+  border-left: 1px solid var(--color-border);
+  border-bottom: 1px solid var(--color-border);
 }
 
 .week-task-list {
@@ -572,7 +264,7 @@ body:has(.week) .app-footer {
 
 .week-task-list .item {
   padding: 0.15rem 0.35rem;
-  font-size: 0.85rem;
+  font-size: var(--text-sm);
 }
 
 .week-task-list .task-label {
@@ -599,19 +291,19 @@ body:has(.week) .app-footer {
 .week-hour {
   position: absolute;
   right: 0.4rem;
-  font-size: 0.75rem;
+  font-size: var(--text-xs);
   font-variant-numeric: tabular-nums;
-  color: var(--muted);
+  color: var(--color-text-muted);
 }
 
 .week-day-time {
-  border-left: 1px solid var(--border);
-  background-image: linear-gradient(to bottom, var(--border) 1px, transparent 1px);
+  border-left: 1px solid var(--color-border);
+  background-image: linear-gradient(to bottom, var(--color-border) 1px, transparent 1px);
   background-size: 100% var(--hour-h);
 }
 
 .is-today .week-day-time {
-  background-color: color-mix(in srgb, var(--accent) 5%, transparent);
+  background-color: var(--color-accent-soft);
 }
 
 .week-events {
@@ -626,15 +318,15 @@ body:has(.week) .app-footer {
   box-sizing: border-box;
   overflow: hidden;
   padding: 0.1rem 0.3rem;
-  border: 1px solid Canvas;
-  border-radius: 0.3rem;
-  font-size: 0.75rem;
+  border: 1px solid var(--color-surface);
+  border-radius: var(--radius-sm);
+  font-size: var(--text-xs);
   line-height: 1.2;
 }
 
 .week-event {
-  border-left: 3px solid var(--accent);
-  background: color-mix(in srgb, var(--accent) 22%, Canvas);
+  border-left: 3px solid var(--color-current-border);
+  background: var(--color-current-bg);
 }
 
 .week-event-before {
@@ -648,7 +340,7 @@ body:has(.week) .app-footer {
 .week-event-time {
   display: block;
   font-variant-numeric: tabular-nums;
-  color: var(--muted);
+  color: var(--color-text-muted);
 }
 
 .week-event-title {
@@ -659,8 +351,8 @@ body:has(.week) .app-footer {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: var(--border);
-  color: inherit;
+  background: var(--color-border);
+  color: var(--color-text);
   font-weight: 600;
 }
 
@@ -670,12 +362,12 @@ body:has(.week) .app-footer {
   left: 0;
   right: 0;
   height: 2px;
-  background: var(--danger);
+  background: var(--color-now-line);
   pointer-events: none;
 }
 
 .week-skipped {
-  margin: 1rem 0.5rem;
-  font-size: 0.85rem;
-  color: var(--muted);
+  margin: var(--space-4) var(--space-2);
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
 }

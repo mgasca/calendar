@@ -267,6 +267,12 @@ importers:
       '@calendar/api-client':
         specifier: workspace:*
         version: link:../../packages/api-client
+      '@fontsource-variable/fraunces':
+        specifier: 5.3.0
+        version: 5.3.0
+      '@fontsource-variable/plus-jakarta-sans':
+        specifier: 5.3.0
+        version: 5.3.0
       '@tanstack/react-query':
         specifier: ^5.105.0
         version: 5.105.0(@types/react@19.3.0)(react@19.3.1)
@@ -811,6 +817,12 @@ packages:
     resolution: {integrity: sha512-D6BImY3kp3IOCeoeJFXECZ9s8SdivSA7EmOiwUtVvo+Yy0NvHU0JimfIsFbE0EJtwmCdt0APvHmYqS/vNYZ0Jw==}
     engines: {node: ^22.13.0 || >=23.5.0}
     hasBin: true
+
+  '@fontsource-variable/fraunces@5.3.0':
+    resolution: {integrity: sha512-9BYGySn4AHEJdgp9Z28tQ3X+laJMEOITXkQarZXeloWQZDq5oOvXJ3kDA8c7MGIfpogIaZfjrQBqmda8POOCKA==}
+
+  '@fontsource-variable/plus-jakarta-sans@5.3.0':
+    resolution: {integrity: sha512-/l/4r0yyWK9JzAlmA0LiYgGgmJe/Gswt4jTJEzr5QhJfwMbvJZDmYWyW0M4X7yCK69BajMVlV/Lx8g7WDc1+sw==}
 
   '@humanfs/core@0.19.2':
     resolution: {integrity: sha512-UhXNm+CFMWcbChXywFwkmhqjs3PRCmcSa/hfBgLIb7oQ5HNb1wS0icWsGtSAUNgefHeI+eBrA8I1fxmbHsGdvA==}
@@ -5399,6 +5411,10 @@ snapshots:
       - '@types/node'
       - tslib
       - typescript
+
+  '@fontsource-variable/fraunces@5.3.0': {}
+
+  '@fontsource-variable/plus-jakarta-sans@5.3.0': {}
 
   '@humanfs/core@0.19.2':
     dependencies:

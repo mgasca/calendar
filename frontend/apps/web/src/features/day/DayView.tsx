@@ -1,6 +1,6 @@
 import type { Schemas } from '@calendar/api-client';
 import { Link } from '@tanstack/react-router';
-import { Fragment, useMemo, useState } from 'react';
+import { Fragment, useEffect, useMemo, useRef, useState, type MouseEvent } from 'react';
 
 import {
   browserTimeZone,
@@ -8,6 +8,7 @@ import {
   daysBetween,
   eventStatuses,
   formatDate,
+  isIsoDate,
   isPastDue,
   openFirst,
   relativeDay,
@@ -25,7 +26,7 @@ import { TaskItem, TaskToggleError } from '../agenda/TaskItem.tsx';
 import { taskTitleId } from '../agenda/taskTitleId.ts';
 import { useNow, useToday } from '../agenda/useNow.ts';
 import { useToggleTask } from '../agenda/useToggleTask.ts';
-import { formatDayMonth, isoWeekStart } from '../week/weekDates.ts';
+import { addDays, formatDayMonth, isoWeekStart } from '../week/weekDates.ts';
 import { agendaKey, patchDayTasks, useDayAgenda } from './useDayAgenda.ts';
 
 type AllDayEvent = Schemas['AllDayEventItem'];
@@ -66,10 +67,19 @@ export function DayView({ date, timeZone: zoneOverride, locale }: DayViewProps) 
     formatDate(day, locale, { withYear: day.slice(0, 4) !== today.slice(0, 4) });
   const agendaName = date === today ? 'today’s agenda' : 'the agenda for this day';
 
+  // The loading and error states start with the same header as the loaded day, so the day
+  // controls stay mounted (and keep focus) when the data arrives (#465).
+  const pendingHeader = (
+    <header className="day-header">
+      <p className="eyebrow">{relativeDay(date, today)}</p>
+      <h1 id="day-heading">{formatHeading(date)}</h1>
+      <DayNav date={date} today={today} />
+    </header>
+  );
   if (agenda.isPending) {
     return (
       <section aria-labelledby="day-heading">
-        <h1 id="day-heading">{formatHeading(date)}</h1>
+        {pendingHeader}
         <p role="status">Loading {agendaName}…</p>
       </section>
     );
@@ -77,7 +87,7 @@ export function DayView({ date, timeZone: zoneOverride, locale }: DayViewProps) 
   if (agenda.isError && !agenda.data) {
     return (
       <section aria-labelledby="day-heading">
-        <h1 id="day-heading">{formatHeading(date)}</h1>
+        {pendingHeader}
         <div role="alert" className="notice notice-error">
           <p>Couldn’t load {agendaName}.</p>
           {agenda.error instanceof ApiError && <p>{agenda.error.message}</p>}
@@ -113,6 +123,7 @@ export function DayView({ date, timeZone: zoneOverride, locale }: DayViewProps) 
       <header className="day-header">
         <p className="eyebrow">{relativeDay(shownDate, today)}</p>
         <h1 id="day-heading">{formatHeading(shownDate)}</h1>
+        <DayNav date={date} today={today} />
         <WeekLink date={shownDate} locale={locale} />
         <button
           type="button"
@@ -288,6 +299,60 @@ export function DayView({ date, timeZone: zoneOverride, locale }: DayViewProps) 
         </section>
       )}
     </section>
+  );
+}
+
+/**
+ * The day control that had focus when it was followed. Going between `/` and `/day/:date` mounts
+ * the view again, so the new controls take the focus back (or the first one, when Today is gone).
+ */
+let focusAfterNavigation: string | undefined;
+
+/**
+ * Previous day, Today and Next day (#465). Targets come from the route's `date`, not the data on
+ * screen, so stepping twice while a day loads moves two days; Today is shown only on another day,
+ * and a link that would leave the supported years is left out.
+ */
+function DayNav({ date, today }: { date: string; today: string }) {
+  const nav = useRef<HTMLElement>(null);
+  const previous = addDays(date, -1);
+  const next = addDays(date, 1);
+  useEffect(() => {
+    const control = focusAfterNavigation;
+    focusAfterNavigation = undefined;
+    // Only when focus was lost with the old view, never taking it from somewhere else.
+    if (control === undefined || document.activeElement !== document.body) return;
+    const links = [...(nav.current?.querySelectorAll<HTMLAnchorElement>('a') ?? [])];
+    (links.find((link) => link.dataset.control === control) ?? links[0])?.focus();
+  }, []);
+  /** Remembers the followed link when it has focus (keyboard, or a browser that focuses on click). */
+  const remember = (event: MouseEvent<HTMLAnchorElement>) => {
+    const link = event.currentTarget;
+    if (link === document.activeElement) focusAfterNavigation = link.dataset.control;
+  };
+  return (
+    <nav ref={nav} className="day-nav" aria-label="Day">
+      {isIsoDate(previous) && (
+        <Link
+          to="/day/$date"
+          params={{ date: previous }}
+          data-control="previous"
+          onClick={remember}
+        >
+          <span aria-hidden="true">‹</span> Previous day
+        </Link>
+      )}
+      {date !== today && (
+        <Link to="/" data-control="today" onClick={remember}>
+          Today
+        </Link>
+      )}
+      {isIsoDate(next) && (
+        <Link to="/day/$date" params={{ date: next }} data-control="next" onClick={remember}>
+          Next day <span aria-hidden="true">›</span>
+        </Link>
+      )}
+    </nav>
   );
 }
 

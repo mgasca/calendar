@@ -104,6 +104,17 @@ Chosen option: "Semantic custom-property tokens in plain CSS, selected by `data-
 * [ADR-0043](0043-form-validation-red-borders-and-bubble.md) (form errors as red borders and a bubble) stays in force; its colours become status tokens.
 * Revisit if a third theme or per-user server-side preference is requested, or if a component library with its own theming is adopted.
 
+### Amendment, 2026-11-07: the token layer is shared with the docs site
+
+The decision stands: semantic custom-property tokens selected by `data-theme` on `<html>`, with `prefers-color-scheme` as the script-free fallback, and the ratings of D1 to D6 are unchanged. What changes is where the token layer lives and who consumes it. Story [0046](../stories/0046-apply-the-calendar-themes-to-the-docs-site.md) (epic #513) applies the same two themes to the Starlight docs site, so the "one file" of the Conventions section becomes one file in a small frontend workspace package (`frontend/packages/theme/`, proposed name `@calendar/theme`) that the web app and the docs site both import.
+
+* **Still one owner of palette values and `[data-theme]` selectors:** the package's token file. The guard test of the Confirmation section is relocated to cover that file and the stylesheets of both consumers.
+* **Not shared:** the app's `base.css`, `components.css` and page layout. The docs site maps the semantic tokens onto Starlight's `--sl-*` variables in its own adapter stylesheet.
+* **One theme controller per site:** the app keeps its theme module and inline script; the docs site replaces Starlight's picker and provider with its own start-up script and control. Both write the same `data-theme` values and use the same storage key in their own origin, so the preferences stay independent (no cross-origin synchronisation).
+* **Revisit** adds: a third consumer, or a decision to share runtime theme code rather than the tokens, key and values.
+
+Scope approved by the maintainer on epic #513 (2026-11-07); the amendment text is reviewed with the story card. The decision itself is unchanged, so this ADR is amended, not superseded.
+
 ### Open questions for the reviewer
 
 1. Token names: the draft uses a `--color-*`, `--font-*`, `--space-*`, `--radius-*` prefix scheme. Acceptable, or do you prefer shorter names?

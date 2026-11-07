@@ -93,6 +93,7 @@ Chosen option: "Fontsource variable-font npm packages, bundled by Vite", because
 * Versions and licences checked with `npm view <package> version license` on 2026-11-07.
 * Revisit if the bundle-size measurement for issue #431 shows a first-load cost the product owner considers too high, or if a typeface is replaced.
 * **Amendment, 2026-11-07:** the Dependabot consequence was corrected: `.github/dependabot.yml` configures npm for `/frontend`, so the font packages get Dependabot updates, not hand updates; see the note under Consequences. Approved by the maintainer on issue #475, who confirmed that no driver or weight changed, so the ratings stand. The decision itself is unchanged, so this ADR was amended, not superseded.
+* **Amendment, 2026-11-07:** story [0046](../stories/0046-apply-the-calendar-themes-to-the-docs-site.md) (epic #513) gives the docs site the same two themes. The decision is unchanged: the same Fontsource packages, pinned in `pnpm-lock.yaml`, served from the consuming site's own origin. What changes is ownership: the font imports move into the shared theme package (see the amendment of [ADR-0047](0047-semantic-css-tokens-selected-by-a-data-theme-attribute.md)) and both the web app and the docs site import them from it, so the docs site makes no request to another origin and the app's first-load font cost does not change. Scope approved by the maintainer on epic #513; the ratings stand, so this ADR is amended, not superseded.
 
 ### Open questions for the reviewer
 

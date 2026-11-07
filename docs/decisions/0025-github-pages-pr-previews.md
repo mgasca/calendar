@@ -87,6 +87,19 @@ The decision and the first amendment's mechanism stay: CI decides by uploading t
 * Neutral, because **D3 Content preservation**: more publishes than under the first amendment, but still none for a pull request that changes no docs, so the Pages collisions of #285 stay rare.
 * Neutral, because **D4 Trusted publication**: the eligibility rule still runs in the untrusted CI job and can only withhold an artifact the publisher validates anyway.
 
+### Amendment, 2026-11-07: previews for changes to the shared theme package
+
+The decision and the mechanism stay: CI decides by uploading the artifact or not, the publisher follows the artifact, and the trust boundaries, fork exclusion, current-head checks and deployment controls are unchanged. What changes is one entry in the eligibility list. Story [0046](../stories/0046-apply-the-calendar-themes-to-the-docs-site.md) (epic #513) makes the docs site consume a shared theme package, so a change to that package changes what the site looks like.
+
+* **Eligible** also includes an open pull request from this repository that changes a file under `frontend/packages/theme/`. The path is named in `.github/ci-changes.jq`, the one list, and tested. No other `frontend/packages/` directory and no file under `frontend/apps/web/` makes a pull request eligible by itself; a pull request that is eligible for another reason stays eligible, as before.
+* **Existing coverage:** a file directly under `frontend/` (`package.json`, `pnpm-lock.yaml`) already sets the Docs site output, so the pull request that creates the package is expected to qualify through its lock-file change; the new path covers later edits that touch only the package.
+* **Timing:** the Docs site job runs for more pull requests, but only for changes that alter the site. [ADR-0045](0045-run-time-regression-gates-for-ci-jobs.md) classifies a run by whether the publication step ran, so no baseline is reclassified; #518 checks this rather than assuming it.
+
+**Consequences of the third amendment**
+
+* Good, because **D1 Review convenience**: a theme change gets a hosted preview of the site it restyles.
+* Neutral, because **D3 Content preservation** and **D4 Trusted publication**: one more qualifying path, evaluated in the untrusted CI job exactly as before, and still only able to withhold an artifact the publisher validates.
+
 ### Consequences
 
 * Good, because reviewers get stable preview URLs with no additional hosting account.
@@ -140,3 +153,4 @@ Test that production updates preserve previews, preview updates preserve product
 * **Amendment, 2026-11-06:** previews are published for docs-only pull requests only, in issue #332 and story [0030](../stories/0030-docs-only-pr-previews.md). The decision itself is unchanged, so this ADR was amended, not superseded, as [ADR-0038](0038-just-as-the-top-level-task-runner.md) was for its module layout.
 * **Amendment, 2026-11-07:** previews are published for any same-repository pull request that changes the docs, in issue #418 and story [0038](../stories/0038-run-ci-jobs-only-for-the-paths-they-check.md), alongside [ADR-0046](0046-run-ci-jobs-only-for-the-paths-they-check.md). Amended rather than superseded for the same reason.
 * This remains a proposed decision while the requested implementation is prepared for review.
+* **Amendment, 2026-11-07 (shared theme package):** previews also cover changes under `frontend/packages/theme/`, in story [0046](../stories/0046-apply-the-calendar-themes-to-the-docs-site.md) and issue #518, scoped by the maintainer on epic #513. The decision itself is unchanged, so this ADR was amended, not superseded.

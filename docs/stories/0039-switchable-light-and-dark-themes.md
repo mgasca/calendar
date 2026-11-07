@@ -1,9 +1,14 @@
 ---
-status: planned
+status: implemented
 date: 2026-11-07
 issue: https://github.com/mgasca/calendar/issues/428
 pr:
   - https://github.com/mgasca/calendar/pull/436
+  - https://github.com/mgasca/calendar/pull/446
+  - https://github.com/mgasca/calendar/pull/447
+  - https://github.com/mgasca/calendar/pull/448
+  - https://github.com/mgasca/calendar/pull/449
+  - https://github.com/mgasca/calendar/pull/453
 adrs: ["0008", "0026", "0043", "0047", "0048"]
 ---
 
@@ -90,41 +95,73 @@ The product owner settled the planning details on 2026-11-07 (recorded on #428):
 
 ## Implementation notes
 
-*Planned. This section is completed as the story is built.*
+Delivered in six PRs: the card and ADRs (#436), the theme switch (#446), tokens, shared styles and fonts (#447), every existing view and state (#448), the contributor guide (#449) and this verification (#453).
 
 ### Where things live
 
 | Area | Location |
 | --- | --- |
-| Token layer and both themes | `frontend/apps/web/src/styles/` (`tokens.css`, `base.css`, `components.css`, guards in `styles.test.ts`), imported by `src/index.css` |
-| Theme choice and storage | a theme module and hook under `frontend/apps/web/src/` (forecast) |
-| Start-up script | `frontend/apps/web/index.html` |
-| Header control | the app shell in `frontend/apps/web/src/App.tsx` |
+| Token layer and both themes | `frontend/apps/web/src/styles/tokens.css` (palettes, fonts, scales; the only file with colours and `[data-theme]`), `base.css` (element defaults), `components.css` (shared controls), imported by `src/index.css`, which keeps the view rules |
+| Fonts | `@fontsource-variable/fraunces` and `@fontsource-variable/plus-jakarta-sans`, imported in `src/main.tsx` (ADR-0048) |
+| Theme choice and storage | `frontend/apps/web/src/theme/` (`theme.ts`, `useTheme.ts`, `ThemeControl.tsx`; storage key `calendar.theme`) |
+| Start-up script | `frontend/apps/web/index.html` (sets `data-theme` before first paint) |
+| Header control | `ThemeControl` in the app shell, `frontend/apps/web/src/App.tsx`; a native radio group styled by `.theme-control` |
 | Views | `frontend/apps/web/src/features/*` |
-| Contributor and agent guide | under `docs/` (forecast, #434), linked from `frontend/AGENTS.md` |
+| Guards and contrast | `frontend/apps/web/dev/styles.test.ts` (Node test project: the web project runs with `css: false`) |
+| Contributor and agent guide | [`docs/runbooks/web-theme-and-styling.md`](../runbooks/web-theme-and-styling.md), linked from `frontend/AGENTS.md` and `frontend/README.md` |
+| Run-calendar driver | `--viewport WxH` and `--color-scheme` options added for the checks below |
 
 ### API
 
-No changes expected.
+No changes.
 
 ### Testing
 
-* Theme module unit tests: stored choice, OS preference, live System change, refused storage.
-* Component tests: the control's name, selection and keyboard operation; switching with an open dialog keeps its input.
-* A guard test over the stylesheets for colour values and theme selectors outside the token layer.
-* Contrast of the token pairs checked and recorded (#431); the coverage record and screenshots by hand in the running app (#435).
+* `src/theme/theme.test.tsx`, `ThemeControl.test.tsx` and `startupScript.test.ts`: stored choice, OS preference, live System change, refused storage, the control's name, selection and keyboard operation, and the start-up script.
+* `dev/styles.test.ts`: no colour literal or system colour outside `tokens.css`, no `[data-theme` or `prefers-color-scheme` outside it, the OS-fallback dark block identical to the `data-theme='dark'` block, every used `var(--x)` defined, text and non-text WCAG contrast for each theme's token pairs, and opacity limited to the stale state.
+* `src/features/auth/auth.test.tsx`: errors and the sign-in link use the shared notice and button styles.
+* By hand in the running app (throwaway stack of the `run-calendar` skill): the coverage record and screenshots below, a computed-contrast sweep of every visible text node, and the keyboard path through the theme control.
+
+#### Coverage record (issue #435)
+
+Each row was opened in Light and Dark at 1280x900 and 390x844 (four runs). Every cell passed: no page-level horizontal overflow (`scrollWidth - clientWidth` was 0 on every page; the week grid scrolls inside itself), no console or network errors, and a script that computes each visible text node's contrast against its effective background found nothing under 4.5:1 (3:1 for large text) once the fixes below were in. Screenshots are on the [`screenshots` branch, directory 435](https://github.com/mgasca/calendar/tree/4ce2fe9cc76790758bab4fe764cd152ea2a71b26/435).
+
+| View or state | Observed live | Files |
+| --- | --- | --- |
+| Today (all-day, schedule, earlier events, overdue, due today) | yes | `{desktop,narrow}-{light,dark}-today.png` |
+| Date agenda `/day/<date>` | yes | `*-date-agenda.png` |
+| Empty day | yes | `*-empty-day.png` |
+| Week (grid, sticky heads, task strips, overdue panel) | yes | `*-week.png` |
+| My tasks, Upcoming and Overdue lists | yes | `*-tasks.png` |
+| My tasks, completed task and empty list | yes | `*-completed-tasks.png`, `*-empty-tasks.png` |
+| Triage | yes | `*-triage.png` |
+| Sign-in | yes | `*-signin.png` |
+| Invalid-date and not-found pages | yes | `*-invalid-date.png`, `*-not-found.png` |
+| Add task dialog with the validation bubble (ADR-0043) | yes | `*-dialog-validation.png` |
+| Add event, confirm-delete and reschedule dialogs | yes | `*-dialog-add-event.png`, `*-dialog-confirm-delete.png`, `*-dialog-reschedule.png` |
+| Theme control: arrow keys change the choice, focus ring visible, the group is one tab stop | yes (desktop) | `kbd-focus-dark.png` |
+| Session-check failure (API down) | yes, in both themes; screenshots taken before its text took the error colour, so not linked | n/a |
+| Loading, stale ("Updating..."), per-view load-error notices, edit dialogs, the 409 conflict notice | no: not reproducible in the throwaway stack without fault injection; covered by component tests and by the token contrast pairs | n/a |
+
+One measured exception: a disabled control is dimmed with `--opacity-stale` (for example the reschedule dialog's disabled **Apply**, 3.02:1 in Light), which WCAG exempts for inactive components. The stale view is dimmed the same way and was not measured.
 
 ### Lessons learned, known issues and follow-ups
 
-* To be filled in on delivery.
+* **Static contrast pairs were not enough.** The token pairs all passed, yet the running app had earlier events at 2.68:1, because `opacity: 0.6` fades text over its background. Opacity on text is now limited to the stale state, by a guard test, and past events use `--color-text-muted`.
+* **Semantic tokens did not style a native radio group.** The theme control arrived (#446) as a bare fieldset, and the generic `input:not([type='checkbox'])` rule drew the radios as text fields. `.theme-control` now draws it as one segmented control, with visually hidden but focusable radios, so the browser still provides the keyboard behaviour. The earlier `.segmented` toggle-button class was removed as unused.
+* **Narrow screens needed layout, not only tokens.** Task rows squeezed titles to one word per line, the week task strips were oversized by the larger controls, and the Add buttons touched. These were found by looking at screenshots, not by the overflow check, which was already 0.
+* **The guard test lives in `dev/`**, not under `src/styles/`: the web project runs with `css: false`, which also empties `?raw` imports, and the app tsconfig has no Node types.
+* **Fonts**: the Fontsource `wght.css` files declare every subset with `unicode-range`, so the build emits six woff2 files but a browser fetches only the Latin pair, about 64 kB.
+* **Follow-ups, not blocking**: the week task strips remain a dense layout (a task's priority badge and Delete button in a 7.5 rem column); the loading, stale and per-view error states were not seen live; the stale state's dimming is below 4.5:1 while it lasts.
+* `run-calendar`'s `--viewport` and `--color-scheme` options are new; the skill documents them.
 
 ## User guide
 
-*Planned behaviour. This section is finalised when the story is implemented.*
-
 ### Choose light or dark
 
-1. In the header, find the theme control.
+1. In the header, find the **Light / Dark / System** control (a group named "Theme").
 2. Choose **Light** for Paper & Sage, **Dark** for Midnight Studio, or **System** to follow your device.
 
 The app changes at once and keeps you where you are, including anything you were typing in a dialog. Your choice is remembered in this browser. On another browser or device, the app starts by following that device's setting.
+
+With the keyboard, Tab to the control (it is one stop), then use the arrow keys to move between the options; the choice applies as you move and the focused option has a visible outline. If your browser refuses to store the choice, it still applies for the visit and the app follows your device next time.

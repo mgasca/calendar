@@ -14,14 +14,47 @@ const task: AgendaTask = {
   isCompleted: false,
 };
 
-function renderTask() {
+function renderTask(overrides: Partial<AgendaTask> = {}) {
   renderWithProviders(
     <ul>
-      <TaskItem task={task} disabled={false} onToggle={() => undefined} />
+      <TaskItem task={{ ...task, ...overrides }} disabled={false} onToggle={() => undefined} />
     </ul>,
   );
   return userEvent.setup();
 }
+
+// The phone layout (#462) places these wrappers; on wide screens they are `display: contents`.
+describe('TaskItem row structure', () => {
+  it('groups the badge and Notes as extras and Delete as the row actions, after the title', () => {
+    renderTask({ priority: 'high', hasNotes: true });
+
+    const row = screen.getByRole('listitem');
+    const extras = row.querySelector(':scope > .task-extras');
+    const actions = row.querySelector(':scope > .row-actions');
+    expect(extras).not.toBeNull();
+    expect(actions).not.toBeNull();
+    expect(within(extras as HTMLElement).getByText('high priority')).toBeInTheDocument();
+    expect(
+      within(extras as HTMLElement).getByRole('button', { name: 'Notes' }),
+    ).toBeInTheDocument();
+    expect(
+      within(actions as HTMLElement).getByRole('button', { name: 'Delete Book the dentist' }),
+    ).toBeInTheDocument();
+    expect([...row.children].map((child) => child.className)).toEqual([
+      'task-label',
+      'task-extras',
+      'row-actions',
+    ]);
+  });
+
+  it('leaves out the extras when the task has no priority and no notes', () => {
+    renderTask();
+
+    const row = screen.getByRole('listitem');
+    expect(row.querySelector('.task-extras')).toBeNull();
+    expect(row.querySelector(':scope > .row-actions')).not.toBeNull();
+  });
+});
 
 describe('TaskItem deletion', () => {
   it('names the task in the confirmation', async () => {

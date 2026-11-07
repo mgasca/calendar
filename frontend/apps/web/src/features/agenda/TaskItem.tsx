@@ -51,18 +51,25 @@ export function TaskItem({
         />
         <span className="item-title">{task.title}</span>
       </label>
-      {task.priority && <span className="badge">{task.priority} priority</span>}
-      {task.hasNotes && <Notes id={task.id} kind="task" />}
-      <button
-        type="button"
-        aria-label={`Delete ${task.title}`}
-        disabled={deletion.isPending}
-        onClick={() => {
-          setConfirmDelete(true);
-        }}
-      >
-        Delete
-      </button>
+      {/* The wrappers are `display: contents` on wide screens; a phone lays them out (#462). */}
+      {(!!task.priority || task.hasNotes) && (
+        <div className="task-extras">
+          {task.priority && <span className="badge">{task.priority} priority</span>}
+          {task.hasNotes && <Notes id={task.id} kind="task" />}
+        </div>
+      )}
+      <div className="row-actions">
+        <button
+          type="button"
+          aria-label={`Delete ${task.title}`}
+          disabled={deletion.isPending}
+          onClick={() => {
+            setConfirmDelete(true);
+          }}
+        >
+          Delete
+        </button>
+      </div>
       {confirmDelete && (
         <ConfirmDialog
           count={1}

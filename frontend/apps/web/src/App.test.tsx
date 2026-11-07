@@ -258,6 +258,42 @@ describe('tasks', () => {
     expect(tasks).toHaveLength(1);
   });
 
+  it('keeps Add task and Add event in one row, with no confirmation between them (#459)', async () => {
+    serveTasks();
+    server.use(
+      http.post('*/api/events', () => HttpResponse.json({ id: 'new-event' }, { status: 201 })),
+    );
+    renderApp('/day/2099-10-27');
+    const user = userEvent.setup();
+    await screen.findByRole('heading', { level: 1, name: /27 October 2099/ });
+
+    /** Both buttons share one row that holds nothing else, and every confirmation follows it. */
+    function expectButtonsTogether() {
+      const addTask = screen.getByRole('button', { name: 'Add task' });
+      const addEvent = screen.getByRole('button', { name: 'Add event' });
+      const row = addTask.parentElement;
+      expect(addEvent.parentElement).toBe(row);
+      expect(row?.children).toHaveLength(2);
+      for (const status of screen.queryAllByRole('status')) {
+        expect(row?.compareDocumentPosition(status)).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
+      }
+    }
+
+    expectButtonsTogether();
+    await user.click(screen.getByRole('button', { name: 'Add task' }));
+    await user.type(screen.getByLabelText('Title'), 'Pack bag');
+    await user.click(screen.getByRole('button', { name: 'Save task' }));
+    expect(await screen.findByText(/^Task added/)).toBeInTheDocument();
+    expectButtonsTogether();
+
+    await user.click(screen.getByRole('button', { name: 'Add event' }));
+    await user.type(screen.getByLabelText('Title'), 'Dentist');
+    await user.click(screen.getByRole('button', { name: 'Save event' }));
+    expect(await screen.findByText(/Dentist added for/)).toBeInTheDocument();
+    expect(screen.getByText(/^Task added/)).toBeInTheDocument();
+    expectButtonsTogether();
+  });
+
   it('cancels with Escape, restores focus, and opens with fresh values', async () => {
     const saved = serveTasks();
     renderApp('/day/2099-10-27');

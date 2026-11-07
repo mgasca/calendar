@@ -1,0 +1,99 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://mgasca.github.io/calendar/architecture/controls/delivery-performance.requirement.json",
+  "title": "Delivery performance requirement",
+  "description": "How long CI may make an author wait: a run-time gate per job against a pinned baseline, a trend check on main, and mechanism guards that keep each delivery performance fix in place (ADR-0045, epic #380).",
+  "type": "object",
+  "properties": {
+    "gated-jobs": { "type": "array", "items": { "type": "string" }, "description": "The ci.yml jobs whose run time is gated." },
+    "quantity": { "type": "string", "description": "What is measured, and what is left out." },
+    "paths": { "type": "object", "additionalProperties": { "type": "string" }, "description": "Each path a run can take, with the rule that classifies it." },
+    "threshold": {
+      "type": "object",
+      "properties": {
+        "formula": { "type": "string" },
+        "alpha": { "type": "number", "description": "False-failure budget: the share of pull request runs with no regression that may fail, across all gated jobs." },
+        "jobs": { "type": "integer", "description": "J, the number of gated jobs the budget is split across." },
+        "floor-seconds": { "type": "integer" },
+        "relative-margin": { "type": "number" },
+        "provisional": { "type": "boolean", "description": "True while a benchmark record has not yet calibrated the constants." }
+      },
+      "required": ["formula", "alpha", "jobs", "floor-seconds", "relative-margin"],
+      "additionalProperties": false
+    },
+    "false-failure-budget": { "type": "string" },
+    "baseline": {
+      "type": "object",
+      "description": "Where the thresholds live. The control points to them; it never copies them.",
+      "properties": {
+        "file": { "type": "string" },
+        "record": { "type": "string" },
+        "min-runs": { "type": "integer" },
+        "paths": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "object",
+            "properties": {
+              "status": { "enum": ["pinned", "provisional"] },
+              "n": { "type": "integer" },
+              "note": { "type": "string", "description": "What changes the status next, for a provisional path." }
+            },
+            "required": ["status", "n"],
+            "additionalProperties": false
+          }
+        },
+        "update": { "type": "string", "description": "How a pull request deliberately changes the baseline." }
+      },
+      "required": ["file", "record", "min-runs", "paths", "update"],
+      "additionalProperties": false
+    },
+    "gate": {
+      "type": "object",
+      "properties": {
+        "runs-in": { "type": "string" },
+        "program": { "type": "string" },
+        "fails-on": { "type": "array", "items": { "type": "string" } },
+        "reports-on": { "type": "array", "items": { "type": "string" } },
+        "remedy": { "type": "string" },
+        "tests": { "type": "string" },
+        "critical-path-cost": { "type": "string" }
+      },
+      "required": ["runs-in", "program", "fails-on", "tests"],
+      "additionalProperties": false
+    },
+    "trend-check": {
+      "type": "object",
+      "properties": {
+        "workflow": { "type": "string" },
+        "schedule": { "type": "string" },
+        "window-runs": { "type": "integer" },
+        "test": { "type": "string" },
+        "significance": { "type": "number" },
+        "minimum-effect": { "type": "string" },
+        "output": { "type": "string" },
+        "tests": { "type": "string" }
+      },
+      "required": ["workflow", "window-runs", "test", "significance", "minimum-effect", "output"],
+      "additionalProperties": false
+    },
+    "mechanism-guards": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string" },
+          "protects": { "type": "string", "description": "The issue whose fix the guard keeps." },
+          "record": { "type": "string" },
+          "mechanism": { "type": "string" },
+          "test": { "type": "string" }
+        },
+        "required": ["id", "protects", "test"],
+        "additionalProperties": false
+      }
+    },
+    "evidence": { "type": "string", "description": "What every delivery performance fix and every baseline change must carry." },
+    "adrs": { "type": "array", "items": { "type": "string", "format": "uri" } }
+  },
+  "required": ["gated-jobs", "threshold", "baseline", "gate", "trend-check", "mechanism-guards"],
+  "additionalProperties": false
+}

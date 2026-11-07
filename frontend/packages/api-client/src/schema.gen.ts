@@ -108,7 +108,7 @@ export interface paths {
             cookie?: never;
         };
         get: operations["GetTask"];
-        put?: never;
+        put: operations["UpdateTask"];
         post?: never;
         delete: operations["DeleteTask"];
         options?: never;
@@ -569,6 +569,11 @@ export interface components {
             completedAt?: null | string;
             /** @description `true` once the task has been completed. */
             isCompleted: boolean;
+            /**
+             * Format: uint32
+             * @description Opaque version of the stored task; send it back to update the task.
+             */
+            version: number | string;
         };
         /** @description A timed event in the day agenda. */
         TimedEventItem: {
@@ -642,6 +647,34 @@ export interface components {
             /**
              * Format: uint32
              * @description The event's `version` as last read; the update is refused with `409` when the event has changed
+             *     since.
+             */
+            version: number | string;
+        };
+        /**
+         * @description Replace a task's title, deadline, priority and notes, by the rules of `CreateTaskRequest`, plus the
+         *     `version` the client loaded. Neither deadline field clears the deadline. Completion is not changed.
+         */
+        UpdateTaskRequest: {
+            /** @description Task title; required, at most 200 characters after trimming. */
+            title: string;
+            /** @description Priority level; defaults to medium. Allowed values: low, medium, high. */
+            priority?: string;
+            /** @description Optional notes, at most 4000 characters after trimming. */
+            notes?: null | string;
+            /**
+             * Format: date
+             * @description Floating due date (YYYY-MM-DD); mutually exclusive with `dueAt`.
+             */
+            dueDate?: null | string;
+            /**
+             * Format: date-time
+             * @description Due instant, RFC 3339 with an explicit offset; mutually exclusive with `dueDate`.
+             */
+            dueAt?: null | string;
+            /**
+             * Format: uint32
+             * @description The task's `version` as last read; the update is refused with `409` when the task has changed
              *     since.
              */
             version: number | string;
@@ -991,6 +1024,59 @@ export interface operations {
             };
             /** @description Not Found */
             404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    UpdateTask: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateTaskRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TaskResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["HttpValidationProblemDetails"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Conflict */
+            409: {
                 headers: {
                     [name: string]: unknown;
                 };

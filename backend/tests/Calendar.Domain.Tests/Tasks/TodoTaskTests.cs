@@ -154,4 +154,50 @@ public sealed class TodoTaskTests
     Should.Throw<InvalidOperationException>(() => task.SetDueAt(Now));
     Should.Throw<InvalidOperationException>(task.ClearDeadline);
   }
+
+  [Fact]
+  public void Update_ReplacesTheEditableFields_AndKeepsIdOwnerAndCompletion()
+  {
+    var task = TodoTask.Create(Owner, "Buy milk", dueDate: new DateOnly(2026, 10, 26), priority: "low", notes: "Two litres");
+    Guid id = task.Id;
+    task.Complete(Now);
+
+    task.Update(" Buy oat milk ", dueAt: Now.ToOffset(TimeSpan.FromHours(2)), priority: "high");
+
+    task.Id.ShouldBe(id);
+    task.OwnerId.ShouldBe(Owner);
+    task.Title.ShouldBe("Buy oat milk");
+    task.Priority.ShouldBe("high");
+    task.Notes.ShouldBeNull();
+    task.DueDate.ShouldBeNull();
+    task.DueAt.ShouldBe(Now);
+    task.DueAt!.Value.Offset.ShouldBe(TimeSpan.Zero);
+    task.CompletedAt.ShouldBe(Now);
+  }
+
+  [Fact]
+  public void Update_CanClearTheDeadline_AndKeepsAnOpenTaskOpen()
+  {
+    var task = TodoTask.Create(Owner, "Buy milk", dueDate: new DateOnly(2026, 10, 26));
+
+    task.Update("Buy milk");
+
+    task.DueDate.ShouldBeNull();
+    task.DueAt.ShouldBeNull();
+    task.IsCompleted.ShouldBeFalse();
+  }
+
+  [Fact]
+  public void Update_WithInvalidValues_Throws_AndChangesNothing()
+  {
+    var task = TodoTask.Create(Owner, "Buy milk", dueDate: new DateOnly(2026, 10, 26), priority: "low");
+
+    Should.Throw<ArgumentException>(() => task.Update("  ")).ParamName.ShouldBe("title");
+    Should.Throw<ArgumentException>(() => task.Update("A", priority: "urgent")).ParamName.ShouldBe("priority");
+    Should.Throw<ArgumentException>(() => task.Update("A", new DateOnly(2026, 10, 27), Now)).ParamName.ShouldBe("dueAt");
+
+    task.Title.ShouldBe("Buy milk");
+    task.Priority.ShouldBe("low");
+    task.DueDate.ShouldBe(new DateOnly(2026, 10, 26));
+  }
 }

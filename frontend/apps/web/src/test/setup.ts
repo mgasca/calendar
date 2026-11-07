@@ -31,7 +31,22 @@ HTMLDialogElement.prototype.close = function close(this: HTMLDialogElement) {
 // which a test rarely notices; the check after each test makes an unmodelled request a failure.
 const unhandled: string[] = [];
 
+// React's `not wrapped in act(...)` warnings during the current test. They are printed, never
+// thrown, so the suite stayed at zero only by luck; the check after each test makes a new one a
+// failure. A plain wrapper, not a spy: a test that installs its own `vi.spyOn(console, 'error')`
+// to assert on the warning replaces it and keeps the call to itself. A warning that lands late
+// is a timing bug in the test: end the wait with `settle` or `eventually` (render.tsx), don't retry.
+const actWarnings: string[] = [];
+const consoleError = console.error;
+
 beforeAll(() => {
+  console.error = (...args: unknown[]) => {
+    const text = args.map(String).join(' ');
+    if (text.includes('not wrapped in act(')) {
+      actWarnings.push(text.split('\n')[0] ?? text);
+    }
+    consoleError(...args);
+  };
   (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
   server.listen({
     onUnhandledFrame({ frame, defaults }) {
@@ -46,7 +61,13 @@ afterEach(() => {
   cleanup();
   const requests = unhandled.splice(0);
   expect(requests, 'requests without an MSW handler; add one with server.use(...)').toEqual([]);
+  const warnings = actWarnings.splice(0);
+  expect(
+    warnings,
+    'state updates outside act(...); end the wait with settle or eventually',
+  ).toEqual([]);
 });
 afterAll(() => {
+  console.error = consoleError;
   server.close();
 });

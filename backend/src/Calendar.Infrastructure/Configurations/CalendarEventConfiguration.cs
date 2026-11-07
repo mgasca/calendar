@@ -63,6 +63,6 @@ internal sealed class CalendarEventConfiguration : IEntityTypeConfiguration<Cale
         .HasComputedColumnSql("CASE WHEN is_all_day THEN daterange(start_date, end_date, '[)') END", stored: true);
     builder.HasIndex(DateSpanProperty).HasDatabaseName("ix_events_date_span").HasMethod("gist").HasFilter("is_all_day");
 
-    builder.Property<uint>("xmin").HasColumnType("xid").ValueGeneratedOnAddOrUpdate().IsConcurrencyToken();
+    builder.Property<uint>(RowVersion.PropertyName).HasColumnType("xid").ValueGeneratedOnAddOrUpdate().IsConcurrencyToken();
   }
 }

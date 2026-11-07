@@ -1,6 +1,6 @@
 import type { Schemas } from '@calendar/api-client';
 import { Link } from '@tanstack/react-router';
-import { useMemo } from 'react';
+import { Fragment, useMemo } from 'react';
 
 import {
   browserTimeZone,
@@ -113,12 +113,22 @@ export function DayView({ date, timeZone: zoneOverride, locale }: DayViewProps) 
             }
           }}
         >
-          {agenda.isFetching ? 'Refreshing…' : 'Refresh'}
+          {/* Both labels stay in the button, the inactive one hidden, so its width never
+              changes; the name follows the visible label and aria-busy marks the refresh (#464). */}
+          <span aria-hidden={agenda.isFetching}>Refresh</span>
+          <span aria-hidden={!agenda.isFetching}>Refreshing…</span>
         </button>
         {stale && <p role="status">Updating…</p>}
         {!isEmpty && (
           <p className="summary">
-            {summary(allDayEvents.length, events.length, openTasks, openOverdue)}
+            {summary(allDayEvents.length, events.length, openTasks, openOverdue).map(
+              (part, index) => (
+                <Fragment key={part}>
+                  {index > 0 && ' · '}
+                  <span className="summary-part">{part}</span>
+                </Fragment>
+              ),
+            )}
           </p>
         )}
       </header>
@@ -241,13 +251,14 @@ function plural(n: number, singular: string, pluralForm = `${singular}s`) {
   return `${String(n)} ${n === 1 ? singular : pluralForm}`;
 }
 
-function summary(allDay: number, events: number, openTasks: number, openOverdue: number): string {
+/** The parts of the day's summary line, shown joined by " · ", each kept on one line. */
+function summary(allDay: number, events: number, openTasks: number, openOverdue: number): string[] {
   const parts: string[] = [];
   if (allDay > 0) parts.push(plural(allDay, 'all-day event'));
   if (events > 0) parts.push(plural(events, 'event'));
   parts.push(openTasks > 0 ? `${plural(openTasks, 'task')} to do` : 'no tasks to do');
   if (openOverdue > 0) parts.push(`${String(openOverdue)} overdue`);
-  return parts.join(' · ');
+  return parts;
 }
 
 function Location({ value }: { value?: string | null | undefined }) {

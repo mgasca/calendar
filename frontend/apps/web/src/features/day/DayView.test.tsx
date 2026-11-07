@@ -507,7 +507,7 @@ describe('DayView', () => {
       const titles = async (name: string) =>
         within(await screen.findByRole('list', { name }))
           .getAllByRole('checkbox')
-          .map((c) => c.closest('label')?.textContent);
+          .map((c) => c.closest('li')?.querySelector('.item-title')?.textContent);
       expect(await titles('Overdue')).toEqual(['Overdue oldest', 'Overdue newer', 'Overdue done']);
       expect(await titles('Due today')).toEqual(['Today first', 'Today second', 'Today done']);
     });

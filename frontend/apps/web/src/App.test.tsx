@@ -173,7 +173,8 @@ describe('navigation', () => {
     serveAgendas();
     const { router } = renderApp('/day/2026-10-20');
     await screen.findByText('Review on 2026-10-20');
-    await userEvent.click(screen.getByRole('link', { name: 'Today' }));
+    const nav = screen.getByRole('navigation', { name: 'Main' });
+    await userEvent.click(within(nav).getByRole('link', { name: 'Today' }));
     await screen.findByText('Review on 2026-10-26');
 
     act(() => {
@@ -182,6 +183,136 @@ describe('navigation', () => {
 
     expect(await screen.findByText('Review on 2026-10-20')).toBeInTheDocument();
     expect(router.state.location.pathname).toBe('/day/2026-10-20');
+  });
+});
+
+describe('day navigation (#465)', () => {
+  function dayNav() {
+    return screen.getByRole('navigation', { name: 'Day' });
+  }
+
+  it('steps through the days around a daylight-saving change, and the URL follows', async () => {
+    const dates = serveAgendas();
+    const { router } = renderApp('/');
+    await screen.findByText('Review on 2026-10-26');
+    const user = userEvent.setup();
+
+    // Europe/Madrid left summer time on Sunday 25 October 2026.
+    await user.click(within(dayNav()).getByRole('link', { name: 'Previous day' }));
+    expect(await screen.findByText('Review on 2026-10-25')).toBeInTheDocument();
+    expect(router.state.location.pathname).toBe('/day/2026-10-25');
+    await user.click(within(dayNav()).getByRole('link', { name: 'Previous day' }));
+    expect(await screen.findByText('Review on 2026-10-24')).toBeInTheDocument();
+    expect(router.state.location.pathname).toBe('/day/2026-10-24');
+    await user.click(within(dayNav()).getByRole('link', { name: 'Next day' }));
+    expect(await screen.findByText('Review on 2026-10-25')).toBeInTheDocument();
+    expect(router.state.location.pathname).toBe('/day/2026-10-25');
+
+    // Going back to the 25th reuses its agenda, still fresh in the cache.
+    expect(dates).toEqual(['2026-10-26', '2026-10-25', '2026-10-24']);
+  });
+
+  it.each([
+    ['the end of a month', '2026-10-31', 'Next day', '2026-11-01'],
+    ['the start of a month', '2026-11-01', 'Previous day', '2026-10-31'],
+    ['the end of a year', '2026-12-31', 'Next day', '2027-01-01'],
+    ['the start of a year', '2027-01-01', 'Previous day', '2026-12-31'],
+    ['a leap day', '2028-02-28', 'Next day', '2028-02-29'],
+  ])('crosses %s', async (_case, from, name, to) => {
+    serveAgendas();
+    const { router } = renderApp(`/day/${from}`);
+    await screen.findByText(`Review on ${from}`);
+
+    await userEvent.click(within(dayNav()).getByRole('link', { name }));
+
+    expect(await screen.findByText(`Review on ${to}`)).toBeInTheDocument();
+    expect(router.state.location.pathname).toBe(`/day/${to}`);
+  });
+
+  it('offers Today only on another day, and it opens today', async () => {
+    serveAgendas();
+    const { router, unmount } = renderApp('/');
+    await screen.findByText('Review on 2026-10-26');
+    expect(within(dayNav()).queryByRole('link', { name: 'Today' })).not.toBeInTheDocument();
+    unmount();
+
+    renderApp('/day/2026-10-26');
+    await screen.findByText('Review on 2026-10-26');
+    expect(within(dayNav()).queryByRole('link', { name: 'Today' })).not.toBeInTheDocument();
+
+    await userEvent.click(within(dayNav()).getByRole('link', { name: 'Next day' }));
+    await screen.findByText('Review on 2026-10-27');
+    await userEvent.click(within(dayNav()).getByRole('link', { name: 'Today' }));
+
+    expect(await screen.findByText('Review on 2026-10-26')).toBeInTheDocument();
+    expect(router.state.location.pathname).toBe('/');
+    expect(within(dayNav()).queryByRole('link', { name: 'Today' })).not.toBeInTheDocument();
+  });
+
+  it('names its links for assistive technology and keeps them reachable by keyboard', async () => {
+    serveAgendas();
+    renderApp('/day/2026-10-20');
+    await screen.findByText('Review on 2026-10-20');
+
+    const links = within(dayNav()).getAllByRole('link');
+    expect(links.map((link) => link.textContent.replace(/[‹›]/g, '').trim())).toEqual([
+      'Previous day',
+      'Today',
+      'Next day',
+    ]);
+    expect(links.map((link) => link.getAttribute('href'))).toEqual([
+      '/day/2026-10-19',
+      '/',
+      '/day/2026-10-21',
+    ]);
+    for (const link of links) expect(link).not.toHaveAttribute('tabindex', '-1');
+  });
+
+  it('keeps the controls while the next day loads and keeps keyboard focus on the one used', async () => {
+    let release: () => void = () => undefined;
+    const gate = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    server.use(
+      http.get('*/api/agenda/day', async ({ request }) => {
+        const date = new URL(request.url).searchParams.get('date') ?? '';
+        if (date === '2026-10-27') await gate;
+        return HttpResponse.json(agendaFor(date));
+      }),
+    );
+    const { router } = renderApp('/');
+    await screen.findByText('Review on 2026-10-26');
+    const user = userEvent.setup();
+
+    // From / to /day/<date> is another route, so the view is mounted again.
+    within(dayNav()).getByRole('link', { name: 'Next day' }).focus();
+    await user.keyboard('{Enter}');
+    await waitFor(() => {
+      expect(router.state.location.pathname).toBe('/day/2026-10-27');
+    });
+    expect(screen.getByText(/^Loading the agenda for this day/)).toBeInTheDocument();
+    expect(within(dayNav()).getByRole('link', { name: 'Next day' })).toHaveFocus();
+    act(release);
+    expect(await screen.findByText('Review on 2026-10-27')).toBeInTheDocument();
+    expect(within(dayNav()).getByRole('link', { name: 'Next day' })).toHaveFocus();
+
+    // Today leaves no Today link behind, so focus goes to the first control.
+    within(dayNav()).getByRole('link', { name: 'Today' }).focus();
+    await user.keyboard('{Enter}');
+    expect(await screen.findByText('Review on 2026-10-26')).toBeInTheDocument();
+    expect(within(dayNav()).getByRole('link', { name: 'Previous day' })).toHaveFocus();
+  });
+
+  it.each([
+    ['first', '1900-01-01', 'Previous day', 'Next day'],
+    ['last', '2200-12-31', 'Next day', 'Previous day'],
+  ])('stops at the %s supported day', async (_case, date, missing, present) => {
+    serveAgendas();
+    renderApp(`/day/${date}`);
+    await screen.findByText(`Review on ${date}`);
+
+    expect(within(dayNav()).queryByRole('link', { name: missing })).not.toBeInTheDocument();
+    expect(within(dayNav()).getByRole('link', { name: present })).toBeInTheDocument();
   });
 });
 

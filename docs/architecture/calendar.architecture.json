@@ -93,6 +93,8 @@
       { "id": "0030", "title": "Publish a docs-site preview only for docs-only pull requests", "status": "implemented", "url": "https://mgasca.github.io/calendar/stories/0030/" },
       { "id": "0031", "title": "Open the docs site on why the repository exists", "status": "implemented", "url": "https://mgasca.github.io/calendar/stories/0031/" },
       { "id": "0039", "title": "Switchable light and dark themes across the whole calendar", "status": "implemented", "url": "https://mgasca.github.io/calendar/stories/0039/" },
+      { "id": "0043", "title": "Edit and delete events from the Today view", "status": "implemented", "url": "https://mgasca.github.io/calendar/stories/0043/" },
+      { "id": "0044", "title": "Edit a task from the Today view", "status": "implemented", "url": "https://mgasca.github.io/calendar/stories/0044/" },
       { "id": "XXXX", "title": "Create events and tasks from the week view", "status": "planned", "url": "https://mgasca.github.io/calendar/stories/create-events-and-tasks-from-week-view/" }
     ]
   },
@@ -1275,6 +1277,38 @@
         { "relationship-unique-id": "web-app-calls-api", "sequence-number": 7, "description": "The visible day or week agenda refetches (GET /api/agenda/day or /week) and now shows the event" }
       ],
       "metadata": { "story": "0004", "adrs": ["ADR-0018", "ADR-0020", "ADR-0021", "ADR-0026"], "sibling": "Adding a task (stories 0003 and 0006) follows the same flow with POST /api/tasks { title, dueDate | dueAt, priority, notes }" }
+    },
+    {
+      "unique-id": "edit-event-flow",
+      "name": "Edit or delete an event",
+      "description": "From the day page the person opens an event by its title, edits it in the event dialog or deletes it after a confirmation inside the dialog; updates are checked against the version the dialog loaded (story 0043, ADR-0015, ADR-0041).",
+      "requirement-url": "https://mgasca.github.io/calendar/stories/0043/",
+      "transitions": [
+        { "relationship-unique-id": "user-uses-web-app", "sequence-number": 1, "description": "The event's title (a button in All day or Schedule) opens the 'Edit event' dialog, which shows 'Loading event…'" },
+        { "relationship-unique-id": "web-app-calls-api", "sequence-number": 2, "description": "GET /api/events/{id} (always fresh: the agenda has neither notes nor version)" },
+        { "relationship-unique-id": "web-app-calls-api", "sequence-number": 3, "description": "200 EventResponse with version, shown in the browser zone (all-day as an inclusive last day); 404 'This event no longer exists.' and the agenda refreshes", "direction": "destination-to-source" },
+        { "relationship-unique-id": "web-app-calls-api", "sequence-number": 4, "description": "Save: PUT /api/events/{id} with the create fields plus version. Delete event, then Delete: DELETE /api/events/{id}" },
+        { "relationship-unique-id": "api-reads-writes-db", "sequence-number": 5, "description": "The API loads the caller's event (query filter), applies the create rules, sets the expected xmin through RowVersion and saves; a stale version writes nothing" },
+        { "relationship-unique-id": "web-app-calls-api", "sequence-number": 6, "description": "200 with the new version or 204; 400 field errors; 404 gone or another user's; 409 stale version", "direction": "destination-to-source" },
+        { "relationship-unique-id": "user-uses-web-app", "sequence-number": 7, "description": "Success closes the dialog, says 'Dentist saved.' or 'Dentist deleted.', refetches ['agenda'] and returns focus to the title or the day heading; 409 reloads the latest version into the form and says the event was changed elsewhere; other errors keep the values for a retry" }
+      ],
+      "metadata": { "story": "0043", "adrs": ["ADR-0014", "ADR-0015", "ADR-0020", "ADR-0041"] }
+    },
+    {
+      "unique-id": "edit-task-flow",
+      "name": "Edit a task",
+      "description": "From the day page the person opens a task by its title (the checkbox still completes it), edits title, deadline, priority or notes in the task dialog, and saves against the version the dialog loaded (story 0044, ADR-0015, ADR-0041).",
+      "requirement-url": "https://mgasca.github.io/calendar/stories/0044/",
+      "transitions": [
+        { "relationship-unique-id": "user-uses-web-app", "sequence-number": 1, "description": "The task's title (a button; the checkbox is named by it) opens the 'Edit task' dialog, which shows 'Loading task…'" },
+        { "relationship-unique-id": "web-app-calls-api", "sequence-number": 2, "description": "GET /api/tasks/{id} (always fresh: the agenda has neither notes nor version)" },
+        { "relationship-unique-id": "web-app-calls-api", "sequence-number": 3, "description": "200 TaskResponse with version, a due instant shown as local date and time in the browser zone; 404 'This task no longer exists.' and the views refresh", "direction": "destination-to-source" },
+        { "relationship-unique-id": "web-app-calls-api", "sequence-number": 4, "description": "PUT /api/tasks/{id} with { title, priority, notes, dueDate | dueAt | neither, version }" },
+        { "relationship-unique-id": "api-reads-writes-db", "sequence-number": 5, "description": "The API loads the caller's task (query filter), applies the create rules without touching completion, sets the expected xmin through RowVersion and saves; a stale version, including a complete or reopen since, writes nothing" },
+        { "relationship-unique-id": "web-app-calls-api", "sequence-number": 6, "description": "200 with the new version; 400 field errors; 404 gone or another user's; 409 stale version", "direction": "destination-to-source" },
+        { "relationship-unique-id": "user-uses-web-app", "sequence-number": 7, "description": "Success closes the dialog, shows 'Task saved.', refetches ['agenda'] and ['tasks'] and returns focus to the title, or to the day heading when the task left the day; 409 reloads the latest version into the form; other errors keep the values for a retry" }
+      ],
+      "metadata": { "story": "0044", "adrs": ["ADR-0014", "ADR-0015", "ADR-0020", "ADR-0041"] }
     },
     {
       "unique-id": "toggle-task-flow",

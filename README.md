@@ -29,7 +29,7 @@ Each area's README covers its projects, recipes and configuration.
 | [`docs/architecture/`](docs/architecture/README.md) | FINOS CALM model of the system, rendered as the docs site's Architecture section |
 | [`docs/decisions/`](docs/decisions/README.md) | Any Decision Records (ADRs, MADR format): every significant decision, not only architecture |
 | [`docs/stories/`](docs/stories/README.md) | User stories: background, decisions, implementation notes, user guide |
-| [`docs/runbooks/`](docs/runbooks/README.md) | Operations runbooks (Azure bootstrap, infrastructure, database) |
+| [`docs/runbooks/`](docs/runbooks/README.md) | Operations runbooks (Azure bootstrap, infrastructure, database) and the [web theme and styling guide](docs/runbooks/web-theme-and-styling.md) |
 | [`docs/benchmarks/`](docs/benchmarks/README.md) | Benchmark records |
 | [`docs/agent-thoughts/`](docs/agent-thoughts/README.md) | Independent agent perspectives on the repository's purpose, value and evidence limits |
 | `infra/` | Azure infrastructure as Bicep; see the [runbooks](docs/runbooks/README.md) |
@@ -49,6 +49,8 @@ New UIs go under `frontend/apps/` (TypeScript) or a new top-level directory for 
 | pnpm | `packageManager` in `frontend/package.json` | Provided by Corepack (bundled with Node 24); don't install it globally |
 | Docker | n/a | Engine running and reachable; needed for the local database and for integration tests (Testcontainers) |
 | just | `.just-version` | The task runner ([ADR-0038](docs/decisions/0038-just-as-the-top-level-task-runner.md)); it only wraps the native commands. Ubuntu's apt package is older than the pinned version, so download the release binary from <https://github.com/casey/just/releases> and put `just` on your `PATH` |
+| gh | n/a | The GitHub CLI, used for issues, PRs and CI; run `gh auth login` once |
+| jq | n/a | JSON processor used by the GitHub and CI scripts and recipes |
 
 Run `./tools/doctor/doctor.sh` to check all of these. `just doctor` and `just setup` run the same script once `just` is installed, which is why the first run goes through the script directly.
 

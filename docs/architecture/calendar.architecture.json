@@ -92,7 +92,7 @@
       { "id": "0029", "title": "Preserve independent perspectives on our work", "status": "implemented", "url": "https://mgasca.github.io/calendar/stories/0029/" },
       { "id": "0030", "title": "Publish a docs-site preview only for docs-only pull requests", "status": "implemented", "url": "https://mgasca.github.io/calendar/stories/0030/" },
       { "id": "0031", "title": "Open the docs site on why the repository exists", "status": "implemented", "url": "https://mgasca.github.io/calendar/stories/0031/" },
-      { "id": "0039", "title": "Switchable light and dark themes across the whole calendar", "status": "planned", "url": "https://mgasca.github.io/calendar/stories/0039/" },
+      { "id": "0039", "title": "Switchable light and dark themes across the whole calendar", "status": "implemented", "url": "https://mgasca.github.io/calendar/stories/0039/" },
       { "id": "XXXX", "title": "Create events and tasks from the week view", "status": "planned", "url": "https://mgasca.github.io/calendar/stories/create-events-and-tasks-from-week-view/" }
     ]
   },

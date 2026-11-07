@@ -13,6 +13,7 @@
 //
 //   dotnet run browse.cs -- --install                            download Chromium once
 //   dotnet run browse.cs -- [--base-url URL] [--out DIR] [--time-zone ZONE] [--seed-key KEY] < script
+//   extra options: --viewport WxH (default 1280x900) and --color-scheme light|dark (the OS preference)
 //
 // Commands (a token with spaces goes in single quotes). Selectors are Playwright selectors, such as
 // text=Week, role=button[name="Add task"] or css, plus label=TEXT for the first form field whose label contains TEXT:
@@ -39,6 +40,9 @@ var baseUrl = "http://127.0.0.1:55173";
 var seedKey = Environment.GetEnvironmentVariable("Auth__DevSeedKey") ?? "local-development-seed-key-change-me-123456";
 var outDir = Path.Combine(Path.GetTempPath(), "calendar-shots");
 var timeZone = "UTC";
+var width = 1280;
+var height = 900;
+ColorScheme colorScheme = ColorScheme.NoPreference;
 var pending = new Queue<string>(args);
 while (pending.TryDequeue(out var arg))
 {
@@ -58,8 +62,27 @@ while (pending.TryDequeue(out var arg))
     case "--time-zone" when pending.Count > 0:
       timeZone = pending.Dequeue();
       break;
+    case "--viewport" when pending.Count > 0:
+      var size = pending.Dequeue().Split('x');
+      if (size.Length != 2 || !int.TryParse(size[0], out width) || !int.TryParse(size[1], out height))
+      {
+        await Console.Error.WriteLineAsync("--viewport takes WIDTHxHEIGHT, for example 390x844");
+        return 2;
+      }
+
+      break;
+    case "--color-scheme" when pending.Count > 0:
+      colorScheme = pending.Dequeue() switch
+      {
+        "light" => ColorScheme.Light,
+        "dark" => ColorScheme.Dark,
+        _ => ColorScheme.NoPreference,
+      };
+      break;
     case "-h" or "--help":
-      Console.WriteLine("usage: browse [--install] [--base-url URL] [--out DIR] [--time-zone ZONE] [--seed-key KEY] < script");
+      Console.WriteLine(
+        "usage: browse [--install] [--base-url URL] [--out DIR] [--time-zone ZONE] [--viewport WxH] "
+        + "[--color-scheme light|dark] [--seed-key KEY] < script");
       return 0;
     default:
       await Console.Error.WriteLineAsync($"unknown option: {arg}");
@@ -86,7 +109,8 @@ await using IBrowserContext context = await browser.NewContextAsync(new()
   BaseURL = baseUrl,
   TimezoneId = timeZone,
   Locale = "en-GB",
-  ViewportSize = new() { Width = 1280, Height = 900 },
+  ViewportSize = new() { Width = width, Height = height },
+  ColorScheme = colorScheme,
   ExtraHTTPHeaders = new Dictionary<string, string> { ["X-Dev-Seed-Key"] = seedKey },
 });
 context.SetDefaultTimeout(15_000);

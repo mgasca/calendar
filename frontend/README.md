@@ -1,6 +1,6 @@
 # Frontend
 
-The pnpm workspace for Calendar's TypeScript UIs. Practices for changing the code (checks, dates and clocks, forms, TanStack Query, code splitting) are in [AGENTS.md](AGENTS.md).
+The pnpm workspace for Calendar's TypeScript UIs. Practices for changing the code (checks, dates and clocks, forms, TanStack Query, code splitting) are in [AGENTS.md](AGENTS.md); styling a view for the light and dark themes is in the [theme guide](../docs/runbooks/web-theme-and-styling.md).
 
 ## Workspace
 

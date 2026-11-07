@@ -1,6 +1,6 @@
 # Runbooks
 
-Each runbook has a unique positive integer `order` in YAML front matter, specifying the operational sequence. Keep a `## Before you start` section.
+Each runbook has a unique positive integer `order` in YAML front matter, specifying the operational sequence (the Azure runbooks first, then the contributor guide for styling the web app in both themes). Keep a `## Before you start` section.
 
 
 ## Publishing

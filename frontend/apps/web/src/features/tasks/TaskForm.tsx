@@ -108,7 +108,10 @@ export function TaskForm({
         client.invalidateQueries({ queryKey: ['agenda'] }),
         ...(task
           ? [
-              client.invalidateQueries({ queryKey: ['notes', 'task', task.id], refetchType: 'none' }),
+              client.invalidateQueries({
+                queryKey: ['notes', 'task', task.id],
+                refetchType: 'none',
+              }),
               client.invalidateQueries({ queryKey: taskKey(task.id), refetchType: 'none' }),
             ]
           : []),

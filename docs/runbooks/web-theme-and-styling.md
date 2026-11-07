@@ -25,8 +25,8 @@ Terms used here:
 | `src/styles/tokens.css` | Every colour value, the per-theme fonts, shadows and radii, and the only `[data-theme]` and `prefers-color-scheme` selectors. |
 | `src/styles/base.css` | Element defaults: `body`, headings, links, the focus ring, the page width. |
 | `src/styles/components.css` | Shared classes and the default look of buttons and fields. |
-| `src/index.css` and view stylesheets | View-specific layout, written with tokens only. |
-| `src/theme/` | The theme switch: `theme.ts` (storage and attribute), `useTheme.ts`, `ThemeControl.tsx` (Light, Dark, System). |
+| `src/index.css` | Imports the three files above, then holds the view-specific rules (day, week, tasks, triage, shell), written with tokens only. |
+| `src/theme/` | The theme switch: `theme.ts` (storage and attribute), `useTheme.ts`, `ThemeControl.tsx` (Light, Dark, System, a native radio group in the header). |
 | `index.html` | A small inline script that applies the saved theme before the first paint. |
 
 How a theme gets chosen:
@@ -79,11 +79,13 @@ The spacing and type scales are the same in both themes; shapes (radius), fonts 
 | `.items` and `.item` | A list and its rows. Inside a row: `.item-title`, `.item-time`, `.item-meta` (a full-width secondary line). |
 | `.eyebrow`, `.summary`, `.count` | The small uppercase label above a heading; a muted line under it; a muted count inside a heading. |
 | `.badge`, `.badge-current`, `.badge-next`, `.badge-past` | A small pill. The words are the information, the colour only supports them. |
-| `.notice`, `.notice-error` | An inline message. Give an error `role="alert"`. |
+| `.notice`, `.notice-error` | An inline message; the error variant is tinted with `error-soft`. Give an error `role="alert"`. |
 | `.flag` | Inline emphasis for an overdue marker. Keep its words ("Past due"). |
 | `.empty` | The empty state paragraph. |
 | `.button-primary`, `.button-danger` | The main action; a destructive action. Plain `<button>` is the default. |
 | `.segmented` | A row of `aria-pressed` toggle buttons that reads as one control. |
+| `a.button-primary`, `a.button-danger` | A link styled as a button (sign-in). |
+| `[role='status']` | Every status paragraph is styled with `loading-text` by `components.css`; no class is needed. |
 | `.actions` | A wrapping row of buttons and labelled fields. |
 | `.field`, `.field-bubble`, `.field-mark` | Form validation (ADR-0043): the control is `aria-invalid`, the message is its description. |
 | `.modal-dialog` | A modal `<dialog>`; use the `ModalDialog` component rather than the class. |
@@ -92,7 +94,7 @@ The spacing and type scales are the same in both themes; shapes (radius), fonts 
 Rules:
 
 1. **Compose before you write CSS.** Most views are `<section>`, a heading, shared classes and a few layout rules.
-2. **View stylesheets hold layout and state hooks, not look.** Grid, flex, widths, positions and the status rules below belong to the view. Palette, fonts, shadows and radii come from tokens.
+2. **View rules hold layout and state hooks, not look.** Grid, flex, widths, positions and the status rules below belong to the view. Palette, fonts, shadows and radii come from tokens.
 3. **Reference only tokens and `var(--…)`.** No hex, `rgb()`, `hsl()`, `color()` or named colours (including `white`, `black` and system colours such as `Canvas`) outside `tokens.css`. A literal inside `color-mix()` counts too. Use `color-mix(in srgb, var(--color-accent) 20%, transparent)` if you need a tint, though a token usually exists.
 4. **No `!important`, no `[data-theme]` selectors, no `prefers-color-scheme` outside `tokens.css`.**
 5. **Class names are prefixed by the view** (`.reading-…`), so a rule cannot leak into another view.
@@ -126,7 +128,7 @@ Style a state in two parts: a **meaning** that does not depend on colour, plus t
 | Completed | `text-decoration: line-through` and a checked checkbox | `completed-text` |
 | Overdue | The words "Past due" in a `.flag` | `overdue-bg`, `overdue-text` |
 | Past (finished) | The `.badge-past` label | `--opacity-past` |
-| Loading | `role="status"` text such as "Loading…" | `loading-text` |
+| Loading | `role="status"` text such as "Loading…" | `loading-text`, applied to every `[role='status']` |
 | Empty | A sentence that says why and what to do | `.empty` (`empty-text`) |
 | Error | A message with `role="alert"`, a retry button when retrying helps | `.notice .notice-error` (`error`) |
 | Invalid input | `aria-invalid`, the message as the control's description, and the `.field-mark` glyph | `.field` (`error`) |
@@ -138,19 +140,17 @@ An opacity or colour change is never the only signal. If you add a state that ha
 ## When to add a token or a shared class
 
 - **A new token** is justified when a new meaning exists that no token carries (a new status), or two themes need different values for it. It is not justified for one view's convenience, or because a colour "looks off": adjust the existing token's value in `tokens.css` if the meaning is shared, or compose existing tokens. Add the token to both themes **and** the OS-fallback block, keep the three blocks in the same order, and add its contrast pairs to `dev/styles.test.ts`. Name it for its role.
-- **A new shared class** is justified at the second concrete use, when two views need the same presentation. Until then, keep it in the view's stylesheet under the view's prefix. When it moves, put it in `components.css`, list it in the table above and delete the duplicate.
+- **A new shared class** is justified at the second concrete use, when two views need the same presentation. Until then, keep it in `src/index.css` under the view's prefix. When it moves, put it in `components.css`, list it in the table above and delete the duplicate.
 - **A per-view exception** (a rule that needs a one-off value) is allowed only for layout, never for palette or theme logic. Name and justify it in the PR description.
 
 ## Worked example: a Reading list view
 
-This adds a view that lists reading items with the states above. It uses only shared classes, tokens and two small view rules, and it has no theme code. The code is a pattern to copy, shown in full so you can compare it with what you write.
+This adds a view that lists reading items with the states above. It uses only shared classes, tokens and a few small view rules, and it has no theme code. The code is a pattern to copy, shown in full so you can compare it with what you write.
 
-The view lives in a feature folder, `src/features/reading/`. A component renders the structure and uses shared classes:
+Views live in feature folders (`src/features/reading/`) and their rules in `src/index.css`; there are no per-feature stylesheets yet. A component renders the structure and uses shared classes:
 
 ```tsx
 // src/features/reading/ReadingList.tsx
-import './reading.css';
-
 interface Item {
   id: string;
   title: string;
@@ -178,11 +178,7 @@ export function ReadingList({
       </h1>
       <p className="summary">Things to read, soonest first.</p>
 
-      {isPending && (
-        <p role="status" className="reading-loading">
-          Loading reading list…
-        </p>
-      )}
+      {isPending && <p role="status">Loading reading list…</p>}
       {isError && (
         <div role="alert" className="notice notice-error">
           <p>Couldn’t load the reading list.</p>
@@ -215,14 +211,10 @@ export function ReadingList({
 }
 ```
 
-Its stylesheet adds only what the shared styles do not give it, with tokens:
+Append its rules to the view section of `src/index.css`. They add only what the shared styles do not give it, with tokens:
 
 ```css
-/* src/features/reading/reading.css: the Reading list view's rules, tokens only. */
-
-.reading-loading {
-  color: var(--color-loading-text);
-}
+/* Reading list view (src/index.css): tokens only. */
 
 /* Completed: struck through, so it reads without colour. */
 .reading-done .item-title {
@@ -244,14 +236,14 @@ Its stylesheet adds only what the shared styles do not give it, with tokens:
 
 What this example shows:
 
-- The heading, link and button looks come from `base.css`; the list, rows, badge, notice, flag and empty state from `components.css`. The view adds three rules.
+- The heading, link and button looks come from `base.css`; the list, rows, badge, notice, flag and empty state from `components.css`. The view adds two rules and a media query. Loading needs none: `[role='status']` is already styled.
 - Completed is a line-through plus a "Read" badge, overdue is a "Past due" flag, and an error has a heading and a retry button. Remove every colour and the page still reads.
 - Switching the theme restyles it with no React involvement, because the only colour sources are `var(--color-…)`.
 - Data comes from the generated client and TanStack Query as in the other features (see `frontend/AGENTS.md`); the styling is independent of it.
 
 Steps for your own view:
 
-1. Create `src/features/<name>/<Name>.tsx` and `<name>.css`, with every class prefixed by `<name>-` except the shared ones.
+1. Create `src/features/<name>/<Name>.tsx` and add its rules to `src/index.css`, with every class prefixed by `<name>-` except the shared ones.
 2. Build the structure from shared classes. Write a rule only for what they do not cover.
 3. Handle loading, error, empty and, if it applies, refreshing states, each with text.
 4. Add the route in `src/router.tsx` and a link in the navigation.
@@ -261,7 +253,7 @@ Steps for your own view:
 
 Do all of these before opening the PR:
 
-1. **Guards.** `just frontend test-web dev/styles.test.ts` fails on a colour literal or a theme selector outside `tokens.css`, a `var(--token)` that nothing defines, light and dark sets that differ, the OS-fallback block drifting from the dark set, or a contrast pair below its threshold. It reads every `.css` file under `src/`, so your view stylesheet is covered automatically.
+1. **Guards.** `just frontend test-web dev/styles.test.ts` fails on a colour literal or a theme selector outside `tokens.css`, a `var(--token)` that nothing defines, light and dark sets that differ, the OS-fallback block drifting from the dark set, or a contrast pair below its threshold. It reads every `.css` file under `src/`, so `index.css` and any stylesheet you add are covered automatically.
 2. **Component tests.** Test what the view says (roles, text, `aria-*`), not how it looks. jsdom has no CSS cascade, so a test cannot see colours; do not assert them.
 3. **Full frontend checks.** `just frontend lint`, `just frontend typecheck`, `just frontend test` and `corepack pnpm --dir frontend format:check`.
 4. **Look at it.** Run the app (the `run-calendar` skill describes the signed-in local setup), then switch the theme with the header control to Light, Dark and System. Check:

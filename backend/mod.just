@@ -12,16 +12,18 @@ list:
     @just --list backend
 
 # Restore .NET packages; arguments go to dotnet restore (e.g. just backend restore -p:NuGetAudit=false offline)
+[positional-arguments]
 restore *args:
-    dotnet restore {{ args }}
+    dotnet restore "$@"
 
 # Build the solution
 build:
     dotnet build --no-restore
 
 # Run the tests; arguments go to dotnet test (e.g. just backend test --project tests/Calendar.Domain.Tests --filter-method "*Name*")
+[positional-arguments]
 test *args:
-    dotnet test {{ args }}
+    dotnet test "$@"
 
 # Analyzers and code style (in the build), the formatting check and the EF Core model check
 lint:

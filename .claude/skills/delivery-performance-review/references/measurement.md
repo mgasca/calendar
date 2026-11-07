@@ -4,7 +4,7 @@ How to get numbers that survive review. The benchmark-record rules in `docs/benc
 
 ## Samples from CI history
 
-- **Quoting.** `just tools ci-timings` splits a quoted argument, so `--job "Docs site"` arrives as two words and fails (#345). Until that is fixed, run the harness directly: `dotnet run tools/ci-timings/ci-timings.cs -- --job "Docs site"`.
+- **Quoting.** Quote arguments containing spaces or shell metacharacters, for example `just tools ci-timings --job "Docs site"`.
 - **Harness first.** `just tools ci-timings` takes successful runs only, so cancelled and failed runs don't drag the numbers. Paste its tables unchanged into the report or record. If you need something it lacks, use the same API it uses (`gh run list`, `repos/<owner>/<repo>/actions/runs/<id>/jobs`), say so, and propose the option as a follow-up. That is how `--branch` arrived, in #286, after #273 had to sample by hand.
 - **Size.** For a baseline, take what history allows up to about 40 runs (#272 had 40 in 19 hours). For an after-sample, the number of runs depends on the spread: if the predicted saving is larger than the baseline's min-to-p90 range for that step, five runs show it. If it isn't, measure the changed step rather than the job, or take more runs and say why.
 - **Filter by head commit, not branch.** A branch sample can include runs from before a push. Record 0007's first draft did, and the prose had to be corrected. Read `headSha` with `gh run list --json databaseId,headSha,conclusion` and keep only the commit under test.

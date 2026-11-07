@@ -29,9 +29,9 @@ Story [0030](0030-docs-only-pr-previews.md) limited the hosted docs preview to p
 * **Docs site** runs for changes under `docs/`, `frontend/apps/docs/` or the frontend root configuration.
 * **Backend** runs for changes under `backend/` or `contracts/`.
 * **Frontend** runs for changes under `frontend/apps/web/`, `frontend/packages/` or `contracts/`, or to the frontend root configuration.
-* **Tooling** runs for changes under `tools/`, `.claude/`, `infra/`, `docker/`, `just/` or `docs/decisions/` (ADR validation), to `justfile`, any `*.just` file or `.just-version`, or to a backend MSBuild file (`*.props`, `*.targets`, `*.csproj`), because the tool pins and the delivery guards read them.
+* **Tooling** runs for changes under `tools/`, `.claude/`, `infra/`, `docker/`, `just/` or `docs/decisions/` (ADR validation), to `justfile`, any `*.just` file or `.just-version`, or to a backend MSBuild file (`*.props`, `*.targets`, `*.csproj`), because the tool pins and the delivery guards read them, or to a file under `.github/` that the tooling tests read (`ci-gate.jq`, `ci-baseline.json`, `workflows/ci-trend.yml`, `pull_request_template.md`).
 * **Container image** runs for changes under `backend/`, `frontend/apps/web/`, `frontend/packages/`, `contracts/` or `docker/`, to the frontend root configuration, or to `Dockerfile`, `.dockerignore` or `image.just`.
-* **Frontend root configuration** is the files directly under `frontend/`: `package.json`, `pnpm-lock.yaml`, `pnpm-workspace.yaml`, `eslint.config.js`, `tsconfig.base.json`, `.node-version`, the prettier files and `mod.just`.
+* **Frontend root configuration** is every file directly under `frontend/` except its Markdown guidance: `package.json`, `pnpm-lock.yaml`, `pnpm-workspace.yaml`, `eslint.config.js`, `tsconfig.base.json`, `.node-version`, the prettier files and `mod.just`.
 * **Everything runs** when a pull request changes `.github/workflows/ci.yml` or the rules file, or when the changed-file list is truncated.
 * **A file in no set** (the root `README.md`, `.github/dependabot.yml`) runs only Changes and `CI result`.
 * **`CI result`** passes only when every job succeeded, or was skipped because Changes said the change did not need it. If Changes fails, `CI result` fails.

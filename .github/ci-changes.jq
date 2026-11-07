@@ -24,6 +24,11 @@ def backend_msbuild: startswith("backend/") and test("\\.(props|targets|csproj)$
 
 def just_files: . == "justfile" or . == ".just-version" or endswith(".just");
 
+# Files under .github/ that the tooling tests read: the run-time gate and its baseline (ADR-0045), the trend workflow
+# and the pull request template (agent-hooks).
+def tooling_github:
+  [".github/ci-gate.jq", ".github/ci-baseline.json", ".github/workflows/ci-trend.yml", ".github/pull_request_template.md"];
+
 # Whether the file at `.` is an input of job `$job`.
 def needs($job):
   if $job == "docs" then under(["docs/", "frontend/apps/docs/"]) or frontend_root
@@ -31,6 +36,7 @@ def needs($job):
   elif $job == "frontend" then under(["frontend/apps/web/", "frontend/packages/", "contracts/"]) or frontend_root
   elif $job == "tooling" then
     under(["tools/", ".claude/", "infra/", "docker/", "just/", "docs/decisions/"]) or just_files or backend_msbuild
+      or IN(tooling_github[])
   elif $job == "image" then
     under(["backend/", "frontend/apps/web/", "frontend/packages/", "contracts/", "docker/"]) or frontend_root
       or IN("Dockerfile", ".dockerignore", "image.just")

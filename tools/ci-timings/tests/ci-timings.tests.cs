@@ -2,6 +2,11 @@
 #:package xunit.v3.mtp-v2@4.0.2
 #:package Shouldly@4.3.0
 #:include ../CiTimings.cs
+#:include ../Baseline.cs
+#:include ../Trend.cs
+#:include BaselineTests.cs
+#:include GateTests.cs
+#:include TrendTests.cs
 
 // Tests for the CI timing sampler. Run: dotnet run tools/ci-timings/tests/ci-timings.tests.cs
 // The GitHub CLI is never called: the tests feed the parser the JSON shapes gh returns.
@@ -57,6 +62,13 @@ public sealed class ParserTests
       [{ "databaseId": 1, "status": "completed", "conclusion": "cancelled", "createdAt": "2026-11-06T14:47:51Z",
          "event": "pull_request", "headBranch": "docs/story-0033" }]
       """).ShouldHaveSingleItem().HeadBranch.ShouldBe("docs/story-0033");
+
+  [Fact]
+  public void ParseRuns_ReadsTheHeadShaWhenListed() =>
+    Parser.ParseRuns("""
+      [{ "databaseId": 1, "status": "completed", "conclusion": "success", "createdAt": "2026-11-06T20:04:12Z",
+         "event": "push", "headBranch": "main", "headSha": "209f497f" }]
+      """).ShouldHaveSingleItem().HeadSha.ShouldBe("209f497f");
 
   [Fact]
   public void ParseJobs_KeepsCompletedJobsAndSteps_AndLeavesOutPendingAndSkippedJobs()

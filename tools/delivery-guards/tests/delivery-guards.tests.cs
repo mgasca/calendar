@@ -506,6 +506,10 @@ public sealed class ChangesRulesTests
   [InlineData("README.md", "")]
   [InlineData(".github/dependabot.yml", "")]
   [InlineData(".github/workflows/pages.yml", "")]
+  [InlineData(".github/ci-gate.jq", "tooling")]
+  [InlineData(".github/ci-baseline.json", "tooling")]
+  [InlineData(".github/workflows/ci-trend.yml", "tooling")]
+  [InlineData(".github/pull_request_template.md", "tooling")]
   public void AFile_RunsTheJobsItIsAnInputOf(string file, string expected) =>
     Run("pull_request", true, file).ShouldBe(Expected(expected));
 

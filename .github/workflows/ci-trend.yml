@@ -1,0 +1,48 @@
+name: CI run-time trend
+
+# The trend check of ADR 0045: daily, and on demand, it compares the last 20 successful push runs on main (those after
+# the pinned baseline) with .github/ci-baseline.json, and comments on the one open `performance` issue titled
+# "CI run-time trend: …", or opens it, only when a job is significantly slower by at least the minimum effect. It never
+# runs for a pull request, so it fails no PR and is not part of `CI result`. The logic and its tests are in
+# tools/ci-timings (Trend.cs, tests/TrendTests.cs).
+on:
+  schedule:
+    - cron: "23 6 * * *"
+  workflow_dispatch:
+
+permissions: {}
+
+concurrency:
+  group: ci-trend
+  cancel-in-progress: false
+
+env:
+  DOTNET_NOLOGO: true
+  DOTNET_CLI_TELEMETRY_OPTOUT: true
+
+jobs:
+  trend:
+    name: Trend check
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    # actions: read for the runs and jobs, contents: read for the checkout, issues: write for the one trend issue.
+    permissions:
+      actions: read
+      contents: read
+      issues: write
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-dotnet@v6
+        with:
+          dotnet-version: 10.0.x
+          cache: true
+          cache-dependency-path: tools/ci-timings/packages.lock.json
+      - name: Compare recent push runs on main with the pinned baseline
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: dotnet run tools/ci-timings/ci-timings.cs -- --trend --issue --repo "$GITHUB_REPOSITORY" | tee -a "$GITHUB_STEP_SUMMARY"

@@ -39,6 +39,8 @@ Implemented in `.github/workflows/pages.yml`, with [regression coverage](../../f
 
 The fix was delivered in PR #339. [CI for the merged revision](https://github.com/mgasca/calendar/actions/runs/42232965801) passed. On 2026-11-06 the owner confirmed that they had verified publication, satisfying criterion 4. This is owner-reported live verification: the agent's separate check of [production publication run 42233313111](https://github.com/mgasca/calendar/actions/runs/42233313111) still returned `pending` at close-out. Successful publication does not establish GitHub's internal cause or guarantee the lock cannot recur; reopen #285 if the symptom returns.
 
+Correction ([#429](https://github.com/mgasca/calendar/issues/429)): the override never took effect. The runner ignores a step `env` entry that sets a `GITHUB_*` variable, so every deployment after #339 still sent `main`'s head SHA as `pages_build_version`, and the lock recurred. The deploy job now calls the Pages deployment API itself. A synthesized per-run hash was refused with 404 (#504), because the build version must name a commit, so each publication now uses its own `gh-pages` snapshot commit, and falls back once to `main`'s head if Pages answers 404 for it. The regression test checks the request payload against a fake API that refuses a version that is not a commit.
+
 ## User guide
 
 Publication continues automatically after eligible CI and on PR closure. If a transient failure occurs, re-run failed jobs to deploy the retained artifact with a fresh build version. A newer snapshot still supersedes an older run.

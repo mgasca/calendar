@@ -633,7 +633,7 @@
                   "relative-margin": 0.1,
                   "provisional": true
                 },
-                "false-failure-budget": "About 1 % of pull request runs with no regression, across all gated jobs (alpha / J per job, Bonferroni); back-tested on held-out runs with the observed rate and its one-sided 95 % upper bound in each baseline record",
+                "false-failure-budget": "About 1 % of pull request runs with no regression, across all gated jobs (alpha / J per job, Bonferroni); back-tested on held-out runs with the observed rate and its one-sided 95 % upper bound in each baseline record. Observed at the first pin (2026-11-07): about 4-5 % of runs, from 3 of the 30 baseline runs above their threshold and 1 of 43 held-out PR runs, above the budget and accepted by the maintainer until a week of gated PR runs is reviewed (#384)",
                 "baseline": {
                   "file": ".github/ci-baseline.json",
                   "record": "docs/benchmarks/0014-ci-job-baseline.md",
@@ -651,7 +651,7 @@
                   "reports-on": ["push", "workflow_dispatch", "any run on a provisional path"],
                   "remedy": "Re-run all jobs; Re-run failed jobs repeats only CI result on the same durations",
                   "tests": "tools/ci-timings/tests/GateTests.cs runs the committed jq program against canned jobs API responses, and checks that ci.yml runs that file",
-                  "critical-path-cost": "Measured and reported in #395"
+                  "critical-path-cost": "CI result +3 s: median 6 s (n = 11) with the gate against 3 s (n = 23) without, measured in #395; the comparison itself takes 0 s, the rest is the sparse checkout and its post step. Accepted by the maintainer on 2026-11-07"
                 },
                 "trend-check": {
                   "workflow": ".github/workflows/ci-trend.yml",

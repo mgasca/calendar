@@ -1,8 +1,10 @@
 ---
-status: planned
+status: implemented
 date: 2026-11-07
 issue: https://github.com/mgasca/calendar/issues/454
-pr: []
+pr:
+  - https://github.com/mgasca/calendar/pull/456
+  - https://github.com/mgasca/calendar/pull/457
 adrs: ["0016", "0017", "0038"]
 ---
 
@@ -40,11 +42,11 @@ Without them the failure shows up inside a tool or hook, far from its cause.
 
 ### Acceptance criteria
 
-1. **Given** `gh` is not on `PATH`, **when** I run `tools/doctor/doctor.sh`, **then** it prints `gh not found` with an install hint and exits non-zero.
-2. **Given** `jq` is not on `PATH`, **when** I run `tools/doctor/doctor.sh`, **then** it prints `jq not found` with an install hint and exits non-zero.
-3. **Given** both tools are installed and everything else passes, **when** I run `just doctor`, **then** it lists the `gh` and `jq` versions and ends with `Toolchain OK.`.
-4. **Given** I read the Prerequisites table in `README.md`, **when** I look for what I must install, **then** `gh` and `jq` are listed.
-5. **Given** the change is complete, **when** I run `just check`, **then** it passes.
+1. **Given** `gh` is not on `PATH`, **when** I run `tools/doctor/doctor.sh`, **then** it prints `gh not found` with an install hint and exits non-zero. [Missing tool](../../tools/doctor/tests/doctor.tests.cs) (`MissingGhOrJqFailsWithInstallHint`, case `gh`).
+2. **Given** `jq` is not on `PATH`, **when** I run `tools/doctor/doctor.sh`, **then** it prints `jq not found` with an install hint and exits non-zero. [Missing tool](../../tools/doctor/tests/doctor.tests.cs) (`MissingGhOrJqFailsWithInstallHint`, case `jq`).
+3. **Given** both tools are installed and everything else passes, **when** I run `just doctor`, **then** it lists the `gh` and `jq` versions and ends with `Toolchain OK.`. [Passing run](../../tools/doctor/tests/doctor.tests.cs) (`OrdinaryDoctorDoesNotRequireAzure`, whose baseline now includes fake `gh` and `jq`) asserts exit 0; the version lines were checked by hand on a real machine (gh 2.46.0, jq 1.8.1).
+4. **Given** I read the Prerequisites table in `README.md`, **when** I look for what I must install, **then** `gh` and `jq` are listed. Documentation only, not tested.
+5. **Given** the change is complete, **when** I run `just check`, **then** it passes. See the delivery PR for the checks that ran.
 
 ## Design decisions
 
@@ -65,7 +67,7 @@ No new ADR is expected.
 
 ## Implementation notes
 
-*Planned. This section is completed as the story is built.*
+Delivered in two stacked PRs: the card (#456) and the change (#457).
 
 ### Where things live
 
@@ -85,11 +87,10 @@ No changes.
 
 ### Lessons learned, known issues and follow-ups
 
-*To be completed on delivery.*
+* **Regression control:** with the old `doctor.sh` and the new tests, both `MissingGhOrJqFailsWithInstallHint` cases fail; with the change, all 25 doctor tests pass (measured locally).
+* The `gh` and `jq` lines come right before the Azure block, so they run in every `just doctor`. Authentication stays unchecked (see "Not in this story").
 
 ## User guide
-
-*Planned behaviour. This section is finalised when the story is implemented.*
 
 ### Check your setup
 

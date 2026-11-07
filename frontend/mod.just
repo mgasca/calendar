@@ -23,8 +23,9 @@ test:
     pnpm test
 
 # Run the web app's tests; arguments go to Vitest (e.g. just frontend test-web src/features/day)
+[positional-arguments]
 test-web *args:
-    pnpm --filter @calendar/web test {{ args }}
+    pnpm --filter @calendar/web test "$@"
 
 # Type-aware ESLint (can take minutes)
 lint:

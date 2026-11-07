@@ -51,20 +51,24 @@ test:
     fi
 
 # Check tooling package pins match backend/Directory.Packages.props (--fix to update)
+[positional-arguments]
 versions *args:
-    dotnet run tools/tool-versions/tool-versions.cs -- {{ args }}
+    dotnet run tools/tool-versions/tool-versions.cs -- "$@"
 
 # Sample a workflow's job and step durations from GitHub (e.g. just tools ci-timings --job Frontend)
+[positional-arguments]
 ci-timings *args:
-    dotnet run tools/ci-timings/ci-timings.cs -- {{ args }}
+    dotnet run tools/ci-timings/ci-timings.cs -- "$@"
 
 # Print new comments, reviews and PR states on an issue and its delivery PRs since the last run (e.g. just tools handover-watch 320)
+[positional-arguments]
 handover-watch *args:
-    dotnet run tools/handover-watch/handover-watch.cs -- {{ args }}
+    dotnet run tools/handover-watch/handover-watch.cs -- "$@"
 
 # Validate ADRs in docs/decisions (e.g. just tools adr --fix-links)
+[positional-arguments]
 adr *args:
-    dotnet run {{ adr_skill }}/scripts/check-adr/check-adr.cs -- {{ args }}
+    dotnet run {{ adr_skill }}/scripts/check-adr/check-adr.cs -- "$@"
 
 # Auto-format repo tooling (whitespace; part of just format)
 format:

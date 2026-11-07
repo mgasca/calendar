@@ -292,7 +292,7 @@ export function docsLoader(): Loader {
           // Each report opens with its front matter provenance: when, by whom, of which revision.
           ...agentThought.records.map((record, order) => ({
             id: `agent-thoughts/${record.number}`,
-            title: `${record.number} · ${record.title}`,
+            title: record.title,
             body: [
               [
                 `**Date:** ${record.date}`,
@@ -306,10 +306,7 @@ export function docsLoader(): Loader {
             sidebar: {
               order,
               label: record.title,
-              attrs: {
-                'data-doc-number': record.number,
-                'aria-label': `${record.number} · ${record.title}`,
-              },
+              attrs: { 'data-doc-number': record.number },
             },
           })),
           {

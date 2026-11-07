@@ -48,7 +48,7 @@ Write down what someone waits for and how often: "a PR author waits for CI resul
 
 ### 2. Baseline from history
 
-Run `just tools ci-timings --job <name>` (repeat `--job`; `--branch`, `--runs`, `--workflow` narrow it) and keep its tables unchanged for the record. For a job name with a space, run the harness directly, `dotnet run tools/ci-timings/ci-timings.cs -- --job "Docs site"`: the recipe splits quoted arguments (#345). Then, per [references/measurement.md](references/measurement.md):
+Run `just tools ci-timings --job <name>` (repeat `--job`; `--branch`, `--runs`, `--workflow` narrow it) and keep its tables unchanged for the record. Quote a job name containing spaces, for example `--job "Docs site"`. Then, per [references/measurement.md](references/measurement.md):
 
 - Name the critical path from the job table and the workflow's `needs`. If the slow job isn't on it, say so first.
 - Compute both lenses. Get queue time from the jobs API (`created_at` against `started_at`). The harness doesn't report it, so mark it as sampled by hand.

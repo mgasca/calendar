@@ -11,6 +11,7 @@ pr:
   - https://github.com/mgasca/calendar/pull/360
   - https://github.com/mgasca/calendar/pull/362
   - https://github.com/mgasca/calendar/pull/375
+  - https://github.com/mgasca/calendar/pull/415
 adrs: ["0042", "0017", "0044"]
 ---
 
@@ -101,6 +102,8 @@ Delivered by six PRs after PR 0 ([#324](https://github.com/mgasca/calendar/pull/
 
 After the epic closed, [#375](https://github.com/mgasca/calendar/pull/375) delivered the follow-up [#363](https://github.com/mgasca/calendar/issues/363). The watch now sends two GraphQL queries per tick instead of 2 + 3N REST calls, and prints the same output. [Benchmark record 0013](../benchmarks/0013-handover-watch-graphql.md) measured two `gh` calls instead of 11, 20 or 29 for issues with 3, 6 and 9 delivery PRs, 75–80% fewer bytes, and 2.3–2.4 s per tick instead of 2.8–4.5 s. The first version was one query. The security review on #375 found that it fetched every cross-referencing PR's lists before filtering, so anyone mentioning the issue could decide how much a tick downloads. The maintainer chose a second query for the delivery PRs' lists. The same review led a tick that passes the follow-up limit to print what it read and name the rest, instead of failing silently. The maintainer chose to keep the output as it was, so finding 5 of the review on #360 was not adopted ([#363](https://github.com/mgasca/calendar/issues/363#issuecomment-6693506814)). That finding proposed printing only the header for agent-footer and bot items and adding a `--baseline` first run. Agent-footer items are 65–95% of a first run's bytes, but such posts can come from other sessions on the same account.
 
+The same review on #375 found that the watch printed a comment the maintainer had hidden in full, with no marker and no author association, so an outsider's prompt injection reached the agent's context even after it was hidden. That predates #375 and was filed as [#378](https://github.com/mgasca/calendar/issues/378). [#415](https://github.com/mgasca/calendar/pull/415) asks for `authorAssociation`, `isMinimized` and `minimizedReason` in the same queries, at no extra call. Every header now carries the association (`OWNER`, `NONE`, …). A hidden item carries `hidden: <reason>` and prints only its header and link, whatever the reason, including `outdated` and `resolved` ([#378](https://github.com/mgasca/calendar/issues/378#issuecomment-6706171851), answers given in the session and recorded there). The seen keys are unchanged. A comment hidden after a tick printed it is not reported later, like an edit, because that would mean keeping the hidden state of every item seen (question 3 on #378).
+
 ### Where things live
 
 | Area | Location |
@@ -120,8 +123,8 @@ No changes.
 
 ### Testing
 
-* `just tools test` runs the new suites with the rest: `tools/handover-watch/tests/` (49 tests on #360, 62 after #375) and `tools/agent-hooks/tests/` (227 tests on #358, which includes #357's lexer cases).
-* Each code fix was proved against the old code in a scratch worktree. #357's multi-line cases failed 6 tests on `main`'s guard. #360's negative controls failed 1 to 4 tests each (keeping empty review wrappers, counting a quoted footer, accepting a bare mention, dropping the author check, multi-line header cleaning).
+* `just tools test` runs the new suites with the rest: `tools/handover-watch/tests/` (49 tests on #360, 62 after #375, 70 after #378) and `tools/agent-hooks/tests/` (227 tests on #358, which includes #357's lexer cases).
+* Each code fix was proved against the old code in a scratch worktree. #357's multi-line cases failed 6 tests on `main`'s guard. #360's negative controls failed 1 to 4 tests each (keeping empty review wrappers, counting a quoted footer, accepting a bare mention, dropping the author check, multi-line header cleaning). For #378, printing a hidden item's body again failed the 3 hidden-item tests.
 * The docs corpus tests and the site build cover this card, the ADR and the READMEs the children changed.
 * CI, CodeQL and the ADR-site publish passed on `main` at `f7693551`, which holds every delivering PR. That run is the evidence for criterion 7; `just check` was not run as a whole on one machine for this card.
 
@@ -157,7 +160,7 @@ No. The maintainer has not stated an end to the Claude-first period, so ADR-0044
 * **The docs build's link test is close to its timeout locally.** `tests/build.test.ts` "resolves every internal link and anchor" uses Vitest's default 5 s timeout. It hit that timeout once on #356, at a load average of about 8, and twice more on #366 at about 2.7. Run alone with a 60 s timeout it passed in 12.2 s over 129 pages (measured), so it is slow rather than flaky; CI has not hit it. It is not filed.
 * **Known gap:** the PreToolUse note of #358 has not been seen live. The first session that runs `gh pr create` with such a body on the new `main` can confirm it.
 * **Filed outside the epic:** the public-post guard does not read the body of `gh api --input`, a file or stdin ([#369](https://github.com/mgasca/calendar/issues/369), `bug`, `agent-found`). This predates the epic and was found while delivering #321. It was delivered in [#373](https://github.com/mgasca/calendar/pull/373) and is recorded on card [0020](0020-restructure-agent-guidance.md), where the guard comes from.
-* **Follow-ups:** #363 (GraphQL instead of REST for the watch), delivered in #375. The security review there found that hidden comments print in full with no marker, which predates #375 and is filed as [#378](https://github.com/mgasca/calendar/issues/378). The saved Claude Code workflows deferred on #318 (close-out checks across a stack, review bursts, the issue sweep) can now call the tool and the hook.
+* **Follow-ups:** #363 (GraphQL instead of REST for the watch), delivered in #375. The security review there found that hidden comments print in full with no marker, which predates #375 and was delivered for [#378](https://github.com/mgasca/calendar/issues/378) (see above). The saved Claude Code workflows deferred on #318 (close-out checks across a stack, review bursts, the issue sweep) can now call the tool and the hook.
 
 ## User guide
 

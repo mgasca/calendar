@@ -66,6 +66,10 @@ a:hover {
   outline-offset: 2px;
 }
 
+input {
+  accent-color: var(--color-accent);
+}
+
 button,
 input,
 textarea,

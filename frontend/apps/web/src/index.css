@@ -82,6 +82,33 @@ main > button {
   visibility: hidden;
 }
 
+/* Previous day, Today and Next day under the day heading (#465): links drawn as small buttons. */
+.day-nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin: var(--space-2) 0;
+}
+
+.day-nav a {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  min-height: 2rem;
+  padding: 0 var(--space-3);
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-md);
+  color: var(--color-text);
+  background: var(--color-surface);
+  font-size: var(--text-sm);
+  text-decoration: none;
+}
+
+.day-nav a:hover {
+  color: var(--color-text);
+  background: var(--color-accent-soft);
+}
+
 /* The day summary wraps only between its parts, never inside "4 tasks to do" (#464). */
 .summary-part {
   white-space: nowrap;

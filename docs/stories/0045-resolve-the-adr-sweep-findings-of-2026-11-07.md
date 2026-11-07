@@ -1,9 +1,21 @@
 ---
-status: in-progress
+status: implemented
 date: 2026-11-07
 issue: https://github.com/mgasca/calendar/issues/474
 pr:
   - https://github.com/mgasca/calendar/pull/490
+  - https://github.com/mgasca/calendar/pull/505
+  - https://github.com/mgasca/calendar/pull/506
+  - https://github.com/mgasca/calendar/pull/504
+  - https://github.com/mgasca/calendar/pull/510
+  - https://github.com/mgasca/calendar/pull/509
+  - https://github.com/mgasca/calendar/pull/508
+  - https://github.com/mgasca/calendar/pull/507
+  - https://github.com/mgasca/calendar/pull/503
+  - https://github.com/mgasca/calendar/pull/502
+  - https://github.com/mgasca/calendar/pull/511
+  - https://github.com/mgasca/calendar/pull/520
+  - https://github.com/mgasca/calendar/pull/524
 adrs: ["0000", "0002", "0003", "0011", "0014", "0019", "0021", "0025", "0026", "0029", "0030", "0031", "0032", "0035", "0037", "0045", "0048"]
 ---
 
@@ -28,7 +40,7 @@ The earlier mechanical sweep, epic #437, is closed. Its approved convention for 
 * **This card first (PR 0):** a docs-only card with the scope, the dispositions and the delivery forecast, before any delivery PR of the epic (#474).
 * **Dated amendments that retain the decision (#475 to #481):** each of ADR-0048, 0002, 0003, 0026, 0030, 0021 and 0045 gets a dated amendment under the amendment convention of #437. The decision is retained, and there is **no re-rating**, because no driver or weight changed. Status and title do not change, so the architecture model does not change either.
   * **ADR-0048 (#475):** correct the consequence that says Dependabot does not watch the frontend. `.github/dependabot.yml` has an npm entry for `/frontend`, and [ADR-0012](../decisions/0012-ci-and-dependency-updates.md) records that coverage. Fontsource is retained.
-  * **ADR-0002, 0003, 0026 and 0030 (#476 to #479):** record the delivery of the single-container SPA hosting follow-up. The API serves static files and the SPA fallback (`backend/src/Calendar.Api/Program.cs`, `UseStaticFiles` and `MapFallback`), and container PR #114 has merged. Each amendment links the exact test and PR evidence. It keeps tests that were run apart from checks that only a deployment can make, and claims no live Azure verification. The decision-time context is kept as it was written. Requirements that are only partly tested (asset 200 and body, the problem-details body, 403, the HttpOnly and SameSite cookie flags) are named as such, and their tests are deferred to #497.
+  * **ADR-0002, 0003, 0026 and 0030 (#476 to #479):** record the delivery of the single-container SPA hosting follow-up. The API serves static files and the SPA fallback (`backend/src/Calendar.Api/Program.cs`, `UseStaticFiles` and `MapFallback`), and container PR #114 has merged. Each amendment links the exact test and PR evidence. It keeps tests that were run apart from checks that only a deployment can make, and claims no live Azure verification. The decision-time context is kept as it was written. Requirements that are only partly tested (asset 200 and body, the problem-details body, 403, the HttpOnly and SameSite cookie flags) are named as such in ADR-0026 and ADR-0030, which link follow-up #497 for their tests.
   * **ADR-0021 (#480):** the "revisit when accounts exist" trigger has fired, because [ADR-0041](../decisions/0041-per-user-data-ownership.md) delivered per-user ownership. The amendment records that the trigger fired and that mandatory, explicit `today` and `timeZone` are retained, with **no stored preferred zone**. No product or API change.
   * **ADR-0045 (#481):** record the accepted exception to the 1 % false-failure budget. The back-test in [record 0014](../benchmarks/0014-ci-job-baseline.md) measured 5.5 % (4 of 73 runs, one-sided 95 % upper bound 12.1 %), which the maintainer accepted on 2026-11-07. The amendment links #421 and states that the review window ends at 2026-11-14 13:52Z. The method and the constants are unchanged.
 * **Pages deployment collision (#429):** fixed within this epic, by its own worker and PR. The worker posts the design on #429 before implementing. #429 stays the one defect issue; no duplicate is opened.
@@ -47,6 +59,7 @@ The earlier mechanical sweep, epic #437, is closed. Its approved convention for 
 * **Editing ADR-0025, 0029, 0031, 0032 or 0035** in this epic.
 * **Rewriting decision history** in ADRs or story cards.
 * **The rest of the decision log.** This story resolves the reported findings only.
+* **New hosting tests.** The partly tested hosting requirements moved to #497.
 
 ### Dependencies
 
@@ -55,37 +68,39 @@ The earlier mechanical sweep, epic #437, is closed. Its approved convention for 
 
 ### Acceptance criteria
 
-1. **Given** this card's PR, **when** the maintainer reviews it, **then** it records the scope, the dispositions with evidence links and the delivery forecast, and `just docs test` and `just docs build` pass (#474).
-2. **Given** ADR-0048 after its PR merges, **when** I read its Consequences, **then** a dated amendment says that Dependabot's npm entry covers `/frontend`, Fontsource is still the decision, and the rating table is unchanged (#475).
-3. **Given** ADR-0002 after its PR merges, **when** I read it, **then** no sentence presents single-container SPA hosting as pending, and a dated amendment links the hosting tests and PRs, separates tests that ran from deployment-only checks, and claims no live Azure verification (#476).
-4. **Given** ADR-0003 after its PR merges, **when** I read its Confirmation, **then** serving the built SPA from the API image is no longer conditional on an unfinished follow-up, and the amendment links the build and hosting evidence without claiming live Azure verification (#477).
-5. **Given** ADR-0026 after its PR merges, **when** I read its Consequences and Confirmation, **then** each deep-link requirement is either linked to a test that covers it or named as a deployment-only check, and the router decision is unchanged (#478).
-6. **Given** ADR-0030 after its PR merges, **when** I read its consequences, **then** the static-file fallback and the cache headers are recorded as delivered with links to their tests, the decision-time context is kept, and the outstanding operational checks are named (#479).
-7. **Given** ADR-0021 after its PR merges, **when** I read its revisit trigger, **then** a dated amendment says that the account trigger fired with ADR-0041 and that explicit `today` and `timeZone` are retained with no stored preferred zone, and the API is unchanged (#480).
-8. **Given** ADR-0045 after its PR merges, **when** I read its revisit trigger, **then** a dated amendment records the accepted 5.5 % rate (4 of 73, upper bound 12.1 %) against the 1 % budget, links #421, gives the review window end of 2026-11-14 13:52Z, and replaces "adds about a second" with the measured +3 s in a dated correction; the method and constants are unchanged (#481).
-9. **Given** the ADR-0002, 0003, 0021, 0026, 0030, 0045 and 0048 PRs, **when** I compare their files, **then** each changes one ADR (and the architecture model only if a status or title changed), and `just tools adr` and `just docs build` pass on each (#475 to #481).
-10. **Given** this card, **when** I read "Dispositions", **then** ADR-0029, 0031, 0032 and 0035 are recorded as assumptions not yet verified, to be revisited at the first deployment, linked to #79 to #83 and #85, and no ADR PR was opened for them (#482).
-11. **Given** this card, **when** I read "Dispositions", **then** ADR-0025 is recorded as no change because its drivers still hold, and ADR-0025 itself is not edited (#483).
-12. **Given** the seven story cards that cite superseded ADRs, **when** the citations PR merges, **then** this card holds one disposition per card, only the two citations that read as a wrong current rule (0001 and 0003) were clarified, and every ADR number is kept as written (#484).
-13. **Given** #429, **when** its fix merges, **then** the cause found and the evidence that the fix works are linked from this card (#429).
-14. **Given** the last delivery PR has merged, **when** I read this card, **then** its status is `implemented`, its `pr` list holds every PR of the epic in delivery order, each criterion above links its evidence or says plainly how it was checked, and #421 is still listed as the open follow-up.
-15. **Given** the change is complete, **when** I run `just check`, **then** it passes.
+Each PR below merged on 2026-11-07. "CI" means the `Docs site`, `Tooling` (when its paths changed) and `CI result` jobs passed on the PR head before it merged.
+
+1. **Given** this card's PR, **when** the maintainer reviews it, **then** it records the scope, the dispositions with evidence links and the delivery forecast, and `just docs test` and `just docs build` pass (#474). Delivered by [#490](https://github.com/mgasca/calendar/pull/490), reviewed and merged by the maintainer; `just docs test` and `just docs build` passed locally on its head.
+2. **Given** ADR-0048 after its PR merges, **when** I read its Consequences, **then** a dated amendment says that Dependabot's npm entry covers `/frontend`, Fontsource is still the decision, and the rating table is unchanged (#475). Delivered by [#502](https://github.com/mgasca/calendar/pull/502): [ADR-0048](../decisions/0048-self-host-theme-fonts-with-fontsource-packages.md) Consequences and its "Amendment, 2026-11-07" in More Information.
+3. **Given** ADR-0002 after its PR merges, **when** I read it, **then** no sentence presents single-container SPA hosting as pending, and a dated amendment links the hosting tests and PRs, separates tests that ran from deployment-only checks, and claims no live Azure verification (#476). Delivered by [#507](https://github.com/mgasca/calendar/pull/507): [ADR-0002](../decisions/0002-dotnet-10-minimal-api-backend.md), "Amendment, 2026-11-07: the single-container follow-up is delivered".
+4. **Given** ADR-0003 after its PR merges, **when** I read its Confirmation, **then** serving the built SPA from the API image is no longer conditional on an unfinished follow-up, and the amendment links the build and hosting evidence without claiming live Azure verification (#477). Delivered by [#508](https://github.com/mgasca/calendar/pull/508): [ADR-0003](../decisions/0003-react-vite-typescript-web-ui.md), "Amendment, 2026-11-07: the API image serves the web UI".
+5. **Given** ADR-0026 after its PR merges, **when** I read its Consequences and Confirmation, **then** each deep-link requirement is either linked to a test that covers it or named as a deployment-only check, and the router decision is unchanged (#478). Delivered by [#509](https://github.com/mgasca/calendar/pull/509): [ADR-0026](../decisions/0026-client-side-routing-with-tanstack-router.md), "Amendment, 2026-11-07: deep-link hosting delivered, and what tests cover". Three requirements are tested and two are named as partly tested, linked to #497.
+6. **Given** ADR-0030 after its PR merges, **when** I read its consequences, **then** the static-file fallback and the cache headers are recorded as delivered with links to their tests, the decision-time context is kept, and the outstanding operational checks are named (#479). Delivered by [#510](https://github.com/mgasca/calendar/pull/510): [ADR-0030](../decisions/0030-single-container-for-api-and-spa.md), "Amendment, 2026-11-07: static-file and SPA hosting delivered". The 403 response and the cookie flags are named as partly tested, linked to #497.
+7. **Given** ADR-0021 after its PR merges, **when** I read its revisit trigger, **then** a dated amendment says that the account trigger fired with ADR-0041 and that explicit `today` and `timeZone` are retained with no stored preferred zone, and the API is unchanged (#480). Delivered by [#505](https://github.com/mgasca/calendar/pull/505): [ADR-0021](../decisions/0021-client-supplied-date-and-time-zone-define-the-day.md), "Amendment, 2026-11-07: user accounts exist, and the choice is retained", and the rewritten revisit trigger. The PR changed only the ADR.
+8. **Given** ADR-0045 after its PR merges, **when** I read its revisit trigger, **then** a dated amendment records the accepted 5.5 % rate (4 of 73, upper bound 12.1 %) against the 1 % budget, links #421, gives the review window end of 2026-11-14 13:52Z, and replaces "adds about a second" with the measured +3 s in a dated correction; the method and constants are unchanged (#481). Delivered by [#506](https://github.com/mgasca/calendar/pull/506): [ADR-0045](../decisions/0045-run-time-regression-gates-for-ci-jobs.md), "Amendment, 2026-11-07: an accepted false-failure rate above the budget", including "The gate's measured cost".
+9. **Given** the ADR-0002, 0003, 0021, 0026, 0030, 0045 and 0048 PRs, **when** I compare their files, **then** each changes one ADR (and the architecture model only if a status or title changed), and `just tools adr` and `just docs build` pass on each (#475 to #481). Checked by hand against the merge commits on `main`: each of #502, #505 to #510 changes exactly one file, its ADR, and none changes the architecture model. CI passed on each.
+10. **Given** this card, **when** I read "Dispositions", **then** ADR-0029, 0031, 0032 and 0035 are recorded as assumptions not yet verified, to be revisited at the first deployment, linked to #79 to #83 and #85, and no ADR PR was opened for them (#482). Recorded by #490, which closed #482. No PR of the epic touches those four records.
+11. **Given** this card, **when** I read "Dispositions", **then** ADR-0025 is recorded as no change because its drivers still hold, and ADR-0025 itself is not edited (#483). Recorded by #490, which closed #483. No PR of this epic edits ADR-0025; story 0046 (#523, outside this epic) later edited it for its own scope.
+12. **Given** the seven story cards that cite superseded ADRs, **when** the citations PR merges, **then** this card holds one disposition per card, only the two citations that read as a wrong current rule (0001 and 0003) were clarified, and every ADR number is kept as written (#484). Delivered by [#503](https://github.com/mgasca/calendar/pull/503), which changes one line each in [0001](0001-today-view.md) (the SQLite form, now "When this story was delivered … ADR-0037 withdrew that fallback") and [0003](0003-add-todo-tasks.md) (crediting story 0017 for per-user ownership). The dispositions are in the table below.
+13. **Given** #429, **when** its fix merges, **then** the cause found and the evidence that the fix works are linked from this card (#429). Delivered by [#520](https://github.com/mgasca/calendar/pull/520), after [#504](https://github.com/mgasca/calendar/pull/504) and its revert [#511](https://github.com/mgasca/calendar/pull/511); see "The Pages deployment fix". Verified live once: Publish ADR site run [42423849216](https://github.com/mgasca/calendar/actions/runs/42423849216), the first on the new workflow, succeeded. The long-run absence of collisions is not yet measured.
+14. **Given** the last delivery PR has merged, **when** I read this card, **then** its status is `implemented`, its `pr` list holds every PR of the epic in delivery order, each criterion above links its evidence or says plainly how it was checked, and #421 is still listed as the open follow-up. Delivered by this close-out, [#524](https://github.com/mgasca/calendar/pull/524).
+15. **Given** the change is complete, **when** I run `just check`, **then** it passes. Not run locally for the close-out; CI on the close-out PR covers the docs paths it changes.
 
 ## Dispositions
 
-The maintainer's answers, each recorded as a comment on its issue on 2026-11-07.
+The maintainer's answers, each recorded as a comment on its issue on 2026-11-07, and the PR that delivered each.
 
 | Finding | Records | Disposition | Evidence |
 | --- | --- | --- | --- |
 | J1, Fix now | 0000 | Done before this story: "and the index" removed from the Confirmation sentence | #468, PR #469 (merged 2026-11-07) |
-| J1, Dependabot claim | 0048 | Approved: dated factual correction, no re-rating | [#475](https://github.com/mgasca/calendar/issues/475#issuecomment-6711967969) |
-| J1/J2, SPA hosting delivered | 0002, 0003, 0026, 0030 | Approved: dated delivery amendment each, with exact test and PR evidence; tests kept apart from deployment-only checks; no live Azure claim; no re-rating | [#476](https://github.com/mgasca/calendar/issues/476#issuecomment-6711968178), [#477](https://github.com/mgasca/calendar/issues/477#issuecomment-6711968437), [#478](https://github.com/mgasca/calendar/issues/478#issuecomment-6711968650), [#479](https://github.com/mgasca/calendar/issues/479#issuecomment-6711968832) |
-| J3, account trigger | 0021 | Retained: explicit `today` and `timeZone`, no stored zone; no driver or weight changed; dated amendment; no product or API work | [#480](https://github.com/mgasca/calendar/issues/480#issuecomment-6711968989) |
-| J3, budget exceeded | 0045 | Approved: record the accepted 5.5 % exception, linked to #421, review window ends 2026-11-14 13:52Z; method and constants unchanged; no CI dispatch. The same PR corrects the gate's cost from "about a second" to the measured +3 s at the median (record 0014) | [#481](https://github.com/mgasca/calendar/issues/481#issuecomment-6711969136), #421, [record 0014](../benchmarks/0014-ci-job-baseline.md) |
-| J5, Azure assumptions | 0029, 0031, 0032, 0035 | Deferred to deployment: the cost, usage and cold-start assumptions are unverified, because Calendar is not deployed yet and no measured cost or latency exists. Revisit at the first deployment. No ADR PRs now | [#482](https://github.com/mgasca/calendar/issues/482#issuecomment-6711969327), #79 to #83, #85 |
-| J5, preview-hosting constraint | 0025 | No change: the drivers still hold (no Cloudflare account; GitHub hosting preferred). ADR-0025 is not edited | [#483](https://github.com/mgasca/calendar/issues/483#issuecomment-6711969494) |
-| J6, historical citations | 0011, 0014, 0019 (in stories 0001, 0003, 0004, 0005, 0011, 0014, 0017) | Follow the recommendation: preserve history and the retained engine rules; clarify only a citation that is misleading as a current rule. Per card: **0001** misleading at one line (its SQLite-fallback instruction, which ADR-0037 withdrew); the rest historical or retained. **0003** misleading at one line ("per-user privacy remain follow-ups", which story [0017](0017-per-user-calendar-ownership.md) delivered); the rest historical. **0004, 0005, 0011, 0014** historical. **0017** historical (0019) and explicitly retained (0014). Delivery: one docs PR that clarifies one line each in 0001 and 0003, opened after this card merges | [#484 decision](https://github.com/mgasca/calendar/issues/484#issuecomment-6711969687), [#484 citation review](https://github.com/mgasca/calendar/issues/484#issuecomment-6712017718) |
-| J7, Pages deploy collision | (none) | Fixed within this epic, under the existing defect issue. Accepted design: replace `actions/deploy-pages` with an inline `actions/github-script` Pages API step using a per-run build version, retry an in-progress deployment for up to 10 minutes, and raise the deploy job timeout to 25 minutes | [#429 decision](https://github.com/mgasca/calendar/issues/429#issuecomment-6711969998), [design](https://github.com/mgasca/calendar/issues/429#issuecomment-6712165713), [design accepted](https://github.com/mgasca/calendar/issues/429#issuecomment-6712334920) |
+| J1, Dependabot claim | 0048 | Approved: dated factual correction, no re-rating. Delivered | [#475](https://github.com/mgasca/calendar/issues/475#issuecomment-6711967969), PR #502 |
+| J1/J2, SPA hosting delivered | 0002, 0003, 0026, 0030 | Approved: dated delivery amendment each, with exact test and PR evidence; tests kept apart from deployment-only checks; no live Azure claim; no re-rating. Delivered; ADR-0026 and 0030 link #497 for the partly tested requirements | [#476](https://github.com/mgasca/calendar/issues/476#issuecomment-6711968178), [#477](https://github.com/mgasca/calendar/issues/477#issuecomment-6711968437), [#478](https://github.com/mgasca/calendar/issues/478#issuecomment-6711968650), [#479](https://github.com/mgasca/calendar/issues/479#issuecomment-6711968832); PRs #507, #508, #509, #510 |
+| J3, account trigger | 0021 | Retained: explicit `today` and `timeZone`, no stored zone; no driver or weight changed; dated amendment; no product or API work. Delivered | [#480](https://github.com/mgasca/calendar/issues/480#issuecomment-6711968989), PR #505 |
+| J3, budget exceeded | 0045 | Approved: record the accepted 5.5 % exception, linked to #421, review window ends 2026-11-14 13:52Z; method and constants unchanged; no CI dispatch. The same PR corrects the gate's cost from "about a second" to the measured +3 s at the median (record 0014). Delivered | [#481](https://github.com/mgasca/calendar/issues/481#issuecomment-6711969136), #421, [record 0014](../benchmarks/0014-ci-job-baseline.md), PR #506 |
+| J5, Azure assumptions | 0029, 0031, 0032, 0035 | Deferred to deployment: the cost, usage and cold-start assumptions are unverified, because Calendar is not deployed yet and no measured cost or latency exists. Revisit at the first deployment. No ADR PRs | [#482](https://github.com/mgasca/calendar/issues/482#issuecomment-6711969327) (closed by #490), #79 to #83, #85 |
+| J5, preview-hosting constraint | 0025 | No change: the drivers still hold (no Cloudflare account; GitHub hosting preferred). ADR-0025 is not edited by this epic | [#483](https://github.com/mgasca/calendar/issues/483#issuecomment-6711969494) (closed by #490) |
+| J6, historical citations | 0011, 0014, 0019 (in stories 0001, 0003, 0004, 0005, 0011, 0014, 0017) | Follow the recommendation: preserve history and the retained engine rules; clarify only a citation that is misleading as a current rule. Per card: **0001** misleading at one line (its SQLite-fallback instruction, which ADR-0037 withdrew); the rest historical or retained. **0003** misleading at one line ("per-user privacy remain follow-ups", which story [0017](0017-per-user-calendar-ownership.md) delivered); the rest historical. **0004, 0005, 0011, 0014** historical. **0017** historical (0019) and explicitly retained (0014). Delivered: PR #503 clarified one line each in 0001 and 0003 | [#484 decision](https://github.com/mgasca/calendar/issues/484#issuecomment-6711969687), [#484 citation review](https://github.com/mgasca/calendar/issues/484#issuecomment-6712017718), PR #503 |
+| J7, Pages deploy collision | (none) | Fixed within this epic, under the existing defect issue. The first fix (#504) broke deploys and was reverted (#511); the delivered fix (#520) uses a per-publication `gh-pages` commit as the build version, a 10-minute in-progress retry and a 25-minute deploy job timeout | [#429 decision](https://github.com/mgasca/calendar/issues/429#issuecomment-6711969998), [design](https://github.com/mgasca/calendar/issues/429#issuecomment-6712165713), [design accepted](https://github.com/mgasca/calendar/issues/429#issuecomment-6712334920); PRs #504, #511, #520 |
 
 The maintainer scheduled this card as story 0045 and assigned its final update to the Card worker ([#474](https://github.com/mgasca/calendar/issues/474#issuecomment-6711967790)).
 
@@ -96,35 +111,34 @@ The maintainer scheduled this card as story 0045 and assigned its final update t
 | ADR | Decision | Why it matters for this story |
 | --- | --- | --- |
 | [0000](../decisions/0000-use-markdown-architectural-decision-records.md) | MADR for Any Decision Records | Defines the record format and the statuses; its Confirmation was corrected by #469 |
-| [0002](../decisions/0002-dotnet-10-minimal-api-backend.md) | .NET 10 with Minimal APIs | Gets a delivery amendment for single-container SPA hosting (#476) |
-| [0003](../decisions/0003-react-vite-typescript-web-ui.md) | React, Vite and TypeScript SPA | Its Confirmation gets a delivery amendment (#477) |
+| [0002](../decisions/0002-dotnet-10-minimal-api-backend.md) | .NET 10 with Minimal APIs | Delivery amendment for single-container SPA hosting (#476, PR #507) |
+| [0003](../decisions/0003-react-vite-typescript-web-ui.md) | React, Vite and TypeScript SPA | Delivery amendment to its Confirmation (#477, PR #508) |
 | [0011](../decisions/0011-make-as-top-level-task-runner.md) | GNU Make as task runner (superseded by 0038) | Cited by historical stories (#484) |
 | [0014](../decisions/0014-postgresql-database-engine.md) | PostgreSQL with a SQLite fallback (superseded by 0037) | Cited by historical stories; its engine rules are retained by ADR-0037 (#484) |
 | [0019](../decisions/0019-single-user-mode-with-authentication-deferred.md) | Single-user mode (superseded by 0027) | Cited by historical stories (#484) |
-| [0021](../decisions/0021-client-supplied-date-and-time-zone-define-the-day.md) | The client's date and time zone define the day | Account trigger fired; decision retained with an amendment (#480) |
+| [0021](../decisions/0021-client-supplied-date-and-time-zone-define-the-day.md) | The client's date and time zone define the day | Account trigger fired; decision retained with an amendment (#480, PR #505) |
 | [0025](../decisions/0025-github-pages-pr-previews.md) | GitHub Pages PR previews | Watch: no change (#483) |
-| [0026](../decisions/0026-client-side-routing-with-tanstack-router.md) | TanStack Router with code-based routes | Deep-link claims get a delivery amendment (#478) |
+| [0026](../decisions/0026-client-side-routing-with-tanstack-router.md) | TanStack Router with code-based routes | Delivery amendment for deep links (#478, PR #509) |
 | [0029](../decisions/0029-azure-container-apps-compute-platform.md) | Azure Container Apps | Watch: cost and cold-start assumptions deferred to deployment (#482) |
-| [0030](../decisions/0030-single-container-for-api-and-spa.md) | One container for the API and the SPA | Gets a delivery amendment for fallback and caching (#479) |
+| [0030](../decisions/0030-single-container-for-api-and-spa.md) | One container for the API and the SPA | Delivery amendment for fallback and caching (#479, PR #510) |
 | [0031](../decisions/0031-azure-postgresql-flexible-server.md) | Azure PostgreSQL Flexible Server | Watch: assumptions deferred to deployment (#482) |
 | [0032](../decisions/0032-azure-key-vault-for-secrets.md) | Azure Key Vault for secrets | Watch: assumptions deferred to deployment (#482) |
 | [0035](../decisions/0035-separate-staging-and-production-environments.md) | Separate staging and production | Watch: assumptions deferred to deployment (#482) |
 | [0037](../decisions/0037-postgresql-only-no-sqlite-fallback.md) | PostgreSQL only | Retains ADR-0014's engine rules, so those citations stay valid (#484) |
-| [0045](../decisions/0045-run-time-regression-gates-for-ci-jobs.md) | CI run-time gates with a log-normal bound | Records the accepted budget exception (#481) |
-| [0048](../decisions/0048-self-host-theme-fonts-with-fontsource-packages.md) | Self-hosted Fontsource fonts | Gets the Dependabot correction (#475) |
+| [0045](../decisions/0045-run-time-regression-gates-for-ci-jobs.md) | CI run-time gates with a log-normal bound | Records the accepted budget exception and the measured +3 s cost (#481, PR #506) |
+| [0048](../decisions/0048-self-host-theme-fonts-with-fontsource-packages.md) | Self-hosted Fontsource fonts | Dependabot correction (#475, PR #502) |
 
-No new ADR is expected. Every changed record keeps its decision and its status, so the architecture model ([ADR-0039](../decisions/0039-architecture-model-and-visualization-tooling.md)) changes only if a PR changes a status or title.
+No new ADR was needed. Every changed record kept its decision and its status, so the architecture model ([ADR-0039](../decisions/0039-architecture-model-and-visualization-tooling.md)) did not change.
 
 ### Other decisions (not ADR-worthy)
 
 * **Amend in place, do not supersede:** the decisions still hold, and only their consequences, confirmations or revisit triggers are out of date. A dated amendment keeps the decision-time text readable and shows what changed and when, as epic #437 agreed.
 * **No re-rating:** the maintainer confirmed that no driver or weight changed for any amended record. Ratings change only when drivers or weights do.
 * **One PR per ADR:** each record is reviewed and merged on its own, so a contested amendment holds back no other.
-* **Watch findings closed by this card:** #482 and #483 need no file change, so the evidence for their disposition lives here, and this card's PR closes them.
+* **Watch findings closed by this card:** #482 and #483 need no file change, so the evidence for their disposition lives here, and this card's PR closed them.
+* **GITHUB_SHA fallback for the Pages build version:** approved by the maintainer for #520. If Pages answers 404 for the `gh-pages` commit, the deploy step retries once with `GITHUB_SHA` and logs a warning, so publishing cannot break the way #504 did.
 
 ## Implementation notes
-
-*Planned. This section is completed as the story is built.*
 
 ### Where things live
 
@@ -132,49 +146,61 @@ No new ADR is expected. Every changed record keeps its decision and its status, 
 | --- | --- |
 | This card | `docs/stories/0045-resolve-the-adr-sweep-findings-of-2026-11-07.md` |
 | Amended records | `docs/decisions/0002-*.md`, `0003-*.md`, `0021-*.md`, `0026-*.md`, `0030-*.md`, `0045-*.md`, `0048-*.md` |
+| Clarified stories | `docs/stories/0001-today-view.md`, `docs/stories/0003-add-todo-tasks.md` |
 | SPA hosting evidence | `backend/src/Calendar.Api/Program.cs` (`UseStaticFiles`, `MapFallback`), the API hosting tests, container PR #114 |
 | Dependabot evidence | `.github/dependabot.yml` (npm entry for `/frontend`) |
 | Budget evidence | [record 0014](../benchmarks/0014-ci-job-baseline.md), #421 |
-| Pages deployment | `.github/workflows/pages.yml` (#429) |
-| Citation review | the seven story cards named under "Agreed scope" |
+| Pages deployment | `.github/workflows/pages.yml` (deploy job), its tests in `frontend/apps/docs/src/lib/pages-workflow.test.ts`, and story [0032](0032-unique-pages-publication-versions.md) |
 
 ### API
 
 No changes.
 
-### Delivery forecast
+### Delivery
 
-One PR per record, all opened after this card merges and each based on fresh `origin/main`:
+All PRs merged on 2026-11-07, in this order:
 
-| PR | Issue | Change | Closes |
-| --- | --- | --- | --- |
-| PR 0 (#490, this card) | #474 | The card | #482, #483 |
-| ADR-0048 | #475 | Dependabot correction | #475 |
-| ADR-0002 | #476 | Delivery amendment | #476 |
-| ADR-0003 | #477 | Delivery amendment | #477 |
-| ADR-0026 | #478 | Delivery amendment | #478 |
-| ADR-0030 | #479 | Delivery amendment | #479 |
-| ADR-0021 | #480 | Trigger fired, decision retained | #480 |
-| ADR-0045 | #481 | Accepted budget exception | #481 |
-| Citations | #484 | One-line clarifications in stories 0001 and 0003 | #484 |
-| Pages deploy | #429 | Workflow fix to the accepted design | #429 |
-| Close-out (Card worker) | #474, #473 | This card: status, `pr` list, evidence | #474 |
+| PR | Issue | Change |
+| --- | --- | --- |
+| [#490](https://github.com/mgasca/calendar/pull/490) | #474 | This card (PR 0); closed #482 and #483 |
+| [#505](https://github.com/mgasca/calendar/pull/505) | #480 | ADR-0021: trigger fired, decision retained |
+| [#506](https://github.com/mgasca/calendar/pull/506) | #481 | ADR-0045: accepted budget exception and the +3 s cost correction |
+| [#504](https://github.com/mgasca/calendar/pull/504) | #429 | First Pages fix (synthesized build version); broke deploys |
+| [#510](https://github.com/mgasca/calendar/pull/510) | #479 | ADR-0030: delivery amendment |
+| [#509](https://github.com/mgasca/calendar/pull/509) | #478 | ADR-0026: delivery amendment |
+| [#508](https://github.com/mgasca/calendar/pull/508) | #477 | ADR-0003: delivery amendment |
+| [#507](https://github.com/mgasca/calendar/pull/507) | #476 | ADR-0002: delivery amendment |
+| [#503](https://github.com/mgasca/calendar/pull/503) | #484 | One-line clarifications in stories 0001 and 0003 |
+| [#502](https://github.com/mgasca/calendar/pull/502) | #475 | ADR-0048: Dependabot correction |
+| [#511](https://github.com/mgasca/calendar/pull/511) | #429 | Revert of #504 |
+| [#520](https://github.com/mgasca/calendar/pull/520) | #429 | Delivered Pages fix: a `gh-pages` commit per publication as build version |
+| [#524](https://github.com/mgasca/calendar/pull/524) | #474 | This close-out: card status, `pr` list and evidence |
+
+### The Pages deployment fix (#429)
+
+* **Cause (from the design on #429):** the #339 override of `GITHUB_SHA` never took effect, because the runner ignores `GITHUB_*` variables set in a step's `env`. `actions/deploy-pages` therefore sent `main`'s head SHA as the build version, so every publication between two merges reused one Pages deployment ID. The first deployment of a new version was then refused with "in progress deployment" of the reused one (measured over 164 deploy steps; the mechanism is inferred, not confirmed by GitHub).
+* **#504:** replaced `actions/deploy-pages` with an inline `actions/github-script` Pages API step and sent a synthesized SHA-1 per run as `pages_build_version`. Every deploy then failed with 404. Pages appears to require the build version to be a real commit of the repository; this is **inferred** from the failures, and GitHub does not document it.
+* **#511:** reverted #504. Publishing was restored: Publish ADR site run [42422434576](https://github.com/mgasca/calendar/actions/runs/42422434576) succeeded.
+* **#520:** each publication creates its own `gh-pages` commit (`git commit --allow-empty`) and sends that commit as the build version. If Pages answers 404 for it, the step retries with `GITHUB_SHA` and logs a warning (fallback approved by the maintainer). An in-progress deployment is retried for up to 10 minutes, inside a deploy job timeout of 25 minutes.
+* **Live verification (measured, one run):** Publish ADR site run [42423849216](https://github.com/mgasca/calendar/actions/runs/42423849216), the first on the new workflow, created and completed Pages deployment `edf6b0b49bac74160d79f25da1071152715ca069`. That is a `gh-pages` commit, not the head of `main` (`145105bc0` at the time), and the run logged no 404 and no fallback warning. Pages refused it 10 times with "in progress deployment" of `5eaf27b1…`, a deployment from the old shared-ID workflow, and it succeeded after about 7 minutes through the retry backstop.
+* **Not yet measured:** whether collisions stay absent over time. Only one deploy had run on the new workflow at close-out.
 
 ### Testing
 
-* Every PR: `just tools adr` and `just docs build`. The card PRs also run the docs corpus tests (`just docs test`).
-* The #429 fix needs evidence that a Publish run no longer fails on an in-progress deployment, posted on the issue.
-* The amendments for #476 to #479 link the tests that cover each claim. A claim with no test is named as a deployment-only check, not marked delivered.
+* Every ADR and citation PR passed the CI `Docs site` and `CI result` jobs, and the ADR PRs also the `Tooling` job, on their heads before merge. The card PRs ran `just docs test` and `just docs build` locally.
+* #520 tests the deploy step in `frontend/apps/docs/src/lib/pages-workflow.test.ts` against a fake Pages API that, like the real one, answers 404 unless the build version names a commit.
+* The amendments for #476 to #479 link the tests that cover each claim. Claims that only a deployment can check, or that are only partly tested, are named as such and not marked delivered.
 
 ### Lessons learned, known issues and follow-ups
 
-* **#421:** the week-later review of the CI run-time gate stays open, with its window ending 2026-11-14 13:52Z. It does not gate this story.
-* **#497:** tests for the SPA hosting requirements that are only partly tested today (asset 200 and body, the problem-details body, 403, HttpOnly and SameSite). The ADR-0002, 0003, 0026 and 0030 amendments name them as partly tested.
-* **#482:** the Azure assumptions of ADR-0029, 0031, 0032 and 0035 are revisited at the first deployment (#79 to #83, #85).
+* **A fake API that accepts anything proves little.** The #504 tests used a fake Pages API that accepted any build version, so they passed while the real API rejected every deploy. #520 made the fake reject versions that are not commits, as the real one does.
+* **The Pages deploy step cannot run before merge.** The `workflow_run` and `pull_request_target` triggers run the workflow from `main`, so a change to the deploy job is first exercised by the run after it merges. Plan a fast revert path (as #511 was) for such changes.
+* **The runner ignores `GITHUB_*` overrides in a step's `env`.** That is why the #339 fix never worked. Pass a value under another name instead.
+* **Follow-up #497:** tests for the SPA hosting requirements that are only partly tested today (asset 200 and body, the problem-details body, 403, HttpOnly and SameSite). ADR-0026 and ADR-0030 link it.
+* **Follow-up #421:** the week-later review of the CI run-time gate stays open, with its window ending 2026-11-14 13:52Z.
+* **Deferred, #482:** the Azure assumptions of ADR-0029, 0031, 0032 and 0035 are revisited at the first deployment (#79 to #83, #85).
 
 ## User guide
-
-*Planned behaviour. This section is finalised when the story is implemented.*
 
 ### Reading an amended decision
 

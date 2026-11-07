@@ -8,7 +8,7 @@ namespace Calendar.Api.Contracts;
 /// Create an event. Discriminated by <c>allDay</c>: a timed event needs <c>start</c>, <c>end</c> and
 /// <c>timeZone</c>; an all-day event needs <c>startDate</c> and <c>endDate</c> (end exclusive) and no timed fields.
 /// </summary>
-public sealed record CreateEventRequest
+public sealed record CreateEventRequest : IEventFields
 {
   /// <summary>Event title; required, at most 200 characters after trimming.</summary>
   public required string Title { get; init; }
@@ -48,6 +48,78 @@ public sealed record CreateEventRequest
   public string? Notes { get; init; }
 }
 
+/// <summary>
+/// Replace an event: the fields and rules of <c>CreateEventRequest</c>, plus the <c>version</c> the client loaded.
+/// The kind can change (timed to all-day and back).
+/// </summary>
+public sealed record UpdateEventRequest : IEventFields
+{
+  /// <summary>Event title; required, at most 200 characters after trimming.</summary>
+  public required string Title { get; init; }
+
+  /// <summary>
+  /// <c>true</c> for an all-day event (<c>startDate</c>/<c>endDate</c>),
+  /// <c>false</c> for a timed one (<c>start</c>/<c>end</c>/<c>timeZone</c>).
+  /// </summary>
+  public bool AllDay { get; init; }
+
+  /// <summary>
+  /// Timed events: inclusive start instant, RFC 3339 with an explicit offset (e.g. 2026-10-26T14:00:00Z); <c>null</c> for all-day events.
+  /// </summary>
+  [JsonConverter(typeof(ExplicitOffsetConverter))]
+  public DateTimeOffset? Start { get; init; }
+
+  /// <summary>Timed events: exclusive end instant, after <c>start</c>; <c>null</c> for all-day events.</summary>
+  [JsonConverter(typeof(ExplicitOffsetConverter))]
+  public DateTimeOffset? End { get; init; }
+
+  /// <summary>Timed events: IANA time zone the event was created in, e.g. America/New_York; <c>null</c> for all-day events.</summary>
+  public string? TimeZone { get; init; }
+
+  /// <summary>All-day events: first date (YYYY-MM-DD); <c>null</c> for timed events.</summary>
+  public DateOnly? StartDate { get; init; }
+
+  /// <summary>
+  /// All-day events: exclusive end date (YYYY-MM-DD), after <c>startDate</c>; a one-day event on the 26th ends on the 27th.
+  /// <c>null</c> for timed events.
+  /// </summary>
+  public DateOnly? EndDate { get; init; }
+
+  /// <summary>Optional location, at most 200 characters.</summary>
+  public string? Location { get; init; }
+
+  /// <summary>Optional notes, at most 4000 characters.</summary>
+  public string? Notes { get; init; }
+
+  /// <summary>
+  /// The event's <c>version</c> as last read; the update is refused with <c>409</c> when the event has changed
+  /// since.
+  /// </summary>
+  public required uint Version { get; init; }
+}
+
+/// <summary>The fields an event is created or replaced from.</summary>
+internal interface IEventFields
+{
+  string Title { get; }
+
+  bool AllDay { get; }
+
+  DateTimeOffset? Start { get; }
+
+  DateTimeOffset? End { get; }
+
+  string? TimeZone { get; }
+
+  DateOnly? StartDate { get; }
+
+  DateOnly? EndDate { get; }
+
+  string? Location { get; }
+
+  string? Notes { get; }
+}
+
 /// <summary>An event as stored. Fields of the other kind are <c>null</c>.</summary>
 public sealed record EventResponse
 {
@@ -80,6 +152,9 @@ public sealed record EventResponse
 
   /// <summary>All-day events: exclusive end date; <c>null</c> for timed events.</summary>
   public DateOnly? EndDate { get; init; }
+
+  /// <summary>Opaque version of the stored event; send it back to update the event.</summary>
+  public required uint Version { get; init; }
 }
 
 /// <summary>An all-day event in the day agenda (floating dates, end exclusive).</summary>

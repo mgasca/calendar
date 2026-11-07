@@ -162,4 +162,63 @@ public sealed class CalendarEventTests
     timed.Overlaps(allDay).ShouldBeFalse();
     allDay.Overlaps(timed).ShouldBeFalse();
   }
+
+  [Fact]
+  public void Update_ReplacesTheFields_AndKeepsIdAndOwner()
+  {
+    var evt = CalendarEvent.Create(Owner, "Standup", Nine, Nine.AddMinutes(15), NewYork, "Room 1", "Agenda");
+    Guid id = evt.Id;
+
+    evt.Update(" Retro ", Nine.AddHours(1).ToOffset(TimeSpan.FromHours(-5)), Nine.AddHours(2), "Europe/Madrid");
+
+    evt.Id.ShouldBe(id);
+    evt.OwnerId.ShouldBe(Owner);
+    evt.Title.ShouldBe("Retro");
+    evt.Start.ShouldBe(Nine.AddHours(1));
+    evt.Start!.Value.Offset.ShouldBe(TimeSpan.Zero);
+    evt.End.ShouldBe(Nine.AddHours(2));
+    evt.TimeZoneId.ShouldBe("Europe/Madrid");
+    evt.Location.ShouldBeNull();
+    evt.Notes.ShouldBeNull();
+  }
+
+  [Fact]
+  public void UpdateAllDay_TurnsATimedEventIntoAnAllDayOne_AndBack()
+  {
+    var evt = CalendarEvent.Create(Owner, "Standup", Nine, Nine.AddMinutes(15), NewYork);
+
+    evt.UpdateAllDay("Offsite", Day, Day.AddDays(2), "Lodge", "Bring boots");
+
+    evt.IsAllDay.ShouldBeTrue();
+    evt.StartDate.ShouldBe(Day);
+    evt.EndDate.ShouldBe(Day.AddDays(2));
+    evt.Start.ShouldBeNull();
+    evt.End.ShouldBeNull();
+    evt.TimeZoneId.ShouldBeNull();
+    evt.Location.ShouldBe("Lodge");
+    evt.Notes.ShouldBe("Bring boots");
+
+    evt.Update("Standup", Nine, Nine.AddHours(1), NewYork);
+
+    evt.IsAllDay.ShouldBeFalse();
+    evt.StartDate.ShouldBeNull();
+    evt.EndDate.ShouldBeNull();
+    evt.Start.ShouldBe(Nine);
+  }
+
+  [Fact]
+  public void Update_WithInvalidValues_Throws_AndChangesNothing()
+  {
+    var evt = CalendarEvent.Create(Owner, "Standup", Nine, Nine.AddMinutes(15), NewYork, "Room 1");
+
+    Should.Throw<ArgumentException>(() => evt.Update("Standup", Nine, Nine, NewYork)).ParamName.ShouldBe("end");
+    Should.Throw<ArgumentException>(() => evt.Update("  ", Nine, Nine.AddHours(1), NewYork)).ParamName.ShouldBe("title");
+    Should.Throw<ArgumentException>(() => evt.Update("A", Nine, Nine.AddHours(1), "Not/AZone")).ParamName.ShouldBe("timeZoneId");
+    Should.Throw<ArgumentException>(() => evt.UpdateAllDay("A", Day, Day)).ParamName.ShouldBe("endDate");
+
+    evt.Title.ShouldBe("Standup");
+    evt.End.ShouldBe(Nine.AddMinutes(15));
+    evt.Location.ShouldBe("Room 1");
+    evt.IsAllDay.ShouldBeFalse();
+  }
 }

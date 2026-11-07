@@ -256,4 +256,178 @@ public sealed class EventEndpointsTests(PostgresFixture postgres) : ApiTestBase(
 
     response.StatusCode.ShouldBe(HttpStatusCode.BadRequest);
   }
+
+  [Fact]
+  public async Task UpdateTimedEvent_ReplacesEveryField_AndReturnsANewVersion()
+  {
+    EventResponse created = await CreateAsync(new
+    {
+      title = "Dentist",
+      start = "2026-10-26T15:00:00Z",
+      end = "2026-10-26T16:00:00Z",
+      timeZone = "UTC",
+      location = "Clinic",
+      notes = "Bring card",
+    });
+
+    using HttpResponseMessage response = await Client.PutAsJsonAsync(
+      EventUri(created.Id),
+      new
+      {
+        title = " Dentist (moved) ",
+        start = "2026-10-26T12:00:00-04:00",
+        end = "2026-10-26T13:00:00-04:00",
+        timeZone = "America/New_York",
+        version = created.Version,
+      },
+      Ct);
+
+    response.StatusCode.ShouldBe(HttpStatusCode.OK);
+    EventResponse updated = (await response.Content.ReadFromJsonAsync<EventResponse>(Ct))!;
+    updated.Id.ShouldBe(created.Id);
+    updated.Title.ShouldBe("Dentist (moved)");
+    updated.Start.ShouldBe(Utc(2026, 10, 26, 16));
+    updated.End.ShouldBe(Utc(2026, 10, 26, 17));
+    updated.TimeZone.ShouldBe("America/New_York");
+    updated.Location.ShouldBeNull();
+    updated.Notes.ShouldBeNull();
+    updated.Version.ShouldNotBe(created.Version);
+
+    (await Client.GetFromJsonAsync<EventResponse>(EventUri(created.Id), Ct)).ShouldBe(updated);
+    DayAgendaResponse day = await GetAgendaAsync("2026-10-26", "UTC");
+    day.Events.ShouldHaveSingleItem().Start.ShouldBe(Utc(2026, 10, 26, 16));
+  }
+
+  [Fact]
+  public async Task UpdateEvent_CanSwitchATimedEventToAllDay()
+  {
+    EventResponse created = await CreateAsync(new
+    {
+      title = "Offsite",
+      start = "2026-10-26T15:00:00Z",
+      end = "2026-10-26T16:00:00Z",
+      timeZone = "UTC",
+    });
+
+    using HttpResponseMessage response = await Client.PutAsJsonAsync(
+      EventUri(created.Id),
+      new { title = "Offsite", allDay = true, startDate = "2026-10-26", endDate = "2026-10-28", version = created.Version },
+      Ct);
+
+    response.StatusCode.ShouldBe(HttpStatusCode.OK);
+    EventResponse updated = (await response.Content.ReadFromJsonAsync<EventResponse>(Ct))!;
+    updated.AllDay.ShouldBeTrue();
+    updated.StartDate.ShouldBe(new DateOnly(2026, 10, 26));
+    updated.EndDate.ShouldBe(new DateOnly(2026, 10, 28));
+    updated.Start.ShouldBeNull();
+    updated.TimeZone.ShouldBeNull();
+    DayAgendaResponse day = await GetAgendaAsync("2026-10-27", "UTC");
+    day.Events.ShouldBeEmpty();
+    day.AllDayEvents.ShouldHaveSingleItem().Id.ShouldBe(created.Id);
+  }
+
+  [Fact]
+  public async Task UpdateEvent_WithAStaleVersion_Returns409_AndLeavesTheEventUnchanged()
+  {
+    EventResponse created = await CreateAsync(new { title = "Dentist", allDay = true, startDate = "2026-10-26", endDate = "2026-10-27" });
+    using HttpResponseMessage first = await Client.PutAsJsonAsync(
+      EventUri(created.Id),
+      new { title = "Changed elsewhere", allDay = true, startDate = "2026-10-26", endDate = "2026-10-27", version = created.Version },
+      Ct);
+    first.StatusCode.ShouldBe(HttpStatusCode.OK);
+    EventResponse latest = (await first.Content.ReadFromJsonAsync<EventResponse>(Ct))!;
+
+    using HttpResponseMessage stale = await Client.PutAsJsonAsync(
+      EventUri(created.Id),
+      new { title = "Stale write", allDay = true, startDate = "2026-10-27", endDate = "2026-10-28", version = created.Version },
+      Ct);
+
+    stale.StatusCode.ShouldBe(HttpStatusCode.Conflict);
+    stale.Content.Headers.ContentType!.MediaType.ShouldBe("application/problem+json");
+    (await Client.GetFromJsonAsync<EventResponse>(EventUri(created.Id), Ct)).ShouldBe(latest);
+  }
+
+  [Fact]
+  public async Task UpdateEvent_Invalid_Returns400WithTheField_AndLeavesTheEventUnchanged()
+  {
+    EventResponse created = await CreateAsync(new
+    {
+      title = "Dentist",
+      start = "2026-10-26T15:00:00Z",
+      end = "2026-10-26T16:00:00Z",
+      timeZone = "UTC",
+    });
+
+    using HttpResponseMessage endBeforeStart = await Client.PutAsJsonAsync(
+      EventUri(created.Id),
+      new { title = "Dentist", start = "2026-10-26T15:00:00Z", end = "2026-10-26T14:00:00Z", timeZone = "UTC", version = created.Version },
+      Ct);
+    using HttpResponseMessage mixedKinds = await Client.PutAsJsonAsync(
+      EventUri(created.Id),
+      new { title = "Dentist", allDay = true, startDate = "2026-10-26", start = "2026-10-26T15:00:00Z", version = created.Version },
+      Ct);
+
+    endBeforeStart.StatusCode.ShouldBe(HttpStatusCode.BadRequest);
+    JsonObject problem = (await endBeforeStart.Content.ReadFromJsonAsync<JsonObject>(Ct))!;
+    problem["errors"]!.AsObject().ContainsKey("end").ShouldBeTrue();
+    mixedKinds.StatusCode.ShouldBe(HttpStatusCode.BadRequest);
+    JsonObject mixed = (await mixedKinds.Content.ReadFromJsonAsync<JsonObject>(Ct))!;
+    mixed["errors"]!.AsObject().Select(e => e.Key).Order(StringComparer.Ordinal).ShouldBe(["endDate", "start"]);
+    (await Client.GetFromJsonAsync<EventResponse>(EventUri(created.Id), Ct)).ShouldBe(created);
+  }
+
+  [Fact]
+  public async Task UpdateEvent_WithoutAVersion_Returns400()
+  {
+    EventResponse created = await CreateAsync(new { title = "Dentist", allDay = true, startDate = "2026-10-26", endDate = "2026-10-27" });
+
+    using HttpResponseMessage response = await Client.PutAsJsonAsync(
+      EventUri(created.Id),
+      new { title = "Dentist", allDay = true, startDate = "2026-10-26", endDate = "2026-10-27" },
+      Ct);
+
+    response.StatusCode.ShouldBe(HttpStatusCode.BadRequest);
+  }
+
+  [Fact]
+  public async Task UpdateEvent_Unknown_Returns404Problem()
+  {
+    using HttpResponseMessage response = await Client.PutAsJsonAsync(
+      EventUri(Guid.NewGuid()),
+      new { title = "Dentist", allDay = true, startDate = "2026-10-26", endDate = "2026-10-27", version = 1 },
+      Ct);
+
+    response.StatusCode.ShouldBe(HttpStatusCode.NotFound);
+    response.Content.Headers.ContentType!.MediaType.ShouldBe("application/problem+json");
+  }
+
+  [Fact]
+  public async Task DeleteEvent_RemovesIt_FromTheResourceAndTheAgenda()
+  {
+    EventResponse created = await CreateAsync(new
+    {
+      title = "Dentist",
+      start = "2026-10-26T15:00:00Z",
+      end = "2026-10-26T16:00:00Z",
+      timeZone = "UTC",
+    });
+
+    using HttpResponseMessage deleted = await Client.DeleteAsync(EventUri(created.Id), Ct);
+    using HttpResponseMessage again = await Client.DeleteAsync(EventUri(created.Id), Ct);
+    using HttpResponseMessage fetched = await Client.GetAsync(EventUri(created.Id), Ct);
+
+    deleted.StatusCode.ShouldBe(HttpStatusCode.NoContent);
+    again.StatusCode.ShouldBe(HttpStatusCode.NotFound);
+    fetched.StatusCode.ShouldBe(HttpStatusCode.NotFound);
+    (await GetAgendaAsync("2026-10-26", "UTC")).Events.ShouldBeEmpty();
+  }
+
+  private static Uri EventUri(Guid id) => new($"/api/events/{id}", UriKind.Relative);
+
+  private async Task<EventResponse> CreateAsync(object request)
+  {
+    using HttpResponseMessage created = await Client.PostAsJsonAsync(Events, request, Ct);
+    created.StatusCode.ShouldBe(HttpStatusCode.Created);
+    return (await created.Content.ReadFromJsonAsync<EventResponse>(Ct))!;
+  }
 }

@@ -117,6 +117,31 @@ public sealed class CalendarEvent
   }
 
   /// <summary>
+  /// Replaces every editable field with a timed event's, by the rules of <see cref="Create"/>. An all-day event
+  /// becomes timed. Nothing changes when a value is invalid.
+  /// </summary>
+  public void Update(
+      string title,
+      DateTimeOffset start,
+      DateTimeOffset end,
+      string timeZoneId,
+      string? location = null,
+      string? notes = null) =>
+      CopyFrom(Create(OwnerId, title, start, end, timeZoneId, location, notes));
+
+  /// <summary>
+  /// Replaces every editable field with an all-day event's, by the rules of <see cref="CreateAllDay"/>. A timed
+  /// event becomes all-day. Nothing changes when a value is invalid.
+  /// </summary>
+  public void UpdateAllDay(
+      string title,
+      DateOnly startDate,
+      DateOnly endDate,
+      string? location = null,
+      string? notes = null) =>
+      CopyFrom(CreateAllDay(OwnerId, title, startDate, endDate, location, notes));
+
+  /// <summary>
   /// True when both events are of the same kind and their spans intersect (half-open, so back-to-back events do
   /// not overlap). A timed and an all-day event never overlap here: all-day dates are floating and have no
   /// instant range without picking a zone.
@@ -132,6 +157,20 @@ public sealed class CalendarEvent
     return IsAllDay
         ? StartDate < other.EndDate && other.StartDate < EndDate
         : Start < other.End && other.Start < End;
+  }
+
+  /// <summary>Takes the editable fields of an already validated event, keeping this one's id and owner.</summary>
+  private void CopyFrom(CalendarEvent validated)
+  {
+    Title = validated.Title;
+    Location = validated.Location;
+    Notes = validated.Notes;
+    IsAllDay = validated.IsAllDay;
+    Start = validated.Start;
+    End = validated.End;
+    TimeZoneId = validated.TimeZoneId;
+    StartDate = validated.StartDate;
+    EndDate = validated.EndDate;
   }
 
   private static Guid RequireOwner(Guid ownerId) =>

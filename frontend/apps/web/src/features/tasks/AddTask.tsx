@@ -1,12 +1,20 @@
-import { useRef, useState } from 'react';
+import { useRef, useState, type ReactNode } from 'react';
+import { createPortal } from 'react-dom';
 
 import { TaskForm } from './TaskForm.tsx';
 
 /**
  * The "Add task" button and the form it opens. The due date is prefilled with `initialDate` when
- * given; focus returns to the button when the form closes.
+ * given; focus returns to the button when the form closes. The confirmation is rendered into
+ * `statusContainer` when given, so a row of buttons never has a message between them (#459).
  */
-export function AddTask({ initialDate }: { initialDate?: string | undefined }) {
+export function AddTask({
+  initialDate,
+  statusContainer,
+}: {
+  initialDate?: string | undefined;
+  statusContainer?: HTMLElement | null | undefined;
+}) {
   const [adding, setAdding] = useState(false);
   const [saved, setSaved] = useState(false);
   const [formDate, setFormDate] = useState<string>();
@@ -18,6 +26,8 @@ export function AddTask({ initialDate }: { initialDate?: string | undefined }) {
       addButton.current?.focus();
     });
   };
+  const inContainer = (message: ReactNode) =>
+    statusContainer ? createPortal(message, statusContainer) : message;
   return (
     <>
       <button
@@ -32,7 +42,7 @@ export function AddTask({ initialDate }: { initialDate?: string | undefined }) {
       >
         Add task
       </button>
-      {saved && <p role="status">Task added. You can find it in My tasks.</p>}
+      {saved && inContainer(<p role="status">Task added. You can find it in My tasks.</p>)}
       {adding && <TaskForm {...(formDate ? { initialDate: formDate } : {})} onClose={closeForm} />}
     </>
   );

@@ -49,7 +49,7 @@ Chosen option: "Fontsource variable-font npm packages, bundled by Vite", because
 * Good, because the fonts go through the same lock file, audit and update flow as the rest of the frontend.
 * Bad, because first load grows by the subset font files; issue #431 measures the `vite build` output before and after, as `frontend/AGENTS.md` asks for bundle changes.
 * Bad, because a font swap can shift heading layout briefly on a cold load.
-* Neutral, because Dependabot does not watch the frontend today; the packages are updated by hand like the other npm dependencies.
+* Neutral, because Dependabot's weekly npm entry for `/frontend` (`.github/dependabot.yml`, [ADR-0012](0012-ci-and-dependency-updates.md)) proposes updates to the font packages like the other frontend dependencies, grouped with them as `frontend-prod` for minor and patch releases. *Amended 2026-11-07:* this line said Dependabot did not watch the frontend and the packages were updated by hand, which was already wrong when it was written (#475).
 
 ### Confirmation
 
@@ -92,6 +92,7 @@ Chosen option: "Fontsource variable-font npm packages, bundled by Vite", because
 * Story: [0039](../stories/0039-switchable-light-and-dark-themes.md); epic #428; implemented in issue #431.
 * Versions and licences checked with `npm view <package> version license` on 2026-11-07.
 * Revisit if the bundle-size measurement for issue #431 shows a first-load cost the product owner considers too high, or if a typeface is replaced.
+* **Amendment, 2026-11-07:** the Dependabot consequence was corrected: `.github/dependabot.yml` configures npm for `/frontend`, so the font packages get Dependabot updates, not hand updates; see the note under Consequences. Approved by the maintainer on issue #475, who confirmed that no driver or weight changed, so the ratings stand. The decision itself is unchanged, so this ADR was amended, not superseded.
 
 ### Open questions for the reviewer
 

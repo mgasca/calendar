@@ -47,12 +47,46 @@ Chosen option: "One image serving the API and SPA", because one deployment is si
 
 * Good, because a single image and origin reduce deployment coordination and browser configuration.
 * Bad, because frontend-only changes rebuild and release the API image, and both components scale together.
-* Bad, because static-file fallback and caching need explicit implementation and tests; the current API does not provide them.
+* Bad, because static-file fallback and caching need explicit implementation and tests. The API didn't provide them when this was decided. PR #108 added them later, as the amendment below records.
 * Neutral: Azure Container Apps scales replicas of a revision together; the replica settings are a separate infrastructure decision.
 
 ### Confirmation
 
-The hosting and image PRs must add tests for `/`, a deep link, missing assets, unknown and unauthorized API routes, cache headers and cookie behavior. Run the built image and smoke-test the SPA, API health and deep links; deployment checks verify HTTPS, cookie attributes and absence of CORS headers. Review the Dockerfile and deployment for one image containing both outputs.
+The hosting and image PRs must add tests for `/`, a deep link, missing assets, unknown and unauthorized API routes, cache headers and cookie behavior. Run the built image and smoke-test the SPA, API health and deep links; deployment checks verify HTTPS, cookie attributes and absence of CORS headers. Review the Dockerfile and deployment for one image containing both outputs. The amendment of 2026-11-07 below records which of these checks exist and which are still outstanding.
+
+### Amendment, 2026-11-07: static-file and SPA hosting delivered
+
+Recorded for the ADR sweep epic [#473](https://github.com/mgasca/calendar/issues/473) in [issue #479](https://github.com/mgasca/calendar/issues/479), with the maintainer's approval. The decision is unchanged and is not re-rated. The context above describes the hosting as decided on 2026-10-29, when the API did not yet serve static files.
+
+#### What was delivered
+
+* **Hosting**, [PR #108](https://github.com/mgasca/calendar/pull/108) (merged 2026-10-29, issue #76). `backend/src/Calendar.Api/Program.cs` makes these changes:
+  * It runs `UseStaticFiles` only for paths outside `/api`.
+  * It sends `Cache-Control: no-cache` for `index.html`.
+  * It sends `public, max-age=31536000, immutable` only for files under `/assets/` whose names carry an 8-character content hash, and no `Cache-Control` for other files.
+  * It maps `/api/{**path}` to a 404.
+  * Every other path goes to a fallback that returns 404 for a path with a file extension, and `index.html` (`no-cache`) for the rest.
+  * The fallbacks are anonymous, and the authenticated-user fallback authorization policy still guards the API endpoints.
+  * Forwarded headers are trusted for one hop.
+* **Image**, [PR #114](https://github.com/mgasca/calendar/pull/114) (merged 2026-10-29, closes #75). The root `Dockerfile` builds the web app with the pinned Node and pnpm, publishes the API and copies the web build into `wwwroot/` of one non-root runtime image. The CI `Container image` job builds that image and runs `just image smoke` (`image.just`) against it.
+
+#### Confirmation checks
+
+The tests below are in `backend/tests/Calendar.Api.Tests/Endpoints/`, and the links point to them at commit `0b579c435`.
+
+* **`/` and a deep link:** tested. [`HostingTests.SpaRoutingAndCacheHeaders`](https://github.com/mgasca/calendar/blob/0b579c4352c79c669c0b58f026bff24195038c48/backend/tests/Calendar.Api.Tests/Endpoints/HostingTests.cs#L14-L60) checks that `/` and `/day/2026-10-29` return `index.html`. The image smoke test checks `/` and `/week`.
+* **Missing assets:** tested. `/assets/missing.js` returns 404 in the same test.
+* **Unknown API routes:** tested. `/api/unknown` returns a 404 that is not HTML, in the same test and the image smoke test.
+* **Unauthorized API routes:** tested for 401. Anonymous `/api/auth/me` returns 401 in the same test, and anonymous `/api/tasks` returns 401 in the smoke test. No hosting test checks a 403; follow-up [#497](https://github.com/mgasca/calendar/issues/497).
+* **Cache headers:** tested in the same test: `no-cache` for `index.html`, `immutable` for a hashed asset, and none for an unhashed one.
+* **Cookie behavior:** partly tested. [`HostingTests.ForwardedHttpsSetsGoogleRedirectAndSecureCookie`](https://github.com/mgasca/calendar/blob/0b579c4352c79c669c0b58f026bff24195038c48/backend/tests/Calendar.Api.Tests/Endpoints/HostingTests.cs#L62-L99) checks that, behind a forwarded HTTPS hop, the Google redirect uses the public origin and the cookies set by the sign-in challenge and by sign-out are `Secure`. `HttpOnly` and `SameSite=Lax` are configured in `Program.cs`, but no test asserts them; follow-up [#497](https://github.com/mgasca/calendar/issues/497).
+* **No CORS headers:** tested in-process. [`AuthenticationTests.CrossOriginRequestHasNoCorsHeaders`](https://github.com/mgasca/calendar/blob/0b579c4352c79c669c0b58f026bff24195038c48/backend/tests/Calendar.Api.Tests/Endpoints/AuthenticationTests.cs#L101-L109) checks that a cross-origin request gets no `Access-Control-Allow-Origin`.
+* **One image with both outputs:** checked. The `Dockerfile` produces one image, and the CI image job builds and smoke-tests it.
+* **Deployment checks:** not verified. No Azure deployment has run, so none of these has been checked in Azure Container Apps: HTTPS, cookie attributes and the absence of CORS headers at the public origin, header behavior through the ingress, and asset replacement on a release. They remain open with the deployment issues #79 and #83.
+
+#### Where the checks ran
+
+The `Backend` and `Container image` CI jobs passed on `main` at `082c64e08` (CI run [42406004961](https://github.com/mgasca/calendar/actions/runs/42406004961)). Both hosting tests also passed locally on 2026-11-07.
 
 ## Pros and Cons of the Options
 
@@ -76,3 +110,4 @@ The hosting and image PRs must add tests for `/`, a deep link, missing assets, u
 
 * Microsoft documents [ASP.NET Core static files and response headers](https://learn.microsoft.com/en-us/aspnet/core/fundamentals/static-files?view=aspnetcore-10.0) and [Container Apps revision scaling](https://learn.microsoft.com/en-us/azure/container-apps/scale-app). No pricing or regional availability claim is needed for this decision.
 * If measured traffic or release needs make independent scaling or deployment valuable, revisit the topology with a new ADR. The accepted single-container expectation is also recorded in [ADR-0002](0002-dotnet-10-minimal-api-backend.md) and [ADR-0026](0026-client-side-routing-with-tanstack-router.md).
+* **Amendment, 2026-11-07:** the static-file and SPA hosting was delivered by PR #108 and the single image by PR #114, with in-process hosting tests and a CI image smoke test. A 403 response and the `HttpOnly` and `SameSite` cookie attributes are not asserted (follow-up #497). No deployment check has run in Azure. The decision is unchanged and not re-rated, so this ADR was amended, not superseded.

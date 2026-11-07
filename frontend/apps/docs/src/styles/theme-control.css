@@ -1,0 +1,68 @@
+/*
+ * The Light / Dark / System segmented control, drawn like the app's (.theme-control in the web
+ * app's components.css) from the shared tokens. It is written again here on purpose: only tokens,
+ * fonts and the storage contract are shared with the app (story 0046), not its component CSS.
+ */
+.theme-control {
+  display: inline-flex;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  min-width: 0;
+  font-family: var(--font-body);
+  font-size: var(--text-sm);
+}
+
+.theme-control legend {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+.theme-control label {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  box-sizing: border-box;
+  min-height: var(--control-height);
+  padding: 0 var(--space-3);
+  border: 1px solid var(--color-border-strong);
+  background: var(--color-surface);
+  color: var(--color-text);
+  cursor: pointer;
+}
+
+.theme-control label:not(:first-of-type) {
+  margin-left: -1px;
+}
+
+.theme-control label:first-of-type {
+  border-radius: var(--radius-md) 0 0 var(--radius-md);
+}
+
+.theme-control label:last-of-type {
+  border-radius: 0 var(--radius-md) var(--radius-md) 0;
+}
+
+.theme-control input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+}
+
+.theme-control label:has(input:checked) {
+  border-color: var(--color-accent);
+  background: var(--color-accent-soft);
+  font-weight: 700;
+}
+
+.theme-control label:has(input:focus-visible) {
+  outline: 3px solid var(--color-focus);
+  outline-offset: 2px;
+}

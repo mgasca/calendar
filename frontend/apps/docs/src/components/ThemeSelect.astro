@@ -1,0 +1,29 @@
+---
+// The app's Light / Dark / System segmented control (story 0046): a native radio group, so the
+// keyboard behaviour is the browser's and no framework is needed. Starlight renders it in the
+// header and in the mobile menu; src/theme/controller.ts binds every `.theme-control` and keeps
+// them in step. The saved choice is shown by the script, which runs after the markup exists.
+const options = [
+  { value: 'light', label: 'Light' },
+  { value: 'dark', label: 'Dark' },
+  { value: 'system', label: 'System' },
+];
+---
+
+<fieldset class="theme-control">
+  <legend>Theme</legend>
+  {
+    options.map((option) => (
+      <label>
+        <input type="radio" value={option.value} checked={option.value === 'system'} />{' '}
+        {option.label}
+      </label>
+    ))
+  }
+</fieldset>
+
+<script>
+  import { bindThemeControls } from '../theme/controller';
+
+  bindThemeControls();
+</script>

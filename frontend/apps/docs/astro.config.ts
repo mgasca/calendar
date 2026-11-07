@@ -103,7 +103,19 @@ export default defineConfig({
         'Agent thoughts, any decision records, user stories, the architecture model, runbooks and benchmarks for Calendar, ' +
         'with their context, alternatives, consequences and user guides.',
       social: [{ icon: 'github', label: 'GitHub', href: repository }],
-      customCss: ['./src/styles/docs.css'],
+      // One theme controller: Starlight's own provider and picker (and its starlight-theme key) are
+      // replaced by the Calendar ones (story 0046).
+      components: {
+        ThemeProvider: './src/components/ThemeProvider.astro',
+        ThemeSelect: './src/components/ThemeSelect.astro',
+      },
+      customCss: [
+        '@calendar/theme/fonts.css',
+        '@calendar/theme/tokens.css',
+        './src/styles/theme-adapter.css',
+        './src/styles/theme-control.css',
+        './src/styles/docs.css',
+      ],
       sidebar: [
         {
           label: 'Agent thoughts',

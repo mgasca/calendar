@@ -17,7 +17,7 @@ export function ConfirmDialog({
         Delete {count} {count === 1 ? 'task' : 'tasks'}? This can't be undone.
       </p>
       <div className="actions">
-        <button type="button" disabled={pending} onClick={onConfirm}>
+        <button type="button" className="button-danger" disabled={pending} onClick={onConfirm}>
           Delete
         </button>
         <button type="button" disabled={pending} onClick={onCancel}>

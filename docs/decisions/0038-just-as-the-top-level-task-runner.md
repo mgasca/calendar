@@ -87,7 +87,7 @@ The decision above is unchanged: `just` stays the runner, every recipe stays a t
 
 * **Settings are per module.** Each module file sets its own shell (`set shell := ["bash", "-euo", "pipefail", "-c"]`), because a module does not inherit it. The root's `set dotenv-load` is enough for `.env` values to reach module recipes, so modules do not repeat it.
 * **Working directory.** A module recipe runs in the directory of its module file. A module whose file is not in the directory it works in sets `set working-directory`. A stack module therefore needs no `cd backend &&` or `--dir frontend`.
-* **Chaining uses `::`.** Several recipes of one module run as `just db::up db::migrate`. `just db up migrate` is an error. The rule in `AGENTS.md` that chained recipes must take no arguments still applies. *Amended 2026-11-05:* the `do` recipe below chains them without repeating the module, and takes arguments for the last one.
+* **Chaining uses `::`.** Several recipes of one module run as `just db::up db::migrate`. `just db up migrate` is an error. The rule in `AGENTS.md` that chained recipes must take no arguments still applies. *Amended 2026-11-05:* the `run` recipe below (named `do` at first) chains them without repeating the module, and takes arguments for the last one.
 * **A bare module name runs nothing.** Each module marks a `[default]` recipe that only lists the module, so `just db` cannot start or delete anything.
 * **Dependencies point one way.** A root recipe may depend on a module recipe (`check: backend::lint`). A module recipe cannot depend on a root recipe, so a step that two modules share lives in the module that owns it.
 
@@ -146,7 +146,7 @@ The commands below record the original delivery using `do`, before the naming up
 
 * CI runs the same checks through `just` as it ran through `make`, and `just check` passes locally and in CI.
 * `tools/doctor/doctor.sh` fails when `just` is missing or older than the version in `.just-version`.
-* A CI step runs `just --list` and the `justfile` format check (`just --fmt --check`, which is still marked unstable in 1.59.0), so a recipe with a syntax error or a missing comment is caught. *Amended 2026-11-04:* no workflow runs this step today (checked in `.github/`). With modules, the step runs `just --list --list-submodules` and `just --fmt --check` on the root `justfile` and on every module file separately with `--justfile`, because the root check does not reach module files.
+* A CI step runs `just --list` and the `justfile` format check (`just --fmt --check`, which is still marked unstable in 1.59.0), so a recipe with a syntax error or a missing comment is caught. *Amended 2026-11-04:* with modules, the step runs `just --list --list-submodules` and `just --fmt --check` on the root `justfile` and on every module file separately with `--justfile`, because the root check does not reach module files. The step runs in the CI Tooling job in `.github/workflows/ci.yml` ("justfile and its modules parse and are formatted"), on every `justfile` and `*.just` file.
 
 ## Pros and Cons of the Options
 
@@ -204,5 +204,5 @@ The commands below record the original delivery using `do`, before the naming up
 * "Task" in the options is the `go-task` runner. "File-based apps" are the ones defined in [ADR-0017](0017-dotnet-file-based-apps-for-repo-tooling.md).
 * An earlier analysis recommended keeping Make. It was written under the previous drivers and did not test `just`, so it was used as historical input only.
 * **Amendment, 2026-11-04:** the layout moved from one flat `justfile` to a root file plus seven modules, in issue #213 and story [0019](../stories/0019-split-the-justfile-into-modules.md). The decision itself is unchanged, so this ADR was amended, not superseded, as [ADR-0017](0017-dotnet-file-based-apps-for-repo-tooling.md) was for its minimum SDK. The commands quoted under "What was measured" are the ones run in the prototype and are left as they were.
-* **Amendment, 2026-11-05:** the `do` recipe that chains a module's recipes, in issue #247. The decision is unchanged, so this ADR was amended again.
+* **Amendment, 2026-11-05:** the `run` recipe (named `do` at first) that chains a module's recipes, in issue #247. The decision is unchanged, so this ADR was amended again.
 * Revisit if `just` stops being maintained or its install friction in CI turns out to cost more than the prototype suggested. This trigger is recorded in this ADR only. The implementation PR adds it to the `AGENTS.md` notes.

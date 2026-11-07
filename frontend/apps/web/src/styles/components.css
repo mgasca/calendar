@@ -224,6 +224,11 @@ select {
   box-shadow: var(--shadow-popover);
 }
 
+/* The heading sits on the dialog's padding, so the gap above it matches the sides (#464). */
+.modal-dialog > h2 {
+  margin-top: 0;
+}
+
 .modal-dialog::backdrop {
   background: var(--color-backdrop);
 }
@@ -411,7 +416,6 @@ a.button-primary:hover {
   color: var(--color-loading-text);
 }
 
-.app-footer [role='alert'],
 main[role='alert'] {
   color: var(--color-error);
 }

@@ -1,5 +1,5 @@
 ---
-status: in-progress
+status: implemented
 date: 2026-11-07
 issue: https://github.com/mgasca/calendar/issues/418
 pr:
@@ -54,9 +54,9 @@ Story [0030](0030-docs-only-pr-previews.md) limited the hosted docs preview to p
 3. **Given** a pull request that changes only `contracts/openapi.json`, **when** CI runs, **then** Backend, Frontend and Container image run and Docs site does not. Rules: [delivery-guards tests](../../tools/delivery-guards/tests/delivery-guards.tests.cs) (`contracts/openapi.json`); not run live.
 4. **Given** a pull request that changes only the root `README.md`, **when** CI runs, **then** only Changes and `CI result` run, and `CI result` passes. Rules: [delivery-guards tests](../../tools/delivery-guards/tests/delivery-guards.tests.cs) (`README.md`). Live: #425, 0:16 wall clock.
 5. **Given** a pull request that changes `.github/workflows/ci.yml`, **when** CI runs, **then** every job runs. Rules: [delivery-guards tests](../../tools/delivery-guards/tests/delivery-guards.tests.cs) (`AChangeToTheRules_RunsEverything`). Live: #422 ran all five.
-6. **Given** a push to `main` or a dispatch, **when** CI runs, **then** every job runs and the push builds the publication artifact. Rules: [delivery-guards tests](../../tools/delivery-guards/tests/delivery-guards.tests.cs) (`APushOrDispatch_RunsEverything`). Live: checked on the first push to `main` after merge.
+6. **Given** a push to `main` or a dispatch, **when** CI runs, **then** every job runs and the push builds the publication artifact. Rules: [delivery-guards tests](../../tools/delivery-guards/tests/delivery-guards.tests.cs) (`APushOrDispatch_RunsEverything`). Live: the push of bcc655fe1 (run 42380914911) ran every job and built and uploaded the publication artifact, and ADR-0046 is live on the production site.
 7. **Given** a needed job fails or is cancelled, or Changes itself fails, **when** `CI result` runs, **then** it fails. Guard: [delivery-guards tests](../../tools/delivery-guards/tests/delivery-guards.tests.cs) (`CiResultNeedsAllTests`, `ChangesJobTests.AConditionalChangesJob_Fails`). Live: run 42379749204 on #424 added a file that does not compile. Backend and Container image failed, the other three were skipped by Changes, and CI result failed with "A needed job did not succeed, and Changes did not skip it". A failed or cancelled Changes was not run live.
-8. **Given** a same-repository pull request that changes a file under `docs/` and a file under `backend/`, **when** CI succeeds, **then** the docs preview is published and linked on the pull request. Not testable before merge: the publisher previews only pull requests based on `main`, and #423 to #425 are stacked. Live: checked on the first such pull request after merge.
+8. **Given** a same-repository pull request that changes a file under `docs/` and a file under `backend/`, **when** CI succeeds, **then** the docs preview is published and linked on the pull request. Live: #427 (one docs file and `backend/AGENTS.md`, based on `main`) ran Changes, Backend, Container image and Docs site, skipped Frontend and Tooling, and got the **ADR preview** check and comment (https://mgasca.github.io/calendar/pr-preview/pr-427/). Its deploy first hit the Pages lock of #429 and succeeded on **Re-run failed jobs**.
 9. **Given** a pull request that changes no docs path, **when** CI succeeds, **then** no preview is published. Live: #424 and #425 skipped Docs site, so no artifact was built.
 10. **Given** a file list for each path set, a file in several sets, an unmatched file, a rules change and a truncated list, **when** the tooling tests run the rules file with `jq`, **then** each returns the jobs above. [delivery-guards tests](../../tools/delivery-guards/tests/delivery-guards.tests.cs) (`ChangesRulesTests`; negative controls: dropping `contracts/` from Frontend or `pages.yml` from Docs site fails them).
 11. **Given** the change is complete, **when** CI runs on the delivery PR, **then** every job passes. #422 ran every job, green at `31e35eaa8`; locally `just tools test`, the docs tests and actionlint passed, and the full `just check` was not run locally (no backend or frontend source changed).
@@ -114,7 +114,8 @@ No changes.
 * **The review** (review-before-merge workflow) found three low issues, posted on #422. Docs lint ran twice when Frontend also ran: fixed. `pages.yml` skipped the docs suite that tests it: fixed. The Changes job's own cost: measured in record 0016, about 5 s.
 * **Changes has no ADR-0045 baseline entry:** the gate reports it on every run without gating it, until the next baseline update.
 * **Path sets are a second description of each job's inputs.** A new shared input that no rule names lets a breaking change through a pull request; pushes to `main` still run everything. Widen the set when that happens (ADR-0046, revisit triggers).
-* **Not verified before merge:** the preview for a mixed docs + code pull request, and the first push to `main` (criteria 6 and 8).
+* **Pages lock after merge** (#429): the four Publish runs right after the merge failed in deploy on an in-progress deployment of #404's push, the symptom of #285. Re-running the newest failed deploy job published production and the #427 preview. This story publishes previews for more pull requests, which makes such collisions more likely.
+* **Not run live:** a failed or cancelled Changes job (criterion 7), and a contract-only pull request (criterion 3); both are covered by the guard and rules tests.
 
 ## User guide
 

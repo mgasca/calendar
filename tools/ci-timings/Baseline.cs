@@ -651,3 +651,48 @@ public static class BaselineRuns
     return new BaselineFile(workflow, record, minRuns, constants, paths);
   }
 }
+
+/// <summary>Lists a window's runs and reads the jobs of only those a caller keeps, through an injectable gh.</summary>
+public static class BaselineSampler
+{
+  /// <summary>The most runs one listing returns; a window that reaches it is refused rather than silently cut.</summary>
+  public const int ListLimit = 1000;
+
+  /// <summary>
+  /// Lists the successful runs of a workflow created in <paramref name="range"/> and reads the jobs of each run that
+  /// <paramref name="keep"/> accepts, oldest first. Runs it rejects cost no jobs call. A listing that reaches
+  /// <see cref="ListLimit"/> throws, because the oldest runs of the window would be missing from what is reported.
+  /// </summary>
+  /// <param name="gh">Runs gh with the given arguments and returns its standard output.</param>
+  /// <param name="repo">owner/name.</param>
+  /// <param name="workflow">The workflow file.</param>
+  /// <param name="range">A <c>gh run list --created</c> range.</param>
+  /// <param name="keep">Which listed runs to read the jobs of.</param>
+  /// <returns>The kept runs with their gated samples.</returns>
+  /// <exception cref="InvalidOperationException">The window holds <see cref="ListLimit"/> runs or more.</exception>
+  public static async Task<List<SampledRun>> SampleAsync(
+    Func<IReadOnlyList<string>, Task<string>> gh,
+    string repo,
+    string workflow,
+    string range,
+    Func<WorkflowRun, bool> keep)
+  {
+    IReadOnlyList<WorkflowRun> listed = Parser.ParseRuns(await gh(
+    [
+      "run", "list", "--workflow", workflow, "--limit", ListLimit.ToString(CultureInfo.InvariantCulture), "--created", range,
+      "--repo", repo, "--json", "databaseId,status,conclusion,createdAt,event,headBranch,headSha",
+    ]));
+    if (listed.Count >= ListLimit)
+    {
+      throw new InvalidOperationException(
+        $"the window {range} holds at least {ListLimit} runs of {workflow}, so its oldest runs would be left out; narrow it");
+    }
+    List<SampledRun> sampled = [];
+    foreach (WorkflowRun run in listed.Where(run => BaselineRuns.IsSuccessful(run) && keep(run)).OrderBy(run => run.CreatedAt))
+    {
+      var jobsJson = await gh(["api", $"repos/{repo}/actions/runs/{run.Id}/jobs?per_page=50"]);
+      sampled.Add(new SampledRun(run, [.. Baselines.Samples(run, Parser.ParseJobs(run.Id, jobsJson))]));
+    }
+    return sampled;
+  }
+}

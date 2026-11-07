@@ -259,7 +259,7 @@
 <h3 id="persistence">Persistence</h3>
 <ul>
 <li><strong>Tables:</strong> <code>events</code> and <code>tasks</code>, in snake_case.</li>
-<li><strong>Event span:</strong> timed events carry a generated, stored <code>tstzrange</code> column (<code>span</code>) with a GiST index, used by the overlap query (ADR-0014/0015). It’s confined to Infrastructure. For the SQLite fallback, <code>AgendaQueries.TimedOn</code> would switch to <code>starts_at &#x3C; end AND ends_at > start</code>.</li>
+<li><strong>Event span:</strong> timed events carry a generated, stored <code>tstzrange</code> column (<code>span</code>) with a GiST index, used by the overlap query (ADR-0014/0015). It’s confined to Infrastructure. When this story was delivered, ADR-0014 still had a SQLite fallback, for which <code>AgendaQueries.TimedOn</code> would have switched to <code>starts_at &#x3C; end AND ends_at > start</code>. <a href="/calendar/pr-preview/pr-491/adr/0037/">ADR-0037</a> withdrew that fallback, so no SQLite form is needed.</li>
 <li><strong>Integrity:</strong> check constraints enforce the event shape (timed vs all-day columns), the due-date-xor-due-instant rule and non-blank titles. Partial indexes cover all-day dates and task due/completed columns.</li>
 <li><strong>Roles:</strong> the app connects as <code>calendar_app</code> (data access only), and migrations run as <code>calendar_migrator</code>. Migrations are never applied at app startup.</li>
 </ul>

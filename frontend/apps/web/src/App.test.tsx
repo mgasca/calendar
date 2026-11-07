@@ -76,6 +76,24 @@ describe('routes', () => {
     expect(dates).toEqual(['2026-10-26']);
   });
 
+  it('shows no API status line and does not poll the health endpoint (#464)', async () => {
+    serveAgendas();
+    let healthChecks = 0;
+    server.use(
+      http.get('*/api/health', () => {
+        healthChecks += 1;
+        return HttpResponse.json({ status: 'ok' });
+      }),
+    );
+
+    renderApp('/');
+
+    expect(await screen.findByText('Review on 2026-10-26')).toBeInTheDocument();
+    expect(screen.queryByText(/API status|Checking API|API unavailable/)).not.toBeInTheDocument();
+    expect(screen.queryByRole('contentinfo')).not.toBeInTheDocument();
+    expect(healthChecks).toBe(0);
+  });
+
   it('shows the same view for /day/<today> as for /', async () => {
     serveAgendas();
 

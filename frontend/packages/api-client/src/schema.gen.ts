@@ -76,9 +76,9 @@ export interface paths {
             cookie?: never;
         };
         get: operations["GetEvent"];
-        put?: never;
+        put: operations["UpdateEvent"];
         post?: never;
-        delete?: never;
+        delete: operations["DeleteEvent"];
         options?: never;
         head?: never;
         patch?: never;
@@ -482,6 +482,11 @@ export interface components {
              * @description All-day events: exclusive end date; `null` for timed events.
              */
             endDate?: null | string;
+            /**
+             * Format: uint32
+             * @description Opaque version of the stored event; send it back to update the event.
+             */
+            version: number | string;
         };
         HealthResponse: {
             status: string;
@@ -594,6 +599,52 @@ export interface components {
             startsBeforeDay: boolean;
             /** @description The event ends after the day's window (it continues into a later day). */
             endsAfterDay: boolean;
+        };
+        /**
+         * @description Replace an event: the fields and rules of `CreateEventRequest`, plus the `version` the client loaded.
+         *     The kind can change (timed to all-day and back).
+         */
+        UpdateEventRequest: {
+            /** @description Event title; required, at most 200 characters after trimming. */
+            title: string;
+            /**
+             * @description `true` for an all-day event (`startDate`/`endDate`),
+             *     `false` for a timed one (`start`/`end`/`timeZone`).
+             */
+            allDay?: boolean;
+            /**
+             * Format: date-time
+             * @description Timed events: inclusive start instant, RFC 3339 with an explicit offset (e.g. 2026-10-26T14:00:00Z); `null` for all-day events.
+             */
+            start?: null | string;
+            /**
+             * Format: date-time
+             * @description Timed events: exclusive end instant, after `start`; `null` for all-day events.
+             */
+            end?: null | string;
+            /** @description Timed events: IANA time zone the event was created in, e.g. America/New_York; `null` for all-day events. */
+            timeZone?: null | string;
+            /**
+             * Format: date
+             * @description All-day events: first date (YYYY-MM-DD); `null` for timed events.
+             */
+            startDate?: null | string;
+            /**
+             * Format: date
+             * @description All-day events: exclusive end date (YYYY-MM-DD), after `startDate`; a one-day event on the 26th ends on the 27th.
+             *     `null` for timed events.
+             */
+            endDate?: null | string;
+            /** @description Optional location, at most 200 characters. */
+            location?: null | string;
+            /** @description Optional notes, at most 4000 characters. */
+            notes?: null | string;
+            /**
+             * Format: uint32
+             * @description The event's `version` as last read; the update is refused with `409` when the event has changed
+             *     since.
+             */
+            version: number | string;
         };
         /** @description The ISO week (Monday to Sunday) containing the requested date, from a single snapshot. */
         WeekAgendaResponse: {
@@ -750,6 +801,97 @@ export interface operations {
             };
             /** @description Not Found */
             404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    UpdateEvent: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateEventRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EventResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["HttpValidationProblemDetails"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    DeleteEvent: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Conflict */
+            409: {
                 headers: {
                     [name: string]: unknown;
                 };

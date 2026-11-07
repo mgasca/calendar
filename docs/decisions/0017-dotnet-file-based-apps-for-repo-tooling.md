@@ -63,7 +63,7 @@ A tool whose job is to diagnose a missing or broken toolchain can't depend on th
 * **Quality:** linted with **shellcheck** in CI.
 * **Hand-off:** anything that can assume the toolchain exists, including richer checks the doctor might want later, is written in .NET.
 
-### Exception: scripts a technology requires in its own language (amendment, 2026-11-06)
+### Amendment, 2026-11-06: exception for scripts a technology requires in its own language
 
 A script that exists only to be run by a technology that dictates its language is not repo tooling in the sense of this record, and this record does not apply to it. The first case is a Claude Code workflow (`.claude/workflows/*.js`), which the harness runs in its own JavaScript runtime with functions no other language can call; story [0035](../stories/0035-review-before-merge-with-a-workflow-and-a-skeptic-per-finding.md) adds the first. The same holds for any other harness- or platform-owned script whose language is fixed by what runs it, such as a GitHub Actions expression or a `just` recipe body.
 

@@ -159,6 +159,25 @@ describe('editing a task from the day view', () => {
     expect(calls.put).toBe(0);
   });
 
+  it('says so when the task was deleted elsewhere, and the day drops it', async () => {
+    const { store } = serveTasks([milk]);
+    renderApp(`/day/${DAY}`, { timeZone: 'UTC', locale: 'en-GB' });
+    const user = userEvent.setup();
+
+    await user.click(await screen.findByRole('button', { name: 'Buy milk' }));
+    await screen.findByLabelText('Due date');
+    store.delete('t1');
+    const dialog = screen.getByRole('dialog', { name: 'Edit task' });
+    await user.click(within(dialog).getByRole('button', { name: 'Save task' }));
+
+    expect(await within(dialog).findByRole('alert')).toHaveTextContent(
+      'This task no longer exists.',
+    );
+    await waitFor(() => {
+      expect(screen.queryByRole('checkbox', { name: 'Buy milk' })).not.toBeInTheDocument();
+    });
+  });
+
   it('opens from the keyboard', async () => {
     serveTasks([milk]);
     renderApp(`/day/${DAY}`, { timeZone: 'UTC', locale: 'en-GB' });

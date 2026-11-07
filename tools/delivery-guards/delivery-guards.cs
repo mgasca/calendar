@@ -1,4 +1,5 @@
 #!/usr/bin/env -S dotnet run
+#:package YamlDotNet@18.1.0
 #:include WorkflowYaml.cs
 #:include DeliveryGuards.cs
 

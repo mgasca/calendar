@@ -2,6 +2,7 @@
   "https://raw.githubusercontent.com/mgasca/calendar/main/docs/architecture/controls/accessibility.requirement.json": "controls/accessibility.requirement.json",
   "https://raw.githubusercontent.com/mgasca/calendar/main/docs/architecture/controls/authentication.requirement.json": "controls/authentication.requirement.json",
   "https://raw.githubusercontent.com/mgasca/calendar/main/docs/architecture/controls/client-performance.requirement.json": "controls/client-performance.requirement.json",
+  "https://raw.githubusercontent.com/mgasca/calendar/main/docs/architecture/controls/delivery-performance.requirement.json": "controls/delivery-performance.requirement.json",
   "https://raw.githubusercontent.com/mgasca/calendar/main/docs/architecture/controls/concurrency-control.requirement.json": "controls/concurrency-control.requirement.json",
   "https://raw.githubusercontent.com/mgasca/calendar/main/docs/architecture/controls/contract-first.requirement.json": "controls/contract-first.requirement.json",
   "https://raw.githubusercontent.com/mgasca/calendar/main/docs/architecture/controls/data-durability.requirement.json": "controls/data-durability.requirement.json",

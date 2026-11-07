@@ -613,7 +613,76 @@
       "interfaces": [
         { "unique-id": "ci-workflows", "workflows": ["ci.yml", "codeql.yml", "dependency-review.yml", "infra-whatif.yml", "azure-oidc-check.yml", "migrate.yml", "pages.yml"] }
       ],
-      "metadata": { "ownership": "platform", "adrs": ["ADR-0012", "ADR-0013", "ADR-0023", "ADR-0025", "ADR-0034", "ADR-0046"], "required-check": "CI result" }
+      "controls": {
+        "delivery-performance": {
+          "description": "How long CI may make an author wait (ADR-0045, epic #380): each gated job of ci.yml fails a pull request when it is clearly slower than its pinned baseline, a daily trend check on main reports smaller slowdowns as one issue, and mechanism guards fail when the cause of a fixed slowdown (#272, #347, #368) comes back. The control points to the thresholds in .github/ci-baseline.json; it never copies them.",
+          "requirements": [
+            {
+              "requirement-url": "https://raw.githubusercontent.com/mgasca/calendar/main/docs/architecture/controls/delivery-performance.requirement.json",
+              "config": {
+                "gated-jobs": ["Backend", "Frontend", "Docs site", "Tooling", "Container image"],
+                "quantity": "Each job's started_at to completed_at from the jobs API; queue time, skipped jobs, CI result and Cancel superseded runs are not gated",
+                "paths": {
+                  "publication": "The Docs site step 'Build and verify publication artifact' succeeded: pushes to main and docs-only pull requests",
+                  "check": "That step was skipped: dispatches and every other pull request"
+                },
+                "threshold": {
+                  "formula": "ceil(max(exp(m + z * 1.4826 * MAD), M + max(floor, r * M))), m and MAD of ln(seconds), M = exp(m), z = Phi^-1(1 - alpha / J)",
+                  "alpha": 0.01,
+                  "jobs": 5,
+                  "floor-seconds": 15,
+                  "relative-margin": 0.1,
+                  "provisional": true
+                },
+                "false-failure-budget": "About 1 % of pull request runs with no regression, across all gated jobs (alpha / J per job, Bonferroni); back-tested on held-out runs with the observed rate and its one-sided 95 % upper bound in each baseline record. Observed at the first pin (2026-11-07): 4 of 73 distinct runs, 5.5 % (one-sided 95 % upper bound 12.1 %), in docs/benchmarks/0014-ci-job-baseline.md; above the budget and accepted by the maintainer until a week of gated PR runs is reviewed (#384)",
+                "baseline": {
+                  "file": ".github/ci-baseline.json",
+                  "record": "docs/benchmarks/0014-ci-job-baseline.md",
+                  "min-runs": 30,
+                  "paths": {
+                    "check": { "status": "pinned", "n": 30 },
+                    "publication": { "status": "provisional", "n": 26, "note": "Only reports until #420 pins it at 30 push runs" }
+                  },
+                  "update": "Only by a deliberate pull request: regenerate the file with ci-timings --baseline and add a benchmark record in the same PR; runs on main never move it (docs/benchmarks/README.md, 'The pinned CI baseline')"
+                },
+                "gate": {
+                  "runs-in": "A step of CI result, the single required check (ADR-0012), on the jobs API response that job already reads",
+                  "program": ".github/ci-gate.jq",
+                  "fails-on": ["pull_request", "merge_group"],
+                  "reports-on": ["push", "workflow_dispatch", "any run on a provisional path"],
+                  "remedy": "Re-run all jobs; Re-run failed jobs repeats only CI result on the same durations",
+                  "tests": "tools/ci-timings/tests/GateTests.cs runs the committed jq program against canned jobs API responses, and checks that ci.yml runs that file",
+                  "critical-path-cost": "CI result +3 s: median 6 s (n = 11) with the gate against 3 s (n = 23) without, measured in #395; the comparison itself takes 0 s, the rest is the sparse checkout and its post step. Accepted by the maintainer on 2026-11-07"
+                },
+                "trend-check": {
+                  "workflow": ".github/workflows/ci-trend.yml",
+                  "schedule": "Daily at 06:23 UTC, and on demand",
+                  "window-runs": 20,
+                  "test": "One-sided Mann-Whitney U test of the last 20 successful push runs after the baseline against the publication-path baseline, per job",
+                  "significance": 0.002,
+                  "minimum-effect": "Hodges-Lehmann shift of at least max(10 s, 5 % of the baseline median)",
+                  "output": "Opens, or comments on, the one open performance issue titled 'CI run-time trend: …'; never fails a run",
+                  "tests": "tools/ci-timings/tests/TrendTests.cs, on constructed histories"
+                },
+                "mechanism-guards": [
+                  { "id": "superseded-runs", "protects": "#348", "record": "0008", "mechanism": "A same-repository pull request run has its own concurrency group, and Cancel superseded runs cancels the older runs with actions: write and no checkout", "test": "tools/delivery-guards" },
+                  { "id": "api-tests-in-parallel", "protects": "#349", "record": "0009", "mechanism": "API test classes run in parallel, with one database reset per test", "test": "backend/tests/Calendar.Api.Tests/ApiTestParallelismTests.cs" },
+                  { "id": "format-whitespace-only", "protects": "#350", "record": "0010", "mechanism": "Backend formatting is checked with dotnet format whitespace only, and the build enforces code style with warnings as errors", "test": "tools/delivery-guards" },
+                  { "id": "parallel-tool-tests", "protects": "#351", "record": "0011", "mechanism": "just tools test runs the test apps TOOLS_TEST_JOBS at a time, with a NuGet cache in the Tooling job", "test": "tools/delivery-guards" },
+                  { "id": "ci-result-needs-all", "protects": "#368", "mechanism": "CI result always runs, needs every other job except Cancel superseded runs, and passes only when all of them succeeded", "test": "tools/delivery-guards" },
+                  { "id": "one-corpus-read-per-sync", "protects": "#273", "record": "0003", "mechanism": "The docs loader lists the corpus once per sync, not once per document", "test": "frontend/apps/docs/src/lib/docs-loader.test.ts" },
+                  { "id": "docs-site-job", "protects": "#274", "record": "0004", "mechanism": "The docs site is checked in its own Docs site job, and its typecheck reuses the build's sync", "test": "tools/delivery-guards" },
+                  { "id": "web-test-workers", "protects": "#275", "record": "0005", "mechanism": "The web test suite runs one jsdom per worker", "test": "frontend/apps/web/dev/vitestConfig.test.ts" },
+                  { "id": "single-web-typecheck", "protects": "#276", "record": "0006", "mechanism": "The Frontend job type-checks the web app once, and its build step is the bundler alone", "test": "tools/delivery-guards" }
+                ],
+                "evidence": "A delivery performance fix carries a test that fails when its mechanism is reverted and a benchmark record; a baseline change carries a record with the sample and the back-test; timings are asserted only through the pinned baseline",
+                "adrs": ["https://mgasca.github.io/calendar/adr/0012/", "https://mgasca.github.io/calendar/adr/0039/", "https://mgasca.github.io/calendar/adr/0045/"]
+              }
+            }
+          ]
+        }
+      },
+      "metadata": { "ownership": "platform", "adrs": ["ADR-0012", "ADR-0013", "ADR-0023", "ADR-0025", "ADR-0034", "ADR-0045", "ADR-0046"], "required-check": "CI result" }
     },
     {
       "unique-id": "container-registry",

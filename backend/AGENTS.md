@@ -54,3 +54,5 @@ These apply to the repo tools under `tools/` and `.claude/skills/` too.
 - S103 caps lines at 140 characters. Nothing fixes it automatically, so wrap long lines by hand (the `post-edit` hook lists them). Split long strings with `+` and long `<summary>` text over several lines; a split summary adds a soft line break to the OpenAPI description, so run `just contracts`.
 - IDE0007/IDE0008 want `var` when the type is built in or apparent on the right-hand side, and an explicit type otherwise.
 - Every rule in the `Performance` category is a warning, including ones off by default. CA1848 requires `LoggerMessage` source-generated logging methods instead of `logger.LogX(...)` calls.
+
+<!-- throwaway proof for #418, not to be merged -->

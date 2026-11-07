@@ -117,7 +117,7 @@ No new ADR is expected. The agreed mechanism (`data-theme` tokens, Fontsource fo
 
 ### Other decisions (not ADR-worthy)
 
-* **Package**: `@calendar/theme` in `frontend/packages/theme/`, exporting the tokens stylesheet, the fonts stylesheet and the storage contract (key `calendar.theme`; values `light`, `dark`, `system`). The name and path are proposed here; #515 may refine them with the preview child, who depends on the path.
+* **Package**: `@calendar/theme` in `frontend/packages/theme/`, exporting the tokens stylesheet, the fonts stylesheet and the storage contract (key `calendar.theme`; values `light`, `dark`, `system`). The name and path were agreed on #514 and are fixed; #518 relies on the path.
 * **The app keeps its theme module and inline script**: the extraction moves the stylesheet and font imports, not the app's runtime, so its behaviour cannot drift. A test asserts that the app's key and values agree with the package.
 * **One controller in docs**: Starlight's own theme provider and picker are replaced by one start-up script and one native radio group, with no React, so two controllers never race on `data-theme`. Starlight and the app use the same attribute and values.
 * **Same storage key, different origins**: the docs site uses the key `calendar.theme` in its own origin. Independence comes from the origins, not from a different key; nothing crosses origins.

@@ -1,4 +1,4 @@
-@import './styles/tokens.css';
+@import '@calendar/theme/tokens.css';
 @import './styles/base.css';
 @import './styles/components.css';
 

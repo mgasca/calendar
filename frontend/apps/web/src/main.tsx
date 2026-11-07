@@ -5,8 +5,7 @@ import { createRoot } from 'react-dom/client';
 import { App } from './App.tsx';
 import { createQueryClient } from './queryClient.ts';
 import { createAppRouter } from './router.tsx';
-import '@fontsource-variable/fraunces/wght.css';
-import '@fontsource-variable/plus-jakarta-sans/wght.css';
+import '@calendar/theme/fonts.css';
 import './index.css';
 
 const root = document.getElementById('root');

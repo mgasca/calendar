@@ -267,12 +267,9 @@ importers:
       '@calendar/api-client':
         specifier: workspace:*
         version: link:../../packages/api-client
-      '@fontsource-variable/fraunces':
-        specifier: 5.3.0
-        version: 5.3.0
-      '@fontsource-variable/plus-jakarta-sans':
-        specifier: 5.3.0
-        version: 5.3.0
+      '@calendar/theme':
+        specifier: workspace:*
+        version: link:../../packages/theme
       '@tanstack/react-query':
         specifier: ^5.105.0
         version: 5.105.0(@types/react@19.3.0)(react@19.3.1)
@@ -344,6 +341,25 @@ importers:
       openapi-typescript:
         specifier: ^7.13.0
         version: 7.13.0(typescript@6.0.3)
+      typescript:
+        specifier: ~6.0.3
+        version: 6.0.3
+      vitest:
+        specifier: ^5.0.5
+        version: 5.0.5(@types/node@26.6.6)(@vitest/coverage-v8@5.0.5)(jsdom@30.1.3)(msw@3.0.3(@types/node@26.6.6)(supports-color@10.2.2)(typescript@6.0.3)(vite@8.3.5(@types/node@26.6.6)(yaml@2.9.1)))(vite@8.3.5(@types/node@26.6.6)(yaml@2.9.1))
+
+  packages/theme:
+    dependencies:
+      '@fontsource-variable/fraunces':
+        specifier: 5.3.0
+        version: 5.3.0
+      '@fontsource-variable/plus-jakarta-sans':
+        specifier: 5.3.0
+        version: 5.3.0
+    devDependencies:
+      '@types/node':
+        specifier: ^26.6.6
+        version: 26.6.6
       typescript:
         specifier: ~6.0.3
         version: 6.0.3

@@ -1,24 +1,18 @@
-/** The saved choice; `system` follows the operating system. */
-export type ThemeChoice = 'light' | 'dark' | 'system';
+import { isThemeChoice, THEME_STORAGE_KEY } from '@calendar/theme';
+import type { ThemeChoice } from '@calendar/theme';
+
+export { THEME_STORAGE_KEY };
+export type { ThemeChoice };
 /** The theme the page shows. */
 export type Theme = 'light' | 'dark';
 
-/**
- * The `localStorage` key of the saved choice. The inline script in `index.html` repeats this
- * literal; `startupScript.test.ts` keeps the two in step.
- */
-export const THEME_STORAGE_KEY = 'calendar.theme';
 export const DARK_QUERY = '(prefers-color-scheme: dark)';
-
-function isChoice(value: unknown): value is ThemeChoice {
-  return value === 'light' || value === 'dark' || value === 'system';
-}
 
 /** The saved choice; `system` when nothing valid is saved or storage is unavailable. */
 export function readChoice(): ThemeChoice {
   try {
     const value = window.localStorage.getItem(THEME_STORAGE_KEY);
-    return isChoice(value) ? value : 'system';
+    return isThemeChoice(value) ? value : 'system';
   } catch {
     return 'system';
   }

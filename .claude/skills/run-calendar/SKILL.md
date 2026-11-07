@@ -139,7 +139,9 @@ URL, as the `github-screenshots` skill describes; never attach it another way.
 Selectors are Playwright's (`text=`, `role=button[name="..."]`, `data-testid=`, CSS), plus `label=TEXT` for the
 first form field whose label contains TEXT. Wrap a selector containing spaces in single quotes unless it is the
 last argument. Options: `--base-url`, `--time-zone` (default `UTC`; the client decides what "today" is, ADR-0021),
-`--seed-key`, `--out`.
+`--seed-key`, `--out`, `--viewport WxH` (default `1280x900`; `390x844` is a phone) and `--color-scheme light|dark`
+(the browser's OS preference, for the System theme). The saved theme is `localStorage` key `calendar.theme`
+(`light`, `dark` or `system`): `eval localStorage.setItem('calendar.theme', 'dark')`, then `nav` again.
 
 The week grid scrolls itself to the current time, so morning events can be outside a screenshot. Scroll it first:
 

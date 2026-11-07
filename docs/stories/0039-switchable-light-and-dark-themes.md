@@ -50,7 +50,7 @@ The product owner settled the planning details on 2026-11-07 (recorded on #428):
 * **Saving the theme to the account**: the choice is per browser; following the user across devices would need an API and a migration and is not planned.
 * **A third theme or user-defined colours**: the token layer makes it possible later, but it is not requested.
 * **Treating the prototype screenshots as approved layouts**: they set the direction; each view's details are reviewed in its delivery PR.
-* **The docs site**: the Astro Starlight site keeps its own theme.
+* **The docs site**: the Astro Starlight site keeps its own theme. *Superseded: [0046](0046-apply-the-calendar-themes-to-the-docs-site.md) applies these themes to the docs site.*
 
 ### Dependencies
 

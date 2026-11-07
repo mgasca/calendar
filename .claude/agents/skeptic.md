@@ -2,7 +2,7 @@
 name: skeptic
 description: Tries to refute one review finding through one lens (true, reproduces or matters) for the review-before-merge workflow (story 0035). Read-only; returns a verdict with evidence; never edits, posts or fixes. Use only from that workflow.
 tools: Read, Grep, Glob, Bash
-model: inherit
+model: sonnet
 ---
 
 # Skeptic

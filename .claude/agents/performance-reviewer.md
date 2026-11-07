@@ -2,7 +2,7 @@
 name: performance-reviewer
 description: Reviews the current branch's changes (commits since origin/main plus uncommitted and untracked work) for performance regressions in the .NET backend, the React frontend, repo tooling and tests. Use only when the user or a skill asks for a performance review. Reports findings to the caller; never edits files or git state.
 tools: Read, Grep, Glob, Bash
-model: inherit
+model: opus
 ---
 
 # Performance reviewer

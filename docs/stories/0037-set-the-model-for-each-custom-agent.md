@@ -1,5 +1,5 @@
 ---
-status: planned
+status: in-progress
 date: 2026-11-07
 issue: https://github.com/mgasca/calendar/issues/412
 pr:
@@ -13,7 +13,7 @@ adrs: ["0044", "0042"]
 
 > As a maintainer who works through AI coding agents, I need to set the model for each of my custom Claude agents, so that every agent has the right trade-off between cost and capability.
 
-Tracked in issue [#412](https://github.com/mgasca/calendar/issues/412). The card is the source of truth from here on. The maintainer gave the story in conversation on 2026-11-07, in their words: "So I can have the right tradeoffs of cost/capability as a maintainer I need to set the model for my custom claude agents. The reviewers should use Opus and the Skeptic should use Sonnet." The statement above is that request in the card format.
+Tracked in issue [#412](https://github.com/mgasca/calendar/issues/412). The card is the source of truth from here on. The maintainer gave the story in conversation on 2026-11-07, in their words: "So I can have the right tradeoffs of cost/capability as a maintainer I need to set the model for my custom claude agents. The reviewers should use Opus and the Skeptic should use Sonnet." The statement above is that request in the card format. PR 0 ([#413](https://github.com/mgasca/calendar/pull/413)) posted three open questions (the delivery reviewer's model, aliases or pinned IDs, an enforcing test) and merged on 2026-11-07 with none answered, so the card's recommendation stands for each; the maintainer can still change any of them on the delivery PR.
 
 ## Background
 
@@ -24,9 +24,9 @@ That stops being the right default once the review-before-merge workflow exists.
 ### Agreed scope
 
 * **Each agent names its model.** Every file in `.claude/agents/` sets `model` in its front matter, so no agent inherits by accident.
-* **Reviewers on Opus:** `performance-reviewer`, `security-reviewer` and `delivery-performance-reviewer` set `model: opus` (proposed for `delivery-performance-reviewer`, which the maintainer's request does not name; open question on PR 0).
+* **Reviewers on Opus:** `performance-reviewer`, `security-reviewer` and `delivery-performance-reviewer` set `model: opus`. The request does not name `delivery-performance-reviewer`; it is a reviewer, so it gets Opus too.
 * **The skeptic on Sonnet:** `skeptic` sets `model: sonnet`.
-* **Aliases, not pinned versions (proposed):** the files use the `opus` and `sonnet` aliases, which follow the latest model of each family, so a model release needs no edit here. A pinned model ID is the alternative; open question on PR 0.
+* **Aliases, not pinned versions:** the files use the `opus` and `sonnet` aliases, which follow the latest model of each family, so a model release needs no edit here. A pinned model ID would keep results comparable across a release, which no current record needs.
 * **The choice is written down where the agents are described:** the reviewer bullet in the root `AGENTS.md` says which model each agent runs on and why, in one sentence, and that the setting is Claude Code front matter (ADR-0044); another harness running the agents by hand picks its own model.
 * **Proved on a real run:** after the change, one run of the review-before-merge workflow and one direct call of each reviewer show the model each agent ran on, and the delivery PR reports it.
 
@@ -36,7 +36,7 @@ That stops being the right default once the review-before-merge workflow exists.
 * **Effort or thinking settings per agent.** Only the model is set; effort is a separate trade-off and its own issue if wanted.
 * **Model choice inside the workflow script.** `.claude/workflows/review-before-merge.js` keeps starting agents by type; the model comes from each agent's definition, not from a per-call override in the script.
 * **Built-in agents and the main session.** `Explore`, `Plan`, `general-purpose` and the session's own model are not this repository's to set.
-* **A test that every agent declares a model.** Proposed as a follow-up only if the maintainer wants it (open question on PR 0); a repo tool would need its own xUnit tests under ADR-0017.
+* **A test that every agent declares a model.** Left out: there are four agents and adding one is a reviewed change; an issue follows only if an agent ships without a model. A repo tool would need its own xUnit tests under ADR-0017.
 * **A new benchmark record.** Story 0035's record measures the workflow; the cost difference here follows from the model prices and is not measured in this story.
 
 ### Acceptance criteria

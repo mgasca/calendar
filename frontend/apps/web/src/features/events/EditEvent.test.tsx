@@ -163,8 +163,8 @@ describe('editing an event from the day view', () => {
     });
   });
 
-  it('opens an all-day event with All day checked and its last day', async () => {
-    serveStore([
+  it('opens an all-day event with All day checked and its last day, and saves a later one', async () => {
+    const { puts } = serveStore([
       {
         id: 'a1',
         title: 'Offsite',
@@ -174,11 +174,24 @@ describe('editing an event from the day view', () => {
         version: 3,
       },
     ]);
-    const { dialog } = await openEvent('Offsite');
+    const { user, dialog } = await openEvent('Offsite');
 
     expect(within(dialog).getByRole('checkbox', { name: 'All day' })).toBeChecked();
     expect(within(dialog).getByLabelText('Start')).toHaveValue(DAY);
     expect(within(dialog).getByLabelText('End')).toHaveValue('2099-10-30');
+    await user.clear(within(dialog).getByLabelText('End'));
+    await user.type(within(dialog).getByLabelText('End'), '2099-10-31');
+    await user.click(within(dialog).getByRole('button', { name: 'Save event' }));
+
+    expect(await screen.findByText('Offsite saved.')).toBeVisible();
+    expect(puts).toEqual([
+      expect.objectContaining({
+        allDay: true,
+        startDate: DAY,
+        endDate: '2099-11-01',
+        version: 3,
+      }),
+    ]);
   });
 
   it('validates like Add event and sends nothing', async () => {
@@ -322,6 +335,22 @@ describe('deleting an event from the day view', () => {
 
     expect(within(dialog).getByLabelText('Title')).toHaveValue('Dentist typed');
     expect(deletes).toHaveLength(0);
+  });
+
+  it('says so when the event was already deleted elsewhere, and the day drops it', async () => {
+    const { store } = serveStore([timed()]);
+    const { user, dialog } = await openEvent('Dentist');
+    store.delete('e1');
+
+    await user.click(within(dialog).getByRole('button', { name: 'Delete event' }));
+    await user.click(within(dialog).getByRole('button', { name: 'Delete' }));
+
+    expect(await within(dialog).findByRole('alert')).toHaveTextContent(
+      'This event no longer exists.',
+    );
+    await waitFor(() => {
+      expect(screen.queryByRole('listitem')).not.toBeInTheDocument();
+    });
   });
 
   it('keeps the dialog open and the event listed when the delete fails', async () => {

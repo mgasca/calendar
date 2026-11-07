@@ -38,14 +38,17 @@ export const eventQuery = (id: string) => ({
   staleTime: 0,
 });
 
-/** Refreshes every view that may show the event: the agendas, its notes and the dialog's copy. */
+/**
+ * Refreshes every view that may show the event: the agendas now, its notes and the dialog's copy
+ * only when next read, so the open dialog does not refetch an event that was just deleted.
+ */
 function useRefresh() {
   const client = useQueryClient();
   return (id: string) =>
     Promise.all([
       client.invalidateQueries({ queryKey: AGENDA_KEY }),
-      client.invalidateQueries({ queryKey: ['notes', 'event', id] }),
-      client.invalidateQueries({ queryKey: eventKey(id) }),
+      client.invalidateQueries({ queryKey: ['notes', 'event', id], refetchType: 'none' }),
+      client.invalidateQueries({ queryKey: eventKey(id), refetchType: 'none' }),
     ]);
 }
 

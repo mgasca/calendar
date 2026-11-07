@@ -2,6 +2,10 @@
 
 Practices for the pnpm workspace in `frontend/`: checks, rendering, data fetching and the docs site, which matter only when editing here. The root `AGENTS.md` still applies and nothing here overrides it. Most of this was learned in the performance review (issues #42–#49, story 0018 records #48). Rules marked _(lint)_ are also enforced by ESLint (`eslint.config.js`), whose messages name the helper to use.
 
+## Styling and themes
+
+The app has a light and a dark theme chosen with `data-theme` on `<html>` (ADR-0047). Before adding or restyling a view, dialog or control, read [Style a web view in both themes](../docs/runbooks/web-theme-and-styling.md): use semantic tokens (`src/styles/tokens.css`) and the shared classes (`src/styles/components.css`), never colour literals, `[data-theme]` selectors or theme logic in a view, signal every state with more than colour, and verify both themes (`just frontend test-web dev/styles.test.ts`, then look at the view in Light and Dark). It has a worked example of a new view.
+
 ## Running checks
 
 - Run the checks CI runs: `just frontend lint` (type-aware ESLint, which can take minutes, so don't kill it as hung), `just frontend typecheck`, `just frontend test`, and `corepack pnpm --dir frontend format:check` (no recipe only checks formatting; `just format` rewrites the files). One test file: `just frontend test-web <file-or-pattern>` (Vitest, in `@calendar/web`); `just frontend test` runs every package and takes no arguments.

@@ -127,4 +127,4 @@ The follow-up triggers are recorded in the README and pull request template. [St
 
 [ADR-0041](0041-per-user-data-ownership.md) delivers the ownership follow-up (`owner_id` and per-user scoping) and replaces the shared-data item in the README and the pull request template with its own trigger. The bearer-scheme follow-up for non-browser clients stays open.
 
-**Amendment, 2026-11-04:** the Vite dev proxy may send the Development-only seed key on opt-in, in issue #238 and story [0021](../stories/0021-sign-in-locally-without-google.md). The decision itself is unchanged, so this ADR was amended, not superseded, as [ADR-0038](0038-just-as-the-top-level-task-runner.md) was for its module layout.
+* **Amendment, 2026-11-04:** the Vite dev proxy may send the Development-only seed key on opt-in, in issue #238 and story [0021](../stories/0021-sign-in-locally-without-google.md). The decision itself is unchanged, so this ADR was amended, not superseded, as [ADR-0038](0038-just-as-the-top-level-task-runner.md) was for its module layout.

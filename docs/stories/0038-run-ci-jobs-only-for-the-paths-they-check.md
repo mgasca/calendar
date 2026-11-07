@@ -26,7 +26,7 @@ Story [0030](0030-docs-only-pr-previews.md) limited the hosted docs preview to p
 ### Agreed scope
 
 * **Which runs filter:** pull requests (same repository and forks) and the merge queue. A push to `main` and a `workflow_dispatch` run every job, because production publication needs the docs artifact and [ADR-0045](../decisions/0045-run-time-regression-gates-for-ci-jobs.md) takes its baselines from those runs.
-* **Docs site** runs for changes under `docs/`, `frontend/apps/docs/` or the frontend root configuration.
+* **Docs site** runs for changes under `docs/`, `frontend/apps/docs/` or the frontend root configuration, or to `.github/workflows/pages.yml`, whose tests are in the docs suite.
 * **Backend** runs for changes under `backend/` or `contracts/`.
 * **Frontend** runs for changes under `frontend/apps/web/`, `frontend/packages/` or `contracts/`, or to the frontend root configuration.
 * **Tooling** runs for changes under `tools/`, `.claude/`, `infra/`, `docker/`, `just/` or `docs/decisions/` (ADR validation), to `justfile`, any `*.just` file or `.just-version`, or to a backend MSBuild file (`*.props`, `*.targets`, `*.csproj`), because the tool pins and the delivery guards read them, or to a file under `.github/` that the tooling tests read (`ci-gate.jq`, `ci-baseline.json`, `workflows/ci-trend.yml`, `pull_request_template.md`).
@@ -36,7 +36,7 @@ Story [0030](0030-docs-only-pr-previews.md) limited the hosted docs preview to p
 * **A file in no set** (the root `README.md`, `.github/dependabot.yml`) runs only Changes and `CI result`.
 * **`CI result`** passes only when every job succeeded, or was skipped because Changes said the change did not need it. If Changes fails, `CI result` fails.
 * **Docs preview** is published for any same-repository pull request for which Docs site runs, even if it also changes code. The docs-only rule of story 0030 goes away; the publisher is unchanged.
-* **Docs-site lint:** the Docs site job runs prettier and eslint on `frontend/apps/docs`, because Frontend, which linted the whole workspace, no longer runs for a docs-site change.
+* **Docs-site lint:** the Docs site job runs prettier and eslint on `frontend/apps/docs` when Frontend does not run, because Frontend lints the whole workspace but no longer runs for a docs-site change.
 * **Evidence:** runner minutes and wall time for a docs-only and a backend-only pull request, before and after, in benchmark record 0016. "Before" comes from existing CI history (`just tools ci-timings`), "after" from the throwaway pull requests the delivery needs anyway, with no extra dispatches (answered on #419). The issue carries the `performance` label.
 
 ### Not in this story

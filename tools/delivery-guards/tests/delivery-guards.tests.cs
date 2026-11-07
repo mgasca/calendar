@@ -505,7 +505,7 @@ public sealed class ChangesRulesTests
   [InlineData("image.just", "tooling image")]
   [InlineData("README.md", "")]
   [InlineData(".github/dependabot.yml", "")]
-  [InlineData(".github/workflows/pages.yml", "")]
+  [InlineData(".github/workflows/pages.yml", "docs")]
   [InlineData(".github/ci-gate.jq", "tooling")]
   [InlineData(".github/ci-baseline.json", "tooling")]
   [InlineData(".github/workflows/ci-trend.yml", "tooling")]

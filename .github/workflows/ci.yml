@@ -180,8 +180,9 @@ jobs:
           cache-dependency-path: frontend/pnpm-lock.yaml
       - run: pnpm install --frozen-lockfile
       # The Frontend job formats and lints the whole workspace, but it does not run for a change to the docs site alone
-      # (story 0038), so this job checks the site's own sources.
+      # (story 0038), so this job checks the site's own sources whenever Frontend does not run.
       - name: Format and lint the docs site
+        if: needs.changes.outputs.frontend != 'true'
         run: |
           pnpm exec prettier --check apps/docs
           pnpm exec eslint apps/docs --max-warnings=0

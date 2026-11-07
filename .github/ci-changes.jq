@@ -30,8 +30,9 @@ def tooling_github:
   [".github/ci-gate.jq", ".github/ci-baseline.json", ".github/workflows/ci-trend.yml", ".github/pull_request_template.md"];
 
 # Whether the file at `.` is an input of job `$job`.
+# Docs site: its suite tests the publisher, .github/workflows/pages.yml (pages-workflow.test.ts).
 def needs($job):
-  if $job == "docs" then under(["docs/", "frontend/apps/docs/"]) or frontend_root
+  if $job == "docs" then under(["docs/", "frontend/apps/docs/"]) or frontend_root or . == ".github/workflows/pages.yml"
   elif $job == "backend" then under(["backend/", "contracts/"])
   elif $job == "frontend" then under(["frontend/apps/web/", "frontend/packages/", "contracts/"]) or frontend_root
   elif $job == "tooling" then

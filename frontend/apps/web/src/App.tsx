@@ -6,6 +6,7 @@ import { getUser, safeReturnTo } from './features/auth/auth.ts';
 
 import { ApiStatus } from './features/health/ApiStatus.tsx';
 import type { AppRouter } from './router.tsx';
+import { ThemeControl } from './theme/ThemeControl.tsx';
 
 export function App({ router }: { router: AppRouter }) {
   return <RouterProvider router={router} />;
@@ -87,6 +88,7 @@ export function AppLayout() {
           )}{' '}
           {user.data?.name}
         </span>
+        <ThemeControl />
         <button
           type="button"
           onClick={() => {

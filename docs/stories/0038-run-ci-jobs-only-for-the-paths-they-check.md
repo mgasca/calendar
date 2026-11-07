@@ -1,9 +1,10 @@
 ---
-status: planned
+status: in-progress
 date: 2026-11-07
 issue: https://github.com/mgasca/calendar/issues/418
 pr:
   - https://github.com/mgasca/calendar/pull/419
+  - https://github.com/mgasca/calendar/pull/422
 adrs: ["0012", "0025", "0045", "0046"]
 ---
 
@@ -44,21 +45,21 @@ Story [0030](0030-docs-only-pr-previews.md) limited the hosted docs preview to p
 * **CodeQL, dependency review and the other workflows:** unchanged; they keep their own triggers.
 * **Splitting a job by path inside the job** (for example, running only the docs tests a change touches): out of scope; a job runs whole or not at all.
 * **Removing a stale preview** when a pull request stops changing the docs: it stays until the pull request closes, as today.
-* **Re-measuring the ADR-0045 baselines:** pushes and dispatches still run every job, so the baselines stay valid; the gate stack (epic #380) resolves its conflict in `CI result` when it merges `main`.
+* **Re-measuring the ADR-0045 baselines:** pushes and dispatches still run every job, so the baselines stay valid. The gate stack (epic #380) merged first, and this story merged it in.
 
 ### Acceptance criteria
 
-1. **Given** a pull request that changes only files under `docs/stories/`, **when** CI runs, **then** Changes and Docs site run, Backend, Frontend, Tooling and Container image are skipped, and `CI result` passes. A change under `docs/decisions/` runs Tooling as well.
-2. **Given** a pull request that changes only a file under `backend/src/`, **when** CI runs, **then** Backend and Container image run, Frontend, Docs site and Tooling are skipped, and `CI result` passes.
-3. **Given** a pull request that changes only `contracts/openapi.json`, **when** CI runs, **then** Backend, Frontend and Container image run and Docs site does not.
-4. **Given** a pull request that changes only the root `README.md`, **when** CI runs, **then** only Changes and `CI result` run, and `CI result` passes.
-5. **Given** a pull request that changes `.github/workflows/ci.yml`, **when** CI runs, **then** every job runs.
-6. **Given** a push to `main` or a dispatch, **when** CI runs, **then** every job runs and the push builds the publication artifact.
-7. **Given** a needed job fails or is cancelled, or Changes itself fails, **when** `CI result` runs, **then** it fails.
-8. **Given** a same-repository pull request that changes a file under `docs/` and a file under `backend/`, **when** CI succeeds, **then** the docs preview is published and linked on the pull request.
-9. **Given** a pull request that changes no docs path, **when** CI succeeds, **then** no preview is published.
-10. **Given** a file list for each path set, a file in several sets, an unmatched file, a rules change and a truncated list, **when** the tooling tests run the rules file with `jq`, **then** each returns the jobs above.
-11. **Given** the change is complete, **when** I run `just check`, **then** it passes.
+1. **Given** a pull request that changes only files under `docs/stories/`, **when** CI runs, **then** Changes and Docs site run, Backend, Frontend, Tooling and Container image are skipped, and `CI result` passes. A change under `docs/decisions/` runs Tooling as well. Rules: [delivery-guards tests](../../tools/delivery-guards/tests/delivery-guards.tests.cs) (`AFile_RunsTheJobsItIsAnInputOf`, `docs/stories/…` and `docs/decisions/…`). Live: #423 changed one file under `docs/runbooks/` and ran exactly these jobs (record [0016](../benchmarks/0016-ci-jobs-by-changed-paths.md)).
+2. **Given** a pull request that changes only a file under `backend/`, **when** CI runs, **then** Backend and Container image run, Frontend, Docs site and Tooling are skipped, and `CI result` passes. Rules: [delivery-guards tests](../../tools/delivery-guards/tests/delivery-guards.tests.cs) (`backend/src/…`). Live: #424 (`backend/AGENTS.md`).
+3. **Given** a pull request that changes only `contracts/openapi.json`, **when** CI runs, **then** Backend, Frontend and Container image run and Docs site does not. Rules: [delivery-guards tests](../../tools/delivery-guards/tests/delivery-guards.tests.cs) (`contracts/openapi.json`); not run live.
+4. **Given** a pull request that changes only the root `README.md`, **when** CI runs, **then** only Changes and `CI result` run, and `CI result` passes. Rules: [delivery-guards tests](../../tools/delivery-guards/tests/delivery-guards.tests.cs) (`README.md`). Live: #425, 0:16 wall clock.
+5. **Given** a pull request that changes `.github/workflows/ci.yml`, **when** CI runs, **then** every job runs. Rules: [delivery-guards tests](../../tools/delivery-guards/tests/delivery-guards.tests.cs) (`AChangeToTheRules_RunsEverything`). Live: #422 ran all five.
+6. **Given** a push to `main` or a dispatch, **when** CI runs, **then** every job runs and the push builds the publication artifact. Rules: [delivery-guards tests](../../tools/delivery-guards/tests/delivery-guards.tests.cs) (`APushOrDispatch_RunsEverything`). Live: checked on the first push to `main` after merge.
+7. **Given** a needed job fails or is cancelled, or Changes itself fails, **when** `CI result` runs, **then** it fails. Guard: [delivery-guards tests](../../tools/delivery-guards/tests/delivery-guards.tests.cs) (`CiResultNeedsAllTests`, `ChangesJobTests.AConditionalChangesJob_Fails`). Live: run 42379749204 on #424 added a file that does not compile. Backend and Container image failed, the other three were skipped by Changes, and CI result failed with "A needed job did not succeed, and Changes did not skip it". A failed or cancelled Changes was not run live.
+8. **Given** a same-repository pull request that changes a file under `docs/` and a file under `backend/`, **when** CI succeeds, **then** the docs preview is published and linked on the pull request. Not testable before merge: the publisher previews only pull requests based on `main`, and #423 to #425 are stacked. Live: checked on the first such pull request after merge.
+9. **Given** a pull request that changes no docs path, **when** CI succeeds, **then** no preview is published. Live: #424 and #425 skipped Docs site, so no artifact was built.
+10. **Given** a file list for each path set, a file in several sets, an unmatched file, a rules change and a truncated list, **when** the tooling tests run the rules file with `jq`, **then** each returns the jobs above. [delivery-guards tests](../../tools/delivery-guards/tests/delivery-guards.tests.cs) (`ChangesRulesTests`; negative controls: dropping `contracts/` from Frontend or `pages.yml` from Docs site fails them).
+11. **Given** the change is complete, **when** CI runs on the delivery PR, **then** every job passes. #422 ran every job, green at `31e35eaa8`; locally `just tools test`, the docs tests and actionlint passed, and the full `just check` was not run locally (no backend or frontend source changed).
 
 ## Design decisions
 
@@ -79,17 +80,23 @@ Story [0030](0030-docs-only-pr-previews.md) limited the hosted docs preview to p
 
 ## Implementation notes
 
-*Planned. This section is completed as the story is built.*
+Delivered in #422, stacked on the card and ADR PR #419. Measurements are in record [0016](../benchmarks/0016-ci-jobs-by-changed-paths.md).
 
 ### Where things live
 
 | Area | Location |
 | --- | --- |
-| Changes job, job conditions, `CI result` | `.github/workflows/ci.yml` |
-| Path rules | `.github/ci-changes.jq` |
-| Rules tests | repo tooling, run by `just tools test` |
-| Guard for `CI result` | `tools/delivery-guards/DeliveryGuards.cs` (`ci-result-needs-all`) |
+| Changes job, each job's `needs`/`if`, `CI result` skip exception, docs-site lint | `.github/workflows/ci.yml` |
+| Path rules (job id → job name, path sets, when everything runs) | `.github/ci-changes.jq` |
+| Rules tests (jq on canned inputs) | `tools/delivery-guards/tests/delivery-guards.tests.cs` (`ChangesRulesTests`) |
+| Guards | `tools/delivery-guards/DeliveryGuards.cs`: `changes-job` (new) and `ci-result-needs-all` (accepts only the two exact skip forms) |
 | Publisher | `.github/workflows/pages.yml` (unchanged) |
+
+### How it works
+
+* **Changes** checks out `.github/` only. For a pull request it lists the files with `GET /pulls/{n}/files`, including the old path of a rename, and marks the listing complete when its count equals `changed_files`. For a merge group it uses `GET /compare/{base}...{head}`, complete under 300 files. It pipes the input into `jq -c -f .github/ci-changes.jq` and writes one `true`/`false` output per job, plus `skipped`, the names of the skipped jobs.
+* **CI result** keeps #368's two checks and the ADR-0045 gate step. In `needs` it accepts `skipped` only when the Changes output for that job is `"false"`. In the jobs API it accepts `skipped` only for a name in `skipped`. Changes has no output for itself, so a failed Changes fails CI result.
+* **Docs site** builds the publication artifact on `main` pushes and on every same-repository pull request that runs it. The docs-only step is gone. It lints `apps/docs` only when Frontend does not run (review finding 1 on #422).
 
 ### API
 
@@ -97,21 +104,23 @@ No changes.
 
 ### Testing
 
-* jq rules tested on canned file lists, and a test that `ci.yml` runs the rules file and each job reads its own output.
-* The `ci-result-needs-all` guard and its tests, changed to accept only skips that Changes intended.
-* Throwaway pull requests (docs only, backend only, README only, `ci.yml`) to show which jobs ran, and one mixed docs + backend pull request for the preview.
+* `ChangesRulesTests` run the committed rules with `/usr/bin/jq`. A missing jq fails them, it does not skip them. They also check that the skipped names match the job names in `ci.yml` and that exactly the five filtered jobs need Changes.
+* `ChangesJobTests` and `CiResultNeedsAllTests` break a fixture workflow in each way the guards catch.
+* Live runs: #422 (rules changed, every job), #423 (docs), #424 (backend), #425 (README). Results are in record 0016.
 
 ### Lessons learned, known issues and follow-ups
 
-* To be written on delivery.
+* **The #380 gate stack merged mid-delivery** (#392, #395, #398). Merging `main` resolved `CI result` by keeping the gate's checkout and saved jobs response and adding the skip exception. The tooling tests read the gate's files under `.github/`, so those now run Tooling.
+* **The review** (review-before-merge workflow) found three low issues, posted on #422. Docs lint ran twice when Frontend also ran: fixed. `pages.yml` skipped the docs suite that tests it: fixed. The Changes job's own cost: measured in record 0016, about 5 s.
+* **Changes has no ADR-0045 baseline entry:** the gate reports it on every run without gating it, until the next baseline update.
+* **Path sets are a second description of each job's inputs.** A new shared input that no rule names lets a breaking change through a pull request; pushes to `main` still run everything. Widen the set when that happens (ADR-0046, revisit triggers).
+* **Not verified before merge:** the preview for a mixed docs + code pull request, and the first push to `main` (criteria 6 and 8).
 
 ## User guide
 
-*Planned behaviour. This section is finalised when the story is implemented.*
-
 ### What runs on your pull request
 
-CI looks at the files your pull request changes and runs only the checks those files can affect. The **Changes** job lists which checks it chose. A job it did not need shows as skipped, and **CI result** still turns green. A change to the CI workflow runs every check.
+CI looks at the files your pull request changes and runs only the checks those files can affect. The **Changes** job lists which checks it chose in its summary. A job it did not need shows as skipped, and **CI result** still turns green. A change to the CI workflow or its rules runs every check, and so does every push to `main`.
 
 ### Getting a docs preview
 

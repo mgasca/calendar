@@ -1,6 +1,7 @@
 import { Notes } from './Notes.tsx';
 import { useState } from 'react';
 import { ConfirmDialog } from '../../components/ConfirmDialog.tsx';
+import { taskTitleId } from './taskTitleId.ts';
 import { useDeleteTask } from './useDeleteTask.ts';
 import { formatTime, type AgendaTask } from './dayTime.ts';
 import { TaskUpdateError, useTaskTogglePending } from './useToggleTask.ts';
@@ -16,6 +17,8 @@ export interface TaskItemProps {
   locale?: string | undefined;
   disabled: boolean;
   onToggle: (task: AgendaTask) => void;
+  /** Opens the task to edit from its title (story 0044); without it the title labels the checkbox. */
+  onOpen?: ((task: AgendaTask) => void) | undefined;
 }
 
 /** A task as a list item with a completion checkbox; completed tasks are struck through. */
@@ -29,6 +32,7 @@ export function TaskItem({
   locale,
   disabled,
   onToggle,
+  onOpen,
 }: TaskItemProps) {
   const [confirmDelete, setConfirmDelete] = useState(false);
   const deletion = useDeleteTask();
@@ -39,18 +43,48 @@ export function TaskItem({
     <li
       className={`item task${task.isCompleted ? ' task-done' : ''}${overdue && !task.isCompleted ? ' task-overdue' : ''}`}
     >
-      <label className="task-label">
-        <input
-          type="checkbox"
-          checked={task.isCompleted}
-          disabled={disabled || pending}
-          aria-describedby={showMeta ? metaId : undefined}
-          onChange={() => {
-            onToggle(task);
-          }}
-        />
-        <span className="item-title">{task.title}</span>
-      </label>
+      {onOpen ? (
+        // The title opens the task to edit (story 0044), so it is not part of the checkbox's
+        // label; the checkbox is still named by it.
+        <span className="task-label">
+          <input
+            type="checkbox"
+            checked={task.isCompleted}
+            disabled={disabled || pending}
+            aria-labelledby={taskTitleId(task.id)}
+            aria-describedby={showMeta ? metaId : undefined}
+            onChange={() => {
+              onToggle(task);
+            }}
+          />
+          <span className="item-title">
+            <button
+              type="button"
+              id={taskTitleId(task.id)}
+              className="item-open"
+              aria-haspopup="dialog"
+              onClick={() => {
+                onOpen(task);
+              }}
+            >
+              {task.title}
+            </button>
+          </span>
+        </span>
+      ) : (
+        <label className="task-label">
+          <input
+            type="checkbox"
+            checked={task.isCompleted}
+            disabled={disabled || pending}
+            aria-describedby={showMeta ? metaId : undefined}
+            onChange={() => {
+              onToggle(task);
+            }}
+          />
+          <span className="item-title">{task.title}</span>
+        </label>
+      )}
       {/* The wrappers are `display: contents` on wide screens; a phone lays them out (#462). */}
       {(!!task.priority || task.hasNotes) && (
         <div className="task-extras">

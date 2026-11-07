@@ -58,6 +58,11 @@ afterEach(() => {
   vi.useRealTimers();
 });
 
+/** The live text of the app's save notification (story 0042, #463). */
+function notification() {
+  return within(screen.getByRole('region', { name: 'Notifications' })).getByRole('status');
+}
+
 describe('routes', () => {
   it('shows today at /', async () => {
     const dates = serveAgendas();
@@ -69,6 +74,24 @@ describe('routes', () => {
     expect(within(screen.getByRole('main')).getByText('Today')).toBeInTheDocument();
     expect(screen.getByText('Now')).toBeInTheDocument();
     expect(dates).toEqual(['2026-10-26']);
+  });
+
+  it('shows no API status line and does not poll the health endpoint (#464)', async () => {
+    serveAgendas();
+    let healthChecks = 0;
+    server.use(
+      http.get('*/api/health', () => {
+        healthChecks += 1;
+        return HttpResponse.json({ status: 'ok' });
+      }),
+    );
+
+    renderApp('/');
+
+    expect(await screen.findByText('Review on 2026-10-26')).toBeInTheDocument();
+    expect(screen.queryByText(/API status|Checking API|API unavailable/)).not.toBeInTheDocument();
+    expect(screen.queryByRole('contentinfo')).not.toBeInTheDocument();
+    expect(healthChecks).toBe(0);
   });
 
   it('shows the same view for /day/<today> as for /', async () => {
@@ -150,7 +173,8 @@ describe('navigation', () => {
     serveAgendas();
     const { router } = renderApp('/day/2026-10-20');
     await screen.findByText('Review on 2026-10-20');
-    await userEvent.click(screen.getByRole('link', { name: 'Today' }));
+    const nav = screen.getByRole('navigation', { name: 'Main' });
+    await userEvent.click(within(nav).getByRole('link', { name: 'Today' }));
     await screen.findByText('Review on 2026-10-26');
 
     act(() => {
@@ -159,6 +183,136 @@ describe('navigation', () => {
 
     expect(await screen.findByText('Review on 2026-10-20')).toBeInTheDocument();
     expect(router.state.location.pathname).toBe('/day/2026-10-20');
+  });
+});
+
+describe('day navigation (#465)', () => {
+  function dayNav() {
+    return screen.getByRole('navigation', { name: 'Day' });
+  }
+
+  it('steps through the days around a daylight-saving change, and the URL follows', async () => {
+    const dates = serveAgendas();
+    const { router } = renderApp('/');
+    await screen.findByText('Review on 2026-10-26');
+    const user = userEvent.setup();
+
+    // Europe/Madrid left summer time on Sunday 25 October 2026.
+    await user.click(within(dayNav()).getByRole('link', { name: 'Previous day' }));
+    expect(await screen.findByText('Review on 2026-10-25')).toBeInTheDocument();
+    expect(router.state.location.pathname).toBe('/day/2026-10-25');
+    await user.click(within(dayNav()).getByRole('link', { name: 'Previous day' }));
+    expect(await screen.findByText('Review on 2026-10-24')).toBeInTheDocument();
+    expect(router.state.location.pathname).toBe('/day/2026-10-24');
+    await user.click(within(dayNav()).getByRole('link', { name: 'Next day' }));
+    expect(await screen.findByText('Review on 2026-10-25')).toBeInTheDocument();
+    expect(router.state.location.pathname).toBe('/day/2026-10-25');
+
+    // Going back to the 25th reuses its agenda, still fresh in the cache.
+    expect(dates).toEqual(['2026-10-26', '2026-10-25', '2026-10-24']);
+  });
+
+  it.each([
+    ['the end of a month', '2026-10-31', 'Next day', '2026-11-01'],
+    ['the start of a month', '2026-11-01', 'Previous day', '2026-10-31'],
+    ['the end of a year', '2026-12-31', 'Next day', '2027-01-01'],
+    ['the start of a year', '2027-01-01', 'Previous day', '2026-12-31'],
+    ['a leap day', '2028-02-28', 'Next day', '2028-02-29'],
+  ])('crosses %s', async (_case, from, name, to) => {
+    serveAgendas();
+    const { router } = renderApp(`/day/${from}`);
+    await screen.findByText(`Review on ${from}`);
+
+    await userEvent.click(within(dayNav()).getByRole('link', { name }));
+
+    expect(await screen.findByText(`Review on ${to}`)).toBeInTheDocument();
+    expect(router.state.location.pathname).toBe(`/day/${to}`);
+  });
+
+  it('offers Today only on another day, and it opens today', async () => {
+    serveAgendas();
+    const { router, unmount } = renderApp('/');
+    await screen.findByText('Review on 2026-10-26');
+    expect(within(dayNav()).queryByRole('link', { name: 'Today' })).not.toBeInTheDocument();
+    unmount();
+
+    renderApp('/day/2026-10-26');
+    await screen.findByText('Review on 2026-10-26');
+    expect(within(dayNav()).queryByRole('link', { name: 'Today' })).not.toBeInTheDocument();
+
+    await userEvent.click(within(dayNav()).getByRole('link', { name: 'Next day' }));
+    await screen.findByText('Review on 2026-10-27');
+    await userEvent.click(within(dayNav()).getByRole('link', { name: 'Today' }));
+
+    expect(await screen.findByText('Review on 2026-10-26')).toBeInTheDocument();
+    expect(router.state.location.pathname).toBe('/');
+    expect(within(dayNav()).queryByRole('link', { name: 'Today' })).not.toBeInTheDocument();
+  });
+
+  it('names its links for assistive technology and keeps them reachable by keyboard', async () => {
+    serveAgendas();
+    renderApp('/day/2026-10-20');
+    await screen.findByText('Review on 2026-10-20');
+
+    const links = within(dayNav()).getAllByRole('link');
+    expect(links.map((link) => link.textContent.replace(/[‹›]/g, '').trim())).toEqual([
+      'Previous day',
+      'Today',
+      'Next day',
+    ]);
+    expect(links.map((link) => link.getAttribute('href'))).toEqual([
+      '/day/2026-10-19',
+      '/',
+      '/day/2026-10-21',
+    ]);
+    for (const link of links) expect(link).not.toHaveAttribute('tabindex', '-1');
+  });
+
+  it('keeps the controls while the next day loads and keeps keyboard focus on the one used', async () => {
+    let release: () => void = () => undefined;
+    const gate = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    server.use(
+      http.get('*/api/agenda/day', async ({ request }) => {
+        const date = new URL(request.url).searchParams.get('date') ?? '';
+        if (date === '2026-10-27') await gate;
+        return HttpResponse.json(agendaFor(date));
+      }),
+    );
+    const { router } = renderApp('/');
+    await screen.findByText('Review on 2026-10-26');
+    const user = userEvent.setup();
+
+    // From / to /day/<date> is another route, so the view is mounted again.
+    within(dayNav()).getByRole('link', { name: 'Next day' }).focus();
+    await user.keyboard('{Enter}');
+    await waitFor(() => {
+      expect(router.state.location.pathname).toBe('/day/2026-10-27');
+    });
+    expect(screen.getByText(/^Loading the agenda for this day/)).toBeInTheDocument();
+    expect(within(dayNav()).getByRole('link', { name: 'Next day' })).toHaveFocus();
+    act(release);
+    expect(await screen.findByText('Review on 2026-10-27')).toBeInTheDocument();
+    expect(within(dayNav()).getByRole('link', { name: 'Next day' })).toHaveFocus();
+
+    // Today leaves no Today link behind, so focus goes to the first control.
+    within(dayNav()).getByRole('link', { name: 'Today' }).focus();
+    await user.keyboard('{Enter}');
+    expect(await screen.findByText('Review on 2026-10-26')).toBeInTheDocument();
+    expect(within(dayNav()).getByRole('link', { name: 'Previous day' })).toHaveFocus();
+  });
+
+  it.each([
+    ['first', '1900-01-01', 'Previous day', 'Next day'],
+    ['last', '2200-12-31', 'Next day', 'Previous day'],
+  ])('stops at the %s supported day', async (_case, date, missing, present) => {
+    serveAgendas();
+    renderApp(`/day/${date}`);
+    await screen.findByText(`Review on ${date}`);
+
+    expect(within(dayNav()).queryByRole('link', { name: missing })).not.toBeInTheDocument();
+    expect(within(dayNav()).getByRole('link', { name: present })).toBeInTheDocument();
   });
 });
 
@@ -214,7 +368,7 @@ describe('tasks', () => {
       http.get('*/api/tasks', () => HttpResponse.json({ items: tasks, nextCursor: null })),
       http.post('*/api/tasks', async ({ request }) => {
         const body = (await request.json()) as Schemas['CreateTaskRequest'];
-        const task = { ...body, id: 'new-task', isCompleted: false };
+        const task = { ...body, id: 'new-task', isCompleted: false, version: 1 };
         tasks.push(task);
         return HttpResponse.json(task, { status: 201 });
       }),
@@ -237,10 +391,8 @@ describe('tasks', () => {
     await waitFor(() => {
       expect(screen.queryByRole('button', { name: 'Save task' })).not.toBeInTheDocument();
     });
-    expect(screen.getByText('Task added. You can find it in My tasks.')).toHaveAttribute(
-      'role',
-      'status',
-    );
+    expect(notification()).toHaveTextContent(/^“Pack bag” added\.$/);
+    expect(screen.queryByRole('button', { name: 'Show day' })).not.toBeInTheDocument();
     expect(await screen.findByRole('checkbox', { name: 'Pack bag' })).toBeInTheDocument();
     await waitFor(() => expect(screen.getByRole('button', { name: 'Add task' })).toHaveFocus());
 
@@ -283,15 +435,44 @@ describe('tasks', () => {
     await user.click(screen.getByRole('button', { name: 'Add task' }));
     await user.type(screen.getByLabelText('Title'), 'Pack bag');
     await user.click(screen.getByRole('button', { name: 'Save task' }));
-    expect(await screen.findByText(/^Task added/)).toBeInTheDocument();
+    expect(await screen.findByText('“Pack bag” added.')).toBeInTheDocument();
     expectButtonsTogether();
 
     await user.click(screen.getByRole('button', { name: 'Add event' }));
     await user.type(screen.getByLabelText('Title'), 'Dentist');
     await user.click(screen.getByRole('button', { name: 'Save event' }));
     expect(await screen.findByText(/Dentist added for/)).toBeInTheDocument();
-    expect(screen.getByText(/^Task added/)).toBeInTheDocument();
     expectButtonsTogether();
+  });
+
+  it('offers Show day for a task due on another day, from the day view and from My tasks', async () => {
+    serveTasks();
+    const { router, unmount } = renderApp('/day/2099-10-27');
+    const user = userEvent.setup();
+    await user.click(await screen.findByRole('button', { name: 'Add task' }));
+    await user.type(screen.getByLabelText('Title'), 'Pack bag');
+    fireEvent.change(screen.getByLabelText('Due date'), { target: { value: '2099-10-30' } });
+    await user.click(screen.getByRole('button', { name: 'Save task' }));
+
+    await waitFor(() => {
+      expect(notification()).toHaveTextContent(/^“Pack bag” added for Fri,? (30 Oct|Oct 30)\.$/);
+    });
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Add task' })).toHaveFocus());
+    await user.click(screen.getByRole('button', { name: 'Show day' }));
+    await waitFor(() => {
+      expect(router.state.location.pathname).toBe('/day/2099-10-30');
+    });
+    expect(await screen.findByRole('checkbox', { name: 'Pack bag' })).toBeInTheDocument();
+    unmount();
+
+    renderApp('/tasks');
+    await user.click(await screen.findByRole('button', { name: 'Add task' }));
+    await user.type(screen.getByLabelText('Title'), 'Someday');
+    await user.click(screen.getByRole('button', { name: 'Save task' }));
+    await waitFor(() => {
+      expect(notification()).toHaveTextContent(/^“Someday” added\.$/);
+    });
+    expect(screen.queryByRole('button', { name: 'Show day' })).not.toBeInTheDocument();
   });
 
   it('cancels with Escape, restores focus, and opens with fresh values', async () => {
@@ -415,7 +596,9 @@ describe('event creation from a day', () => {
     await user.type(screen.getByLabelText('Title'), 'Dentist');
     await user.click(screen.getByRole('button', { name: 'Save event' }));
     expect(await screen.findByText('Dentist')).toBeVisible();
-    expect(screen.getByText(/Dentist added for/)).toHaveAttribute('role', 'status');
+    expect(notification()).toHaveTextContent(/^Dentist added for Thu,? (29 Oct|Oct 29)\.$/);
+    expect(screen.getByRole('main')).not.toContainElement(notification());
+    expect(screen.queryByRole('button', { name: 'Show day' })).not.toBeInTheDocument();
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
     await waitFor(() => {
       expect(screen.getByRole('button', { name: 'Add event' })).toHaveFocus();

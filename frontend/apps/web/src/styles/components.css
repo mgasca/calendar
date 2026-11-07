@@ -224,6 +224,11 @@ select {
   box-shadow: var(--shadow-popover);
 }
 
+/* The heading sits on the dialog's padding, so the gap above it matches the sides (#464). */
+.modal-dialog > h2 {
+  margin-top: 0;
+}
+
 .modal-dialog::backdrop {
   background: var(--color-backdrop);
 }
@@ -380,8 +385,10 @@ select {
     gap: var(--space-1) var(--space-2);
   }
 
-  /* Compact like Refresh: 2rem tall, still above the 24px minimum target (WCAG 2.5.8). */
-  :not(.week-task-list) > .task button {
+  /* Compact like Refresh: 2rem tall, still above the 24px minimum target (WCAG 2.5.8). The title
+     button (`.item-open`) keeps its own text styling. */
+  :not(.week-task-list) > .task > .task-extras button,
+  :not(.week-task-list) > .task > .row-actions button {
     min-height: 2rem;
     padding: 0 var(--space-3);
     font-size: var(--text-sm);
@@ -432,6 +439,31 @@ select {
   font-weight: 400;
 }
 
+/* Editing from the day view (stories 0043 and 0044). */
+
+/* A row's title that opens the item to edit: text with an underline, not a boxed button. */
+.item-open {
+  min-height: 1.5rem;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: start;
+  text-decoration: underline dotted var(--color-border-strong);
+  text-underline-offset: 0.2em;
+}
+
+.item-open:hover:not(:disabled) {
+  background: none;
+  text-decoration-style: solid;
+  text-decoration-color: currentcolor;
+}
+
+.delete-confirmation p {
+  margin-top: 0;
+}
+
 /* Links styled as buttons (sign-in). */
 a.button-primary,
 a.button-danger {
@@ -459,7 +491,6 @@ a.button-primary:hover {
   color: var(--color-loading-text);
 }
 
-.app-footer [role='alert'],
 main[role='alert'] {
   color: var(--color-error);
 }
@@ -484,4 +515,68 @@ img {
 
 details > summary {
   cursor: pointer;
+}
+
+/*
+ * Notifications (story 0042, #463): one save confirmation at a time, fixed at the bottom of the
+ * viewport and outside the page flow. The box is drawn only while a notification is shown; the
+ * empty status paragraph stays in the page so each message is announced once.
+ */
+.toast-region {
+  position: fixed;
+  inset-inline: var(--space-4);
+  bottom: var(--space-4);
+  z-index: 10;
+  display: flex;
+  justify-content: center;
+  pointer-events: none;
+}
+
+.toast:not([data-state='closed']) {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2) var(--space-3);
+  width: min(100%, 28rem);
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-md);
+  background: var(--color-surface-raised);
+  box-shadow: var(--shadow-popover);
+  pointer-events: auto;
+}
+
+.toast .toast-message {
+  flex: 1 1 12rem;
+  margin: 0;
+  color: var(--color-text);
+  overflow-wrap: anywhere;
+}
+
+.toast-actions {
+  display: flex;
+  gap: var(--space-2);
+  margin-inline-start: auto;
+}
+
+.toast[data-state='leaving'] {
+  opacity: 0;
+  pointer-events: none;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .toast[data-state='open'] {
+    animation: toast-in 200ms ease-out;
+  }
+
+  .toast[data-state='leaving'] {
+    transition: opacity 200ms ease-in;
+  }
+}
+
+@keyframes toast-in {
+  from {
+    opacity: 0;
+    transform: translateY(var(--space-2));
+  }
 }

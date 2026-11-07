@@ -277,9 +277,19 @@ describe('DayView', () => {
         /^Monday,? 26 October$/,
       );
       expect(await screen.findByText('Today')).toBeInTheDocument();
-      expect(
-        await screen.findByText('2 all-day events · 5 events · 4 tasks to do · 2 overdue'),
-      ).toBeInTheDocument();
+      const summary = await screen.findByText(
+        (_, element) => element?.classList.contains('summary') ?? false,
+      );
+      expect(summary).toHaveTextContent(
+        /^2 all-day events · 5 events · 4 tasks to do · 2 overdue$/,
+      );
+      // Each part is kept on one line, so a narrow screen breaks only between parts (#464).
+      expect([...summary.children].map((part) => [part.className, part.textContent])).toEqual([
+        ['summary-part', '2 all-day events'],
+        ['summary-part', '5 events'],
+        ['summary-part', '4 tasks to do'],
+        ['summary-part', '2 overdue'],
+      ]);
     });
 
     it('shows the full overdue counts when the list is capped', async () => {
@@ -497,7 +507,7 @@ describe('DayView', () => {
       const titles = async (name: string) =>
         within(await screen.findByRole('list', { name }))
           .getAllByRole('checkbox')
-          .map((c) => c.closest('label')?.textContent);
+          .map((c) => c.closest('li')?.querySelector('.item-title')?.textContent);
       expect(await titles('Overdue')).toEqual(['Overdue oldest', 'Overdue newer', 'Overdue done']);
       expect(await titles('Due today')).toEqual(['Today first', 'Today second', 'Today done']);
     });
@@ -708,6 +718,9 @@ describe('DayView', () => {
       const requests = serveAgenda(buildAgenda());
       await renderToday();
       const button = await screen.findByRole('button', { name: 'Refresh' });
+      // Both labels are always in the button, one hidden, so it is as wide as the longer (#464).
+      expect(within(button).getByText('Refreshing…')).toHaveAttribute('aria-hidden', 'true');
+      expect(within(button).getByText('Refresh')).not.toHaveAttribute('aria-hidden', 'true');
       server.use(
         http.get('*/api/agenda/day', async ({ request }) => {
           requests.push(new URL(request.url));
@@ -721,7 +734,9 @@ describe('DayView', () => {
 
       await userEvent.click(button);
 
-      expect(await screen.findByRole('button', { name: 'Refreshing…' })).toBeInTheDocument();
+      expect(await screen.findByRole('button', { name: 'Refreshing…' })).toBe(button);
+      expect(button).toHaveAttribute('aria-busy', 'true');
+      expect(within(button).getByText('Refresh')).toHaveAttribute('aria-hidden', 'true');
       expect(requests).toHaveLength(2);
       release();
       expect(await screen.findByRole('button', { name: 'Refresh' })).toBeInTheDocument();

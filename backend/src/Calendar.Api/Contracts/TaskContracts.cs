@@ -1,6 +1,8 @@
 using System.Linq.Expressions;
 using System.Text.Json.Serialization;
 using Calendar.Domain.Tasks;
+using Calendar.Infrastructure;
+using Microsoft.EntityFrameworkCore;
 
 namespace Calendar.Api.Contracts;
 
@@ -22,6 +24,35 @@ public sealed record CreateTaskRequest
   /// <summary>Due instant, RFC 3339 with an explicit offset; mutually exclusive with <c>dueDate</c>.</summary>
   [JsonConverter(typeof(ExplicitOffsetConverter))]
   public DateTimeOffset? DueAt { get; init; }
+}
+
+/// <summary>
+/// Replace a task's title, deadline, priority and notes, by the rules of <c>CreateTaskRequest</c>, plus the
+/// <c>version</c> the client loaded. Neither deadline field clears the deadline. Completion is not changed.
+/// </summary>
+public sealed record UpdateTaskRequest
+{
+  /// <summary>Task title; required, at most 200 characters after trimming.</summary>
+  public required string Title { get; init; }
+
+  /// <summary>Priority level; defaults to medium. Allowed values: low, medium, high.</summary>
+  public string Priority { get; init; } = "medium";
+
+  /// <summary>Optional notes, at most 4000 characters after trimming.</summary>
+  public string? Notes { get; init; }
+
+  /// <summary>Floating due date (YYYY-MM-DD); mutually exclusive with <c>dueAt</c>.</summary>
+  public DateOnly? DueDate { get; init; }
+
+  /// <summary>Due instant, RFC 3339 with an explicit offset; mutually exclusive with <c>dueDate</c>.</summary>
+  [JsonConverter(typeof(ExplicitOffsetConverter))]
+  public DateTimeOffset? DueAt { get; init; }
+
+  /// <summary>
+  /// The task's <c>version</c> as last read; the update is refused with <c>409</c> when the task has changed
+  /// since.
+  /// </summary>
+  public required uint Version { get; init; }
 }
 
 /// <summary>A task as stored.</summary>
@@ -51,7 +82,10 @@ public sealed record TaskResponse
   /// <summary><c>true</c> once the task has been completed.</summary>
   public required bool IsCompleted { get; init; }
 
-  /// <summary>Translatable to SQL, for query projections.</summary>
+  /// <summary>Opaque version of the stored task; send it back to update the task.</summary>
+  public required uint Version { get; init; }
+
+  /// <summary>Translatable to SQL, for query projections; reads the version from the row.</summary>
   public static readonly Expression<Func<TodoTask, TaskResponse>> Projection = t => new TaskResponse
   {
     Id = t.Id,
@@ -62,12 +96,26 @@ public sealed record TaskResponse
     DueAt = t.DueAt,
     CompletedAt = t.CompletedAt,
     IsCompleted = t.CompletedAt != null,
+    Version = EF.Property<uint>(t, RowVersion.PropertyName),
   };
 
-  private static readonly Func<TodoTask, TaskResponse> Compiled = Projection.Compile();
-
-  /// <summary>Maps a <see cref="TodoTask"/> to its response.</summary>
-  public static TaskResponse From(TodoTask task) => Compiled(task);
+  /// <summary>Maps a tracked <see cref="TodoTask"/> to its response, with the <paramref name="version"/> its context read.</summary>
+  public static TaskResponse From(TodoTask task, uint version)
+  {
+    ArgumentNullException.ThrowIfNull(task);
+    return new TaskResponse
+    {
+      Id = task.Id,
+      Title = task.Title,
+      Priority = task.Priority,
+      Notes = task.Notes,
+      DueDate = task.DueDate,
+      DueAt = task.DueAt,
+      CompletedAt = task.CompletedAt,
+      IsCompleted = task.IsCompleted,
+      Version = version,
+    };
+  }
 }
 
 /// <summary>A task in an agenda.</summary>

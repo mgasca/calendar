@@ -402,6 +402,75 @@
           }
         }
       },
+      "put": {
+        "tags": [
+          "Tasks"
+        ],
+        "operationId": "UpdateTask",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateTaskRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TaskResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HttpValidationProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      },
       "delete": {
         "tags": [
           "Tasks"
@@ -1455,7 +1524,8 @@
         "required": [
           "id",
           "title",
-          "isCompleted"
+          "isCompleted",
+          "version"
         ],
         "type": "object",
         "properties": {
@@ -1506,6 +1576,15 @@
           "isCompleted": {
             "type": "boolean",
             "description": "`true` once the task has been completed."
+          },
+          "version": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "description": "Opaque version of the stored task; send it back to update the task.",
+            "format": "uint32"
           }
         },
         "description": "A task as stored."
@@ -1647,6 +1726,56 @@
           }
         },
         "description": "Replace an event: the fields and rules of `CreateEventRequest`, plus the `version` the client loaded.\nThe kind can change (timed to all-day and back)."
+      },
+      "UpdateTaskRequest": {
+        "required": [
+          "title",
+          "version"
+        ],
+        "type": "object",
+        "properties": {
+          "title": {
+            "type": "string",
+            "description": "Task title; required, at most 200 characters after trimming."
+          },
+          "priority": {
+            "type": "string",
+            "description": "Priority level; defaults to medium. Allowed values: low, medium, high."
+          },
+          "notes": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "Optional notes, at most 4000 characters after trimming."
+          },
+          "dueDate": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "Floating due date (YYYY-MM-DD); mutually exclusive with `dueAt`.",
+            "format": "date"
+          },
+          "dueAt": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "Due instant, RFC 3339 with an explicit offset; mutually exclusive with `dueDate`.",
+            "format": "date-time"
+          },
+          "version": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "description": "The task's `version` as last read; the update is refused with `409` when the task has changed\nsince.",
+            "format": "uint32"
+          }
+        },
+        "description": "Replace a task's title, deadline, priority and notes, by the rules of `CreateTaskRequest`, plus the\n`version` the client loaded. Neither deadline field clears the deadline. Completion is not changed."
       },
       "WeekAgendaResponse": {
         "required": [

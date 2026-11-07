@@ -729,4 +729,132 @@ public sealed class TaskEndpointsTests(PostgresFixture postgres) : ApiTestBase(p
     response.StatusCode.ShouldBe(HttpStatusCode.NoContent);
     (await Client.GetAsync(new Uri($"/api/tasks/{task.Id}", UriKind.Relative), Ct)).StatusCode.ShouldBe(HttpStatusCode.NotFound);
   }
+
+  [Fact]
+  public async Task UpdateTask_ReplacesTheEditableFields_AndReturnsANewVersion()
+  {
+    TaskResponse created = await CreateAsync(new { title = "Buy milk", dueDate = "2026-10-26", priority = "low", notes = "Two litres" });
+
+    using HttpResponseMessage response = await Client.PutAsJsonAsync(
+      TaskUri(created.Id),
+      new { title = " Buy oat milk ", dueDate = "2026-10-27", priority = "high", notes = "Oat", version = created.Version },
+      Ct);
+
+    response.StatusCode.ShouldBe(HttpStatusCode.OK);
+    TaskResponse updated = (await response.Content.ReadFromJsonAsync<TaskResponse>(Ct))!;
+    updated.Id.ShouldBe(created.Id);
+    updated.Title.ShouldBe("Buy oat milk");
+    updated.DueDate.ShouldBe(new DateOnly(2026, 10, 27));
+    updated.Priority.ShouldBe("high");
+    updated.Notes.ShouldBe("Oat");
+    updated.IsCompleted.ShouldBeFalse();
+    updated.Version.ShouldNotBe(created.Version);
+    (await Client.GetFromJsonAsync<TaskResponse>(TaskUri(created.Id), Ct)).ShouldBe(updated);
+
+    // Moved to tomorrow: it leaves the 26th and is due on the 27th.
+    (await GetAgendaAsync("2026-10-26", "UTC")).Tasks.DueToday.ShouldBeEmpty();
+    (await GetAgendaAsync("2026-10-27", "UTC")).Tasks.DueToday.ShouldHaveSingleItem().Title.ShouldBe("Buy oat milk");
+  }
+
+  [Fact]
+  public async Task UpdateTask_SwitchesBetweenDeadlineKinds_AndClearsTheDeadline()
+  {
+    TaskResponse created = await CreateAsync(new { title = "Call", dueDate = "2026-10-26" });
+
+    TaskResponse timed = await PutAsync(created.Id, new { title = "Call", dueAt = "2026-10-26T15:30:00+01:00", version = created.Version });
+    TaskResponse undated = await PutAsync(created.Id, new { title = "Call", version = timed.Version });
+
+    timed.DueDate.ShouldBeNull();
+    timed.DueAt.ShouldBe(Utc(2026, 10, 26, 14, 30));
+    timed.Priority.ShouldBe("medium");
+    undated.DueDate.ShouldBeNull();
+    undated.DueAt.ShouldBeNull();
+  }
+
+  [Fact]
+  public async Task UpdateTask_OfACompletedTask_KeepsItCompleted()
+  {
+    TaskResponse created = await CreateAsync(new { title = "Done", dueDate = "2026-10-26" });
+    TaskResponse completed = await PostActionAsync(created.Id, "complete");
+
+    TaskResponse updated = await PutAsync(created.Id, new { title = "Done well", dueDate = "2026-10-20", version = completed.Version });
+
+    updated.IsCompleted.ShouldBeTrue();
+    updated.CompletedAt.ShouldBe(completed.CompletedAt);
+    updated.Title.ShouldBe("Done well");
+  }
+
+  [Fact]
+  public async Task UpdateTask_AfterACompleteElsewhere_Returns409_AndLeavesTheTaskUnchanged()
+  {
+    TaskResponse created = await CreateAsync(new { title = "Buy milk", dueDate = "2026-10-26" });
+    TaskResponse completed = await PostActionAsync(created.Id, "complete");
+
+    using HttpResponseMessage stale = await Client.PutAsJsonAsync(
+      TaskUri(created.Id),
+      new { title = "Stale write", dueDate = "2026-10-27", version = created.Version },
+      Ct);
+
+    stale.StatusCode.ShouldBe(HttpStatusCode.Conflict);
+    stale.Content.Headers.ContentType!.MediaType.ShouldBe("application/problem+json");
+    (await Client.GetFromJsonAsync<TaskResponse>(TaskUri(created.Id), Ct)).ShouldBe(completed);
+  }
+
+  [Fact]
+  public async Task UpdateTask_Invalid_Returns400WithTheField_AndLeavesTheTaskUnchanged()
+  {
+    TaskResponse created = await CreateAsync(new { title = "Buy milk" });
+
+    using HttpResponseMessage blank = await Client.PutAsJsonAsync(TaskUri(created.Id), new { title = "  ", version = created.Version }, Ct);
+    using HttpResponseMessage both = await Client.PutAsJsonAsync(
+      TaskUri(created.Id),
+      new { title = "A", dueDate = "2026-10-26", dueAt = "2026-10-26T10:00:00Z", version = created.Version },
+      Ct);
+    using HttpResponseMessage priority = await Client.PutAsJsonAsync(
+      TaskUri(created.Id),
+      new { title = "A", priority = "urgent", version = created.Version },
+      Ct);
+    using HttpResponseMessage noVersion = await Client.PutAsJsonAsync(TaskUri(created.Id), new { title = "A" }, Ct);
+
+    foreach ((HttpResponseMessage response, var field) in new[] { (blank, "title"), (both, "dueAt"), (priority, "priority") })
+    {
+      response.StatusCode.ShouldBe(HttpStatusCode.BadRequest);
+      JsonObject problem = (await response.Content.ReadFromJsonAsync<JsonObject>(Ct))!;
+      problem["errors"]!.AsObject().ContainsKey(field).ShouldBeTrue();
+    }
+
+    noVersion.StatusCode.ShouldBe(HttpStatusCode.BadRequest);
+    (await Client.GetFromJsonAsync<TaskResponse>(TaskUri(created.Id), Ct)).ShouldBe(created);
+  }
+
+  [Fact]
+  public async Task UpdateTask_Unknown_Returns404Problem()
+  {
+    using HttpResponseMessage response = await Client.PutAsJsonAsync(TaskUri(Guid.NewGuid()), new { title = "A", version = 1 }, Ct);
+
+    response.StatusCode.ShouldBe(HttpStatusCode.NotFound);
+    response.Content.Headers.ContentType!.MediaType.ShouldBe("application/problem+json");
+  }
+
+  [Fact]
+  public async Task TaskVersion_IsTheSameInListsGetAndActions()
+  {
+    TaskResponse created = await CreateAsync(new { title = "Versioned" });
+    TaskResponse completed = await PostActionAsync(created.Id, "complete");
+
+    TaskPage page = await ListAsync("completed");
+
+    page.Items.ShouldHaveSingleItem().Version.ShouldBe(completed.Version);
+    (await Client.GetFromJsonAsync<TaskResponse>(TaskUri(created.Id), Ct))!.Version.ShouldBe(completed.Version);
+    completed.Version.ShouldNotBe(created.Version);
+  }
+
+  private static Uri TaskUri(Guid id) => new($"/api/tasks/{id}", UriKind.Relative);
+
+  private async Task<TaskResponse> PutAsync(Guid id, object payload)
+  {
+    using HttpResponseMessage response = await Client.PutAsJsonAsync(TaskUri(id), payload, Ct);
+    response.StatusCode.ShouldBe(HttpStatusCode.OK);
+    return (await response.Content.ReadFromJsonAsync<TaskResponse>(Ct))!;
+  }
 }

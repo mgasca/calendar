@@ -1,5 +1,5 @@
 ---
-status: proposed
+status: accepted
 date: 2026-11-07
 decision-makers: mgasca, Claude (AI assistant)
 ---
@@ -27,7 +27,7 @@ decision-makers: mgasca, Claude (AI assistant)
 
 ## Decision Outcome
 
-Chosen option: "Fontsource variable-font npm packages, bundled by Vite", because Vite serves the files from the app's own origin (**D2**), the same typefaces render on every platform (**D1**), the packages are pinned in `pnpm-lock.yaml` and updated like any other dependency (**D4**), and both proposed fonts are under the SIL Open Font License 1.1 (**D5**). Importing only the Latin subset of each variable font keeps the cost to a few files (**D3**).
+Chosen option: "Fontsource variable-font npm packages, bundled by Vite", because Vite serves the files from the app's own origin (**D2**), the same typefaces render on every platform (**D1**), the packages are pinned in `pnpm-lock.yaml` and updated like any other dependency (**D4**), and both fonts are under the SIL Open Font License 1.1 (**D5**). Importing only the Latin subset of each variable font keeps the cost to a few files (**D3**).
 
 | Driver | **Fontsource packages (chosen)** | Files committed by hand | Google Fonts CDN | System font stacks |
 | --- | :---: | :---: | :---: | :---: |
@@ -37,7 +37,7 @@ Chosen option: "Fontsource variable-font npm packages, bundled by Vite", because
 | D4 Maintained like other dependencies | ★★★ | ☆☆☆ | ★★☆ | ★★★ |
 | D5 Licence | ★★★ | ★★★ | ★★★ | ★★★ |
 
-### Typefaces (proposed)
+### Typefaces
 
 * **Paper & Sage headings**: Fraunces, `@fontsource-variable/fraunces` (5.3.0 at the time of writing, OFL-1.1), an editorial serif with optical sizes.
 * **Midnight Studio headings and body text in both themes**: Plus Jakarta Sans, `@fontsource-variable/plus-jakarta-sans` (5.3.0 at the time of writing, OFL-1.1).

@@ -1,0 +1,315 @@
+/* Shared controls, styled once from the semantic tokens of tokens.css. */
+
+/* Buttons */
+
+button {
+  min-height: var(--control-height);
+  padding: 0 var(--space-4);
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  cursor: pointer;
+}
+
+button:hover:not(:disabled) {
+  background: var(--color-accent-soft);
+}
+
+button:disabled {
+  opacity: var(--opacity-stale);
+  cursor: default;
+}
+
+.button-primary {
+  border-color: var(--color-accent);
+  color: var(--color-on-accent);
+  background: var(--color-accent);
+  font-weight: 700;
+}
+
+.button-primary:hover:not(:disabled) {
+  background: var(--color-accent-hover);
+}
+
+.button-danger {
+  border-color: var(--color-error);
+  color: var(--color-on-error);
+  background: var(--color-error);
+  font-weight: 700;
+}
+
+.button-danger:hover:not(:disabled) {
+  background: var(--color-error);
+  filter: brightness(0.92);
+}
+
+button[aria-pressed='true'] {
+  border: 2px solid var(--color-accent);
+  background: var(--color-accent-soft);
+  font-weight: 700;
+}
+
+/* A row of toggle buttons that read as one control (the theme switch uses it). */
+.segmented {
+  display: inline-flex;
+}
+
+.segmented > button {
+  border-radius: 0;
+}
+
+.segmented > button:not(:first-child) {
+  margin-left: -1px;
+}
+
+.segmented > button:first-child {
+  border-radius: var(--radius-md) 0 0 var(--radius-md);
+}
+
+.segmented > button:last-child {
+  border-radius: 0 var(--radius-md) var(--radius-md) 0;
+}
+
+/* Text fields */
+
+input:not([type='checkbox']),
+textarea,
+select {
+  box-sizing: border-box;
+  max-width: 100%;
+  min-height: var(--control-height);
+  padding: var(--space-2);
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface-sunken);
+}
+
+/*
+ * Form validation (ADR-0043). A field wraps its label and control; an invalid control gets the error
+ * border. Its message is always rendered as the control's description for assistive technology, kept
+ * off-screen like .visually-hidden, and shown as a bubble under the control while the field is focused
+ * or hovered, so the layout never moves.
+ */
+.field {
+  position: relative;
+}
+
+.field [aria-invalid='true'] {
+  border: 2px solid var(--color-error);
+}
+
+.field [aria-invalid='true']:focus-visible {
+  outline-color: var(--color-error);
+}
+
+.field-bubble {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  z-index: 1;
+  box-sizing: border-box;
+  width: 1px;
+  height: 1px;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+  font-size: 0.9rem;
+  color: var(--color-text);
+  background: var(--color-surface-raised);
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-sm);
+  box-shadow: var(--shadow-popover);
+}
+
+.field:hover > .field-bubble,
+.field:focus-within > .field-bubble {
+  width: auto;
+  max-width: 100%;
+  height: auto;
+  margin-top: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  overflow: visible;
+  clip-path: none;
+  white-space: normal;
+}
+
+.field:hover > .field-bubble::before,
+.field:focus-within > .field-bubble::before {
+  content: '';
+  position: absolute;
+  top: -0.4rem;
+  left: var(--space-4);
+  width: 0.7rem;
+  height: 0.7rem;
+  background: var(--color-surface-raised);
+  border-top: 1px solid var(--color-border-strong);
+  border-left: 1px solid var(--color-border-strong);
+  transform: rotate(45deg);
+}
+
+.field-mark {
+  display: inline-block;
+  width: 1.1rem;
+  height: 1.1rem;
+  margin-right: 0.4rem;
+  border-radius: var(--radius-sm);
+  font-size: var(--text-sm);
+  font-weight: 700;
+  line-height: 1.1rem;
+  text-align: center;
+  color: var(--color-on-error);
+  background: var(--color-error);
+}
+
+/* Containers */
+
+/* A modal <dialog>: the browser centres it and traps focus; this only sizes and skins it. */
+.modal-dialog {
+  box-sizing: border-box;
+  width: min(36rem, calc(100vw - 2rem));
+  max-height: calc(100vh - 2rem);
+  overflow: auto;
+  padding: var(--space-4);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  color: var(--color-text);
+  background: var(--color-surface-raised);
+  box-shadow: var(--shadow-popover);
+}
+
+.modal-dialog::backdrop {
+  background: var(--color-backdrop);
+}
+
+.modal-dialog fieldset {
+  border: 0;
+  padding: 0;
+  min-width: 0;
+}
+
+.modal-dialog label,
+.actions label {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  margin-bottom: var(--space-3);
+}
+
+.panel {
+  padding: var(--space-4);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface);
+  box-shadow: var(--shadow-panel);
+}
+
+.app-nav {
+  display: flex;
+  gap: var(--space-4);
+  margin-bottom: var(--space-4);
+}
+
+.app-nav a[aria-current='page'] {
+  color: var(--color-text);
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.badge {
+  padding: 0 var(--space-2);
+  border: 1px solid currentColor;
+  border-radius: var(--radius-pill);
+  font-size: var(--text-xs);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.badge-current,
+.badge-next {
+  color: var(--color-accent);
+  font-weight: 700;
+}
+
+.badge-past {
+  color: var(--color-text-muted);
+}
+
+.notice {
+  margin: var(--space-4) 0;
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid currentColor;
+  border-radius: var(--radius-md);
+}
+
+.notice p {
+  margin: 0 0 var(--space-2);
+}
+
+.notice-error {
+  color: var(--color-error);
+}
+
+.flag {
+  color: var(--color-overdue-text);
+}
+
+/* Lists and text helpers */
+
+.items {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  border-top: 1px solid var(--color-border);
+}
+
+.item {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--space-1) var(--space-3);
+  padding: 0.6rem var(--space-2);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.item-title {
+  font-weight: 500;
+  overflow-wrap: anywhere;
+}
+
+.item-time {
+  min-width: 9rem;
+  font-variant-numeric: tabular-nums;
+  color: var(--color-text-muted);
+}
+
+.item-meta {
+  flex-basis: 100%;
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+}
+
+.eyebrow {
+  margin: 0;
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--color-text-muted);
+}
+
+.summary {
+  margin: 0;
+  color: var(--color-text-muted);
+}
+
+.empty {
+  margin-top: var(--space-6);
+  font-size: 1.1rem;
+  color: var(--color-empty-text);
+}
+
+.count {
+  color: var(--color-text-muted);
+  font-weight: 400;
+}

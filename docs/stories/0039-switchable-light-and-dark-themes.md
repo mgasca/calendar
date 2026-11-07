@@ -76,8 +76,8 @@ The product owner settled the planning details on 2026-11-07 (recorded on #428):
 
 | ADR | Decision | Why it matters for this story |
 | --- | --- | --- |
-| [0047](../decisions/0047-semantic-css-tokens-selected-by-a-data-theme-attribute.md) | Semantic CSS custom-property tokens selected by `data-theme` on `<html>` (proposed) | The theme mechanism, the token layer and its guard test |
-| [0048](../decisions/0048-self-host-theme-fonts-with-fontsource-packages.md) | Self-host the theme fonts from Fontsource packages (proposed) | The heading typefaces and their delivery |
+| [0047](../decisions/0047-semantic-css-tokens-selected-by-a-data-theme-attribute.md) | Semantic CSS custom-property tokens selected by `data-theme` on `<html>` (accepted) | The theme mechanism, the token layer and its guard test |
+| [0048](../decisions/0048-self-host-theme-fonts-with-fontsource-packages.md) | Self-host the theme fonts from Fontsource packages (accepted) | The heading typefaces and their delivery |
 | [0043](../decisions/0043-form-validation-red-borders-and-bubble.md) | Form errors as red borders with a bubble | Kept; its colours become status tokens |
 | [0026](../decisions/0026-client-side-routing-with-tanstack-router.md) | TanStack Router | Switching must not change the route |
 | [0008](../decisions/0008-frontend-testing-stack.md) | Vitest, Testing Library and MSW | Where the theme and guard tests live |
@@ -96,7 +96,7 @@ The product owner settled the planning details on 2026-11-07 (recorded on #428):
 
 | Area | Location |
 | --- | --- |
-| Token layer and both themes | `frontend/apps/web/src/styles/` (forecast), split from `src/index.css` |
+| Token layer and both themes | `frontend/apps/web/src/styles/` (`tokens.css`, `base.css`, `components.css`, guards in `styles.test.ts`), imported by `src/index.css` |
 | Theme choice and storage | a theme module and hook under `frontend/apps/web/src/` (forecast) |
 | Start-up script | `frontend/apps/web/index.html` |
 | Header control | the app shell in `frontend/apps/web/src/App.tsx` |

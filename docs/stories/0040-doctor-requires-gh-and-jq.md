@@ -4,6 +4,7 @@ date: 2026-11-07
 issue: https://github.com/mgasca/calendar/issues/454
 pr:
   - https://github.com/mgasca/calendar/pull/456
+  - https://github.com/mgasca/calendar/pull/457
 adrs: ["0016", "0017", "0038"]
 ---
 
@@ -66,7 +67,7 @@ No new ADR is expected.
 
 ## Implementation notes
 
-Delivered in two stacked PRs: the card (#456) and the change (this story's delivery PR).
+Delivered in two stacked PRs: the card (#456) and the change (#457).
 
 ### Where things live
 

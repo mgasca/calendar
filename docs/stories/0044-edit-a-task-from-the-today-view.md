@@ -106,7 +106,7 @@ Delivered after the card ([#485](https://github.com/mgasca/calendar/pull/485)) i
 | Domain | `backend/src/Calendar.Domain/Tasks/TodoTask.cs`: `Update` applies the `Create` rules through a validated copy and leaves `CompletedAt` alone |
 | Contract and client | `contracts/openapi.json`, `frontend/packages/api-client/src/schema.gen.ts` (by `just contracts`) |
 | Dialog | `frontend/apps/web/src/features/tasks/TaskForm.tsx` (edit mode, conflict reload), `taskForm.ts` (`fromTask`; `SaveTaskError` carries the status), `EditTask.tsx` (loads the task), `useEditTask.ts` (`taskQuery`) |
-| Row | `frontend/apps/web/src/features/agenda/TaskItem.tsx`: with `onOpen`, the title is a button and the checkbox is named by it (`aria-labelledby`, `taskTitleId`); without it (week view) the row is unchanged |
+| Row | `frontend/apps/web/src/features/agenda/TaskItem.tsx`: with `onOpen`, the title is a button and the checkbox is named by it (`aria-labelledby`, `taskTitleId` in `taskTitleId.ts`); without it (week view) the row is unchanged |
 | Day view | `frontend/apps/web/src/features/day/DayView.tsx`: `openTask`, the **Task saved.** notification and `focusTitleOrHeading` (shared with event editing) |
 
 ### API

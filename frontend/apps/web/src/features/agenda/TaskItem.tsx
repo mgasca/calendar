@@ -1,6 +1,7 @@
 import { Notes } from './Notes.tsx';
 import { useState } from 'react';
 import { ConfirmDialog } from '../../components/ConfirmDialog.tsx';
+import { taskTitleId } from './taskTitleId.ts';
 import { useDeleteTask } from './useDeleteTask.ts';
 import { formatTime, type AgendaTask } from './dayTime.ts';
 import { TaskUpdateError, useTaskTogglePending } from './useToggleTask.ts';
@@ -19,9 +20,6 @@ export interface TaskItemProps {
   /** Opens the task to edit from its title (story 0044); without it the title labels the checkbox. */
   onOpen?: ((task: AgendaTask) => void) | undefined;
 }
-
-/** The id of a task's title button, to return focus to it after editing. */
-export const taskTitleId = (id: string) => `task-title-${id}`;
 
 /** A task as a list item with a completion checkbox; completed tasks are struck through. */
 export function TaskItem({

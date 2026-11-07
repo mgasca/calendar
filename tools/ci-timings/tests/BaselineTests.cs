@@ -254,6 +254,21 @@ public sealed class BaselineIoTests
   }
 
   [Fact]
+  public void Evaluate_LeavesOutTheBaselinesOwnRuns()
+  {
+    // A hold-out window that overlaps the baseline window must not back-test the baseline on its own runs.
+    BaselineFile baseline = Sample();
+
+    BackTest test = BaselineIo.Evaluate(
+      baseline,
+      [new PathSample(100, "Backend", "check", 900), new PathSample(7, "Backend", "check", 60)]);
+
+    test.Runs.ShouldBe(1);
+    test.FailedRuns.ShouldBe(0);
+    test.JobChecks[("Backend", "check")].ShouldBe((1, 0));
+  }
+
+  [Fact]
   public void BackTestTable_ReportsTheRateAndItsUpperBound()
   {
     BaselineFile baseline = Sample();

@@ -48,6 +48,7 @@ build: backend::build frontend::build
 test: backend::test frontend::test
 
 # Static analysis (analyzers run as part of the .NET build)
+[parallel]
 lint: backend::lint frontend::lint frontend::typecheck && tools::test tools::versions tools::adr docs::architecture
 
 # Auto-format all code

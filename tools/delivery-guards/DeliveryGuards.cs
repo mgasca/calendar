@@ -48,6 +48,16 @@ public static partial class Guards
 {
   private const string SupersedeJobName = "Cancel superseded runs";
   private const string ResultJobName = "CI result";
+  private const string ChangesJobName = "Changes";
+
+  /// <summary>The rules the Changes job runs (ADR-0046); the tests run the same file.</summary>
+  public const string ChangesRulesPath = ".github/ci-changes.jq";
+
+  /// <summary>CI result's one exception in `needs`: a job skipped because the Changes output for it is "false".</summary>
+  public const string NeedsSkipException = ".value.result == \"skipped\" and $needs.changes.outputs[.key] == \"false\"";
+
+  /// <summary>The same exception in the jobs API check: a skipped job that Changes listed as skipped.</summary>
+  public const string JobsApiSkipException = "select(.conclusion != \"skipped\" or (.name | IN($skipped[]) | not))";
 
   /// <summary>Every guard, in the order of the fixes.</summary>
   public static IReadOnlyList<Guard> All { get; } =
@@ -74,7 +84,8 @@ public static partial class Guards
       "ci-result-needs-all",
       "#368",
       "none",
-      "CI result always runs, needs every other job (except Cancel superseded runs) and passes only when all of them succeeded.",
+      "CI result always runs, needs every other job (except Cancel superseded runs) and passes only when each succeeded or was "
+        + "skipped because the Changes job said the run does not need it.",
       CiResultNeedsAll),
     new(
       "single-web-typecheck",
@@ -88,6 +99,13 @@ public static partial class Guards
       "0004",
       "The docs site is checked in its own Docs site job: Frontend excludes it, and the docs typecheck reuses the build's sync.",
       DocsSiteJob),
+    new(
+      "changes-job",
+      "#418",
+      "0016",
+      "A Changes job runs .github/ci-changes.jq on every run, and each other job but CI result and Cancel superseded runs "
+        + "needs it and runs only when its own output is true.",
+      ChangesJob),
   ];
 
   /// <summary>Runs every guard; a workflow that cannot be read fails every guard that reads it.</summary>
@@ -312,11 +330,20 @@ public static partial class Guards
       yield return $"`{ResultJobName}` needs `{optional}`, which is skipped on every run but a same-repository pull request.";
     }
 
+    // A needed job must succeed. The only skip CI result may accept is one the Changes job intended (ADR-0046, #418),
+    // in the two exact forms below; any other mention of "skipped" in the script would let a skip pass for a success.
     var script = string.Join('\n', result.Steps.Select(Workflow.Run));
-    if (!script.Contains("all(.[]; .result == \"success\")", StringComparison.Ordinal))
+    if (!script.Contains(".result == \"success\"", StringComparison.Ordinal))
     {
-      yield return $"`{ResultJobName}` no longer requires every needed job's result to be success "
-        + "(`all(.[]; .result == \"success\")`).";
+      yield return $"`{ResultJobName}` no longer requires every needed job's result to be success (`.result == \"success\"`).";
+    }
+
+    var otherSkips = script.Replace(NeedsSkipException, "", StringComparison.Ordinal)
+      .Replace(JobsApiSkipException, "", StringComparison.Ordinal);
+    if (otherSkips.Contains("\"skipped\"", StringComparison.Ordinal) || otherSkips.Contains("!= \"failure\"", StringComparison.Ordinal))
+    {
+      yield return $"`{ResultJobName}` accepts a job that did not succeed beyond a skip the Changes job intended "
+        + $"(`{NeedsSkipException}`).";
     }
 
     if (!script.Contains("/jobs", StringComparison.Ordinal) || !script.Contains(".conclusion != \"success\"", StringComparison.Ordinal))
@@ -391,6 +418,62 @@ public static partial class Guards
     if (typecheck.Count == 0 || !typecheck.TrueForAll(r => r.Contains("--noSync", StringComparison.Ordinal)))
     {
       yield return "the Docs site job's typecheck does not pass `--noSync`, so `astro check` repeats the content sync the build ran.";
+    }
+  }
+
+  private static IEnumerable<string> ChangesJob(RepoFiles files)
+  {
+    var workflow = Workflow.Parse(files.Workflow);
+    if (workflow.JobNamed(ChangesJobName) is not { } changes)
+    {
+      yield return $"no job is named `{ChangesJobName}`.";
+      yield break;
+    }
+
+    if (changes.Body.Text("if") is { } condition)
+    {
+      yield return $"`{ChangesJobName}` runs only `if: {condition}`; it must run on every event, or every job after it is skipped.";
+    }
+
+    if (!changes.Steps.Any(s => Workflow.Run(s).Contains($"jq -c -f {ChangesRulesPath}", StringComparison.Ordinal)))
+    {
+      yield return $"`{ChangesJobName}` does not run `jq -c -f {ChangesRulesPath}`, the rules the tests check.";
+    }
+
+    YamlMapping? outputs = changes.Body.Map("outputs");
+    var skip = new HashSet<string>(StringComparer.Ordinal) { changes.Id };
+    if (workflow.JobNamed(ResultJobName) is { } result)
+    {
+      skip.Add(result.Id);
+    }
+
+    if (workflow.JobNamed(SupersedeJobName) is { } supersede)
+    {
+      skip.Add(supersede.Id);
+    }
+
+    foreach (WorkflowJob job in workflow.Jobs.Where(j => !skip.Contains(j.Id)))
+    {
+      if (!job.Body.List("needs").OfType<YamlScalar>().Any(s => s.Value == changes.Id))
+      {
+        yield return $"`{job.Name}` does not need `{changes.Id}`, so it cannot read whether this run needs it.";
+      }
+
+      var expected = $"needs.{changes.Id}.outputs.{job.Id} == 'true'";
+      if (job.Body.Text("if") != expected)
+      {
+        yield return $"`{job.Name}` must run `if: {expected}`, its own Changes output and nothing else.";
+      }
+
+      if (outputs?.Text(job.Id) is null)
+      {
+        yield return $"`{ChangesJobName}` has no `{job.Id}` output for `{job.Name}`.";
+      }
+    }
+
+    if (outputs?.Text("skipped") is null)
+    {
+      yield return $"`{ChangesJobName}` has no `skipped` output, which CI result's jobs API check reads.";
     }
   }
 

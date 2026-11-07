@@ -72,14 +72,29 @@ internal static class Fixture
         && github.run_id || github.ref }}
       cancel-in-progress: ${{ github.event_name == 'pull_request' }}
     jobs:
+      changes:
+        name: Changes
+        outputs:
+          backend: ${{ steps.decide.outputs.backend }}
+          frontend: ${{ steps.decide.outputs.frontend }}
+          docs: ${{ steps.decide.outputs.docs }}
+          tooling: ${{ steps.decide.outputs.tooling }}
+          skipped: ${{ steps.decide.outputs.skipped }}
+        steps:
+          - id: decide
+            run: result=$(jq -c -f .github/ci-changes.jq <<< "$input")
       backend:
         name: Backend
+        needs: changes
+        if: needs.changes.outputs.backend == 'true'
         steps:
           - uses: actions/checkout@v7
           - run: dotnet build --no-restore -c Release
           - run: dotnet format whitespace --verify-no-changes --no-restore
       frontend:
         name: Frontend
+        needs: changes
+        if: needs.changes.outputs.frontend == 'true'
         steps:
           - run: pnpm install --frozen-lockfile
           - run: pnpm -r --filter '!@calendar/docs' typecheck
@@ -88,11 +103,15 @@ internal static class Fixture
             run: pnpm --filter @calendar/web exec vite build
       docs:
         name: Docs site
+        needs: changes
+        if: needs.changes.outputs.docs == 'true'
         steps:
           - run: pnpm --filter @calendar/docs build
           - run: pnpm --filter @calendar/docs typecheck --noSync
       tooling:
         name: Tooling
+        needs: changes
+        if: needs.changes.outputs.tooling == 'true'
         steps:
           - uses: actions/setup-dotnet@v6
             with:
@@ -115,11 +134,13 @@ internal static class Fixture
       result:
         name: CI result
         if: ${{ always() }}
-        needs: [backend, frontend, docs, tooling]
+        needs: [changes, backend, frontend, docs, tooling]
         steps:
           - run: |
-              jq -e 'length > 0 and all(.[]; .result == "success")' <<< "$NEEDS"
-              gh api "repos/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID/jobs" --jq '.jobs[] | select(.conclusion != "success")'
+              jq -e '. as $needs | all(to_entries[]; .value.result == "success"
+                or (.value.result == "skipped" and $needs.changes.outputs[.key] == "false"))' <<< "$NEEDS"
+              gh api "repos/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID/jobs" --jq '.jobs[] | select(.conclusion != "success")
+                | select(.conclusion != "skipped" or (.name | IN($skipped[]) | not))'
     """;
 
   public const string BackendJustfile = """
@@ -344,7 +365,7 @@ public sealed class CiResultNeedsAllTests
 
   [Fact]
   public void AJobLeftOutOfNeeds_Fails() =>
-    Failures(w => w.Replace("[backend, frontend, docs, tooling]", "[backend, frontend, docs]", StringComparison.Ordinal))
+    Failures(w => w.Replace("[changes, backend, frontend, docs, tooling]", "[changes, backend, frontend, docs]", StringComparison.Ordinal))
       .ShouldHaveSingleItem().ShouldContain("does not need `tooling` (Tooling)");
 
   [Fact]
@@ -364,8 +385,8 @@ public sealed class CiResultNeedsAllTests
   [Fact]
   public void NeedsAsABlockList_IsRead() =>
     Failures(w => w.Replace(
-      "needs: [backend, frontend, docs, tooling]",
-      "needs:\n      - backend\n      - frontend\n      - docs\n      - tooling",
+      "needs: [changes, backend, frontend, docs, tooling]",
+      "needs:\n      - changes\n      - backend\n      - frontend\n      - docs\n      - tooling",
       StringComparison.Ordinal)).ShouldBeEmpty();
 
   [Fact]
@@ -378,16 +399,198 @@ public sealed class CiResultNeedsAllTests
     Failures(w => w.Replace("    if: ${{ always() }}\n", "", StringComparison.Ordinal)).ShouldHaveSingleItem().ShouldContain("always()");
 
   [Fact]
-  public void AResultCheckThatAcceptsSkipped_Fails() =>
-    Failures(w => w.Replace("all(.[]; .result == \"success\")", "all(.[]; .result != \"failure\")", StringComparison.Ordinal))
-      .ShouldHaveSingleItem().ShouldContain("result to be success");
+  public void AResultCheckThatAcceptsAnyNonFailure_Fails() =>
+    Failures(w => w.Replace(".value.result == \"success\"", ".value.result != \"failure\"", StringComparison.Ordinal))
+      .ShouldBe(["`CI result` no longer requires every needed job's result to be success (`.result == \"success\"`).",
+        $"`CI result` accepts a job that did not succeed beyond a skip the Changes job intended (`{Guards.NeedsSkipException}`)."]);
+
+  [Fact]
+  public void ASkipThatChangesDidNotIntend_Fails() =>
+    Failures(w => w.Replace(
+      " and $needs.changes.outputs[.key] == \"false\"", "", StringComparison.Ordinal))
+      .ShouldHaveSingleItem().ShouldContain("beyond a skip the Changes job intended");
+
+  [Fact]
+  public void AJobsApiCheckThatAcceptsEverySkip_Fails() =>
+    Failures(w => w.Replace(Guards.JobsApiSkipException, "select(.conclusion != \"skipped\")", StringComparison.Ordinal))
+      .ShouldHaveSingleItem().ShouldContain("beyond a skip the Changes job intended");
+
+  [Fact]
+  public void TheStrictCheckWithoutSkips_Passes() =>
+    Failures(w => w.Replace(" or (" + Guards.NeedsSkipException + ")", "", StringComparison.Ordinal)
+      .Replace("| " + Guards.JobsApiSkipException, "", StringComparison.Ordinal)).ShouldBeEmpty();
 
   [Fact]
   public void NoJobsApiCheck_Fails() =>
     Failures(w => w.Replace(
-      """          gh api "repos/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID/jobs" --jq '.jobs[] | select(.conclusion != "success")'""",
-      "",
+      """          gh api "repos/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID/jobs" --jq '.jobs[] | select(.conclusion != "success")""",
+      "          true '",
       StringComparison.Ordinal)).ShouldHaveSingleItem().ShouldContain("jobs API");
+}
+
+public sealed class ChangesJobTests
+{
+  private static IReadOnlyList<string> Failures(Func<string, string> workflow) =>
+    Fixture.Failures("changes-job", Fixture.Files(workflow: workflow));
+
+  [Fact]
+  public void NoChangesJob_Fails() =>
+    Failures(w => w.Replace("name: Changes", "name: Paths", StringComparison.Ordinal))
+      .ShouldHaveSingleItem().ShouldContain("no job is named `Changes`");
+
+  [Fact]
+  public void AConditionalChangesJob_Fails() =>
+    Failures(w => w.Replace("name: Changes\n", "name: Changes\n    if: github.event_name == 'pull_request'\n", StringComparison.Ordinal))
+      .ShouldHaveSingleItem().ShouldContain("must run on every event");
+
+  [Fact]
+  public void RulesInlineInsteadOfTheTestedFile_Fails() =>
+    Failures(w => w.Replace("jq -c -f .github/ci-changes.jq", "jq -c -f rules.jq", StringComparison.Ordinal))
+      .ShouldHaveSingleItem().ShouldContain(Guards.ChangesRulesPath);
+
+  [Fact]
+  public void AJobThatDoesNotNeedChanges_Fails() =>
+    Failures(w => w.Replace("name: Tooling\n    needs: changes\n", "name: Tooling\n", StringComparison.Ordinal))
+      .ShouldHaveSingleItem().ShouldContain("`Tooling` does not need `changes`");
+
+  [Theory]
+  [InlineData("needs.changes.outputs.frontend == 'true'")]
+  [InlineData("needs.changes.outputs.docs == 'true' || needs.changes.outputs.frontend == 'true'")]
+  [InlineData("always()")]
+  public void AJobThatReadsAnotherCondition_Fails(string condition) =>
+    Failures(w => w.Replace("if: needs.changes.outputs.docs == 'true'", $"if: {condition}", StringComparison.Ordinal))
+      .ShouldHaveSingleItem().ShouldContain("`Docs site` must run `if: needs.changes.outputs.docs == 'true'`");
+
+  [Fact]
+  public void AJobWithNoOutput_Fails() =>
+    Failures(w => w.Replace("      tooling: ${{ steps.decide.outputs.tooling }}\n", "", StringComparison.Ordinal))
+      .ShouldHaveSingleItem().ShouldContain("no `tooling` output");
+
+  [Fact]
+  public void NoSkippedOutput_Fails() =>
+    Failures(w => w.Replace("      skipped: ${{ steps.decide.outputs.skipped }}\n", "", StringComparison.Ordinal))
+      .ShouldHaveSingleItem().ShouldContain("no `skipped` output");
+}
+
+/// <summary>Runs the committed rules file with jq on canned inputs (ADR-0046); jq missing fails, it does not skip.</summary>
+public sealed class ChangesRulesTests
+{
+  private static readonly string Root = RepoRoot();
+
+  private static readonly string[] AllJobs = ["backend", "frontend", "docs", "tooling", "image"];
+
+  private static readonly string[] JqPaths = ["/usr/bin/jq", "/usr/local/bin/jq"];
+
+  [Theory]
+  [InlineData("docs/stories/0038-x.md", "docs")]
+  [InlineData("docs/decisions/0046-x.md", "docs tooling")]
+  [InlineData("frontend/apps/docs/src/lib/adr.ts", "docs")]
+  [InlineData("backend/src/Calendar.Api/Program.cs", "backend image")]
+  [InlineData("backend/Directory.Packages.props", "backend tooling image")]
+  [InlineData("backend/mod.just", "backend tooling image")]
+  [InlineData("contracts/openapi.json", "backend frontend image")]
+  [InlineData("frontend/apps/web/src/main.tsx", "frontend image")]
+  [InlineData("frontend/packages/api-client/src/index.ts", "frontend image")]
+  [InlineData("frontend/pnpm-lock.yaml", "docs frontend image")]
+  [InlineData("frontend/mod.just", "docs frontend tooling image")]
+  [InlineData("frontend/AGENTS.md", "")]
+  [InlineData("tools/ci-timings/CiTimings.cs", "tooling")]
+  [InlineData(".claude/skills/adr-draft/SKILL.md", "tooling")]
+  [InlineData("infra/main.bicep", "tooling")]
+  [InlineData("docker/postgres/init/01-roles.sh", "tooling image")]
+  [InlineData("justfile", "tooling")]
+  [InlineData("db.just", "tooling")]
+  [InlineData(".just-version", "tooling")]
+  [InlineData("Dockerfile", "image")]
+  [InlineData("image.just", "tooling image")]
+  [InlineData("README.md", "")]
+  [InlineData(".github/dependabot.yml", "")]
+  [InlineData(".github/workflows/pages.yml", "")]
+  public void AFile_RunsTheJobsItIsAnInputOf(string file, string expected) =>
+    Run("pull_request", true, file).ShouldBe(Expected(expected));
+
+  [Theory]
+  [InlineData(".github/workflows/ci.yml")]
+  [InlineData(".github/ci-changes.jq")]
+  public void AChangeToTheRules_RunsEverything(string file) =>
+    Run("pull_request", true, "README.md", file).ShouldBe(Expected(string.Join(' ', AllJobs)));
+
+  [Fact]
+  public void FilesInSeveralSets_RunTheUnion() =>
+    Run("merge_group", true, "docs/runbooks/x.md", "backend/src/A.cs").ShouldBe(Expected("backend docs image"));
+
+  [Fact]
+  public void AnIncompleteListing_RunsEverything() =>
+    Run("pull_request", false, "README.md").ShouldBe(Expected(string.Join(' ', AllJobs)));
+
+  [Theory]
+  [InlineData("push")]
+  [InlineData("workflow_dispatch")]
+  public void APushOrDispatch_RunsEverything(string @event) => Run(@event, true).ShouldBe(Expected(string.Join(' ', AllJobs)));
+
+  [Fact]
+  public void SkippedNames_AreTheJobNamesInCi()
+  {
+    var output = RunJq("""{"event":"pull_request","complete":true,"files":["README.md"]}""");
+    output.ShouldContain("""
+      "skipped":["Backend","Frontend","Docs site","Tooling","Container image"]
+      """.Trim());
+    var workflow = Workflow.Parse(File.ReadAllText(Path.Combine(Root, RepoFiles.WorkflowPath)));
+    foreach (var id in AllJobs)
+    {
+      workflow.Jobs.ShouldContain(j => j.Id == id && output.Contains($"\"{j.Name}\"", StringComparison.Ordinal), id);
+    }
+
+    workflow.Jobs.Where(j => j.Body.List("needs").OfType<YamlScalar>().Any(s => s.Value == "changes") && j.Name != "CI result")
+      .Select(j => j.Id).Order(StringComparer.Ordinal).ShouldBe(AllJobs.Order(StringComparer.Ordinal));
+  }
+
+  private static string Expected(string jobs)
+  {
+    HashSet<string> run = jobs.Split(' ', StringSplitOptions.RemoveEmptyEntries).ToHashSet(StringComparer.Ordinal);
+    return string.Join(' ', AllJobs.Select(j => $"{j}={run.Contains(j)}".ToLowerInvariant()));
+  }
+
+  private static string Run(string @event, bool complete, params string[] files)
+  {
+    var list = string.Join(',', files.Select(f => $"\"{f}\""));
+    var output = RunJq($$"""{"event":"{{@event}}","complete":{{(complete ? "true" : "false")}},"files":[{{list}}]}""");
+    using var json = System.Text.Json.JsonDocument.Parse(output);
+    return string.Join(' ', AllJobs.Select(j => $"{j}={json.RootElement.GetProperty(j).GetBoolean()}".ToLowerInvariant()));
+  }
+
+  private static string RunJq(string input)
+  {
+    var jq = JqPaths.FirstOrDefault(File.Exists)
+      ?? throw new InvalidOperationException("jq is not installed (/usr/bin/jq); the rules tests need it and do not skip.");
+    var start = new System.Diagnostics.ProcessStartInfo(jq, ["-c", "-f", Path.Combine(Root, Guards.ChangesRulesPath)])
+    {
+      RedirectStandardInput = true,
+      RedirectStandardOutput = true,
+      RedirectStandardError = true,
+    };
+    using System.Diagnostics.Process process = System.Diagnostics.Process.Start(start)!;
+    process.StandardInput.Write(input);
+    process.StandardInput.Close();
+    var output = process.StandardOutput.ReadToEnd();
+    var error = process.StandardError.ReadToEnd();
+    process.WaitForExit();
+    process.ExitCode.ShouldBe(0, error);
+    return output.Trim();
+  }
+
+  private static string RepoRoot([CallerFilePath] string path = "")
+  {
+    for (var dir = new DirectoryInfo(Path.GetDirectoryName(path)!); dir is not null; dir = dir.Parent)
+    {
+      if (File.Exists(Path.Combine(dir.FullName, ".just-version")))
+      {
+        return dir.FullName;
+      }
+    }
+
+    throw new InvalidOperationException($"No repo root above {path}.");
+  }
 }
 
 public sealed class SingleWebTypecheckTests

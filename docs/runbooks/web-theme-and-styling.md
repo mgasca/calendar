@@ -63,7 +63,7 @@ Pick a token by what the thing is, not by how it looks today. All colour tokens 
 
 Other tokens, in `tokens.css`:
 
-- Effects: `--shadow-panel`, `--shadow-popover`, `--opacity-stale` (data being refreshed), `--opacity-past` (finished events).
+- Effects: `--shadow-panel`, `--shadow-popover`, `--opacity-stale` (data being refreshed).
 - Type: `--font-body`, `--font-heading`, `--font-heading-weight`, `--font-heading-tracking` (the two themes differ here: Paper & Sage uses a serif, Midnight Studio a bold sans-serif), `--text-xs` to `--text-3xl`, `--leading`.
 - Space and shape: `--space-1` to `--space-8`, `--radius-sm`, `--radius-md`, `--radius-lg`, `--radius-pill`, `--control-height` (the minimum height of any control, which keeps touch targets large enough).
 
@@ -83,7 +83,7 @@ The spacing and type scales are the same in both themes; shapes (radius), fonts 
 | `.flag` | Inline emphasis for an overdue marker. Keep its words ("Past due"). |
 | `.empty` | The empty state paragraph. |
 | `.button-primary`, `.button-danger` | The main action; a destructive action. Plain `<button>` is the default. |
-| `.segmented` | A row of `aria-pressed` toggle buttons that reads as one control. |
+| `.theme-control` | The theme switch: a native radio group drawn as one segmented control; the template for any small choice of one among few. |
 | `a.button-primary`, `a.button-danger` | A link styled as a button (sign-in). |
 | `[role='status']` | Every status paragraph is styled with `loading-text` by `components.css`; no class is needed. |
 | `.actions` | A wrapping row of buttons and labelled fields. |
@@ -127,7 +127,7 @@ Style a state in two parts: a **meaning** that does not depend on colour, plus t
 | Current | The `Now` or `Current` text or `.badge-current`, and a thick `border-left` | `current-bg`, `current-border` |
 | Completed | `text-decoration: line-through` and a checked checkbox | `completed-text` |
 | Overdue | The words "Past due" in a `.flag` | `overdue-bg`, `overdue-text` |
-| Past (finished) | The `.badge-past` label | `--opacity-past` |
+| Past (finished) | The `.badge-past` label | `text-muted` for the title (never faded with opacity, which fails contrast) |
 | Loading | `role="status"` text such as "Loading…" | `loading-text`, applied to every `[role='status']` |
 | Empty | A sentence that says why and what to do | `.empty` (`empty-text`) |
 | Error | A message with `role="alert"`, a retry button when retrying helps | `.notice .notice-error` (`error`) |

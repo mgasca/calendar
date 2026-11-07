@@ -49,30 +49,75 @@ button[aria-pressed='true'] {
   font-weight: 700;
 }
 
-/* A row of toggle buttons that read as one control (the theme switch uses it). */
-.segmented {
+/*
+ * The theme control (ThemeControl): a native radio group, so arrow keys and the group name come from
+ * the browser, drawn as one segmented control. The radios stay focusable but are visually hidden;
+ * the label shows the choice, and the checked one is filled and bold, so the state is not colour alone.
+ */
+.theme-control {
   display: inline-flex;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  min-width: 0;
 }
 
-.segmented > button {
-  border-radius: 0;
+.theme-control legend {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
 }
 
-.segmented > button:not(:first-child) {
+.theme-control label {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  box-sizing: border-box;
+  min-height: var(--control-height);
+  padding: 0 var(--space-3);
+  border: 1px solid var(--color-border-strong);
+  background: var(--color-surface);
+  cursor: pointer;
+}
+
+.theme-control label:not(:first-of-type) {
   margin-left: -1px;
 }
 
-.segmented > button:first-child {
+.theme-control label:first-of-type {
   border-radius: var(--radius-md) 0 0 var(--radius-md);
 }
 
-.segmented > button:last-child {
+.theme-control label:last-of-type {
   border-radius: 0 var(--radius-md) var(--radius-md) 0;
+}
+
+.theme-control input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+}
+
+.theme-control label:has(input:checked) {
+  border-color: var(--color-accent);
+  background: var(--color-accent-soft);
+  font-weight: 700;
+}
+
+.theme-control label:has(input:focus-visible) {
+  outline: 3px solid var(--color-focus);
+  outline-offset: 2px;
 }
 
 /* Text fields */
 
-input:not([type='checkbox']),
+input:not([type='checkbox'], [type='radio']),
 textarea,
 select {
   box-sizing: border-box;
@@ -341,7 +386,8 @@ a.button-primary:hover {
   color: var(--color-loading-text);
 }
 
-.app-footer [role='alert'] {
+.app-footer [role='alert'],
+main[role='alert'] {
   color: var(--color-error);
 }
 

@@ -8,8 +8,8 @@ namespace Calendar.Infrastructure;
 /// </summary>
 public static class RowVersion
 {
-  /// <summary>The shadow property that holds the version.</summary>
-  internal const string PropertyName = "xmin";
+  /// <summary>The shadow property that holds the version, for query projections (<c>EF.Property</c>).</summary>
+  public const string PropertyName = "xmin";
 
   /// <summary>The version of a tracked <paramref name="entity"/> as last loaded or saved.</summary>
   public static uint VersionOf<TEntity>(this DbContext db, TEntity entity)

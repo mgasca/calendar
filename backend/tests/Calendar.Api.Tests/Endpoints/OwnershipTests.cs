@@ -168,6 +168,28 @@ public sealed class OwnershipTests(PostgresFixture postgres) : ApiTestBase(postg
   }
 
   [Fact]
+  public async Task AnotherUsersTask_IsNotFoundForUpdate_AndStaysUnchanged()
+  {
+    var taskOfB = TodoTask.Create(UserB, "B open", dueDate: Today);
+    await SeedAsync(tasks: [taskOfB]);
+    var taskUri = new Uri($"/api/tasks/{taskOfB.Id}", UriKind.Relative);
+    using HttpClient asB = ClientAs(UserB);
+    TaskResponse before = (await asB.GetFromJsonAsync<TaskResponse>(taskUri, Ct))!;
+
+    using HttpResponseMessage update = await Client.PutAsJsonAsync(
+      taskUri,
+      new { title = "Taken over", version = before.Version },
+      Ct);
+
+    update.StatusCode.ShouldBe(HttpStatusCode.NotFound);
+    (await asB.GetFromJsonAsync<TaskResponse>(taskUri, Ct)).ShouldBe(before);
+
+    // The owner can.
+    using HttpResponseMessage own = await asB.PutAsJsonAsync(taskUri, new { title = "B renamed", version = before.Version }, Ct);
+    own.StatusCode.ShouldBe(HttpStatusCode.OK);
+  }
+
+  [Fact]
   public async Task BulkByIds_ReportsAnotherUsersTasksAsNotFound_AndLeavesThemUnchanged()
   {
     var mine = TodoTask.Create(UserA, "A open", dueDate: Today);

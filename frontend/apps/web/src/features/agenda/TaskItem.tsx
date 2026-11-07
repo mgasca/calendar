@@ -16,7 +16,12 @@ export interface TaskItemProps {
   locale?: string | undefined;
   disabled: boolean;
   onToggle: (task: AgendaTask) => void;
+  /** Opens the task to edit from its title (story 0044); without it the title labels the checkbox. */
+  onOpen?: ((task: AgendaTask) => void) | undefined;
 }
+
+/** The id of a task's title button, to return focus to it after editing. */
+export const taskTitleId = (id: string) => `task-title-${id}`;
 
 /** A task as a list item with a completion checkbox; completed tasks are struck through. */
 export function TaskItem({
@@ -29,6 +34,7 @@ export function TaskItem({
   locale,
   disabled,
   onToggle,
+  onOpen,
 }: TaskItemProps) {
   const [confirmDelete, setConfirmDelete] = useState(false);
   const deletion = useDeleteTask();
@@ -39,18 +45,48 @@ export function TaskItem({
     <li
       className={`item task${task.isCompleted ? ' task-done' : ''}${overdue && !task.isCompleted ? ' task-overdue' : ''}`}
     >
-      <label className="task-label">
-        <input
-          type="checkbox"
-          checked={task.isCompleted}
-          disabled={disabled || pending}
-          aria-describedby={showMeta ? metaId : undefined}
-          onChange={() => {
-            onToggle(task);
-          }}
-        />
-        <span className="item-title">{task.title}</span>
-      </label>
+      {onOpen ? (
+        // The title opens the task to edit (story 0044), so it is not part of the checkbox's
+        // label; the checkbox is still named by it.
+        <span className="task-label">
+          <input
+            type="checkbox"
+            checked={task.isCompleted}
+            disabled={disabled || pending}
+            aria-labelledby={taskTitleId(task.id)}
+            aria-describedby={showMeta ? metaId : undefined}
+            onChange={() => {
+              onToggle(task);
+            }}
+          />
+          <span className="item-title">
+            <button
+              type="button"
+              id={taskTitleId(task.id)}
+              className="item-open"
+              aria-haspopup="dialog"
+              onClick={() => {
+                onOpen(task);
+              }}
+            >
+              {task.title}
+            </button>
+          </span>
+        </span>
+      ) : (
+        <label className="task-label">
+          <input
+            type="checkbox"
+            checked={task.isCompleted}
+            disabled={disabled || pending}
+            aria-describedby={showMeta ? metaId : undefined}
+            onChange={() => {
+              onToggle(task);
+            }}
+          />
+          <span className="item-title">{task.title}</span>
+        </label>
+      )}
       {task.priority && <span className="badge">{task.priority} priority</span>}
       {task.hasNotes && <Notes id={task.id} kind="task" />}
       <button

@@ -1,6 +1,6 @@
 import type { Schemas } from '@calendar/api-client';
 import { Link } from '@tanstack/react-router';
-import { Fragment, useMemo } from 'react';
+import { Fragment, useMemo, useState } from 'react';
 
 import {
   browserTimeZone,
@@ -16,9 +16,11 @@ import {
   type TimedEvent,
 } from '../agenda/dayTime.ts';
 import { ApiError } from '../../api/apiError.ts';
+import { useNotify } from '../../components/notify.ts';
+import { EditTask } from '../tasks/EditTask.tsx';
 import { Notes } from '../agenda/Notes.tsx';
 import { EventTimes } from '../agenda/EventTimes.tsx';
-import { TaskItem, TaskToggleError } from '../agenda/TaskItem.tsx';
+import { TaskItem, TaskToggleError, taskTitleId } from '../agenda/TaskItem.tsx';
 import { useNow, useToday } from '../agenda/useNow.ts';
 import { useToggleTask } from '../agenda/useToggleTask.ts';
 import { formatDayMonth, isoWeekStart } from '../week/weekDates.ts';
@@ -51,6 +53,12 @@ export function DayView({ date, timeZone: zoneOverride, locale }: DayViewProps) 
     [agenda.data?.tasks],
   );
   const toggle = useToggleTask(agendaKey(date, timeZone), patchDayTasks);
+  /** The task open in the edit dialog (story 0044). */
+  const [editingTask, setEditingTask] = useState<string>();
+  const notify = useNotify();
+  const openTask = (task: AgendaTask) => {
+    setEditingTask(task.id);
+  };
   const formatHeading = (day: string) =>
     formatDate(day, locale, { withYear: day.slice(0, 4) !== today.slice(0, 4) });
   const agendaName = date === today ? 'today’s agenda' : 'the agenda for this day';
@@ -142,6 +150,20 @@ export function DayView({ date, timeZone: zoneOverride, locale }: DayViewProps) 
         </div>
       )}
       <TaskToggleError error={toggle.error} />
+      {editingTask && (
+        <EditTask
+          id={editingTask}
+          onClose={(saved) => {
+            const id = editingTask;
+            setEditingTask(undefined);
+            if (saved) notify({ message: 'Task saved.' });
+            // A task moved to another day has left the list, so focus falls back to the heading.
+            requestAnimationFrame(() => {
+              focusTaskTitle(id);
+            });
+          }}
+        />
+      )}
 
       {isEmpty && (
         <p className="empty">
@@ -196,6 +218,7 @@ export function DayView({ date, timeZone: zoneOverride, locale }: DayViewProps) 
                     overdue
                     disabled={stale}
                     onToggle={onToggle}
+                    onOpen={openTask}
                   />
                 ))}
               </ul>
@@ -212,6 +235,7 @@ export function DayView({ date, timeZone: zoneOverride, locale }: DayViewProps) 
                     locale={locale}
                     disabled={stale}
                     onToggle={onToggle}
+                    onOpen={openTask}
                   />
                 ) : (
                   tasks.dueToday.map((task) => (
@@ -223,6 +247,7 @@ export function DayView({ date, timeZone: zoneOverride, locale }: DayViewProps) 
                       locale={locale}
                       disabled={stale}
                       onToggle={onToggle}
+                      onOpen={openTask}
                     />
                   ))
                 )}
@@ -325,18 +350,33 @@ function TodaySchedule(props: {
   return <Schedule {...props} nowMs={now} />;
 }
 
+/** Focuses a task's title button, or the day heading when the task is no longer listed. */
+function focusTaskTitle(id: string) {
+  const title = document.getElementById(taskTitleId(id));
+  if (title) {
+    title.focus();
+    return;
+  }
+  const heading = document.getElementById('day-heading');
+  if (!heading) return;
+  if (!heading.hasAttribute('tabindex')) heading.setAttribute('tabindex', '-1');
+  heading.focus();
+}
+
 function TodayTasks({
   tasks,
   timeZone,
   locale,
   disabled,
   onToggle,
+  onOpen,
 }: {
   tasks: AgendaTask[];
   timeZone: string;
   locale?: string | undefined;
   disabled: boolean;
   onToggle: (task: AgendaTask) => void;
+  onOpen: (task: AgendaTask) => void;
 }) {
   const now = useNow();
   return tasks.map((task) => (
@@ -349,6 +389,7 @@ function TodayTasks({
       locale={locale}
       disabled={disabled}
       onToggle={onToggle}
+      onOpen={onOpen}
     />
   ));
 }

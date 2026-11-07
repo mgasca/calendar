@@ -37,7 +37,7 @@ Every event belongs to one user ([0017](0017-per-user-calendar-ownership.md), [A
 ### Not in this story
 
 * Editing or deleting from the week view. The endpoints and dialog are reusable; the week's entry points are a follow-up issue, like [XXXX](XXXX-create-events-and-tasks-from-week-view.md) is for creating.
-* Editing tasks. That is #467, card 0044 (planned).
+* Editing tasks. That is #467, card [0044](0044-edit-a-task-from-the-today-view.md).
 * Undo after deleting, and a recycle bin.
 * A "Discard changes?" prompt on closing an edited dialog, as for **Add event** ([0004](0004-add-event-entries.md)).
 * Merging the user's edits with the changes made elsewhere. On a conflict the latest version replaces the form, and the user re-applies their change.

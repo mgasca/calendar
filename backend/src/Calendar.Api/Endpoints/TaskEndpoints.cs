@@ -33,6 +33,10 @@ internal static class TaskEndpoints
     group.MapGet("/", ListAsync).WithName("ListTasks").RequireQueryParameters("view");
     group.MapPost("/", CreateAsync).WithName("CreateTask");
     group.MapGet("/{id:guid}", GetAsync).WithName(GetTaskName).ProducesProblem(StatusCodes.Status404NotFound);
+    group.MapPut("/{id:guid}", UpdateAsync)
+      .WithName("UpdateTask")
+      .ProducesProblem(StatusCodes.Status404NotFound)
+      .ProducesProblem(StatusCodes.Status409Conflict);
     group.MapDelete("/{id:guid}", DeleteAsync).WithName("DeleteTask")
       .Produces(StatusCodes.Status204NoContent).ProducesProblem(StatusCodes.Status404NotFound);
     group.MapPost("/bulk", BulkAsync).WithName("BulkTasks")
@@ -78,7 +82,7 @@ internal static class TaskEndpoints
 
     db.Tasks.Add(created);
     await db.SaveChangesAsync(cancellationToken);
-    return TypedResults.CreatedAtRoute(TaskResponse.From(created), GetTaskName, new { id = created.Id });
+    return TypedResults.CreatedAtRoute(TaskResponse.From(created, db.VersionOf(created)), GetTaskName, new { id = created.Id });
   }
 
   /// <summary>
@@ -153,6 +157,56 @@ internal static class TaskEndpoints
       .Select(TaskResponse.Projection)
       .FirstOrDefaultAsync(cancellationToken);
     return found is null ? NotFound() : TypedResults.Ok(found);
+  }
+
+  /// <summary>
+  /// Replaces a task's title, deadline, priority and notes, provided it is unchanged since the client read its
+  /// <c>version</c> (a complete or reopen counts as a change); a stale version answers <c>409</c> and changes nothing.
+  /// </summary>
+  private static async Task<Results<Ok<TaskResponse>, ValidationProblem, ProblemHttpResult>> UpdateAsync(
+      Guid id,
+      UpdateTaskRequest request,
+      CalendarDbContext db,
+      CancellationToken cancellationToken)
+  {
+    var errors = new FieldErrors();
+    errors.CheckDate(request.DueDate, "dueDate");
+    if (errors.Any)
+    {
+      return TypedResults.ValidationProblem(errors.ToDictionary());
+    }
+
+    TodoTask? task = await db.Tasks.FirstOrDefaultAsync(t => t.Id == id, cancellationToken);
+    if (task is null)
+    {
+      return NotFound();
+    }
+
+    try
+    {
+      task.Update(request.Title, request.DueDate, request.DueAt, request.Priority, request.Notes);
+    }
+    catch (ArgumentException ex)
+    {
+      errors.AddDomainError(ex);
+      return TypedResults.ValidationProblem(errors.ToDictionary());
+    }
+
+    db.ExpectVersion(task, request.Version);
+    try
+    {
+      await db.SaveChangesAsync(cancellationToken);
+    }
+    catch (DbUpdateConcurrencyException)
+    {
+      return await db.Tasks.AsNoTracking().AnyAsync(t => t.Id == id, cancellationToken)
+          ? TypedResults.Problem(
+            statusCode: StatusCodes.Status409Conflict,
+            title: "The task was changed elsewhere. Load it again and retry.")
+          : NotFound();
+    }
+
+    return TypedResults.Ok(TaskResponse.From(task, db.VersionOf(task)));
   }
 
   private static async Task<Results<NoContent, ProblemHttpResult>> DeleteAsync(
@@ -458,7 +512,7 @@ internal static class TaskEndpoints
           title: "The task was changed by another request. Try again.");
     }
 
-    return TypedResults.Ok(TaskResponse.From(task));
+    return TypedResults.Ok(TaskResponse.From(task, db.VersionOf(task)));
   }
 
   private static ProblemHttpResult NotFound() =>

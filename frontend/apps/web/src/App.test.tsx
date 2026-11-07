@@ -237,7 +237,7 @@ describe('tasks', () => {
       http.get('*/api/tasks', () => HttpResponse.json({ items: tasks, nextCursor: null })),
       http.post('*/api/tasks', async ({ request }) => {
         const body = (await request.json()) as Schemas['CreateTaskRequest'];
-        const task = { ...body, id: 'new-task', isCompleted: false };
+        const task = { ...body, id: 'new-task', isCompleted: false, version: 1 };
         tasks.push(task);
         return HttpResponse.json(task, { status: 201 });
       }),

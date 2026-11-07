@@ -119,3 +119,5 @@ Run `just image build` to build `calendar:local` and `calendar:<short-git-sha>` 
 Run `just db run up migrate` first, then `just image start`. On Linux/WSL this uses host networking to reach the loopback-only PostgreSQL port with the `calendar_app` role; port 8080 must be free and is exposed on the host network interfaces. It loads `.env` and passes the connection string through the environment. The image defaults to Production; use `just image start Development` to enable development-only behavior. Production Google sign-in requires real `Auth__Google__ClientId`, `Auth__Google__ClientSecret` and `Auth__AllowedEmails__0` settings in `.env` ([production configuration](backend/README.md#production-environment-configuration)), otherwise only anonymous endpoints are available.
 
 In another terminal, run `just image smoke` (optionally set `BASE_URL`) to check the SPA root, `/week` deep link, `/api/health`, unknown API 404 and anonymous protected API 401. The runtime image has no healthcheck because it does not include an HTTP client; external platforms can probe `/api/health`.
+
+<!-- throwaway proof for #422, not to be merged -->

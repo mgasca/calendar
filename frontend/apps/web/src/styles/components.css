@@ -313,3 +313,56 @@ select {
   color: var(--color-text-muted);
   font-weight: 400;
 }
+
+/* Links styled as buttons (sign-in). */
+a.button-primary,
+a.button-danger {
+  display: inline-flex;
+  align-items: center;
+  box-sizing: border-box;
+  min-height: var(--control-height);
+  padding: 0 var(--space-4);
+  border: 1px solid transparent;
+  border-radius: var(--radius-md);
+  text-decoration: none;
+}
+
+a.button-primary,
+a.button-primary:hover {
+  color: var(--color-on-accent);
+}
+
+a.button-primary:hover {
+  background: var(--color-accent-hover);
+}
+
+/* Status and alert messages. The text always says what happened; colour only reinforces it. */
+[role='status'] {
+  color: var(--color-loading-text);
+}
+
+.app-footer [role='alert'] {
+  color: var(--color-error);
+}
+
+.notice-error {
+  background: var(--color-error-soft);
+}
+
+.app-nav {
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.app-nav img {
+  border-radius: var(--radius-pill);
+  vertical-align: middle;
+}
+
+img {
+  max-width: 100%;
+}
+
+details > summary {
+  cursor: pointer;
+}

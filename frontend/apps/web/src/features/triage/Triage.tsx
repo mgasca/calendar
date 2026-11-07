@@ -204,7 +204,11 @@ export function Triage({ bulkIdLimit = BULK_ID_LIMIT }: TriageProps = {}) {
         </label>
       )}
       {pages.isPending && <p role="status">Loading overdue tasks…</p>}
-      {pages.isError && <p role="alert">Couldn’t load overdue tasks.</p>}
+      {pages.isError && (
+        <p role="alert" className="notice notice-error">
+          Couldn’t load overdue tasks.
+        </p>
+      )}
       <ul className="items">
         {tasks.map((task) => {
           const due =
@@ -313,7 +317,9 @@ export function Triage({ bulkIdLimit = BULK_ID_LIMIT }: TriageProps = {}) {
             </>
           )}
           {action === 'setDueInstant' && value && candidates.length === 0 && (
-            <p role="alert">This local time does not exist. Choose another time.</p>
+            <p role="alert" className="notice notice-error">
+              This local time does not exist. Choose another time.
+            </p>
           )}
           <button
             type="button"

@@ -56,7 +56,11 @@ describe('sign in', () => {
 
   it('shows access denied', async () => {
     renderApp('/signin?error=access_denied');
-    expect(await screen.findByRole('alert')).toHaveTextContent('Access denied');
+    const alert = await screen.findByRole('alert');
+    expect(alert).toHaveTextContent('Access denied');
+    // Errors use the shared notice style, and the sign-in link the shared primary button (story 0039).
+    expect(alert).toHaveClass('notice', 'notice-error');
+    expect(screen.getByRole('link', { name: 'Sign in with Google' })).toHaveClass('button-primary');
   });
 
   it('rejects unsafe return paths', () => {

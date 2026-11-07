@@ -20,14 +20,14 @@ Tracked in issue [#412](https://github.com/mgasca/calendar/issues/412). The card
 
 The repository defines four custom subagents in `.claude/agents/`: `performance-reviewer` and `security-reviewer`, which review a branch before merge ([0020](0020-restructure-agent-guidance.md)); `delivery-performance-reviewer`, the static pass of the delivery performance review ([0033](0033-review-how-long-delivery-automation-makes-us-wait.md)); and `skeptic`, which tries to refute one finding through one lens ([0035](0035-review-before-merge-with-a-workflow-and-a-skeptic-per-finding.md)). None of them picks a model. Three say `model: inherit` in their front matter and `security-reviewer` has no `model` line, which Claude Code also treats as inherit. Each agent therefore runs on whatever model the calling session runs on.
 
-That stops being the right default once the review-before-merge workflow exists. A run starts two reviewers and up to 58 skeptics, so the skeptics are most of the agents and most of the cost. A skeptic answers one narrow question about one finding with evidence from the code, which a smaller, cheaper model can do; a reviewer has to find the defects in the first place, where a missed finding costs far more than the tokens. The maintainer asked for that split: reviewers on Opus, the skeptic on Sonnet. Today the split also flips with the session: a session on Sonnet gets Sonnet reviewers, and a session on Opus pays Opus prices for every skeptic.
+That stops being the right default once the review-before-merge workflow exists. A run starts two reviewers and up to 58 skeptics, so the skeptics are most of the agents and most of the cost. A skeptic answers one narrow question about one finding with evidence from the code, which a smaller, cheaper model can do; a reviewer has to find the defects in the first place, where a missed finding costs far more than the tokens. The maintainer asked for that split: reviewers on Opus, the skeptic first on Sonnet and then, in review of the delivery PR, on Haiku. Today the split also flips with the session: a session on Sonnet gets Sonnet reviewers, and a session on Opus pays Opus prices for every skeptic.
 
 ### Agreed scope
 
 * **Each agent names its model.** Every file in `.claude/agents/` sets `model` in its front matter, so no agent inherits by accident.
 * **Reviewers on Opus:** `performance-reviewer`, `security-reviewer` and `delivery-performance-reviewer` set `model: opus`. The request does not name `delivery-performance-reviewer`; it is a reviewer, so it gets Opus too.
-* **The skeptic on Sonnet:** `skeptic` sets `model: sonnet`.
-* **Aliases, not pinned versions:** the files use the `opus` and `sonnet` aliases, which follow the latest model of each family, so a model release needs no edit here. A pinned model ID would keep results comparable across a release, which no current record needs.
+* **The skeptic on Haiku:** `skeptic` sets `model: haiku`. The story asked for Sonnet; the maintainer changed it to Haiku in a review suggestion on [#414](https://github.com/mgasca/calendar/pull/414) on 2026-11-07.
+* **Aliases, not pinned versions:** the files use the `opus` and `haiku` aliases, which follow the latest model of each family, so a model release needs no edit here. A pinned model ID would keep results comparable across a release, which no current record needs.
 * **The choice is written down where the agents are described:** the reviewer bullet in the root `AGENTS.md` says which model each agent runs on and why, in one sentence, and that the setting is Claude Code front matter (ADR-0044); another harness running the agents by hand picks its own model.
 * **Proved on a real run:** after the change, one run of the review-before-merge workflow and one direct call of each reviewer show the model each agent ran on, and the delivery PR reports it.
 
@@ -43,10 +43,10 @@ That stops being the right default once the review-before-merge workflow exists.
 ### Acceptance criteria
 
 1. **Given** the agent definitions on `main`, **when** I read the front matter of `performance-reviewer`, `security-reviewer` and `delivery-performance-reviewer`, **then** each sets `model: opus`.
-2. **Given** the agent definitions on `main`, **when** I read the front matter of `skeptic`, **then** it sets `model: sonnet`.
+2. **Given** the agent definitions on `main`, **when** I read the front matter of `skeptic`, **then** it sets `model: haiku`.
 3. **Given** any file in `.claude/agents/`, **when** I read its front matter, **then** it has a `model` line and none says `inherit`.
 4. **Given** a session started on a checkout that has the change, running on a model other than Opus, **when** it calls `performance-reviewer` or `security-reviewer`, **then** the agent runs on Opus.
-5. **Given** a session started on a checkout that has the change, running on Opus, **when** the review-before-merge workflow judges at least one finding, **then** the skeptics run on Sonnet and the run still returns the confirmed, refuted and unexamined lists of story 0035.
+5. **Given** a session started on a checkout that has the change, running on Opus, **when** the review-before-merge workflow judges at least one finding, **then** the skeptics run on Haiku and the run still returns the confirmed, refuted and unexamined lists of story 0035.
 6. **Given** the root `AGENTS.md`, **when** a contributor reads the reviewer bullet, **then** it says which model each custom agent runs on, why, and that the setting applies to Claude Code only.
 7. **Given** the change is complete, **when** I run `just check`, **then** it passes.
 
@@ -63,7 +63,7 @@ No new ADR is expected. The model per agent is a one-line setting that is easy t
 
 ### Other decisions (not ADR-worthy)
 
-* **Opus for finding, Sonnet for checking:** a reviewer's miss reaches `main`, so it gets the most capable model; a skeptic answers a bounded question about code it can read, runs dozens of times per review, and has two other skeptics beside it.
+* **Opus for finding, Haiku for checking:** a reviewer's miss reaches `main`, so it gets the most capable model; a skeptic answers a bounded question about code it can read, runs dozens of times per review, and has two other skeptics beside it.
 * **Explicit over inherit:** an agent that inherits changes cost and capability with the session that calls it; naming the model makes a review cost the same from any session.
 * **No per-call override in the workflow:** one place (the agent definition) holds the choice, so a direct call and a workflow call of the same agent behave the same.
 
@@ -99,6 +99,6 @@ No changes.
 
 ### Which model each custom agent runs on
 
-In Claude Code, the performance, security and delivery performance reviewers run on **Opus** and the skeptic runs on **Sonnet**, whatever model your own session uses. You do not need to switch your session's model before a review.
+In Claude Code, the performance, security and delivery performance reviewers run on **Opus** and the skeptic runs on **Haiku**, whatever model your own session uses. You do not need to switch your session's model before a review.
 
 To change an agent's model, edit the `model` line at the top of its file in `.claude/agents/` and start a new session: a running session keeps the agents it loaded at start. In another coding agent, which reads the same files by hand, choose the model yourself.

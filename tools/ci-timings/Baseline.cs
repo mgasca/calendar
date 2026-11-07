@@ -336,7 +336,10 @@ public static class BaselineIo
     Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping,
   };
 
-  /// <summary>Applies each sample's path threshold; a job with no baseline on its path is not checked.</summary>
+  /// <summary>
+  /// Applies each sample's path threshold. A job with no baseline on its path is not checked, and a run the baseline
+  /// itself was measured from is left out.
+  /// </summary>
   /// <param name="baseline">The baseline.</param>
   /// <param name="samples">The held-out runs' samples.</param>
   /// <returns>The counts and the exceedances.</returns>
@@ -345,7 +348,9 @@ public static class BaselineIo
     var checks = new SortedDictionary<(string Job, string Path), (int Checked, int Exceeded)>();
     List<Exceedance> exceedances = [];
     HashSet<long> checkedRuns = [];
-    foreach (PathSample sample in samples)
+    // A run the baseline was measured from is never held out, even when the two windows overlap.
+    HashSet<long> pinned = [.. baseline.Paths.Values.SelectMany(path => path.Runs).Select(run => run.Id)];
+    foreach (PathSample sample in samples.Where(sample => !pinned.Contains(sample.RunId)))
     {
       if (!baseline.Paths.TryGetValue(sample.Path, out PathBaseline? path) || !path.Jobs.TryGetValue(sample.Job, out JobBaseline? job))
       {

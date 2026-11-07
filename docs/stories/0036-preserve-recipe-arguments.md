@@ -1,8 +1,9 @@
 ---
-status: planned
+status: implemented
 date: 2026-11-07
 issue: https://github.com/mgasca/calendar/issues/345
-pr: []
+pr:
+  - https://github.com/mgasca/calendar/pull/408
 adrs: ["0038"]
 ---
 
@@ -30,9 +31,9 @@ The `ci-timings` recipe splits a quoted job name before the tool receives it. St
 
 ### Acceptance criteria
 
-1. **Given** a job name containing a space, **when** I pass it to `just tools ci-timings`, **then** the tool receives it as one argument.
-2. **Given** another variadic forwarding recipe, **when** it receives arguments containing spaces, **then** it forwards each argument intact.
-3. **Given** the change is complete, **when** I run `just check`, **then** it passes.
+1. **Given** a job name containing a space, **when** I pass it to `just tools ci-timings`, **then** the tool receives it as one argument ([regression test](../../tools/doctor/tests/doctor.tests.cs)).
+2. **Given** another variadic forwarding recipe, **when** it receives arguments containing spaces, **then** it forwards each argument intact ([regression test](../../tools/doctor/tests/doctor.tests.cs); infrastructure deploy and what-if require their real prerequisites and are not exercised by this test).
+3. **Given** the change is complete, **when** I run `just check`, **then** it passes (the delivery PR reports the check result).
 
 ## Design decisions
 
@@ -50,7 +51,7 @@ No new ADR is expected.
 
 ## Implementation notes
 
-*Planned. This section is completed as the story is built.*
+Variadic recipes use positional arguments so that the shell receives the original argument boundaries. Infrastructure recipes retain their named environment and phase arguments; the docs test recipe retains its default of `src`.
 
 ### Where things live
 
@@ -60,18 +61,16 @@ No new ADR is expected.
 
 ### API
 
-No changes expected.
+No changes.
 
 ### Testing
 
-Exercise forwarding through the recipes and test the old form as a negative control.
+The doctor test app invokes recipes with fake native commands and checks spaced and shell-sensitive arguments. Restoring the old tools recipes made the four tools cases fail; restoring the fix made them pass.
 
 ### Lessons learned, known issues and follow-ups
 
-To be recorded on delivery.
+The root doctor and the infrastructure deploy and what-if recipes also forward positional arguments, but are not exercised by the automated forwarding test because they invoke real prerequisite checks.
 
 ## User guide
 
-*Planned behaviour. This section is finalised when the story is implemented.*
-
-Quote a job name containing spaces when passing it to the timing command.
+Quote a job name containing spaces, for example `just tools ci-timings --job "Docs site"`.

@@ -28,8 +28,9 @@ bench:
     pnpm bench
 
 # Run the docs-site tests; arguments go to Vitest in place of `src` (e.g. just docs test src/lib/adr.test.ts)
+[positional-arguments]
 test *args:
-    pnpm exec vitest run {{ if args == "" { "src" } else { args } }}
+    if (( $# )); then pnpm exec vitest run "$@"; else pnpm exec vitest run src; fi
 
 # Validate the CALM architecture model in docs/architecture against the CALM schema (ADR-0039)
 architecture:

@@ -13,14 +13,16 @@ list:
     @just --list infra
 
 # Preview infrastructure (env: staging|production; phase: foundation|full; e.g. just infra what-if staging full --allow-ip CIDR)
+[positional-arguments]
 what-if env phase="full" *args:
     @./tools/doctor/doctor.sh --infra
-    dotnet run tools/infra/infra.cs -- what-if {{ env }} --phase {{ phase }} {{ args }}
+    dotnet run tools/infra/infra.cs -- what-if "$1" --phase "$2" "${@:3}"
 
 # Deploy infrastructure (env: staging|production; phase: foundation|full; e.g. just infra deploy staging full --allow-ip CIDR)
+[positional-arguments]
 deploy env phase="full" *args:
     @./tools/doctor/doctor.sh --infra
-    dotnet run tools/infra/infra.cs -- deploy {{ env }} --phase {{ phase }} {{ args }}
+    dotnet run tools/infra/infra.cs -- deploy "$1" --phase "$2" "${@:3}"
 
 # Owner creates the Postgres password (env: staging|production)
 secret-init env:
@@ -38,12 +40,14 @@ db-start:
     dotnet run tools/infra/infra.cs -- db start staging
 
 # Initialize database roles (env: staging|production; e.g. just infra init-roles staging --client-ip IPv4)
+[positional-arguments]
 init-roles env *args:
-    dotnet run tools/infra/infra.cs -- db init-roles {{ env }} {{ args }}
+    dotnet run tools/infra/infra.cs -- db init-roles "$1" "${@:2}"
 
 # Apply database migrations (env: staging|production; e.g. just infra migrate staging --client-ip IPv4)
+[positional-arguments]
 migrate env *args:
-    dotnet run tools/infra/infra.cs -- migrate {{ env }} {{ args }}
+    dotnet run tools/infra/infra.cs -- migrate "$1" "${@:2}"
 
 # Check the Azure role SQL against a real PostgreSQL (needs Docker)
 integration:

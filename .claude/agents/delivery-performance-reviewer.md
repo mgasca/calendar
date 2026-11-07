@@ -33,7 +33,7 @@ The finding that matters most in delivery automation is a cost that grows with t
 
 ## 3. Sample history, when the brief allows
 
-Only read-only commands. `just tools ci-timings --job <name>` samples the newest successful runs (add `--branch <name>` or `--runs N`). For a job name with a space, run `dotnet run tools/ci-timings/ci-timings.cs -- --job "Docs site"` instead, because the recipe splits quoted arguments (#345). For one run's per-step timeline, `gh run view --job <id> --log` piped straight into `grep` or `awk`. Never write the log to a file. If durations cluster into two groups, compare a step the code under review does not touch (install, checkout) across the groups and say whether the split looks like runner hardware.
+Only read-only commands. `just tools ci-timings --job <name>` samples the newest successful runs (add `--branch <name>` or `--runs N`). Quote a job name with a space, for example `--job "Docs site"`. For one run's per-step timeline, `gh run view --job <id> --log` piped straight into `grep` or `awk`. Never write the log to a file. If durations cluster into two groups, compare a step the code under review does not touch (install, checkout) across the groups and say whether the split looks like runner hardware.
 
 ## Never
 

@@ -16,6 +16,7 @@ import {
   type TimedEvent,
 } from '../agenda/dayTime.ts';
 import { ApiError } from '../../api/apiError.ts';
+import { useNotify } from '../../components/notify.ts';
 import { EditEvent } from '../events/EditEvent.tsx';
 import { Notes } from '../agenda/Notes.tsx';
 import { EventTimes } from '../agenda/EventTimes.tsx';
@@ -52,13 +53,9 @@ export function DayView({ date, timeZone: zoneOverride, locale }: DayViewProps) 
     [agenda.data?.tasks],
   );
   const toggle = useToggleTask(agendaKey(date, timeZone), patchDayTasks);
-  /** The event open in the edit dialog, and what the last edit or delete did. */
+  /** The event open in the edit dialog. */
   const [editing, setEditing] = useState<string>();
-  const [edited, setEdited] = useState<string>();
-  const openEvent = (id: string) => {
-    setEdited(undefined);
-    setEditing(id);
-  };
+  const notify = useNotify();
   const formatHeading = (day: string) =>
     formatDate(day, locale, { withYear: day.slice(0, 4) !== today.slice(0, 4) });
   const agendaName = date === today ? 'today’s agenda' : 'the agenda for this day';
@@ -140,7 +137,6 @@ export function DayView({ date, timeZone: zoneOverride, locale }: DayViewProps) 
         </div>
       )}
       <TaskToggleError error={toggle.error} />
-      {edited && <p role="status">{edited}</p>}
       {editing && (
         <EditEvent
           id={editing}
@@ -149,7 +145,8 @@ export function DayView({ date, timeZone: zoneOverride, locale }: DayViewProps) 
           onClose={(result) => {
             const id = editing;
             setEditing(undefined);
-            if (result) setEdited(`${result.title} ${result.deleted ? 'deleted' : 'saved'}.`);
+            if (result)
+              notify({ message: `${result.title} ${result.deleted ? 'deleted' : 'saved'}.` });
             // After a delete the row is gone, so focus moves to the day's heading.
             requestAnimationFrame(() => {
               focusAfterEdit(result?.deleted ? undefined : id);
@@ -170,7 +167,7 @@ export function DayView({ date, timeZone: zoneOverride, locale }: DayViewProps) 
           <ul className="items">
             {allDayEvents.map((event) => (
               <li key={event.id} className="item">
-                <EventTitle id={event.id} title={event.title} onOpen={openEvent} />
+                <EventTitle id={event.id} title={event.title} onOpen={setEditing} />
                 <AllDayDetail event={event} day={shownDate} />
                 <Location value={event.location} />
                 {event.hasNotes && <Notes id={event.id} kind="event" />}
@@ -184,14 +181,19 @@ export function DayView({ date, timeZone: zoneOverride, locale }: DayViewProps) 
         <section aria-labelledby="schedule-heading">
           <h2 id="schedule-heading">Schedule</h2>
           {isToday ? (
-            <TodaySchedule events={events} timeZone={timeZone} locale={locale} onOpen={openEvent} />
+            <TodaySchedule
+              events={events}
+              timeZone={timeZone}
+              locale={locale}
+              onOpen={setEditing}
+            />
           ) : (
             <Schedule
               events={events}
               nowMs={undefined}
               timeZone={timeZone}
               locale={locale}
-              onOpen={openEvent}
+              onOpen={setEditing}
             />
           )}
         </section>

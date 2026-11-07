@@ -153,7 +153,7 @@ describe('editing an event from the day view', () => {
     await user.type(within(dialog).getByLabelText('Start'), `${DAY}T16:00`);
     await user.click(within(dialog).getByRole('button', { name: 'Save event' }));
 
-    expect(await screen.findByText('Dentist saved.')).toHaveAttribute('role', 'status');
+    expect((await screen.findByText('Dentist saved.')).closest('[role="status"]')).not.toBeNull();
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
     expect(puts).toEqual([
       expect.objectContaining({ start: at('16:00'), end: at('17:00'), version: 7, allDay: false }),
@@ -317,7 +317,7 @@ describe('deleting an event from the day view', () => {
     expect(deletes).toHaveLength(0);
     await user.click(within(dialog).getByRole('button', { name: 'Delete' }));
 
-    expect(await screen.findByText('Dentist deleted.')).toHaveAttribute('role', 'status');
+    expect((await screen.findByText('Dentist deleted.')).closest('[role="status"]')).not.toBeNull();
     expect(deletes).toEqual(['e1']);
     expect(screen.queryByRole('button', { name: 'Dentist' })).not.toBeInTheDocument();
     await waitFor(() => {

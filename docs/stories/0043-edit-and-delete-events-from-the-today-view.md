@@ -43,7 +43,7 @@ Every event belongs to one user ([0017](0017-per-user-calendar-ownership.md), [A
 * Merging the user's edits with the changes made elsewhere. On a conflict the latest version replaces the form, and the user re-applies their change.
 * Keeping a timed event's original zone when it is edited in a browser in another zone, or a zone picker ([0004](0004-add-event-entries.md) leaves both out).
 * Recurrence, reminders and invitations.
-* The fading save notification of #463. If it has merged when this story's UI lands, the status messages use it; otherwise they use the same plain status message as **Add event**.
+* The fading save notification itself; it came with #463, which merged before this story's UI, so saving and deleting use it.
 
 ### Dependencies
 
@@ -107,7 +107,7 @@ Delivered in two PRs after the card ([#472](https://github.com/mgasca/calendar/p
 | Domain | `backend/src/Calendar.Domain/Events/CalendarEvent.cs`: `Update` and `UpdateAllDay` build a validated copy with the factory rules, then take its fields, so an invalid update changes nothing |
 | Contract and client | `contracts/openapi.json`, `frontend/packages/api-client/src/schema.gen.ts` (by `just contracts`) |
 | Dialog | `frontend/apps/web/src/features/events/EditEvent.tsx` (loads the event, loading and not-found states), `EventForm.tsx` (edit mode, delete step, conflict reload), `eventForm.ts` (`fromEvent`), `useEditEvent.ts` (`eventQuery`, `useUpdateEvent`, `useDeleteEvent`) |
-| Rows | `frontend/apps/web/src/features/day/DayView.tsx`: `EventTitle`, the status line and `focusAfterEdit` |
+| Rows | `frontend/apps/web/src/features/day/DayView.tsx`: `EventTitle`, the dialog state, the notification after a save or delete (`useNotify` from #463) and `focusAfterEdit` |
 | Styles | `frontend/apps/web/src/styles/components.css`, the block "Editing from the day view" (`.item-open`, `.delete-confirmation`) |
 
 ### API
@@ -129,7 +129,7 @@ Delivered in two PRs after the card ([#472](https://github.com/mgasca/calendar/p
 * **Don't refetch what you just deleted.** Invalidating the open dialog's event query after a delete refetched it while the dialog was still mounted, and the running app logged a 404. The event and notes queries are now only marked stale (`refetchType: 'none'`); the agenda is refetched. The browser run caught it; the MSW tests did not, because an extra 404 doesn't fail them.
 * **Wording in PR bodies.** The backend PR's body said, in prose with the closing keyword, that the UI PR would complete the issue, and the squash merge closed #466 early; it was reopened. PR bodies that must not close an issue use `Refs #N` and avoid the closing keywords anywhere in the text.
 * **Focus after a delete** goes to the day heading, which gets `tabindex="-1"` when it is first needed, so the header markup stays as it was.
-* **Status message:** the plain `role="status"` line of **Add event**, because the fading notification (#463) had not merged. It can switch to that component once it lands.
+* **Confirmation message:** the fading notification of #463 (`useNotify`), which merged while this PR was open; a first version used a plain `role="status"` line.
 * **Follow-up:** editing and deleting from the Week view is [#492](https://github.com/mgasca/calendar/issues/492).
 
 ## User guide

@@ -1,3 +1,7 @@
+import type { Schemas } from '@calendar/api-client';
+
+import { deadlineInstants } from '../agenda/deadline.ts';
+
 /** The task form's values as typed; `kind` is the deadline kind: `none`, `date` or `time`. */
 export interface TaskValues {
   title: string;
@@ -12,14 +16,52 @@ export interface TaskValues {
 export type TaskField = 'title' | 'date' | 'time' | 'occurrence' | 'notes' | 'form';
 export type TaskErrors = Partial<Record<TaskField, string>>;
 
-/** A failed save, carrying the messages mapped to the form's fields. */
+/**
+ * A failed save, carrying the messages mapped to the form's fields and the HTTP status, so edit
+ * mode can tell a stale version (409) or a missing task (404) apart.
+ */
 export class SaveTaskError extends Error {
   readonly fields: TaskErrors;
-  constructor(fields: TaskErrors) {
+  readonly status: number | undefined;
+  constructor(fields: TaskErrors, status?: number) {
     super('Couldn’t save the task.');
     this.name = 'SaveTaskError';
     this.fields = fields;
+    this.status = status;
   }
+}
+
+/** A stored task as the API returns it, for edit mode. */
+export type StoredTask = Schemas['TaskResponse'];
+
+/**
+ * The form's values for a stored task. A due instant shows as its local date and time in the
+ * browser's zone; when that local time occurs twice, the stored instant is the chosen occurrence.
+ */
+export function fromTask(task: StoredTask): TaskValues {
+  const common = {
+    title: task.title,
+    priority: task.priority ?? 'medium',
+    notes: task.notes ?? '',
+    time: '',
+    occurrence: '',
+  };
+  if (task.dueAt) {
+    const due = new Date(task.dueAt);
+    const pad = (n: number) => String(n).padStart(2, '0');
+    const date = `${String(due.getFullYear())}-${pad(due.getMonth() + 1)}-${pad(due.getDate())}`;
+    const time = `${pad(due.getHours())}:${pad(due.getMinutes())}`;
+    const repeated = deadlineInstants(`${date}T${time}`).length > 1;
+    return {
+      ...common,
+      kind: 'time',
+      date,
+      time,
+      occurrence: repeated ? due.toISOString() : '',
+    };
+  }
+  if (task.dueDate) return { ...common, kind: 'date', date: task.dueDate };
+  return { ...common, kind: 'none', date: '' };
 }
 
 /**

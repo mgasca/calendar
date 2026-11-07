@@ -4,7 +4,7 @@ Practices for the pnpm workspace in `frontend/`: checks, rendering, data fetchin
 
 ## Styling and themes
 
-The app has a light and a dark theme chosen with `data-theme` on `<html>` (ADR-0047). Before adding or restyling a view, dialog or control, read [Style a web view in both themes](../docs/runbooks/web-theme-and-styling.md): use semantic tokens (`src/styles/tokens.css`) and the shared classes (`src/styles/components.css`), never colour literals, `[data-theme]` selectors or theme logic in a view, signal every state with more than colour, and verify both themes (`just frontend test-web dev/styles.test.ts`, then look at the view in Light and Dark). It has a worked example of a new view.
+The app has a light and a dark theme chosen with `data-theme` on `<html>` (ADR-0047). Before adding or restyling a view, dialog or control, read [Style a web view in both themes](../docs/runbooks/web-theme-and-styling.md): use semantic tokens (`@calendar/theme`, `packages/theme/src/tokens.css`) and the shared classes (`src/styles/components.css`), never colour literals, `[data-theme]` selectors or theme logic in a view, signal every state with more than colour, and verify both themes (`just frontend test-web dev/styles.test.ts` and the package tests in `packages/theme`, then look at the view in Light and Dark). It has a worked example of a new view.
 
 ## Running checks
 

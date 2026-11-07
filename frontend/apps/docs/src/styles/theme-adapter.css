@@ -1,0 +1,110 @@
+/*
+ * Maps the shared Calendar tokens (@calendar/theme) onto Starlight's styling API (story 0046).
+ * This file holds no colour value and no theme selector: the tokens already change with
+ * `data-theme`, so a plain :root mapping follows the theme. It is unlayered, so it wins over
+ * Starlight's own @layer rules, which would otherwise pick their palette from `data-theme` too.
+ *
+ * Starlight names its greys from white (strongest text) to black (page background) in the dark
+ * theme, and reverses them in the light one. Here the names mean the same thing in both themes.
+ */
+:root {
+  --sl-font: var(--font-body);
+  --sl-font-system: var(--font-body);
+
+  --sl-color-white: var(--color-text);
+  --sl-color-gray-1: var(--color-text);
+  --sl-color-gray-2: var(--color-text);
+  --sl-color-gray-3: var(--color-text-muted);
+  --sl-color-gray-4: var(--color-text-muted);
+  --sl-color-gray-5: var(--color-border-strong);
+  --sl-color-gray-6: var(--color-surface);
+  --sl-color-gray-7: var(--color-surface-raised);
+  --sl-color-black: var(--color-bg);
+
+  --sl-color-accent-low: var(--color-accent-soft);
+  --sl-color-accent: var(--color-accent);
+  --sl-color-accent-high: var(--color-accent);
+
+  /* Asides and badges: note/tip use the accent, caution the overdue pair, danger the error pair. */
+  --sl-color-blue-low: var(--color-accent-soft);
+  --sl-color-blue: var(--color-accent);
+  --sl-color-blue-high: var(--color-text);
+  --sl-color-purple-low: var(--color-accent-soft);
+  --sl-color-purple: var(--color-accent);
+  --sl-color-purple-high: var(--color-text);
+  --sl-color-green-low: var(--color-accent-soft);
+  --sl-color-green: var(--color-accent);
+  --sl-color-green-high: var(--color-text);
+  --sl-color-orange-low: var(--color-overdue-bg);
+  --sl-color-orange: var(--color-overdue-text);
+  --sl-color-orange-high: var(--color-text);
+  --sl-color-red-low: var(--color-error-soft);
+  --sl-color-red: var(--color-error);
+  --sl-color-red-high: var(--color-error);
+
+  --sl-color-text: var(--color-text);
+  --sl-color-text-accent: var(--color-accent);
+  --sl-color-text-invert: var(--color-on-accent);
+  --sl-color-bg: var(--color-bg);
+  --sl-color-bg-nav: var(--color-surface-raised);
+  --sl-color-bg-sidebar: var(--color-surface);
+  --sl-color-bg-inline-code: var(--color-surface-sunken);
+  --sl-color-bg-accent: var(--color-accent);
+  --sl-color-hairline-light: var(--color-border);
+  --sl-color-hairline: var(--color-border);
+  --sl-color-hairline-shade: var(--color-border);
+  --sl-color-backdrop-overlay: var(--color-backdrop);
+
+  --sl-shadow-sm: var(--shadow-panel);
+  --sl-shadow-md: var(--shadow-popover);
+  --sl-shadow-lg: var(--shadow-popover);
+}
+
+/* Headings take the theme's voice: a serif in Paper & Sage, a bold sans-serif in Midnight Studio. */
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+  font-family: var(--font-heading);
+  font-weight: var(--font-heading-weight);
+  letter-spacing: var(--font-heading-tracking);
+}
+
+/* Links in the reading column are underlined by Starlight; keep the focus ring from the tokens. */
+:focus-visible {
+  outline-color: var(--color-focus);
+}
+
+/* Shapes and surfaces: the theme's radii on the pieces that show an outline or a fill. */
+.sl-markdown-content table {
+  border-radius: var(--radius-sm);
+}
+.sl-markdown-content :is(th, td) {
+  border-color: var(--color-border);
+}
+.sl-markdown-content thead th {
+  background: var(--color-surface);
+}
+.sidebar-content a[aria-current='page'] {
+  border-radius: var(--radius-sm);
+  background: var(--color-accent);
+  color: var(--color-on-accent);
+}
+.pagination-links a {
+  border-radius: var(--radius-md);
+  border-color: var(--color-border-strong);
+  background: var(--color-surface);
+  box-shadow: var(--shadow-panel);
+}
+.sl-link-button.primary {
+  border-radius: var(--radius-pill);
+  background: var(--color-accent);
+  color: var(--color-on-accent);
+  border-color: var(--color-accent);
+}
+site-search button[data-open-modal],
+starlight-menu-button button {
+  border-radius: var(--radius-md);
+}

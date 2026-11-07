@@ -276,7 +276,7 @@
 </li>
 <li><strong>open-redirect-protection</strong>: returnUrl must be a local absolute path (no //, no backslash, no control characters) on both server (ApiAuthentication.LocalReturnUrl) and client (safeReturnTo)</li>
 <li><strong>unauthenticated-api-response</strong>: 401 (or 403) for /api/* instead of a redirect; the client raises calendar:unauthorized and routes to /signin with the current URL</li>
-<li><strong>adrs</strong>: <a href="https://mgasca.github.io/calendar/adr/0027/">https://mgasca.github.io/calendar/adr/0027/</a>, <a href="https://mgasca.github.io/calendar/adr/0019/">https://mgasca.github.io/calendar/adr/0019/</a></li>
+<li><strong>adrs</strong>: <a href="https://mgasca.github.io/calendar/adr/0027/">https://mgasca.github.io/calendar/adr/0027/</a></li>
 </ul>
 <h3 id="per-user-data-isolation">per-user-data-isolation</h3>
 <p>Every event and task belongs to one user (owner_id). CalendarDbContext applies a global query filter keyed by the signed-in user, so every read, count, ExecuteUpdate and ExecuteDelete is scoped by default; a context with no user sees nothing; another user’s id answers 404 (ADR-0041).</p>

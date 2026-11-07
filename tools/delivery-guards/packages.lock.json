@@ -25,6 +25,12 @@
         "requested": "[1.3.151-beta, )",
         "resolved": "1.3.151-beta",
         "contentHash": "AGruKOaxfcJ/QFaJ5Um3SqHgenUFxNu2Gbksuq2piz6uwFwS/xWgwXQXrHJeLmOLG/W9BZ90v7by+SnwoUlEpg=="
+      },
+      "YamlDotNet": {
+        "type": "Direct",
+        "requested": "[18.1.0, )",
+        "resolved": "18.1.0",
+        "contentHash": "5K+9KFg2TdTl7VXv88Qzi/0lqK6JFoNP3lRuImPYGRV7K/QYklDyTrj4+A+KAki1JsQi6qKY+hDyY7d6WRqjrw=="
       }
     },
     "net10.0/linux-x64": {

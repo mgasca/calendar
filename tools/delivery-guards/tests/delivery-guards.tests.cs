@@ -1,6 +1,7 @@
 #!/usr/bin/env -S dotnet run
 #:package xunit.v3.mtp-v2@4.0.2
 #:package Shouldly@4.3.0
+#:package YamlDotNet@18.1.0
 #:include ../WorkflowYaml.cs
 #:include ../DeliveryGuards.cs
 
@@ -181,7 +182,7 @@ public sealed class FixtureTests
 
   [Fact]
   public void AnUnreadableWorkflow_FailsTheGuard() =>
-    Fixture.Failures("superseded-runs", Fixture.Files(workflow: w => w + "\n  &anchor x\n")).ShouldHaveSingleItem()
+    Fixture.Failures("superseded-runs", Fixture.Files(workflow: w => w + "\n  bad: [unclosed\n")).ShouldHaveSingleItem()
       .ShouldContain("could not be read");
 }
 
@@ -213,7 +214,7 @@ public sealed class SupersededRunsTests
   public void ACancelJobThatChecksOut_Fails() =>
     Failures(w => w.Replace(
       "      - run: |\n          for id", "      - uses: actions/checkout@v7\n      - run: |\n          for id", StringComparison.Ordinal))
-      .ShouldHaveSingleItem().ShouldContain("checks code out");
+      .ShouldHaveSingleItem().ShouldContain("fetches code");
 
   [Fact]
   public void ACancelJobThatCancelsNothing_Fails() =>
@@ -224,7 +225,33 @@ public sealed class SupersededRunsTests
     Failures(w => w.Replace(
       "    if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository\n",
       "",
-      StringComparison.Ordinal)).ShouldHaveSingleItem().ShouldContain("only for pull requests");
+      StringComparison.Ordinal)).ShouldHaveSingleItem().ShouldContain("only for same-repository pull requests");
+
+  [Theory]
+  [InlineData(" && github.event.pull_request.head.repo.full_name == github.repository\n    permissions", "\n    permissions")]
+  [InlineData("if: github.event_name == 'pull_request' &&", "if: github.event_name != 'pull_request' &&")]
+  [InlineData(
+    "if: github.event_name == 'pull_request' &&",
+    "if: github.event_name == 'pull_request_target' || github.event_name == 'pull_request' &&")]
+  public void ACancelJobForOtherRuns_Fails(string from, string to) =>
+    Failures(w => w.Replace(from, to, StringComparison.Ordinal))
+      .ShouldHaveSingleItem().ShouldContain("only for same-repository pull requests");
+
+  [Theory]
+  [InlineData("      actions: write\n", "      actions: write\n      contents: write\n")]
+  [InlineData("      actions: write\n", "      actions: write\n      id-token: write\n")]
+  public void ACancelJobWithMorePermissions_Fails(string from, string to) =>
+    Failures(w => w.Replace(from, to, StringComparison.Ordinal))
+      .ShouldHaveSingleItem().ShouldContain("exactly `permissions: actions: write`");
+
+  [Theory]
+  [InlineData("      - uses: Actions/Checkout@v7\n")]
+  [InlineData("      - run: git clone \"https://github.com/$GITHUB_REPOSITORY\"\n")]
+  [InlineData("      - run: gh pr checkout \"$PR\"\n")]
+  public void ACancelJobThatFetchesCode_Fails(string step) =>
+    Failures(w => w.Replace("      - run: |\n          for id", step + "      - run: |\n          for id", StringComparison.Ordinal))
+      .ShouldHaveSingleItem().ShouldContain("fetches code");
+
 }
 
 public sealed class FormatWhitespaceOnlyTests
@@ -457,11 +484,9 @@ public sealed class WorkflowYamlTests
   }
 
   [Theory]
-  [InlineData("a: &x 1")]
-  [InlineData("a: { b: 1 }")]
-  [InlineData("a: 1\na: 2")]
-  [InlineData("a:\n  b: 1\n    c: 2")]
-  [InlineData("a: \"two\n  lines\"")]
+  [InlineData("a: [1")]
+  [InlineData("a:\n  b: 1\n c: 2")]
   [InlineData("a: 1\n---\nb: 2")]
-  public void Parse_RejectsWhatItDoesNotSupport(string yaml) => Should.Throw<FormatException>(() => WorkflowYaml.Parse(yaml));
+  [InlineData("")]
+  public void Parse_RejectsInvalidYamlAndMultipleDocuments(string yaml) => Should.Throw<FormatException>(() => WorkflowYaml.Parse(yaml));
 }

@@ -150,7 +150,7 @@
 <li>Good, because the fonts go through the same lock file, audit and update flow as the rest of the frontend.</li>
 <li>Bad, because first load grows by the subset font files; issue #431 measures the <code>vite build</code> output before and after, as <code>frontend/AGENTS.md</code> asks for bundle changes.</li>
 <li>Bad, because a font swap can shift heading layout briefly on a cold load.</li>
-<li>Neutral, because Dependabot does not watch the frontend today; the packages are updated by hand like the other npm dependencies.</li>
+<li>Neutral, because Dependabot’s weekly npm entry for <code>/frontend</code> (<code>.github/dependabot.yml</code>, <a href="/calendar/adr/0012/">ADR-0012</a>) proposes updates to the font packages like the other frontend dependencies, grouped with them as <code>frontend-prod</code> for minor and patch releases. <em>Amended 2026-11-07:</em> this line said Dependabot did not watch the frontend and the packages were updated by hand, which was already wrong when it was written (#475).</li>
 </ul>
 <h3 id="confirmation">Confirmation</h3>
 <ul>
@@ -192,6 +192,7 @@
 <li>Story: <a href="/calendar/stories/0039/">0039</a>; epic #428; implemented in issue #431.</li>
 <li>Versions and licences checked with <code>npm view &#x3C;package> version license</code> on 2026-11-07.</li>
 <li>Revisit if the bundle-size measurement for issue #431 shows a first-load cost the product owner considers too high, or if a typeface is replaced.</li>
+<li><strong>Amendment, 2026-11-07:</strong> the Dependabot consequence was corrected: <code>.github/dependabot.yml</code> configures npm for <code>/frontend</code>, so the font packages get Dependabot updates, not hand updates; see the note under Consequences. Approved by the maintainer on issue #475, who confirmed that no driver or weight changed, so the ratings stand. The decision itself is unchanged, so this ADR was amended, not superseded.</li>
 </ul>
 <h3 id="open-questions-for-the-reviewer">Open questions for the reviewer</h3>
 <ol>

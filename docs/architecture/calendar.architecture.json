@@ -633,7 +633,7 @@
                   "relative-margin": 0.1,
                   "provisional": true
                 },
-                "false-failure-budget": "About 1 % of pull request runs with no regression, across all gated jobs (alpha / J per job, Bonferroni); back-tested on held-out runs with the observed rate and its one-sided 95 % upper bound in each baseline record. Observed at the first pin (2026-11-07): about 4-5 % of runs, from 3 of the 30 baseline runs above their threshold and 1 of 43 held-out PR runs, above the budget and accepted by the maintainer until a week of gated PR runs is reviewed (#384)",
+                "false-failure-budget": "About 1 % of pull request runs with no regression, across all gated jobs (alpha / J per job, Bonferroni); back-tested on held-out runs with the observed rate and its one-sided 95 % upper bound in each baseline record. Observed at the first pin (2026-11-07): 4 of 73 distinct runs, 5.5 % (one-sided 95 % upper bound 12.1 %), in docs/benchmarks/0014-ci-job-baseline.md; above the budget and accepted by the maintainer until a week of gated PR runs is reviewed (#384)",
                 "baseline": {
                   "file": ".github/ci-baseline.json",
                   "record": "docs/benchmarks/0014-ci-job-baseline.md",

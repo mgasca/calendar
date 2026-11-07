@@ -102,6 +102,48 @@ public sealed class DoctorTests : IDisposable
     text.ShouldNotContain("Azure CLI not found");
   }
 
+  [Theory]
+  [InlineData("tools", "ci-timings")]
+  [InlineData("tools", "versions")]
+  [InlineData("tools", "handover-watch")]
+  [InlineData("tools", "adr")]
+  [InlineData("backend", "restore")]
+  [InlineData("backend", "test")]
+  [InlineData("db", "seed")]
+  [InlineData("frontend", "test-web")]
+  [InlineData("docs", "test")]
+  [InlineData("infra", "migrate")]
+  [InlineData("infra", "init-roles")]
+  public async Task RecipesPreserveForwardedArguments(string module, string recipe)
+  {
+    File.Delete(Path.Combine(_bin, "just"));
+    WriteExecutable("dotnet", "printf '<%s>\\n' \"$@\"");
+    WriteExecutable("pnpm", "printf '<%s>\\n' \"$@\"");
+    var root = Path.GetFullPath(Path.Combine(Path.GetDirectoryName(SourcePath())!, "../../.."));
+    var info = new ProcessStartInfo("just")
+    {
+      WorkingDirectory = root,
+      RedirectStandardOutput = true,
+      RedirectStandardError = true,
+    };
+    info.Environment["PATH"] = _bin + ":" + Environment.GetEnvironmentVariable("PATH");
+    info.ArgumentList.Add(module);
+    info.ArgumentList.Add(recipe);
+    if (module == "infra")
+    {
+      info.ArgumentList.Add("staging");
+    }
+    info.ArgumentList.Add("--example");
+    info.ArgumentList.Add("Docs site");
+    info.ArgumentList.Add("literal;$HOME");
+    using Process process = Process.Start(info) ?? throw new InvalidOperationException();
+    var output = await process.StandardOutput.ReadToEndAsync(TestContext.Current.CancellationToken);
+    var error = await process.StandardError.ReadToEndAsync(TestContext.Current.CancellationToken);
+    await process.WaitForExitAsync(TestContext.Current.CancellationToken);
+    process.ExitCode.ShouldBe(0, error);
+    output.ShouldContain("<--example>\n<Docs site>\n<literal;$HOME>");
+  }
+
   private static string SourcePath([System.Runtime.CompilerServices.CallerFilePath] string path = "") => path;
 
   private async Task<(int, string)> RunDoctor(bool infra = true)

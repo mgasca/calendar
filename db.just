@@ -40,8 +40,9 @@ migrate:
     dotnet ef database update --project src/Calendar.Infrastructure
 
 # Seed a running API with a sample day (e.g. just db seed --date 2026-01-01 --time-zone UTC --api-url URL; additive)
+[positional-arguments]
 seed *args:
-    dotnet run tools/seed-dev/seed-dev.cs -- {{ args }}
+    dotnet run tools/seed-dev/seed-dev.cs -- "$@"
 
 # Open psql on the local database as calendar_migrator
 psql:

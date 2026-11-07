@@ -25,6 +25,8 @@ public sealed class DoctorTests : IDisposable
     WriteExecutable("pnpm", "exit 0");
     WriteExecutable("docker", "exit 0");
     WriteExecutable("just", "echo just 99.0.0");
+    WriteExecutable("gh", "echo 'gh version 2.0.0 (fake)'");
+    WriteExecutable("jq", "echo jq-1.7");
   }
 
   private void WriteExecutable(string name, string body)
@@ -70,6 +72,18 @@ public sealed class DoctorTests : IDisposable
     code.ShouldNotBe(0);
     text.ShouldContain("just not found");
     text.ShouldContain("Install just");
+  }
+
+  [Theory]
+  [InlineData("gh", "Install the GitHub CLI")]
+  [InlineData("jq", "Install jq")]
+  public async Task MissingGhOrJqFailsWithInstallHint(string tool, string hint)
+  {
+    File.Delete(Path.Combine(_bin, tool));
+    (var code, var text) = await RunDoctor(infra: false);
+    code.ShouldNotBe(0);
+    text.ShouldContain($"{tool} not found");
+    text.ShouldContain(hint);
   }
 
   [Fact]

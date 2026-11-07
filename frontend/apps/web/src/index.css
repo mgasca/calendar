@@ -69,6 +69,8 @@ main > button {
 .refresh {
   float: right;
   display: inline-grid;
+  /* A grid doesn't centre content like a plain button does, so centre the label (#521). */
+  align-items: center;
   min-height: 2rem;
   padding: 0 var(--space-3);
   font-size: var(--text-sm);

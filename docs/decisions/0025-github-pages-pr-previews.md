@@ -73,6 +73,20 @@ The decision above is unchanged: the combined artifact, the retained snapshot an
 * Neutral, because **D4 Trusted publication**: the eligibility rule runs in the untrusted CI job, but all it can do is withhold an artifact the publisher had to validate anyway.
 * Bad, because **D1 Review convenience**: a pull request that changes code and documentation together gets no hosted preview; its documentation is reviewed locally with `just docs dev`, or in a pull request of its own.
 
+### Amendment, 2026-11-07: previews for any pull request that changes the docs
+
+The decision and the first amendment's mechanism stay: CI decides by uploading the artifact or not, and the publisher follows the artifact. What changes is eligibility again. The maintainer asked, in issue #418, for a preview whenever a pull request changes the docs, including one that also changes code, which removes the Bad consequence above for mixed pull requests. Story [0038](../stories/0038-run-ci-jobs-only-for-the-paths-they-check.md) delivers it with [ADR-0046](0046-run-ci-jobs-only-for-the-paths-they-check.md).
+
+* **Eligible** is an open pull request from this repository for which the CI Changes job sets the Docs site output to `true`: it changes a file under `docs/` or `frontend/apps/docs/`, or a frontend root configuration file the site builds with, or the CI rules themselves (`.github/workflows/ci.yml`, `.github/ci-changes.jq`). The rules file is the one list.
+* **CI decides** as before: the Docs site job builds and uploads the publication artifact on `main` pushes and on eligible pull requests, and the Docs site job does not run at all for a pull request that is not eligible. The docs-only step that listed the pull request's files goes away; the Changes job lists them once for every job.
+* **Unchanged:** the publisher, production publication, removal on close, reconciliation of closed previews and the fork exclusion. A pull request that stops changing the docs keeps its last preview until it closes.
+
+**Consequences of the second amendment**
+
+* Good, because **D1 Review convenience**: a pull request that changes code and documentation together gets a hosted preview of its documentation.
+* Neutral, because **D3 Content preservation**: more publishes than under the first amendment, but still none for a pull request that changes no docs, so the Pages collisions of #285 stay rare.
+* Neutral, because **D4 Trusted publication**: the eligibility rule still runs in the untrusted CI job and can only withhold an artifact the publisher validates anyway.
+
 ### Consequences
 
 * Good, because reviewers get stable preview URLs with no additional hosting account.
@@ -124,4 +138,5 @@ Test that production updates preserve previews, preview updates preserve product
 * Verified on 2026-10-27: [`actions/deploy-pages`](https://github.com/actions/deploy-pages) documents its normal artifact deployment; its experimental preview input is not a generally available preview-hosting solution. [GitHub workflow events](https://docs.github.com/en/actions/reference/workflows-and-actions/events-that-trigger-workflows#workflow_run) documents the trusted follow-on workflow mechanism and its security considerations.
 * Alternative: [Cloudflare preview deployments](https://developers.cloudflare.com/pages/configuration/preview-deployments/).
 * **Amendment, 2026-11-06:** previews are published for docs-only pull requests only, in issue #332 and story [0030](../stories/0030-docs-only-pr-previews.md). The decision itself is unchanged, so this ADR was amended, not superseded, as [ADR-0038](0038-just-as-the-top-level-task-runner.md) was for its module layout.
+* **Amendment, 2026-11-07:** previews are published for any same-repository pull request that changes the docs, in issue #418 and story [0038](../stories/0038-run-ci-jobs-only-for-the-paths-they-check.md), alongside [ADR-0046](0046-run-ci-jobs-only-for-the-paths-they-check.md). Amended rather than superseded for the same reason.
 * This remains a proposed decision while the requested implementation is prepared for review.

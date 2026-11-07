@@ -1,9 +1,11 @@
 ---
-status: planned
+status: implemented
 date: 2026-11-06
 issue: https://github.com/mgasca/calendar/issues/390
 pr:
   - https://github.com/mgasca/calendar/pull/400
+  - https://github.com/mgasca/calendar/pull/403
+  - https://github.com/mgasca/calendar/pull/405
 adrs: ["0044", "0042", "0017"]
 ---
 
@@ -43,14 +45,14 @@ This story builds on [0027](0027-focus-agent-guidance-on-claude-code-for-a-while
 
 ### Acceptance criteria
 
-1. **Given** a code PR with at least one finding from either reviewer, **when** the workflow runs, **then** it returns three lists (confirmed, refuted with reasons, unexamined), every finding carries file, line, claim and severity, and every confirmed finding was judged by three skeptics of which at least two declined to refute it.
-2. **Given** a reviewer that returns no findings or dies, **when** the workflow runs, **then** the run completes, the other reviewer's findings are judged, and the result says which reviewer returned nothing.
-3. **Given** more findings than the cap allows, **when** the workflow runs, **then** each reviewer's findings are judged as it returns, highest severity first, up to 60 agents in total, the rest are returned unexamined, and the run's log names how many were left.
-4. **Given** the workflow's result, **when** the session posts it, **then** each confirmed finding is a comment with the `agent-found` label as today, the refuted findings appear in one collapsed section with their reasons, unexamined findings are named, and nothing is posted that the public-post guard would refuse.
-5. **Given** the `issue-handover` skill, **when** an agent reaches the review step, **then** the skill names the workflow for Claude Code and the by-hand run of both reviewers for any other harness, and the reviewer agents are unchanged on `main`.
-6. **Given** a docs-only PR, **when** the handover reaches the review step, **then** the workflow is not run.
-7. **Given** three real code PRs, **when** the record is written, **then** it gives for each the measured wall-clock time and agent count of the workflow and of the two sequential reviews, the number of confirmed, refuted and unexamined findings, and the human check of every refutation on those PRs with how many the skeptics got right.
-8. **Given** the change is complete, **when** I run `just check`, **then** it passes. The workflow is a script and the skill is Markdown; the docs corpus tests and site build cover this card, the record and the skill.
+1. **Given** a code PR with at least one finding from either reviewer, **when** the workflow runs, **then** it returns three lists (confirmed, refuted with reasons, unexamined), every finding carries file, line, claim and severity, and every confirmed finding was judged by three skeptics of which at least two declined to refute it. *Met, checked by hand* on the three measured runs (#392, #395, #398; [record 0015](../benchmarks/0015-review-before-merge-workflow.md)): six findings, each with all four fields and three skeptic votes; the workflow has no automated test.
+2. **Given** a reviewer that returns no findings or dies, **when** the workflow runs, **then** the run completes, the other reviewer's findings are judged, and the result says which reviewer returned nothing. *Partly met:* a reviewer returning no findings ran (security on #395, run completed and its status is "reported" with count 0); a reviewer that dies has not, tracked in [#410](https://github.com/mgasca/calendar/issues/410).
+3. **Given** more findings than the cap allows, **when** the workflow runs, **then** each reviewer's findings are judged as it returns, highest severity first, up to 60 agents in total, the rest are returned unexamined, and the run's log names how many were left. *Not exercised:* no run passed three findings; tracked in [#410](https://github.com/mgasca/calendar/issues/410).
+4. **Given** the workflow's result, **when** the session posts it, **then** each confirmed finding is a comment with the `agent-found` label as today, the refuted findings appear in one collapsed section with their reasons, unexamined findings are named, and nothing is posted that the public-post guard would refuse. *Met, checked by hand:* confirmed findings posted as comments with `agent-found` on #392, #395, #398 and #403, unexamined findings named on #403; no refuted finding has occurred yet, so the collapsed section has not been posted on a PR. Every post went through the guard.
+5. **Given** the `issue-handover` skill, **when** an agent reaches the review step, **then** the skill names the workflow for Claude Code and the by-hand run of both reviewers for any other harness, and the reviewer agents are unchanged on `main`. *Met, checked by reading* the skill and `.claude/agents/` on `main` at `d375490a`.
+6. **Given** a docs-only PR, **when** the handover reaches the review step, **then** the workflow is not run. *Met by the skill's wording, not observed in a handover:* the card PRs #400 and #405 were not reviewed by it.
+7. **Given** three real code PRs, **when** the record is written, **then** it gives for each the measured wall-clock time and agent count of the workflow and of the two sequential reviews, the number of confirmed, refuted and unexamined findings, and the human check of every refutation on those PRs with how many the skeptics got right. *Met for time, agents and counts* in [record 0015](../benchmarks/0015-review-before-merge-workflow.md). The comparison is with the two reviewers in parallel (the step as it ran), not two sequential reviews, measured inside the same runs. No refutation occurred, so the human check is deferred to [#410](https://github.com/mgasca/calendar/issues/410).
+8. **Given** the change is complete, **when** I run `just check`, **then** it passes. The workflow is a script and the skill is Markdown; the docs corpus tests and site build cover this card, the record and the skill. *Partly checked:* the docs corpus tests and `just docs build` pass on the completing PR; `just check` was not run as a whole, and CI on that PR is the evidence for the rest.
 
 ## Design decisions
 
@@ -78,7 +80,7 @@ No new ADR is expected.
 
 ## Implementation notes
 
-*Planned. This section is completed as the story is built.*
+Delivered by four PRs. [#400](https://github.com/mgasca/calendar/pull/400) added this card and the ADR-0017 amendment. [#403](https://github.com/mgasca/calendar/pull/403) added the workflow, the skeptic agent and the skill line, and was itself the subject of the first four runs. [#405](https://github.com/mgasca/calendar/pull/405) put the skeptic agent on `main` on its own, ahead of #403, so that new sessions load it. The completing PR adds [benchmark record 0015](../benchmarks/0015-review-before-merge-workflow.md) and this update. The maintainer merged every PR.
 
 ### Where things live
 
@@ -88,7 +90,7 @@ No new ADR is expected.
 | Reviewer agents (unchanged) | `.claude/agents/performance-reviewer.md`, `.claude/agents/security-reviewer.md` |
 | Skeptic agent (new) | `.claude/agents/skeptic.md` |
 | The review step | `.claude/skills/issue-handover/SKILL.md`, "Resume and close out" |
-| The record | `docs/benchmarks/NNNN-review-before-merge-workflow.md` (next free number when written) |
+| The record | `docs/benchmarks/0015-review-before-merge-workflow.md` |
 | Where the workflow is marked Claude Code only | the skill line and a one-line note at the top of the script |
 
 ### API
@@ -106,16 +108,21 @@ No changes.
 
 * **An agent definition added mid-session is unknown to that session's workflows.** The harness loads `.claude/agents/` at session start, so run 2 on #403, the first with `skeptic.md`, had every skeptic call fail with "agent type not found" while both reviewers answered. Run 3, from a fresh session, failed the same way: the session opened in a worktree at `main` and checked the branch out afterwards, and a resumed session keeps its old list too. A new agent definition therefore goes to `main` on its own first (#405 for the skeptic), so that every new session loads it.
 * **Fewer than two answers is unexamined, not refuted.** Run 2 listed its three unanswered findings as refuted because the first script only counted declines. Fixed on #403 before any run with answering skeptics.
-* **Runs so far** (measured from transcripts, one laptop): run 1 on #403, revision 897f042c, 14 agents, 301 s, reviewers 114 s and 102 s in parallel, skeptics 15 to 182 s, 4 confirmed of 4; run 2, revision 3e6aea2f, reviewers only (3 findings, all unexamined), 124 s. The record waits for runs with answering skeptics.
+* **Runs** (measured from transcripts, one laptop). On #403 while it was built: run 1 (897f042c) 14 agents, 301 s, 4 confirmed of 4, all about the script and all fixed; runs 2 and 3 (3e6aea2f, eb2c3132) reviewers only, every skeptic call failed; a fourth attempt from a fresh session failed the same way. Measured, with skeptics answering ([record 0015](../benchmarks/0015-review-before-merge-workflow.md)): #392 221 s against 145 s for the slower reviewer, #395 85 s against 58 s, #398 165 s against 127 s; 5 to 11 agents; six findings, all confirmed, none refuted.
+* **The harness reads agent definitions from the project root checkout.** The fourth attempt showed that a session in a worktree that has the file still does not list it: the registry follows the checkout at the repository root, which was on an old `main`. Merging #405 was not enough until that checkout was fast-forwarded (done with the maintainer's go-ahead on 2026-11-07), after which even the running session listed the skeptic.
+* **The workflow script is on `main` only.** A PR whose branch predates it has no copy; main's copy was run from a scratch path, and it reviews whatever is checked out. The Workflow tool accepts only a path it can read.
+* **Stacked PRs repeat findings.** Each run reviews its branch against `main`, so a PR stacked on another sees its base's files too. The baseline tool's extra API calls were reported three times across #392, #395 and #398; the session posted it once and named the repeats. A finding of #395's code surfaced only in the run on #398 and was posted on #395. Tracked in [#410](https://github.com/mgasca/calendar/issues/410).
 * **Follow-up:** a defect both reviewers report at the same file and line is judged twice (run 2, performance finding 3, low; bounded at twice the cost). Pool such findings into one judged item once a real duplicate is seen.
-* Filled in further on delivery, with the record's numbers and the human check of the refutations.
+* **Known gaps,** all in [#410](https://github.com/mgasca/calendar/issues/410): the cap has not run, a reviewer that dies has not been seen, and no refutation has occurred for a person to check.
 
 ## User guide
-
-*Planned behaviour. This section is finalised when the story is implemented.*
 
 ### Reading a review before a merge
 
 When an agent asks you to merge a code change, the pull request carries the review. Each confirmed finding is its own comment, labelled as found by an agent, with the file and line, the claim and how serious it is. Below them, one collapsed section lists the findings the review considered and set aside, each with the reason the skeptics gave, so you can open it when a dismissal looks wrong. If a change had more findings than the review could examine, the same post says how many were left and which they are.
 
 For a change that only touches documentation, there is no review post; the pull request is read as it is today.
+
+When the change sits on top of another open pull request, the review also reads the earlier one's changes. A finding that belongs to the earlier pull request is posted there once, and the later one's review note names it instead of repeating it.
+
+The review adds about half a minute to a minute and a quarter to the time the two reviewers alone take, and roughly doubles the tokens.

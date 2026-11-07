@@ -104,7 +104,7 @@ No changes.
 
 ### Lessons learned, known issues and follow-ups
 
-* **An agent definition added mid-session is unknown to that session's workflows.** The harness loads `.claude/agents/` at session start, so run 2 on #403, the first with `skeptic.md`, had every skeptic call fail with "agent type not found" while both reviewers answered. A run that exercises a new agent needs a session started after the definition exists.
+* **An agent definition added mid-session is unknown to that session's workflows.** The harness loads `.claude/agents/` at session start, so run 2 on #403, the first with `skeptic.md`, had every skeptic call fail with "agent type not found" while both reviewers answered. Run 3, from a fresh session, failed the same way: the session opened in a worktree at `main` and checked the branch out afterwards, and a resumed session keeps its old list too. A new agent definition therefore goes to `main` on its own first (#405 for the skeptic), so that every new session loads it.
 * **Fewer than two answers is unexamined, not refuted.** Run 2 listed its three unanswered findings as refuted because the first script only counted declines. Fixed on #403 before any run with answering skeptics.
 * **Runs so far** (measured from transcripts, one laptop): run 1 on #403, revision 897f042c, 14 agents, 301 s, reviewers 114 s and 102 s in parallel, skeptics 15 to 182 s, 4 confirmed of 4; run 2, revision 3e6aea2f, reviewers only (3 findings, all unexamined), 124 s. The record waits for runs with answering skeptics.
 * **Follow-up:** a defect both reviewers report at the same file and line is judged twice (run 2, performance finding 3, low; bounded at twice the cost). Pool such findings into one judged item once a real duplicate is seen.

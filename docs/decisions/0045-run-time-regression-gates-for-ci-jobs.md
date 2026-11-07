@@ -116,7 +116,7 @@ A scheduled workflow (daily, and on demand) compares the last `N = 20` successfu
 
 * Good, because a regression of the size #347 removed fails the pull request that adds it, with the job, its time, the threshold and the baseline in the message.
 * Good, because the false-failure rate is a stated budget that record 0014 back-tests and every later baseline record reports.
-* Good, because the gate adds about a second and no job to the critical path, and needs no state across runs.
+* Good, because the gate adds no job to the critical path, only a few seconds to `CI result` (a median of +3 s, about 3 % of a 1:29 PR run), and needs no state across runs. *Amended 2026-11-07:* this line said "about a second"; [record 0014](../benchmarks/0014-ci-job-baseline.md) measured `CI result` at a median of 6 s with the gate against 3 s without it (on #395), mostly the sparse checkout of `.github/`, and the maintainer accepted that cost.
 * Good, because the trend check catches creep below the per-run threshold without failing anyone's PR.
 * Bad, because a regression smaller than the band (a few seconds per PR) passes every PR gate; only the trend check, days later, sees the sum.
 * Bad, because the check-path baseline costs about 30 dispatched runs each time it is re-measured.
@@ -129,6 +129,16 @@ A scheduled workflow (daily, and on demand) compares the last `N = 20` successfu
 * Record 0014 reports the observed false-failure rate on held-out runs, per job and across jobs, with its one-sided 95 % upper bound.
 * #385 proves the gate both ways: a scratch branch with an injected `sleep` fails it, and an ordinary run passes. It reports the step's added time.
 * Review: a change to `.github/ci-baseline.json` comes with a benchmark record in the same PR.
+
+### Amendment, 2026-11-07: an accepted false-failure rate above the budget
+
+[Record 0014](../benchmarks/0014-ci-job-baseline.md) back-tested the threshold on the check path and measured a false-failure rate of **5.5 %** (4 of 73 runs with no regression, pooled from the 30 baseline runs and 43 held-out pull request runs; one-sided 95 % upper bound **12.1 %**). That is above the budget of `α = 1 %` this record sets, so the first revisit trigger in More Information fired at once. All four runs look like slow-runner events, which the median and MAD ignore by design.
+
+The maintainer accepted gating at that measured rate on 2026-11-07 ([relayed on #384](https://github.com/mgasca/calendar/issues/384#issuecomment-6707646144)), with "Re-run all jobs" as the remedy for a false failure. This is an exception, not a new budget:
+
+* **The target is unchanged:** `α = 1 %` of PR runs stays the budget the gate is designed for, and the method and constants (`α`, `J = 5`, `z ≈ 2.88`, `floor = 15 s`, `r = 10 %`) stay as they are. The 5.5 % is the measured result that was accepted, not a target, and later baseline records keep reporting their rate against the 1 % budget.
+* **Review window:** the first week of gated pull request runs, from 2026-11-07 13:52Z (when #395 merged and the gate started failing runs) to 2026-11-14 13:52Z. Issue #421 owns that measurement and any remedy it calls for (a re-pin, a recalibrated `z` in a benchmark record, or a slow-runner rule, which changes the method and would need an amendment or a new ADR). This amendment starts no dispatch and rewrites no baseline.
+* **The gate's measured cost:** the same record measured the gate at a median of +3 s on `CI result`, not the "about a second" estimated here, and the maintainer accepted it on 2026-11-07; the consequence under Consequences is corrected in place.
 
 ## Pros and Cons of the Options
 
@@ -189,3 +199,4 @@ A scheduled workflow (daily, and on demand) compares the last `N = 20` successfu
   2. **Baseline location:** `.github/ci-baseline.json`.
   3. **Constants:** accepted as starting values for record 0014 to calibrate (`α = 1 %`, `floor = 15 s`, `r = 10 %`; trend `N = 20`, minimum effect `max(10 s, 5 %)`), with one change: the trend significance is `p < 0.01 / J = 0.002` per job, corrected for the five jobs as the gate is.
 * **Revisit when:** the back-test or a month of PR runs shows a false-failure rate above the budget (recalibrate, then reconsider the log-normal fit); a job is added or split (re-measure, and `J` changes); the comparison in `CI result` needs more than comparing numbers (move it into the tool and measure its cost); or GitHub changes runner hardware for `ubuntu-latest` (re-measure the baseline). Record 0014 and the baseline file carry the same conditions.
+* **Amendment, 2026-11-07:** the back-test measured a false-failure rate of 5.5 % (4/73, one-sided 95 % upper bound 12.1 %) against the 1 % budget, and the maintainer accepted it as an exception on #384, with a review of the first week of gated PR runs (2026-11-07 13:52Z to 2026-11-14 13:52Z) in #421; see the amendment under Decision Outcome. The gate's cost consequence was also corrected from "about a second" to the measured median of +3 s (record 0014), which the maintainer accepted. The budget, method and constants are unchanged, so this ADR was amended, not superseded.

@@ -69,6 +69,12 @@ Chosen option: "The client sends the local date and its IANA zone id", because i
 * API tests: invalid date, invalid zone and missing parameters return 400 ProblemDetails; the same stored data yields different results for different zones.
 * The runtime container build includes a check or a test that a named zone resolves (when the Dockerfile exists).
 
+### Amendment, 2026-11-07: user accounts exist, and the choice is retained
+
+The first revisit trigger in More Information, "when user accounts exist", has fired. Google sign-in ([ADR-0027](0027-google-oidc-bff-session.md)) identifies each user, and [ADR-0041](0041-per-user-data-ownership.md) scopes every event and task to its owner with query filters in `CalendarDbContext`. The maintainer considered a stored preferred zone on issue #480 and kept this decision as it stands: every request whose answer depends on the day still carries the client's local date (`date` or `today`, as each endpoint names it) and `timeZone` explicitly, missing values still return 400, and the server stores no preferred zone and falls back to none.
+
+No driver or weight changed, so the ratings above, which record the weighing at the time of the decision, stand. The neutral consequence that a stored zone "can become the default" stays a possibility, not a plan. Adding one needs a stated requirement and its own decision on the default's semantics, followed by separate product and API work with a contract plan; this amendment authorises neither. The revisit trigger is restated in More Information.
+
 ## Pros and Cons of the Options
 
 ### The client sends the local date and its IANA zone id
@@ -106,4 +112,5 @@ Chosen option: "The client sends the local date and its IANA zone id", because i
 ## More Information
 
 * Related: [ADR-0018](0018-time-representation-and-bcl-date-time-types.md) (time types and storage), [ADR-0020](0020-aggregate-day-agenda-endpoint-as-read-model.md) (the endpoint this input belongs to), [ADR-0019](0019-single-user-mode-with-authentication-deferred.md) (no stored user settings), [ADR-0004](0004-openapi-contract-and-generated-client.md).
-* Revisit when user accounts exist (a stored default zone), or when recurrence is added (zone-aware expansion may justify NodaTime, see [ADR-0018](0018-time-representation-and-bcl-date-time-types.md)).
+* Revisit when a requirement for a stored preferred zone appears (re-weigh the drivers then, since accounts alone no longer decide it), or when recurrence is added (zone-aware expansion may justify NodaTime, see [ADR-0018](0018-time-representation-and-bcl-date-time-types.md)). *Amended 2026-11-07:* the first trigger said "when user accounts exist (a stored default zone)"; accounts now exist, so the trigger names the requirement instead.
+* **Amendment, 2026-11-07:** the user-account revisit trigger fired ([ADR-0027](0027-google-oidc-bff-session.md) sign-in, [ADR-0041](0041-per-user-data-ownership.md) per-user ownership in `CalendarDbContext`). The maintainer retained mandatory explicit date and `timeZone` with no stored preferred zone on issue #480 and confirmed that no driver or weight changed; see the amendment under Decision Outcome. The decision itself is unchanged, so this ADR was amended, not superseded.

@@ -36,6 +36,7 @@ jobs:
       ready: ${{ steps.snapshot.outputs.ready }}
       snapshot: ${{ steps.snapshot.outputs.snapshot }}
       artifact: ${{ steps.snapshot.outputs.artifact }}
+      artifact_id: ${{ steps.upload.outputs.artifact_id }}
     steps:
       - name: Validate source run and current revision
         id: source
@@ -176,11 +177,12 @@ jobs:
             // The deploy job checks that gh-pages still points at this commit before deploying it.
             core.setOutput('snapshot', git('rev-parse', 'HEAD').trim());
             // One name per attempt: re-running every job uploads a second artifact, and a shared
-            // name would leave deploy-pages two artifacts to choose from.
+            // name would leave two artifacts with one name in the run. Deploy uses the ID.
             core.setOutput('artifact', `github-pages-${process.env.GITHUB_RUN_ATTEMPT}`);
             core.setOutput('ready', 'true');
       - name: Upload combined site
         if: steps.snapshot.outputs.ready == 'true'
+        id: upload
         uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9 # v5.0.0
         with:
           path: published
@@ -190,7 +192,9 @@ jobs:
     needs: assemble
     if: needs.assemble.outputs.ready == 'true'
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    # Up to 10 minutes of retries while Pages reports an in-progress deployment, then up to
+    # 10 minutes for the deployment itself.
+    timeout-minutes: 25
     permissions:
       contents: read
       pages: write
@@ -216,23 +220,79 @@ jobs:
               return;
             }
             core.setOutput('deploy', 'true');
-            // deploy-pages v5 reads pages_build_version from GITHUB_SHA. Default-branch
-            // events reuse it across publications (#285), even with serialized workflows.
-            // Include the attempt so re-running only this job also gets a fresh version.
+            // Pages names a deployment by its build version. GITHUB_SHA is main's head for every
+            // workflow_run and pull_request_target publication between two merges (#285), so give
+            // each run and attempt its own version, and re-running only this job a fresh one.
             const { createHash } = require('node:crypto');
             const version = createHash('sha1')
               .update(`${process.env.SNAPSHOT}:${context.runId}:${process.env.GITHUB_RUN_ATTEMPT}`)
               .digest('hex');
             core.setOutput('version', version);
+      # Calls the Pages deployment API itself instead of actions/deploy-pages, which always sends
+      # GITHUB_SHA as the build version: the runner ignores a step `env` that sets a GITHUB_*
+      # variable, so the #339 override never reached the API (#429).
       - name: Deploy production and previews
         if: steps.current.outputs.deploy == 'true'
         id: deployment
-        uses: actions/deploy-pages@368f82528645a54fb793d4d04e342629a3f51346 # v5.0.1
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
         env:
-          # Step-local input to deploy-pages; source SHA and OIDC claims stay unchanged.
-          GITHUB_SHA: ${{ steps.current.outputs.version }}
+          ARTIFACT_ID: ${{ needs.assemble.outputs.artifact_id }}
+          BUILD_VERSION: ${{ steps.current.outputs.version }}
         with:
-          artifact_name: ${{ needs.assemble.outputs.artifact }}
+          script: |
+            const version = process.env.BUILD_VERSION;
+            const artifactId = Number(process.env.ARTIFACT_ID);
+            if (!/^[a-f0-9]{40}$/.test(version) || !Number.isSafeInteger(artifactId) || artifactId <= 0) {
+              throw new Error('Invalid build version or artifact ID');
+            }
+            const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+            const started = Date.now();
+            const minutes = (n) => n * 60 * 1000;
+            // A refusal naming an in-progress deployment is retried for up to 10 minutes, with a
+            // warning, so a recurrence shows in the run without failing the publication. One lock
+            // measured in #429 cleared after 7.5 to 9.5 minutes; #285 saw one last about 30.
+            let deployment;
+            for (let retry = 0; ; retry++) {
+              try {
+                ({ data: deployment } = await github.request('POST /repos/{owner}/{repo}/pages/deployments', {
+                  ...context.repo,
+                  artifact_id: artifactId,
+                  pages_build_version: version,
+                  oidc_token: await core.getIDToken(),
+                }));
+                break;
+              } catch (error) {
+                if (error.status !== 400 || !/in progress deployment/i.test(error.message) || Date.now() - started >= minutes(10)) throw error;
+                core.warning(`Pages refused build ${version} (retry ${retry + 1}): ${error.message}`);
+                await sleep(30 * 1000);
+              }
+            }
+            const created = Date.now();
+            const id = deployment.id ?? version;
+            core.setOutput('page_url', deployment.page_url);
+            core.info(`Created Pages deployment ${id} for build ${version}.`);
+            const failed = ['deployment_failed', 'deployment_content_failed', 'deployment_cancelled', 'deployment_lost'];
+            let errors = 0;
+            while (true) {
+              await sleep(5 * 1000);
+              let status;
+              try {
+                ({ data: { status } } = await github.request('GET /repos/{owner}/{repo}/pages/deployments/{id}', { ...context.repo, id }));
+                errors = 0;
+              } catch (error) {
+                if (++errors >= 10) throw error;
+                core.warning(`Reading Pages deployment ${id} failed: ${error.message}`);
+                continue;
+              }
+              if (status === 'succeed') break;
+              if (failed.includes(status)) throw new Error(`Pages deployment ${id} ended with ${status}`);
+              core.info(`Pages deployment ${id}: ${status}`);
+              if (Date.now() - created >= minutes(10)) {
+                await github.request('POST /repos/{owner}/{repo}/pages/deployments/{id}/cancel', { ...context.repo, id });
+                throw new Error(`Pages deployment ${id} timed out and was cancelled`);
+              }
+            }
+            core.info(`Pages deployment ${id} succeeded.`);
       - name: Link published preview
         if: needs.assemble.outputs.mode == 'preview' && steps.deployment.outcome == 'success'
         uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0

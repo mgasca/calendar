@@ -623,8 +623,8 @@
                 "gated-jobs": ["Backend", "Frontend", "Docs site", "Tooling", "Container image"],
                 "quantity": "Each job's started_at to completed_at from the jobs API; queue time, skipped jobs, CI result and Cancel superseded runs are not gated",
                 "paths": {
-                  "publication": "The Docs site step 'Build and verify publication artifact' succeeded: pushes to main and docs-only pull requests",
-                  "check": "That step was skipped: dispatches and every other pull request"
+                  "publication": "The Docs site step 'Build and verify publication artifact' succeeded: pushes to main and same-repository pull requests that run Docs site, i.e. that change the docs (ADR-0046)",
+                  "check": "That step was skipped or Docs site did not run: dispatches and every other pull request"
                 },
                 "threshold": {
                   "formula": "ceil(max(exp(m + z * 1.4826 * MAD), M + max(floor, r * M))), m and MAD of ln(seconds), M = exp(m), z = Phi^-1(1 - alpha / J)",
@@ -669,14 +669,15 @@
                   { "id": "api-tests-in-parallel", "protects": "#349", "record": "0009", "mechanism": "API test classes run in parallel, with one database reset per test", "test": "backend/tests/Calendar.Api.Tests/ApiTestParallelismTests.cs" },
                   { "id": "format-whitespace-only", "protects": "#350", "record": "0010", "mechanism": "Backend formatting is checked with dotnet format whitespace only, and the build enforces code style with warnings as errors", "test": "tools/delivery-guards" },
                   { "id": "parallel-tool-tests", "protects": "#351", "record": "0011", "mechanism": "just tools test runs the test apps TOOLS_TEST_JOBS at a time, with a NuGet cache in the Tooling job", "test": "tools/delivery-guards" },
-                  { "id": "ci-result-needs-all", "protects": "#368", "mechanism": "CI result always runs, needs every other job except Cancel superseded runs, and passes only when all of them succeeded", "test": "tools/delivery-guards" },
+                  { "id": "ci-result-needs-all", "protects": "#368", "mechanism": "CI result always runs, needs every other job except Cancel superseded runs, and passes only when each succeeded or was skipped because the Changes job said the run does not need it", "test": "tools/delivery-guards" },
                   { "id": "one-corpus-read-per-sync", "protects": "#273", "record": "0003", "mechanism": "The docs loader lists the corpus once per sync, not once per document", "test": "frontend/apps/docs/src/lib/docs-loader.test.ts" },
                   { "id": "docs-site-job", "protects": "#274", "record": "0004", "mechanism": "The docs site is checked in its own Docs site job, and its typecheck reuses the build's sync", "test": "tools/delivery-guards" },
                   { "id": "web-test-workers", "protects": "#275", "record": "0005", "mechanism": "The web test suite runs one jsdom per worker", "test": "frontend/apps/web/dev/vitestConfig.test.ts" },
-                  { "id": "single-web-typecheck", "protects": "#276", "record": "0006", "mechanism": "The Frontend job type-checks the web app once, and its build step is the bundler alone", "test": "tools/delivery-guards" }
+                  { "id": "single-web-typecheck", "protects": "#276", "record": "0006", "mechanism": "The Frontend job type-checks the web app once, and its build step is the bundler alone", "test": "tools/delivery-guards" },
+                  { "id": "changes-job", "protects": "#418", "record": "0016", "mechanism": "A Changes job runs .github/ci-changes.jq on every run, and every other job but CI result and Cancel superseded runs needs it and runs only when its own output is true; ChangesRulesTests run the rules with jq", "test": "tools/delivery-guards" }
                 ],
                 "evidence": "A delivery performance fix carries a test that fails when its mechanism is reverted and a benchmark record; a baseline change carries a record with the sample and the back-test; timings are asserted only through the pinned baseline",
-                "adrs": ["https://mgasca.github.io/calendar/adr/0012/", "https://mgasca.github.io/calendar/adr/0039/", "https://mgasca.github.io/calendar/adr/0045/"]
+                "adrs": ["https://mgasca.github.io/calendar/adr/0012/", "https://mgasca.github.io/calendar/adr/0039/", "https://mgasca.github.io/calendar/adr/0045/", "https://mgasca.github.io/calendar/adr/0046/"]
               }
             }
           ]

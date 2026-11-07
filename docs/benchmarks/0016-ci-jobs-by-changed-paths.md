@@ -53,3 +53,7 @@ Keep the Changes job: it costs about 5 s per run and saves 2:46–5:40 of runner
 - the Changes job exceeds 15 s of execution in the ADR-0045 trend sample;
 - a change a skipped job would have caught reaches `main` (widen that job's path set);
 - the next ADR-0045 baseline update adds Changes as a gated job.
+
+## What protects it
+
+The `changes-job` mechanism guard in `tools/delivery-guards`, listed in the `delivery-performance` control with this record, and its `ChangesRulesTests` on the committed rules. The run-time gate of ADR-0045 does not gate the Changes job until the next baseline update adds it.

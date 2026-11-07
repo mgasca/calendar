@@ -58,6 +58,11 @@ afterEach(() => {
   vi.useRealTimers();
 });
 
+/** The live text of the app's save notification (story 0042, #463). */
+function notification() {
+  return within(screen.getByRole('region', { name: 'Notifications' })).getByRole('status');
+}
+
 describe('routes', () => {
   it('shows today at /', async () => {
     const dates = serveAgendas();
@@ -237,10 +242,8 @@ describe('tasks', () => {
     await waitFor(() => {
       expect(screen.queryByRole('button', { name: 'Save task' })).not.toBeInTheDocument();
     });
-    expect(screen.getByText('Task added. You can find it in My tasks.')).toHaveAttribute(
-      'role',
-      'status',
-    );
+    expect(notification()).toHaveTextContent(/^“Pack bag” added\.$/);
+    expect(screen.queryByRole('button', { name: 'Show day' })).not.toBeInTheDocument();
     expect(await screen.findByRole('checkbox', { name: 'Pack bag' })).toBeInTheDocument();
     await waitFor(() => expect(screen.getByRole('button', { name: 'Add task' })).toHaveFocus());
 
@@ -283,15 +286,44 @@ describe('tasks', () => {
     await user.click(screen.getByRole('button', { name: 'Add task' }));
     await user.type(screen.getByLabelText('Title'), 'Pack bag');
     await user.click(screen.getByRole('button', { name: 'Save task' }));
-    expect(await screen.findByText(/^Task added/)).toBeInTheDocument();
+    expect(await screen.findByText('“Pack bag” added.')).toBeInTheDocument();
     expectButtonsTogether();
 
     await user.click(screen.getByRole('button', { name: 'Add event' }));
     await user.type(screen.getByLabelText('Title'), 'Dentist');
     await user.click(screen.getByRole('button', { name: 'Save event' }));
     expect(await screen.findByText(/Dentist added for/)).toBeInTheDocument();
-    expect(screen.getByText(/^Task added/)).toBeInTheDocument();
     expectButtonsTogether();
+  });
+
+  it('offers Show day for a task due on another day, from the day view and from My tasks', async () => {
+    serveTasks();
+    const { router, unmount } = renderApp('/day/2099-10-27');
+    const user = userEvent.setup();
+    await user.click(await screen.findByRole('button', { name: 'Add task' }));
+    await user.type(screen.getByLabelText('Title'), 'Pack bag');
+    fireEvent.change(screen.getByLabelText('Due date'), { target: { value: '2099-10-30' } });
+    await user.click(screen.getByRole('button', { name: 'Save task' }));
+
+    await waitFor(() => {
+      expect(notification()).toHaveTextContent(/^“Pack bag” added for Fri,? (30 Oct|Oct 30)\.$/);
+    });
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Add task' })).toHaveFocus());
+    await user.click(screen.getByRole('button', { name: 'Show day' }));
+    await waitFor(() => {
+      expect(router.state.location.pathname).toBe('/day/2099-10-30');
+    });
+    expect(await screen.findByRole('checkbox', { name: 'Pack bag' })).toBeInTheDocument();
+    unmount();
+
+    renderApp('/tasks');
+    await user.click(await screen.findByRole('button', { name: 'Add task' }));
+    await user.type(screen.getByLabelText('Title'), 'Someday');
+    await user.click(screen.getByRole('button', { name: 'Save task' }));
+    await waitFor(() => {
+      expect(notification()).toHaveTextContent(/^“Someday” added\.$/);
+    });
+    expect(screen.queryByRole('button', { name: 'Show day' })).not.toBeInTheDocument();
   });
 
   it('cancels with Escape, restores focus, and opens with fresh values', async () => {
@@ -415,7 +447,9 @@ describe('event creation from a day', () => {
     await user.type(screen.getByLabelText('Title'), 'Dentist');
     await user.click(screen.getByRole('button', { name: 'Save event' }));
     expect(await screen.findByText('Dentist')).toBeVisible();
-    expect(screen.getByText(/Dentist added for/)).toHaveAttribute('role', 'status');
+    expect(notification()).toHaveTextContent(/^Dentist added for Thu,? (29 Oct|Oct 29)\.$/);
+    expect(screen.getByRole('main')).not.toContainElement(notification());
+    expect(screen.queryByRole('button', { name: 'Show day' })).not.toBeInTheDocument();
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
     await waitFor(() => {
       expect(screen.getByRole('button', { name: 'Add event' })).toHaveFocus();

@@ -45,6 +45,13 @@ Use supported bounded watches and re-arm on expiry while scoped work remains inc
 
 A watch that reports differences must take its baseline from the current state when it starts, before its first wait, and from the recorded state when it is re-armed. Otherwise every start reports every known PR and comment as new. Find the epic's PRs by the issue links in their title or body, filtered locally, not by a search for issue numbers, which matches unrelated PRs that mention those numbers in passing (#380).
 
+Watch mergeability as well as checks. On every pass, and again after anything merges into the trunk, read each open PR's base, mergeable state and merge-state status (for example `gh pr view --json baseRefName,mergeable,mergeStateStatus`). GitHub recomputes them after the trunk moves and reports `UNKNOWN` meanwhile: that is pending, not a problem. Then:
+
+* **Conflicting** (`CONFLICTING`/`DIRTY`): direct the owning worker, resuming it if it has finished, to update the branch from the trunk the way the repository prescribes (merging the trunk in, not rewriting a branch under review, unless the stack reference says otherwise), keep the diff against the trunk to that PR's own scope, rerun its checks and report the new head. Tell the maintainer only if the resolution needs a decision.
+* **Base merged:** in an ordinary chain, a squash-merged base leaves the dependent branch holding its own copies of the base's commits, so the dependent PR usually conflicts once it targets the trunk. Retarget it, or confirm that GitHub did, and update it as above. For a native stack, follow the stack reference instead.
+* **Behind but not conflicting** (`BEHIND`): no alert and no worker action unless protections require an up-to-date branch; the maintainer can update it at merge time.
+* **New head after an update**, including GitHub's **Update branch**: earlier green checks no longer apply; reassess before calling the PR ready.
+
 ## Notify in actionable tables
 
 Notify only when the maintainer needs to act or a significant milestone changes: a review-ready PR/group, a requested decision, a blocker requiring intervention, an important scope departure, verified delivery, or epic completion. Routine CI starts and unchanged pending work are not alerts. Handle worker-actionable problems directly and notify when resolution or escalation matters.

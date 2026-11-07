@@ -51,7 +51,7 @@ Chosen option: "TanStack Router with code-based route definitions", because it i
 ### Deep links
 
 * **Development:** Vite's dev server and `vite preview` default to `appType: 'spa'`, so any path that isn't a file and isn't proxied (only `/api` is proxied) is answered with `index.html`. Deep links and reloads on `/day/2026-10-26` work with no extra configuration.
-* **Deployed (single container, [ADR-0002](0002-dotnet-10-minimal-api-backend.md)):** the API doesn't serve the SPA yet; that is the open follow-up in [ADR-0002](0002-dotnet-10-minimal-api-backend.md). When it does, the hosting must meet these requirements, each covered by an API test:
+* **Deployed (single container, [ADR-0002](0002-dotnet-10-minimal-api-backend.md)):** when this was decided, the API didn't serve the SPA yet; that was the open follow-up in [ADR-0002](0002-dotnet-10-minimal-api-backend.md), delivered since. The hosting must meet these requirements, and the decision asks for an API test of each. The amendment of 2026-11-07 below maps each requirement to the test that covers it, or marks it untested or deployment-only:
   * Static assets from the built `dist/` are served as files, and a missing asset (a path with a file extension, such as `/assets/missing.js`) is a 404, not `index.html`.
   * Any other unknown path outside `/api` (such as `/day/2026-10-26` or `/week`) returns `index.html` with status 200, so the router can take over. In ASP.NET Core that is `UseStaticFiles()` plus a fallback such as `MapFallbackToFile("{*path:nonfile}", "index.html")`.
   * Unknown `/api/*` paths stay 404 problem details. A plain `MapFallbackToFile` would answer them with `index.html`, so the fallback must exclude the `/api` prefix (for example with a route constraint, or an explicit `/api/{**rest}` endpoint that returns 404).
@@ -71,14 +71,31 @@ Chosen option: "TanStack Router with code-based route definitions", because it i
 * Bad, because code-based routes need the `getParentRoute` and `addChildren` boilerplate, and route-level code splitting (`lazyRouteComponent`) is manual. That is acceptable for a handful of routes.
 * Bad, because fewer examples exist than for React Router, so agents must follow the code-based (not file-based) parts of the TanStack docs. The conventions above and the existing routes are the reference.
 * Bad, because the package brings in a few transitive dependencies (`@tanstack/router-core`, `@tanstack/history`, `@tanstack/react-store`, `isbot`).
-* Neutral: until the API serves the SPA, the deployed-deep-link requirements above are a checklist for that follow-up, not running code.
+* Neutral: when this was decided, the deployed-deep-link requirements above were a checklist for the hosting follow-up, not running code. They are implemented now, and the amendment below records which of them tests cover.
 
 ### Confirmation
 
 * Routing tests in `frontend/apps/web/src/App.test.tsx` render the app from a memory history and cover `/` as today, `/day/<date>`, an invalid date, an unknown path and the link back to today. They run in `just test` and CI.
 * `tsc` in `just lint` checks every `Link`, `useParams` and `navigate` against the registered route tree.
 * Review rule: new routes are added in `router.tsx` with validated params; a PR that adds `@tanstack/router-plugin` or file-based routes needs a superseding ADR.
-* When the API starts serving the SPA, its PR adds the fallback tests listed under *Deep links*.
+* The API serves the SPA since [PR #108](https://github.com/mgasca/calendar/pull/108), which added the fallback test `HostingTests.SpaRoutingAndCacheHeaders` for the requirements under *Deep links*; it runs in `just test` and CI. The CI `Container image` job also runs `just image smoke` against the built image. The amendment below records what each check covers and what is left to a deployment.
+
+### Amendment, 2026-11-07: deep-link hosting delivered, and what tests cover
+
+Recorded for the ADR sweep epic [#473](https://github.com/mgasca/calendar/issues/473) in [issue #478](https://github.com/mgasca/calendar/issues/478), with the maintainer's approval. The router decision and its conventions are unchanged and are not re-rated. The context and *Deep links* section above describe the hosting as decided on 2026-10-27, before the API served the SPA.
+
+The API began serving the SPA in [PR #108](https://github.com/mgasca/calendar/pull/108) (merged 2026-10-29, issue #76), and [PR #114](https://github.com/mgasca/calendar/pull/114) (merged 2026-10-29, closes #75) put the built `dist/` in the API image. `backend/src/Calendar.Api/Program.cs` runs `UseStaticFiles` only for paths outside `/api`. It maps `/api/{**path}` to a 404, and maps every other path to a fallback that returns 404 for a path with a file extension and `index.html` with `Cache-Control: no-cache` for the rest.
+
+Here is each *Deep links* requirement against its evidence. The links point to `backend/tests/Calendar.Api.Tests/Endpoints/HostingTests.cs` at commit `0b579c435`. That test, [`SpaRoutingAndCacheHeaders`](https://github.com/mgasca/calendar/blob/0b579c4352c79c669c0b58f026bff24195038c48/backend/tests/Calendar.Api.Tests/Endpoints/HostingTests.cs#L14-L60), runs the API in-process against a temporary web root. The CI `Container image` job runs `just image smoke` (`image.just`) against the built image.
+
+* **Static assets are served as files:** partly tested. `/assets/app-Abc123_X.js` gets the long-lived `immutable` header ([`SpaRoutingAndCacheHeaders`, lines 34–37](https://github.com/mgasca/calendar/blob/0b579c4352c79c669c0b58f026bff24195038c48/backend/tests/Calendar.Api.Tests/Endpoints/HostingTests.cs#L34-L37)), which only the static-file middleware sets. No test asserts an asset's status or body, and the image smoke test fetches no asset; follow-up [#497](https://github.com/mgasca/calendar/issues/497).
+* **A missing asset is a 404, not `index.html`:** tested. `/assets/missing.js` returns 404 ([`SpaRoutingAndCacheHeaders`, lines 42–45](https://github.com/mgasca/calendar/blob/0b579c4352c79c669c0b58f026bff24195038c48/backend/tests/Calendar.Api.Tests/Endpoints/HostingTests.cs#L42-L45)).
+* **Other unknown paths outside `/api` return `index.html` with 200:** tested. `/` and `/day/2026-10-29` return 200 with the `index.html` body ([`SpaRoutingAndCacheHeaders`, lines 27–33](https://github.com/mgasca/calendar/blob/0b579c4352c79c669c0b58f026bff24195038c48/backend/tests/Calendar.Api.Tests/Endpoints/HostingTests.cs#L27-L33)). `/week` is checked only by the image smoke test, which compares its body with `/`'s.
+* **Unknown `/api/*` paths stay 404 problem details:** partly tested. `/api/unknown` returns 404 and is not `text/html` ([`SpaRoutingAndCacheHeaders`, lines 46–50](https://github.com/mgasca/calendar/blob/0b579c4352c79c669c0b58f026bff24195038c48/backend/tests/Calendar.Api.Tests/Endpoints/HostingTests.cs#L46-L50)), and the smoke test expects a 404 too. No test asserts the `application/problem+json` body; follow-up [#497](https://github.com/mgasca/calendar/issues/497). A manual local run on 2026-11-07 returned one, but that is not a test.
+* **`index.html` is sent with `Cache-Control: no-cache`:** tested for `/`, `/day/2026-10-29` and `/index.html` ([`SpaRoutingAndCacheHeaders`, lines 27–33](https://github.com/mgasca/calendar/blob/0b579c4352c79c669c0b58f026bff24195038c48/backend/tests/Calendar.Api.Tests/Endpoints/HostingTests.cs#L27-L33)).
+* **A new deployment's hashed asset names are picked up:** deployment-only and not verified. No Azure deployment has run, so serving through Azure Container Apps ingress and replacing assets on a release are deployment checks (#79, #83).
+
+The hosting test passed in the CI `Backend` job, and the image smoke test in the `Container image` job, on `main` at `082c64e08` (CI run [42406004961](https://github.com/mgasca/calendar/actions/runs/42406004961)). Both hosting tests also passed locally on 2026-11-07.
 
 ## Pros and Cons of the Options
 
@@ -114,5 +131,6 @@ Chosen option: "TanStack Router with code-based route definitions", because it i
 
 * Versions at the time of writing (`npm view`): `@tanstack/react-router` 1.170.46 (MIT), `react-router` 8.5.0 (MIT; latest 7.x is 7.18.4).
 * Story [0002](../stories/0002-week-view.md) first planned this decision as number 0022, which the documentation-site record ([ADR-0022](0022-astro-starlight-documentation-ui.md)) had already taken.
-* The single-container SPA hosting is the follow-up recorded in [ADR-0002](0002-dotnet-10-minimal-api-backend.md); the *Deep links* section above lists what it must do for routing.
+* The single-container SPA hosting was the follow-up recorded in [ADR-0002](0002-dotnet-10-minimal-api-backend.md); the *Deep links* section above lists what it must do for routing.
 * Revisit file-based routing (the `@tanstack/router-plugin` Vite plugin) if the app grows past roughly ten routes or needs automatic route-level code splitting. That would supersede this ADR.
+* **Amendment, 2026-11-07:** the deployed deep-link hosting was delivered by PR #108 and PR #114. Three requirements are tested, two are partly tested (an asset's status and body, and the `/api` 404's problem-details body, are not asserted; follow-up #497), and asset replacement on a release is deployment-only and not yet verified. The router decision is unchanged and not re-rated, so this ADR was amended, not superseded.

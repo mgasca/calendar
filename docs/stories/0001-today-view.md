@@ -112,7 +112,7 @@ Errors use `application/problem+json`: 400 with per-field `errors`, 404 and 409.
 ### Persistence
 
 * **Tables:** `events` and `tasks`, in snake_case.
-* **Event span:** timed events carry a generated, stored `tstzrange` column (`span`) with a GiST index, used by the overlap query (ADR-0014/0015). It's confined to Infrastructure. For the SQLite fallback, `AgendaQueries.TimedOn` would switch to `starts_at < end AND ends_at > start`.
+* **Event span:** timed events carry a generated, stored `tstzrange` column (`span`) with a GiST index, used by the overlap query (ADR-0014/0015). It's confined to Infrastructure. When this story was delivered, ADR-0014 still had a SQLite fallback, for which `AgendaQueries.TimedOn` would have switched to `starts_at < end AND ends_at > start`. [ADR-0037](../decisions/0037-postgresql-only-no-sqlite-fallback.md) withdrew that fallback, so no SQLite form is needed.
 * **Integrity:** check constraints enforce the event shape (timed vs all-day columns), the due-date-xor-due-instant rule and non-blank titles. Partial indexes cover all-day dates and task due/completed columns.
 * **Roles:** the app connects as `calendar_app` (data access only), and migrations run as `calendar_migrator`. Migrations are never applied at app startup.
 

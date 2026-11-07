@@ -32,7 +32,11 @@ export function Notes({ id, kind }: { id: string; kind: 'task' | 'event' }) {
         Notes
       </button>
       {open && notes.isPending && <p role="status">Loading notes…</p>}
-      {open && notes.isError && <p role="alert">Couldn’t load notes.</p>}
+      {open && notes.isError && (
+        <p role="alert" className="notice notice-error">
+          Couldn’t load notes.
+        </p>
+      )}
       {open && notes.data && <p className="task-notes">{notes.data}</p>}
     </div>
   );

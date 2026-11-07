@@ -210,7 +210,9 @@ export function EventForm({
             )}
           </Field>
           <div className="actions">
-            <button type="submit">{save.isPending ? 'Saving…' : 'Save event'}</button>
+            <button type="submit" className="button-primary">
+              {save.isPending ? 'Saving…' : 'Save event'}
+            </button>
             <button
               type="button"
               onClick={() => {

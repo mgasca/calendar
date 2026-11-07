@@ -455,3 +455,26 @@ describe('event creation from a day', () => {
     expect(screen.getAllByText(/Continues from the previous day/)).toHaveLength(2);
   });
 });
+
+describe('theme switch', () => {
+  afterEach(() => {
+    window.localStorage.clear();
+    delete document.documentElement.dataset.theme;
+  });
+
+  it('changes the theme without leaving the page or losing dialog input', async () => {
+    serveAgendas();
+    const { router } = renderApp('/day/2099-10-27');
+    const user = userEvent.setup();
+    await screen.findByRole('heading', { level: 1, name: /27 October 2099/ });
+    await user.click(screen.getByRole('button', { name: 'Add task' }));
+    await user.type(screen.getByLabelText('Title'), 'Pack bag');
+
+    await user.click(within(screen.getByRole('group', { name: 'Theme' })).getByLabelText('Dark'));
+
+    expect(document.documentElement.dataset.theme).toBe('dark');
+    expect(router.state.location.pathname).toBe('/day/2099-10-27');
+    expect(screen.getByRole('dialog', { name: 'Add task' })).toBeVisible();
+    expect(screen.getByLabelText('Title')).toHaveValue('Pack bag');
+  });
+});

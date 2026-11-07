@@ -17,8 +17,7 @@ body {
 }
 
 main,
-.app-nav,
-.app-footer {
+.app-nav {
   max-width: 40rem;
   margin: 0 auto;
 }

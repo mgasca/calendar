@@ -108,6 +108,12 @@ describe('token layer guards (ADR-0047)', () => {
     expect(css).toMatch(/\.summary-part\s*\{[^}]*white-space:\s*nowrap;[^}]*\}/);
   });
 
+  it('centres the Refresh label vertically in its grid cell (#521)', () => {
+    // A grid button stretches its items to the cell and leaves the text at the top (5.5 px above
+    // centre in the running app); the web tests run without CSS, so this pins the rule instead.
+    expect(read('index.css')).toMatch(/\.refresh\s*\{[^}]*align-items:\s*center;[^}]*\}/);
+  });
+
   it.each(cssFiles)('%s animates only when reduced motion is not requested', (file) => {
     // Story 0042 (#463): with reduced motion, the notification appears and disappears without
     // animating. Every animation and transition sits in a `no-preference` block.

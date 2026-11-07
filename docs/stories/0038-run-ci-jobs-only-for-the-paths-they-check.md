@@ -37,7 +37,7 @@ Story [0030](0030-docs-only-pr-previews.md) limited the hosted docs preview to p
 * **`CI result`** passes only when every job succeeded, or was skipped because Changes said the change did not need it. If Changes fails, `CI result` fails.
 * **Docs preview** is published for any same-repository pull request for which Docs site runs, even if it also changes code. The docs-only rule of story 0030 goes away; the publisher is unchanged.
 * **Docs-site lint:** the Docs site job runs prettier and eslint on `frontend/apps/docs`, because Frontend, which linted the whole workspace, no longer runs for a docs-site change.
-* **Evidence:** runner minutes and wall time for a docs-only and a backend-only pull request, before and after, in benchmark record 0016. The issue carries the `performance` label.
+* **Evidence:** runner minutes and wall time for a docs-only and a backend-only pull request, before and after, in benchmark record 0016. "Before" comes from existing CI history (`just tools ci-timings`), "after" from the throwaway pull requests the delivery needs anyway, with no extra dispatches (answered on #419). The issue carries the `performance` label.
 
 ### Not in this story
 
@@ -69,7 +69,7 @@ Story [0030](0030-docs-only-pr-previews.md) limited the hosted docs preview to p
 | [0012](../decisions/0012-ci-and-dependency-updates.md) | GitHub Actions, one required `CI result` check | Filtering must keep that one check reporting on every run |
 | [0025](../decisions/0025-github-pages-pr-previews.md) | Pages previews from a retained snapshot; amended on 2026-11-07 for any PR that changes docs | Defines preview eligibility, which this story widens |
 | [0045](../decisions/0045-run-time-regression-gates-for-ci-jobs.md) | Run-time gate per job and path | Ignores skipped jobs; baselines come from runs that still run everything |
-| [0046](../decisions/0046-run-ci-jobs-only-for-the-paths-they-check.md) | A Changes job with a committed jq rules file decides which jobs run | The mechanism this story delivers (proposed in PR 0) |
+| [0046](../decisions/0046-run-ci-jobs-only-for-the-paths-they-check.md) | A Changes job with a committed jq rules file decides which jobs run | The mechanism this story delivers (accepted on #419, 2026-11-07) |
 
 ### Other decisions (not ADR-worthy)
 

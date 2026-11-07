@@ -1,5 +1,5 @@
 ---
-status: proposed
+status: accepted
 date: 2026-11-07
 decision-makers: mgasca, Claude (AI assistant)
 ---

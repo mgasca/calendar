@@ -88,6 +88,34 @@ public sealed class OwnershipTests(PostgresFixture postgres) : ApiTestBase(postg
   }
 
   [Fact]
+  public async Task AnotherUsersEvent_IsNotFoundForUpdateAndDelete_AndStaysUnchanged()
+  {
+    var eventOfB = CalendarEvent.Create(UserB, "B timed", Utc(2026, 10, 26, 10), Utc(2026, 10, 26, 11), Zone);
+    await SeedAsync(events: [eventOfB]);
+    var eventUri = new Uri($"/api/events/{eventOfB.Id}", UriKind.Relative);
+    using HttpClient asB = ClientAs(UserB);
+    EventResponse before = (await asB.GetFromJsonAsync<EventResponse>(eventUri, Ct))!;
+
+    using HttpResponseMessage update = await Client.PutAsJsonAsync(
+      eventUri,
+      new { title = "Taken over", allDay = true, startDate = "2026-10-26", endDate = "2026-10-27", version = before.Version },
+      Ct);
+    using HttpResponseMessage delete = await Client.DeleteAsync(eventUri, Ct);
+
+    update.StatusCode.ShouldBe(HttpStatusCode.NotFound);
+    delete.StatusCode.ShouldBe(HttpStatusCode.NotFound);
+    (await asB.GetFromJsonAsync<EventResponse>(eventUri, Ct)).ShouldBe(before);
+
+    // The owner can do both.
+    using HttpResponseMessage ownUpdate = await asB.PutAsJsonAsync(
+      eventUri,
+      new { title = "B moved", allDay = true, startDate = "2026-10-26", endDate = "2026-10-27", version = before.Version },
+      Ct);
+    ownUpdate.StatusCode.ShouldBe(HttpStatusCode.OK);
+    (await asB.DeleteAsync(eventUri, Ct)).StatusCode.ShouldBe(HttpStatusCode.NoContent);
+  }
+
+  [Fact]
   public async Task CreatedRows_BelongToTheCaller()
   {
     using HttpClient asB = ClientAs(UserB);

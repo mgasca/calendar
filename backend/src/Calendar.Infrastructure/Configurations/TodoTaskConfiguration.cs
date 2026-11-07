@@ -41,6 +41,6 @@ internal sealed class TodoTaskConfiguration : IEntityTypeConfiguration<TodoTask>
       .HasDatabaseName("ix_tasks_open_due_at")
       .HasFilter("due_at IS NOT NULL AND completed_at IS NULL");
 
-    builder.Property<uint>("xmin").HasColumnType("xid").ValueGeneratedOnAddOrUpdate().IsConcurrencyToken();
+    builder.Property<uint>(RowVersion.PropertyName).HasColumnType("xid").ValueGeneratedOnAddOrUpdate().IsConcurrencyToken();
   }
 }

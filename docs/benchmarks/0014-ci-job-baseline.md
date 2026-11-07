@@ -122,18 +122,44 @@ How pull request runs spread over the day, from the 733 of the last 1000 PR runs
 
 **The baseline does not represent the hours most pull requests run in.** 58 % of recent PR runs started outside its hours, including the busiest stretch, 16–19Z (222 runs, 30 %). The back-test cannot speak for those hours either, because every held-out run falls inside the baseline's hours. A low false-failure rate here is not evidence that the gate is quiet at 16–19Z.
 
+### Exceedances within the baseline itself, and the pooled rate
+
+The baseline's own runs exceed their thresholds too, because the robust bound deliberately ignores the slow tail. Counted from `.github/ci-baseline.json` at `6de27767`:
+
+| Path | Run | Job | took | threshold |
+| --- | --- | --- | --: | --: |
+| check | [42359109435](https://github.com/mgasca/calendar/actions/runs/42359109435) (dispatch 5) | Docs site | 5:03 | 1:57 |
+| check | [42359817664](https://github.com/mgasca/calendar/actions/runs/42359817664) (dispatch 6) | Docs site | 4:37 | 1:57 |
+| check | [42361215930](https://github.com/mgasca/calendar/actions/runs/42361215930) (dispatch 8) | Container image | 1:55 | 1:45 |
+| publication (report only) | 2 push runs | Container image | 1:34 and 1:40 | 1:32 |
+
+| Check path, runs with no regression | runs | above a threshold | rate | one-sided 95 % upper bound |
+| --- | --: | --: | --: | --: |
+| Baseline runs (in sample) | 30 | 3 | 10.0 % | 23.9 % |
+| Held-out pull request runs | 43 | 1 | 2.3 % | 10.6 % |
+| **Pooled** | **73** | **4** | **5.5 %** | **12.1 %** |
+
+**The observed false-failure rate, about 5 % of runs, is above ADR-0045's budget of 1 %.** The pattern in all four runs is a "slow runner" event: a whole VM, or one dependency fetch, is about two to four times slower. The log-normal bound is built from the median and MAD, so it ignores that tail by design. **The maintainer accepted this rate on 2026-11-07** (relayed on #384), and chose to gate now with "Re-run all jobs" as the remedy. The method and the constants stay as they are, to be revisited with the first week of gated PR runs and the trend check.
+
+### The gate's cost
+
+Measured on #395 (jobs API, whole seconds), `CI result` takes a median of **6 s** with the gate (4–7 s, n = 11) against **3 s** without it (2–6 s, n = 23). That is **+3 s** at the median, about 3 % of a 1:29 PR run. It is more than ADR-0045's "about a second". The gate step itself takes 0 s; the sparse checkout of `.github/` and its post step take the rest. The maintainer accepted the cost on 2026-11-07.
+
 ## Reading
 
 - **Measured: the thresholds sit 26–48 s above the medians.** The check-path thresholds run from 1:24 (Frontend) to 1:57 (Docs site). A Backend run fails above 1:54, a little above its pre-#347 median (1:53, record 0012). So the gate catches a regression the size of the one #347 removed, about +30 s, but not much less. Smaller creep is the trend check's job (#386).
-- **Measured: 1 false failure in 43 held-out PR runs on the gating path.** It is consistent with the 1 % budget, and also with rates up to about 10 %: 43 runs cannot tell those apart. **Inferred:** the gate meets its budget only if the hours it has not seen behave like the hours it has.
-- **Not measured: 16–19Z and 00–08Z.** The check-path sample was compressed into 8 hours of two days by the dispatch schedule. If runners are slower at peak hours, the real false-failure rate is higher than this back-test shows. The maintainer is asked on #384 whether to add dispatches in 13–19Z before the gate fails anything (#385).
-- **The constants stay as ADR-0045 set them.** One failure in 43 gives no grounds to widen or tighten them. Recalibrate when "Reconsider when" below says so.
+- **Measured: the false-failure rate is above budget.** The held-out back-test alone (1 in 43) looks compatible with the 1 % budget. With the baseline's own exceedances, though, 4 of 73 runs with no regression would fail (5.5 %; upper bound 12.1 %). The cause is a slow-runner tail that the robust bound does not model.
+- **Not measured: 16–19Z and 00–08Z.** The dispatch schedule compressed the check-path sample into 8 hours of two days. If runners are slower at peak hours, the real rate is higher still.
+- **Decided on 2026-11-07 (the maintainer, relayed on #384):** pin now from the 30 runs, with no further dispatches. The gate (#385) fails on the check path as pinned, the observed rate is accepted, and "Re-run all jobs" is the remedy. The method and constants of ADR-0045 are unchanged, and the first week of gated PR runs decides what comes next.
 - **The publication path stays provisional** at 26 runs and only reports. A follow-up PR with a short record pins it once 30 organic pushes exist, as the maintainer decided on #384.
 - **CI runs used for this record:** 26 dispatches, approved on #384. The 4 earlier dispatches were record 0012's.
 
 ## Reconsider when
 
-- The gate fails a pull request run that has no regression more than about once in 100 runs over a month of PR traffic, which is the budget. Or a false failure clusters in the hours this baseline did not cover (13–19Z, 00–08Z). Re-measure with dispatches spread over those hours.
+- The first week of gated PR runs shows false failures above the 1 % budget, or false failures clustered at 16–19Z (or in other hours this baseline did not cover). The remedies to weigh then:
+  - a re-pin that includes peak-hour runs, with a new record;
+  - a recalibrated `z`, which is a change of constants and needs a new record;
+  - a slow-runner rule, which changes the method and needs an amendment to ADR-0045.
 - A job's steps change, a job is added or split, or GitHub changes the `ubuntu-latest` image, which is migrating to Ubuntu 26 (runner notice: from 2026-10-19). Re-pin in the same PR as the change, with a new record.
 - The publication path reaches 30 pushes: pin it in a follow-up PR with a short record.
 - The trend check (#386) reports a job significantly faster than its baseline: a deliberate re-pin tightens its threshold.

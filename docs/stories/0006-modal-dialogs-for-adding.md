@@ -42,7 +42,7 @@ Today **Add event** opens a native `<dialog>` (`features/events/EventForm.tsx`),
 
 1. **Given** the day view is open, **when** I choose **Add task**, **then** a modal dialog named "Add task" opens, the due date is the day being viewed, and no inline task form is shown.
 2. **Given** **My tasks** is open, **when** I choose **Add task**, **then** the same dialog opens with no deadline.
-3. **Given** the task dialog is filled in, **when** I save, **then** the dialog closes, "Task added. You can find it in My tasks." is shown, and the task appears in the task list and, if dated, in the agenda.
+3. **Given** the task dialog is filled in, **when** I save, **then** the dialog closes, a confirmation is shown, and the task appears in the task list and, if dated, in the agenda. (Until [story 0042](0042-refine-the-today-view.md) the confirmation was "Task added. You can find it in My tasks." in the page; it is now a notification naming the task, such as "“Pack bag” added.", with **Show day** when the task is due on another day.)
 4. **Given** the task dialog is open and I have typed values, **when** I select **Cancel** or press Escape, **then** the dialog closes without asking for confirmation, nothing is saved, and focus returns to **Add task**.
 5. **Given** a task is being saved, **when** the request is in progress, **then** the task dialog's controls are disabled, and **Cancel** and Escape do nothing.
 6. **Given** a task save fails (validation, network or server error), **when** the dialog is still open, **then** the message is shown in the dialog, what I typed is kept, and I can submit again.
@@ -102,6 +102,7 @@ Vitest with Testing Library and MSW. The existing event dialog tests continue to
 
 * **Week view creation** ([XXXX](XXXX-create-events-and-tasks-from-week-view.md)) opens these dialogs from slots and the all-day band.
 * **Discard prompt:** revisit if people lose typed text by closing a dialog.
+* **Confirmations** ([#463](https://github.com/mgasca/calendar/issues/463)): both confirmations became a notification outside the page flow that fades after a few seconds, in [story 0042](0042-refine-the-today-view.md).
 
 ## User guide
 
@@ -109,6 +110,6 @@ Vitest with Testing Library and MSW. The existing event dialog tests continue to
 
 1. Select **Add task** or **Add event**. A form opens over the page.
 2. Fill it in and select **Save task** or **Save event**.
-3. The form closes and a message confirms what was added.
+3. The form closes and a notification at the bottom of the screen confirms what was added. It fades after a few seconds; **Dismiss** closes it at once.
 
 To leave without saving, select **Cancel** or press Escape. What you typed is discarded without asking. You can't close the form while it is saving. If saving fails, the form stays open with what you typed so you can fix it and try again.

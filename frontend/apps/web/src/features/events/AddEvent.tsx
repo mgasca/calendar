@@ -1,31 +1,28 @@
 import { useNavigate } from '@tanstack/react-router';
-import { useRef, useState, type ReactNode } from 'react';
-import { createPortal } from 'react-dom';
+import { useRef, useState } from 'react';
+
+import { useNotify } from '../../components/notify.ts';
+import { shortDay } from '../agenda/shortDay.ts';
 import { EventForm } from './EventForm.tsx';
 import type { EventValues } from './eventForm.ts';
-import { dateTimeFormat } from '../agenda/dayTime.ts';
 
 /**
- * The "Add event" button and the form it opens. The confirmation is rendered into
- * `statusContainer` when given, so a row of buttons never has a message between them (#459).
+ * The "Add event" button and the form it opens. Focus returns to the button when the form closes,
+ * and a saved event is confirmed by a notification, with **Show day** when it is on another day.
  */
 export function AddEvent({
   date,
   timeZone,
   initialValues,
-  statusContainer,
 }: {
   date: string;
   timeZone: string;
   initialValues?: Partial<EventValues> | undefined;
-  statusContainer?: HTMLElement | null | undefined;
 }) {
   const [adding, setAdding] = useState(false);
-  const [saved, setSaved] = useState<{ title: string; date: string }>();
   const button = useRef<HTMLButtonElement>(null);
   const navigate = useNavigate();
-  const inContainer = (message: ReactNode) =>
-    statusContainer ? createPortal(message, statusContainer) : message;
+  const notify = useNotify();
   return (
     <>
       <button
@@ -33,44 +30,32 @@ export function AddEvent({
         type="button"
         aria-haspopup="dialog"
         onClick={() => {
-          setSaved(undefined);
           setAdding(true);
         }}
       >
         Add event
       </button>
-      {saved &&
-        inContainer(
-          <p role="status">
-            {saved.title} added for{' '}
-            {dateTimeFormat(undefined, {
-              weekday: 'short',
-              day: 'numeric',
-              month: 'short',
-            }).format(new Date(`${saved.date}T12:00:00`))}
-            .{' '}
-            {saved.date !== date && (
-              <button
-                type="button"
-                onClick={() => {
-                  void navigate({ to: '/day/$date', params: { date: saved.date } });
-                }}
-              >
-                Show day
-              </button>
-            )}
-          </p>,
-        )}
       {adding && (
         <EventForm
           date={date}
           timeZone={timeZone}
           initialValues={initialValues}
-          onClose={(result) => {
-            setSaved(result);
+          onClose={(saved) => {
             setAdding(false);
             requestAnimationFrame(() => {
               button.current?.focus();
+            });
+            if (!saved) return;
+            notify({
+              message: `${saved.title} added for ${shortDay(saved.date)}.`,
+              action:
+                saved.date === date
+                  ? undefined
+                  : {
+                      label: 'Show day',
+                      onSelect: () =>
+                        void navigate({ to: '/day/$date', params: { date: saved.date } }),
+                    },
             });
           }}
         />

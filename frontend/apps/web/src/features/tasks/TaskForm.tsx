@@ -8,20 +8,30 @@ import { ModalDialog } from '../../components/ModalDialog.tsx';
 import { browserTimeZone, formatDateTime } from '../agenda/dayTime.ts';
 import { deadlineInstants } from '../agenda/deadline.ts';
 import {
+  fromTask,
   requestBody,
   SaveTaskError,
   serverErrors,
   validate,
+  type StoredTask,
   type TaskErrors,
   type TaskField,
   type TaskValues,
 } from './taskForm.ts';
+import { taskKey, taskQuery } from './useEditTask.ts';
+
+const CHANGED_ELSEWHERE =
+  'This task was changed elsewhere. The latest version is shown; check it and save again.';
+const GONE = 'This task no longer exists.';
 
 export function TaskForm({
   initialDate,
+  task,
   onClose,
 }: {
   initialDate?: string;
+  /** A stored task to edit (story 0044); without it the form adds a new one. */
+  task?: StoredTask | undefined;
   onClose: (saved?: { title: string; date?: string }) => void;
 }) {
   const client = useQueryClient();
@@ -37,16 +47,25 @@ export function TaskForm({
     { field: 'occurrence', ref: occurrenceSelect },
     { field: 'notes', ref: notesInput },
   ] as const;
-  const [values, setValues] = useState<TaskValues>({
-    title: '',
-    kind: initialDate ? 'date' : 'none',
-    date: initialDate ?? '',
-    time: '',
-    occurrence: '',
-    priority: 'medium',
-    notes: '',
-  });
+  const [values, setValues] = useState<TaskValues>(() =>
+    task
+      ? fromTask(task)
+      : {
+          title: '',
+          kind: initialDate ? 'date' : 'none',
+          date: initialDate ?? '',
+          time: '',
+          occurrence: '',
+          priority: 'medium',
+          notes: '',
+        },
+  );
   const [errors, setErrors] = useState<TaskErrors>({});
+  /** The version the next update is checked against; replaced when the latest is reloaded. */
+  const [version, setVersion] = useState(task?.version);
+  const [reloading, setReloading] = useState(false);
+  /** The task was deleted elsewhere: nothing can be saved any more. */
+  const [gone, setGone] = useState(false);
   const focusPending = useRef(false);
   const deadlineValue = `${values.date}T${values.time}`;
   const candidates = useMemo(
@@ -66,14 +85,20 @@ export function TaskForm({
   };
   const save = useMutation({
     mutationFn: async () => {
-      const { data, error, response } = await api.POST('/api/tasks', {
-        body: requestBody(values, candidates),
-      });
+      const body = requestBody(values, candidates);
+      const { data, error, response } =
+        task && version !== undefined
+          ? await api.PUT('/api/tasks/{id}', {
+              params: { path: { id: task.id } },
+              body: { ...body, version },
+            })
+          : await api.POST('/api/tasks', { body });
       if (!data)
         throw new SaveTaskError(
           response.status === 400
             ? serverErrors(error)
             : { form: 'Couldn’t save the task. Try again.' },
+          response.status,
         );
       return data;
     },
@@ -81,27 +106,62 @@ export function TaskForm({
       await Promise.all([
         client.invalidateQueries({ queryKey: ['tasks'] }),
         client.invalidateQueries({ queryKey: ['agenda'] }),
+        ...(task
+          ? [
+              client.invalidateQueries({ queryKey: ['notes', 'task', task.id], refetchType: 'none' }),
+              client.invalidateQueries({ queryKey: taskKey(task.id), refetchType: 'none' }),
+            ]
+          : []),
       ]);
       onClose({ title: values.title.trim(), ...(values.kind !== 'none' && { date: values.date }) });
     },
     onError: (error) => {
-      show(
-        error instanceof SaveTaskError
-          ? error.fields
-          : { form: 'Couldn’t save the task. Try again.' },
-      );
+      if (task && error instanceof SaveTaskError && error.status === 409) {
+        void reload(task.id);
+      } else if (task && error instanceof SaveTaskError && error.status === 404) {
+        markGone();
+      } else
+        show(
+          error instanceof SaveTaskError
+            ? error.fields
+            : { form: 'Couldn’t save the task. Try again.' },
+        );
     },
   });
+  const pending = save.isPending || reloading;
+  /** The task is gone: say so, stop saving, and refresh the views that still list it. */
+  const markGone = () => {
+    setGone(true);
+    show({ form: GONE });
+    void client.invalidateQueries({ queryKey: ['agenda'] });
+    void client.invalidateQueries({ queryKey: ['tasks'] });
+  };
+  /** After a stale save: load the latest version into the form and say why. */
+  const reload = async (id: string) => {
+    setReloading(true);
+    try {
+      const latest = await client.query(taskQuery(id));
+      setValues(fromTask(latest));
+      setVersion(latest.version);
+      show({ form: CHANGED_ELSEWHERE });
+    } catch {
+      markGone();
+    } finally {
+      setReloading(false);
+    }
+    void client.invalidateQueries({ queryKey: ['agenda'] });
+    void client.invalidateQueries({ queryKey: ['tasks'] });
+  };
   useEffect(() => {
-    if (focusPending.current && !save.isPending) {
+    if (focusPending.current && !pending) {
       focusPending.current = false;
       focusFirstInvalid(errors, order);
     }
   });
   return (
     <ModalDialog
-      heading="Add task"
-      pending={save.isPending}
+      heading={task ? 'Edit task' : 'Add task'}
+      pending={pending}
       onClose={() => {
         onClose();
       }}
@@ -111,7 +171,7 @@ export function TaskForm({
         noValidate
         onSubmit={(event) => {
           event.preventDefault();
-          if (save.isPending) return;
+          if (pending || gone) return;
           const found = validate(values, candidates);
           if (Object.keys(found).length) {
             show(found);
@@ -121,7 +181,7 @@ export function TaskForm({
           save.mutate();
         }}
       >
-        <fieldset disabled={save.isPending}>
+        <fieldset disabled={pending}>
           <Field label="Title" error={errors.title}>
             {(control) => (
               <input
@@ -237,7 +297,7 @@ export function TaskForm({
             )}
           </Field>
           <div className="actions">
-            <button type="submit" className="button-primary">
+            <button type="submit" className="button-primary" disabled={gone}>
               {save.isPending ? 'Saving…' : 'Save task'}
             </button>
             <button

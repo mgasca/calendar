@@ -375,7 +375,7 @@
                 },
                 "open-redirect-protection": "returnUrl must be a local absolute path (no //, no backslash, no control characters) on both server (ApiAuthentication.LocalReturnUrl) and client (safeReturnTo)",
                 "unauthenticated-api-response": "401 (or 403) for /api/* instead of a redirect; the client raises calendar:unauthorized and routes to /signin with the current URL",
-                "adrs": ["https://mgasca.github.io/calendar/adr/0027/", "https://mgasca.github.io/calendar/adr/0019/"]
+                "adrs": ["https://mgasca.github.io/calendar/adr/0027/"]
               }
             }
           ]

@@ -52,7 +52,7 @@ public static class ExternalCommand
           stdout.AppendLine(e.Data);
         }
       };
-      process.Start();
+      Start(process, StartDeadline);
       process.StandardInput.Close();
       process.BeginOutputReadLine();
       process.BeginErrorReadLine();
@@ -68,6 +68,34 @@ public static class ExternalCommand
     catch (Exception e) when (e is Win32Exception or InvalidOperationException)
     {
       return null;
+    }
+  }
+
+  /// <summary>Linux errno ETXTBSY: the executable is open for writing in some process.</summary>
+  private const int TextFileBusy = 26;
+
+  private static readonly TimeSpan StartDeadline = TimeSpan.FromSeconds(2);
+
+  /// <summary>
+  /// Starts the process, retrying while Linux reports the executable busy. A script written a moment ago can still be
+  /// open for writing in a child that another thread's process start forked and has not yet exec'd, which fails the
+  /// start with ETXTBSY until that child execs (#528).
+  /// </summary>
+  private static void Start(Process process, TimeSpan deadline)
+  {
+    var clock = Stopwatch.StartNew();
+    while (true)
+    {
+      try
+      {
+        process.Start();
+        return;
+      }
+      catch (Win32Exception e) when (e.NativeErrorCode == TextFileBusy && clock.Elapsed < deadline)
+      {
+        using var gate = new ManualResetEventSlim();
+        gate.Wait(20);
+      }
     }
   }
 

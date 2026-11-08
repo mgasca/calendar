@@ -20,6 +20,37 @@ public sealed class ExternalCommandTests
   }
 
   [Fact]
+  public void Run_retries_while_the_script_is_still_open_for_writing()
+  {
+    // Linux refuses to exec a file that some descriptor has open for writing (ETXTBSY). A sibling process start in the
+    // same test run can hold a just-written script's descriptor for a moment (#528), so the start is retried.
+    if (OperatingSystem.IsWindows())
+    {
+      return;
+    }
+    var script = Path.Combine(_cwd, $"busy-{Guid.NewGuid():N}");
+    File.WriteAllText(script, "#!/bin/sh\necho ran\n");
+    File.SetUnixFileMode(script, UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute);
+    var writer = new FileStream(script, FileMode.Open, FileAccess.Write, FileShare.ReadWrite);
+    var release = new Thread(() =>
+    {
+      using var gate = new ManualResetEventSlim();
+      gate.Wait(300);
+      writer.Dispose();
+    });
+    release.Start();
+    try
+    {
+      ExternalCommand.Run(script, [], _cwd, Timeout).ShouldNotBeNull().Stdout.Trim().ShouldBe("ran");
+    }
+    finally
+    {
+      release.Join();
+      File.Delete(script);
+    }
+  }
+
+  [Fact]
   public void Run_closes_stdin_and_sets_the_environment()
   {
     Dictionary<string, string> environment = new(StringComparer.Ordinal) { ["AGENT_HOOKS_TEST"] = "set" };

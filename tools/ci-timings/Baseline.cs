@@ -6,14 +6,17 @@ using System.Text.Json;
 namespace CiTimings;
 
 /// <summary>The constants that turn a baseline sample into a threshold (ADR 0045).</summary>
-/// <param name="Alpha">The false-failure budget per run, across every gated job (0.01 is 1 % of runs).</param>
+/// <param name="Alpha">The false-failure budget per run, across every gated job (0.001 is 0.1 % of runs).</param>
 /// <param name="Jobs">How many jobs share the budget; each job gets <c>Alpha / Jobs</c> (Bonferroni).</param>
 /// <param name="FloorSeconds">The smallest margin above the median, in seconds.</param>
 /// <param name="RelativeMargin">The smallest margin above the median, as a fraction of it (0.1 is 10 %).</param>
 public sealed record GateConstants(double Alpha, int Jobs, double FloorSeconds, double RelativeMargin)
 {
-  /// <summary>The provisional constants of ADR 0045: 1 % across 5 jobs, at least 15 s and 10 % above the median.</summary>
-  public static GateConstants Default { get; } = new(0.01, 5, 15, 0.10);
+  /// <summary>
+  /// The constants of ADR 0045 as recalibrated in record 0017: 0.1 % across 5 jobs (the baseline sets the real count),
+  /// at least 15 s and 10 % above the median.
+  /// </summary>
+  public static GateConstants Default { get; } = new(0.001, 5, 15, 0.10);
 
   /// <summary>The one-sided normal quantile for the per-job budget, <c>Φ⁻¹(1 − α/J)</c>.</summary>
   public double Z => Probability.NormalQuantile(1 - (Alpha / Jobs));

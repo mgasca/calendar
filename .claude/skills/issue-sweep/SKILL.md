@@ -23,7 +23,7 @@ The sweep itself is read-only. Its only outputs are the report and, once the rep
    - **Previous report.** Use the one appended to the request. If none is, look before assuming a first run: the latest card in `docs/stories/` on `origin/main` that holds an `issue-sweep watermark` line, and the comments on its issue (`gh search issues "issue-sweep watermark" --repo <repo>` finds them). Say in the report whether one was found and where. Only if none was, run a full sweep: every open issue is in the delta.
    - **Delta.** Let `T` be the watermark's UTC time. Take an open issue when:
      - it was updated after `T` (`updatedAt`, which a new comment, edit or label moves);
-     - a PR merged or closed after `T` references it (`gh pr list --repo <repo> --state all --search "closed:>T"`, then `Closes/Fixes/Refs #N` in each body);
+     - a PR merged or closed after `T` references it (`gh pr list --repo <repo> --state all --search "closed:>T"`, then `Closes/Fixes/Refs #N` in each body). Keep the time in `T`: GitHub search accepts the watermark's `YYYY-MM-DDTHH:MMZ`, but a bare date excludes that whole day, so `closed:>2026-11-08` finds nothing closed on the 8th;
      - it is the parent or tracker of an issue taken by either rule above;
      - it is new: opened after `T`, or absent from the watermark;
      - it is one of the *k* = 6 issues judged longest ago, ties by number (the rotation).

@@ -1,8 +1,10 @@
 ---
-status: in-progress
+status: implemented
 date: 2026-11-08
 issue: https://github.com/mgasca/calendar/issues/497
-pr: []
+pr:
+  - https://github.com/mgasca/calendar/pull/537
+  - https://github.com/mgasca/calendar/pull/542
 adrs: ["0026", "0027", "0030"]
 ---
 
@@ -86,6 +88,6 @@ No changes.
 
 ## User guide
 
-*Planned behaviour. This section is finalised when the story is implemented.*
+*No user-facing behaviour changed.*
 
 No user-visible change: this story adds tests only.

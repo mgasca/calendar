@@ -58,7 +58,7 @@ The sweep is read-only. Its outputs are the report and, once the report is writt
 | J7 | **Consequences realised.** A "Bad, because" consequence that an open issue now describes. | For each accepted record, take the nouns of its bad consequences and search open issues. | Watch | Medium-low: when it hits it is the best possible prompt to revisit a decision, but the search is fuzzy and most records have none. Run it on request or when the issue list is short. | Low |
 | J8 | **External links.** A link in More Information that no longer resolves. | Fetch each external URL; needs network. | Fix now | Low-medium: cheap to fix, mildly useful to readers, no effect on decisions. Run it when the environment has network and skip it otherwise, saying so. | High |
 
-Checks M2, M3, M6, M7 (form) and J6 are candidates for `check-adr` once they have produced stable findings for a few sweeps; the sweep is where a rule proves itself before it becomes a build failure.
+Checks M2, M3, the branch half of M6, M7 (form) and J6 also run in `just tools adr`, so CI refuses that drift at the PR (story 0051); the sweep still runs them on `origin/main`, and `just tools adr --inventory` prints the step 2 inventory as JSON. The sweep is where a rule proves itself before it becomes a build failure.
 
 ## Report format (keep it short)
 

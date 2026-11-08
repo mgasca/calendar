@@ -155,7 +155,9 @@ The validator checks every ADR, plus these repo-level rules:
 - options matched one-to-one with pros/cons subsections
 - driver-tagged bullets, and every driver rated and argued
 - bare or broken links
-- index title and status
+- the `adr-sweep` checks that read only the branch, each error prefixed with its catalogue id: the architecture model's `metadata.adrs` entry matches each record and the model cites no missing or superseded record (M2; a superseded record whose entry has a `note` saying what still stands may be cited); a `superseded by` link resolves and the newer record names the old one (M3); no number is used by two files (M6); every `### Amendment, YYYY-MM-DD: …` heading is dated and has its `* **Amendment, YYYY-MM-DD:**` bullet in More Information (M7); no `planned` story card lists a superseded record in `adrs:` (J6)
+
+`--inventory` prints the `adr-sweep` inventory as JSON instead of validating: one entry per record with its number, file, title, date, status, superseded-by, amendments, first date on `origin/main` (when git has that ref), model entry and the paths, commands and versions its Decision Outcome cites.
 
 Success: every ADR prints `OK` and the exit code is 0. On failure, it prints `FAIL` and the file name, then the rules that failed. Fix every failure and run it again. Do not hand off an ADR that fails.
 
@@ -210,8 +212,10 @@ The validator is a .NET 10 file-based app. The skill folder holds everything it 
 ```text
 Directory.Build.props, .editorconfig, NuGet.config   # analyzers, warnings as errors, style, package sources
 scripts/check-adr/check-adr.cs                        # CLI entry point (#! line, so ./check-adr.cs also works)
-scripts/check-adr/AdrValidator.cs                     # all rules; pure logic, unit-tested
+scripts/check-adr/AdrValidator.cs                     # per-record and numbering rules; pure logic, unit-tested
+scripts/check-adr/AdrSweepRules.cs                    # adr-sweep checks (M2, M3, M6, M7, J6) and --inventory
 tests/check-adr.tests.cs                              # xUnit v3 tests; #:include the validator logic
+tests/SweepRuleTests.cs                               # tests of the sweep checks, included by check-adr.tests.cs
 tests/fixtures/valid/                                 # minimal valid ADR set that the tests mutate
 ```
 

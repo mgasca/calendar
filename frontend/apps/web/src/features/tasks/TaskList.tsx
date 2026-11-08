@@ -9,6 +9,9 @@ import { api } from '../../api/client.ts';
 import { browserTimeZone, formatDateTime, isPastDue } from '../agenda/dayTime.ts';
 import { useNow, useToday } from '../agenda/useNow.ts';
 import { apiError } from '../../api/apiError.ts';
+import { useNotify } from '../../components/notify.ts';
+import { taskTitleId } from '../agenda/taskTitleId.ts';
+import { EditTask } from './EditTask.tsx';
 import {
   TaskUpdateError,
   useTaskTogglePending,
@@ -32,7 +35,13 @@ const patchPages: TaskPatch<InfiniteData<TaskPage>> = (data, id, update) => ({
 function TaskCheckbox({ task, onToggle }: { task: Task; onToggle: () => void }) {
   const pending = useTaskTogglePending(task.id);
   return (
-    <input type="checkbox" checked={task.isCompleted} disabled={pending} onChange={onToggle} />
+    <input
+      type="checkbox"
+      checked={task.isCompleted}
+      disabled={pending}
+      aria-labelledby={taskTitleId(task.id)}
+      onChange={onToggle}
+    />
   );
 }
 
@@ -66,6 +75,9 @@ export function TaskList() {
   const toggle = useToggleTask(queryKey, patchPages);
   const deletion = useDeleteTask();
   const [deleteId, setDeleteId] = useState<string | null>(null);
+  /** The task open in its edit dialog (story 0048). */
+  const [editingTask, setEditingTask] = useState<string>();
+  const notify = useNotify();
   const visible = tasks.data?.pages.flatMap((page) => page.items) ?? [];
   return (
     <section aria-labelledby="personal-tasks-heading">
@@ -110,15 +122,27 @@ export function TaskList() {
       <ul className="items">
         {visible.map((task) => (
           <li key={task.id} className={`item task${task.isCompleted ? ' task-done' : ''}`}>
-            <label className="task-label">
+            <span className="task-label">
               <TaskCheckbox
                 task={task}
                 onToggle={() => {
                   toggle.mutate({ id: task.id, complete: !task.isCompleted });
                 }}
               />
-              <span className="item-title">{task.title}</span>
-            </label>
+              <span className="item-title">
+                <button
+                  type="button"
+                  id={taskTitleId(task.id)}
+                  className="item-open"
+                  aria-haspopup="dialog"
+                  onClick={() => {
+                    setEditingTask(task.id);
+                  }}
+                >
+                  {task.title}
+                </button>
+              </span>
+            </span>
             <span className="badge">{task.priority ?? 'medium'} priority</span>
             <span className="item-meta">
               {task.dueDate ?? (task.dueAt ? formatDateTime(task.dueAt) : 'No deadline')}
@@ -137,6 +161,19 @@ export function TaskList() {
           </li>
         ))}
       </ul>
+      {editingTask && (
+        <EditTask
+          id={editingTask}
+          onClose={(saved) => {
+            const id = editingTask;
+            setEditingTask(undefined);
+            if (saved) notify({ message: 'Task saved.' });
+            requestAnimationFrame(() => {
+              focusTitleOrHeading(taskTitleId(id));
+            });
+          }}
+        />
+      )}
       {deleteId && (
         <ConfirmDialog
           count={1}
@@ -166,6 +203,16 @@ export function TaskList() {
       )}
     </section>
   );
+}
+
+/** Focus the task's title button, or the heading when the task has left the list. */
+function focusTitleOrHeading(titleId: string) {
+  const target =
+    document.getElementById(titleId) ?? document.getElementById('personal-tasks-heading');
+  if (!target) return;
+  if (!target.hasAttribute('tabindex') && !(target instanceof HTMLButtonElement))
+    target.setAttribute('tabindex', '-1');
+  target.focus();
 }
 
 function PastDue({ task }: { task: Task }) {

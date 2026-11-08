@@ -7,6 +7,8 @@ export interface TaskToggleProps {
   /** Checkboxes are disabled while the view shows data for another week (still loading). */
   disabled: boolean;
   onToggle: (task: AgendaTask) => void;
+  /** Opens the task to edit from its title (story 0048). */
+  onOpen?: ((task: AgendaTask) => void) | undefined;
 }
 
 /**
@@ -20,6 +22,7 @@ export function TaskStrip({
   locale,
   disabled,
   onToggle,
+  onOpen,
 }: TaskToggleProps & { tasks: readonly AgendaTask[]; overdue: boolean }) {
   if (tasks.length === 0) {
     return null;
@@ -37,6 +40,7 @@ export function TaskStrip({
           locale={locale}
           disabled={disabled}
           onToggle={onToggle}
+          onOpen={onOpen}
         />
       ))}
     </ul>

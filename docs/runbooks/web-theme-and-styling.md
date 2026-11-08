@@ -38,6 +38,16 @@ How a theme gets chosen:
 
 The consequence for your code: **no component reads the theme to choose a colour.** If you find yourself writing `isDark`, a `data-theme` selector, a `prefers-color-scheme` query or a second palette in a view, stop and use a token instead.
 
+## The docs site uses the same themes
+
+The documentation site (`frontend/apps/docs`) takes the same tokens and fonts from `@calendar/theme` and shows the same Light / Dark / System control, so a change to a token changes both sites. Its rules are:
+
+- **Adapter, not palette.** `src/styles/docs.css` and `src/theme/` map the tokens onto Starlight's `--sl-*` variables. Add a colour to `tokens.css`, never to the docs stylesheets; the guard tests scan the docs site too.
+- **One controller.** `src/components/ThemeProvider.astro` (the inline start-up script) and `src/theme/controller.ts` are the only code that sets `data-theme` on the docs site. Do not reintroduce Starlight's own picker.
+- **Own origin, own choice.** The docs site saves its choice under the same `calendar.theme` key, but on its own origin, so it is independent of the app's.
+- **Previews.** A same-repository PR that changes `frontend/packages/theme/` gets a docs preview (ADR-0025, ADR-0046), so look at the preview in both themes before asking for review.
+- **Look at it.** Run `just docs build`, serve `dist/` (or `just docs preview`) and check Light, Dark and System at 360 px, about 800 px and a wide width: first paint after a reload, keyboard focus on the control, search, status badges, code blocks, tables and a Mermaid diagram while switching. Also load a page with JavaScript disabled: it should follow the operating system (known gap: [#534](https://github.com/mgasca/calendar/issues/534)).
+
 ## Token meanings
 
 Pick a token by what the thing is, not by how it looks today. All colour tokens are `--color-*`.

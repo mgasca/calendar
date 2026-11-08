@@ -363,3 +363,41 @@ describe('loading My tasks', () => {
     expect(calls).toBe(3);
   });
 });
+
+it('opens a task from its title in My tasks, saves it and shows the new title (story 0048)', async () => {
+  let task = {
+    id: '1',
+    title: 'Plan holiday',
+    priority: 'high',
+    notes: 'Ask family',
+    isCompleted: false,
+    version: 1,
+  };
+  let completed = false;
+  server.use(
+    serveTask(() => task),
+    http.get('/api/tasks/1', () => HttpResponse.json(task)),
+    http.put('/api/tasks/1', async ({ request }) => {
+      const body = (await request.json()) as { title: string };
+      task = { ...task, title: body.title, version: 2 };
+      return HttpResponse.json(task);
+    }),
+    http.post('/api/tasks/1/complete', () => {
+      completed = true;
+      return HttpResponse.json(task);
+    }),
+  );
+  renderWithProviders(<TaskList />);
+  const user = userEvent.setup();
+  await user.click(screen.getByRole('button', { name: 'No deadline' }));
+  await user.click(await screen.findByRole('button', { name: 'Plan holiday' }));
+  const dialog = await screen.findByRole('dialog', { name: 'Edit task' });
+  expect(completed).toBe(false);
+  const title = await within(dialog).findByLabelText('Title');
+  await user.clear(title);
+  await user.type(title, 'Plan summer holiday');
+  await user.click(within(dialog).getByRole('button', { name: 'Save task' }));
+
+  expect(await screen.findByRole('button', { name: 'Plan summer holiday' })).toBeInTheDocument();
+  expect(screen.getByRole('checkbox', { name: 'Plan summer holiday' })).toBeInTheDocument();
+});

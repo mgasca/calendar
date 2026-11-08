@@ -4,6 +4,7 @@ date: 2026-11-08
 issue: https://github.com/mgasca/calendar/issues/492
 pr:
   - https://github.com/mgasca/calendar/pull/530
+  - https://github.com/mgasca/calendar/pull/531
 adrs: ["0018", "0020", "0021", "0041", "0043", "0047"]
 ---
 
@@ -69,7 +70,7 @@ No new ADR is expected.
 
 ## Implementation notes
 
-Delivered in a PR stacked on the card ([#530](https://github.com/mgasca/calendar/pull/530)). No API or contract change; the dialog from [0043](0043-edit-and-delete-events-from-the-today-view.md) is reused as it is.
+Delivered in [#531](https://github.com/mgasca/calendar/pull/531), stacked on the card ([#530](https://github.com/mgasca/calendar/pull/530)). No API or contract change; the dialog from [0043](0043-edit-and-delete-events-from-the-today-view.md) is reused as it is.
 
 ### Where things live
 

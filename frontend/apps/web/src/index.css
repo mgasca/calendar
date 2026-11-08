@@ -92,6 +92,19 @@ main > button {
   margin: var(--space-2) 0;
 }
 
+/* The heading and the day navigation share a row, the navigation at the right edge (#553). */
+.day-heading-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  column-gap: var(--space-4);
+}
+
+.day-heading-row > .day-nav {
+  margin-left: auto;
+}
+
 .day-nav a {
   display: inline-flex;
   align-items: center;
@@ -126,6 +139,14 @@ main > button {
   align-items: end;
   gap: var(--space-2);
   margin: var(--space-4) 0;
+}
+
+/*
+ * The buttons share the date picker's row (#553): drop the label's bottom margin so the row's
+ * bottom edge is the input's, and the buttons line up with it.
+ */
+.day-controls label {
+  margin-bottom: 0;
 }
 
 .week-link {

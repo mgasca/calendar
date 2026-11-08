@@ -419,13 +419,14 @@ describe('tasks', () => {
     const user = userEvent.setup();
     await screen.findByRole('heading', { level: 1, name: /27 October 2099/ });
 
-    /** Both buttons share one row that holds nothing else, and every confirmation follows it. */
+    /** Both buttons share the date picker's row (#553), nothing else sits in it, and every confirmation follows it. */
     function expectButtonsTogether() {
       const addTask = screen.getByRole('button', { name: 'Add task' });
       const addEvent = screen.getByRole('button', { name: 'Add event' });
       const row = addTask.parentElement;
       expect(addEvent.parentElement).toBe(row);
-      expect(row?.children).toHaveLength(2);
+      expect(row?.children).toHaveLength(3);
+      expect(row?.firstElementChild).toBe(screen.getByLabelText('Calendar date').parentElement);
       for (const status of screen.queryAllByRole('status')) {
         expect(row?.compareDocumentPosition(status)).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
       }

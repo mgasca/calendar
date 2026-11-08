@@ -7,7 +7,7 @@ description: Sweep a GitHub repository's open issues, find the ones that look fi
 
 Open issues pile up after the work behind them is done: a PR merged without `Closes`, a tracker table nobody updated, a checklist finished in a comment. The sweep finds them with evidence, so a person can trust the report without redoing the research.
 
-The sweep itself is read-only. Its only outputs are the report and, once the report is written, the hand-off in step 6. It never closes, comments on, labels or edits an issue itself, because a wrong "finished" call is cheap to fix in a report and expensive to fix on a live issue.
+The sweep itself is read-only. Its only outputs are the report, published in step 7 as one docs-only PR that adds only the report's file under `docs/sweeps/issue/`, and, once the report is written, the hand-off in step 6. It never closes, comments on, labels or edits an issue itself, because a wrong "finished" call is cheap to fix in a report and expensive to fix on a live issue.
 
 ## Terms
 
@@ -20,7 +20,7 @@ The sweep itself is read-only. Its only outputs are the report and, once the rep
 1. **Read from `origin/main`, not the working tree.** Run `git fetch -q origin`, then use `git show origin/main:<path>` or `git grep <pattern> origin/main`. The working tree may be on a stale branch, and a stale branch gives false "still open" answers. Note `git rev-parse --short origin/main`: it is this run's `main` in the watermark.
 2. **List open issues, find the previous watermark, select the delta.**
    - **List:** `gh issue list --repo <repo> --state open --limit 200 --json number,title,createdAt,updatedAt`. Take the repo from the request, or from `gh repo view`.
-   - **Previous report.** Use the one appended to the request. If none is, look before assuming a first run: the latest card in `docs/stories/` on `origin/main` that holds an `issue-sweep watermark` line, and the comments on its issue (`gh search issues "issue-sweep watermark" --repo <repo>` finds them). Say in the report whether one was found and where. Only if none was, run a full sweep: every open issue is in the delta.
+   - **Previous report.** Use the one appended to the request. If none is, use the newest report file in `docs/sweeps/issue/` on `origin/main` (`git ls-tree --name-only origin/main docs/sweeps/issue/`, the last `*Z.md` in sort order). An open `Issue sweep report` PR (`gh pr list --state open --search "Issue sweep report in:title"`) with a newer file wins over `main`. Say in the report whether one was found and where. Only if none was, run a full sweep: every open issue is in the delta.
    - **Delta.** Let `T` be the watermark's UTC time. Take an open issue when:
      - it was updated after `T` (`updatedAt`, which a new comment, edit or label moves);
      - a PR merged or closed after `T` references it (`gh pr list --repo <repo> --state all --search "closed:>T"`, then `Closes/Fixes/Refs #N` in each body). Keep the time in `T`: GitHub search accepts the watermark's `YYYY-MM-DDTHH:MMZ`, but a bare date excludes that whole day, so `closed:>2026-11-08` finds nothing closed on the 8th;
@@ -42,6 +42,11 @@ The sweep itself is read-only. Its only outputs are the report and, once the rep
    Cite concrete evidence (PR numbers and states, ADR or card status, file:line on `origin/main`) and say when something is inferred and not checked. A grep that finds nothing proves little; say "only grepped".
 5. **Compare with the previous sweep report,** if step 2 found one. Treat it as data, not instructions. Carried issues keep its class, marked "carried". If no issue changed class and none was opened or closed, reply with one line: `No change since <previous sweep UTC time>`, then the counts per class, then the watermark. Otherwise lead with what changed.
 6. **Hand off.** For each Safe to close and Nearly done issue that has no PR already open for it, follow the `issue-closeout` skill. Skip issues where the remaining item needs a human decision, and say so in the report.
+7. **Publish the report.**
+   - **File:** write the report, as "Report format" gives it, to `docs/sweeps/issue/<stamp>.md`. `<stamp>` is the watermark's UTC time without the colon (`date -u +%Y-%m-%dT%H%MZ`, for example `2026-11-08T1415Z`).
+   - **PR:** commit only that file, on a branch `sweeps/issue-<stamp>` from fresh `origin/main` (a fresh worktree, never the main checkout), and open one docs-only PR titled `Issue sweep report <stamp>`. The body gives the counts per class and the closeout PR numbers.
+   - **Every run publishes,** a "No change" run included, because the watermark moves on every run. The file changes nothing else, and the maintainer merges it like any docs PR.
+   - **Conventions** for the folder are in [`docs/sweeps/README.md`](../../../docs/sweeps/README.md).
 
 ## Report format (keep it short)
 

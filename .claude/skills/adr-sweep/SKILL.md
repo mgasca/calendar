@@ -7,7 +7,7 @@ description: Sweep docs/decisions for ADRs that need maintenance, beyond what `j
 
 An ADR is written once and then drifts. Four records shipped and stayed `proposed` for a week before story 0010 noticed; ADR-0011 described `make` for days after `just` replaced it; the architecture model carries a copy of every status that nothing keeps in step. `just tools adr` catches malformed records. The sweep catches records that are well formed and wrong: a status, link, claim or citation that was true when written and is not now.
 
-The sweep is read-only. Its outputs are the report and, once the report is written, the hand-offs in step 6. It never edits an ADR, the model or guidance itself, because a status is the owner's decision and a wrong "stale" call is cheap in a report and expensive in a PR.
+The sweep is read-only. Its outputs are the report, published in step 7 as one docs-only PR that adds only the report's file under `docs/sweeps/adr/`, and, once the report is written, the hand-offs in step 6. It never edits an ADR, the model or guidance itself, because a status is the owner's decision and a wrong "stale" call is cheap in a report and expensive in a PR.
 
 ## Terms
 
@@ -25,7 +25,7 @@ The sweep is read-only. Its outputs are the report and, once the report is writt
 1. **Read from `origin/main`, not the working tree.** `git fetch -q origin`, then `git show origin/main:<path>`, `git grep <pattern> origin/main -- <paths>` and `git log origin/main -- <path>`. A stale branch gives stale answers. Note `git rev-parse --short origin/main`: it is this run's `main` in the watermark.
 2. **Build the inventory.** For every record: number, title, status, date, `superseded by` target, amendment headings and dates, the date it first reached `main` (`git log --diff-filter=A --format=%cs origin/main -- docs/decisions/NNNN-*.md`), and its cited tokens. Note the `metadata.adrs` entries of the model beside it. `just tools adr --inventory` prints all of this once #562 is on `main`; until then build it by hand. Everything below reads this inventory.
 3. **Find the previous watermark, select the delta, run the checks.**
-   - **Previous report.** Use the one appended to the request. If none is, look before assuming a first run: the latest card in `docs/stories/` on `origin/main` that holds an `adr-sweep watermark` line, and the comments on its issue (`gh search issues "adr-sweep watermark" --repo <repo>` finds them). Say in the report whether one was found and where. Only if none was, run a full sweep: every record is in the delta.
+   - **Previous report.** Use the one appended to the request. If none is, use the newest report file in `docs/sweeps/adr/` on `origin/main` (`git ls-tree --name-only origin/main docs/sweeps/adr/`, the last `*Z.md` in sort order). An open `ADR sweep report` PR (`gh pr list --state open --search "ADR sweep report in:title"`) with a newer file wins over `main`. Say in the report whether one was found and where. Only if none was, run a full sweep: every record is in the delta.
    - **Delta.** Let `W` be the watermark's `main`. Take a record when, between `W` and `origin/main`:
      - its own file changed (`git diff --name-only W..origin/main -- docs/decisions`);
      - one of its cited tokens changed: build a reverse index from cited token to records, and match it against `git diff --name-only W..origin/main` (a recipe or version counts as changed when the file that defines it did);
@@ -49,6 +49,11 @@ The sweep is read-only. Its outputs are the report and, once the report is writt
    - A number collision: a comment on the later PR naming the earlier one. Do not renumber for the authors.
 
    Skip a hand-off that needs a human decision first, and say so in the report. In an issue-driven handover, open each PR and put the question in the PR, as the `issue-handover` skill says.
+7. **Publish the report.**
+   - **File:** write the report, as "Report format" gives it, to `docs/sweeps/adr/<stamp>.md`. `<stamp>` is the watermark's UTC time without the colon (`date -u +%Y-%m-%dT%H%MZ`, for example `2026-11-08T1415Z`).
+   - **PR:** commit only that file, on a branch `sweeps/adr-<stamp>` from fresh `origin/main` (a fresh worktree, never the main checkout), and open one docs-only PR titled `ADR sweep report <stamp>`. The body gives the counts per class and the PR numbers of the hand-offs.
+   - **Every run publishes,** a "No change" run included, because the watermark moves on every run. The file changes nothing else, and the maintainer merges it like any docs PR.
+   - **Conventions** for the folder are in [`docs/sweeps/README.md`](../../../docs/sweeps/README.md).
 
 ## Check catalogue
 

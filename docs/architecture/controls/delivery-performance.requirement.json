@@ -28,6 +28,7 @@
       "properties": {
         "file": { "type": "string" },
         "record": { "type": "string" },
+        "earlier-records": { "type": "array", "items": { "type": "string" }, "description": "Records of earlier versions of the file, which the current record follows." },
         "min-runs": { "type": "integer" },
         "paths": {
           "type": "object",

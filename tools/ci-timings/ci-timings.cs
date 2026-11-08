@@ -19,7 +19,7 @@
 //     --holdout ">2026-11-07T20:00:00Z"   pins each job's baseline per path (check, publication) from the push and dispatch
 //                                         runs on main in --created, writes .github/ci-baseline.json (--out) and back-tests
 //                                         its thresholds on the runs in --holdout, on main and on pull requests (ADR 0045)
-//     [--min-runs 30] [--alpha 0.01] [--floor 15] [--margin 0.1] [--record docs/benchmarks/0014-….md]
+//     [--min-runs 30] [--alpha 0.001] [--floor 15] [--margin 0.1] [--record docs/benchmarks/0017-….md]
 //   dotnet run tools/ci-timings/ci-timings.cs -- --trend [--issue]   the last 20 successful push runs on main not in the
 //                                         baseline against .github/ci-baseline.json (--out): exact one-sided Mann–Whitney at
 //                                         p < 0.002 and a Hodges–Lehmann shift of at least max(10 s, 5 %); --issue comments on
@@ -39,7 +39,7 @@ var trend = false;
 var issue = false;
 string? holdout = null;
 var output = ".github/ci-baseline.json";
-var record = "docs/benchmarks/0014-ci-job-baseline.md";
+var record = "docs/benchmarks/0017-ci-baseline-with-changes.md";
 var minRuns = 30;
 GateConstants constants = GateConstants.Default;
 List<string> jobNames = [];

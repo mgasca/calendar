@@ -7,6 +7,7 @@ pr:
   - https://github.com/mgasca/calendar/pull/403
   - https://github.com/mgasca/calendar/pull/405
   - https://github.com/mgasca/calendar/pull/411
+  - https://github.com/mgasca/calendar/pull/548
 adrs: ["0044", "0042", "0017"]
 ---
 

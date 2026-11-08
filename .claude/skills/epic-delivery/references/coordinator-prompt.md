@@ -2,7 +2,7 @@
 
 Use `epic-delivery` to coordinate <epic URL> through verified completion. Read the epic, children, discussions, delivery PRs and story record, and ask about genuine gaps before depending on an answer.
 
-You may launch and steer independent delivery sessions and maintain issue/PR tracking. I approve scope changes and perform merges. Group sessions by overlapping files and dependencies rather than assuming one session per issue or a fixed session count. Give each worker a self-contained brief, its own worktree, clear ownership and a reporting path. Resume stalled workers yourself when the tools allow it; tell me when launching or resuming requires my action.
+You may launch and steer independent delivery sessions and maintain issue/PR tracking. I approve scope changes and perform merges. Group sessions by overlapping files and dependencies rather than assuming one session per issue or a fixed session count. Give each worker a self-contained brief, its own worktree, clear ownership and a reporting path, and tell every worker (chip, session or subagent) to follow the `issue-handover` skill for its issues. Resume stalled workers yourself when the tools allow it; tell me when launching or resuming requires my action.
 
 Publish and maintain the dependency map as a Mermaid flowchart on the epic issue. When dependencies create multiple delivery paths, highlight the critical path with bold arrows, including ties. State the duration estimates used; if none exist, identify a provisional longest dependency chain under an explicit equal-duration assumption.
 

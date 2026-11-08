@@ -28,6 +28,7 @@ Each delivery session gets its own worktree and a self-contained brief:
 * Owned files or sections, shared-file boundaries, dependencies and the other session responsible for each shared area.
 * Applicable repository skills, design/approval requirements, branch/stack relationships and verification commands.
 * Where to report progress and questions, what should wake the coordinator, and an explicit instruction to leave merging to the maintainer.
+* An explicit instruction to follow the `issue-handover` skill for the session's issues: watch the issue and its PRs, post design, questions and progress on GitHub, resume on answers, approvals and merges, and close out after the last merge. This applies to every chip, session and subagent you launch, and the brief must say so by name. When you ask a coordinator-owned subagent to deliver an issue, state it there too. A session already running without the instruction gets it by message at once.
 
 Record the returned session ID locally. A launch suggestion or task chip awaiting a click is **not running**; tell the maintainer if the environment requires that click. Respect capacity limits and queue remaining groups. Avoid duplicating a worker that is already active.
 
@@ -70,7 +71,7 @@ Track native GitHub stacks as described in the stack reference. Top-of-stack mer
 
 After a merge, verify intended content on the delivery trunk, tests for the delivered revision, issue states and story evidence. Squash/rebase changes commit identity; a PR's historical base alone does not prove where content ultimately landed. Resolve actual missing closing references or stale checklists within the authorized tracking role, with evidence. Do not close an issue merely because a PR says MERGED.
 
-Use `issue-handover` for a worker's issue-specific delivery when applicable; keep that worker's cadence separate from this epic's five-minute reconciliation. Its conventional branch-stack instructions do not by themselves establish how a native GitHub stack should be maintained. Surface a conflict with repository rules rather than silently overriding it.
+Every delivery worker follows `issue-handover` for its own issues (see the brief requirements above); keep that worker's cadence separate from this epic's five-minute reconciliation. Its conventional branch-stack instructions do not by themselves establish how a native GitHub stack should be maintained. Surface a conflict with repository rules rather than silently overriding it.
 
 ## Finish and stop
 

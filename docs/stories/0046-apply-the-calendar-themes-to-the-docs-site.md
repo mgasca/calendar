@@ -1,5 +1,5 @@
 ---
-status: in-progress
+status: implemented
 date: 2026-11-07
 issue: https://github.com/mgasca/calendar/issues/514
 pr:
@@ -9,6 +9,7 @@ pr:
   - https://github.com/mgasca/calendar/pull/527
   - https://github.com/mgasca/calendar/pull/529
   - https://github.com/mgasca/calendar/pull/536
+  - https://github.com/mgasca/calendar/pull/539
 adrs: ["0012", "0023", "0025", "0045", "0046", "0047", "0048"]
 ---
 
@@ -92,7 +93,7 @@ Each criterion names the issue that delivers it. Criteria 1 to 5 belong to #515,
 17. **Given** an eligible PR, **when** its CI run succeeds, **then** its preview is published at its project base path and its pages, search, fonts and theme switching work there, with the publisher's validation, current-head and deployment controls unchanged. (#518) Evidence: Locally (#519) the site built for `/calendar/pr-preview/pr-999/` passes `verify:build`, serves every asset and font under that base path from its own origin and switches themes. This PR's own preview is linked from the PR once its checks finish; it is reported there, not here.
 18. **Given** the finished change, **when** the evidence is reviewed, **then** before-and-after screenshots of the docs site in both themes, and the behavioural checks for initial paint, reload, navigation, keyboard focus, search, badges, code, tables, diagrams and storage failure at the three widths, are linked from the PR and the card. (#519) Evidence: This card and the screenshots below; the behavioural checks are the ones listed under each criterion and under "Evidence from #519".
 19. **Given** the finished change, **when** I use the calendar app, **then** it has not regressed after the extraction. (#519) Evidence: See criterion 2: the calendar app's Today, Week and My tasks views, Light, Dark and System, 1280 and 390 px, with no console error, and its test suite (441 web tests) pass on the merged `main`.
-20. **Given** the maintainer has merged the delivery PRs, **when** the delivered `main` revision has been published, **then** the successful Pages publication for that revision is confirmed and both themes and switching are checked on the live docs site; the epic does not close while a required publication fails. (#519) Evidence: **Pending:** checked after the maintainer merges this PR. The revision, its CI and Publish ADR site runs, and the inspection of the published site are recorded on #519 and added here.
+20. **Given** the maintainer has merged the delivery PRs, **when** the delivered `main` revision has been published, **then** the successful Pages publication for that revision is confirmed and both themes and switching are checked on the live docs site; the epic does not close while a required publication fails. (#519) Evidence: Publish ADR site succeeded for `main` revision `7f6702ac8` (CI and CodeQL also succeeded). On the live site (https://mgasca.github.io/calendar/agent-thoughts/0001/), checked over HTTP after that publication, the page HTML carries no static `data-theme` (the #534 fix, #539), includes the `calendar.theme` start-up script and the Light / Dark / System control, and shows the story and ADR status badges. Switching, persistence and both themes were verified in a browser on the built site from the same sources (criteria 1 to 15); no browser pass was run on the live URL itself.
 21. **Given** the change is complete, **when** I run `just check`, **then** it passes, including the regenerated contract if the API changed (not expected). (#519) Evidence: `just check` exited 0 on `3a576a629` (`main` at the time): backend 478 of 478 tests, web 441, docs 209, theme 110, api-client 1, and the tools suites; shellcheck is not installed in this environment, so that step was skipped locally (CI runs it). The contract did not change.
 
 ### Verification and publication criteria
@@ -195,12 +196,12 @@ Delivered as planned: PR 0 ([#523](https://github.com/mgasca/calendar/pull/523),
 
 ### Lessons learned, known issues and follow-ups
 
-* **Known issue, [#534](https://github.com/mgasca/calendar/issues/534):** Starlight writes `data-theme="dark"` into the HTML, so with JavaScript off a light-OS visitor gets the dark theme instead of the OS preference (criterion 4 on the docs site). The fallback block only applies when the attribute is absent. Found by checking the page with JavaScript disabled, which no unit test did; the fix and a test for it belong to #516's area. After it merges, re-check on the published site.
+* **Fixed, [#534](https://github.com/mgasca/calendar/issues/534) (PR #539):** Starlight writes `data-theme="dark"` into the HTML, so with JavaScript off a light-OS visitor gets the dark theme instead of the OS preference (criterion 4 on the docs site). The fallback block only applies when the attribute is absent. Found by checking the page with JavaScript disabled, which no unit test did; the fix and a test for it belong to #516's area. After it merges, re-check on the published site.
 * **Search does not focus its input on open.** Starlight's default: the pre-theme build behaves the same. It is not part of this story; the keyboard can still reach the input and close the dialog with Escape.
 * **A trace of `data-theme` is not a first-paint check.** The static `data-theme="dark"` makes a mutation trace show dark then light on a light page, although the start-up script runs in the head before the first frame. The check that matters is the background at the first animation frame, which #519 used.
 * **A fresh worktree needs `just backend restore` before `just check`**, and `corepack pnpm` can fail on a pnpm version mismatch where `pnpm` run directly does not; neither is a defect of this story.
 * **The docs site still has no favicon.** `verify:build` ignores the missing `favicon.svg`; every page requests it and gets a 404.
-* **After the merge** the published site is inspected in both themes and with switching, and the card's criterion 20 and status are updated from "in progress" accordingly.
+* **After the merge** the published site was inspected as recorded under criterion 20; the card is `implemented`.
 
 ## User guide
 

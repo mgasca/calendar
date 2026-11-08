@@ -21,6 +21,19 @@ For each lesson one short paragraph: what happened, what it cost, what would hav
 - **Violations of documented rules**: <rule> is stated in <path> and was broken in `<session id>` m<idx>; <respected or worked around>. Hook candidate: yes/no.
 - **Stale references**: <path or memory> names <recipe, path, version>; on main <what exists>; in this environment <what was observed, date>.
 
+## Comparison with the previous run
+
+Previous report: <source and cutoff, or what was searched and remains unavailable>. Run history: <first, second, or unknown independently of watermark availability>. Actual start/completion: <UTC times>.
+
+| Signal and counting rule | Previous run | This run | Interpretation |
+| --- | --- | --- | --- |
+| Follow-up outstanding-work question, counted once per session | <count / sessions> | <count / sessions> | <recurrence, limits> |
+| Human merge notice; exclude quoted notifications | … | … | … |
+| Bare human resume nudge; exclude setup instructions | … | … | … |
+| Push to a merged PR branch | … | <count or unknown> | <reading limits> |
+
+State window lengths, task/harness mix and reading depth before drawing a conclusion. Distinguish a complete incremental read from an explicit shorter window, gaps, and continuing-session overlap. A comparison added later is a dated supplement, not evidence that the original run used the previous watermark.
+
 ## Memory
 
 | Memory (name) | Roots holding it | Action | Reason |

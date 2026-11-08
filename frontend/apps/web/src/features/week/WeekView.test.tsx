@@ -823,3 +823,100 @@ describe('WeekView', () => {
     });
   });
 });
+
+describe('editing from the week (story 0047)', () => {
+  /** A stored copy of the event whose title the week shows, for any id. */
+  const stored = (id: string, title: string, rest: Record<string, unknown> = {}) => ({
+    id,
+    title,
+    allDay: false,
+    start: new Date('2026-10-28T11:00:00+01:00').toISOString(),
+    end: new Date('2026-10-28T12:00:00+01:00').toISOString(),
+    timeZone: ZONE,
+    location: 'Room 2',
+    notes: 'Agenda in the drive',
+    version: 4,
+    ...rest,
+  });
+
+  it('opens a timed event from its title and returns focus to that title on Cancel', async () => {
+    server.use(
+      http.get('*/api/events/:id', ({ params }) =>
+        HttpResponse.json(stored(String(params.id), 'Design review')),
+      ),
+    );
+    serveBusyWeeks();
+    renderApp('/week/2026-10-26');
+    const user = userEvent.setup();
+    const title = await screen.findByRole('button', { name: 'Design review' });
+
+    await user.click(title);
+    const dialog = await screen.findByRole('dialog', { name: 'Edit event' });
+    expect(await within(dialog).findByLabelText('Title')).toHaveValue('Design review');
+    await user.click(within(dialog).getByRole('button', { name: 'Cancel' }));
+
+    await waitFor(() =>
+      expect(screen.queryByRole('dialog', { name: 'Edit event' })).not.toBeInTheDocument(),
+    );
+    await waitFor(() => expect(title).toHaveFocus());
+  });
+
+  it('opens an all-day event from the band with All day checked', async () => {
+    server.use(
+      http.get('*/api/events/:id', ({ params }) =>
+        HttpResponse.json({
+          id: String(params.id),
+          title: 'Conference',
+          allDay: true,
+          startDate: '2026-10-22',
+          endDate: '2026-10-28',
+          version: 2,
+        }),
+      ),
+    );
+    serveBusyWeeks();
+    renderApp('/week/2026-10-26');
+    const user = userEvent.setup();
+
+    await user.click(await screen.findByRole('button', { name: 'Conference' }));
+    const dialog = await screen.findByRole('dialog', { name: 'Edit event' });
+    expect(await within(dialog).findByRole('checkbox', { name: 'All day' })).toBeChecked();
+  });
+
+  it('deletes from the dialog, drops the event from the week and moves focus to the heading', async () => {
+    let deleted = false;
+    server.use(
+      http.get('*/api/events/:id', ({ params }) =>
+        HttpResponse.json(stored(String(params.id), 'Design review')),
+      ),
+      http.delete('*/api/events/:id', () => {
+        deleted = true;
+        return new HttpResponse(null, { status: 204 });
+      }),
+      http.get('*/api/agenda/week', ({ request }) => {
+        const url = new URL(request.url);
+        const week =
+          url.searchParams.get('date') === THIS_WEEK ? busyWeek() : emptyWeek(THIS_WEEK, TODAY);
+        if (deleted) {
+          for (const day of week.days) {
+            day.events = day.events.filter((event) => event.title !== 'Design review');
+          }
+        }
+        return HttpResponse.json(week);
+      }),
+    );
+    renderApp('/week/2026-10-26');
+    const user = userEvent.setup();
+
+    await user.click(await screen.findByRole('button', { name: 'Design review' }));
+    const dialog = await screen.findByRole('dialog', { name: 'Edit event' });
+    await user.click(await within(dialog).findByRole('button', { name: 'Delete event' }));
+    await user.click(within(dialog).getByRole('button', { name: 'Delete' }));
+
+    expect(await screen.findByText('Design review deleted.')).toBeInTheDocument();
+    await waitFor(() =>
+      expect(screen.queryByRole('button', { name: 'Design review' })).not.toBeInTheDocument(),
+    );
+    await waitFor(() => expect(weekHeading()).toHaveFocus());
+  });
+});

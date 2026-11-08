@@ -1,13 +1,15 @@
 import { Link, useNavigate } from '@tanstack/react-router';
-import { useCallback, useMemo } from 'react';
+import { useCallback, useMemo, useRef, useState } from 'react';
 
 import { ApiError } from '../../api/apiError.ts';
+import { useNotify } from '../../components/notify.ts';
 import { browserTimeZone, type AgendaTask } from '../agenda/dayTime.ts';
 import { TaskToggleError } from '../agenda/TaskItem.tsx';
 import { useToday } from '../agenda/useNow.ts';
 import { useToggleTask } from '../agenda/useToggleTask.ts';
+import { EditEvent } from '../events/EditEvent.tsx';
 import { OverduePanel } from './OverduePanel.tsx';
-import { TimeGrid } from './TimeGrid.tsx';
+import { TimeGrid, type OpenEvent } from './TimeGrid.tsx';
 import { patchWeekTasks, useWeekAgenda, weekKey, type WeekAgenda } from './useWeekAgenda.ts';
 import { useWeekKeys } from './useWeekKeys.ts';
 import { addWeeks, formatWeekRange, isoWeekStart } from './weekDates.ts';
@@ -39,6 +41,18 @@ export function WeekView({ weekStart, timeZone: zoneOverride, locale }: WeekView
       mutate({ id: task.id, complete: !task.isCompleted });
     },
     [mutate],
+  );
+
+  /** The event open in its edit dialog (story 0047), and the title button that opened it. */
+  const [editing, setEditing] = useState<{ id: string; date: string }>();
+  const opener = useRef<HTMLElement | null>(null);
+  const notify = useNotify();
+  const openEvent = useCallback<OpenEvent>(
+    (id, date, button) => {
+      opener.current = button;
+      setEditing({ id, date });
+    },
+    [setEditing],
   );
 
   const goTo = (target: string) => {
@@ -145,11 +159,30 @@ export function WeekView({ weekStart, timeZone: zoneOverride, locale }: WeekView
         </div>
       )}
       <TaskToggleError error={toggle.error} />
+      {editing && (
+        <EditEvent
+          id={editing.id}
+          date={editing.date}
+          timeZone={timeZone}
+          onClose={(result) => {
+            const returnTo = opener.current;
+            opener.current = null;
+            setEditing(undefined);
+            if (result)
+              notify({ message: `${result.title} ${result.deleted ? 'deleted' : 'saved'}.` });
+            // After a delete, or a save that moved the event out of this list, its title button is
+            // gone and focus falls back to the week heading.
+            requestAnimationFrame(() => {
+              focusAfterEdit(result?.deleted ? null : returnTo);
+            });
+          }}
+        />
+      )}
 
       {counts.items === 0 && <p className="empty">Nothing planned this week.</p>}
 
       <div className={`week-body${overdue.length > 0 ? ' has-overdue' : ''}`}>
-        <TimeGrid agenda={data} today={today} {...taskProps} />
+        <TimeGrid agenda={data} today={today} onOpenEvent={openEvent} {...taskProps} />
         {overdue.length > 0 && (
           <OverduePanel
             tasks={overdue}
@@ -161,6 +194,21 @@ export function WeekView({ weekStart, timeZone: zoneOverride, locale }: WeekView
       </div>
     </section>
   );
+}
+
+/**
+ * Focus after the edit dialog closes: back to the title button that opened it while it is still on
+ * screen, otherwise the week heading (story 0047).
+ */
+function focusAfterEdit(opener: HTMLElement | null) {
+  if (opener?.isConnected) {
+    opener.focus();
+    return;
+  }
+  const heading = document.getElementById('week-heading');
+  if (!heading) return;
+  if (!heading.hasAttribute('tabindex')) heading.setAttribute('tabindex', '-1');
+  heading.focus();
 }
 
 interface WeekCounts {

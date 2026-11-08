@@ -482,8 +482,11 @@ public sealed class ChangesRulesTests
   private static readonly string[] JqPaths = ["/usr/bin/jq", "/usr/local/bin/jq"];
 
   [Theory]
-  [InlineData("docs/stories/0038-x.md", "docs")]
+  // `just tools adr` reads the story cards and the architecture model as well as the ADRs (story 0051, issue #562).
+  [InlineData("docs/stories/0038-x.md", "docs tooling")]
   [InlineData("docs/decisions/0046-x.md", "docs tooling")]
+  [InlineData("docs/architecture/calendar.architecture.json", "docs tooling")]
+  [InlineData("docs/architecture/README.md", "docs")]
   [InlineData("frontend/apps/docs/src/lib/adr.ts", "docs")]
   [InlineData("backend/src/Calendar.Api/Program.cs", "backend image")]
   [InlineData("backend/Directory.Packages.props", "backend tooling image")]

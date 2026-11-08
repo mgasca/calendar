@@ -2,6 +2,8 @@
 #:package xunit.v3.mtp-v2@4.0.2
 #:package Shouldly@4.3.0
 #:include ../scripts/check-adr/AdrValidator.cs
+#:include ../scripts/check-adr/AdrSweepRules.cs
+#:include SweepRuleTests.cs
 
 // Tests for the ADR validator. Run: dotnet run tests/check-adr.tests.cs
 // Each test copies fixtures/valid to a temp directory, breaks one rule, and asserts the matching error.

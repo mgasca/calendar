@@ -36,9 +36,10 @@ function timed(id: string, date: string, from: string, to: string, rest: Partial
   };
 }
 
-const task = (id: string, dueDate: string, rest: Partial<Task> = {}): Task => ({
-  id,
-  title: id,
+/** The title is `name`; the id has no spaces, as a real one has not, so `aria-labelledby` can use it. */
+const task = (name: string, dueDate: string, rest: Partial<Task> = {}): Task => ({
+  id: name.replaceAll(' ', '-'),
+  title: name,
   dueDate,
   hasNotes: false,
   isCompleted: false,
@@ -332,7 +333,7 @@ describe('WeekView', () => {
       const boxes = within(within(monday).getByRole('list', { name: 'Tasks' })).getAllByRole(
         'checkbox',
       );
-      expect(boxes.map((box) => box.closest('label')?.textContent)).toEqual([
+      expect(boxes.map((box) => box.closest('.task-label')?.textContent)).toEqual([
         'Call bank',
         'Pay rent',
       ]);
@@ -634,7 +635,7 @@ describe('WeekView', () => {
 
       const panel = await screen.findByRole('region', { name: 'Overdue (2)' });
       const boxes = within(panel).getAllByRole('checkbox');
-      expect(boxes.map((b) => b.closest('label')?.textContent)).toEqual([
+      expect(boxes.map((b) => b.closest('.task-label')?.textContent)).toEqual([
         'File expenses',
         'Renew passport',
       ]);
@@ -918,5 +919,69 @@ describe('editing from the week (story 0047)', () => {
       expect(screen.queryByRole('button', { name: 'Design review' })).not.toBeInTheDocument(),
     );
     await waitFor(() => expect(weekHeading()).toHaveFocus());
+  });
+});
+
+describe('editing a task from the week (story 0048)', () => {
+  const stored = (id: string, rest: Record<string, unknown> = {}) => ({
+    id,
+    title: id.replaceAll('-', ' '),
+    priority: 'medium',
+    notes: null,
+    dueDate: '2026-10-26',
+    isCompleted: false,
+    version: 2,
+    ...rest,
+  });
+
+  it('opens a day task from its title, without toggling it, and returns focus on Cancel', async () => {
+    let completed = false;
+    server.use(
+      http.get('*/api/tasks/:id', ({ params }) => HttpResponse.json(stored(String(params.id)))),
+      http.post('*/api/tasks/:id/complete', () => {
+        completed = true;
+        return HttpResponse.json(stored('Call bank', { isCompleted: true }));
+      }),
+    );
+    serveBusyWeeks();
+    renderApp('/week/2026-10-26');
+    const user = userEvent.setup();
+    const title = await screen.findByRole('button', { name: 'Call bank' });
+
+    await user.click(title);
+    const dialog = await screen.findByRole('dialog', { name: 'Edit task' });
+    expect(await within(dialog).findByLabelText('Title')).toHaveValue('Call bank');
+    expect(completed).toBe(false);
+    await user.click(within(dialog).getByRole('button', { name: 'Cancel' }));
+    await waitFor(() => expect(title).toHaveFocus());
+
+    await user.click(screen.getByRole('checkbox', { name: 'Call bank' }));
+    await waitFor(() => {
+      expect(completed).toBe(true);
+    });
+  });
+
+  it('opens an overdue task from the panel and confirms a save', async () => {
+    let saved: unknown;
+    server.use(
+      http.get('*/api/tasks/:id', ({ params }) =>
+        HttpResponse.json(stored(String(params.id), { dueDate: '2026-10-20' })),
+      ),
+      http.put('*/api/tasks/:id', async ({ request }) => {
+        saved = await request.json();
+        return HttpResponse.json(stored('File expenses', { dueDate: '2026-10-29', version: 3 }));
+      }),
+    );
+    serveBusyWeeks();
+    renderApp('/week/2026-10-26');
+    const user = userEvent.setup();
+
+    const panel = await screen.findByRole('region', { name: /Overdue/ });
+    await user.click(within(panel).getByRole('button', { name: 'File expenses' }));
+    const dialog = await screen.findByRole('dialog', { name: 'Edit task' });
+    await user.click(await within(dialog).findByRole('button', { name: 'Save task' }));
+
+    expect(await screen.findByText('Task saved.')).toBeInTheDocument();
+    expect(saved).toMatchObject({ title: 'File expenses', version: 2 });
   });
 });

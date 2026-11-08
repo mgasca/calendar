@@ -59,9 +59,12 @@ export function WeekView({ weekStart, timeZone: zoneOverride, locale }: WeekView
 
   /** The task open in its edit dialog (story 0048). */
   const [editingTask, setEditingTask] = useState<string>();
-  const openTask = (task: AgendaTask) => {
-    setEditingTask(task.id);
-  };
+  const openTask = useCallback(
+    (task: AgendaTask) => {
+      setEditingTask(task.id);
+    },
+    [setEditingTask],
+  );
 
   const goTo = (target: string) => {
     void navigate({ to: '/week/$weekStart', params: { weekStart: target } });

@@ -61,7 +61,7 @@ public static partial class AdrValidator
     return next.ToString("D4", System.Globalization.CultureInfo.InvariantCulture);
   }
 
-  /// <summary>Repository-level checks: contiguous numbering and no stray Markdown files.</summary>
+  /// <summary>Repository-level checks: contiguous numbering, no number used twice (M6) and no stray Markdown files.</summary>
   public static IReadOnlyList<string> CheckRepository(string decisionsDir)
   {
     var errors = new List<string>();
@@ -70,6 +70,7 @@ public static partial class AdrValidator
     {
       errors.Add($"ADR numbers must be contiguous from 0000, got [{string.Join(", ", numbers)}]");
     }
+    CheckDuplicateNumbers(decisionsDir, errors);
 
     var stray = Directory.EnumerateFiles(decisionsDir, "*.md")
         .Select(Path.GetFileName)
@@ -117,6 +118,8 @@ public static partial class AdrValidator
     CheckRatingTables(outcome, drivers, meta.GetValueOrDefault("status", ""), errors);
     CheckProsCons(prosCons, drivers, errors);
     CheckLinks(path, text, number, files, errors);
+    CheckSupersession(path, meta.GetValueOrDefault("status", ""), number, files, errors);
+    CheckAmendments(body, h2.GetValueOrDefault("More Information", ""), errors);
 
     return new AdrFileResult(name, errors);
   }

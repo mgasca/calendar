@@ -29,6 +29,10 @@ def just_files: . == "justfile" or . == ".just-version" or endswith(".just");
 def tooling_github:
   [".github/ci-gate.jq", ".github/ci-baseline.json", ".github/workflows/ci-trend.yml", ".github/pull_request_template.md"];
 
+# Files beside docs/decisions/ that `just tools adr` checks (story 0051, issue #562): the architecture model's ADR
+# entries and citations (M2), and, with docs/stories/, the planned story cards that must not cite a superseded ADR (J6).
+def adr_inputs: ["docs/architecture/calendar.architecture.json"];
+
 # Docs site: its suite tests the publisher, .github/workflows/pages.yml (pages-workflow.test.ts), and it builds from the
 # shared theme package, so that one named directory is an input too (ADR-0025, third amendment; story 0046, issue #518).
 # The trailing slash keeps look-alike directories out. No other frontend/packages/ directory and nothing under
@@ -42,7 +46,7 @@ def needs($job):
   elif $job == "frontend" then under(["frontend/apps/web/", "frontend/packages/", "contracts/"]) or frontend_root
   elif $job == "tooling" then
     under(["tools/", ".claude/", "infra/", "docker/", "just/", "docs/decisions/"]) or just_files or backend_msbuild
-      or IN(tooling_github[])
+      or IN(tooling_github[]) or IN(adr_inputs[]) or under(["docs/stories/"])
   elif $job == "image" then
     under(["backend/", "frontend/apps/web/", "frontend/packages/", "contracts/", "docker/"]) or frontend_root
       or IN("Dockerfile", ".dockerignore", "image.just")

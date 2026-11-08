@@ -1,8 +1,9 @@
 ---
-status: planned
+status: implemented
 date: 2026-11-08
 issue: https://github.com/mgasca/calendar/issues/492
-pr: []
+pr:
+  - https://github.com/mgasca/calendar/pull/530
 adrs: ["0018", "0020", "0021", "0041", "0043", "0047"]
 ---
 
@@ -22,22 +23,22 @@ No API change is expected.
 
 ### Agreed scope
 
-* **Opening an event:** in the week view, the title of every timed event in the time grid and of every all-day event in the all-day band is a button, as on the Today view. Selecting it, with the mouse or the keyboard, opens the event in the same **Edit event** dialog, prefilled from the stored event.
-* **Editing and deleting:** the dialog's behaviour is the one in 0043: validation, time-zone handling, **Save event**, **Cancel**, **Delete event** with confirmation, conflict and not-found messages, and failure retry.
-* **After saving or deleting:** the dialog closes, every agenda query refreshes (day and week), and the same status message appears. Focus returns to the event's title button after a save, or to the week heading after a delete, because the event may have moved or gone.
-* **Week refresh:** after a save that moves an event to another day or into the all-day band, the week shows it in its new place.
+- **Opening an event:** in the week view, the title of every timed event in the time grid and of every all-day event in the all-day band is a button, as on the Today view. Selecting it, with the mouse or the keyboard, opens the event in the same **Edit event** dialog, prefilled from the stored event.
+- **Editing and deleting:** the dialog's behaviour is the one in 0043: validation, time-zone handling, **Save event**, **Cancel**, **Delete event** with confirmation, conflict and not-found messages, and failure retry.
+- **After saving or deleting:** the dialog closes, every agenda query refreshes (day and week), and the same status message appears. Focus returns to the event's title button after a save, or to the week heading after a delete, because the event may have moved or gone.
+- **Week refresh:** after a save that moves an event to another day or into the all-day band, the week shows it in its new place.
 
 ### Not in this story
 
-* Creating events from the week view ([XXXX](XXXX-create-events-and-tasks-from-week-view.md)).
-* Editing or deleting tasks from the week view. Tasks in the week already have their own toggle and are not part of #492.
-* Drag to move or resize an event in the grid.
-* Any change to the dialog's behaviour, the API or the contract.
+- Creating events from the week view ([XXXX](XXXX-create-events-and-tasks-from-week-view.md)).
+- Editing or deleting tasks from the week view. Tasks in the week already have their own toggle and are not part of #492.
+- Drag to move or resize an event in the grid.
+- Any change to the dialog's behaviour, the API or the contract.
 
 ### Dependencies
 
-* [0043](0043-edit-and-delete-events-from-the-today-view.md): the dialog, the endpoints and the version check.
-* [0002](0002-week-view.md): the week view.
+- [0043](0043-edit-and-delete-events-from-the-today-view.md): the dialog, the endpoints and the version check.
+- [0002](0002-week-view.md): the week view.
 
 ### Acceptance criteria
 
@@ -52,24 +53,43 @@ No API change is expected.
 
 ### Any Decision Records
 
-| ADR | Decision | Why it matters for this story |
-| --- | --- | --- |
-| [0020](../decisions/0020-aggregate-day-agenda-endpoint-as-read-model.md) | Resource endpoints for writes, the agenda as a read model | Edits and deletes still go to `/api/events/{id}`; the week agenda is refetched afterwards |
-| [0021](../decisions/0021-client-supplied-date-and-time-zone-define-the-day.md) | The client's local date and zone define the day | The week's zone and today come from the client, as the dialog already expects |
-| [0043](../decisions/0043-form-validation-red-borders-and-bubble.md) | Red borders and a bubble for form validation | Unchanged; the same dialog is reused |
-| [0047](../decisions/0047-semantic-css-tokens-selected-by-a-data-theme-attribute.md) | Semantic tokens and a `data-theme` attribute | The title button in the week uses the shared classes and tokens in both themes |
+| ADR                                                                                 | Decision                                                  | Why it matters for this story                                                             |
+| ----------------------------------------------------------------------------------- | --------------------------------------------------------- | ----------------------------------------------------------------------------------------- |
+| [0020](../decisions/0020-aggregate-day-agenda-endpoint-as-read-model.md)            | Resource endpoints for writes, the agenda as a read model | Edits and deletes still go to `/api/events/{id}`; the week agenda is refetched afterwards |
+| [0021](../decisions/0021-client-supplied-date-and-time-zone-define-the-day.md)      | The client's local date and zone define the day           | The week's zone and today come from the client, as the dialog already expects             |
+| [0043](../decisions/0043-form-validation-red-borders-and-bubble.md)                 | Red borders and a bubble for form validation              | Unchanged; the same dialog is reused                                                      |
+| [0047](../decisions/0047-semantic-css-tokens-selected-by-a-data-theme-attribute.md) | Semantic tokens and a `data-theme` attribute              | The title button in the week uses the shared classes and tokens in both themes            |
 
 No new ADR is expected.
 
 ### Other decisions (not ADR-worthy)
 
-* **The same dialog and title button:** the week reuses 0043's `EditEvent` and its title-button pattern rather than a second editor, so the behaviour cannot drift between the two views.
-* **The title is the button:** as in 0043, the time-grid block and the band chip keep their layout; only the title is a button, so the target is explicit and keyboard use matches the Today view.
+- **The same dialog and title button:** the week reuses 0043's `EditEvent` and its title-button pattern rather than a second editor, so the behaviour cannot drift between the two views.
+- **The title is the button:** as in 0043, the time-grid block and the band chip keep their layout; only the title is a button, so the target is explicit and keyboard use matches the Today view.
 
 ## Implementation notes
 
-*Planned. This section is completed as the story is built.*
+Delivered in a PR stacked on the card ([#530](https://github.com/mgasca/calendar/pull/530)). No API or contract change; the dialog from [0043](0043-edit-and-delete-events-from-the-today-view.md) is reused as it is.
+
+### Where things live
+
+| Area             | Location                                                                                                                                                                                                            |
+| ---------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Entry points     | `frontend/apps/web/src/features/week/TimeGrid.tsx` (timed event titles, `OpenEvent`) and `AllDayBand.tsx` (all-day bar titles): each title is an `item-open` button                                                 |
+| Dialog and focus | `frontend/apps/web/src/features/week/WeekView.tsx`: opens `EditEvent`, shows the status message, and focuses the opening title or, after a delete or when it has left the week, the week heading (`focusAfterEdit`) |
+
+### API
+
+No changes.
+
+### Testing
+
+- [WeekView.test.tsx](../../frontend/apps/web/src/features/week/WeekView.test.tsx), `editing from the week`: opens a timed event and returns focus to its title on **Cancel**; opens an all-day event with **All day** checked; deletes from the dialog, drops the event from the week, and moves focus to the heading.
+- The save path and the conflict, not-found and failure cases are the dialog's, tested in [EditEvent.test.tsx](../../frontend/apps/web/src/features/events/EditEvent.test.tsx) by 0043.
+- Not run in the running app or checked in Light and Dark; the entry points reuse the Today view's button, and the styling was not reviewed on screen.
 
 ## User guide
 
-*Written when the story is delivered.*
+### Changing or deleting an event from the week
+
+In the week view, select an event's title, in the day columns or in the bar across the top for all-day events. The **Edit event** form opens; change it and select **Save event**, or select **Delete event** and then **Delete** to remove it. **Cancel** closes the form without saving. Focus returns to the event when the form closes, or to the week heading after a delete.

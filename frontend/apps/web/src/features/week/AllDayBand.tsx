@@ -25,9 +25,12 @@ function formatDates(event: AllDayEvent, locale: string | undefined): string {
 export function AllDayBand({
   layout,
   locale,
+  onOpen,
 }: {
   layout: AllDayLayout<AllDayEvent>;
   locale?: string | undefined;
+  /** Opens the event for editing; `opener` is the title button. */
+  onOpen: (id: string, opener: HTMLElement) => void;
 }) {
   if (layout.bars.length === 0) {
     return null;
@@ -46,7 +49,18 @@ export function AllDayBand({
             title={event.location ? `${event.title} · ${event.location}` : event.title}
           >
             {continuesBefore && <span aria-hidden="true">◀ </span>}
-            <span className="week-bar-title">{event.title}</span>
+            <span className="week-bar-title">
+              <button
+                type="button"
+                className="item-open"
+                aria-haspopup="dialog"
+                onClick={(click) => {
+                  onOpen(event.id, click.currentTarget);
+                }}
+              >
+                {event.title}
+              </button>
+            </span>
             {event.hasNotes && <Notes id={event.id} kind="event" />}
             <span className="visually-hidden">
               {`, ${formatDates(event, locale)}`}

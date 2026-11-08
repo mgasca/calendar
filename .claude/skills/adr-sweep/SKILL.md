@@ -16,14 +16,14 @@ The sweep is read-only. Its outputs are the report, published in step 7 as one d
 - **Guidance**: `AGENTS.md`, `backend/AGENTS.md`, `frontend/AGENTS.md`, `.claude/skills/*/SKILL.md`, `docs/*/README.md`, `docs/runbooks/`, `tools/README.md`.
 - **Amendment**: a dated `### Amendment, YYYY-MM-DD: …` section that records a change that leaves the chosen option intact, with a matching bullet in More Information (ADR-0027 and ADR-0038 are the models). A change of the chosen option is a new record that supersedes the old one.
 - **Watermark**: the report's last line, `adr-sweep watermark <UTC> main=<sha> judged=<sha>@<date>:<records> …`. `main` is the `origin/main` SHA this run read. `judged` groups every record by the `main` SHA and UTC date of the run that last judged it, with ranges (`judged=11cebe08d@2026-11-08:0001-0006,0044 285a5e720@2026-11-07:0007-0043,0045-0049`). Each record is in exactly one group. Keep the format, so a routine can grep the line.
-- **Cited tokens**: the paths, recipes, commands and versions a record names. `just tools adr --inventory` lists them per record (#562). Until it lands on `main`, read them by hand: the backticked tokens and version numbers of the record, checked with `git grep` and `git log`.
+- **Cited tokens**: the paths, recipes, commands and versions a record names. `just tools adr --inventory` lists them per record (#562).
 - **Delta**: the records this run judges, each with the reason it was selected (step 3).
 - **Carried**: a record outside the delta. It keeps its judgement findings and their class from the previous report and is marked "carried".
 
 ## Steps
 
 1. **Read from `origin/main`, not the working tree.** `git fetch -q origin`, then `git show origin/main:<path>`, `git grep <pattern> origin/main -- <paths>` and `git log origin/main -- <path>`. A stale branch gives stale answers. Note `git rev-parse --short origin/main`: it is this run's `main` in the watermark.
-2. **Build the inventory.** For every record: number, title, status, date, `superseded by` target, amendment headings and dates, the date it first reached `main` (`git log --diff-filter=A --format=%cs origin/main -- docs/decisions/NNNN-*.md`), and its cited tokens. Note the `metadata.adrs` entries of the model beside it. `just tools adr --inventory` prints all of this once #562 is on `main`; until then build it by hand. Everything below reads this inventory.
+2. **Build the inventory.** For every record: number, title, status, date, `superseded by` target, amendment headings and dates, the date it first reached `main` (`git log --diff-filter=A --format=%cs origin/main -- docs/decisions/NNNN-*.md`), and its cited tokens. Note the `metadata.adrs` entries of the model beside it. `just tools adr --inventory` prints all of this as JSON (#562). It reads the working tree, so run it in a checkout of fresh `origin/main` (a scratch worktree, never the main checkout). Where it cannot run, build the inventory by hand with `git show` and `git log`. Everything below reads this inventory.
 3. **Find the previous watermark, select the delta, run the checks.**
    - **Previous report.** Use the one appended to the request. If none is, use the newest report file in `docs/sweeps/adr/` on `origin/main` (`git ls-tree --name-only origin/main docs/sweeps/adr/`, the last `*Z.md` in sort order). An open `ADR sweep report` PR (`gh pr list --state open --search "ADR sweep report in:title"`) with a newer file wins over `main`. Say in the report whether one was found and where. Only if none was, run a full sweep: every record is in the delta.
    - **Delta.** Let `W` be the watermark's `main`. Take a record when, between `W` and `origin/main`:
@@ -31,10 +31,19 @@ The sweep is read-only. Its outputs are the report, published in step 7 as one d
      - one of its cited tokens changed: build a reverse index from cited token to records, and match it against `git diff --name-only W..origin/main` (a recipe or version counts as changed when the file that defines it did);
      - it has J3 deferral or trigger phrases, and a story card, ADR or issue it names moved;
      - an issue or PR updated since the watermark names it (the M5 search);
-     - it is one of the *k* = 6 records judged longest ago, ties by number (the rotation).
+     - it is one of the *k* = 6 records judged longest ago, ties by number (the rotation). Records the previous report lists as left over at the workflow's run cap come first, ahead of the rest of the rotation.
 
-     Give each record its reason, naming the change (`0011: cited justfile changed`). Every other record is carried.
-   - **Checks.** Run the catalogue, cheapest first. The mechanical checks (M) run on every record on every sweep. The judgement checks (J) read only the delta records.
+     Give each record its reason, naming the change (`0011: cited justfile changed`). Order the delta by reason, in the order of the list above: changed record, changed token, trigger, open work, rotation. A record with several reasons takes its first. Every other record is carried.
+   - **Checks.** Run the catalogue, cheapest first. The mechanical checks (M) run in the session on every record on every sweep. The judgement checks (J) read only the delta records. They take one of two paths, and the report names the one that ran:
+     - **Workflow (Claude Code only, ADR-0044 and its amendment of 2026-11-08).** Run the saved workflow `.claude/workflows/adr-sweep-judge.js` with the Workflow tool and its `scriptPath`. This instruction is the opt-in. Pass `args`: `{ records: [{ id, path, reasons, checks }], main: <step 1 SHA> }`, in delta order. `checks` is `["J1","J2","J3","J4","J5"]`, with `"J7"` added on request or when the open issue list is short. `capRun` (default 40 agents per run) and `capRecord` (default 12 agents per record) are passed only to change them. The workflow runs one judge per record (on Sonnet) and two `sweep-skeptic` agents per Fix now or Decide finding, lenses *true* and *matters*. A finding is confirmed only if both decline, and uncertainty refutes. Watch findings come back unverified. It returns `confirmed`, `refuted` (each with the skeptics' votes and reasons), `unexamined` (records whose judge returned nothing, and findings past a cap or without both answers, each with why), `watch`, `judged`, `leftOver` (records past the run cap), `caps` and `agents`. It never writes to GitHub or files. Then, in the session:
+       - **Group findings that share a cause** across records, such as one renamed recipe cited by three records. Report one finding that names every record.
+       - **Check the judge's class** against step 4, and keep the evidence the judge gave.
+       - **Only confirmed findings go on** to the table and the hand-offs. Refuted ones are reported with their reasons, so a wrong refutation can be caught. Unexamined ones are named with the reason.
+       - **Records that were not judged** keep their previous judged date in the watermark: those in `leftOver` and those whose judge returned nothing. The report names the left-over records, so the next run's rotation takes them first.
+
+       If the Workflow tool is not available or the run fails, take the by-hand path and say so in the report.
+     - **By hand (any harness).** Read each delta record at `origin/main` and run J1 to J5 yourself, adding J7 on the same terms, as the catalogue says. Classify as step 4 says and cite the evidence. No skeptic pass runs, so the report says the findings are unverified. When the delta is more than one context can judge well, judge the records in delta order, stop, and name the records not reached. They are not judged, and the next run's rotation takes them first.
+     - **Either path:** J8 is a session step, run only when the environment has network. J6 runs with the mechanical checks.
 4. **Classify each finding:**
    - **Fix now**: unambiguous and mechanical, such as a model status that differs from the file, or a superseding record that never names the one it replaced.
    - **Decide**: needs the owner, such as a record still `proposed`, a decision the repository no longer follows, or a deferred decision whose trigger has arrived. Give a recommendation and the evidence, never the decision.
@@ -81,10 +90,11 @@ Checks M2, M3, the branch half of M6, M7 (form) and J6 also run in `just tools a
 
 ## Report format (keep it short)
 
-- One line: the previous report used (where it was found, its watermark time) or "none found, full run", and the path that ran (by hand).
+- One line: the previous report used (where it was found, its watermark time) or "none found, full run", and the path that ran: `path: workflow` (with the agents that answered, of those launched) or `path: by hand`.
 - The delta: each record judged, with its reason.
-- A table of the Fix now and Decide findings: check id, record, evidence, suggested action and, for Decide, the recommendation. Mark carried findings "carried".
-- One line per Watch finding.
-- One line naming the records not judged this run, each with its last-judged date (`not judged: 0007-0010 (2026-11-07), 0012 (2026-11-01)`), and the checks skipped (for example J8 without network).
+- A table of the Fix now and Decide findings: check id, record, evidence, suggested action and, for Decide, the recommendation. On the workflow path, only confirmed findings go in it; on the by-hand path, mark the table unverified. Mark carried findings "carried".
+- On the workflow path, one line per refuted finding with each skeptic's reason, and one line per unexamined record or finding with the reason (judge returned nothing, past the record cap, past the run cap, a skeptic returned nothing).
+- One line per Watch finding (unverified on either path).
+- One line naming the records not judged this run, each with its last-judged date (`not judged: 0007-0010 (2026-11-07), 0012 (2026-11-01)`), the records left over at the run cap or not reached by hand (`left over: 0031, 0032`), and the checks skipped (for example J8 without network).
 - Under the table, one line per hand-off started (record, PR number), or why it was skipped.
 - Last line: the watermark, with `<UTC>` from `date -u +%Y-%m-%dT%H:%MZ` and `main` from step 1.

@@ -70,6 +70,16 @@ Chosen option: "Claude-first period: new automation may be Claude Code only, the
 * The period is revisited when the maintainer states it, on an issue, a PR or in conversation recorded on an issue; neither a date nor a repository event ends it by itself. The trigger is recorded here and in `tools/README.md` next to the agent-hooks revisit triggers from [ADR-0042](0042-layered-agent-guidance-and-hooks.md); the `adr-sweep` skill reports a statement that has no new ADR after it.
 * Ending the period is a new ADR, not an edit of this one: it either returns to [ADR-0042](0042-layered-agent-guidance-and-hooks.md) as written or supersedes both records with what the period taught.
 
+### Amendment, 2026-11-08: the two sweeps may use workflows and keep a by-hand path
+
+Recorded for epic [#559](https://github.com/mgasca/calendar/issues/559) in [issue #561](https://github.com/mgasca/calendar/issues/561) and story [0051](../stories/0051-sweep-only-what-changed-and-check-each-finding.md). The maintainer answered it in conversation on 2026-11-08. The chosen option is unchanged and is not re-rated. The context above records two things as they stood on 2026-11-06: scheduled work runs in mj "on a non-Claude harness", and whether the skills that scheduled work runs must stay harness-neutral was deferred ([#366](https://github.com/mgasca/calendar/pull/366#issuecomment-6692829765)). This amendment answers that question for two skills, `issue-sweep` and `adr-sweep`:
+
+* **Where they run.** The sweep schedule still runs in mj. The harness it starts may be Claude Code or another one.
+* **What they may use.** In Claude Code, these two skills may use Claude Code mechanisms, such as saved workflows and agent definitions under `.claude/`, for the per-item work.
+* **What they keep.** Each keeps a short by-hand path that any harness can follow, so a run on another harness still completes. This narrows "describe no hand-followable alternative" (under "What may be Claude Code only") for these two skills: their Claude-only parts are optional, never required.
+* **What the report says.** Each report states which path ran and names the items the by-hand path did not judge. A run that quietly took the slower path would look complete when it was not.
+* **What stays open.** The question stays deferred for every other skill that scheduled work runs, `dream-weaver` included.
+
 ### Consequences
 
 * Good, because a handover, a review or a sweep can use the mechanism that fits (a loop, a routine, a workflow, a hook) without first inventing a portable version of it.
@@ -129,3 +139,4 @@ Chosen option: "Claude-first period: new automation may be Claude Code only, the
 * Answers from review, given by the maintainer in conversation on 2026-11-06 and recorded on [#318](https://github.com/mgasca/calendar/issues/318#issuecomment-6689158337): (1) the revisit trigger is the maintainer's statement, replacing the proposed "a second harness in real use, or the epic's closing PR"; (2) new **deny** hooks keep a one-line root statement; (3) the existing *(hook)* lines in the root stay. The record is accepted as it merged in [#324](https://github.com/mgasca/calendar/pull/324), with only the trigger changed.
 * Revisit when the maintainer states it (see "The period and its end"). A second harness tried for a story before then does not end the period by itself, but it is the moment to measure what the Claude-only pieces cost it.
 * First uses delivered: story [0027](../stories/0027-focus-agent-guidance-on-claude-code-for-a-while.md) is implemented, and its card records what the period made possible and what it cost. When epic #318 closed, the maintainer had not stated an end to the period, so the period continues.
+* **Amendment, 2026-11-08:** the `issue-sweep` and `adr-sweep` skills may use Claude Code workflows and agent definitions when the scheduled run starts Claude Code. Each keeps a by-hand path any harness can follow, and its report says which path ran. This answers, for these two skills only, the question deferred on #366. It was given by the maintainer in conversation and recorded on epic #559 and issue #561 (story [0051](../stories/0051-sweep-only-what-changed-and-check-each-finding.md)). The decision itself is unchanged, so this ADR was amended, not superseded.

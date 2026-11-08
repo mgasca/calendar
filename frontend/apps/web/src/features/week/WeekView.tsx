@@ -8,6 +8,8 @@ import { TaskToggleError } from '../agenda/TaskItem.tsx';
 import { useToday } from '../agenda/useNow.ts';
 import { useToggleTask } from '../agenda/useToggleTask.ts';
 import { EditEvent } from '../events/EditEvent.tsx';
+import { EditTask } from '../tasks/EditTask.tsx';
+import { taskTitleId } from '../agenda/taskTitleId.ts';
 import { OverduePanel } from './OverduePanel.tsx';
 import { TimeGrid, type OpenEvent } from './TimeGrid.tsx';
 import { patchWeekTasks, useWeekAgenda, weekKey, type WeekAgenda } from './useWeekAgenda.ts';
@@ -54,6 +56,12 @@ export function WeekView({ weekStart, timeZone: zoneOverride, locale }: WeekView
     },
     [setEditing],
   );
+
+  /** The task open in its edit dialog (story 0048). */
+  const [editingTask, setEditingTask] = useState<string>();
+  const openTask = (task: AgendaTask) => {
+    setEditingTask(task.id);
+  };
 
   const goTo = (target: string) => {
     void navigate({ to: '/week/$weekStart', params: { weekStart: target } });
@@ -122,7 +130,7 @@ export function WeekView({ weekStart, timeZone: zoneOverride, locale }: WeekView
   if (!counts) throw new Error('Missing week counts');
   const overdue = data.overdue ?? [];
 
-  const taskProps = { timeZone, locale, disabled: stale, onToggle };
+  const taskProps = { timeZone, locale, disabled: stale, onToggle, onOpen: openTask };
 
   return (
     <section
@@ -159,6 +167,20 @@ export function WeekView({ weekStart, timeZone: zoneOverride, locale }: WeekView
         </div>
       )}
       <TaskToggleError error={toggle.error} />
+      {editingTask && (
+        <EditTask
+          id={editingTask}
+          onClose={(saved) => {
+            const id = editingTask;
+            setEditingTask(undefined);
+            if (saved) notify({ message: 'Task saved.' });
+            // A task moved out of the week has left the list, so focus falls back to the heading.
+            requestAnimationFrame(() => {
+              focusAfterEdit(document.getElementById(taskTitleId(id)));
+            });
+          }}
+        />
+      )}
       {editing && (
         <EditEvent
           id={editing.id}

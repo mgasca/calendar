@@ -1,8 +1,10 @@
 ---
-status: planned
+status: implemented
 date: 2026-11-08
 issue: https://github.com/mgasca/calendar/issues/500
-pr: []
+pr:
+  - https://github.com/mgasca/calendar/pull/535
+  - https://github.com/mgasca/calendar/pull/536
 adrs: ["0020", "0021", "0041", "0043", "0047"]
 ---
 
@@ -66,8 +68,25 @@ No new ADR is expected.
 
 ## Implementation notes
 
-*Planned. This section is completed as the story is built.*
+Delivered after the card ([#535](https://github.com/mgasca/calendar/pull/535)) in one PR ([#536](https://github.com/mgasca/calendar/pull/536)), stacked on it. No API change.
+
+### Where things live
+
+| Area | Location |
+| --- | --- |
+| Week view | `frontend/apps/web/src/features/week/WeekView.tsx` (`openTask`, `EditTask`), `TaskStrip.tsx` and `OverduePanel.tsx` (`onOpen` on `TaskToggleProps`) |
+| My tasks | `frontend/apps/web/src/features/tasks/TaskList.tsx` (title button, `EditTask`, `focusTitleOrHeading`) |
+| Reused | `EditTask`, `TaskForm`, `TaskItem` (`onOpen`), `taskTitleId` |
+
+### Testing
+
+* Week: [WeekView.test.tsx](../../frontend/apps/web/src/features/week/WeekView.test.tsx) (`editing a task from the week (story 0048)`: day task and Overdue panel, checkbox unchanged, focus on Cancel, save confirmed). Both fail with `onOpen` not passed (negative control run locally).
+* My tasks: [Tasks.test.tsx](../../frontend/apps/web/src/features/tasks/Tasks.test.tsx) (`opens a task from its title in My tasks, saves it and shows the new title`).
+* Not checked in the running app: criterion 7 (themes and widths) has no screenshots yet.
+* Test fixtures that used a task title as its id were changed to space-free ids: `aria-labelledby` splits ids on spaces, which real ids never contain.
 
 ## User guide
 
-*Planned. Completed when the story is delivered.*
+### Changing a task from the week or My tasks
+
+In the Week view (a day or the **Overdue** panel) or in **My tasks**, select a task's title. The **Edit task** form opens; change the title, deadline, priority or notes and select **Save task**. A message says **Task saved.** The checkbox beside the title still marks the task done.

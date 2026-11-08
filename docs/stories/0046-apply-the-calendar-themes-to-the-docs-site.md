@@ -8,6 +8,7 @@ pr:
   - https://github.com/mgasca/calendar/pull/526
   - https://github.com/mgasca/calendar/pull/527
   - https://github.com/mgasca/calendar/pull/529
+  - https://github.com/mgasca/calendar/pull/536
 adrs: ["0012", "0023", "0025", "0045", "0046", "0047", "0048"]
 ---
 
@@ -190,7 +191,7 @@ Search and focus, after: ![Search in Light](https://raw.githubusercontent.com/mg
 
 ### Delivery plan
 
-Delivered as planned: PR 0 ([#523](https://github.com/mgasca/calendar/pull/523), the card and the ADR amendments), then #515 ([#526](https://github.com/mgasca/calendar/pull/526)), #516 ([#527](https://github.com/mgasca/calendar/pull/527)) and #517 ([#529](https://github.com/mgasca/calendar/pull/529)) as one stack, #518 ([#525](https://github.com/mgasca/calendar/pull/525)) beside it, then #519 (this PR). The maintainer merged each.
+Delivered as planned: PR 0 ([#523](https://github.com/mgasca/calendar/pull/523), the card and the ADR amendments), then #515 ([#526](https://github.com/mgasca/calendar/pull/526)), #516 ([#527](https://github.com/mgasca/calendar/pull/527)) and #517 ([#529](https://github.com/mgasca/calendar/pull/529)) as one stack, #518 ([#525](https://github.com/mgasca/calendar/pull/525)) beside it, then #519 ([#536](https://github.com/mgasca/calendar/pull/536), this PR). The maintainer merged each.
 
 ### Lessons learned, known issues and follow-ups
 

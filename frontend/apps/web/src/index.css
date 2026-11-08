@@ -141,6 +141,14 @@ main > button {
   margin: var(--space-4) 0;
 }
 
+/*
+ * The buttons share the date picker's row (#553): drop the label's bottom margin so the row's
+ * bottom edge is the input's, and the buttons line up with it.
+ */
+.day-controls label {
+  margin-bottom: 0;
+}
+
 .week-link {
   margin: var(--space-1) 0 0;
   font-size: 0.9rem;

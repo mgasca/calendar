@@ -16,7 +16,7 @@ export function DayPage({ date, timeZone, locale }: DayPageProps) {
   const navigate = useNavigate();
   return (
     <>
-      <div className="actions">
+      <div className="actions day-controls">
         <label>
           Calendar date
           <input

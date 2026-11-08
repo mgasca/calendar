@@ -44,10 +44,17 @@ function spanStyle(span: Span, column: number, columns: number): CSSProperties {
   };
 }
 
+/**
+ * Opens an event in its edit dialog (story 0047). `date` is the day it was opened from and
+ * `opener` the title button, which gets focus back when the dialog closes.
+ */
+export type OpenEvent = (id: string, date: string, opener: HTMLElement) => void;
+
 interface TimeGridProps extends TaskToggleProps {
   agenda: WeekAgenda;
   /** The viewer's local date. */
   today: string;
+  onOpenEvent: OpenEvent;
 }
 
 /**
@@ -55,7 +62,7 @@ interface TimeGridProps extends TaskToggleProps {
  * strips stay at the top while the 24 hours scroll beneath them. Each day is a labelled section
  * holding its tasks and an ordered list of its events; their positions are presentational.
  */
-export function TimeGrid({ agenda, today, ...taskProps }: TimeGridProps) {
+export function TimeGrid({ agenda, today, onOpenEvent, ...taskProps }: TimeGridProps) {
   const scroller = useRef<HTMLDivElement>(null);
   const scrolledWeek = useRef<string | null>(null);
   const { weekStart } = agenda;
@@ -99,7 +106,13 @@ export function TimeGrid({ agenda, today, ...taskProps }: TimeGridProps) {
     >
       <div className="week-grid" style={gridStyle}>
         <div className="week-corner" aria-hidden="true" />
-        <AllDayBand layout={band} locale={taskProps.locale} />
+        <AllDayBand
+          layout={band}
+          locale={taskProps.locale}
+          onOpen={(id, opener) => {
+            onOpenEvent(id, weekStart, opener);
+          }}
+        />
         <div className="week-gutter" aria-hidden="true">
           {HOURS.map((hour) => (
             <span
@@ -120,6 +133,7 @@ export function TimeGrid({ agenda, today, ...taskProps }: TimeGridProps) {
             // In the current week, open tasks on days before today are overdue; the Overdue panel
             // only holds tasks due before the week.
             overdue={currentWeek && day.date < today}
+            onOpenEvent={onOpenEvent}
             {...taskProps}
           />
         ))}
@@ -133,6 +147,7 @@ const DayColumn = memo(function DayColumn({
   column,
   isToday,
   overdue,
+  onOpenEvent,
   ...taskProps
 }: TaskToggleProps & {
   day: AgendaDay;
@@ -141,6 +156,7 @@ const DayColumn = memo(function DayColumn({
   isToday: boolean;
   /** Mark the day's open tasks as Overdue. */
   overdue: boolean;
+  onOpenEvent: OpenEvent;
 }) {
   const { timeZone, locale } = taskProps;
   // The section is named by the full date; the heading link shows (and is named by) "Mon 26",
@@ -194,7 +210,18 @@ const DayColumn = memo(function DayColumn({
                       locale={locale}
                     />
                   </span>{' '}
-                  <span className="week-event-title">{event.title}</span>
+                  <span className="week-event-title">
+                    <button
+                      type="button"
+                      className="item-open"
+                      aria-haspopup="dialog"
+                      onClick={(click) => {
+                        onOpenEvent(event.id, day.date, click.currentTarget);
+                      }}
+                    >
+                      {event.title}
+                    </button>
+                  </span>
                   {event.hasNotes && <Notes id={event.id} kind="event" />}
                 </li>
               ))}

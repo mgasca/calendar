@@ -194,6 +194,7 @@
 <li>Fonts for the two themes are a separate decision: <a href="/calendar/adr/0048/">ADR-0048</a>.</li>
 <li><a href="/calendar/adr/0043/">ADR-0043</a> (form errors as red borders and a bubble) stays in force; its colours become status tokens.</li>
 <li>Revisit if a third theme or per-user server-side preference is requested, or if a component library with its own theming is adopted.</li>
+<li><strong>Amendment, 2026-11-07:</strong> the token layer is shared with the docs site through one frontend workspace package, in story <a href="/calendar/stories/0046/">0046</a> and epic #513; see the amendment below. The decision and ratings are unchanged, so this ADR is amended, not superseded.</li>
 </ul>
 <h3 id="amendment-2026-11-07-the-token-layer-is-shared-with-the-docs-site">Amendment, 2026-11-07: the token layer is shared with the docs site</h3>
 <p>The decision stands: semantic custom-property tokens selected by <code>data-theme</code> on <code>&#x3C;html></code>, with <code>prefers-color-scheme</code> as the script-free fallback, and the ratings of D1 to D6 are unchanged. What changes is where the token layer lives and who consumes it. Story <a href="/calendar/stories/0046/">0046</a> (epic #513) applies the same two themes to the Starlight docs site, so the “one file” of the Conventions section becomes one file in a small frontend workspace package (<code>frontend/packages/theme/</code>, proposed name <code>@calendar/theme</code>) that the web app and the docs site both import.</p>

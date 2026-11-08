@@ -1,4 +1,7 @@
 using System.Net;
+using System.Text.Json;
+using Microsoft.AspNetCore.Authentication.Cookies;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
@@ -34,6 +37,8 @@ public sealed class HostingTests(WebApplicationFactory<Program> factory) : IClas
       using HttpResponseMessage asset = await client.GetAsync(
         new Uri("/assets/app-Abc123_X.js", UriKind.Relative),
         TestContext.Current.CancellationToken);
+      asset.StatusCode.ShouldBe(HttpStatusCode.OK);
+      (await asset.Content.ReadAsStringAsync(TestContext.Current.CancellationToken)).ShouldBe("asset");
       asset.Headers.CacheControl!.ToString().ShouldBe("public, max-age=31536000, immutable");
       using HttpResponseMessage plain = await client.GetAsync(
         new Uri("/assets/plain.js", UriKind.Relative),
@@ -47,7 +52,9 @@ public sealed class HostingTests(WebApplicationFactory<Program> factory) : IClas
         new Uri("/api/unknown", UriKind.Relative),
         TestContext.Current.CancellationToken);
       unknown.StatusCode.ShouldBe(HttpStatusCode.NotFound);
-      unknown.Content.Headers.ContentType?.MediaType.ShouldNotBe("text/html");
+      unknown.Content.Headers.ContentType?.MediaType.ShouldBe("application/problem+json");
+      using var problem = JsonDocument.Parse(await unknown.Content.ReadAsStringAsync(TestContext.Current.CancellationToken));
+      problem.RootElement.GetProperty("status").GetInt32().ShouldBe(404);
       using HttpResponseMessage protectedRoute = await client.GetAsync(
         new Uri("/api/auth/me", UriKind.Relative),
         TestContext.Current.CancellationToken);
@@ -96,6 +103,52 @@ public sealed class HostingTests(WebApplicationFactory<Program> factory) : IClas
       TestContext.Current.CancellationToken);
     logout.Response.StatusCode.ShouldBe(204);
     logout.Response.Headers.SetCookie.ToString().ShouldContain("secure");
+  }
+
+  [Fact]
+  public async Task DeniedApiRequestIsForbiddenNotRedirected()
+  {
+    using WebApplicationFactory<Program> host = factory.WithWebHostBuilder(builder =>
+    {
+      builder.UseSetting("ConnectionStrings:Calendar", "");
+      builder.ConfigureTestServices(services =>
+      {
+        services.AddAuthentication(options =>
+        {
+          options.DefaultAuthenticateScheme = "Test";
+          options.DefaultChallengeScheme = "Test";
+          options.DefaultForbidScheme = CookieAuthenticationDefaults.AuthenticationScheme;
+        }).AddScheme<AuthenticationSchemeOptions, FakeAuthenticationHandler>("Test", _ => { });
+        // A signed-in user who fails the policy: no production route denies a signed-in user today.
+        services.Configure<AuthorizationOptions>(options =>
+          options.FallbackPolicy = new AuthorizationPolicyBuilder().RequireClaim("never-granted").Build());
+      });
+    });
+    using HttpClient client = host.CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
+    using HttpResponseMessage response = await client.GetAsync(
+      new Uri("/api/tasks", UriKind.Relative),
+      TestContext.Current.CancellationToken);
+    response.StatusCode.ShouldBe(HttpStatusCode.Forbidden);
+    response.Headers.Location.ShouldBeNull();
+  }
+
+  [Fact]
+  public async Task SessionCookieIsHttpOnlyAndSameSiteLax()
+  {
+    using WebApplicationFactory<Program> host = factory.WithWebHostBuilder(builder =>
+    {
+      builder.UseSetting("ConnectionStrings:Calendar", "");
+      builder.ConfigureTestServices(services => services.AddAuthentication(options => options.DefaultAuthenticateScheme = "Test")
+        .AddScheme<AuthenticationSchemeOptions, FakeAuthenticationHandler>("Test", _ => { }));
+    });
+    using HttpClient client = host.CreateClient();
+    using HttpResponseMessage response = await client.PostAsync(
+      new Uri("/api/auth/logout", UriKind.Relative),
+      null,
+      TestContext.Current.CancellationToken);
+    var cookie = response.Headers.GetValues("Set-Cookie").Single().ToLowerInvariant();
+    cookie.ShouldContain("httponly");
+    cookie.ShouldContain("samesite=lax");
   }
 
   private sealed class WebRootFilter(string root) : IStartupFilter

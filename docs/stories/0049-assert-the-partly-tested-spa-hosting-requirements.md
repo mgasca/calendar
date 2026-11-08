@@ -1,8 +1,10 @@
 ---
-status: planned
+status: implemented
 date: 2026-11-08
 issue: https://github.com/mgasca/calendar/issues/497
-pr: []
+pr:
+  - https://github.com/mgasca/calendar/pull/537
+  - https://github.com/mgasca/calendar/pull/542
 adrs: ["0026", "0027", "0030"]
 ---
 
@@ -22,8 +24,8 @@ The API serves the built SPA (`UseStaticFiles` and `MapFallback` in `backend/src
 
 * **Asset served as a file:** an existing static asset returns 200 with its exact body, not only the `immutable` cache header.
 * **Unknown `/api` path:** returns 404 with an `application/problem+json` body, not only a non-HTML 404.
-* **403:** a hosting test covers a signed-in request that is denied. Under `/api` it returns 403 and does not redirect; outside `/api` it redirects (the behaviour of `ApiAuthentication.RedirectOrStatus`). The 401 case stays as it is.
-* **Session cookie attributes:** the cookie issued by the app carries `HttpOnly` and `SameSite=Lax`, asserted on a real `Set-Cookie` header.
+* **403:** a hosting test covers a signed-in request that is denied by an authorization policy: an `/api` route returns 403 and does not redirect. The redirect branch of `RedirectOrStatus` for non-`/api` paths is unreachable today (no non-API route requires sign-in), so it is not tested. The 401 case stays as it is.
+* **Session cookie attributes:** the `Set-Cookie` header written by the cookie scheme (observed on sign-out, which the existing cookie test also uses) carries `HttpOnly` and `SameSite=Lax`. A full Google sign-in is not run in tests.
 * **ADR amendments:** ADR-0026 and ADR-0030 each get a short dated note that these requirements are now tested, linking the tests. The notes do not change the decisions or re-rate them.
 
 ### Not in this story
@@ -35,13 +37,12 @@ The API serves the built SPA (`UseStaticFiles` and `MapFallback` in `backend/src
 
 ### Acceptance criteria
 
-1. **Given** a web root with an existing asset, **when** I request it, **then** the response is 200 and the body is the asset's content.
-2. **Given** an unknown path under `/api`, **when** I request it, **then** the response is 404 with media type `application/problem+json` and a problem-details body whose `status` is 404.
-3. **Given** a signed-in user who fails an authorization policy, **when** they request an `/api` route, **then** the response is 403 and not a redirect.
-4. **Given** the same denial outside `/api`, **when** the request is made, **then** the response is a redirect, not a 403.
-5. **Given** a successful sign-in, **when** the app sets its session cookie, **then** the `Set-Cookie` header contains `httponly` and `samesite=lax`.
-6. **Given** ADR-0026 and ADR-0030, **when** I read their latest amendments, **then** they link the new tests and no longer call these four requirements partly tested.
-7. **Given** the change is complete, **when** I run `just check`, **then** it passes.
+1. **Given** a web root with an existing asset, **when** I request it, **then** the response is 200 and the body is the asset's content. Test: [`SpaRoutingAndCacheHeaders`](../../backend/tests/Calendar.Api.Tests/Endpoints/HostingTests.cs).
+2. **Given** an unknown path under `/api`, **when** I request it, **then** the response is 404 with media type `application/problem+json` and a problem-details body whose `status` is 404. Test: [`SpaRoutingAndCacheHeaders`](../../backend/tests/Calendar.Api.Tests/Endpoints/HostingTests.cs).
+3. **Given** a signed-in user who fails an authorization policy, **when** they request an `/api` route, **then** the response is 403 and not a redirect. Test: [`DeniedApiRequestIsForbiddenNotRedirected`](../../backend/tests/Calendar.Api.Tests/Endpoints/HostingTests.cs).
+4. **Given** the cookie scheme writes the session cookie header (sign-out), **then** the `Set-Cookie` header contains `httponly` and `samesite=lax`. Test: [`SessionCookieIsHttpOnlyAndSameSiteLax`](../../backend/tests/Calendar.Api.Tests/Endpoints/HostingTests.cs).
+5. **Given** ADR-0026 and ADR-0030, **when** I read their latest amendments, **then** they link the new tests and no longer call these four requirements partly tested.
+6. **Given** the change is complete, **when** I run `just check`, **then** it passes.
 
 ## Design decisions
 
@@ -58,11 +59,11 @@ No new ADR is expected.
 ### Other decisions (not ADR-worthy)
 
 * **Test, not change:** only tests and two dated doc notes change, because the issue asks for assertions about existing behaviour.
-* **Probe endpoint in the test host:** no production route returns 403 today, so the test maps one under `/api` that requires an unmet policy, rather than adding a production route for testing.
+* **No probe endpoint:** no production route denies a signed-in user, so the test overrides the fallback authorization policy in the test host to require a claim nobody has, and sets the cookie scheme as the forbid scheme so the real `OnRedirectToAccessDenied` handler runs.
 
 ## Implementation notes
 
-*Planned. This section is completed as the story is built.*
+Delivered; see the PRs in the front matter.
 
 ### Where things live
 
@@ -79,14 +80,14 @@ No changes.
 
 ### Testing
 
-* API tests with Testcontainers PostgreSQL where the host needs it (Docker required); in-process hosting tests with a temporary web root otherwise.
+* In-process hosting tests (`WebApplicationFactory`, no database connection) in `HostingTests`. Negative control: with `HttpOnly` off, `SameSite` set to Strict and the 403 handler returning 418, the cookie and 403 tests failed; the production file was then restored. The asset and problem-details assertions were not mutation-tested.
 
 ### Lessons learned, known issues and follow-ups
 
-* To be completed on delivery.
+* Behaviour already matched the ADRs; no production change was needed. `/api/unknown` already returned `application/problem+json`.
 
 ## User guide
 
-*Planned behaviour. This section is finalised when the story is implemented.*
+*No user-facing behaviour changed.*
 
 No user-visible change: this story adds tests only.

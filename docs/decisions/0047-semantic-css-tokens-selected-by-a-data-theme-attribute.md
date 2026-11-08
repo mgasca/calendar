@@ -103,6 +103,7 @@ Chosen option: "Semantic custom-property tokens in plain CSS, selected by `data-
 * Fonts for the two themes are a separate decision: [ADR-0048](0048-self-host-theme-fonts-with-fontsource-packages.md).
 * [ADR-0043](0043-form-validation-red-borders-and-bubble.md) (form errors as red borders and a bubble) stays in force; its colours become status tokens.
 * Revisit if a third theme or per-user server-side preference is requested, or if a component library with its own theming is adopted.
+* **Amendment, 2026-11-07:** the token layer is shared with the docs site through one frontend workspace package, in story [0046](../stories/0046-apply-the-calendar-themes-to-the-docs-site.md) and epic #513; see the amendment below. The decision and ratings are unchanged, so this ADR is amended, not superseded.
 
 ### Amendment, 2026-11-07: the token layer is shared with the docs site
 

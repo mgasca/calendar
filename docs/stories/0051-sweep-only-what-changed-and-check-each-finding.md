@@ -41,7 +41,7 @@ Both sweeps re-read everything on every run. Neither has a watermark, so neither
 
   Each fails the PR that introduces the drift. M1, M4, M5 and the open-PR half of M6 stay sweep steps, because they need judgement or `gh`.
 * **`check-adr --inventory`** prints the ADR sweep's step 2 inventory as JSON: number, title, status, superseded-by, amendment headings and dates, the date first on `main`, the model entry, and the paths, commands and versions each record cites.
-* **A watermark in both reports** ([#563](https://github.com/mgasca/calendar/issues/563)). The last line of the report holds the `origin/main` SHA read, the UTC time, and the SHA at which each item was last judged. A run without a previous report looks for one in the owning card and its issue comments before it falls back to a full run, as `dream-weaver` does.
+* **A watermark in both reports** ([#563](https://github.com/mgasca/calendar/issues/563)). The last line of the report holds the `origin/main` SHA read, the UTC time, and the SHA at which each item was last judged. **Reports live in `docs/sweeps/adr/` and `docs/sweeps/issue/`**, one file per run named by its UTC time (`2026-11-08T1415Z.md`). Each run publishes its report in one docs-only PR that adds only that file. A "No change" run publishes too, because the watermark moves. The docs site does not publish the folder. A run without an appended report reads the newest file on `main`, or a newer one in an open report PR, before it falls back to a full run. Agreed on #568, 2026-11-08.
 * **Delta only.** A run judges only the items selected below. Every other item keeps its class from the previous report and is marked "carried". The report names each item that was not judged and when it was last judged.
   * ADR sweep:
     * records changed since the watermark;
@@ -96,7 +96,7 @@ Both sweeps re-read everything on every run. Neither has a watermark, so neither
 2. **Given** a branch where the model's status for a record differs from the file, a `superseded by` target that does not name its predecessor, an amendment heading without a date, a number that `main` already has, or a `planned` card citing a superseded record, **when** CI runs `just tools adr`, **then** it fails and names the record and the rule. The decision log on `main` passes.
 3. **Given** `main`, **when** I run `just tools adr --inventory`, **then** it prints one JSON entry per record, with number, title, status, superseded-by, amendments, first date on `main`, model entry and cited tokens.
 4. **Given** a previous sweep report with a watermark, **when** either sweep runs again, **then** it judges only the items its delta selects. It marks every other item "carried", lists each item it did not judge with when it was last judged, and ends with a new watermark.
-5. **Given** no previous report is supplied, **when** a sweep runs, **then** it looks for one in the owning card and issue comments, and says whether it found one before it falls back to a full run.
+5. **Given** no previous report is supplied, **when** a sweep runs, **then** it reads the newest report in `docs/sweeps/<adr|issue>/` on `main` (or a newer one in an open report PR), and says whether it found one before it falls back to a full run.
 6. **Given** a record whose cited path or command changed on `main` since the watermark, but whose own file did not change, **when** the ADR sweep runs, **then** that record is in the delta and its reason names the change.
 7. **Given** a Claude Code session, **when** the ADR sweep reaches its judgement checks, **then** it runs `adr-sweep-judge`, and the report lists confirmed, refuted (with the skeptics' reasons) and unexamined findings, and says that the workflow path ran.
 8. **Given** a harness without the Workflow tool, **when** either sweep runs, **then** it follows the by-hand steps, completes, and says in the report that the by-hand path ran and which items it did not judge.
@@ -105,7 +105,8 @@ Both sweeps re-read everything on every run. Neither has a watermark, so neither
 11. **Given** the scheduled mj routine starts Claude Code, **when** the ADR sweep runs, **then** the workflow and `sweep-skeptic` are available and run. The run is recorded, or the gap is filed as an issue.
 12. **Given** a Safe to close or Nearly done issue, **when** the issue sweep runs in Claude Code, **then** `issue-sweep-verify` runs two skeptics on it. It is handed to `issue-closeout` only when both decline, and a refuted issue is reported as Still open with the reason.
 13. **Given** the first three ADR workflow runs, **when** the benchmark record is written, **then** it gives each run's agent count, tokens and wall-clock time, each marked measured. It also compares the records each run judged with the coverage line of the 2026-11-07 by-hand sweep.
-14. **Given** the change is complete, **when** I run `just check`, **then** it passes.
+14. **Given** a sweep run finishes, **when** it publishes, **then** one docs-only PR adds exactly one file, `docs/sweeps/<adr|issue>/<UTC stamp>.md`, whose last line is the watermark, and changes nothing else.
+15. **Given** the change is complete, **when** I run `just check`, **then** it passes.
 
 ## Design decisions
 
@@ -149,6 +150,7 @@ An amendment to ADR-0044 is expected (#561). No new record is expected.
 | Workflows | `.claude/workflows/adr-sweep-judge.js`, `.claude/workflows/issue-sweep-verify.js` |
 | Skeptic agent | `.claude/agents/sweep-skeptic.md` |
 | Measurements | a new record in `docs/benchmarks/` |
+| Sweep reports | `docs/sweeps/adr/`, `docs/sweeps/issue/` and their `docs/sweeps/README.md` (not published) |
 
 ### API
 

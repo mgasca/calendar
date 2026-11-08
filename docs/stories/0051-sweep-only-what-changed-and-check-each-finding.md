@@ -56,9 +56,14 @@ Both sweeps re-read everything on every run. Neither has a watermark, so neither
     * new issues;
     * a rotation of the issues judged longest ago.
 * **An ADR judgement workflow** ([#564](https://github.com/mgasca/calendar/issues/564)), `.claude/workflows/adr-sweep-judge.js`, Claude Code only.
-  * **Judges:** the session passes the delta records, each with the reason it was selected. The workflow runs one judge per record (J1 to J5, plus J7 on request) against `origin/main`. Each judge returns findings with the check id, class, evidence as file and line, and whether the finding was inferred.
+  * **Judges:** the session passes the delta records, each with the reason it was selected. The workflow runs one judge per record, on Sonnet, (J1 to J5, plus J7 on request) against `origin/main`. Each judge returns findings with the check id, class, evidence as file and line, and whether the finding was inferred.
   * **Skeptics:** each Fix now or Decide finding goes to two `sweep-skeptic` agents, one per lens. *True* asks whether the claim holds on `origin/main`. *Matters* asks whether a reader of the record would act differently. Watch findings are not verified. A finding is confirmed only if both skeptics decline. Uncertainty refutes and says so, as in 0035.
-  * **The cap:** records are taken in order of their reason, and records past a per-run agent cap come back as unexamined, logged, and first in the next rotation.
+  * **Two caps, both logged:**
+    * **Per record, 12 agents:** the judge plus that record's skeptics. Findings past this cap come back as unexamined, highest class first (Fix now, then Decide).
+    * **Per run, 40 agents:** records are taken in order of their reason. Records past this cap come back as unexamined and are first in the next rotation.
+    * **The rotation:** *k* = 6 records per sweep, so every record is judged at least once every nine sweeps of the 49-record log.
+
+    All three are workflow `args` with these defaults.
   * **The workflow returns data and never writes to GitHub.**
 * **A `sweep-skeptic` agent definition**, `.claude/agents/sweep-skeptic.md`: read-only, on Haiku, for one claim about `origin/main` or GitHub state through one lens. It is separate from `skeptic`, which starts from a branch diff and which the review before a merge depends on.
 * **Option B in both skills.** In Claude Code, the per-item judgement runs the workflow, and the skill's instruction counts as the opt-in, as `issue-handover` does for the review. Any other harness follows the by-hand steps. The session keeps the work that needs every result or writes to GitHub:
@@ -68,7 +73,7 @@ Both sweeps re-read everything on every run. Neither has a watermark, so neither
   * the comparison with the previous report, the report itself and the watermark;
   * hand-offs one PR or closeout at a time.
 * **An issue verification workflow** ([#565](https://github.com/mgasca/calendar/issues/565)), `.claude/workflows/issue-sweep-verify.js`, Claude Code only. The session still classifies inline. The workflow runs two `sweep-skeptic` agents on each Safe to close or Nearly done issue. The lenses are *done on main* (every cited item, child and criterion holds) and *nothing left in the thread* (no later owner request, no open child, no unanswered question). An issue is handed to `issue-closeout` only when both skeptics decline. A refuted one is reported as Still open, with the reason.
-* **Measured, not assumed.** A benchmark record gives the agent count, tokens and wall-clock time of the first three ADR workflow runs and of the by-hand path on the same watermark.
+* **Measured, not assumed.** A benchmark record gives the agent count, tokens and wall-clock time of the first three ADR workflow runs. It compares their coverage with the 2026-11-07 by-hand sweep's coverage line. No paired by-hand run is made, so the by-hand side has no token figure, and the record says so.
 
 ### Not in this story
 
@@ -95,11 +100,11 @@ Both sweeps re-read everything on every run. Neither has a watermark, so neither
 6. **Given** a record whose cited path or command changed on `main` since the watermark, but whose own file did not change, **when** the ADR sweep runs, **then** that record is in the delta and its reason names the change.
 7. **Given** a Claude Code session, **when** the ADR sweep reaches its judgement checks, **then** it runs `adr-sweep-judge`, and the report lists confirmed, refuted (with the skeptics' reasons) and unexamined findings, and says that the workflow path ran.
 8. **Given** a harness without the Workflow tool, **when** either sweep runs, **then** it follows the by-hand steps, completes, and says in the report that the by-hand path ran and which items it did not judge.
-9. **Given** more delta records than the cap allows, **when** the workflow runs, **then** records past the cap are returned as unexamined. The run's log names how many were left, and the next run's rotation takes them first.
+9. **Given** more delta records than the run cap of 40 agents allows, or a record whose findings need more than 12 agents, **when** the workflow runs, **then** the records or findings past the cap are returned as unexamined. The run's log names how many were left at each cap, and the next run's rotation takes the left-over records first.
 10. **Given** a judge or skeptic that returns nothing, **when** the workflow finishes, **then** the affected record or finding is listed as unexamined, not as passed or refuted.
 11. **Given** the scheduled mj routine starts Claude Code, **when** the ADR sweep runs, **then** the workflow and `sweep-skeptic` are available and run. The run is recorded, or the gap is filed as an issue.
 12. **Given** a Safe to close or Nearly done issue, **when** the issue sweep runs in Claude Code, **then** `issue-sweep-verify` runs two skeptics on it. It is handed to `issue-closeout` only when both decline, and a refuted issue is reported as Still open with the reason.
-13. **Given** the first three ADR workflow runs, **when** the benchmark record is written, **then** it gives each run's agent count, tokens and wall-clock time, and the same quantities for the by-hand path on the same watermark, each marked measured.
+13. **Given** the first three ADR workflow runs, **when** the benchmark record is written, **then** it gives each run's agent count, tokens and wall-clock time, each marked measured. It also compares the records each run judged with the coverage line of the 2026-11-07 by-hand sweep.
 14. **Given** the change is complete, **when** I run `just check`, **then** it passes.
 
 ## Design decisions
@@ -122,6 +127,9 @@ An amendment to ADR-0044 is expected (#561). No new record is expected.
 * **Mechanical checks in `check-adr`, not in agents:** they are deterministic, free, and run in CI on every PR, which turns "found at the next sweep" into "refused at the PR" for every harness. The skill already named them as candidates. Agreed 2026-11-08.
 * **An epic with a child per deliverable:** each deliverable touches different files and can be reviewed and merged on its own, as in 0045. Agreed 2026-11-08.
 * **The session posts, not the script:** every GitHub write stays behind the public-post guard and the session's judgement, as in 0035.
+* **Sonnet judges, Haiku skeptics:** the judges run on Sonnet (the workflow's per-agent `model`), which keeps the per-record J checks cheap. `sweep-skeptic` is pinned to Haiku in its front matter, like `skeptic`. This differs from the reviewers, which run on Opus. The benchmark record shows whether Sonnet misses findings that matter. Answered on #566, 2026-11-08.
+* **Caps of 12 per record and 40 per run, rotation 6:** the per-record cap stops one record with many findings from using up the run's budget. The run cap bounds a day with a large refactor. Answered on #566 and in conversation, 2026-11-08.
+* **No paired by-hand baseline:** the comparison uses the 2026-11-07 report, so the first runs cost no more than the workflow itself. The price is that the by-hand path has no token figure. Answered on #566, 2026-11-08.
 * **Two lenses, not three:** *reproduces* has nothing to run for a claim about a document or an issue thread.
 * **A new skeptic agent, not a second mode of `skeptic`:** the review before a merge depends on `skeptic` as it is. The 0035 lesson about agent definitions applies: the first run after adding `sweep-skeptic` starts from a fresh session on a checkout that already has the file.
 * **Cross-record grouping stays in the session:** it needs every result at once but is a cheap read of a short list, so a barrier agent would add latency for little.

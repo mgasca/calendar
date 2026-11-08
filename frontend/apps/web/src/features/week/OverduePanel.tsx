@@ -15,6 +15,7 @@ export function OverduePanel({
   locale,
   disabled,
   onToggle,
+  onOpen,
 }: TaskToggleProps & { tasks: readonly AgendaTask[]; today: string; total: number }) {
   return (
     <section aria-labelledby="week-overdue-heading" className="week-overdue">
@@ -36,6 +37,7 @@ export function OverduePanel({
             locale={locale}
             disabled={disabled}
             onToggle={onToggle}
+            onOpen={onOpen}
           />
         ))}
       </ul>

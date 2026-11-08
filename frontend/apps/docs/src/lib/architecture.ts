@@ -49,11 +49,32 @@ export interface ModelNode {
 /** Who owns an element: the colour of its box in the diagrams. */
 export type Ownership = 'person' | 'ours' | 'platform' | 'external';
 
+/**
+ * The fill and stroke of each ownership are shared-theme tokens (story 0046), not colour values: the
+ * diagram text carries `var(--color-*)` references, which resolve in the page whichever theme is
+ * shown, so the diagrams cannot drift from the canonical palette.
+ */
 export const ownershipLegend: Record<Ownership, { label: string; fill: string; stroke: string }> = {
-  person: { label: 'Person', fill: '#fde68a', stroke: '#b45309' },
-  ours: { label: 'Built in this repository', fill: '#bfdbfe', stroke: '#1d4ed8' },
-  platform: { label: 'Hosting and tooling we configure', fill: '#ddd6fe', stroke: '#6d28d9' },
-  external: { label: 'External service we only use', fill: '#e5e7eb', stroke: '#6b7280' },
+  person: {
+    label: 'Person',
+    fill: 'var(--color-overdue-bg)',
+    stroke: 'var(--color-overdue-text)',
+  },
+  ours: {
+    label: 'Built in this repository',
+    fill: 'var(--color-accent-soft)',
+    stroke: 'var(--color-accent)',
+  },
+  platform: {
+    label: 'Hosting and tooling we configure',
+    fill: 'var(--color-current-bg)',
+    stroke: 'var(--color-current-border)',
+  },
+  external: {
+    label: 'External service we only use',
+    fill: 'var(--color-surface-sunken)',
+    stroke: 'var(--color-border-strong)',
+  },
 };
 
 const ownerships = Object.keys(ownershipLegend) as Ownership[];
@@ -630,21 +651,22 @@ const elkLayout = ['---', 'config:', '  layout: elk', '---'];
 /** One Mermaid class per ownership; external services get a dashed border as well as the grey. */
 function classDefs(): string[] {
   return ownerships.map((ownership) => {
-    const { fill, stroke } = ownershipLegend[ownership];
     const dash = ownership === 'external' ? ',stroke-dasharray:4 2' : '';
-    return `  classDef ${ownership} fill:${fill},stroke:${stroke},color:#1f2937${dash}`;
+    return `  classDef ${ownership} stroke-width:1.5px${dash}`;
   });
 }
 
 /**
- * A `#rrggbb` colour as `rgba(r,g,b,a)`, the form Mermaid accepts for a sequence-diagram box (not
- * hex). Half-transparent, the lane tints the page background in either theme, so the message text
- * keeps its contrast in dark mode as well as light.
+ * A sequence-diagram `box` takes a real colour, never a `var()`, so each ownership gets a marker:
+ * a fully transparent-looking colour that differs only in its alpha. `mermaid-theme.ts` paints the
+ * box of each marker with that ownership's tokens. The boxes stay in the order of first appearance.
  */
-export function rgba(hex: string, alpha = 0.5): string {
-  const channels = [1, 3, 5].map((start) => Number.parseInt(hex.slice(start, start + 2), 16));
-  return `rgba(${channels.join(',')},${String(alpha)})`;
-}
+export const ownershipBoxMarker: Record<Ownership, string> = {
+  person: 'rgba(0,0,0,0.01)',
+  ours: 'rgba(0,0,0,0.02)',
+  platform: 'rgba(0,0,0,0.03)',
+  external: 'rgba(0,0,0,0.04)',
+};
 
 /** The one-line legend under a diagram, with a swatch per ownership that appears in it. */
 export function legend(used: Iterable<Ownership>): string {
@@ -914,12 +936,11 @@ class Renderer {
         const indent = '  '.repeat(depth);
         const nested = children.get(id);
         if (nested === undefined) return [`${indent}${this.box(id)}`];
-        const { fill, stroke } = ownershipLegend[this.owner(id)];
         return [
           `${indent}subgraph ${mermaidId(id)}["${mermaidText(this.node(id).name)}"]`,
           ...render(id, depth + 1),
           `${indent}end`,
-          `${indent}style ${mermaidId(id)} fill:${fill},stroke:${stroke},color:#1f2937`,
+          `${indent}class ${mermaidId(id)} ${this.owner(id)}`,
         ];
       });
     const edges: string[] = [...classDefs()];
@@ -963,7 +984,7 @@ class Renderer {
       const ownership = this.owner(id);
       if (ownership !== open) {
         if (open !== undefined) lines.push('  end');
-        lines.push(`  box ${rgba(ownershipLegend[ownership].fill)}`);
+        lines.push(`  box ${ownershipBoxMarker[ownership]}`);
         open = ownership;
       }
       lines.push(`    participant ${mermaidId(id)} as ${mermaidText(this.node(id).name)}`);

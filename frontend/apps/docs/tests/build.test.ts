@@ -351,3 +351,19 @@ describe('theme control (story 0046)', () => {
     }
   });
 });
+
+describe('themed content (story 0046)', () => {
+  it('ships no colour literal in the page CSS and styles code blocks by data-theme', async () => {
+    const files = (await readdir('dist/_astro')).filter((name) => name.endsWith('.css'));
+    const css = (
+      await Promise.all(files.map((name) => readFile(`dist/_astro/${name}`, 'utf8')))
+    ).join('\n');
+    // Badges: the status variables are tokens, not hex colours.
+    expect(css).toMatch(/--adr-status-accepted-bg:var\(--color-accent-soft\)/);
+    expect(css).not.toMatch(/--adr-status-[\w-]+:\s*#/);
+    // Code blocks follow the page's theme attribute through Expressive Code's own selectors.
+    const page = await readFile('dist/runbooks/web-theme-and-styling/index.html', 'utf8');
+    expect(page).toMatch(/\[data-theme=['"]?dark['"]?\]/);
+    expect(page).toMatch(/\[data-theme=['"]?light['"]?\]/);
+  });
+});

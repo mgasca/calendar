@@ -13,7 +13,10 @@ import {
   parseArchitecture,
 } from './src/lib/architecture';
 import { documentRoutes } from './src/lib/docs-loader';
+import { mermaidThemeCss } from './src/lib/mermaid-theme';
+import { colour, readPalettes } from './src/lib/theme-palette';
 
+const palettes = readPalettes();
 const { site, base } = deployment(process.env.DOCS_SITE_URL);
 // The flows become sidebar entries, so the model is read once here; the loader validates it.
 const { flows } = parseArchitecture(
@@ -78,10 +81,9 @@ export default defineConfig({
     // `look: 'classic'` keep the Mermaid 11 layout and look, and only the architecture overview
     // opts into ELK, in its frontmatter. `radius` rounds the rounded node shape the generator
     // emits; padding and spacing give the text and the edge labels room.
-    // `themeCSS` puts each edge label on a solid, padded patch of the page background, so an arrow
-    // never runs through its text; it is Mermaid's own CSS because Mermaid sizes the label with it
-    // (page CSS arrives too late), and it needs `!important` over Mermaid's id-scoped label rules.
-    // Shadows and rounded subgraphs are page CSS (src/styles/docs.css).
+    // `themeCSS` (src/lib/mermaid-theme.ts) paints the nodes, edges and sequence parts from the shared
+    // theme tokens, which follow data-theme, so no colour is copied here; it is Mermaid's own CSS
+    // because Mermaid sizes the edge labels with it (page CSS arrives too late). Shadows and rounded subgraphs are page CSS (src/styles/docs.css).
     mermaid({
       autoTheme: true,
       enableLog: false,
@@ -90,11 +92,7 @@ export default defineConfig({
         look: 'classic',
         themeVariables: { radius: 8 },
         flowchart: { padding: 22, nodeSpacing: 60, rankSpacing: 90 },
-        themeCSS: [
-          '.labelBkg { background-color: var(--sl-color-bg) !important; border-radius: 4px; }',
-          '.edgeLabel p { background-color: var(--sl-color-bg) !important; padding: 2px 6px; border-radius: 4px; }',
-          '.edgeLabel rect { fill: var(--sl-color-bg) !important; opacity: 1 !important; }',
-        ].join(' '),
+        themeCSS: mermaidThemeCss,
       },
     }),
     starlight({
@@ -109,11 +107,29 @@ export default defineConfig({
         ThemeProvider: './src/components/ThemeProvider.astro',
         ThemeSelect: './src/components/ThemeSelect.astro',
       },
+      // The code blocks use GitHub's syntax colours, on the page's own code surface: the editor
+      // background is the shared token's value, so Expressive Code adjusts syntax contrast against it.
+      expressiveCode: {
+        themes: ['github-light', 'github-dark'],
+        customizeTheme: (theme) => {
+          const palette = theme.type === 'dark' ? palettes.dark : palettes.light;
+          theme.colors['editor.background'] = colour(palette, 'surface-sunken');
+          theme.colors['editor.foreground'] = colour(palette, 'text');
+          return theme;
+        },
+        styleOverrides: {
+          borderRadius: 'var(--radius-md)',
+          borderColor: 'var(--color-border-strong)',
+          codeBackground: 'var(--color-surface-sunken)',
+          codeForeground: 'var(--color-text)',
+        },
+      },
       customCss: [
         '@calendar/theme/fonts.css',
         '@calendar/theme/tokens.css',
         './src/styles/theme-adapter.css',
         './src/styles/theme-control.css',
+        './src/styles/theme-content.css',
         './src/styles/docs.css',
       ],
       sidebar: [

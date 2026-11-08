@@ -14,18 +14,20 @@
   max-width: 100%;
 }
 
-/* Keep canonical status wording, with the same readable palette in both themes. */
+/* Status badges keep their canonical wording; each background and text pair is a token pair the
+   contrast guard in @calendar/theme covers (accent-soft, current-bg, error-soft, overdue-bg and
+   surface-sunken against text, error or text-muted). */
 :root {
-  --adr-status-accepted-bg: #dcfce7;
-  --adr-status-accepted-text: #14532d;
-  --adr-status-draft-bg: #fef3c7;
-  --adr-status-draft-text: #78350f;
-  --adr-status-rejected-bg: #fee2e2;
-  --adr-status-rejected-text: #7f1d1d;
-  --adr-status-superseded-bg: #ffedd5;
-  --adr-status-superseded-text: #7c2d12;
-  --adr-status-pending-bg: #e5e7eb;
-  --adr-status-pending-text: #374151;
+  --adr-status-accepted-bg: var(--color-accent-soft);
+  --adr-status-accepted-text: var(--color-text);
+  --adr-status-draft-bg: var(--color-current-bg);
+  --adr-status-draft-text: var(--color-text);
+  --adr-status-rejected-bg: var(--color-error-soft);
+  --adr-status-rejected-text: var(--color-error);
+  --adr-status-superseded-bg: var(--color-overdue-bg);
+  --adr-status-superseded-text: var(--color-text);
+  --adr-status-pending-bg: var(--color-surface-sunken);
+  --adr-status-pending-text: var(--color-text-muted);
 }
 .sidebar-content a[data-doc-number] {
   display: grid;
@@ -120,10 +122,7 @@
  * text past its box and clip it.
  */
 :root {
-  --diagram-shadow: rgba(15, 23, 42, 0.22);
-}
-:root[data-theme='dark'] {
-  --diagram-shadow: rgba(0, 0, 0, 0.6);
+  --diagram-shadow: color-mix(in srgb, var(--color-text) 30%, transparent);
 }
 pre.mermaid .node .label-container,
 pre.mermaid .node > path,

@@ -31,12 +31,6 @@ const CONSUMERS = [
   ['docs site', join(PACKAGE, '..', '..', 'apps', 'docs', 'src')],
 ] as const;
 
-/**
- * Docs stylesheets that still hold colour literals until #516 (adapter) and #517 (badges, diagrams)
- * map them to tokens. Each entry must still contain a literal, so the exemption cannot outlive them.
- */
-const PENDING_LITERALS = new Set(['docs:styles/docs.css']);
-
 describe('guard scanners', () => {
   it('finds colour literals, system colours and literals inside color-mix, but not token references', () => {
     expect(colourLiterals('a { color: #fff; }')).toHaveLength(1);
@@ -77,8 +71,7 @@ describe('shared token file (ADR-0047)', () => {
   });
 });
 
-describe.each(CONSUMERS)('consumer stylesheets, %s', (name, dir) => {
-  const key = name === 'docs site' ? 'docs' : 'web';
+describe.each(CONSUMERS)('consumer stylesheets, %s', (_name, dir) => {
   const files = cssFilesUnder(dir);
 
   it('has stylesheets', () => {
@@ -86,17 +79,10 @@ describe.each(CONSUMERS)('consumer stylesheets, %s', (name, dir) => {
   });
 
   it.each(files)('%s has no colour literal', (file) => {
-    const found = colourLiterals(readCss(dir, file));
-    if (PENDING_LITERALS.has(`${key}:${file}`)) {
-      expect(found.length, `${file} no longer needs its exemption`).toBeGreaterThan(0);
-    } else {
-      expect(found).toEqual([]);
-    }
+    expect(colourLiterals(readCss(dir, file))).toEqual([]);
   });
 
   it.each(files)('%s has no theme selector or colour-scheme query', (file) => {
-    // docs.css still scopes a shadow to :root[data-theme='dark']; #517 replaces it with a token.
-    if (PENDING_LITERALS.has(`${key}:${file}`)) return;
     expect(themeSelectors(readCss(dir, file))).toEqual([]);
   });
 });

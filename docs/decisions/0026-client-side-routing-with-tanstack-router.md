@@ -97,6 +97,8 @@ Here is each *Deep links* requirement against its evidence. The links point to `
 
 The hosting test passed in the CI `Backend` job, and the image smoke test in the `Container image` job, on `main` at `082c64e08` (CI run [42406004961](https://github.com/mgasca/calendar/actions/runs/42406004961)). Both hosting tests also passed locally on 2026-11-07.
 
+**Update, 2026-11-08 ([#497](https://github.com/mgasca/calendar/issues/497), [story 0049](../stories/0049-assert-the-partly-tested-spa-hosting-requirements.md)):** the two requirements named above as partly tested are now asserted. `SpaRoutingAndCacheHeaders` in `backend/tests/Calendar.Api.Tests/Endpoints/HostingTests.cs` checks that `/assets/app-Abc123_X.js` returns 200 with its body, and that `/api/unknown` returns 404 as `application/problem+json` with `status` 404. The decision is unchanged and not re-rated. Asset replacement on a release stays deployment-only.
+
 ## Pros and Cons of the Options
 
 ### TanStack Router with code-based route definitions

@@ -88,6 +88,8 @@ The tests below are in `backend/tests/Calendar.Api.Tests/Endpoints/`, and the li
 
 The `Backend` and `Container image` CI jobs passed on `main` at `082c64e08` (CI run [42406004961](https://github.com/mgasca/calendar/actions/runs/42406004961)). Both hosting tests also passed locally on 2026-11-07.
 
+**Update, 2026-11-08 ([#497](https://github.com/mgasca/calendar/issues/497), [story 0049](../stories/0049-assert-the-partly-tested-spa-hosting-requirements.md)):** the 403 response and the cookie attributes are now asserted in `backend/tests/Calendar.Api.Tests/Endpoints/HostingTests.cs`. `DeniedApiRequestIsForbiddenNotRedirected` shows a signed-in user who fails the authorization policy gets 403 with no redirect from an `/api` route. `SessionCookieIsHttpOnlyAndSameSiteLax` shows the `Set-Cookie` header the cookie scheme writes (on sign-out) carries `httponly` and `samesite=lax`. The decision is unchanged and not re-rated. No Azure deployment check has run.
+
 ## Pros and Cons of the Options
 
 ### One image serving the API and SPA

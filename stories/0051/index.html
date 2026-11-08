@@ -89,7 +89,7 @@
 <p><strong><code>check-adr --inventory</code></strong> prints the ADR sweep’s step 2 inventory as JSON: number, title, status, superseded-by, amendment headings and dates, the date first on <code>main</code>, the model entry, and the paths, commands and versions each record cites.</p>
 </li>
 <li>
-<p><strong>A watermark in both reports</strong> (<a href="https://github.com/mgasca/calendar/issues/563">#563</a>). The last line of the report holds the <code>origin/main</code> SHA read, the UTC time, and the SHA at which each item was last judged. A run without a previous report looks for one in the owning card and its issue comments before it falls back to a full run, as <code>dream-weaver</code> does.</p>
+<p><strong>A watermark in both reports</strong> (<a href="https://github.com/mgasca/calendar/issues/563">#563</a>). The last line of the report holds the <code>origin/main</code> SHA read, the UTC time, and the SHA at which each item was last judged. <strong>Reports live in <code>docs/sweeps/adr/</code> and <code>docs/sweeps/issue/</code></strong>, one file per run named by its UTC time (<code>2026-11-08T1415Z.md</code>). Each run publishes its report in one docs-only PR that adds only that file. A “No change” run publishes too, because the watermark moves. The docs site does not publish the folder. A run without an appended report reads the newest file on <code>main</code>, or a newer one in an open report PR, before it falls back to a full run. Agreed on #568, 2026-11-08.</p>
 </li>
 <li>
 <p><strong>Delta only.</strong> A run judges only the items selected below. Every other item keeps its class from the previous report and is marked “carried”. The report names each item that was not judged and when it was last judged.</p>
@@ -178,7 +178,7 @@
 <li><strong>Given</strong> a branch where the model’s status for a record differs from the file, a <code>superseded by</code> target that does not name its predecessor, an amendment heading without a date, a number that <code>main</code> already has, or a <code>planned</code> card citing a superseded record, <strong>when</strong> CI runs <code>just tools adr</code>, <strong>then</strong> it fails and names the record and the rule. The decision log on <code>main</code> passes.</li>
 <li><strong>Given</strong> <code>main</code>, <strong>when</strong> I run <code>just tools adr --inventory</code>, <strong>then</strong> it prints one JSON entry per record, with number, title, status, superseded-by, amendments, first date on <code>main</code>, model entry and cited tokens.</li>
 <li><strong>Given</strong> a previous sweep report with a watermark, <strong>when</strong> either sweep runs again, <strong>then</strong> it judges only the items its delta selects. It marks every other item “carried”, lists each item it did not judge with when it was last judged, and ends with a new watermark.</li>
-<li><strong>Given</strong> no previous report is supplied, <strong>when</strong> a sweep runs, <strong>then</strong> it looks for one in the owning card and issue comments, and says whether it found one before it falls back to a full run.</li>
+<li><strong>Given</strong> no previous report is supplied, <strong>when</strong> a sweep runs, <strong>then</strong> it reads the newest report in <code>docs/sweeps/&#x3C;adr|issue>/</code> on <code>main</code> (or a newer one in an open report PR), and says whether it found one before it falls back to a full run.</li>
 <li><strong>Given</strong> a record whose cited path or command changed on <code>main</code> since the watermark, but whose own file did not change, <strong>when</strong> the ADR sweep runs, <strong>then</strong> that record is in the delta and its reason names the change.</li>
 <li><strong>Given</strong> a Claude Code session, <strong>when</strong> the ADR sweep reaches its judgement checks, <strong>then</strong> it runs <code>adr-sweep-judge</code>, and the report lists confirmed, refuted (with the skeptics’ reasons) and unexamined findings, and says that the workflow path ran.</li>
 <li><strong>Given</strong> a harness without the Workflow tool, <strong>when</strong> either sweep runs, <strong>then</strong> it follows the by-hand steps, completes, and says in the report that the by-hand path ran and which items it did not judge.</li>
@@ -187,6 +187,7 @@
 <li><strong>Given</strong> the scheduled mj routine starts Claude Code, <strong>when</strong> the ADR sweep runs, <strong>then</strong> the workflow and <code>sweep-skeptic</code> are available and run. The run is recorded, or the gap is filed as an issue.</li>
 <li><strong>Given</strong> a Safe to close or Nearly done issue, <strong>when</strong> the issue sweep runs in Claude Code, <strong>then</strong> <code>issue-sweep-verify</code> runs two skeptics on it. It is handed to <code>issue-closeout</code> only when both decline, and a refuted issue is reported as Still open with the reason.</li>
 <li><strong>Given</strong> the first three ADR workflow runs, <strong>when</strong> the benchmark record is written, <strong>then</strong> it gives each run’s agent count, tokens and wall-clock time, each marked measured. It also compares the records each run judged with the coverage line of the 2026-11-07 by-hand sweep.</li>
+<li><strong>Given</strong> a sweep run finishes, <strong>when</strong> it publishes, <strong>then</strong> one docs-only PR adds exactly one file, <code>docs/sweeps/&#x3C;adr|issue>/&#x3C;UTC stamp>.md</code>, whose last line is the watermark, and changes nothing else.</li>
 <li><strong>Given</strong> the change is complete, <strong>when</strong> I run <code>just check</code>, <strong>then</strong> it passes.</li>
 </ol>
 <h2 id="design-decisions">Design decisions</h2>
@@ -274,7 +275,11 @@
 
 
 
-<table><thead><tr><th>Area</th><th>Location</th></tr></thead><tbody><tr><td>ADR-0044 amendment</td><td><code>docs/decisions/0044-claude-first-agent-automation.md</code></td></tr><tr><td>Mechanical checks and <code>--inventory</code></td><td><code>.claude/skills/adr-draft/scripts/check-adr/</code> (<code>AdrValidator.cs</code>, <code>check-adr.cs</code>) and its tests</td></tr><tr><td>Sweep skills</td><td><code>.claude/skills/adr-sweep/SKILL.md</code>, <code>.claude/skills/issue-sweep/SKILL.md</code></td></tr><tr><td>Workflows</td><td><code>.claude/workflows/adr-sweep-judge.js</code>, <code>.claude/workflows/issue-sweep-verify.js</code></td></tr><tr><td>Skeptic agent</td><td><code>.claude/agents/sweep-skeptic.md</code></td></tr><tr><td>Measurements</td><td>a new record in <code>docs/benchmarks/</code></td></tr></tbody></table>
+
+
+
+
+<table><thead><tr><th>Area</th><th>Location</th></tr></thead><tbody><tr><td>ADR-0044 amendment</td><td><code>docs/decisions/0044-claude-first-agent-automation.md</code></td></tr><tr><td>Mechanical checks and <code>--inventory</code></td><td><code>.claude/skills/adr-draft/scripts/check-adr/</code> (<code>AdrValidator.cs</code>, <code>check-adr.cs</code>) and its tests</td></tr><tr><td>Sweep skills</td><td><code>.claude/skills/adr-sweep/SKILL.md</code>, <code>.claude/skills/issue-sweep/SKILL.md</code></td></tr><tr><td>Workflows</td><td><code>.claude/workflows/adr-sweep-judge.js</code>, <code>.claude/workflows/issue-sweep-verify.js</code></td></tr><tr><td>Skeptic agent</td><td><code>.claude/agents/sweep-skeptic.md</code></td></tr><tr><td>Measurements</td><td>a new record in <code>docs/benchmarks/</code></td></tr><tr><td>Sweep reports</td><td><code>docs/sweeps/adr/</code>, <code>docs/sweeps/issue/</code> and their <code>docs/sweeps/README.md</code> (not published)</td></tr></tbody></table>
 <h3 id="api">API</h3>
 <p>No changes.</p>
 <h3 id="testing">Testing</h3>

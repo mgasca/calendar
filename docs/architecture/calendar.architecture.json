@@ -626,7 +626,7 @@
             {
               "requirement-url": "https://raw.githubusercontent.com/mgasca/calendar/main/docs/architecture/controls/delivery-performance.requirement.json",
               "config": {
-                "gated-jobs": ["Backend", "Frontend", "Docs site", "Tooling", "Container image"],
+                "gated-jobs": ["Backend", "Changes", "Container image", "Docs site", "Frontend", "Tooling"],
                 "quantity": "Each job's started_at to completed_at from the jobs API; queue time, skipped jobs, CI result and Cancel superseded runs are not gated",
                 "paths": {
                   "publication": "The Docs site step 'Build and verify publication artifact' succeeded: pushes to main and same-repository pull requests that run Docs site, i.e. that change the docs (ADR-0046)",
@@ -634,20 +634,21 @@
                 },
                 "threshold": {
                   "formula": "ceil(max(exp(m + z * 1.4826 * MAD), M + max(floor, r * M))), m and MAD of ln(seconds), M = exp(m), z = Phi^-1(1 - alpha / J)",
-                  "alpha": 0.01,
-                  "jobs": 5,
+                  "alpha": 0.001,
+                  "jobs": 6,
                   "floor-seconds": 15,
                   "relative-margin": 0.1,
-                  "provisional": true
+                  "provisional": false
                 },
-                "false-failure-budget": "About 1 % of pull request runs with no regression, across all gated jobs (alpha / J per job, Bonferroni); back-tested on held-out runs with the observed rate and its one-sided 95 % upper bound in each baseline record. Observed at the first pin (2026-11-07): 4 of 73 distinct runs, 5.5 % (one-sided 95 % upper bound 12.1 %), in docs/benchmarks/0014-ci-job-baseline.md; above the budget and accepted by the maintainer until a week of gated PR runs is reviewed (#384)",
+                "false-failure-budget": "About 1 % of pull request runs with no regression, across all gated jobs (alpha / J per job, Bonferroni); back-tested on held-out runs with the observed rate and its one-sided 95 % upper bound in each baseline record. At the first pin (record 0014, 2026-11-07) 4 of 73 distinct runs, 5.5 %, would have failed with alpha = 1 %, accepted by the maintainer. Record 0017 (2026-11-08) recalibrated alpha to 0.1 % with Changes gated (J = 6): 0 of 136 held-out pull request runs fail (one-sided 95 % upper bound 2.2 %, still above the 1 % budget); a week of gated PR runs is reviewed in #421",
                 "baseline": {
                   "file": ".github/ci-baseline.json",
-                  "record": "docs/benchmarks/0014-ci-job-baseline.md",
+                  "record": "docs/benchmarks/0017-ci-baseline-with-changes.md",
+                  "earlier-records": ["docs/benchmarks/0014-ci-job-baseline.md"],
                   "min-runs": 30,
                   "paths": {
                     "check": { "status": "pinned", "n": 30 },
-                    "publication": { "status": "provisional", "n": 26, "note": "Only reports until #420 pins it at 30 push runs" }
+                    "publication": { "status": "pinned", "n": 48 }
                   },
                   "update": "Only by a deliberate pull request: regenerate the file with ci-timings --baseline and add a benchmark record in the same PR; runs on main never move it (docs/benchmarks/README.md, 'The pinned CI baseline')"
                 },

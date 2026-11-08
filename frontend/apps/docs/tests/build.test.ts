@@ -367,3 +367,22 @@ describe('themed content (story 0046)', () => {
     expect(page).toMatch(/\[data-theme=['"]?light['"]?\]/);
   });
 });
+
+describe('script-free theme fallback (story 0046, #534)', () => {
+  it('ships no static data-theme on <html>, so the OS preference decides without JavaScript', async () => {
+    // Starlight's Page.astro writes data-theme="dark" as its default. With JavaScript off, the
+    // start-up script never replaces it and it defeats the prefers-color-scheme fallback of
+    // @calendar/theme, which applies only while the attribute is absent.
+    const files = await pages('dist');
+    expect(files.length).toBeGreaterThan(0);
+    for (const file of files) {
+      const html = await readFile(file, 'utf8');
+      const tag = /<html\b[^>]*>/.exec(html)?.[0];
+      if (tag === undefined) {
+        expect(html, `${file} is a redirect stub`).toContain('http-equiv="refresh"');
+        continue;
+      }
+      expect(tag, file).not.toContain('data-theme');
+    }
+  });
+});

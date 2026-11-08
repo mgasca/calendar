@@ -92,6 +92,19 @@ main > button {
   margin: var(--space-2) 0;
 }
 
+/* The heading and the day navigation share a row, the navigation at the right edge (#553). */
+.day-heading-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  column-gap: var(--space-4);
+}
+
+.day-heading-row > .day-nav {
+  margin-left: auto;
+}
+
 .day-nav a {
   display: inline-flex;
   align-items: center;

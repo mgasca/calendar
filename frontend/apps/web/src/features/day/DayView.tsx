@@ -72,8 +72,10 @@ export function DayView({ date, timeZone: zoneOverride, locale }: DayViewProps) 
   const pendingHeader = (
     <header className="day-header">
       <p className="eyebrow">{relativeDay(date, today)}</p>
-      <h1 id="day-heading">{formatHeading(date)}</h1>
-      <DayNav date={date} today={today} />
+      <div className="day-heading-row">
+        <h1 id="day-heading">{formatHeading(date)}</h1>
+        <DayNav date={date} today={today} />
+      </div>
     </header>
   );
   if (agenda.isPending) {
@@ -122,8 +124,10 @@ export function DayView({ date, timeZone: zoneOverride, locale }: DayViewProps) 
     >
       <header className="day-header">
         <p className="eyebrow">{relativeDay(shownDate, today)}</p>
-        <h1 id="day-heading">{formatHeading(shownDate)}</h1>
-        <DayNav date={date} today={today} />
+        <div className="day-heading-row">
+          <h1 id="day-heading">{formatHeading(shownDate)}</h1>
+          <DayNav date={date} today={today} />
+        </div>
         <WeekLink date={shownDate} locale={locale} />
         <button
           type="button"

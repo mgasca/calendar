@@ -32,10 +32,9 @@ export function DayPage({ date, timeZone, locale }: DayPageProps) {
             }}
           />
         </label>
-      </div>
-      {/* The buttons share one row; their confirmations are notifications outside the page flow,
-          so saving one never moves the other (#459, #463). */}
-      <div className="actions">
+        {/* The buttons sit beside the date picker and wrap below it on a narrow screen (#553);
+            their confirmations are notifications outside the page flow, so saving one never
+            moves the other (#459, #463). */}
         <AddTask initialDate={date} />
         <AddEvent date={date} timeZone={timeZone} />
       </div>

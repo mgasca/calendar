@@ -62,10 +62,10 @@ jobs:
             } else if (run.event === 'pull_request' && run.head_repository?.full_name === fullName && run.pull_requests.length === 1) {
               const { data: pr } = await github.rest.pulls.get({ ...repo, pull_number: run.pull_requests[0].number });
               if (pr.state !== 'open' || pr.base.ref !== 'main' || pr.head.repo?.full_name !== fullName || pr.head.sha !== run.head_sha) return;
-              // CI builds the publication artifact only for a docs-only PR (story 0030); a run without one publishes nothing.
+              // CI builds the publication artifact only for an eligible PR (ADR-0025 amendments); a run without one publishes nothing.
               const { data: artifacts } = await github.rest.actions.listWorkflowRunArtifacts({ ...repo, run_id: run.id, name: 'adr-site' });
               if (!artifacts.artifacts.some((artifact) => artifact.name === 'adr-site' && !artifact.expired)) {
-                core.notice(`CI run ${run.id} uploaded no adr-site artifact: PR ${pr.number} is not docs-only, so it gets no preview.`);
+                core.notice(`CI run ${run.id} uploaded no adr-site artifact: PR ${pr.number} is not eligible for a preview.`);
                 return;
               }
               core.setOutput('mode', 'preview');

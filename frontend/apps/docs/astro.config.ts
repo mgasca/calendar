@@ -13,6 +13,7 @@ import {
   parseArchitecture,
 } from './src/lib/architecture';
 import { documentRoutes } from './src/lib/docs-loader';
+import { staticThemeFallback } from './src/lib/static-theme';
 import { mermaidThemeCss } from './src/lib/mermaid-theme';
 import { colour, readPalettes } from './src/lib/theme-palette';
 
@@ -76,6 +77,8 @@ export default defineConfig({
   },
   integrations: [
     mermaidNoAutoStart,
+    // Removes Starlight's static data-theme from the built pages so the OS fallback works without JS.
+    staticThemeFallback,
     // Renders ```mermaid blocks in the browser (ADR-0039); it must register before Starlight.
     // Mermaid 12 bundles ELK and makes it the default layout; `layout: 'dagre'` and
     // `look: 'classic'` keep the Mermaid 11 layout and look, and only the architecture overview

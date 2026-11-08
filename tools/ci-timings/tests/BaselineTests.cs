@@ -54,7 +54,7 @@ public sealed class BaselinesTests
   private static WorkflowRun Run(long id, string runEvent, int minutes = 0, string branch = "main") =>
     new(id, "completed", "success", T0.AddMinutes(minutes), runEvent, branch, $"c{id}");
   [Fact]
-  public void Z_ForOnePercentAcrossFiveJobs_IsAbout2Point88() => GateConstants.Default.Z.ShouldBe(2.878, 1e-3);
+  public void Z_ForATenthOfAPercentAcrossFiveJobs_IsAbout3Point54() => GateConstants.Default.Z.ShouldBe(3.540, 1e-3);
 
   [Fact]
   public void Threshold_OfAStableJob_IsTheFloorAboveTheMedian()
@@ -223,7 +223,7 @@ public sealed class BaselineIoTests
     json.ShouldContain("\"to\": \"2026-11-06T21:24:12Z\"");
     json.ShouldContain("\"firstCommit\": \"sha0\"");
     json.ShouldContain("\"lastCommit\": \"sha4\"");
-    json.ShouldContain("\"z\": 2.5758");
+    json.ShouldContain("\"z\": 3.2905");
     json.ShouldContain("\"floorSeconds\": 15");
     json.ShouldContain("exp(logMedian + z * 1.4826 * logMad)");
     json.ShouldContain("job's start-to-end seconds");

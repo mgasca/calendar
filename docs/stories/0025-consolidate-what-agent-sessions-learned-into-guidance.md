@@ -40,11 +40,11 @@ The skill rests on [0020](0020-restructure-agent-guidance.md), which decided whe
 ### Acceptance criteria
 
 1. **Given** a window of sessions, **when** the skill runs with no mode named, **then** it produces a report in which every lesson has a class, a route and at least one citation that `read_session` can open, and it makes no GitHub or git write. Evidence: the first run (report mode, 48 hours to 2026-11-05 17:29 UTC) found 15 sessions, read 8 in depth and reported 9 lessons; its redacted summary is on #269; no issue, comment, PR, push or merge was made by the run. The private report with citations stays local. No automatic test proves this for future runs; the eval case `evals/report-mode-is-read-only` describes the check.
-2. **Given** a previous report and watermark, **when** the skill runs again, **then** it reads only sessions after the watermark and leads with what is new since the previous report. Not yet exercised: the second run is the follow-up tracked on #269.
+2. **Given** a previous report and watermark, **when** the skill runs again, **then** it reads only sessions after the watermark and leads with what is new since the previous report. **Evidence gap, tracked by [#282](https://github.com/mgasca/calendar/issues/282):** the second run ([#549](https://github.com/mgasca/calendar/issues/549)) used an explicitly requested 24-hour window without recovering the first watermark. Its window is after the first cutoff, but this does not prove watermark-driven execution or continuous incremental coverage. The skill now requires prior-report recovery and continuing-session checks; a real run exercising that procedure remains necessary. No automatic test proves this criterion.
 3. **Given** every worker memory root for this project, **when** the skill reconciles memory, **then** each memory gets one action (keep, point, date, delete) with the roots that hold it listed. Evidence: the first run fingerprinted 11 roots and found 8 holding the 2026-11-01 versions, including a limitation retired on 2026-11-03. Recommended only; no root was edited.
 4. **Given** a lesson, **when** it is routed, **then** the route is one of ADR-0042's layers, and a lesson that protects uncommitted work, shared resources or the public record is proposed as a hook with its one-line prose statement. Evidence: lesson 1 of the first run (a push to a merged PR's branch, third occurrence) is proposed as a `git push` guard.
 5. **Given** the routing reference, **when** its paths are checked against `origin/main`, **then** every one exists. Evidence: 12 of 12 on `dee2e71e`, checked by script before PR #271.
-6. **Given** the first run's baseline (in 15 sessions: the user asked "is any work remaining?" in 5, reported a merge by hand in 3, typed `resume` in 2, and a push went to a merged PR's branch once), **when** the lessons that address them have been delivered and a later run covers a comparable window, **then** the report shows those counts falling, or says why they did not. This is the story's evidence of value; it cannot be shown before the lessons are delivered and a second window has passed.
+6. **Given** the first run's baseline (in 15 sessions: the user asked "is any work remaining?" in 5, reported a merge by hand in 3, typed `resume` in 2, and a push went to a merged PR's branch once), **when** the lessons that address them have been delivered and a later run covers a comparable window, **then** the report shows those counts falling, or says why they did not. **Checked by hand:** the second report's [dated comparison](https://github.com/mgasca/calendar/issues/549) found four follow-up outstanding-work questions, three manual merge notices, no bare resume nudges and an unknown merged-branch push count in 24 sessions. The comparison below explains why differing windows and reading coverage cannot establish improvement. Recurrence persists despite delivered guidance.
 7. **Given** the change is complete, **when** I run `just check`, **then** it passes. The skill is Markdown only; the docs corpus tests and site build cover the card and index.
 
 ## Design decisions
@@ -69,7 +69,24 @@ No new ADR is expected.
 
 ## Implementation notes
 
-*In progress. The skill is delivered by PR #271; this section is completed after a second run against the watermark (follow-up on #269).*
+The skill shipped in [PR #271](https://github.com/mgasca/calendar/pull/271). The maintainer confirmed the report on [#549](https://github.com/mgasca/calendar/issues/549) is its second run. This card remains `in-progress` because criterion 2 was not exercised against the earlier watermark; [#282](https://github.com/mgasca/calendar/issues/282) owns that remaining evidence. The documentation site derives status from the card; no hand-maintained index row exists.
+
+### Second run and evidence of value
+
+The first report on [#269](https://github.com/mgasca/calendar/issues/269#issuecomment-6664843872) covered 48 hours ending 2026-11-05 17:29 UTC: 15 sessions triaged, eight deep-read, nine lessons. Epic [#292](https://github.com/mgasca/calendar/issues/292) delivered those lessons; #282 records the last delivery at 2026-11-05 22:21 UTC.
+
+The second run covered 2026-11-07 00:21:37 to 2026-11-08 00:21:37 UTC, entirely after that delivery boundary: 24 sessions triaged, 12 selectively deep-read, six lessons (four documented, one missing and one local-only at its cutoff). It started at 2026-11-08 00:21:37 UTC and completed at 00:25:24 UTC. It made no repository or GitHub changes. The maintainer subsequently requested public publication, then confirmed its second-run status and requested handover on #282 and #549.
+
+| Signal, once per session | First run, 15 sessions / 48 hours | Second run, 24 sessions / 24 hours | Evidence and interpretation |
+| --- | --- | --- | --- |
+| Follow-up outstanding-work question | 5 | 4 | Second-run work: #452, #454, #291 and #458. Still recurs. |
+| Human manual merge notice | 3 | 3 | Notices concern #457, delivery under #428 and the Pages revert under #473. Still recurs. |
+| Bare human resume nudge | 2 | 0 | None in the second run's read user outlines; setup instructions and generated notifications excluded. |
+| Push to a merged PR branch | 1 | Unknown | Selective deep reads cannot establish absence across all tool activity. |
+
+Counts for the second run were checked from its retained user outlines during the later handover and added to #549 as a dated supplement. Two opening scope questions (#291 and #380) were excluded from the four follow-up nudges. The first report's public summary does not retain an equally precise counting protocol, so classification equivalence is uncertain. Different duration, task/harness mix and reading depth prevent a causal before/after claim; a lower raw count or no observed event does not establish prevention.
+
+The original run did not recover the prior report or watermark, leaving an unreviewed interval between the first cutoff and the start of its explicit window. Older continuing sessions were not comprehensively included. The supplement preserves that gap rather than rewriting the original run as incremental. The private watermark and transcript citations remain local; public evidence carries only repository links and UTC boundaries.
 
 ### Where things live
 
@@ -89,14 +106,18 @@ No changes.
 
 ### Testing
 
-* The docs corpus tests and the site build check this card's structure, index row and links. Nothing tests the skill's behaviour automatically; the eval case describes the graders, and the first run's report is the evidence for criteria 1, 3, 4 and 5.
+* The [docs corpus tests](../../frontend/apps/docs/src/lib/adr.test.ts) and site build check this card's structure, derived status and links. Nothing tests the skill's behaviour automatically; the eval case describes the graders, the first report supplies evidence for criteria 1, 3, 4 and 5, and the second supplies the qualified comparison for criterion 6. Criterion 2 remains explicitly unverified.
 * The routine script's watermark extraction and prompt substitution were run on a sample, including the no-watermark case.
 
 ### Lessons learned, known issues and follow-ups
 
 * **The first run changed the skill in five places** before the PR: the history index is the primary inventory (the daemon list showed 1 session where the index held 15, because native Claude Code sessions are index-only); `read_session(role: "user")` is the first triage step; the history tools accept about six concurrent queries; `read_session` navigates by `start`, not `offset`; `search_session` matches inside words.
 * **A watch script can declare CI done on an empty check list** right after a push (`all()` over nothing is true). Observed on PR #271; the fix is to require the full set of checks. Candidate bullet for `issue-handover`.
-* **Follow-ups:** the second run and the card update (tracked on #269); the routine install (#270); whether to file or deliver the first run's nine lessons (#269).
+* **Recover the baseline before falling back.** The second run treated the missing supplied watermark as a fresh baseline, although #269 and this card recorded the first report. The skill now separates run history from watermark availability, recovers prior evidence and reports interval gaps.
+* **A new-session filter misses continuing sessions.** An incremental run must inspect later messages in sessions named by the prior watermark, or state that those boundaries cannot be recovered.
+* **Unknown is not zero.** User outlines can establish a lack of bare resume nudges; selective tool-call reading cannot establish a lack of pushes to merged branches. The report template and eval grader now require those limits.
+* **First-run lessons delivered:** epic [#292](https://github.com/mgasca/calendar/issues/292) and its ten children shipped the guidance and memory reconciliation. The second run still found close-out friction; the new worker-brief omission was separately addressed by [PR #533](https://github.com/mgasca/calendar/pull/533).
+* **Follow-ups:** #282 retains watermark-driven execution evidence and the card's final status change; #270 owns routine installation independently of the local active-session monitor. #549 is the second report and comparison, not an implementation epic for every proposed lesson.
 
 ### Memory coverage disposition
 
@@ -114,11 +135,11 @@ The first run found 8 of 11 worker memory roots holding the 2026-11-01 versions 
 
 ## User guide
 
-*Planned behaviour. This section is finalised when the story is implemented.*
-
 ### Ask what recent sessions learned
 
-Say "use the dream-weaver skill" (or ask what recent sessions learned, which lessons are undocumented, or to audit memory against the guidance) and name a window if you want one other than the default. You get a report: lessons ranked by cost and recurrence, each with its class and the place it belongs; the documented rules that were broken anyway; the guidance that names things that no longer exist; what to do with each memory; and what the run did not read. Nothing is filed or changed.
+Say "use the dream-weaver skill" (or ask what recent sessions learned, which lessons are undocumented, or to audit memory against the guidance) and name a window if you want one other than the default. You get a report: lessons ranked by cost and recurrence, each with its class and the place it belongs; the documented rules that were broken anyway; the guidance that names things that no longer exist; what to do with each memory; and what the run did not read. Report mode makes no repository or public changes; when local state is requested, it saves the report and its continuation boundary there.
+
+For a later run, supply the previous report and continuation boundary, or identify its source issue. The skill looks for earlier reports before declaring a new baseline. An explicit shorter window is respected, with any gap stated. Ask for a comparison to see whether the same signals recur; the report distinguishes an observed count from an unknown and explains coverage differences before claiming improvement.
 
 ### Turn lessons into work
 

@@ -11,7 +11,7 @@ The default run is read-only. Its output is a report with evidence a person can 
 
 ## Terms
 
-- **Window**: the time span whose sessions are read. Default: since the last run's watermark; without one, the last 24 hours.
+- **Window**: the time span whose sessions are read. Default: since the last run's watermark; without one, the last 24 hours. An explicit window wins; report any gap from the previous cutoff.
 - **Episode**: one thing that happened in one session, with its cost: a correction, a revert, a retry, a collision, a surprise, or an approach that worked.
 - **Lesson**: what one or more episodes teach, written so that it would have changed the outcome. One lesson may rest on several episodes from several sessions.
 - **Remembered set**: the guidance that is already merged and loaded, plus the agents' local memories. `references/routing.md` lists where it lives in this repo.
@@ -36,6 +36,8 @@ Take these from the request. Ask only for what is missing and matters.
 
 Public writes (`issues`, `deliver`) carry only issue/PR links and repository-relative paths. Session IDs, message indices, worker handles and absolute machine paths stay in the private report. The repo's `gh` hook refuses a post that carries them; do not work around it.
 
+Before falling back to a first-run baseline, look for previous reports in the supplied local state, the owning story card and its linked issue comments. A missing supplied watermark does not mean this is the first run. Record the run's place in that history separately from whether its prior watermark was recovered. A public report's cutoff is usable as a partial boundary, but does not reconstruct its private session set; name that limit. Never claim an incremental run against a watermark that was not actually used.
+
 ## Steps
 
 ### 1. Ground yourself in the remembered set
@@ -52,6 +54,8 @@ The index is the primary source; the daemon list is a check on it:
 - `mj sessions --all --json` lists what the daemon holds, including sub-agents. Use it for sessions the index has not caught up with yet, and for parent/child links.
 
 Record the union as the inventory: ID, title, tool or profile, start, message count, parent (for a sub-agent). Indexed history can lag live sessions and summarises tool output to one line per call, so command failures are visible only where the agent discussed them; say so in the coverage line of the report. Exclude the current session.
+
+For an incremental run, also inspect continuing sessions named in the previous watermark for messages after its cutoff; filtering only by newly started sessions misses their later corrections. Prefer timestamped or recorded message boundaries. If those boundaries are unavailable, state the overlap and uncertainty instead of presenting a clean incremental count.
 
 ### 3. Triage by signal, not by title
 
@@ -105,6 +109,8 @@ Order the lessons by cost times recurrence. Say for each whether the capture is 
 ### 8. Write the report and the watermark
 
 Follow `references/report-template.md`. Lead with what is new since the previous report when one was given; if nothing changed, say `No new lessons since <previous watermark>` and give the counts. End with the watermark line, so the next run can be given this report as its starting point.
+
+When a baseline exists, compare the same signals per session and name the counting rule: distinguish a follow-up outstanding-work nudge from an opening scope question, human merge notices from quoted notifications, and a bare `resume` from setup instructions. Report unknowns as unknown, not zero. Name differing window lengths, task/harness mix and reading depth; lower raw counts alone do not prove that guidance worked. If earlier evidence is recovered after the run, date the comparison as a supplement and preserve the original report and window. Record actual start/completion times separately from the coverage cutoff.
 
 When the request names a state directory (the routine does), write the report and the watermark there as `references/routine.md` describes. Otherwise the report is the only output.
 

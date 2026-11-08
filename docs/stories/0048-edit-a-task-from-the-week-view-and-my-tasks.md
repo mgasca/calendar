@@ -4,7 +4,7 @@ date: 2026-11-08
 issue: https://github.com/mgasca/calendar/issues/500
 pr:
   - https://github.com/mgasca/calendar/pull/535
-  - https://github.com/mgasca/calendar/pull/536
+  - https://github.com/mgasca/calendar/pull/538
 adrs: ["0020", "0021", "0041", "0043", "0047"]
 ---
 
@@ -68,7 +68,7 @@ No new ADR is expected.
 
 ## Implementation notes
 
-Delivered after the card ([#535](https://github.com/mgasca/calendar/pull/535)) in one PR ([#536](https://github.com/mgasca/calendar/pull/536)), stacked on it. No API change.
+Delivered after the card ([#535](https://github.com/mgasca/calendar/pull/535)) in one PR ([#538](https://github.com/mgasca/calendar/pull/538)), stacked on it. No API change.
 
 ### Where things live
 

@@ -14,7 +14,8 @@ import {
   parseArchitecture,
   renderValue,
   resolveOwnership,
-  rgba,
+  ownershipBoxMarker,
+  ownershipLegend,
   shortLabel,
 } from './architecture';
 
@@ -439,9 +440,14 @@ describe('diagram text', () => {
   it('escapes the characters Mermaid reads as syntax', () => {
     expect(mermaidText('a; (b) <c> "d" #1')).toBe('a#59; #40;b#41; #lt;c#gt; #quot;d#quot; #35;1');
   });
-  it('writes a hex colour in the rgba() form a sequence-diagram box accepts', () => {
-    expect(rgba('#fde68a')).toBe('rgba(253,230,138,0.5)');
-    expect(rgba('#000000', 1)).toBe('rgba(0,0,0,1)');
+  it('marks the sequence box of each ownership with a distinct colour, and no diagram text carries a colour value', () => {
+    expect(new Set(Object.values(ownershipBoxMarker)).size).toBe(4);
+    for (const marker of Object.values(ownershipBoxMarker))
+      expect(marker).toMatch(/^rgba\(0,0,0,0\.0\d\)$/);
+    for (const { fill, stroke } of Object.values(ownershipLegend)) {
+      expect(fill).toMatch(/^var\(--color-[\w-]+\)$/);
+      expect(stroke).toMatch(/^var\(--color-[\w-]+\)$/);
+    }
   });
   it('escapes backslashes before pipes in a table cell, and flattens newlines', () => {
     expect(escapeCell('a|b\\c\nd')).toBe('a\\|b\\\\c d');
@@ -532,10 +538,8 @@ describe('architecture pages', () => {
     expect(body).toContain(
       ['```mermaid', '---', 'config:', '  layout: elk', '---', 'flowchart LR'].join('\n'),
     );
-    expect(body).toContain('classDef person fill:#fde68a,stroke:#b45309,color:#1f2937');
-    expect(body).toContain(
-      'classDef external fill:#e5e7eb,stroke:#6b7280,color:#1f2937,stroke-dasharray:4 2',
-    );
+    expect(body).toContain('classDef person stroke-width:1.5px');
+    expect(body).toContain('classDef external stroke-width:1.5px,stroke-dasharray:4 2');
     expect(body).toContain('user([User]):::person');
     // Plain components are rounded boxes; actors, databases and data assets keep their shapes.
     expect(body).toContain('app("App #40;web#41;"):::ours');
@@ -558,7 +562,7 @@ describe('architecture pages', () => {
     expect(body).toContain('```mermaid\nflowchart TB');
     expect(body).not.toContain('layout: elk');
     expect(body).toContain('subgraph host["Host"]');
-    expect(body).toContain('style host fill:#ddd6fe,stroke:#6d28d9,color:#1f2937');
+    expect(body).toContain('class host platform');
     expect(body).toContain('db[(Db)]:::ours');
     expect(body).toContain('app("App #40;web#41;"):::ours');
     expect(body).toContain('app -->|TCP| db');
@@ -582,14 +586,14 @@ describe('architecture pages', () => {
   it('colours the participants of a flow by ownership in boxes, with the legend and a table', () => {
     const body = page('architecture/flows/read').body;
     // Participants keep their order of first appearance; each run of one ownership shares a box
-    // tinted with that ownership's colour (the same fills as the flowchart classes, half-transparent).
+    // tinted with that ownership's colour (a marker colour that mermaid-theme.ts paints with the same tokens as the flowchart classes).
     expect(body).toContain(
       [
         'sequenceDiagram',
-        '  box rgba(253,230,138,0.5)',
+        '  box rgba(0,0,0,0.01)',
         '    participant user as User',
         '  end',
-        '  box rgba(191,219,254,0.5)',
+        '  box rgba(0,0,0,0.02)',
         '    participant app as App #40;web#41;',
         '    participant db as Db',
         '  end',

@@ -1,0 +1,51 @@
+/*
+ * Search and code blocks in the Calendar themes (story 0046). Tokens only: no colour value and no
+ * theme selector. Starlight's search reads the --sl-* variables that theme-adapter.css maps; the
+ * rules here add what those do not reach.
+ */
+
+/* Search dialog: a raised surface with the theme's shape and shadow. */
+site-search dialog {
+  border-radius: var(--radius-lg);
+  background: var(--color-surface-raised);
+  box-shadow: var(--shadow-popover);
+}
+#starlight__search {
+  --pagefind-ui-background: var(--color-surface-raised);
+  --pagefind-ui-border: var(--color-border-strong);
+  --pagefind-ui-tag: var(--color-surface-sunken);
+}
+#starlight__search .pagefind-ui__search-input {
+  background: var(--color-surface-sunken);
+  color: var(--color-text);
+  border-radius: var(--radius-md);
+}
+/* The matched words are marked by weight and an underline as well as a tint. */
+#starlight__search mark,
+.pagefind-ui__result-excerpt mark {
+  background: var(--color-accent-soft);
+  color: var(--color-text);
+  font-weight: 700;
+  text-decoration: underline;
+}
+#starlight__search .pagefind-ui__result-link:focus-visible,
+#starlight__search .pagefind-ui__result-nested a:focus-visible,
+site-search button[data-open-modal]:focus-visible {
+  outline: 3px solid var(--color-focus);
+  outline-offset: 2px;
+}
+site-search kbd {
+  background: var(--color-surface-sunken);
+  color: var(--color-text);
+}
+
+/* Inline code: the sunken surface with a visible edge; fenced blocks scroll inside themselves. */
+.sl-markdown-content :not(pre) > code {
+  background: var(--color-surface-sunken);
+  color: var(--color-text);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+}
+.expressive-code .frame pre {
+  overflow-x: auto;
+}

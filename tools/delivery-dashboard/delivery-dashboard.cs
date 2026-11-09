@@ -8,6 +8,9 @@
 #:include QualityRules.cs
 #:include AgentSection.cs
 #:include AgentRules.cs
+#:include FlowSection.cs
+#:include FlowRules.cs
+#:include Alerts.cs
 
 // The snapshot tool of the delivery dashboard (story 0053, ADR-0049, issue #596). It writes one JSON snapshot of
 // delivery data (aggregates and public data only) and checks snapshot files against the schema and the privacy rules.
@@ -33,6 +36,16 @@ if (args.Length == 0)
 if (args[0] == "check")
 {
   return await Check(args[1..]);
+}
+
+if (args[0] == "alerts")
+{
+  return await AlertCommand(args[1..]);
+}
+
+if (args[0] == "retention")
+{
+  return await RetentionCommand(args[1..]);
 }
 
 if (args[0] != "snapshot")
@@ -89,6 +102,7 @@ var listJson = await Gh.RunAsync(
   "--json", "databaseId,status,conclusion,createdAt,event,headBranch,headSha",
 ]);
 List<SampledRun> sampled = [];
+Dictionary<long, string> fetchedJobs = [];
 List<double> queue = [];
 IEnumerable<WorkflowRun> wanted = Parser.ParseRuns(listJson)
   .Where(item => BaselineRuns.IsSuccessful(item) && BaselineRuns.IsMain(item))
@@ -96,6 +110,7 @@ IEnumerable<WorkflowRun> wanted = Parser.ParseRuns(listJson)
 foreach (WorkflowRun run in wanted)
 {
   var jobsJson = await Gh.RunAsync(["api", $"repos/{repository}/actions/runs/{run.Id}/jobs?per_page=50"]);
+  fetchedJobs[run.Id] = jobsJson;
   IReadOnlyList<JobTiming> jobs = Parser.ParseJobs(run.Id, jobsJson);
   sampled.Add(new SampledRun(run, [.. Baselines.Samples(run, jobs)]));
   if (CiSnapshot.QueueSeconds(run, jobs) is { } wait)
@@ -108,13 +123,15 @@ foreach (WorkflowRun run in wanted)
 BaselineFile? pinned = File.Exists(baselinePath) ? BaselineIo.Read(await File.ReadAllTextAsync(baselinePath)) : null;
 
 DateTimeOffset now = DateTimeOffset.UtcNow;
+var taken = new DateTimeOffset(now.Year, now.Month, now.Day, now.Hour, now.Minute, now.Second, TimeSpan.Zero);
 var snapshot = new Snapshot(
   SnapshotJson.CurrentVersion,
   date ?? DateOnly.FromDateTime(now.UtcDateTime),
-  new DateTimeOffset(now.Year, now.Month, now.Day, now.Hour, now.Minute, now.Second, TimeSpan.Zero),
+  taken,
   repository,
   CiSnapshot.Build(workflow, sampled, pinned, TrendConstants.Default, queue),
-  QualityCollector.Build(workflow, await QualityCollector.CollectAsync(repository, workflow, qualityRuns)),
+  QualityCollector.Build(workflow, await QualityCollector.CollectAsync(repository, workflow, qualityRuns, fetchedJobs)),
+  await FlowCollector.CollectAsync(repository, taken),
   AgentCollector.Build(await AgentCollector.CollectAsync(repository, AgentCollector.DefaultIssues)));
 var json = SnapshotJson.Write(snapshot);
 IReadOnlyList<string> problems = SnapshotRules.Validate(json);
@@ -143,6 +160,107 @@ else
     + $"{snapshot.Agents?.Activity.WithCounts} with count comments");
 }
 return 0;
+
+// alerts --snapshot FILE [--repo OWNER/NAME] [--page-url URL] [--issue]: prints the breached thresholds; with --issue, comments on
+// the one open `performance` issue of each kind or opens it, and posts nothing else (ADR-0049: no new alert channel).
+static async Task<int> AlertCommand(string[] arguments)
+{
+  string? file = null;
+  string? repository = null;
+  var pageUrl = string.Empty;
+  var post = false;
+  var queue = new Queue<string>(arguments);
+  while (queue.TryDequeue(out var arg))
+  {
+    switch (arg)
+    {
+      case "--snapshot" when queue.Count > 0:
+        file = queue.Dequeue();
+        break;
+      case "--repo" when queue.Count > 0:
+        repository = queue.Dequeue();
+        break;
+      case "--page-url" when queue.Count > 0:
+        pageUrl = queue.Dequeue();
+        break;
+      case "--issue":
+        post = true;
+        break;
+      default:
+        return await Usage($"unknown or incomplete argument: {arg}");
+    }
+  }
+  if (file is null)
+  {
+    return await Usage("alerts needs --snapshot FILE");
+  }
+  var json = await File.ReadAllTextAsync(file);
+  IReadOnlyList<string> problems = SnapshotRules.Validate(json);
+  if (problems.Count > 0)
+  {
+    foreach (var problem in problems)
+    {
+      await Console.Error.WriteLineAsync(problem);
+    }
+    await Console.Error.WriteLineAsync("the snapshot does not pass the rules; no alert is evaluated");
+    return 1;
+  }
+  IReadOnlyList<Breach> breaches = Alerts.Evaluate(json, AlertThresholds.Default);
+  var report = breaches.Count == 0
+    ? "No threshold is breached."
+    : string.Join('\n', breaches.Select(breach => $"- [{breach.Kind}] {breach.Text}"));
+  await Console.Out.WriteLineAsync(report);
+  if (!post || breaches.Count == 0)
+  {
+    return 0;
+  }
+  repository ??= (await Gh.RunAsync(["repo", "view", "--json", "nameWithOwner", "--jq", ".nameWithOwner"])).Trim();
+  var openJson = await Gh.RunAsync(
+    ["issue", "list", "--repo", repository, "--state", "open", "--label", Alerts.IssueLabel, "--limit", "100", "--json", "number,title"]);
+  foreach (AlertAction action in Alerts.Actions(breaches, Parser.ParseIssues(openJson), pageUrl))
+  {
+    var bodyPath = Path.Combine(Path.GetTempPath(), $"dashboard-alert-{Environment.ProcessId}-{action.Kind}.md");
+    await File.WriteAllTextAsync(bodyPath, action.Body);
+    string[] command = action.Issue == 0
+      ? ["issue", "create", "--repo", repository, "--title", action.Title, "--label", Alerts.IssueLabel, "--body-file", bodyPath]
+      : ["issue", "comment", action.Issue.ToString(CultureInfo.InvariantCulture), "--repo", repository, "--body-file", bodyPath];
+    await Console.Out.WriteLineAsync((await Gh.RunAsync(command)).Trim());
+    File.Delete(bodyPath);
+  }
+  return 0;
+}
+
+// retention [--limit-mb 50] [--add BYTES] < `git ls-tree -r -l REF snapshots` or the GitHub trees API answer
+// (`gh api repos/OWNER/NAME/git/trees/BRANCH?recursive=1`): fails when the data branch would pass its limit.
+static async Task<int> RetentionCommand(string[] arguments)
+{
+  var limit = Retention.LimitBytes;
+  long incoming = 0;
+  var queue = new Queue<string>(arguments);
+  while (queue.TryDequeue(out var arg))
+  {
+    switch (arg)
+    {
+      case "--limit-mb" when queue.Count > 0
+        && long.TryParse(queue.Dequeue(), NumberStyles.None, CultureInfo.InvariantCulture, out var megabytes):
+        limit = megabytes * 1024 * 1024;
+        break;
+      case "--add" when queue.Count > 0
+        && long.TryParse(queue.Dequeue(), NumberStyles.None, CultureInfo.InvariantCulture, out var bytes):
+        incoming = bytes;
+        break;
+      default:
+        return await Usage($"unknown or incomplete argument: {arg}");
+    }
+  }
+  Retention.Verdict verdict = Retention.Check(await Console.In.ReadToEndAsync(), limit, incoming);
+  await Console.Out.WriteLineAsync(verdict.Message);
+  if (verdict.Status == "warning")
+  {
+    await Console.Out.WriteLineAsync($"::warning::{verdict.Message}");
+  }
+  return verdict.Status == "over" ? 1 : 0;
+}
 
 static async Task<int> Check(string[] files)
 {

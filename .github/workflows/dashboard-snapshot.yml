@@ -5,8 +5,9 @@ name: Dashboard snapshot
 # replaces that day's file. It never runs for a pull request, so it fails no PR and is not part of `CI result`
 # (ADR 0046). The logic, the schema and the privacy rules are in tools/delivery-dashboard.
 #
-# Two jobs keep write access away from the code that reads GitHub: `snapshot` can read runs and cannot write the
-# repository, and `publish` can write the repository but runs only git commands on the file `snapshot` checked.
+# Three jobs keep write access away from the code that reads GitHub: `snapshot` can read runs and cannot write the
+# repository or issues, `publish` can write the repository but runs only git commands on the file `snapshot` checked,
+# and `alert` can write issues but not the repository.
 on:
   schedule:
     - cron: "47 6 * * *"
@@ -60,12 +61,69 @@ jobs:
           echo "date=$date" >> "$GITHUB_OUTPUT"
       - name: Check the snapshot again, as the file that will be published
         run: dotnet run tools/delivery-dashboard/delivery-dashboard.cs -- check "$RUNNER_TEMP/snapshot/${{ steps.take.outputs.date }}.json"
+      # The size rule of the data branch (story 0053, issue #601): every daily snapshot is kept until the snapshots/ tree
+      # would pass 50 MB (about 11 years at 12 KB a day, measured in docs/runbooks/delivery-dashboard.md); the run fails
+      # before the snapshot that would pass it is published, and warns from 80 %. No data branch yet is fine; any other
+      # git failure stops the job.
+      - name: Check that the data branch stays within its size limit
+        run: |
+          file="$RUNNER_TEMP/snapshot/${{ steps.take.outputs.date }}.json"
+          export GH_TOKEN="${{ github.token }}"
+          status=0
+          git ls-remote --exit-code --heads origin "$DATA_BRANCH" > /dev/null || status=$?
+          if [ "$status" -eq 2 ]; then
+            echo "No $DATA_BRANCH branch yet: nothing to measure." | tee -a "$GITHUB_STEP_SUMMARY"
+          elif [ "$status" -ne 0 ]; then
+            echo "::error::Could not read the $DATA_BRANCH branch (git exit $status)."
+            exit "$status"
+          else
+            # The trees API gives every blob's size without downloading a blob (a shallow fetch would download them all).
+            gh api "repos/$GITHUB_REPOSITORY/git/trees/$DATA_BRANCH?recursive=1" \
+              | dotnet run tools/delivery-dashboard/delivery-dashboard.cs -- retention --add "$(wc -c < "$file")" \
+              | tee -a "$GITHUB_STEP_SUMMARY"
+          fi
       - uses: actions/upload-artifact@v7
         with:
           name: snapshot
           path: ${{ runner.temp }}/snapshot/${{ steps.take.outputs.date }}.json
           if-no-files-found: error
           retention-days: 3
+
+  # Thresholds on the flow and quality numbers (issue #601). It reuses the open `performance` issue of its kind or opens
+  # it, as the CI trend check does (ADR 0045), and opens no other kind of alert. It needs issues: write and nothing else,
+  # and runs only the checked-in tool on the snapshot `snapshot` already checked.
+  alert:
+    name: Open or update the threshold issues
+    needs: snapshot
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      issues: write
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-dotnet@v6
+        with:
+          dotnet-version: 10.0.x
+          cache: true
+          cache-dependency-path: tools/delivery-dashboard/packages.lock.json
+      - uses: actions/download-artifact@v8
+        with:
+          name: snapshot
+          path: ${{ runner.temp }}/snapshot
+      - name: Compare the snapshot with the thresholds
+        env:
+          GH_TOKEN: ${{ github.token }}
+          DATE: ${{ needs.snapshot.outputs.date }}
+        run: |
+          dotnet run tools/delivery-dashboard/delivery-dashboard.cs -- alerts \
+            --snapshot "$RUNNER_TEMP/snapshot/$DATE.json" --repo "$GITHUB_REPOSITORY" --issue \
+            --page-url "https://${GITHUB_REPOSITORY_OWNER}.github.io/${GITHUB_REPOSITORY#*/}/dashboard/" | tee -a "$GITHUB_STEP_SUMMARY"
 
   publish:
     name: Commit the snapshot to the data branch

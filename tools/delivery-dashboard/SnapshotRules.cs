@@ -28,7 +28,7 @@ public static partial class SnapshotRules
 
   private static readonly string[] RootKeys = ["version", "date", "generatedAt", "repository", "ci"];
   // Sections added after version 1: absent from older files, validated when present.
-  private static readonly string[] OptionalRootKeys = ["quality", "agents"];
+  private static readonly string[] OptionalRootKeys = ["quality", "flow", "agents"];
   private static readonly string[] CiKeysV1 = ["workflow", "basis", "runs", "window", "jobs"];
   private static readonly string[] CiKeysV2 = [.. CiKeysV1, "trend", "queue"];
   private static readonly string[] WindowKeys = ["from", "to"];
@@ -87,6 +87,10 @@ public static partial class SnapshotRules
     if (Keys(ci, "$.ci", v2 ? CiKeysV2 : CiKeysV1, errors))
     {
       CheckCi(ci, v2, errors);
+    }
+    if (root.TryGetProperty("flow", out JsonElement flow))
+    {
+      CheckFlow(flow, errors);
     }
     if (root.TryGetProperty("quality", out JsonElement quality))
     {

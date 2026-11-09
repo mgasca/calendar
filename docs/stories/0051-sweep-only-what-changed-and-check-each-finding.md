@@ -66,6 +66,7 @@ Both sweeps re-read everything on every run. Neither has a watermark, so neither
 
     All three are workflow `args` with these defaults.
   * **The workflow returns data and never writes to GitHub.**
+* **A `sweep-judge` agent definition**, `.claude/agents/sweep-judge.md`: read-only, on Sonnet, for the select agent and the judges, which read issue and PR text that anyone can write. Its ground rules mirror `sweep-skeptic`. Added after the review of [#570](https://github.com/mgasca/calendar/pull/570) found both ran without an agent type ([#580](https://github.com/mgasca/calendar/issues/580)).
 * **A `sweep-skeptic` agent definition**, `.claude/agents/sweep-skeptic.md`: read-only, on Haiku, for one claim about `origin/main` or GitHub state through one lens. It is separate from `skeptic`, which starts from a branch diff and which the review before a merge depends on.
 * **Option B in both skills.** In Claude Code, the per-item judgement runs the workflow, and the skill's instruction counts as the opt-in, as `issue-handover` does for the review. Any other harness follows the by-hand steps. The session keeps the work that needs every result or writes to GitHub:
   * fetch and inventory;
@@ -129,7 +130,7 @@ An amendment to ADR-0044 is expected (#561). No new record is expected.
 * **Mechanical checks in `check-adr`, not in agents:** they are deterministic, free, and run in CI on every PR, which turns "found at the next sweep" into "refused at the PR" for every harness. The skill already named them as candidates. Agreed 2026-11-08.
 * **An epic with a child per deliverable:** each deliverable touches different files and can be reviewed and merged on its own, as in 0045. Agreed 2026-11-08.
 * **The session posts, not the script:** every GitHub write stays behind the public-post guard and the session's judgement, as in 0035.
-* **Sonnet judges, Haiku skeptics:** the judges run on Sonnet (the workflow's per-agent `model`), which keeps the per-record J checks cheap. `sweep-skeptic` is pinned to Haiku in its front matter, like `skeptic`. This differs from the reviewers, which run on Opus. The benchmark record shows whether Sonnet misses findings that matter. Answered on #566, 2026-11-08.
+* **Sonnet judges, Haiku skeptics:** the judges run on Sonnet (pinned in the `sweep-judge` front matter since [#580](https://github.com/mgasca/calendar/issues/580); before, the workflow's per-agent `model`), which keeps the per-record J checks cheap. `sweep-skeptic` is pinned to Haiku in its front matter, like `skeptic`. This differs from the reviewers, which run on Opus. The benchmark record shows whether Sonnet misses findings that matter. Answered on #566, 2026-11-08.
 * **Caps of 12 per record and 40 per run, rotation 6:** the per-record cap stops one record with many findings from using up the run's budget. The run cap bounds a day with a large refactor. Answered on #566 and in conversation, 2026-11-08.
 * **No paired by-hand baseline:** the comparison uses the 2026-11-07 report, so the first runs cost no more than the workflow itself. The price is that the by-hand path has no token figure. Answered on #566, 2026-11-08.
 * **Two lenses, not three:** *reproduces* has nothing to run for a claim about a document or an issue thread.
@@ -149,6 +150,7 @@ An amendment to ADR-0044 is expected (#561). No new record is expected.
 | Mechanical checks and `--inventory` | `.claude/skills/adr-draft/scripts/check-adr/` (`AdrValidator.cs`, `check-adr.cs`) and its tests |
 | Sweep skills | `.claude/skills/adr-sweep/SKILL.md`, `.claude/skills/issue-sweep/SKILL.md` |
 | Workflows | `.claude/workflows/adr-sweep-judge.js`, `.claude/workflows/issue-sweep-verify.js` |
+| Select and judge agent | `.claude/agents/sweep-judge.md` |
 | Skeptic agent | `.claude/agents/sweep-skeptic.md` |
 | Measurements | a new record in `docs/benchmarks/` |
 | Sweep reports | `docs/sweeps/adr/`, `docs/sweeps/issue/` and their `docs/sweeps/README.md` (not published) |

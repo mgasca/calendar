@@ -63,19 +63,12 @@ describe('app stylesheet guards (ADR-0047)', () => {
     );
   });
 
-  it('keeps Refresh one width and each day-summary part on one line (#464)', () => {
-    const css = read('index.css');
-    // Both labels share one grid cell; the inactive one is hidden but still takes its space.
-    expect(css).toMatch(/\.refresh\s*\{[^}]*display:\s*inline-grid;[^}]*\}/);
-    expect(css).toMatch(/\.refresh > \*\s*\{[^}]*grid-area:\s*1 \/ 1;[^}]*\}/);
-    expect(css).toMatch(/\.refresh > \[aria-hidden='true'\]\s*\{[^}]*visibility:\s*hidden;[^}]*\}/);
-    expect(css).toMatch(/\.summary-part\s*\{[^}]*white-space:\s*nowrap;[^}]*\}/);
+  it('keeps each day-summary part on one line (#464)', () => {
+    expect(read('index.css')).toMatch(/\.summary-part\s*\{[^}]*white-space:\s*nowrap;[^}]*\}/);
   });
 
-  it('centres the Refresh label vertically in its grid cell (#521)', () => {
-    // A grid button stretches its items to the cell and leaves the text at the top (5.5 px above
-    // centre in the running app); the web tests run without CSS, so this pins the rule instead.
-    expect(read('index.css')).toMatch(/\.refresh\s*\{[^}]*align-items:\s*center;[^}]*\}/);
+  it('has no Refresh button rules left, since the views refresh themselves (story 0052)', () => {
+    expect(read('index.css')).not.toMatch(/\.refresh\b/);
   });
 
   it.each(cssFiles)('%s animates only when reduced motion is not requested', (file) => {

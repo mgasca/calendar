@@ -1,4 +1,5 @@
 import type { Schemas } from '@calendar/api-client';
+import { focusManager, onlineManager } from '@tanstack/react-query';
 import { act, fireEvent, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { http, HttpResponse } from 'msw';
@@ -726,6 +727,112 @@ describe('WeekView', () => {
       serveBusyWeeks();
       await userEvent.click(screen.getByRole('button', { name: 'Try again' }));
       expect(await screen.findByText('Design review')).toBeInTheDocument();
+    });
+  });
+
+  describe('refreshing (story 0052)', () => {
+    /** Toggles a manager off and on inside `act`, as a lost and regained focus or connection. */
+    const blip = (set: (value: boolean) => void) => {
+      for (const value of [false, true]) {
+        act(() => {
+          set(value);
+        });
+      }
+    };
+    const refocus = () => {
+      blip((focused) => {
+        focusManager.setFocused(focused);
+      });
+    };
+    const reconnect = () => {
+      blip((online) => {
+        onlineManager.setOnline(online);
+      });
+    };
+    const staleLater = () => {
+      vi.setSystemTime(new Date(Date.parse(NOW) + 31_000));
+    };
+
+    it('has no Refresh button, since the week refreshes itself', async () => {
+      serveBusyWeeks();
+      renderApp('/week/2026-10-26');
+      await screen.findByText('Design review');
+
+      expect(screen.queryByRole('button', { name: /^Refresh/ })).not.toBeInTheDocument();
+      expect(screen.queryByText('Refreshing…')).not.toBeInTheDocument();
+    });
+
+    it('refetches every five minutes to pick up changes from other devices', async () => {
+      // `waitFor` polls with setInterval, so with it faked the test waits with `eventually`.
+      vi.useFakeTimers({ toFake: ['Date', 'setInterval', 'clearInterval'] });
+      vi.setSystemTime(new Date(NOW));
+      const requests = serveBusyWeeks();
+      renderApp('/week/2026-10-26');
+      await eventually(() => {
+        expect(screen.getByText('Design review')).toBeInTheDocument();
+      });
+      expect(requests).toHaveLength(1);
+
+      act(() => {
+        vi.advanceTimersByTime(5 * 60_000);
+      });
+
+      await eventually(() => {
+        expect(requests).toHaveLength(2);
+      });
+    });
+
+    it('refetches when the window regains focus once the data is stale', async () => {
+      const requests = serveBusyWeeks();
+      renderApp('/week/2026-10-26');
+      await screen.findByText('Design review');
+      expect(requests).toHaveLength(1);
+
+      refocus();
+      expect(requests).toHaveLength(1);
+
+      staleLater();
+      refocus();
+
+      await eventually(() => {
+        expect(requests.length).toBeGreaterThan(1);
+      });
+    });
+
+    it('refetches when the connection comes back once the data is stale', async () => {
+      const requests = serveBusyWeeks();
+      renderApp('/week/2026-10-26');
+      await screen.findByText('Design review');
+      expect(requests).toHaveLength(1);
+
+      staleLater();
+      reconnect();
+
+      await eventually(() => {
+        expect(requests.length).toBeGreaterThan(1);
+      });
+    });
+
+    it('keeps the last week when an automatic refresh fails, and Try again recovers', async () => {
+      serveBusyWeeks();
+      renderApp('/week/2026-10-26');
+      await screen.findByText('Design review');
+
+      server.use(http.get('*/api/agenda/week', () => new HttpResponse(null, { status: 500 })));
+      staleLater();
+      reconnect();
+
+      expect(await screen.findByRole('alert')).toHaveTextContent(
+        'Couldn’t refresh; showing the last loaded week.',
+      );
+      expect(screen.getByText('Design review')).toBeInTheDocument();
+
+      serveBusyWeeks();
+      await userEvent.click(screen.getByRole('button', { name: 'Try again' }));
+
+      await eventually(() => {
+        expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+      });
     });
   });
 

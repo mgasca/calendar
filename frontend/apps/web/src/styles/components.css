@@ -385,7 +385,7 @@ select {
     gap: var(--space-1) var(--space-2);
   }
 
-  /* Compact like Refresh: 2rem tall, still above the 24px minimum target (WCAG 2.5.8). The title
+  /* Compact: 2rem tall, still above the 24px minimum target (WCAG 2.5.8). The title
      button (`.item-open`) keeps its own text styling. */
   :not(.week-task-list) > .task > .task-extras button,
   :not(.week-task-list) > .task > .row-actions button {

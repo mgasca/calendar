@@ -1,9 +1,10 @@
 ---
-status: planned
+status: implemented
 date: 2026-11-09
 issue: https://github.com/mgasca/calendar/issues/554
 pr:
   - https://github.com/mgasca/calendar/pull/584
+  - https://github.com/mgasca/calendar/pull/591
 adrs: ["0020", "0047"]
 ---
 
@@ -13,7 +14,7 @@ adrs: ["0020", "0047"]
 
 > As a calendar editor, I need the day and week views to stay up to date without a manual **Refresh** button, so that the header has one less control and I never wonder whether I am looking at old data.
 
-Tracked in issue #554. The wording is derived from the issue and is to be confirmed by the product owner.
+Tracked in issue #554. The wording is derived from the issue; the product owner accepted it by merging the card (#584).
 
 ## Background
 
@@ -50,14 +51,14 @@ The product owner agreed on #554 to take the week view's button out in the same 
 
 ### Acceptance criteria
 
-1. **Given** the day view, **when** it loads, **then** there is no **Refresh** button and no "Refreshing…" text in it.
-2. **Given** the week view, **when** it loads, **then** there is no **Refresh** button and no "Refreshing…" text in it.
-3. **Given** the day view or the week view is open and visible, **when** five minutes pass, **then** it reloads its agenda.
-4. **Given** the day view or the week view has data more than 30 seconds old, **when** the window regains focus, **then** it reloads its agenda; with fresher data it does not.
-5. **Given** the day view or the week view is open, **when** the connection drops and comes back, **then** it reloads its agenda.
-6. **Given** a reload of the day view or the week view fails while data is shown, **when** I select **Try again** in the error message, **then** the agenda reloads and the message goes once it succeeds.
-7. **Given** the day view or the week view, **when** I see its header at desktop and phone widths, in light and dark, **then** no gap is left where **Refresh** was and the page never scrolls sideways.
-8. **Given** the change is complete, **when** I run `just check`, **then** it passes.
+1. **Given** the day view, **when** it loads, **then** there is no **Refresh** button and no "Refreshing…" text in it. [Day view](../../frontend/apps/web/src/features/day/DayView.test.tsx) (`has no Refresh button, since the agenda refreshes itself (story 0052)`); [no Refresh rules left](../../frontend/apps/web/dev/styles.test.ts) (`has no Refresh button rules left, …`).
+2. **Given** the week view, **when** it loads, **then** there is no **Refresh** button and no "Refreshing…" text in it. [Week view](../../frontend/apps/web/src/features/week/WeekView.test.tsx) (`has no Refresh button, since the week refreshes itself`).
+3. **Given** the day view or the week view is open and visible, **when** five minutes pass, **then** it reloads its agenda. [Day view](../../frontend/apps/web/src/features/day/DayView.test.tsx) and [week view](../../frontend/apps/web/src/features/week/WeekView.test.tsx) (`refetches every five minutes to pick up changes from other devices`).
+4. **Given** the day view or the week view has data more than 30 seconds old, **when** the window regains focus, **then** it reloads its agenda; with fresher data it does not. [Day view](../../frontend/apps/web/src/features/day/DayView.test.tsx) and [week view](../../frontend/apps/web/src/features/week/WeekView.test.tsx) (`refetches when the window regains focus once the data is stale`).
+5. **Given** the day view or the week view is open, **when** the connection drops and comes back, **then** it reloads its agenda. [Day view](../../frontend/apps/web/src/features/day/DayView.test.tsx) and [week view](../../frontend/apps/web/src/features/week/WeekView.test.tsx) (`refetches when the connection comes back once the data is stale`). As with focus, the reload happens once the data is more than 30 seconds old.
+6. **Given** a reload of the day view or the week view fails while data is shown, **when** I select **Try again** in the error message, **then** the agenda reloads and the message goes once it succeeds. [Day view](../../frontend/apps/web/src/features/day/DayView.test.tsx) (`keeps the last agenda when an automatic refresh fails, and Try again recovers`); [week view](../../frontend/apps/web/src/features/week/WeekView.test.tsx) (`keeps the last week when an automatic refresh fails, and Try again recovers`).
+7. **Given** the day view or the week view, **when** I see its header at desktop and phone widths, in light and dark, **then** no gap is left where **Refresh** was and the page never scrolls sideways. Checked by hand in the running app, with before and after screenshots on the delivery PR; at 390 px the page measured 390 px wide in both views. Not covered by an automatic test, because the web tests run without layout.
+8. **Given** the change is complete, **when** I run `just check`, **then** it passes. CI on the delivery PR.
 
 ## Design decisions
 
@@ -79,17 +80,15 @@ No new ADR is expected.
 
 ## Implementation notes
 
-*Planned. This section is completed as the story is built.*
-
 ### Where things live
 
 | Area | Location |
 | --- | --- |
-| Day header | `frontend/apps/web/src/features/day/DayView.tsx` |
-| Week header | `frontend/apps/web/src/features/week/WeekView.tsx` |
-| Agenda queries and polling interval | `frontend/apps/web/src/features/day/useDayAgenda.ts`, `frontend/apps/web/src/features/week/useWeekAgenda.ts`, `frontend/apps/web/src/features/agenda/agendaQuery.ts` |
-| Query defaults (staleness, retries) | `frontend/apps/web/src/queryClient.ts` |
-| Refresh styles and their tests | `frontend/apps/web/src/index.css` (`.refresh`), `frontend/apps/web/dev/styles.test.ts` |
+| Day header (button removed) | `frontend/apps/web/src/features/day/DayView.tsx` |
+| Week header (button removed) | `frontend/apps/web/src/features/week/WeekView.tsx` |
+| Agenda queries and polling interval (unchanged) | `frontend/apps/web/src/features/day/useDayAgenda.ts`, `frontend/apps/web/src/features/week/useWeekAgenda.ts`, `frontend/apps/web/src/features/agenda/agendaQuery.ts` |
+| Query defaults: 30-second staleness, focus and reconnect reload by default (unchanged) | `frontend/apps/web/src/queryClient.ts` |
+| Styles | the `.refresh` rules left `frontend/apps/web/src/index.css`; `frontend/apps/web/dev/styles.test.ts` now checks none remain |
 
 ### API
 
@@ -97,17 +96,18 @@ No changes.
 
 ### Testing
 
-* Component tests with MSW in `DayView.test.tsx` and `WeekView.test.tsx`: no Refresh button; reload after five minutes, on focus once stale, and on reconnect; **Try again** after a failed reload.
-* The test `refreshes on demand and shows when it is fetching` and the Refresh style tests go with the button.
-* The reflowed headers are checked in the running app at desktop and phone widths, in both themes, with before and after screenshots in the PR.
+* Day view (`DayView.test.tsx`, `clock` block): reconnect, no Refresh button, and a failed automatic refresh that keeps the last agenda and recovers with **Try again** are new; polling and focus were already tested.
+* Week view (`WeekView.test.tsx`, `refreshing (story 0052)` block): no Refresh button, polling, focus, reconnect and **Try again** after a failed automatic refresh, all new.
+* Removed with the button: `refreshes on demand and shows when it is fetching` and the two Refresh style tests (#464, #521). The `.summary-part` check from the first of those is kept as its own test.
+* Negative controls, in a scratch worktree of `main` at df403f6a3 with the new test files copied in: the three "no Refresh" tests failed against the old views and styles. With `refetchOnWindowFocus: false` and `refetchOnReconnect: false` in the query defaults, the six focus, reconnect and **Try again** tests failed; without the week polling interval, the week polling test failed.
+* In the running app (throwaway stack, both `main` and this branch on one API), both views at 1280×900 and 390×844 in Light and Dark: no gap where **Refresh** was, no `.refresh` element, the page 390 px wide at 390 px, and no console or HTTP errors.
 
 ### Lessons learned, known issues and follow-ups
 
-* To be filled in on delivery.
+* **Reconnect reloads only stale data**, like focus: a connection that drops and returns within 30 seconds of the last load does not reload. That is the query library's behaviour and was left as it is; the five-minute poll still catches anything missed.
+* **No manual reload in the app.** A user who wants one uses the browser's reload. If that proves to be missed, a follow-up can add one without bringing back a permanent button.
 
 ## User guide
-
-*Planned behaviour. This section is finalised when the story is implemented.*
 
 ### Keeping the day and week up to date
 

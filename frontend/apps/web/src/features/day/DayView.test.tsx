@@ -1,5 +1,5 @@
 import type { Schemas } from '@calendar/api-client';
-import { focusManager } from '@tanstack/react-query';
+import { focusManager, onlineManager } from '@tanstack/react-query';
 import { act, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { http, HttpResponse } from 'msw';
@@ -185,6 +185,15 @@ function renderDay(date: string) {
 function useFakeClock(iso: string, { intervals = false } = {}) {
   vi.useFakeTimers({ toFake: intervals ? ['Date', 'setInterval', 'clearInterval'] : ['Date'] });
   vi.setSystemTime(new Date(iso));
+}
+
+/** Drops the connection and brings it back, as TanStack Query sees it; ends online. */
+function reconnect() {
+  for (const online of [false, true]) {
+    act(() => {
+      onlineManager.setOnline(online);
+    });
+  }
 }
 
 function itemFor(text: string): HTMLElement {
@@ -711,35 +720,52 @@ describe('DayView', () => {
       });
     });
 
-    it('refreshes on demand and shows when it is fetching', async () => {
+    it('refetches when the connection comes back once the data is stale', async () => {
       useFakeClock(MORNING);
-      let release: () => void = () => undefined;
-      let gate = Promise.resolve();
       const requests = serveAgenda(buildAgenda());
       await renderToday();
-      const button = await screen.findByRole('button', { name: 'Refresh' });
-      // Both labels are always in the button, one hidden, so it is as wide as the longer (#464).
-      expect(within(button).getByText('Refreshing…')).toHaveAttribute('aria-hidden', 'true');
-      expect(within(button).getByText('Refresh')).not.toHaveAttribute('aria-hidden', 'true');
-      server.use(
-        http.get('*/api/agenda/day', async ({ request }) => {
-          requests.push(new URL(request.url));
-          await gate;
-          return HttpResponse.json(buildAgenda());
-        }),
-      );
-      gate = new Promise<void>((resolve) => {
-        release = resolve;
+      await screen.findByRole('region', { name: 'Schedule' });
+      expect(requests).toHaveLength(1);
+
+      vi.setSystemTime(new Date(Date.parse(MORNING) + 31_000));
+      reconnect();
+
+      await eventually(() => {
+        expect(requests.length).toBeGreaterThan(1);
       });
+    });
 
-      await userEvent.click(button);
+    it('has no Refresh button, since the agenda refreshes itself (story 0052)', async () => {
+      useFakeClock(MORNING);
+      serveAgenda(buildAgenda());
+      await renderToday();
+      await screen.findByRole('region', { name: 'Schedule' });
 
-      expect(await screen.findByRole('button', { name: 'Refreshing…' })).toBe(button);
-      expect(button).toHaveAttribute('aria-busy', 'true');
-      expect(within(button).getByText('Refresh')).toHaveAttribute('aria-hidden', 'true');
-      expect(requests).toHaveLength(2);
-      release();
-      expect(await screen.findByRole('button', { name: 'Refresh' })).toBeInTheDocument();
+      expect(screen.queryByRole('button', { name: /^Refresh/ })).not.toBeInTheDocument();
+      expect(screen.queryByText('Refreshing…')).not.toBeInTheDocument();
+    });
+
+    it('keeps the last agenda when an automatic refresh fails, and Try again recovers', async () => {
+      useFakeClock(MORNING);
+      serveAgenda(buildAgenda());
+      await renderToday();
+      await screen.findByRole('region', { name: 'Schedule' });
+
+      server.use(http.get('*/api/agenda/day', () => new HttpResponse(null, { status: 500 })));
+      vi.setSystemTime(new Date(Date.parse(MORNING) + 31_000));
+      reconnect();
+
+      expect(await screen.findByRole('alert')).toHaveTextContent(
+        'Couldn’t refresh; showing the last loaded agenda.',
+      );
+      expect(screen.getByRole('region', { name: 'Schedule' })).toBeInTheDocument();
+
+      serveAgenda(buildAgenda());
+      await userEvent.click(screen.getByRole('button', { name: 'Try again' }));
+
+      await eventually(() => {
+        expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+      });
     });
   });
 

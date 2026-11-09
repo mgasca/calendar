@@ -144,18 +144,6 @@ export function WeekView({ weekStart, timeZone: zoneOverride, locale }: WeekView
       <header className="week-header">
         <p className="eyebrow">{relativeWeek(shownWeek, thisWeek)}</p>
         {heading(shownWeek)}
-        <button
-          type="button"
-          className="refresh"
-          aria-busy={agenda.isFetching}
-          onClick={() => {
-            if (!agenda.isFetching) {
-              void agenda.refetch();
-            }
-          }}
-        >
-          {agenda.isFetching ? 'Refreshing…' : 'Refresh'}
-        </button>
         {stale && <p role="status">Updating…</p>}
         {counts.items > 0 && <p className="summary">{summary(counts)}</p>}
         {weekNav}

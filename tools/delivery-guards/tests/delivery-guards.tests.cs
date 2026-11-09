@@ -479,8 +479,9 @@ public sealed class ChangesRulesTests
 
   private static readonly string[] AllJobs = ["backend", "frontend", "docs", "tooling", "adr", "image"];
 
-  // Every job but ADR conventions, which never runs with Tooling because Tooling runs the same check (issue #572).
-  private const string EveryRun = "backend frontend docs tooling image";
+  // A pull request or merge group that runs everything runs every job but ADR conventions, because Tooling runs the same
+  // check; a push or dispatch runs ADR conventions too, so ADR-0045 can baseline it from main (issue #572).
+  private const string EveryPullRequestJob = "backend frontend docs tooling image";
 
   private static readonly string[] JqPaths = ["/usr/bin/jq", "/usr/local/bin/jq"];
 
@@ -532,7 +533,7 @@ public sealed class ChangesRulesTests
   [InlineData(".github/workflows/ci.yml")]
   [InlineData(".github/ci-changes.jq")]
   public void AChangeToTheRules_RunsEverything(string file) =>
-    Run("pull_request", true, "README.md", file).ShouldBe(Expected(EveryRun));
+    Run("pull_request", true, "README.md", file).ShouldBe(Expected(EveryPullRequestJob));
 
   [Fact]
   public void FilesInSeveralSets_RunTheUnion() =>
@@ -573,12 +574,17 @@ public sealed class ChangesRulesTests
 
   [Fact]
   public void AnIncompleteListing_RunsEverything() =>
-    Run("pull_request", false, "README.md").ShouldBe(Expected(EveryRun));
+    Run("pull_request", false, "README.md").ShouldBe(Expected(EveryPullRequestJob));
+
+  [Fact]
+  public void AnIncompleteMergeGroupListing_RunsEverythingButTheAdrCheck() =>
+    Run("merge_group", false, "docs/stories/0038-x.md").ShouldBe(Expected(EveryPullRequestJob));
 
   [Theory]
   [InlineData("push")]
   [InlineData("workflow_dispatch")]
-  public void APushOrDispatch_RunsEverything(string @event) => Run(@event, true).ShouldBe(Expected(EveryRun));
+  public void APushOrDispatch_RunsEverything(string @event) =>
+    Run(@event, true).ShouldBe(Expected(string.Join(' ', AllJobs)));
 
   // Forks (ADR-0025): the rules above only decide whether the Docs site job runs. The publication artifact is built and
   // uploaded only after the Pages configuration step, which runs for main and same-repository pull requests only, so a

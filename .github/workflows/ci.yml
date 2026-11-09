@@ -28,8 +28,8 @@ jobs:
   # Decides which jobs this run needs from the files it changes (ADR-0046, story 0038). Pull requests and merge groups
   # run only the jobs whose inputs they change; pushes and dispatches run every job, and so does a run whose file list
   # may be truncated or that changes the rules (.github/ci-changes.jq, which tools/delivery-guards tests). ADR
-  # conventions is the one exception: it never runs with Tooling, which runs the same check. CI result accepts a skipped
-  # job only when this job's output for it is false.
+  # conventions is the one exception: a pull request or merge group never runs it with Tooling, which runs the same
+  # check. CI result accepts a skipped job only when this job's output for it is false.
   changes:
     name: Changes
     runs-on: ubuntu-latest
@@ -282,8 +282,9 @@ jobs:
         run: just tools adr
 
   # The ADR check alone, for a change to the ADRs, the story cards or the architecture model that runs no Tooling job
-  # (issue #572): `check-adr` reads all three (story 0051), and takes about a second. Changes never runs this job and
-  # Tooling together, because Tooling's last step runs the same check.
+  # (issue #572): `check-adr` reads all three (story 0051), and takes about a second. On a pull request or merge group,
+  # Changes never runs this job and Tooling together, because Tooling's last step runs the same check. Pushes and
+  # dispatches run both, so ADR-0045 can baseline and gate this job from main.
   adr:
     name: ADR conventions
     needs: changes

@@ -65,6 +65,7 @@ def filtered: (.event | IN("pull_request", "merge_group")) and .complete == true
    then jobs | with_entries(.key as $job | .value = any($run.files[]; needs($job)))
    else jobs | map_values(true)
    end)
-# ADR conventions runs the check that Tooling's `just tools adr` step runs, so it runs only when Tooling does not.
-| .adr = (.adr and (.tooling | not))
+# ADR conventions runs the check that Tooling's `just tools adr` step runs, so a pull request or merge group runs it only
+# when Tooling does not. A push or dispatch runs it as well, so ADR-0045 has push runs on main to baseline it (issue #572).
+| (if $run.event | IN("pull_request", "merge_group") then .adr = (.adr and (.tooling | not)) else . end)
 | . + {skipped: [to_entries[] | select(.value == false) | .key as $job | jobs[$job]]}

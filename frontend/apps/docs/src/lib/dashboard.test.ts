@@ -192,7 +192,7 @@ describe('the CI-speed page', () => {
 
   it('marks a job with too few recent runs inconclusive and a job without a baseline as such', async () => {
     const body = render('ci-speed', await present());
-    expect(body).toContain('inconclusive</span> 8 of 20 recent runs needed');
+    expect(body).toContain('inconclusive</span> | 8 of 20 recent runs needed');
     const older = await readDashboardData(
       await folder({ '2026-11-07.json': await validText('2026-11-07.json') }),
     );

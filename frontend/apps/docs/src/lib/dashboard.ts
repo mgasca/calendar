@@ -424,31 +424,43 @@ const day = (time: string) => time.slice(0, 10);
 const minute = (time: string) => `${time.slice(0, 10)} ${time.slice(11, 16)} UTC`;
 
 function table(header: string[], rows: string[][]) {
+  // The div scrolls a wide table on a narrow screen; the blank lines let Markdown render the table inside it.
   return [
+    '<div class="dashboard-table">',
+    '',
     `| ${header.join(' | ')} |`,
     `| ${header.map(() => '---').join(' | ')} |`,
     ...rows.map((row) => `| ${row.join(' | ')} |`),
+    '',
+    '</div>',
   ].join('\n');
+}
+
+/** The verdict word and what supports it, as two table cells. */
+function verdictCells(row: JobRow, trend: CiSection['trend']): [string, string] {
+  if (row.baseline === null || row.trend === null)
+    return ['<span class="dashboard-verdict">no baseline pinned</span>', 'none'];
+  const shift = `${signed(row.trend.shiftSeconds)} (${signed(row.trend.lowSeconds)} to ${signed(row.trend.highSeconds)}) from ${row.trend.recentRuns} runs`;
+  switch (row.trend.verdict) {
+    case 'slower':
+      return ['<span class="dashboard-verdict dashboard-verdict-slower">slower</span>', shift];
+    case 'faster':
+      return [
+        '<span class="dashboard-verdict dashboard-verdict-faster">faster</span> (re-pin?)',
+        shift,
+      ];
+    case 'inconclusive':
+      return [
+        '<span class="dashboard-verdict">inconclusive</span>',
+        `${row.trend.recentRuns} of ${trend?.required ?? '?'} recent runs needed`,
+      ];
+    default:
+      return ['<span class="dashboard-verdict">no shift</span>', shift];
+  }
 }
 
 function windowText(window: SnapshotWindow | null) {
   return window ? `${minute(window.from)} to ${minute(window.to)}` : 'no runs';
-}
-
-function verdictCell(row: JobRow, trend: CiSection['trend']) {
-  if (row.baseline === null || row.trend === null)
-    return '<span class="dashboard-verdict">no baseline pinned</span>';
-  const detail = `${signed(row.trend.shiftSeconds)} (95 % interval ${signed(row.trend.lowSeconds)} to ${signed(row.trend.highSeconds)}), ${row.trend.recentRuns} recent runs`;
-  switch (row.trend.verdict) {
-    case 'slower':
-      return `<span class="dashboard-verdict dashboard-verdict-slower">slower</span> ${detail}`;
-    case 'faster':
-      return `<span class="dashboard-verdict dashboard-verdict-faster">faster</span> (re-pin?) ${detail}`;
-    case 'inconclusive':
-      return `<span class="dashboard-verdict">inconclusive</span> ${row.trend.recentRuns} of ${trend?.required ?? '?'} recent runs needed`;
-    default:
-      return `<span class="dashboard-verdict">no shift</span> ${detail}`;
-  }
 }
 
 /** A small line chart of the values, scaled to its own range; the caption carries the numbers. */
@@ -546,7 +558,7 @@ function ciSpeed(data: DashboardData): string {
       ? `${formatSeconds(row.baseline.medianSeconds)} (${row.baseline.count} runs)`
       : 'none pinned',
     row.baseline ? formatSeconds(row.baseline.thresholdSeconds) : 'none',
-    verdictCell(row, ci.trend),
+    ...verdictCells(row, ci.trend),
   ]);
   lines.push(
     rows.length === 0
@@ -563,6 +575,7 @@ function ciSpeed(data: DashboardData): string {
             'Baseline median',
             'Threshold',
             'Trend verdict',
+            'Shift vs baseline (95 % interval)',
           ],
           rows,
         ),

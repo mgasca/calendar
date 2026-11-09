@@ -199,7 +199,7 @@ jobs:
             git fetch --quiet --depth 1 origin dashboard-data
             if git cat-file -e FETCH_HEAD:snapshots 2> /dev/null; then
               mkdir -p .dashboard-data/snapshots
-              git archive FETCH_HEAD:snapshots | tar -x -C .dashboard-data/snapshots
+              git -C "$(git rev-parse --show-toplevel)" archive FETCH_HEAD:snapshots | tar -x -C .dashboard-data/snapshots
               ls .dashboard-data/snapshots
             fi
           fi

@@ -162,3 +162,10 @@ pre.mermaid rect.actor {
   display: block;
   color: var(--color-accent);
 }
+.dashboard-table {
+  overflow-x: auto;
+}
+.dashboard-table th,
+.dashboard-table td {
+  white-space: nowrap;
+}

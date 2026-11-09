@@ -88,7 +88,14 @@ public sealed record CiSection(
 /// <param name="GeneratedAt">When the snapshot was taken.</param>
 /// <param name="Repository"><c>owner/name</c> of the repository the data comes from.</param>
 /// <param name="Ci">The CI-speed section.</param>
-public sealed record Snapshot(int Version, DateOnly Date, DateTimeOffset GeneratedAt, string Repository, CiSection Ci);
+/// <param name="Flow">The flow section (#598); null in a snapshot written without it.</param>
+public sealed record Snapshot(
+  int Version,
+  DateOnly Date,
+  DateTimeOffset GeneratedAt,
+  string Repository,
+  CiSection Ci,
+  FlowSection? Flow = null);
 
 /// <summary>Builds the CI-speed section from sampled runs.</summary>
 public static class CiSnapshot
@@ -220,6 +227,11 @@ public static class SnapshotJson
       writer.WriteString("repository", snapshot.Repository);
       writer.WritePropertyName("ci");
       WriteCi(writer, snapshot.Ci);
+      if (snapshot.Flow is not null)
+      {
+        writer.WritePropertyName("flow");
+        FlowJson.Write(writer, snapshot.Flow);
+      }
       writer.WriteEndObject();
     }
     return Encoding.UTF8.GetString(stream.ToArray()) + "\n";

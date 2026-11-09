@@ -6,6 +6,9 @@
 #:include ../../ci-timings/Trend.cs
 #:include ../Snapshot.cs
 #:include ../SnapshotRules.cs
+#:include ../FlowSection.cs
+#:include ../FlowRules.cs
+#:include FlowTests.cs
 
 // Tests for the delivery dashboard's snapshot tool. Run: dotnet run tools/delivery-dashboard/tests/delivery-dashboard.tests.cs
 // The GitHub CLI is never called: the tests build runs and samples by hand.

@@ -73,7 +73,8 @@
       { "id": "ADR-0045", "title": "Gate each CI job's run time against a pinned baseline with a robust log-normal bound", "status": "accepted", "file": "docs/decisions/0045-run-time-regression-gates-for-ci-jobs.md", "url": "https://mgasca.github.io/calendar/adr/0045/" },
       { "id": "ADR-0046", "title": "Run each CI job only for the paths it checks, decided by a Changes job inside the workflow", "status": "accepted", "file": "docs/decisions/0046-run-ci-jobs-only-for-the-paths-they-check.md", "url": "https://mgasca.github.io/calendar/adr/0046/" },
       { "id": "ADR-0047", "title": "Theme the web app with semantic CSS custom-property tokens selected by a data-theme attribute", "status": "accepted", "file": "docs/decisions/0047-semantic-css-tokens-selected-by-a-data-theme-attribute.md", "url": "https://mgasca.github.io/calendar/adr/0047/" },
-      { "id": "ADR-0048", "title": "Self-host the theme fonts from Fontsource variable-font packages", "status": "accepted", "file": "docs/decisions/0048-self-host-theme-fonts-with-fontsource-packages.md", "url": "https://mgasca.github.io/calendar/adr/0048/" }
+      { "id": "ADR-0048", "title": "Self-host the theme fonts from Fontsource variable-font packages", "status": "accepted", "file": "docs/decisions/0048-self-host-theme-fonts-with-fontsource-packages.md", "url": "https://mgasca.github.io/calendar/adr/0048/" },
+      { "id": "ADR-0049", "title": "Build the delivery dashboard from daily JSON snapshots on a data branch, rendered by the documentation site", "status": "proposed", "file": "docs/decisions/0049-build-the-delivery-dashboard-from-daily-snapshots-on-the-docs-site.md", "url": "https://mgasca.github.io/calendar/adr/0049/" }
     ],
     "stories": [
       { "id": "0001", "title": "Today view", "status": "implemented", "url": "https://mgasca.github.io/calendar/stories/0001/" },

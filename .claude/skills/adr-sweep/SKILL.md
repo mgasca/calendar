@@ -33,13 +33,15 @@ The sweep is read-only. Its outputs are the report, published in step 7 as one d
      - an issue or PR updated since the watermark names it (the M5 search);
      - it is one of the *k* = 6 records judged longest ago, ties by number (the rotation). The records the previous report lists as left over come first, ahead of the *k*: those past the workflow's run cap, those whose judge returned nothing, and those a by-hand run did not reach.
 
-     Give each record its reason, naming the change (`0011: cited justfile changed`). Order the delta by reason, in the order of the list above: changed record, changed token, trigger, open work, left over, rotation. Ties go by number, and a record with several reasons takes its first. Every other record is carried.
+     Give each record its reason, naming the change (`0011: cited justfile changed`). Judge the delta in this order, so that a busy selection cannot push the rest out (#581): the left-over records, in the order the previous report lists them; then the rotation, oldest first; then the rest by reason, in the order of the list above (changed record, changed token, trigger, open work), ties by number, a record with several reasons taking its first. A left-over record that is also selected stays with the left-over records. Every other record is carried.
+
+     The rotation's bound, every record judged at least once every nine sweeps of the 49-record log, holds only while the left-over list leaves the rotation its *k* slots: at most 7 records at the workflow's defaults (13 admitted, *k* = 6). A longer list takes rotation slots first; one longer than the records a run admits holds the rotation off until it drains. The report says so when it happens.
    - **Checks.** Run the catalogue, cheapest first. The mechanical checks (M) run in the session on every record on every sweep. The judgement checks (J) read only the delta records. They take one of two paths, and the report names the one that ran:
      - **Workflow (Claude Code only, ADR-0044 and its amendment of 2026-11-08).** Run the saved workflow `.claude/workflows/adr-sweep-judge.js` with the Workflow tool and its `scriptPath`. This instruction is the opt-in.
        - **What to pass.** `args` is `{ main: <step 1 SHA>, inventory: <the step 2 JSON array>, watermark: <the previous report's watermark line, or null>, leftOver: [<the ids it lists as left over>] }`.
          - `checks` defaults to `["J1","J2","J3","J4","J5"]`. Add `"J7"` on request or when the open issue list is short.
          - `k` (rotation, default 6), `capRun` (default 40 agents per run) and `capRecord` (default 12 agents per record) are passed only to change them.
-         - Passing `records: [{ id, path, reasons, checks }]` skips selection and judges those records in the given order: a delta selected by hand, or a seeded proof run.
+         - Passing `records: [{ id, path, reasons, checks }]` skips selection and judges those records in the given order: a delta selected by hand, or a seeded proof run. A record may also name its `kind` (`left-over`, `rotation`, or a selected kind such as `changed-token`); records with kinds take the order above, which is how a seeded run checks the cap.
        - **Selection.** The workflow selects the delta by the rules above. One select agent, the read-only `sweep-judge` agent type (on Sonnet), does the parts that need `git` and `gh`: changed records, changed cited tokens, triggers and open work. The left-over records and the rotation over the watermark's `judged=` groups are computed in plain code. A `null` or unparseable watermark, or one not in the history of `main`, means a full run, and the workflow logs it.
        - **Judging.** It runs one judge per record (a `sweep-judge` agent, on Sonnet) and two `sweep-skeptic` agents per Fix now or Decide finding, lenses *true* and *matters*. A finding is confirmed only if both decline, and uncertainty refutes. Watch findings come back unverified.
        - **What it returns:**
@@ -48,7 +50,8 @@ The sweep is read-only. Its outputs are the report, published in step 7 as one d
          - `confirmed`, and `refuted` with the skeptics' votes and reasons;
          - `unexamined`: findings past a cap or without both answers, each with why;
          - `watch`, `judged`, `caps` and `agents`;
-         - `leftOver`: records past the run cap, and records whose judge returned nothing, each with why.
+         - `leftOver`: left-over and selected records past the run cap, left-over first, and records whose judge returned nothing, each with why. Pass it on in this order;
+         - `caps.rotationDeferred`: rotation records past the run cap. They are not left over: they keep their judged date, so the next rotation picks them again.
 
          It never writes to GitHub or files.
        - **If selection failed**, select the delta by hand and run the workflow again with `records`, or take the by-hand path.

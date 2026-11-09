@@ -141,6 +141,9 @@
 </ul>
 </li>
 <li>
+<p><strong>A <code>sweep-judge</code> agent definition</strong>, <code>.claude/agents/sweep-judge.md</code>: read-only, on Sonnet, for the select agent and the judges, which read issue and PR text that anyone can write. Its ground rules mirror <code>sweep-skeptic</code>. Added after the review of <a href="https://github.com/mgasca/calendar/pull/570">#570</a> found both ran without an agent type (<a href="https://github.com/mgasca/calendar/issues/580">#580</a>).</p>
+</li>
+<li>
 <p><strong>A <code>sweep-skeptic</code> agent definition</strong>, <code>.claude/agents/sweep-skeptic.md</code>: read-only, on Haiku, for one claim about <code>origin/main</code> or GitHub state through one lens. It is separate from <code>skeptic</code>, which starts from a branch diff and which the review before a merge depends on.</p>
 </li>
 <li>
@@ -234,7 +237,7 @@
 <li><strong>Mechanical checks in <code>check-adr</code>, not in agents:</strong> they are deterministic, free, and run in CI on every PR, which turns “found at the next sweep” into “refused at the PR” for every harness. The skill already named them as candidates. Agreed 2026-11-08.</li>
 <li><strong>An epic with a child per deliverable:</strong> each deliverable touches different files and can be reviewed and merged on its own, as in 0045. Agreed 2026-11-08.</li>
 <li><strong>The session posts, not the script:</strong> every GitHub write stays behind the public-post guard and the session’s judgement, as in 0035.</li>
-<li><strong>Sonnet judges, Haiku skeptics:</strong> the judges run on Sonnet (the workflow’s per-agent <code>model</code>), which keeps the per-record J checks cheap. <code>sweep-skeptic</code> is pinned to Haiku in its front matter, like <code>skeptic</code>. This differs from the reviewers, which run on Opus. The benchmark record shows whether Sonnet misses findings that matter. Answered on #566, 2026-11-08.</li>
+<li><strong>Sonnet judges, Haiku skeptics:</strong> the judges run on Sonnet (pinned in the <code>sweep-judge</code> front matter since <a href="https://github.com/mgasca/calendar/issues/580">#580</a>; before, the workflow’s per-agent <code>model</code>), which keeps the per-record J checks cheap. <code>sweep-skeptic</code> is pinned to Haiku in its front matter, like <code>skeptic</code>. This differs from the reviewers, which run on Opus. The benchmark record shows whether Sonnet misses findings that matter. Answered on #566, 2026-11-08.</li>
 <li><strong>Caps of 12 per record and 40 per run, rotation 6:</strong> the per-record cap stops one record with many findings from using up the run’s budget. The run cap bounds a day with a large refactor. Answered on #566 and in conversation, 2026-11-08.</li>
 <li><strong>No paired by-hand baseline:</strong> the comparison uses the 2026-11-07 report, so the first runs cost no more than the workflow itself. The price is that the by-hand path has no token figure. Answered on #566, 2026-11-08.</li>
 <li><strong>Two lenses, not three:</strong> <em>reproduces</em> has nothing to run for a claim about a document or an issue thread.</li>
@@ -282,7 +285,11 @@
 
 
 
-<table><thead><tr><th>Area</th><th>Location</th></tr></thead><tbody><tr><td>ADR-0044 amendment</td><td><code>docs/decisions/0044-claude-first-agent-automation.md</code></td></tr><tr><td>Mechanical checks and <code>--inventory</code></td><td><code>.claude/skills/adr-draft/scripts/check-adr/</code> (<code>AdrValidator.cs</code>, <code>check-adr.cs</code>) and its tests</td></tr><tr><td>Sweep skills</td><td><code>.claude/skills/adr-sweep/SKILL.md</code>, <code>.claude/skills/issue-sweep/SKILL.md</code></td></tr><tr><td>Workflows</td><td><code>.claude/workflows/adr-sweep-judge.js</code>, <code>.claude/workflows/issue-sweep-verify.js</code></td></tr><tr><td>Skeptic agent</td><td><code>.claude/agents/sweep-skeptic.md</code></td></tr><tr><td>Measurements</td><td>a new record in <code>docs/benchmarks/</code></td></tr><tr><td>Sweep reports</td><td><code>docs/sweeps/adr/</code>, <code>docs/sweeps/issue/</code> and their <code>docs/sweeps/README.md</code> (not published)</td></tr></tbody></table>
+
+
+
+
+<table><thead><tr><th>Area</th><th>Location</th></tr></thead><tbody><tr><td>ADR-0044 amendment</td><td><code>docs/decisions/0044-claude-first-agent-automation.md</code></td></tr><tr><td>Mechanical checks and <code>--inventory</code></td><td><code>.claude/skills/adr-draft/scripts/check-adr/</code> (<code>AdrValidator.cs</code>, <code>check-adr.cs</code>) and its tests</td></tr><tr><td>Sweep skills</td><td><code>.claude/skills/adr-sweep/SKILL.md</code>, <code>.claude/skills/issue-sweep/SKILL.md</code></td></tr><tr><td>Workflows</td><td><code>.claude/workflows/adr-sweep-judge.js</code>, <code>.claude/workflows/issue-sweep-verify.js</code></td></tr><tr><td>Select and judge agent</td><td><code>.claude/agents/sweep-judge.md</code></td></tr><tr><td>Skeptic agent</td><td><code>.claude/agents/sweep-skeptic.md</code></td></tr><tr><td>Measurements</td><td>a new record in <code>docs/benchmarks/</code></td></tr><tr><td>Sweep reports</td><td><code>docs/sweeps/adr/</code>, <code>docs/sweeps/issue/</code> and their <code>docs/sweeps/README.md</code> (not published)</td></tr></tbody></table>
 <h3 id="api">API</h3>
 <p>No changes.</p>
 <h3 id="testing">Testing</h3>

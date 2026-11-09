@@ -87,6 +87,7 @@ var listJson = await Gh.RunAsync(
   "--json", "databaseId,status,conclusion,createdAt,event,headBranch,headSha",
 ]);
 List<SampledRun> sampled = [];
+Dictionary<long, string> fetchedJobs = [];
 List<double> queue = [];
 IEnumerable<WorkflowRun> wanted = Parser.ParseRuns(listJson)
   .Where(item => BaselineRuns.IsSuccessful(item) && BaselineRuns.IsMain(item))
@@ -94,6 +95,7 @@ IEnumerable<WorkflowRun> wanted = Parser.ParseRuns(listJson)
 foreach (WorkflowRun run in wanted)
 {
   var jobsJson = await Gh.RunAsync(["api", $"repos/{repository}/actions/runs/{run.Id}/jobs?per_page=50"]);
+  fetchedJobs[run.Id] = jobsJson;
   IReadOnlyList<JobTiming> jobs = Parser.ParseJobs(run.Id, jobsJson);
   sampled.Add(new SampledRun(run, [.. Baselines.Samples(run, jobs)]));
   if (CiSnapshot.QueueSeconds(run, jobs) is { } wait)
@@ -112,7 +114,7 @@ var snapshot = new Snapshot(
   new DateTimeOffset(now.Year, now.Month, now.Day, now.Hour, now.Minute, now.Second, TimeSpan.Zero),
   repository,
   CiSnapshot.Build(workflow, sampled, pinned, TrendConstants.Default, queue),
-  QualityCollector.Build(workflow, await QualityCollector.CollectAsync(repository, workflow, qualityRuns)));
+  QualityCollector.Build(workflow, await QualityCollector.CollectAsync(repository, workflow, qualityRuns, fetchedJobs)));
 var json = SnapshotJson.Write(snapshot);
 IReadOnlyList<string> problems = SnapshotRules.Validate(json);
 if (problems.Count > 0)

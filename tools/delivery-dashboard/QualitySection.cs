@@ -370,12 +370,27 @@ public static class QualityCollector
         .Select(group => new GuardDay(group.Key, group.Count(), group.Count(item => item.Failed))),
     ];
 
+  /// <summary>
+  /// The jobs response another section already fetched for a run, when it holds all the quality section needs: a run never
+  /// re-run (attempt 1) has the same jobs whether or not <c>filter=all</c> is asked for.
+  /// </summary>
+  /// <param name="run">The run.</param>
+  /// <param name="knownJobs">Jobs responses fetched without a filter, by run id; may be null.</param>
+  /// <returns>The response, or null when the run must be fetched.</returns>
+  public static string? ReusableJobs(AttemptRun run, IReadOnlyDictionary<long, string>? knownJobs) =>
+    run.Attempt == 1 && knownJobs is not null && knownJobs.TryGetValue(run.Run.Id, out var json) ? json : null;
+
   /// <summary>Reads the newest completed runs of the workflow and the jobs of every attempt of each, with the GitHub CLI.</summary>
   /// <param name="repository"><c>owner/name</c>.</param>
   /// <param name="workflow">The workflow file.</param>
   /// <param name="runCount">How many completed runs to sample.</param>
+  /// <param name="knownJobs">Jobs responses already fetched for runs without <c>filter=all</c>, by run id, to avoid fetching twice.</param>
   /// <returns>The inputs, newest first.</returns>
-  public static async Task<IReadOnlyList<QualityInput>> CollectAsync(string repository, string workflow, int runCount)
+  public static async Task<IReadOnlyList<QualityInput>> CollectAsync(
+    string repository,
+    string workflow,
+    int runCount,
+    IReadOnlyDictionary<long, string>? knownJobs = null)
   {
     List<AttemptRun> runs = [];
     var page = 1;
@@ -399,7 +414,8 @@ public static class QualityCollector
     List<QualityInput> inputs = [];
     foreach (AttemptRun run in runs.Take(runCount))
     {
-      var jobsJson = await Gh.RunAsync(["api", $"repos/{repository}/actions/runs/{run.Run.Id}/jobs?filter=all&per_page=100"]);
+      var jobsJson = ReusableJobs(run, knownJobs)
+        ?? await Gh.RunAsync(["api", $"repos/{repository}/actions/runs/{run.Run.Id}/jobs?filter=all&per_page=100"]);
       inputs.Add(new QualityInput(run, QualityParser.ParseJobs(jobsJson)));
     }
     return inputs;

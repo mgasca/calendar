@@ -1,5 +1,5 @@
 ---
-status: in-progress
+status: implemented
 date: 2026-11-09
 issue: https://github.com/mgasca/calendar/issues/595
 pr:
@@ -172,11 +172,15 @@ No changes. The calendar API is not touched.
 
 ### Lessons learned, known issues and follow-ups
 
-* To be filled in on delivery. Deferred scope goes to a card or issue, not a loose sentence.
+* **Verified on `main`:** the first dispatched run after slice 6 ([run 42675345135](https://github.com/mgasca/calendar/actions/runs/42675345135)) passed all three jobs: snapshot, threshold issues and data-branch commit. This closes the gap the slice 6 PR could not check, because the workflow runs only from `main`.
+* **Size check reads the trees API**, not a fetch plus `git ls-tree`: found by the performance review of #616, which showed the fetch is paid twice and grows with the branch.
+* **Lessons:** a hard-to-verify workflow job needs its first real run listed as a follow-up, not as "verified"; the safety rules (unknown keys rejected, no private fields) caught real data problems early, so keep them in the schema, not only the page.
+* **Follow-ups, none opened:** the alert issue is commented on each day a threshold stays crossed (noisy by design, like the CI trend check); thinning to weekly files is a manual runbook step until the limit is near (years away); the 100-issue coverage of the agent section; a parser fix for quoted count-comment examples. Open an issue for any of these only when it hurts.
+* **Not run:** `just check` as a whole by this agent; see the PR for the checks that ran.
 
 ## User guide
 
-*Planned behaviour. This section is finalised when the story is implemented.*
+Describes what was built; the pages and the daily workflow are on `main`.
 
 ### See how delivery is going
 

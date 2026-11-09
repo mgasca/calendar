@@ -9,6 +9,9 @@
 #:include ../QualitySection.cs
 #:include ../QualityRules.cs
 #:include QualityTests.cs
+#:include ../FlowSection.cs
+#:include ../FlowRules.cs
+#:include FlowTests.cs
 #:include QualityReuseTests.cs
 #:include QualityJobNameTests.cs
 

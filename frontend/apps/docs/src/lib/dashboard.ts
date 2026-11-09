@@ -61,12 +61,34 @@ export interface CiSection {
   jobs: JobRow[];
 }
 
+/** Durations over a sample; null while the sample is below the section's minimum (inconclusive). */
+export interface FlowStat {
+  count: number;
+  medianSeconds: number;
+  p90Seconds: number;
+  maxSeconds: number;
+}
+
+/** The flow section (tools/delivery-dashboard/FlowSection.cs): public counts and times, no titles or people. */
+export interface FlowSection {
+  basis: 'measured' | 'inferred';
+  minSample: number;
+  window: SnapshotWindow;
+  openPullRequests: { count: number; drafts: number; age: FlowStat | null };
+  waitingForReview: { count: number; oldestSeconds: number | null };
+  leadTime: { sample: number; stat: FlowStat | null };
+  issueToMerge: { sample: number; stat: FlowStat | null };
+  stacks: { mergedIntoBase: number; open: { depth: number; pullRequests: number[] }[] };
+  epics: { issue: number; total: number; done: number }[];
+}
+
 export interface Snapshot {
   version: number;
   date: string;
   generatedAt: string;
   repository: string;
   ci: CiSection;
+  flow: FlowSection | null;
   quality?: Record<string, unknown> | null;
   agents?: Record<string, unknown> | null;
 }
@@ -90,9 +112,10 @@ export class SnapshotError extends Error {
 }
 
 const rootKeys = ['version', 'date', 'generatedAt', 'repository', 'ci'];
-// Sections whose pages other slices deliver: accepted as objects here (the .NET rules check them and the privacy scan
-// covers every string); the page for each replaces this with a full check.
-const optionalRootKeys = ['quality', 'agents'];
+// Sections added after version 1: absent from older files, validated when present.
+// Sections whose pages are delivered by their own slices are accepted as objects here (the .NET rules check them, and
+// the privacy scan above covers every string); the page for each replaces this with a full check.
+const optionalRootKeys = ['flow', 'quality', 'agents'];
 const ciKeysV1 = ['workflow', 'basis', 'runs', 'window', 'jobs'];
 const jobKeysV1 = [
   'job',
@@ -249,6 +272,7 @@ export function parseSnapshot(file: string, text: string): Snapshot {
       check.problems.push(`$.version: must be ${oldestVersion} to ${currentVersion}`);
     } else {
       checkRoot(check, json, version >= 2);
+      if ('flow' in json) checkFlow(check, json.flow);
       for (const key of ['quality', 'agents'])
         if (key in json && !isObject(json[key])) check.problems.push(`$.${key}: must be an object`);
     }
@@ -258,6 +282,7 @@ export function parseSnapshot(file: string, text: string): Snapshot {
   // Version 1 has no baseline, trend or queue: show them as absent, not as undefined.
   snapshot.ci.trend ??= null;
   snapshot.ci.queue ??= null;
+  snapshot.flow ??= null;
   for (const job of snapshot.ci.jobs) {
     job.baseline ??= null;
     job.trend ??= null;
@@ -289,6 +314,105 @@ function checkRoot(check: Checker, root: Record<string, Json>, v2: boolean) {
   ci.jobs.forEach((job: Json, index) => {
     checkJob(check, job, `$.ci.jobs[${index}]`, v2);
   });
+}
+
+const flowStatKeys = ['count', 'medianSeconds', 'p90Seconds', 'maxSeconds'];
+
+/** A distribution is present exactly when the sample reaches the minimum, as in the .NET rules. */
+function checkFlowStat(
+  check: Checker,
+  stat: Json,
+  path: string,
+  sample: number,
+  minSample: number,
+) {
+  if (stat === null) {
+    if (sample >= minSample)
+      check.problems.push(`${path}: must be set when the sample reaches ${minSample}`);
+    return;
+  }
+  if (sample < minSample)
+    check.problems.push(
+      `${path}: must be null while the sample is below ${minSample} (inconclusive)`,
+    );
+  if (!check.keys(stat, path, flowStatKeys)) return;
+  if (check.count(stat.count, `${path}.count`, 1) !== sample)
+    check.problems.push(`${path}.count: must equal the sample`);
+  check.ascending(
+    flowStatKeys.slice(1).map((key) => check.seconds(stat[key], `${path}.${key}`)),
+    path,
+    'medianSeconds <= p90Seconds <= maxSeconds',
+  );
+}
+
+function checkFlow(check: Checker, flow: Json) {
+  const keys = [
+    'basis',
+    'minSample',
+    'window',
+    'openPullRequests',
+    'waitingForReview',
+    'leadTime',
+    'issueToMerge',
+    'stacks',
+    'epics',
+  ];
+  if (!check.keys(flow, '$.flow', keys)) return;
+  check.oneOf(flow.basis, '$.flow.basis', ['measured', 'inferred']);
+  const minSample = check.count(flow.minSample, '$.flow.minSample', 1);
+  check.window(flow.window, '$.flow.window', 1);
+  const open = flow.openPullRequests;
+  if (check.keys(open, '$.flow.openPullRequests', ['count', 'drafts', 'age'])) {
+    const count = check.count(open.count, '$.flow.openPullRequests.count', 0);
+    const drafts = check.count(open.drafts, '$.flow.openPullRequests.drafts', 0);
+    if (drafts > count)
+      check.problems.push('$.flow.openPullRequests.drafts: must not exceed count');
+    checkFlowStat(check, open.age, '$.flow.openPullRequests.age', count, minSample);
+  }
+  const waiting = flow.waitingForReview;
+  if (check.keys(waiting, '$.flow.waitingForReview', ['count', 'oldestSeconds'])) {
+    const count = check.count(waiting.count, '$.flow.waitingForReview.count', 0);
+    if (waiting.oldestSeconds === null) {
+      if (count > 0)
+        check.problems.push(
+          '$.flow.waitingForReview.oldestSeconds: must be set when count is above 0',
+        );
+    } else check.seconds(waiting.oldestSeconds, '$.flow.waitingForReview.oldestSeconds');
+  }
+  for (const name of ['leadTime', 'issueToMerge']) {
+    const section = flow[name];
+    if (check.keys(section, `$.flow.${name}`, ['sample', 'stat'])) {
+      const sample = check.count(section.sample, `$.flow.${name}.sample`, 0);
+      checkFlowStat(check, section.stat, `$.flow.${name}.stat`, sample, minSample);
+    }
+  }
+  const stacks = flow.stacks;
+  if (check.keys(stacks, '$.flow.stacks', ['mergedIntoBase', 'open'])) {
+    check.count(stacks.mergedIntoBase, '$.flow.stacks.mergedIntoBase', 0);
+    if (!Array.isArray(stacks.open)) check.problems.push('$.flow.stacks.open: must be an array');
+    else
+      stacks.open.forEach((stack: Json, index) => {
+        const path = `$.flow.stacks.open[${index}]`;
+        if (!check.keys(stack, path, ['depth', 'pullRequests'])) return;
+        const depth = check.count(stack.depth, `${path}.depth`, 2);
+        const numbers = stack.pullRequests;
+        if (!Array.isArray(numbers) || numbers.length < Math.max(depth, 2))
+          check.problems.push(
+            `${path}.pullRequests: must be an array of at least depth pull request numbers`,
+          );
+        else numbers.forEach((number: Json) => check.count(number, `${path}.pullRequests[]`, 1));
+      });
+  }
+  if (!Array.isArray(flow.epics)) check.problems.push('$.flow.epics: must be an array');
+  else
+    flow.epics.forEach((epic: Json, index) => {
+      const path = `$.flow.epics[${index}]`;
+      if (!check.keys(epic, path, ['issue', 'total', 'done'])) return;
+      check.count(epic.issue, `${path}.issue`, 1);
+      const total = check.count(epic.total, `${path}.total`, 0);
+      if (check.count(epic.done, `${path}.done`, 0) > total)
+        check.problems.push(`${path}.done: must not exceed total`);
+    });
 }
 
 function checkTrend(check: Checker, trend: Json) {
@@ -655,6 +779,120 @@ function ciSpeed(data: DashboardData): string {
   return lines.join('\n');
 }
 
+/** A duration for people: seconds, minutes, hours or days, whichever is the largest whole unit. */
+export function formatDuration(seconds: number): string {
+  if (seconds < 120) return `${Math.round(seconds)} s`;
+  if (seconds < 2 * 3600) return `${Math.round(seconds / 60)} min`;
+  if (seconds < 2 * 86400) return `${Number((seconds / 3600).toFixed(1))} h`;
+  return `${Number((seconds / 86400).toFixed(1))} days`;
+}
+
+function statCells(stat: FlowStat | null) {
+  return stat
+    ? [stat.medianSeconds, stat.p90Seconds, stat.maxSeconds].map(formatDuration)
+    : ['inconclusive', 'inconclusive', 'inconclusive'];
+}
+
+function flowPage(data: DashboardData): string {
+  if (data.state === 'absent') return noSnapshotNotice;
+  const latest = data.snapshots.at(-1);
+  if (!latest) return noSnapshotNotice;
+  const { flow, repository } = latest;
+  if (flow === null) {
+    return [
+      `**Snapshot of ${latest.date}.** This snapshot has no flow section: it was written before the flow metrics existed. The next daily snapshot carries one; until then nothing on this page is known.`,
+    ].join('\n');
+  }
+  const pull = (number: number) => `[#${number}](https://github.com/${repository}/pull/${number})`;
+  const issue = (number: number) =>
+    `[#${number}](https://github.com/${repository}/issues/${number})`;
+  const window = `${minute(flow.window.from)} to ${minute(flow.window.to)}`;
+  const lines: string[] = [
+    `**Snapshot of ${latest.date}** (taken ${minute(latest.generatedAt)}). Every number on this page is **${flow.basis}**: computed from the times GitHub recorded for public pull requests and issues. It shows counts, durations and public numbers only; it names no person and no title. A duration needs at least ${flow.minSample} items; with fewer the row says **inconclusive** and shows only its count.`,
+    '',
+    `Merged pull requests and closed issues are taken from the window ${window}. The window starts at the oldest merge GitHub returned when its page of recent merges was full, so a busy month shows a shorter window, not a skewed average.`,
+    '',
+    '## Open pull requests',
+    '',
+    table(
+      ['Measure', 'Count', 'Median', 'p90', 'Oldest'],
+      [
+        [
+          'Open now (age since opened)',
+          `${flow.openPullRequests.count} (${flow.openPullRequests.drafts} draft)`,
+          ...statCells(flow.openPullRequests.age),
+        ],
+        [
+          'Waiting for a first review',
+          String(flow.waitingForReview.count),
+          '',
+          '',
+          flow.waitingForReview.oldestSeconds === null
+            ? 'none'
+            : formatDuration(flow.waitingForReview.oldestSeconds),
+        ],
+      ],
+    ),
+    '',
+    '## Lead time and issue to merge',
+    '',
+    table(
+      ['Measure', 'Sample', 'Median', 'p90', 'Max'],
+      [
+        [
+          'Pull request opened to merged into `main`',
+          String(flow.leadTime.sample),
+          ...statCells(flow.leadTime.stat),
+        ],
+        [
+          'Issue opened to the merge that closed it',
+          String(flow.issueToMerge.sample),
+          ...statCells(flow.issueToMerge.stat),
+        ],
+      ],
+    ),
+    '',
+    '## Stacks',
+    '',
+    flow.stacks.open.length === 0
+      ? 'No open stack: no open pull request targets the branch of another open pull request.'
+      : table(
+          ['Depth', 'Pull requests'],
+          flow.stacks.open.map((stack) => [
+            String(stack.depth),
+            stack.pullRequests.map(pull).join(', '),
+          ]),
+        ),
+    '',
+    `${flow.stacks.mergedIntoBase} pull request${flow.stacks.mergedIntoBase === 1 ? ' was' : 's were'} merged into another pull request's branch in the window; they are stack steps and are not in the lead time.`,
+    '',
+    '## Epic progress',
+    '',
+    flow.epics.length === 0
+      ? 'No open epic.'
+      : table(
+          ['Epic', 'Closed', 'Listed', 'Progress'],
+          flow.epics.map((epic) => [
+            issue(epic.issue),
+            String(epic.done),
+            String(epic.total),
+            epic.total === 0 ? 'no task list' : `${Math.round((epic.done / epic.total) * 100)} %`,
+          ]),
+        ),
+    '',
+    '## What each number means',
+    '',
+    '- **Age of an open pull request:** now minus the time it was opened. A draft counts; the table says how many are drafts.',
+    '- **Waiting for a first review:** open, not a draft, and no review has been submitted. The clock starts when the pull request was opened, because GitHub does not give the moment it was marked ready without a call per pull request.',
+    "- **Lead time:** from a pull request being opened to its merge into `main`. A pull request merged into another pull request's branch (a stack step) is not delivered to `main` and is counted separately. When a stack is squash-merged, each pull request retargeted to `main` counts from its own opening, so it includes the time it waited for the pull requests below it.",
+    '- **Issue to merge:** from an issue being opened to the last merge into `main` of a pull request that closes it. An issue closed by several pull requests counts once; an issue closed without a pull request is not in the sample.',
+    '- **Stack:** open pull requests where each targets the branch of the one below; the depth is the longest chain. Single pull requests are not stacks.',
+    "- **Epic progress:** the issues named in the epic's task list (a line starting with a checkbox and an issue number), counted closed when the issue is closed, not when the box is ticked.",
+    '- **No ranking:** nothing here is per person, and the page ranks work, not people.',
+  ];
+  return lines.join('\n');
+}
+
 function overview(data: DashboardData): string {
   const intro =
     'The delivery dashboard shows how fast and how smoothly changes reach `main`. It is rendered at build time from the daily snapshots on the `dashboard-data` branch, ' +
@@ -673,6 +911,7 @@ function overview(data: DashboardData): string {
 export const dashboardPages: DashboardPage[] = [
   { slug: '', title: 'Delivery dashboard', label: 'Overview', render: overview },
   { slug: 'ci-speed', title: 'CI speed', label: 'CI speed', render: ciSpeed },
+  { slug: 'flow', title: 'Flow', label: 'Flow', render: flowPage },
 ];
 
 export const dashboardId = (page: DashboardPage) =>

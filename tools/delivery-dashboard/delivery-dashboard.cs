@@ -6,6 +6,8 @@
 #:include SnapshotRules.cs
 #:include QualitySection.cs
 #:include QualityRules.cs
+#:include FlowSection.cs
+#:include FlowRules.cs
 
 // The snapshot tool of the delivery dashboard (story 0053, ADR-0049, issue #596). It writes one JSON snapshot of
 // delivery data (aggregates and public data only) and checks snapshot files against the schema and the privacy rules.
@@ -108,13 +110,15 @@ foreach (WorkflowRun run in wanted)
 BaselineFile? pinned = File.Exists(baselinePath) ? BaselineIo.Read(await File.ReadAllTextAsync(baselinePath)) : null;
 
 DateTimeOffset now = DateTimeOffset.UtcNow;
+var taken = new DateTimeOffset(now.Year, now.Month, now.Day, now.Hour, now.Minute, now.Second, TimeSpan.Zero);
 var snapshot = new Snapshot(
   SnapshotJson.CurrentVersion,
   date ?? DateOnly.FromDateTime(now.UtcDateTime),
-  new DateTimeOffset(now.Year, now.Month, now.Day, now.Hour, now.Minute, now.Second, TimeSpan.Zero),
+  taken,
   repository,
   CiSnapshot.Build(workflow, sampled, pinned, TrendConstants.Default, queue),
-  QualityCollector.Build(workflow, await QualityCollector.CollectAsync(repository, workflow, qualityRuns, fetchedJobs)));
+  QualityCollector.Build(workflow, await QualityCollector.CollectAsync(repository, workflow, qualityRuns, fetchedJobs)),
+  await FlowCollector.CollectAsync(repository, taken));
 var json = SnapshotJson.Write(snapshot);
 IReadOnlyList<string> problems = SnapshotRules.Validate(json);
 if (problems.Count > 0)

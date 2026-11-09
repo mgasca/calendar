@@ -9,6 +9,7 @@ import {
   dashboardPages,
   dashboardSidebar,
   escapeText,
+  formatDuration,
   formatSeconds,
   history,
   parseSnapshot,
@@ -137,8 +138,9 @@ describe('reading snapshots', () => {
     expect(parseSnapshot('x.json', withSections).date).toBe('2026-11-08');
     const leaking = withSections.replace('"scopes"', '"/home/someone"');
     expect(() => parseSnapshot('x.json', leaking)).toThrow('looks like a machine path');
-    const scalar = valid.replace('"version": 2,', '"version": 2, "quality": 3,');
-    expect(() => parseSnapshot('x.json', scalar)).toThrow('$.quality: must be an object');
+    expect(() =>
+      parseSnapshot('x.json', valid.replace('"version": 2,', '"version": 2, "quality": 3,')),
+    ).toThrow('$.quality: must be an object');
   });
 
   it('fails when version 2 lacks the version 2 fields', () => {
@@ -265,5 +267,93 @@ describe('formatting', () => {
     expect(formatSeconds(81)).toBe('81 s');
     expect(formatSeconds(12.34)).toBe('12.3 s');
     expect(formatSeconds(140.5)).toBe('2 min 21 s');
+  });
+
+  it('writes flow durations in the largest whole unit', () => {
+    expect(formatDuration(45)).toBe('45 s');
+    expect(formatDuration(5400)).toBe('90 min');
+    expect(formatDuration(3 * 3600)).toBe('3 h');
+    expect(formatDuration(3 * 86400)).toBe('3 days');
+  });
+});
+
+describe('the flow page', () => {
+  it('shows open pull requests, waiting reviews, lead time, issue to merge, stacks and epics with their samples', async () => {
+    const body = render('flow', await present());
+    expect(body).toContain('Snapshot of 2026-11-09');
+    expect(body).toContain('**measured**');
+    expect(body).toContain('2026-10-10 06:47 UTC to 2026-11-09 06:47 UTC');
+    expect(body).toContain('6 (1 draft)');
+    expect(body).toContain('| Waiting for a first review | 2 |  |  | 4.5 days |');
+    expect(body).toContain(
+      '| Pull request opened to merged into `main` | 42 | 90 min | 24 h | 3 days |',
+    );
+    expect(body).toContain('| 3 | [#607](https://github.com/mgasca/calendar/pull/607), [#608]');
+    expect(body).toContain(
+      '| [#595](https://github.com/mgasca/calendar/issues/595) | 2 | 6 | 33 % |',
+    );
+    expect(body).toContain('4 pull requests were merged into another pull request');
+  });
+
+  it('marks a thin sample inconclusive instead of showing a figure', async () => {
+    const body = render('flow', await present());
+    expect(body).toContain('| Issue opened to the merge that closed it | 3 | inconclusive |');
+  });
+
+  it('defines each metric, including how stacks and squash merges count, and ranks no person', async () => {
+    const body = render('flow', await present());
+    for (const term of ['Lead time', 'Issue to merge', 'Stack', 'squash-merged', 'No ranking'])
+      expect(body).toContain(term);
+  });
+
+  it('says there is no flow section when the latest snapshot predates it', async () => {
+    const data = await readDashboardData(
+      await folder({ '2026-11-08.json': await validText('2026-11-08.json') }),
+    );
+    expect(render('flow', data)).toContain('no flow section');
+    expect(render('flow', { state: 'absent' })).toContain('No snapshot yet');
+  });
+
+  const thin = '"sample": 3,\n      "stat": null';
+  const flowBroken: [string, (valid: string) => string, string][] = [
+    [
+      'a distribution on a thin sample',
+      (valid) =>
+        valid.replace(
+          thin,
+          '"sample": 3, "stat": {"count":3,"medianSeconds":1,"p90Seconds":1,"maxSeconds":1}',
+        ),
+      '$.flow.issueToMerge.stat: must be null while the sample is below 5',
+    ],
+    [
+      'more drafts than pull requests',
+      (valid) => valid.replace('"drafts": 1', '"drafts": 9'),
+      '$.flow.openPullRequests.drafts: must not exceed count',
+    ],
+    [
+      'an epic with more closed issues than listed',
+      (valid) => valid.replace('"done": 2', '"done": 9'),
+      '$.flow.epics[1].done: must not exceed total',
+    ],
+    [
+      'a field outside the schema',
+      (valid) => valid.replace('"minSample": 5,', '"minSample": 5, "login": "x",'),
+      '$.flow.login: field is not in the schema',
+    ],
+    [
+      'a machine path used as a field name',
+      (valid) => valid.replace('"epics"', '"/home/someone"'),
+      'looks like a machine path',
+    ],
+  ];
+  it.each(flowBroken)('fails the build for %s', async (_name, mutate, rule) => {
+    const text = await validText('2026-11-09.json');
+    const mutated = mutate(text);
+    expect(mutated).not.toBe(text);
+    const failure = await readDashboardData(await folder({ '2026-11-09.json': mutated })).catch(
+      (error: unknown) => error,
+    );
+    expect(failure).toBeInstanceOf(SnapshotError);
+    expect((failure as Error).message).toContain(rule);
   });
 });

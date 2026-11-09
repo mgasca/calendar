@@ -15,6 +15,7 @@ import {
   storySlug,
   storyStatusCategory,
 } from './adr';
+import { dashboardEntries, readDashboardData } from './dashboard';
 import type { Architecture } from './architecture';
 import {
   architectureDirectory,
@@ -34,6 +35,8 @@ export const storiesDirectory = new URL('docs/stories/', repositoryRoot);
 export const runbooksDirectory = new URL('docs/runbooks/', repositoryRoot);
 export const benchmarksDirectory = new URL('docs/benchmarks/', repositoryRoot);
 export const agentThoughtsDirectory = new URL('docs/agent-thoughts/', repositoryRoot);
+/** The renderer of the dashboard pages (src/lib/dashboard.ts), the source behind their edit links. */
+const dashboardSourceDirectory = new URL('./', import.meta.url);
 /** The folder under `docs/` behind each Markdown collection, for edit links. */
 const folders = new Map([
   [decisionsDirectory.href, 'decisions'],
@@ -191,6 +194,9 @@ function adrLink(number: string, adrFiles: Map<string, string>) {
 /** Where a page's "Edit page" link points: the model for architecture pages, else the Markdown file. */
 function editUrl(directory: URL, file: string) {
   if (directory === architectureDirectory) return modelEditUrl;
+  // The dashboard pages are rendered by code from snapshots, so editing means editing the renderer.
+  if (directory === dashboardSourceDirectory)
+    return `${repository}/edit/main/frontend/apps/docs/src/lib/${file}`;
   const folder = folders.get(directory.href);
   if (folder === undefined) throw new Error(`Unknown document directory: ${directory.href}`);
   return `${repository}/edit/main/docs/${folder}/${file}`;
@@ -203,6 +209,8 @@ export function docsLoader(): Loader {
       const sync = async () => {
         const documents = await readDocuments();
         const { adr, story, architecture, runbook, benchmark, agentThought } = documents;
+        // An invalid snapshot throws here and fails the build; no snapshot at all gives the "no snapshot yet" pages.
+        const dashboard = await readDashboardData();
         // One read serves the entries below and every link the remark plugin rewrites in them.
         routes = Promise.resolve(routesOf(documents));
         const adrFiles = new Map(adr.records.map((record) => [record.number, record.file]));
@@ -325,6 +333,11 @@ export function docsLoader(): Loader {
             directory: runbooksDirectory,
             file: record.file,
             sidebar: { order, label: record.title },
+          })),
+          ...dashboardEntries(dashboard).map((entry) => ({
+            ...entry,
+            directory: dashboardSourceDirectory,
+            file: 'dashboard.ts',
           })),
           {
             id: 'benchmarks',

@@ -202,7 +202,14 @@ public sealed class AgentRulesTests
 
   private static string Json(AgentsSection? section = null) =>
     SnapshotJson.Write(
-      new Snapshot(1, new DateOnly(2026, 11, 9), Noon, "mgasca/calendar", CiSnapshot.Build("ci.yml", []), null, section ?? Section()));
+      new Snapshot(
+        SnapshotJson.CurrentVersion,
+        new DateOnly(2026, 11, 9),
+        Noon,
+        "mgasca/calendar",
+        CiSnapshot.Build("ci.yml", []),
+        null,
+        section ?? Section()));
 
   [Fact]
   public void A_snapshot_with_an_agents_section_is_valid_and_stable_and_one_without_it_still_is()

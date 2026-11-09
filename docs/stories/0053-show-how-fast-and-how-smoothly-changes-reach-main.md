@@ -5,6 +5,7 @@ issue: https://github.com/mgasca/calendar/issues/595
 pr:
   - https://github.com/mgasca/calendar/pull/603
   - https://github.com/mgasca/calendar/pull/604
+  - https://github.com/mgasca/calendar/pull/609
   - https://github.com/mgasca/calendar/pull/606
   - https://github.com/mgasca/calendar/pull/607
   - https://github.com/mgasca/calendar/pull/608
@@ -55,12 +56,12 @@ Agreed with the maintainer in a Claude Code session on 2026-11-09 and recorded o
 
 1. **Given** the daily workflow runs or is dispatched, **when** it finishes, **then** the data branch holds one valid snapshot for that day, and a second run the same day replaces it.
 2. **Given** a snapshot that holds a machine path, a session or task handle, or a field outside the schema, **when** the snapshot checks run, **then** they fail and name the field.
-3. **Given** a valid latest snapshot, **when** the documentation site is built, **then** the dashboard page shows each CI job's median, p90, baseline and threshold with the trend verdict of ADR-0045.
-4. **Given** a missing or invalid snapshot, **when** the site is built, **then** the build fails with a message that names the problem, and does not publish an empty page.
-5. **Given** a number on the page, **when** I read it, **then** it states whether it is measured or inferred and gives its sample and window.
-6. **Given** a job with too few runs, **when** the page shows its failure rate, **then** it is marked inconclusive, not shown as 0 % or 100 %. Data: [quality tests](../../tools/delivery-dashboard/tests/QualityTests.cs) (`Fewer_trials_than_the_rule_needs_are_inconclusive_with_no_rate_and_no_interval`, `An_inconclusive_row_with_a_rate_fails`); the page is delivered after #597.
+3. **Given** a valid latest snapshot, **when** the documentation site is built, **then** the CI-speed page shows each CI job's run count, minimum, median, p90 and maximum, its baseline and threshold, and the trend verdict of ADR-0045 ([dashboard.test.ts](../../frontend/apps/docs/src/lib/dashboard.test.ts), [delivery-dashboard.tests.cs](../../tools/delivery-dashboard/tests/delivery-dashboard.tests.cs)).
+4. **Given** an invalid snapshot, **when** the site is built, **then** the build fails with a message that names the file, the field and the rule. **Given** no snapshot yet (the `dashboard-data` branch does not exist or holds none), **then** the build succeeds and the page says plainly that no snapshot exists yet, with no numbers, so a fresh clone, a fork and the time before the first daily run still build. *(Amended in #597: the original wording failed the build for a missing snapshot, but before the first workflow run there is nothing to read.)* ([dashboard.test.ts](../../frontend/apps/docs/src/lib/dashboard.test.ts))
+5. **Given** a number on the page, **when** I read it, **then** it states whether it is measured or inferred and gives its sample and window ([dashboard.test.ts](../../frontend/apps/docs/src/lib/dashboard.test.ts)).
+6. **Given** a job with too few runs, **when** the page shows its failure rate, **then** it is marked inconclusive, not shown as 0 % or 100 %. "Too few" is fewer than 20 trials; `main` and pull requests are separate tables. Data: [quality tests](../../tools/delivery-dashboard/tests/QualityTests.cs) (`Fewer_trials_than_the_rule_needs_are_inconclusive_with_no_rate_and_no_interval`, `An_inconclusive_row_with_a_rate_fails`); the page is delivered after #597.
 7. **Given** a metric breaches its threshold, **when** the daily workflow runs, **then** it opens or updates exactly one issue and opens no other alert.
-8. **Given** an issue with no count comments, **when** the agent proxies are computed, **then** the issue appears with no cost data and does not fail the run. Data: [agent tests](../../tools/delivery-dashboard/tests/AgentTests.cs) (`An_issue_without_count_comments_is_listed_with_no_cost_data_and_does_not_fail`, `A_count_comment_with_an_unusable_number_is_malformed_and_contributes_nothing`); the page is delivered after #597.
+8. **Given** an issue with no count comments, **when** the agent proxies are computed, **then** the issue appears with no cost data and does not fail the run. Data: [agent tests](../../tools/delivery-dashboard/tests/AgentTests.cs) (`An_issue_without_count_comments_is_listed_with_no_cost_data_and_does_not_fail`, `A_count_comment_with_an_unusable_number_is_malformed_and_contributes_nothing`); the page follows the data.
 9. **Given** the change is complete, **when** I run `just check`, **then** it passes, including the architecture model entry for the new components.
 
 ## Design decisions
@@ -93,9 +94,20 @@ Agreed with the maintainer in a Claude Code session on 2026-11-09 and recorded o
 | --- | --- |
 | Snapshot tool | `tools/` (new folder, name settled in #596) |
 | Daily workflow | `.github/workflows/` (modelled on `ci-trend.yml`) |
-| Page | `frontend/apps/docs` (mechanism settled in #597) |
+| Page | `frontend/apps/docs/src/lib/dashboard.ts` (reader, validator, renderer and the list of pages); the loader in `docs-loader.ts` adds the entries and `astro.config.ts` the sidebar group from that list |
+| Page data | `frontend/apps/docs/.dashboard-data/snapshots/` (git-ignored), filled by `just docs dashboard-data` and by the "Read the dashboard data branch" step of the Docs site job in `ci.yml`; `DASHBOARD_DATA_DIR` overrides the folder |
+| Fixtures | `frontend/apps/docs/src/lib/fixtures/dashboard/valid/snapshots/`, read by the docs tests and by the .NET rules tests |
 | Baseline and trend input | `.github/ci-baseline.json`, `tools/ci-timings` |
 | Architecture model | `docs/architecture/calendar.architecture.json` |
+
+### CI-speed page (#597)
+
+* **Build-time read, no client calls.** The Docs site job (which builds the publication artifact that `pages.yml` assembles) fetches `dashboard-data` with `contents: read`; `pages.yml` and the ADR-0025 permission split are unchanged. Maintainer answer to question 1 on #603: copy the data branch into a git-ignored folder at build time.
+* **Absent versus invalid.** No branch or no snapshot builds a "no snapshot yet" page (this is what a fork, a fresh clone and the time before the first daily run see). A snapshot that is present but breaks the schema, the privacy rules, or its file name (`yyyy-MM-dd.json` with a matching `date`) fails the build naming the file, the field and the rule. A failed `git fetch` for any reason other than "no such branch" fails the job instead of publishing an empty page.
+* **Schema versions.** The writer emits version 2: per job a `baseline` (pinned count, median, threshold) and a `trend` (verdict, recent runs, shift and interval, minimum effect), at section level a `trend` (runs compared and required, window) and a `queue` (wait before the first job). Version 1 files already on the data branch still validate and render, with those parts shown as absent; a version 1 file may not carry version 2 fields and a version 2 file must carry them (null when unknown). The tool and the docs reader both accept 1 to 2. Fields are only ever added, with a new version.
+* **Trend verdicts come from `ci-timings`.** The snapshot tool reads `.github/ci-baseline.json` and calls `Trend.RecentRuns` and `Trend.Evaluate` on the runs it already sampled, so the page and the gate cannot disagree and no GitHub call was added. With fewer recent runs than the check needs the verdict is `inconclusive`, never "no shift".
+* **Two readers, one set of fixtures.** The privacy rules live in the .NET tool and run before a snapshot is published; the docs reader re-checks shape and the same four privacy patterns before rendering, because the branch is outside the pull request flow, and escapes every job name it prints. The valid fixtures are read by both test suites so the two readers cannot drift apart. Known gap: the .NET rules test runs in the Tooling job and the docs tests in the Docs site job, and a change to a shared fixture runs only the Docs site job on a pull request; `main` runs both.
+* **Deferred: superseded-run waste.** It needs pull request runs and two jobs calls per pair (dozens of calls per daily snapshot), so the page states that it is not shown. A follow-up, not part of this slice.
 
 ### Quality section (#599)
 
@@ -103,13 +115,13 @@ Agreed with the maintainer in a Claude Code session on 2026-11-09 and recorded o
 * **Cancelled and superseded runs are no failures**, and their jobs are trials in no rate (`CI result` fails there only because the others were cancelled; found on the first real sample, where it made 3 failures of 2 failed runs). A run is `superseded` when a later `pull_request` run of the same branch exists, which is **inferred**; the other counts are recorded conclusions (**measured**).
 * **Inconclusive below 20 trials**, with counts and no rate or interval. The number 20 is in the snapshot (`rule.minTrials`), so changing it needs no schema change.
 * **Guards over time are inferred:** the delivery guards have no CI job of their own; they run in the Tooling job's step "Test and lint tooling" with the other tool tests, so a failure of that step is not necessarily a guard.
-* **Assumptions awaiting the maintainer:** the 20-trial limit, main and pull requests shown separately, and the guard step as proxy.
+* **Answered by the maintainer on #607:** (1) a failure rate is conclusive from 20 trials, stored as `rule.minTrials` in the snapshot; (2) pull request runs are shown beside `main` in separate tables, `main` first; (3) the Tooling step "Test and lint tooling" is the delivery-guards proxy, marked inferred on the page, and a separate follow-up issue is opened only if the number proves too coarse.
 
 ### Agent proxies section (#600)
 
 * **Data:** the optional `agents` section (`tools/delivery-dashboard/AgentSection.cs`, `AgentRules.cs`): per issue number, valid and malformed count comments, tasks and subagents started, comments, reviews on the pull requests that mention it, and those pull requests, with sums that the rules check. No logins, titles or comment text are read into the snapshot; a test feeds comments with a path, an e-mail address and a handle and checks that none of them reaches the file.
-* **Count comment shape:** the skill defines the comment only as numbers-only; the comments in the repository read `Tasks started: N. Subagents started: M.`, so that line is what the parser accepts, anywhere in a comment, ignoring quoted lines. A whole number above 1000, a negative or a non-number makes the comment malformed (counted, contributes nothing). Fixing the line's exact format in the `issue-handover` skill is a possible follow-up, not part of this slice.
-* **Coverage:** the 100 most recently updated issues, so older count comments are not seen; an issue without a count comment is listed with null totals. Maintainer's answer on #603: this coverage is acceptable.
+* **Count comment shape:** the comments in the repository read `Tasks started: N. Subagents started: M.`, so the parser accepts that line anywhere in a comment, ignoring quoted lines. A whole number above 1000, a negative or a non-number makes the comment malformed (counted, contributes nothing). The skill states the line since #610.
+* **Coverage:** the 100 most recently updated issues, so older count comments are not seen, and the page says so; an issue without a count comment is listed with null totals. Maintainer's answer on #603: this coverage is acceptable. Reading more than 100 issues is an open question on #608; the recommendation (100 now, history builds up in the daily snapshots) stands.
 * **Limits to state on the page:** proxies for agent activity, not token or money cost; counts are self-reported by the agent (**inferred**), comment, review and pull request counts are recorded by GitHub (**measured**); pull requests are those that mention the issue, whether or not they deliver it. Local transcript aggregates stay a revisit trigger of ADR-0049.
 
 ### API
@@ -120,7 +132,7 @@ No changes. The calendar API is not touched.
 
 * Pure xUnit tests of the metric calculations on constructed histories, including a squash-merged stack and cancelled or superseded runs.
 * A schema test that rejects private data.
-* Docs-site tests that build the page from a fixture snapshot and fail on a missing or invalid one.
+* Docs-site tests that render the page from fixture snapshots (version 1 and 2), build an explicit "no snapshot yet" page from an absent or empty folder, and fail on an invalid one, naming file and rule.
 
 ### Lessons learned, known issues and follow-ups
 
@@ -132,4 +144,6 @@ No changes. The calendar API is not touched.
 
 ### See how delivery is going
 
-Open the **Delivery** page on the documentation site. It shows how long each CI job takes against its baseline, how long PRs wait, how often checks fail and what agent-driven work costs, each with its sample and window. The page updates once a day. A number marked **inferred** is an estimate, not a measurement.
+Open **Delivery dashboard** in the documentation site's sidebar (the **CI speed** page is the first one). Until the first daily snapshot exists it says "No snapshot yet". For a local build, `just docs build` reads the data branch first; without network access or the branch, the pages say so.
+
+The dashboard shows how long each CI job takes against its baseline, how long PRs wait, how often checks fail and what agent-driven work costs, each with its sample and window. The page updates once a day. A number marked **inferred** is an estimate, not a measurement.

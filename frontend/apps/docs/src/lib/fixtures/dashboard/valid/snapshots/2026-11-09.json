@@ -1,0 +1,97 @@
+{
+  "version": 2,
+  "date": "2026-11-09",
+  "generatedAt": "2026-11-09T06:47:05Z",
+  "repository": "mgasca/calendar",
+  "ci": {
+    "workflow": "ci.yml",
+    "basis": "measured",
+    "runs": 30,
+    "window": {
+      "from": "2026-11-07T09:00:00Z",
+      "to": "2026-11-09T05:30:00Z"
+    },
+    "trend": {
+      "runs": 20,
+      "required": 20,
+      "window": {
+        "from": "2026-11-08T09:00:00Z",
+        "to": "2026-11-09T05:30:00Z"
+      }
+    },
+    "queue": {
+      "runs": 29,
+      "medianSeconds": 5,
+      "p90Seconds": 12,
+      "maxSeconds": 40
+    },
+    "jobs": [
+      {
+        "job": "Backend",
+        "path": "check",
+        "count": 30,
+        "minSeconds": 64,
+        "medianSeconds": 118,
+        "p90Seconds": 131,
+        "maxSeconds": 140,
+        "baseline": {
+          "count": 30,
+          "medianSeconds": 81,
+          "thresholdSeconds": 126
+        },
+        "trend": {
+          "verdict": "slower",
+          "recentRuns": 20,
+          "shiftSeconds": 36.5,
+          "lowSeconds": 30,
+          "highSeconds": 42,
+          "minEffectSeconds": 10
+        }
+      },
+      {
+        "job": "Docs | <b>site</b> `x`",
+        "path": "publication",
+        "count": 12,
+        "minSeconds": 118,
+        "medianSeconds": 139,
+        "p90Seconds": 158,
+        "maxSeconds": 170,
+        "baseline": {
+          "count": 30,
+          "medianSeconds": 150,
+          "thresholdSeconds": 200
+        },
+        "trend": {
+          "verdict": "faster",
+          "recentRuns": 12,
+          "shiftSeconds": -12,
+          "lowSeconds": -18,
+          "highSeconds": -6,
+          "minEffectSeconds": 10
+        }
+      },
+      {
+        "job": "Frontend",
+        "path": "check",
+        "count": 30,
+        "minSeconds": 50,
+        "medianSeconds": 60,
+        "p90Seconds": 70,
+        "maxSeconds": 75,
+        "baseline": {
+          "count": 30,
+          "medianSeconds": 60,
+          "thresholdSeconds": 99
+        },
+        "trend": {
+          "verdict": "inconclusive",
+          "recentRuns": 8,
+          "shiftSeconds": 0,
+          "lowSeconds": -3,
+          "highSeconds": 3,
+          "minEffectSeconds": 10
+        }
+      }
+    ]
+  }
+}

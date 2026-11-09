@@ -6,6 +6,7 @@ pr:
   - https://github.com/mgasca/calendar/pull/603
   - https://github.com/mgasca/calendar/pull/604
   - https://github.com/mgasca/calendar/pull/609
+  - https://github.com/mgasca/calendar/pull/611
   - https://github.com/mgasca/calendar/pull/606
   - https://github.com/mgasca/calendar/pull/607
 adrs: ["0017", "0025", "0045", "0046", "0049"]
@@ -59,7 +60,7 @@ Agreed with the maintainer in a Claude Code session on 2026-11-09 and recorded o
 4. **Given** an invalid snapshot, **when** the site is built, **then** the build fails with a message that names the file, the field and the rule. **Given** no snapshot yet (the `dashboard-data` branch does not exist or holds none), **then** the build succeeds and the page says plainly that no snapshot exists yet, with no numbers, so a fresh clone, a fork and the time before the first daily run still build. *(Amended in #597: the original wording failed the build for a missing snapshot, but before the first workflow run there is nothing to read.)* ([dashboard.test.ts](../../frontend/apps/docs/src/lib/dashboard.test.ts))
 5. **Given** a number on the page, **when** I read it, **then** it states whether it is measured or inferred and gives its sample and window ([dashboard.test.ts](../../frontend/apps/docs/src/lib/dashboard.test.ts)).
 6. **Given** a job with too few runs, **when** the page shows its failure rate, **then** it is marked inconclusive, not shown as 0 % or 100 %. "Too few" is fewer than 20 trials; `main` and pull requests are separate tables. Data: [quality tests](../../tools/delivery-dashboard/tests/QualityTests.cs) (`Fewer_trials_than_the_rule_needs_are_inconclusive_with_no_rate_and_no_interval`, `An_inconclusive_row_with_a_rate_fails`); the page is delivered after #597.
-7. **Given** a metric breaches its threshold, **when** the daily workflow runs, **then** it opens or updates exactly one issue and opens no other alert.
+7. **Given** a metric breaches its threshold, **when** the daily workflow runs, **then** it opens or updates exactly one issue and opens no other alert. Thresholds and the one-issue-per-kind rule: [AlertTests.cs](../../tools/delivery-dashboard/tests/AlertTests.cs) (`Several_breaches_of_one_kind_open_exactly_one_issue`, `An_open_issue_with_the_title_is_commented_on_instead_of_a_second_one_opened`).
 8. **Given** an issue with no count comments, **when** the agent proxies are computed, **then** the issue appears with no cost data and does not fail the run.
 9. **Given** the change is complete, **when** I run `just check`, **then** it passes, including the architecture model entry for the new components.
 
@@ -124,6 +125,15 @@ Agreed with the maintainer in a Claude Code session on 2026-11-09 and recorded o
 * **Inconclusive below 20 trials**, with counts and no rate or interval. The number 20 is in the snapshot (`rule.minTrials`), so changing it needs no schema change.
 * **Guards over time are inferred:** the delivery guards have no CI job of their own; they run in the Tooling job's step "Test and lint tooling" with the other tool tests, so a failure of that step is not necessarily a guard.
 * **Answered by the maintainer on #607:** (1) a failure rate is conclusive from 20 trials, stored as `rule.minTrials` in the snapshot; (2) pull request runs are shown beside `main` in separate tables, `main` first; (3) the Tooling step "Test and lint tooling" is the delivery-guards proxy, marked inferred on the page, and a separate follow-up issue is opened only if the number proves too coarse.
+
+### Alerts, upkeep and runbook (#601)
+
+* **Alerts reuse the `performance` issue, one per kind.** The daily workflow's new `alert` job (permissions `contents: read` and `issues: write` only; the job that reads GitHub still cannot write issues) runs `delivery-dashboard alerts` on the checked snapshot. Flow: the oldest pull request waiting for a first review for more than 14 days, a median lead time above 24 hours over at least 5 pull requests, or an open stack deeper than 4. Quality: a job with at least 20 attempts on `main` whose failure rate's 95 % interval lies wholly above 10 %. Several breaches of one kind go into one issue; an open issue with the title is commented on, else it is opened; an inconclusive number never breaches; nothing else is ever posted. The thresholds are my proposal and are constants in `Alerts.cs` with tests; the maintainer can change them.
+* **Retention, from a measurement.** Every daily snapshot is kept until `snapshots/` would pass 50 MB; the daily run fails before it publishes the snapshot that would pass it and warns from 80 % (`delivery-dashboard retention`, reading `git ls-tree -r -l`). Measured on a synthetic year of 365 files of 12 KB (a real snapshot with perturbed numbers, local `file://` remote, network time not measured): tree 4.4 MB, packed history 0.59 MB, shallow fetch 0.43 MB in 0.04 s, push 0.5 s. Inferred: about 11 years to the limit at 12 KB a day, about 7 at 20 KB. When it nears the limit the runbook thins the tree to Mondays for everything older than 90 days (the maintainer's answer to question 2 on #603: keep everything until a limit, then thin to weekly).
+* **Runbook:** `docs/runbooks/delivery-dashboard.md` (refresh check, failed run table, invalid snapshot, threshold issues, thinning, schema change).
+* **Architecture model:** the tool, the data branch and the dashboard pages (on the docs site node), the `dashboard-snapshot.yml` workflow in the CI/CD node, four relationships and story 0053; `just docs architecture` validates it.
+* **Escaping job names:** done with the page in #597 (`escapeText`, tested with a hostile name from a fixture).
+* **Known gaps:** the alert issue is commented on each day the threshold stays crossed (as the CI trend check does), which can be noisy; the thinning is a manual, documented procedure, not automated, because the limit is years away.
 
 ### API
 

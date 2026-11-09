@@ -62,28 +62,6 @@ main > button {
   gap: var(--space-3);
 }
 
-/*
- * Refresh keeps one width (#464): the day view renders both labels in one grid cell and hides the
- * inactive one, so the button is as wide as "Refreshing…" all the time.
- */
-.refresh {
-  float: right;
-  display: inline-grid;
-  /* A grid doesn't centre content like a plain button does, so centre the label (#521). */
-  align-items: center;
-  min-height: 2rem;
-  padding: 0 var(--space-3);
-  font-size: var(--text-sm);
-}
-
-.refresh > * {
-  grid-area: 1 / 1;
-}
-
-.refresh > [aria-hidden='true'] {
-  visibility: hidden;
-}
-
 /* Previous day, Today and Next day under the day heading (#465): links drawn as small buttons. */
 .day-nav {
   display: flex;

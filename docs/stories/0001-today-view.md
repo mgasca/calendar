@@ -183,7 +183,7 @@ Tasks without a due date, or due on a later day, don't appear in the Today view.
 
 ### Keeping it up to date
 
-The view refreshes when you switch back to its window and every five minutes while it's visible. You can also select **Refresh** next to the date. If a refresh fails, you keep seeing the last loaded agenda with a *"Couldn't refresh"* message and a retry button.
+The view refreshes when you switch back to its window, when your connection comes back, every five minutes while it's visible, and after every change you make in the app, so there is no **Refresh** button ([0052](0052-remove-the-refresh-button-from-the-day-and-week-views.md)). If a refresh fails, you keep seeing the last loaded agenda with a *"Couldn't refresh"* message and a **Try again** button.
 
 ### Current limitations
 

@@ -97,7 +97,7 @@
       { "id": "0043", "title": "Edit and delete events from the Today view", "status": "implemented", "url": "https://mgasca.github.io/calendar/stories/0043/" },
       { "id": "0044", "title": "Edit a task from the Today view", "status": "implemented", "url": "https://mgasca.github.io/calendar/stories/0044/" },
       { "id": "0046", "title": "Apply the Calendar light and dark themes to the published docs site", "status": "implemented", "url": "https://mgasca.github.io/calendar/stories/0046/" },
-      { "id": "0053", "title": "Show how fast and how smoothly changes reach main", "status": "in-progress", "url": "https://mgasca.github.io/calendar/stories/0053/" },
+      { "id": "0053", "title": "Show how fast and how smoothly changes reach main", "status": "implemented", "url": "https://mgasca.github.io/calendar/stories/0053/" },
       { "id": "XXXX", "title": "Create events and tasks from the week view", "status": "planned", "url": "https://mgasca.github.io/calendar/stories/create-events-and-tasks-from-week-view/" }
     ]
   },

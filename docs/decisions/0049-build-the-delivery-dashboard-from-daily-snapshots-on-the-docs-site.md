@@ -1,5 +1,5 @@
 ---
-status: proposed
+status: accepted
 date: 2026-11-09
 decision-makers: mgasca, Claude (AI assistant)
 ---
@@ -128,4 +128,4 @@ Chosen option: "Daily snapshot tool, data branch and a documentation-site page",
 * Related decisions: [ADR-0017](0017-dotnet-file-based-apps-for-repo-tooling.md) (tooling in .NET), [ADR-0045](0045-run-time-regression-gates-for-ci-jobs.md) (baseline and trend), [ADR-0046](0046-run-ci-jobs-only-for-the-paths-they-check.md) (new workflows stay outside the required checks), [ADR-0025](0025-github-pages-pr-previews.md) (Pages permissions), [ADR-0039](0039-architecture-model-and-visualization-tooling.md) (model update).
 * Facts checked on 2026-11-09 by web search, not on vendor pages: Four Keys appears archived; DevLake releases are betas; SaaS free tiers differ between sources. No prices are quoted. Verify before relying on any of them.
 * **Revisit triggers** (recorded here and in the story card's "Not in this story"): move to DevLake with Grafana when history across several repositories is needed; add local transcript aggregates when the GitHub proxies prove too coarse; reconsider a SaaS tool if the maintainer accepts data leaving the organisation.
-* **Open questions for the reviewer** are posted as comments on #595.
+* **Accepted 2026-11-09** by the maintainer with the recommended answers to the four review questions (#603): the docs build reads the `dashboard-data` branch into a git-ignored folder in the Pages `assemble` job and for local builds; the branch keeps everything until it passes a size limit chosen in #601, then thins to weekly files; the agent proxies are the `issue-handover` count comments, activity per issue and PRs per issue, and issues without them show no cost data; the public page shows numbers and links only, no titles.

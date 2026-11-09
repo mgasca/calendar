@@ -10,6 +10,7 @@ pr:
   - https://github.com/mgasca/calendar/pull/616
   - https://github.com/mgasca/calendar/pull/606
   - https://github.com/mgasca/calendar/pull/607
+  - https://github.com/mgasca/calendar/pull/608
   - https://github.com/mgasca/calendar/pull/619
 adrs: ["0017", "0025", "0045", "0046", "0049"]
 ---
@@ -63,7 +64,7 @@ Agreed with the maintainer in a Claude Code session on 2026-11-09 and recorded o
 5. **Given** a number on the page, **when** I read it, **then** it states whether it is measured or inferred and gives its sample and window ([dashboard.test.ts](../../frontend/apps/docs/src/lib/dashboard.test.ts)).
 6. **Given** a job with too few runs, **when** the page shows its failure rate, **then** it is marked inconclusive, not shown as 0 % or 100 %. "Too few" is fewer than 20 trials; `main` and pull requests are separate tables. Data: [quality tests](../../tools/delivery-dashboard/tests/QualityTests.cs) (`Fewer_trials_than_the_rule_needs_are_inconclusive_with_no_rate_and_no_interval`, `An_inconclusive_row_with_a_rate_fails`). Page: [dashboard tests](../../frontend/apps/docs/src/lib/dashboard.test.ts) ("the quality page": `marks a job with too few trials inconclusive and shows no rate for it`).
 7. **Given** a metric breaches its threshold, **when** the daily workflow runs, **then** it opens or updates exactly one issue and opens no other alert. Thresholds and the one-issue-per-kind rule: [AlertTests.cs](../../tools/delivery-dashboard/tests/AlertTests.cs) (`Several_breaches_of_one_kind_open_exactly_one_issue`, `An_open_issue_with_the_title_is_commented_on_instead_of_a_second_one_opened`).
-8. **Given** an issue with no count comments, **when** the agent proxies are computed, **then** the issue appears with no cost data and does not fail the run.
+8. **Given** an issue with no count comments, **when** the agent proxies are computed, **then** the issue appears with no cost data and does not fail the run. Data: [agent tests](../../tools/delivery-dashboard/tests/AgentTests.cs) (`An_issue_without_count_comments_is_listed_with_no_cost_data_and_does_not_fail`, `A_count_comment_with_an_unusable_number_is_malformed_and_contributes_nothing`); the page follows the data.
 9. **Given** the change is complete, **when** I run `just check`, **then** it passes, including the architecture model entry for the new components.
 
 ## Design decisions
@@ -148,6 +149,13 @@ Agreed with the maintainer in a Claude Code session on 2026-11-09 and recorded o
 * **Architecture model:** the tool, the data branch and the dashboard pages (on the docs site node), the `dashboard-snapshot.yml` workflow in the CI/CD node, four relationships and story 0053; `just docs architecture` validates it.
 * **Escaping job names:** done with the page in #597 (`escapeText`, tested with a hostile name from a fixture).
 * **Known gaps:** the alert issue is commented on each day the threshold stays crossed (as the CI trend check does), which can be noisy; the thinning is a manual, documented procedure, not automated, because the limit is years away.
+
+### Agent proxies section (#600)
+
+* **Data:** the optional `agents` section (`tools/delivery-dashboard/AgentSection.cs`, `AgentRules.cs`): per issue number, valid and malformed count comments, tasks and subagents started, comments, reviews on the pull requests that mention it, and those pull requests, with sums that the rules check. No logins, titles or comment text are read into the snapshot; a test feeds comments with a path, an e-mail address and a handle and checks that none of them reaches the file.
+* **Count comment shape:** the comments in the repository read `Tasks started: N. Subagents started: M.`, so the parser accepts that line anywhere in a comment, ignoring quoted lines. A whole number above 1000, a negative or a non-number makes the comment malformed (counted, contributes nothing). The skill states the line since #610.
+* **Coverage:** the 100 most recently updated issues, so older count comments are not seen, and the page says so; an issue without a count comment is listed with null totals. Maintainer's answer on #603: this coverage is acceptable. Reading more than 100 issues is an open question on #608; the recommendation (100 now, history builds up in the daily snapshots) stands.
+* **Limits to state on the page:** proxies for agent activity, not token or money cost; counts are self-reported by the agent (**inferred**), comment, review and pull request counts are recorded by GitHub (**measured**); pull requests are those that mention the issue, whether or not they deliver it. Local transcript aggregates stay a revisit trigger of ADR-0049.
 
 ### API
 

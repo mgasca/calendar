@@ -6,6 +6,8 @@
 #:include SnapshotRules.cs
 #:include QualitySection.cs
 #:include QualityRules.cs
+#:include AgentSection.cs
+#:include AgentRules.cs
 #:include FlowSection.cs
 #:include FlowRules.cs
 #:include Alerts.cs
@@ -129,7 +131,8 @@ var snapshot = new Snapshot(
   repository,
   CiSnapshot.Build(workflow, sampled, pinned, TrendConstants.Default, queue),
   QualityCollector.Build(workflow, await QualityCollector.CollectAsync(repository, workflow, qualityRuns, fetchedJobs)),
-  await FlowCollector.CollectAsync(repository, taken));
+  await FlowCollector.CollectAsync(repository, taken),
+  AgentCollector.Build(await AgentCollector.CollectAsync(repository, AgentCollector.DefaultIssues)));
 var json = SnapshotJson.Write(snapshot);
 IReadOnlyList<string> problems = SnapshotRules.Validate(json);
 if (problems.Count > 0)
@@ -152,6 +155,9 @@ else
   await Console.Out.WriteLineAsync($"wrote {output}: {sampled.Count} runs of {workflow}, {snapshot.Ci.Jobs.Count} job and path rows");
   await Console.Out.WriteLineAsync(
     $"quality: {snapshot.Quality?.Sample.Runs} runs in scope, {snapshot.Quality?.Sample.IgnoredRuns} ignored");
+  await Console.Out.WriteLineAsync(
+    $"agents: {snapshot.Agents?.Sample.Scanned} issues scanned, {snapshot.Agents?.Activity.Issues} listed, "
+    + $"{snapshot.Agents?.Activity.WithCounts} with count comments");
 }
 return 0;
 

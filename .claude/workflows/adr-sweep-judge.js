@@ -15,13 +15,13 @@ export const meta = {
 // the delta and run the judgement checks by hand, as .claude/skills/adr-sweep/SKILL.md step 3 says.
 //
 // The judgement half of the ADR sweep:
-//   Select  the delta. One read-only agent (Sonnet) does the parts that need git and gh: records
+//   Select  the delta. One read-only `sweep-judge` agent (Sonnet) does the parts that need git and gh: records
 //           whose file changed since the watermark, records whose cited tokens changed, J3
 //           triggers that moved, and records named by issues or PRs updated since (M5). The
 //           rotation is plain code over the watermark's judged= groups: the previous run's
 //           left-over records first, then the k records judged longest ago, ties by number.
 //           No watermark (or one that does not parse) means a full run: every record.
-//   Judge   one agent per delta record (Sonnet) runs the J checks at the swept origin/main SHA.
+//   Judge   one `sweep-judge` agent per delta record (Sonnet) runs the J checks at the swept origin/main SHA.
 //   Verify  each Fix now or Decide finding goes to two skeptics (the read-only `sweep-skeptic`
 //           agent, one lens each) and is confirmed only if both decline. Watch is not verified.
 // Returns data for the session, which groups findings across records, writes the report and the
@@ -48,7 +48,9 @@ export const meta = {
 // come back unexamined, Fix now before Decide.
 
 const SKEPTIC = 'sweep-skeptic'
-const MODEL = 'sonnet'
+// The select agent and the judges read untrusted issue and PR text through gh, so they run as the
+// read-only `sweep-judge` agent type, whose front matter pins Sonnet (#580); no per-call model.
+const JUDGE = 'sweep-judge'
 const CHECKS = ['J1', 'J2', 'J3', 'J4', 'J5', 'J7']
 const DEFAULT_CHECKS = ['J1', 'J2', 'J3', 'J4', 'J5']
 const CLASSES = ['fix-now', 'decide', 'watch']
@@ -186,7 +188,7 @@ if (Array.isArray(args?.records)) {
   } else {
     phase('Select')
     selectAgents = 1
-    const found = await agent(selectPrompt(w), { label: 'select', phase: 'Select', model: MODEL, schema: SELECTION })
+    const found = await agent(selectPrompt(w), { agentType: JUDGE, label: 'select', phase: 'Select', schema: SELECTION })
     if (!found) {
       selection = { mode: 'failed', watermark: w.main, summary: 'the select agent returned nothing; no delta was selected' }
       log(selection.summary)
@@ -324,7 +326,7 @@ const runRecord = async (r, i) => {
   const endTurn = () => { if (!done) { done = true; release[i]() } }
   try {
     launched += 1
-    const result = await agent(judgePrompt(r), { label: `judge:${r.id}`, phase: 'Judge', model: MODEL, schema: FINDINGS })
+    const result = await agent(judgePrompt(r), { agentType: JUDGE, label: `judge:${r.id}`, phase: 'Judge', schema: FINDINGS })
     if (!result) {
       log(`${r.id}: the judge returned nothing; the record is left over for the next rotation`)
       await previousTurn(i)

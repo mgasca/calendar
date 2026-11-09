@@ -4,6 +4,7 @@ date: 2026-11-09
 issue: https://github.com/mgasca/calendar/issues/554
 pr:
   - https://github.com/mgasca/calendar/pull/584
+  - https://github.com/mgasca/calendar/pull/591
 adrs: ["0020", "0047"]
 ---
 

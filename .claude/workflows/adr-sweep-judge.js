@@ -3,8 +3,8 @@ export const meta = {
   description: 'Select the ADR sweep delta, judge each record (J1 to J5, J7 on request), then two skeptics per Fix now or Decide finding',
   whenToUse: 'Only from step 3 of the adr-sweep skill, in Claude Code, with the previous watermark and the inventory',
   phases: [
-    { title: 'Select', detail: 'one sweep-judge agent for the git and gh parts of the delta; the rotation in code' },
-    { title: 'Judge', detail: 'one sweep-judge agent per admitted record' },
+    { title: 'Select', detail: 'one agent for the git and gh parts of the delta; the rotation in code', model: 'sonnet' },
+    { title: 'Judge', detail: 'one judge per delta record, in order of its reason', model: 'sonnet' },
     { title: 'Verify', detail: 'two sweep-skeptic agents per Fix now or Decide finding: true, matters' },
   ],
 }
@@ -15,15 +15,15 @@ export const meta = {
 // the delta and run the judgement checks by hand, as .claude/skills/adr-sweep/SKILL.md step 3 says.
 //
 // The judgement half of the ADR sweep:
-//   Select  the delta. One read-only `sweep-judge` agent (Sonnet, from its definition) does the
-//           parts that need git and gh: records whose file changed since the watermark, records
-//           whose cited tokens changed, J3 triggers that moved, and records named by issues or PRs
-//           updated since (M5). The previous run's left-over records and the rotation (the k
-//           records judged longest ago over the watermark's judged= groups, ties by number) are
-//           plain code. No watermark (or one that does not parse) means a full run: every record.
-//   Judge   one `sweep-judge` agent per admitted record runs the J checks at the swept SHA.
-//           Both agent types are read-only definitions, because the select agent and the judges
-//           read untrusted issue and PR text.
+//   Select  the delta. One read-only `sweep-judge` agent (Sonnet) does the parts that need git and gh: records
+//           whose file changed since the watermark, records whose cited tokens changed, J3
+//           triggers that moved, and records named by issues or PRs updated since (M5). The
+//           rotation is plain code over the watermark's judged= groups: the k records judged
+//           longest ago, ties by number. No watermark (or one that does not parse) means a full
+//           run: every record.
+//           Admission order (#581): the previous run's left-over records, in the order given;
+//           then up to k rotation records, oldest first; then the rest by reason, then number.
+//   Judge   one `sweep-judge` agent per delta record (Sonnet) runs the J checks at the swept origin/main SHA.
 //   Verify  each Fix now or Decide finding goes to two skeptics (the read-only `sweep-skeptic`
 //           agent, one lens each) and is confirmed only if both decline. Watch is not verified.
 // Returns data for the session, which groups findings across records, writes the report and the
@@ -38,29 +38,29 @@ export const meta = {
 //   checks: ['J1', 'J2', 'J3', 'J4', 'J5']   (default; add 'J7' on request)
 //   capRun: 40             the ceiling on agents per run, the select agent included
 //   capRecord: 12          the ceiling on agents per record, its judge and its skeptics together
-//   records: [{ id, path, reasons, checks }]   optional: skip the select agent and use these as the
-//                          selected records, in the given order (a delta selected by hand, or a
-//                          seeded proof run); left-over and rotation still apply with a watermark
+//   records: [{ id, path, reasons, checks, kind }]   optional: skip selection and judge these, in
+//                          order (for a delta selected by hand, or a seeded proof run). A record may
+//                          name its kind ('left-over', 'rotation' or a selected kind); kinds take the
+//                          admission order above, and records without one keep the given order
 // }
 //
-// Admission. Each admitted record reserves 1 + 2 agents (its judge and one finding's skeptic
-// pair), so slots = floor((capRun - select agent) / 3) records are admitted, 13 at the default.
-// The slots are filled in three groups, so a busy day cannot starve the rotation:
-//   1. rotation: up to k slots for the k records judged longest ago (a rotation record that is
-//      also left over or selected is admitted here);
-//   2. left over: the previous run's left-over records, in the order given;
-//   3. selected: the selected kinds, by reason, then number.
-// While slots >= k (capRun >= 3k + 1, 19 at k = 6), every record is judged at least once every
-// ceil(records / k) sweeps whatever the load; left-over records drain at slots - k per run (7 at
-// the default) ahead of new selections. Records not admitted come back in `leftOver`, left over
-// first, so the next run takes them first; so do records whose judge returned nothing.
-//
-// Skeptics. A record's first Fix now or Decide finding uses its own reserve as soon as its judge
-// returns. Reserves a record does not use go to a shared pool, granted once every judge has
-// settled, in order of reason, so who is verified does not depend on which judge returns first.
-// Findings past either cap come back unexamined, Fix now before Decide.
+// Caps. Each admitted record reserves 1 + 2 agents (its judge and one finding's skeptic pair), so
+// at most floor(capRun available / 3) records are admitted, in admission order. Left-over and
+// selected records past the cap come back in `leftOver`, left-over first, and the next run takes
+// them first, as it does records whose judge returned nothing. A rotation record past the cap is
+// not left over: it keeps its judged date, so the next rotation picks it again (caps.rotationDeferred).
+// So every record is judged within ceil(records / k) sweeps only while each run's left-over list
+// leaves the rotation its k slots: at most 13 - 6 = 7 records at the defaults. A longer list takes
+// rotation slots first, and one longer than the admitted records holds the rotation off until it
+// drains; the log says so. Reserves a record does not use
+// go to a shared pool. Once every judge has settled, the records' further findings draw from that
+// pool strictly in record order, so who is verified does not depend on which judge returns first
+// (#582); a record's first finding does not wait. Findings past either cap come back unexamined,
+// Fix now before Decide.
 
 const SKEPTIC = 'sweep-skeptic'
+// The select agent and the judges read untrusted issue and PR text through gh, so they run as the
+// read-only `sweep-judge` agent type, whose front matter pins Sonnet (#580); no per-call model.
 const JUDGE = 'sweep-judge'
 const CHECKS = ['J1', 'J2', 'J3', 'J4', 'J5', 'J7']
 const DEFAULT_CHECKS = ['J1', 'J2', 'J3', 'J4', 'J5']
@@ -69,9 +69,9 @@ const VERIFIED = ['fix-now', 'decide']
 const LENSES = ['true', 'matters']
 const PAIR = LENSES.length
 const RESERVE = 1 + PAIR
-// Reason priority, highest first: orders the selected group and the pool grants by each record's
-// best reason, then number. Admission groups (rotation, left over, selected) come first.
-const KINDS = ['given', 'full', 'changed-record', 'changed-token', 'trigger', 'open-work', 'left-over', 'rotation']
+// Reason priority, highest first: a record's kind is its best reason. Left-over and rotation records
+// are admitted ahead of the rest (see Caps); the rest is ordered by best reason, then number.
+const KINDS =['given', 'full', 'changed-record', 'changed-token', 'trigger', 'open-work', 'left-over', 'rotation']
 const SELECTED_KINDS = ['changed-record', 'changed-token', 'trigger', 'open-work']
 
 const SHA = /^[0-9a-f]{7,40}$/
@@ -168,89 +168,96 @@ ${inventory.map(tokenLine).join('\n')}`
 
 // ---- Selection ----
 
-const entries = new Map()
+const delta = new Map()
+const GIVEN_KINDS = [...SELECTED_KINDS, 'left-over', 'rotation']
+let leftSeq = 0
+let rotationSeq = 0
 const addReason = (id, path, kind, reason) => {
-  const entry = entries.get(id) ?? { id, path, kinds: [], reasons: [] }
+  const entry = delta.get(id) ?? { id, path, kinds: [], reasons: [], seq: delta.size }
   if (!entry.kinds.includes(kind)) entry.kinds.push(kind)
+  // The order left-over records were given in, and the rotation's oldest-first order.
+  if (kind === 'left-over' && entry.leftSeq === undefined) { entry.leftSeq = leftSeq; leftSeq += 1 }
+  if (kind === 'rotation' && entry.rotationSeq === undefined) { entry.rotationSeq = rotationSeq; rotationSeq += 1 }
   entry.reasons.push(reason)
-  entries.set(id, entry)
+  delta.set(id, entry)
 }
-const leftIds = []
-const rotationIds = []
 let selection
 let selectAgents = 0
-const w = parseWatermark(args?.watermark)
-if (args?.watermark && !w) log('the watermark does not parse')
-
-// Left over and rotation: plain code over the watermark and the inventory.
-const addLeftOverAndRotation = () => {
-  if (!w || inventory.length === 0) return
-  for (const id of Array.isArray(args?.leftOver) ? args.leftOver.map(String) : []) {
-    const e = byId.get(id)
-    if (!e) { log(`leftOver: ignored ${id}, which is not in the inventory`); continue }
-    if (leftIds.includes(id)) continue
-    addReason(e.id, e.path, 'left-over', 'left over by the previous run')
-    leftIds.push(id)
-  }
-  const oldest = inventory
-    .map((e) => ({ e, at: w.judgedAt.get(e.id) ?? '' }))
-    .sort((a, b) => (a.at < b.at ? -1 : a.at > b.at ? 1 : a.e.id < b.e.id ? -1 : 1))
-    .slice(0, K)
-  for (const { e, at } of oldest) {
-    addReason(e.id, e.path, 'rotation', at ? `rotation: last judged ${at}` : 'rotation: never judged')
-    rotationIds.push(e.id)
-  }
-}
 
 if (Array.isArray(args?.records)) {
   for (const r of args.records) {
     if (!r || typeof r.id !== 'string' || typeof r.path !== 'string') { log(`dropped a given record without an id and path: ${JSON.stringify(r)}`); continue }
     const reasons = Array.isArray(r.reasons) && r.reasons.length > 0 ? r.reasons.map(String) : ['given by the session']
-    reasons.forEach((reason) => addReason(r.id, r.path, 'given', reason))
-    entries.get(r.id).checks = pickChecks(r.checks, r.id)
+    if (r.kind !== undefined && !GIVEN_KINDS.includes(r.kind)) log(`${r.id}: ignored kind ${r.kind} (known: ${GIVEN_KINDS.join(', ')})`)
+    const kind = GIVEN_KINDS.includes(r.kind) ? r.kind : 'given'
+    reasons.forEach((reason) => addReason(r.id, r.path, kind, reason))
+    delta.get(r.id).checks = pickChecks(r.checks, r.id)
   }
-  const given = entries.size
-  addLeftOverAndRotation()
-  selection = { mode: 'given', watermark: w?.main ?? null, summary: `${given} record(s) given by the session; no select agent ran` }
+  selection = { mode: 'given', watermark: null, summary: `${delta.size} record(s) given by the session; no selection ran` }
   log(selection.summary)
 } else if (inventory.length === 0) {
   selection = { mode: 'failed', watermark: null, summary: 'no inventory in args: nothing to select from' }
   log(selection.summary)
-} else if (!w) {
-  log('no usable watermark: running a full sweep')
-  inventory.forEach((e) => addReason(e.id, e.path, 'full', 'full run: no previous watermark'))
-  selection = { mode: 'full', watermark: null, summary: `full run over ${inventory.length} records` }
 } else {
-  phase('Select')
-  selectAgents = 1
-  const found = await agent(selectPrompt(w), { agentType: JUDGE, label: 'select', phase: 'Select', schema: SELECTION })
-  if (!found) {
-    selection = { mode: 'failed', watermark: w.main, summary: 'the select agent returned nothing; no delta was selected' }
-    log(selection.summary)
-  } else if (!found.watermarkKnown) {
-    log(`watermark ${w.main} is not in the history of ${REF}: running a full sweep`)
-    inventory.forEach((e) => addReason(e.id, e.path, 'full', `full run: watermark ${w.main} not in history`))
-    selection = { mode: 'full', watermark: w.main, summary: found.summary }
+  const w = parseWatermark(args?.watermark)
+  if (!w) {
+    if (args?.watermark) log('the watermark does not parse: running a full sweep')
+    else log('no previous watermark: running a full sweep')
+    inventory.forEach((e) => addReason(e.id, e.path, 'full', 'full run: no previous watermark'))
+    selection = { mode: 'full', watermark: null, summary: `full run over ${inventory.length} records` }
   } else {
-    for (const s of found.selected ?? []) {
-      const e = byId.get(s.id)
-      if (!e) { log(`select: ignored ${s.id}, which is not in the inventory`); continue }
-      addReason(e.id, e.path, s.kind, s.reason)
+    phase('Select')
+    selectAgents = 1
+    const found = await agent(selectPrompt(w), { agentType: JUDGE, label: 'select', phase: 'Select', schema: SELECTION })
+    if (!found) {
+      selection = { mode: 'failed', watermark: w.main, summary: 'the select agent returned nothing; no delta was selected' }
+      log(selection.summary)
+    } else if (!found.watermarkKnown) {
+      log(`watermark ${w.main} is not in the history of ${REF}: running a full sweep`)
+      inventory.forEach((e) => addReason(e.id, e.path, 'full', `full run: watermark ${w.main} not in history`))
+      selection = { mode: 'full', watermark: w.main, summary: found.summary }
+    } else {
+      for (const s of found.selected ?? []) {
+        const e = byId.get(s.id)
+        if (!e) { log(`select: ignored ${s.id}, which is not in the inventory`); continue }
+        addReason(e.id, e.path, s.kind, s.reason)
+      }
+      const given = Array.isArray(args?.leftOver) ? args.leftOver.map(String) : []
+      for (const id of given) {
+        const e = byId.get(id)
+        if (!e) { log(`leftOver: ignored ${id}, which is not in the inventory`); continue }
+        addReason(e.id, e.path, 'left-over', 'left over by the previous run')
+      }
+      const oldest = inventory
+        .filter((e) => !delta.has(e.id))
+        .map((e) => ({ e, at: w.judgedAt.get(e.id) ?? '' }))
+        .sort((a, b) => (a.at < b.at ? -1 : a.at > b.at ? 1 : a.e.id < b.e.id ? -1 : 1))
+        .slice(0, K)
+      oldest.forEach(({ e, at }) => addReason(e.id, e.path, 'rotation', at ? `rotation: last judged ${at}` : 'rotation: never judged'))
+      selection = { mode: 'delta', watermark: w.main, changedFiles: found.changedFiles, summary: found.summary }
+      log(`select: ${found.changedFiles} changed file(s); ${delta.size} record(s) in the delta, ${oldest.length} by rotation (k = ${K})`)
     }
-    addLeftOverAndRotation()
-    selection = { mode: 'delta', watermark: w.main, changedFiles: found.changedFiles, summary: found.summary }
-    log(`select: ${found.changedFiles} changed file(s); ${entries.size} record(s) in the delta: ${leftIds.length} left over, ${rotationIds.length} by rotation (k = ${K})`)
   }
 }
 
+// Admission order (#581): left-over records in the order given, then up to k rotation records
+// oldest first, then the rest by best reason, ties by number (given records: by the given order).
+// Admitting the first records of this order keeps left-over and rotation records ahead of a busy
+// selection, which used to push them past the cap on every busy run.
 const best = (entry) => Math.min(...entry.kinds.map((k) => KINDS.indexOf(k)))
-const byReason = (a, b) => best(a) - best(b) || (a.id < b.id ? -1 : a.id > b.id ? 1 : 0)
-// Groups for admission: a rotation record is admitted in the rotation, whatever else selected it.
-const inRotation = rotationIds.map((id) => entries.get(id))
-const inLeft = leftIds.filter((id) => !rotationIds.includes(id)).map((id) => entries.get(id))
-const inSelected = [...entries.values()].filter((e) => !rotationIds.includes(e.id) && !leftIds.includes(e.id))
-if (selection.mode !== 'given') inSelected.sort(byReason)
-const toRecord = (group) => (e) => ({ id: e.id, path: e.path, reasons: e.reasons, kind: KINDS[best(e)], group, checks: e.checks ?? RUN_CHECKS, entry: e })
+const all = [...delta.values()]
+const isLeft = (e) => e.kinds.includes('left-over')
+const isRotationOnly = (e) => e.kinds.every((k) => k === 'rotation')
+const left = all.filter(isLeft).sort((a, b) => a.leftSeq - b.leftSeq)
+const kept = all.filter((e) => !isLeft(e) && isRotationOnly(e)).sort((a, b) => a.rotationSeq - b.rotationSeq).slice(0, K)
+const rest = all.filter((e) => !left.includes(e) && !kept.includes(e))
+rest.sort(selection.mode === 'given'
+  ? (a, b) => best(a) - best(b) || a.seq - b.seq
+  : (a, b) => best(a) - best(b) || (a.id < b.id ? -1 : a.id > b.id ? 1 : 0))
+const ordered = [...left, ...kept, ...rest]
+const records = ordered.map((e) => ({
+  id: e.id, path: e.path, reasons: e.reasons, kind: KINDS[best(e)], rotationOnly: isRotationOnly(e), checks: e.checks ?? RUN_CHECKS,
+}))
 
 // ---- Judge and verify ----
 
@@ -329,98 +336,99 @@ const verifyAll = (findings) =>
   pipeline(findings, verifyFinding).then((out) =>
     out.map((v, k) => v ?? { ...findings[k], votes: [], verdict: 'unexamined', why: 'verification failed' }))
 
-// Admission under the run cap: rotation first (up to k slots), then left over, then selected.
-// The select agent, if it ran, counts against the cap.
+// Admission under the run cap, in admission order. The select agent, if it ran, counts against the cap.
 const available = CAP_RUN - selectAgents
 const slots = Math.floor(available / RESERVE)
-const rotationSlots = Math.min(inRotation.length, slots)
-const leftSlots = Math.min(inLeft.length, slots - rotationSlots)
-const selectedSlots = Math.min(inSelected.length, slots - rotationSlots - leftSlots)
-if (slots < K) log(`run cap ${CAP_RUN} leaves ${slots} record slots, fewer than k = ${K}: the rotation is cut and its bound does not hold`)
-const admitted = [
-  ...inRotation.slice(0, rotationSlots).map(toRecord('rotation')),
-  ...inLeft.slice(0, leftSlots).map(toRecord('left-over')),
-  ...inSelected.slice(0, selectedSlots).map(toRecord('selected')),
-]
-const pastCap = (group) => (e) => ({ id: e.id, path: e.path, reasons: e.reasons, group, why: `past the run cap of ${CAP_RUN} agents` })
-// Left over first, so the next run takes the oldest backlog first.
-const leftOver = [
-  ...inLeft.slice(leftSlots).map(pastCap('left-over')),
-  ...inRotation.slice(rotationSlots).map(pastCap('rotation')),
-  ...inSelected.slice(selectedSlots).map(pastCap('selected')),
-]
-if (entries.size === 0 && selection.mode !== 'failed') log('the delta is empty: nothing to judge')
-log(`admitting ${admitted.length} of ${entries.size} records (${slots} slots): ${rotationSlots} rotation, ${leftSlots} left over, ${selectedSlots} selected`)
-if (leftOver.length > 0) {
-  log(`run cap ${CAP_RUN}: ${leftOver.length} record(s) left over for the next run: ${leftOver.map((r) => r.id).join(', ')}`)
+const admitCount = Math.min(records.length, slots)
+const admitted = records.slice(0, admitCount)
+const past = records.slice(admitCount)
+// A rotation record past the cap keeps its judged date, so the next rotation picks it again;
+// listing it as left over would only lengthen the list that runs ahead of the rotation.
+const rotationDeferred = past.filter((r) => r.rotationOnly).map((r) => r.id)
+const leftOver = past.filter((r) => !r.rotationOnly).map(({ id, path, reasons }) => ({ id, path, reasons, why: `past the run cap of ${CAP_RUN} agents` }))
+if (records.length === 0 && selection.mode !== 'failed') log('the delta is empty: nothing to judge')
+if (past.length > 0) {
+  log(`run cap ${CAP_RUN}: judging ${admitCount} of ${records.length} records; ${leftOver.length} left over for the next run: ${leftOver.map((r) => r.id).join(', ') || 'none'}`)
+}
+if (rotationDeferred.length > 0) {
+  log(`rotation: ${rotationDeferred.length} record(s) not admitted (${rotationDeferred.join(', ')}); they keep their judged date for the next rotation`)
+}
+if (left.length > 0 && K > 0 && left.length > slots - K) {
+  log(`left over: ${left.length} record(s) ahead of the rotation leave it ${Math.max(0, slots - left.length)} of its ${K} slot(s); the every-record bound holds again once the list is at most ${Math.max(0, slots - K)}`)
 }
 
+// The shared pool (#582). Each record starts its first finding's pair from its own reserve as soon
+// as its judge returns. Its further findings wait for the pool, which is granted once every judge
+// has settled, strictly in record order, so the grants do not depend on which judge returned first
+// and no record waits on an earlier record's judge.
+let pool = available - admitCount * RESERVE
 let launched = selectAgents
 const pastRecordCap = []
 const pastRunCap = []
-const perRecord = Math.floor((CAP_RECORD - 1) / PAIR)
 
-// Stage one: the judge; then the record's first finding starts on its own reserve at once.
 const judgeRecord = async (r) => {
   launched += 1
   const result = await agent(judgePrompt(r), { agentType: JUDGE, label: `judge:${r.id}`, phase: 'Judge', schema: FINDINGS })
   if (!result) {
-    log(`${r.id}: the judge returned nothing; the record is left over for the next run`)
-    return { record: r, judged: false }
+    log(`${r.id}: the judge returned nothing; the record is left over for the next rotation`)
+    return { record: r, judged: false, unused: PAIR }
   }
   const findings = (result.findings ?? []).map((f, order) => ({ ...f, record: f.record || r.id, judgedFor: r.id, order }))
   const watch = findings.filter((f) => f.class === 'watch').map((f) => ({ ...f, verdict: 'unverified' }))
   const toVerify = findings.filter((f) => VERIFIED.includes(f.class))
   toVerify.sort((a, b) => rank(a.class) - rank(b.class) || a.order - b.order)
+
+  const perRecord = Math.floor((CAP_RECORD - 1) / PAIR)
   const overRecord = toVerify.slice(perRecord).map((f) => ({ ...f, verdict: 'unexamined', why: `past the per-record cap of ${CAP_RECORD} agents` }))
-  if (overRecord.length > 0) log(`${r.id}: record cap ${CAP_RECORD}: verifying at most ${perRecord} of ${toVerify.length} Fix now or Decide finding(s); ${overRecord.length} unexamined`)
+  if (overRecord.length > 0) log(`${r.id}: record cap ${CAP_RECORD}: verifying ${perRecord} of ${toVerify.length} Fix now or Decide finding(s); ${overRecord.length} unexamined`)
   pastRecordCap.push(...overRecord)
   const within = toVerify.slice(0, perRecord)
+
+  // The first finding uses the record's own reserve at once; the rest wait for the pool.
   const own = within.slice(0, 1)
   launched += own.length * PAIR
-  // Not awaited here: the pool is granted once every judge has settled.
   const ownRun = verifyAll(own)
-  return { record: r, judged: true, summary: result.summary, watch, own, ownRun, rest: within.slice(own.length) }
+  return { record: r, judged: true, summary: result.summary, watch, ownRun, rest: within.slice(own.length), unused: PAIR - own.length * PAIR }
 }
 
 if (admitted.length > 0) phase('Judge')
-const outcomes = await pipeline(admitted, judgeRecord)
+// A stage that throws drops to null and releases nothing, as its pair may have started.
+const settled = await pipeline(admitted, (r) => judgeRecord(r))
 
-// Every judge has settled: release unused reserves, then grant the pool in order of reason.
-let pool = available - admitted.length * RESERVE
-outcomes.forEach((o) => { if (!o || !o.judged || o.own.length === 0) pool += PAIR })
-const grants = outcomes
-  .map((o, k) => ({ o, r: admitted[k] }))
-  .filter(({ o }) => o && o.judged && o.rest.length > 0)
-  .sort((a, b) => byReason(a.r.entry, b.r.entry))
-const restRuns = new Map()
-for (const { o, r } of grants) {
+pool += settled.reduce((n, o) => n + (o ? o.unused : 0), 0)
+const restRuns = settled.map((o) => {
+  if (!o || !o.judged) return null
   const granted = Math.min(o.rest.length, Math.floor(pool / PAIR))
   pool -= granted * PAIR
   const overRun = o.rest.slice(granted).map((f) => ({ ...f, verdict: 'unexamined', why: `past the run cap of ${CAP_RUN} agents` }))
-  if (overRun.length > 0) log(`${r.id}: run cap ${CAP_RUN}: ${overRun.length} Fix now or Decide finding(s) unexamined`)
+  if (overRun.length > 0) log(`${o.record.id}: run cap ${CAP_RUN}: ${overRun.length} Fix now or Decide finding(s) unexamined`)
   pastRunCap.push(...overRun)
   launched += granted * PAIR
-  restRuns.set(r.id, verifyAll(o.rest.slice(0, granted)))
-}
+  return verifyAll(o.rest.slice(0, granted))
+})
+
+const outcomes = await Promise.all(settled.map(async (o, k) => {
+  if (!o || !o.judged) return o
+  const verified = [...(await o.ownRun), ...(await restRuns[k])]
+  return { record: o.record, judged: true, summary: o.summary, watch: o.watch, verified }
+}))
 
 const judged = []
 const summaries = []
 const watch = []
 const verified = []
-for (let k = 0; k < admitted.length; k += 1) {
-  const o = outcomes[k]
+outcomes.forEach((o, k) => {
   const r = admitted[k]
   if (!o || !o.judged) {
-    if (!o) log(`${r.id}: the record failed during judging; it is left over for the next run`)
-    leftOver.push({ id: r.id, path: r.path, reasons: r.reasons, group: r.group, why: o ? 'the judge returned nothing' : 'judging failed' })
-    continue
+    if (!o) log(`${r.id}: the record failed during judging; it is left over for the next rotation`)
+    leftOver.push({ id: r.id, path: r.path, reasons: r.reasons, why: o ? 'the judge returned nothing' : 'judging failed' })
+    return
   }
   judged.push(r.id)
   summaries.push({ record: r.id, summary: o.summary })
   watch.push(...o.watch)
-  verified.push(...(await o.ownRun), ...(await (restRuns.get(r.id) ?? Promise.resolve([]))))
-}
+  verified.push(...o.verified)
+})
 
 const confirmed = verified.filter((f) => f.verdict === 'confirmed')
 const refuted = verified.filter((f) => f.verdict === 'refuted')
@@ -435,17 +443,14 @@ const caps = {
   record: CAP_RECORD,
   k: K,
   reservePerRecord: RESERVE,
-  slots,
-  admitted: { rotation: rotationSlots, leftOver: leftSlots, selected: selectedSlots },
+  admitted: admitCount,
   launched,
   leftOverRecords: leftOver.length,
+  rotationDeferred,
   findingsPastRecordCap: pastRecordCap.length,
   findingsPastRunCap: pastRunCap.length,
 }
 log(`${judged.length} record(s) judged; ${confirmed.length} confirmed, ${refuted.length} refuted, ${unexamined.length} unexamined, ${watch.length} watch; ${leftOver.length} left over; ${agents} of ${launched} agents answered`)
 
-const deltaOut = [
-  ...admitted.map(({ id, path, reasons, kind, group }) => ({ id, path, reasons, kind, group, admitted: true })),
-  ...leftOver.filter((r) => r.why.startsWith('past the run cap')).map(({ id, path, reasons, group }) => ({ id, path, reasons, kind: KINDS[best(entries.get(id))], group, admitted: false })),
-]
+const deltaOut = records.map(({ id, path, reasons, kind }) => ({ id, path, reasons, kind }))
 return { selection, delta: deltaOut, confirmed, refuted, unexamined, watch, judged, leftOver, caps, agents, summaries, main: REF }

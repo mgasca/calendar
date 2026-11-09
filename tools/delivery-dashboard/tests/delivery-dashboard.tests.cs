@@ -9,6 +9,7 @@
 #:include ../QualitySection.cs
 #:include ../QualityRules.cs
 #:include QualityTests.cs
+#:include QualityReuseTests.cs
 #:include QualityJobNameTests.cs
 
 // Tests for the delivery dashboard's snapshot tool. Run: dotnet run tools/delivery-dashboard/tests/delivery-dashboard.tests.cs

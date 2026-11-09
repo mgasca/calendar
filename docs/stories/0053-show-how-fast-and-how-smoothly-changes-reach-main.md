@@ -13,6 +13,7 @@ pr:
   - https://github.com/mgasca/calendar/pull/608
   - https://github.com/mgasca/calendar/pull/619
   - https://github.com/mgasca/calendar/pull/620
+  - https://github.com/mgasca/calendar/pull/622
   - https://github.com/mgasca/calendar/pull/631
 adrs: ["0017", "0025", "0045", "0046", "0049"]
 ---
@@ -101,7 +102,7 @@ Agreed with the maintainer in a Claude Code session on 2026-11-09 and recorded o
 | 3. Flow page | #598 | #611 |
 | 4. Quality page | #599 | #607 (data), #619 (page) |
 | 5. Agent proxies | #600 | #608 (data), #620 (page) |
-| 6. Alerts and upkeep | #601 | #616 |
+| 6. Alerts and upkeep | #601 | #616, #622 (first run on `main` recorded, closes #601) |
 | Review findings on #607 | #613, #614 | #615 (pull request job names that `main` lacks are dropped), #617 (the jobs already fetched are reused) |
 | Count-comment line in the skill | #610 | #612 |
 
@@ -181,12 +182,15 @@ No changes. The calendar API is not touched.
 
 ### Lessons learned, known issues and follow-ups
 
+* **Verified on `main`:** the first run dispatched after slice 6 ([run 42675345135](https://github.com/mgasca/calendar/actions/runs/42675345135)) passed all three jobs: the snapshot, the threshold check and the commit to the data branch. It published a snapshot with every section and opened no threshold issue, because nothing breached. This was the check the slice 6 PR could not make, because the workflow runs only from `main` (#622).
 * **Stacked slices and squash merges.** Each squash merge left the PRs above it with their own copies of the merged commits. Every slice after the first needed a merge of `origin/main` and conflict resolution in the same few files: the `Snapshot` record, the optional-section list in `SnapshotRules.cs`, `dashboard.ts`, `dashboard.test.ts`, the fixtures and this card. **Lesson:** when several slices add sections to one schema, put the extension points in place first, so each slice touches its own file. Examples are an ordered list of optional sections and one file per section in both readers.
 * **Fixtures shared across slices.** Once the fixtures gained sections, a test that built a duplicate JSON key by text replacement broke. Tests now change the parsed object instead.
+* **A workflow job that is hard to verify:** list its first real run as a follow-up, not as "verified".
+* **Keep the safety rules in the schema:** rejecting unknown keys and private fields caught real data problems early. Keep them in the schema, not only on the page.
 * **CI infrastructure.** Twice a job ended as `abandoned`, and the ADR-0045 gate also flaked. A full re-run ("Re-run all jobs") fixed both; per ADR-0045, rerunning only the failed jobs reuses the old timings.
-* **Known issues:**
-  * The alert issue gets a comment every day a threshold stays crossed.
-  * Thinning the data branch is a manual procedure.
+* **Known issues (no issue opened; open one when it hurts):**
+  * The alert issue gets a comment every day a threshold stays crossed. This is noisy by design, like the CI trend check.
+  * Thinning the data branch is a manual runbook step until the limit is near, which is years away.
   * Count comments that quote the format with placeholders are read as malformed.
   * Only the 100 most recently updated issues are read for the agent proxies.
   * The guard numbers are a proxy taken from a shared Tooling step.

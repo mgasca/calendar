@@ -129,21 +129,6 @@ export function DayView({ date, timeZone: zoneOverride, locale }: DayViewProps) 
           <DayNav date={date} today={today} />
         </div>
         <WeekLink date={shownDate} locale={locale} />
-        <button
-          type="button"
-          className="refresh"
-          aria-busy={agenda.isFetching}
-          onClick={() => {
-            if (!agenda.isFetching) {
-              void agenda.refetch();
-            }
-          }}
-        >
-          {/* Both labels stay in the button, the inactive one hidden, so its width never
-              changes; the name follows the visible label and aria-busy marks the refresh (#464). */}
-          <span aria-hidden={agenda.isFetching}>Refresh</span>
-          <span aria-hidden={!agenda.isFetching}>Refreshing…</span>
-        </button>
         {stale && <p role="status">Updating…</p>}
         {!isEmpty && (
           <p className="summary">

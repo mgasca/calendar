@@ -1,25 +1,41 @@
 {
-  "version": 1,
+  "version": 2,
   "date": "2026-11-09",
-  "generatedAt": "2026-11-09T16:21:42Z",
+  "generatedAt": "2026-11-09T18:36:26Z",
   "repository": "mgasca/calendar",
   "ci": {
     "workflow": "ci.yml",
     "basis": "measured",
     "runs": 30,
     "window": {
-      "from": "2026-11-08T10:47:31Z",
-      "to": "2026-11-09T16:16:10Z"
+      "from": "2026-11-08T13:34:36Z",
+      "to": "2026-11-09T18:33:05Z"
+    },
+    "trend": {
+      "runs": 20,
+      "required": 20,
+      "window": {
+        "from": "2026-11-09T12:19:44Z",
+        "to": "2026-11-09T18:33:05Z"
+      }
+    },
+    "queue": {
+      "runs": 30,
+      "medianSeconds": 3,
+      "p90Seconds": 4,
+      "maxSeconds": 842
     },
     "jobs": [
       {
         "job": "ADR conventions",
         "path": "publication",
-        "count": 5,
+        "count": 14,
         "minSeconds": 17,
-        "medianSeconds": 29,
+        "medianSeconds": 22,
         "p90Seconds": 32,
-        "maxSeconds": 32
+        "maxSeconds": 50,
+        "baseline": null,
+        "trend": null
       },
       {
         "job": "Backend",
@@ -27,8 +43,21 @@
         "count": 30,
         "minSeconds": 64,
         "medianSeconds": 85,
-        "p90Seconds": 102,
-        "maxSeconds": 125
+        "p90Seconds": 104,
+        "maxSeconds": 125,
+        "baseline": {
+          "count": 48,
+          "medianSeconds": 84,
+          "thresholdSeconds": 115
+        },
+        "trend": {
+          "verdict": "noShift",
+          "recentRuns": 20,
+          "shiftSeconds": 2,
+          "lowSeconds": -3,
+          "highSeconds": 10,
+          "minEffectSeconds": 10
+        }
       },
       {
         "job": "Changes",
@@ -37,7 +66,20 @@
         "minSeconds": 3,
         "medianSeconds": 5,
         "p90Seconds": 6,
-        "maxSeconds": 7
+        "maxSeconds": 7,
+        "baseline": {
+          "count": 48,
+          "medianSeconds": 4,
+          "thresholdSeconds": 19
+        },
+        "trend": {
+          "verdict": "noShift",
+          "recentRuns": 20,
+          "shiftSeconds": 1,
+          "lowSeconds": 0,
+          "highSeconds": 1,
+          "minEffectSeconds": 10
+        }
       },
       {
         "job": "Container image",
@@ -46,34 +88,1403 @@
         "minSeconds": 59,
         "medianSeconds": 76,
         "p90Seconds": 103,
-        "maxSeconds": 197
+        "maxSeconds": 111,
+        "baseline": {
+          "count": 48,
+          "medianSeconds": 73,
+          "thresholdSeconds": 116
+        },
+        "trend": {
+          "verdict": "noShift",
+          "recentRuns": 20,
+          "shiftSeconds": 3,
+          "lowSeconds": -3,
+          "highSeconds": 9,
+          "minEffectSeconds": 10
+        }
       },
       {
         "job": "Docs site",
         "path": "publication",
         "count": 30,
         "minSeconds": 76,
-        "medianSeconds": 107,
-        "p90Seconds": 123,
-        "maxSeconds": 125
+        "medianSeconds": 113,
+        "p90Seconds": 125,
+        "maxSeconds": 131,
+        "baseline": {
+          "count": 48,
+          "medianSeconds": 97,
+          "thresholdSeconds": 181
+        },
+        "trend": {
+          "verdict": "slower",
+          "recentRuns": 20,
+          "shiftSeconds": 17,
+          "lowSeconds": 10,
+          "highSeconds": 26,
+          "minEffectSeconds": 10
+        }
       },
       {
         "job": "Frontend",
         "path": "publication",
         "count": 30,
         "minSeconds": 43,
-        "medianSeconds": 57,
-        "p90Seconds": 68,
-        "maxSeconds": 77
+        "medianSeconds": 58,
+        "p90Seconds": 67,
+        "maxSeconds": 72,
+        "baseline": {
+          "count": 48,
+          "medianSeconds": 52,
+          "thresholdSeconds": 90
+        },
+        "trend": {
+          "verdict": "noShift",
+          "recentRuns": 20,
+          "shiftSeconds": 4,
+          "lowSeconds": 0,
+          "highSeconds": 8,
+          "minEffectSeconds": 10
+        }
       },
       {
         "job": "Tooling",
         "path": "publication",
         "count": 30,
         "minSeconds": 62,
-        "medianSeconds": 87,
-        "p90Seconds": 216,
-        "maxSeconds": 319
+        "medianSeconds": 84,
+        "p90Seconds": 93,
+        "maxSeconds": 99,
+        "baseline": {
+          "count": 48,
+          "medianSeconds": 79,
+          "thresholdSeconds": 110
+        },
+        "trend": {
+          "verdict": "noShift",
+          "recentRuns": 20,
+          "shiftSeconds": 5,
+          "lowSeconds": 1,
+          "highSeconds": 10,
+          "minEffectSeconds": 10
+        }
+      }
+    ]
+  },
+  "quality": {
+    "workflow": "ci.yml",
+    "basis": {
+      "runs": "measured",
+      "superseded": "inferred",
+      "jobs": "measured",
+      "guards": "inferred"
+    },
+    "sample": {
+      "runs": 100,
+      "ignoredRuns": 0,
+      "window": {
+        "from": "2026-11-09T11:58:23Z",
+        "to": "2026-11-09T18:33:05Z"
+      }
+    },
+    "rule": {
+      "confidence": 0.95,
+      "minTrials": 20
+    },
+    "guard": {
+      "job": "Tooling",
+      "step": "Test and lint tooling"
+    },
+    "scopes": [
+      {
+        "scope": "main",
+        "listQuery": "branch:main event:push",
+        "runs": {
+          "total": 25,
+          "passed": 22,
+          "passedAfterRerun": 0,
+          "failed": 2,
+          "cancelled": 1,
+          "superseded": 0,
+          "other": 0,
+          "reruns": 0
+        },
+        "failedRunIds": [
+          42665145944,
+          42620951160
+        ],
+        "rerunRunIds": [],
+        "jobs": [
+          {
+            "job": "ADR conventions",
+            "required": false,
+            "trials": 15,
+            "failures": 0,
+            "verdict": "inconclusive",
+            "rate": null,
+            "low": null,
+            "high": null
+          },
+          {
+            "job": "Backend",
+            "required": false,
+            "trials": 24,
+            "failures": 0,
+            "verdict": "conclusive",
+            "rate": 0,
+            "low": 0,
+            "high": 0.1425
+          },
+          {
+            "job": "CI result",
+            "required": true,
+            "trials": 24,
+            "failures": 2,
+            "verdict": "conclusive",
+            "rate": 0.0833,
+            "low": 0.0103,
+            "high": 0.27
+          },
+          {
+            "job": "Changes",
+            "required": false,
+            "trials": 24,
+            "failures": 0,
+            "verdict": "conclusive",
+            "rate": 0,
+            "low": 0,
+            "high": 0.1425
+          },
+          {
+            "job": "Container image",
+            "required": false,
+            "trials": 24,
+            "failures": 0,
+            "verdict": "conclusive",
+            "rate": 0,
+            "low": 0,
+            "high": 0.1425
+          },
+          {
+            "job": "Docs site",
+            "required": false,
+            "trials": 24,
+            "failures": 0,
+            "verdict": "conclusive",
+            "rate": 0,
+            "low": 0,
+            "high": 0.1425
+          },
+          {
+            "job": "Frontend",
+            "required": false,
+            "trials": 24,
+            "failures": 2,
+            "verdict": "conclusive",
+            "rate": 0.0833,
+            "low": 0.0103,
+            "high": 0.27
+          },
+          {
+            "job": "Tooling",
+            "required": false,
+            "trials": 24,
+            "failures": 0,
+            "verdict": "conclusive",
+            "rate": 0,
+            "low": 0,
+            "high": 0.1425
+          }
+        ],
+        "guardDays": [
+          {
+            "date": "2026-11-09",
+            "trials": 24,
+            "failures": 0
+          }
+        ]
+      },
+      {
+        "scope": "pullRequest",
+        "listQuery": "event:pull_request",
+        "runs": {
+          "total": 75,
+          "passed": 51,
+          "passedAfterRerun": 3,
+          "failed": 12,
+          "cancelled": 0,
+          "superseded": 9,
+          "other": 0,
+          "reruns": 4
+        },
+        "failedRunIds": [
+          42663759268,
+          42663079193,
+          42651472399,
+          42643384100,
+          42634883725,
+          42627173895,
+          42620999996,
+          42619980195,
+          42619441563,
+          42618666414,
+          42614440223,
+          42613765425
+        ],
+        "rerunRunIds": [
+          42670243987,
+          42660958980,
+          42659481079,
+          42645319724
+        ],
+        "jobs": [
+          {
+            "job": "ADR conventions",
+            "required": false,
+            "trials": 7,
+            "failures": 0,
+            "verdict": "inconclusive",
+            "rate": null,
+            "low": null,
+            "high": null
+          },
+          {
+            "job": "Backend",
+            "required": false,
+            "trials": 16,
+            "failures": 0,
+            "verdict": "inconclusive",
+            "rate": null,
+            "low": null,
+            "high": null
+          },
+          {
+            "job": "CI result",
+            "required": true,
+            "trials": 73,
+            "failures": 19,
+            "verdict": "conclusive",
+            "rate": 0.2603,
+            "low": 0.1645,
+            "high": 0.3762
+          },
+          {
+            "job": "Cancel superseded runs",
+            "required": false,
+            "trials": 73,
+            "failures": 0,
+            "verdict": "conclusive",
+            "rate": 0,
+            "low": 0,
+            "high": 0.0493
+          },
+          {
+            "job": "Changes",
+            "required": false,
+            "trials": 72,
+            "failures": 0,
+            "verdict": "conclusive",
+            "rate": 0,
+            "low": 0,
+            "high": 0.0499
+          },
+          {
+            "job": "Container image",
+            "required": false,
+            "trials": 23,
+            "failures": 0,
+            "verdict": "conclusive",
+            "rate": 0,
+            "low": 0,
+            "high": 0.1482
+          },
+          {
+            "job": "Docs site",
+            "required": false,
+            "trials": 46,
+            "failures": 2,
+            "verdict": "conclusive",
+            "rate": 0.0435,
+            "low": 0.0053,
+            "high": 0.1484
+          },
+          {
+            "job": "Frontend",
+            "required": false,
+            "trials": 9,
+            "failures": 0,
+            "verdict": "inconclusive",
+            "rate": null,
+            "low": null,
+            "high": null
+          },
+          {
+            "job": "Tooling",
+            "required": false,
+            "trials": 57,
+            "failures": 9,
+            "verdict": "conclusive",
+            "rate": 0.1579,
+            "low": 0.0748,
+            "high": 0.2787
+          }
+        ],
+        "guardDays": [
+          {
+            "date": "2026-11-09",
+            "trials": 57,
+            "failures": 0
+          }
+        ]
+      }
+    ]
+  },
+  "flow": {
+    "basis": "measured",
+    "minSample": 5,
+    "window": {
+      "from": "2026-11-07T16:59:10Z",
+      "to": "2026-11-09T18:36:26Z"
+    },
+    "openPullRequests": {
+      "count": 4,
+      "drafts": 0,
+      "age": null
+    },
+    "waitingForReview": {
+      "count": 3,
+      "oldestSeconds": 943562
+    },
+    "leadTime": {
+      "sample": 93,
+      "stat": {
+        "count": 93,
+        "medianSeconds": 1546,
+        "p90Seconds": 15232,
+        "maxSeconds": 56406
+      }
+    },
+    "issueToMerge": {
+      "sample": 59,
+      "stat": {
+        "count": 59,
+        "medianSeconds": 8443,
+        "p90Seconds": 87848,
+        "maxSeconds": 236558
+      }
+    },
+    "stacks": {
+      "mergedIntoBase": 7,
+      "open": []
+    },
+    "epics": [
+      {
+        "issue": 559,
+        "total": 10,
+        "done": 10
+      },
+      {
+        "issue": 595,
+        "total": 6,
+        "done": 5
+      }
+    ]
+  },
+  "agents": {
+    "basis": {
+      "activity": "measured",
+      "counts": "inferred"
+    },
+    "sample": {
+      "scanned": 100,
+      "window": {
+        "from": "2026-11-06T20:49:59Z",
+        "to": "2026-11-09T18:33:03Z"
+      }
+    },
+    "activity": {
+      "issues": 97,
+      "withCounts": 0,
+      "comments": 227,
+      "reviews": 9,
+      "pullRequests": 383
+    },
+    "counts": {
+      "countComments": 0,
+      "malformed": 2,
+      "tasks": 0,
+      "subagents": 0
+    },
+    "issues": [
+      {
+        "issue": 614,
+        "countComments": 0,
+        "malformed": 0,
+        "tasks": null,
+        "subagents": null,
+        "comments": 0,
+        "reviews": 0,
+        "pullRequests": 3
+      },
+      {
+        "issue": 613,
+        "countComments": 0,
+        "malformed": 0,
+        "tasks": null,
+        "subagents": null,
+        "comments": 0,
+        "reviews": 0,
+        "pullRequests": 4
+      },
+      {
+        "issue": 610,
+        "countComments": 0,
+        "malformed": 0,
+        "tasks": null,
+        "subagents": null,
+        "comments": 0,
+        "reviews": 0,
+        "pullRequests": 1
+      },
+      {
+        "issue": 601,
+        "countComments": 0,
+        "malformed": 0,
+        "tasks": null,
+        "subagents": null,
+        "comments": 3,
+        "reviews": 0,
+        "pullRequests": 3
+      },
+      {
+        "issue": 600,
+        "countComments": 0,
+        "malformed": 2,
+        "tasks": null,
+        "subagents": null,
+        "comments": 3,
+        "reviews": 0,
+        "pullRequests": 4
+      },
+      {
+        "issue": 599,
+        "countComments": 0,
+        "malformed": 0,
+        "tasks": null,
+        "subagents": null,
+        "comments": 3,
+        "reviews": 0,
+        "pullRequests": 3
+      },
+      {
+        "issue": 598,
+        "countComments": 0,
+        "malformed": 0,
+        "tasks": null,
+        "subagents": null,
+        "comments": 3,
+        "reviews": 0,
+        "pullRequests": 2
+      },
+      {
+        "issue": 597,
+        "countComments": 0,
+        "malformed": 0,
+        "tasks": null,
+        "subagents": null,
+        "comments": 2,
+        "reviews": 1,
+        "pullRequests": 6
+      },
+      {
+        "issue": 596,
+        "countComments": 0,
+        "malformed": 0,
+        "tasks": null,
+        "subagents": null,
+        "comments": 1,
+        "reviews": 0,
+        "pullRequests": 3
+      },
+      {
+        "issue": 595,
+        "countComments": 0,
+        "malformed": 0,
+        "tasks": null,
+        "subagents": null,
+        "comments": 2,
+        "reviews": 0,
+        "pullRequests": 5
+      },
+      {
+        "issue": 582,
+        "countComments": 0,
+        "malformed": 0,
+        "tasks": null,
+        "subagents": null,
+        "comments": 1,
+        "reviews": 0,
+        "pullRequests": 1
+      },
+      {
+        "issue": 581,
+        "countComments": 0,
+        "malformed": 0,
+        "tasks": null,
+        "subagents": null,
+        "comments": 2,
+        "reviews": 0,
+        "pullRequests": 2
+      },
+      {
+        "issue": 580,
+        "countComments": 0,
+        "malformed": 0,
+        "tasks": null,
+        "subagents": null,
+        "comments": 1,
+        "reviews": 0,
+        "pullRequests": 1
+      },
+      {
+        "issue": 572,
+        "countComments": 0,
+        "malformed": 0,
+        "tasks": null,
+        "subagents": null,
+        "comments": 2,
+        "reviews": 0,
+        "pullRequests": 3
+      },
+      {
+        "issue": 565,
+        "countComments": 0,
+        "malformed": 0,
+        "tasks": null,
+        "subagents": null,
+        "comments": 1,
+        "reviews": 0,
+        "pullRequests": 4
+      },
+      {
+        "issue": 564,
+        "countComments": 0,
+        "malformed": 0,
+        "tasks": null,
+        "subagents": null,
+        "comments": 2,
+        "reviews": 0,
+        "pullRequests": 4
+      },
+      {
+        "issue": 563,
+        "countComments": 0,
+        "malformed": 0,
+        "tasks": null,
+        "subagents": null,
+        "comments": 2,
+        "reviews": 0,
+        "pullRequests": 2
+      },
+      {
+        "issue": 562,
+        "countComments": 0,
+        "malformed": 0,
+        "tasks": null,
+        "subagents": null,
+        "comments": 1,
+        "reviews": 0,
+        "pullRequests": 3
+      },
+      {
+        "issue": 561,
+        "countComments": 0,
+        "malformed": 0,
+        "tasks": null,
+        "subagents": null,
+        "comments": 1,
+        "reviews": 0,
+        "pullRequests": 3
+      },
+      {
+        "issue": 560,
+        "countComments": 0,
+        "malformed": 0,
+        "tasks": null,
+        "subagents": null,
+        "comments": 1,
+        "reviews": 0,
+        "pullRequests": 1
+      },
+      {
+        "issue": 559,
+        "countComments": 0,
+        "malformed": 0,
+        "tasks": null,
+        "subagents": null,
+        "comments": 2,
+        "reviews": 0,
+        "pullRequests": 13
+      },
+      {
+        "issue": 554,
+        "countComments": 0,
+        "malformed": 0,
+        "tasks": null,
+        "subagents": null,
+        "comments": 9,
+        "reviews": 0,
+        "pullRequests": 3
+      },
+      {
+        "issue": 553,
+        "countComments": 0,
+        "malformed": 0,
+        "tasks": null,
+        "subagents": null,
+        "comments": 2,
+        "reviews": 0,
+        "pullRequests": 2
+      },
+      {
+        "issue": 549,
+        "countComments": 0,
+        "malformed": 0,
+        "tasks": null,
+        "subagents": null,
+        "comments": 4,
+        "reviews": 0,
+        "pullRequests": 3
+      },
+      {
+        "issue": 545,
+        "countComments": 0,
+        "malformed": 0,
+        "tasks": null,
+        "subagents": null,
+        "comments": 0,
+        "reviews": 0,
+        "pullRequests": 1
+      },
+      {
+        "issue": 534,
+        "countComments": 0,
+        "malformed": 0,
+        "tasks": null,
+        "subagents": null,
+        "comments": 1,
+        "reviews": 0,
+        "pullRequests": 3
+      },
+      {
+        "issue": 528,
+        "countComments": 0,
+        "malformed": 0,
+        "tasks": null,
+        "subagents": null,
+        "comments": 2,
+        "reviews": 0,
+        "pullRequests": 2
+      },
+      {
+        "issue": 521,
+        "countComments": 0,
+        "malformed": 0,
+        "tasks": null,
+        "subagents": null,
+        "comments": 0,
+        "reviews": 0,
+        "pullRequests": 2
+      },
+      {
+        "issue": 519,
+        "countComments": 0,
+        "malformed": 0,
+        "tasks": null,
+        "subagents": null,
+        "comments": 3,
+        "reviews": 0,
+        "pullRequests": 4
+      },
+      {
+        "issue": 518,
+        "countComments": 0,
+        "malformed": 0,
+        "tasks": null,
+        "subagents": null,
+        "comments": 3,
+        "reviews": 0,
+        "pullRequests": 4
+      },
+      {
+        "issue": 517,
+        "countComments": 0,
+        "malformed": 0,
+        "tasks": null,
+        "subagents": null,
+        "comments": 2,
+        "reviews": 0,
+        "pullRequests": 5
+      },
+      {
+        "issue": 516,
+        "countComments": 0,
+        "malformed": 0,
+        "tasks": null,
+        "subagents": null,
+        "comments": 3,
+        "reviews": 0,
+        "pullRequests": 6
+      },
+      {
+        "issue": 515,
+        "countComments": 0,
+        "malformed": 0,
+        "tasks": null,
+        "subagents": null,
+        "comments": 2,
+        "reviews": 0,
+        "pullRequests": 5
+      },
+      {
+        "issue": 514,
+        "countComments": 0,
+        "malformed": 0,
+        "tasks": null,
+        "subagents": null,
+        "comments": 4,
+        "reviews": 0,
+        "pullRequests": 1
+      },
+      {
+        "issue": 513,
+        "countComments": 0,
+        "malformed": 0,
+        "tasks": null,
+        "subagents": null,
+        "comments": 1,
+        "reviews": 0,
+        "pullRequests": 8
+      },
+      {
+        "issue": 500,
+        "countComments": 0,
+        "malformed": 0,
+        "tasks": null,
+        "subagents": null,
+        "comments": 3,
+        "reviews": 0,
+        "pullRequests": 3
+      },
+      {
+        "issue": 497,
+        "countComments": 0,
+        "malformed": 0,
+        "tasks": null,
+        "subagents": null,
+        "comments": 1,
+        "reviews": 0,
+        "pullRequests": 5
+      },
+      {
+        "issue": 492,
+        "countComments": 0,
+        "malformed": 0,
+        "tasks": null,
+        "subagents": null,
+        "comments": 0,
+        "reviews": 0,
+        "pullRequests": 2
+      },
+      {
+        "issue": 484,
+        "countComments": 0,
+        "malformed": 0,
+        "tasks": null,
+        "subagents": null,
+        "comments": 2,
+        "reviews": 0,
+        "pullRequests": 2
+      },
+      {
+        "issue": 483,
+        "countComments": 0,
+        "malformed": 0,
+        "tasks": null,
+        "subagents": null,
+        "comments": 1,
+        "reviews": 0,
+        "pullRequests": 2
+      },
+      {
+        "issue": 482,
+        "countComments": 0,
+        "malformed": 0,
+        "tasks": null,
+        "subagents": null,
+        "comments": 1,
+        "reviews": 0,
+        "pullRequests": 2
+      },
+      {
+        "issue": 481,
+        "countComments": 0,
+        "malformed": 0,
+        "tasks": null,
+        "subagents": null,
+        "comments": 2,
+        "reviews": 0,
+        "pullRequests": 2
+      },
+      {
+        "issue": 480,
+        "countComments": 0,
+        "malformed": 0,
+        "tasks": null,
+        "subagents": null,
+        "comments": 1,
+        "reviews": 0,
+        "pullRequests": 2
+      },
+      {
+        "issue": 479,
+        "countComments": 0,
+        "malformed": 0,
+        "tasks": null,
+        "subagents": null,
+        "comments": 1,
+        "reviews": 0,
+        "pullRequests": 2
+      },
+      {
+        "issue": 478,
+        "countComments": 0,
+        "malformed": 0,
+        "tasks": null,
+        "subagents": null,
+        "comments": 1,
+        "reviews": 0,
+        "pullRequests": 1
+      },
+      {
+        "issue": 477,
+        "countComments": 0,
+        "malformed": 0,
+        "tasks": null,
+        "subagents": null,
+        "comments": 1,
+        "reviews": 0,
+        "pullRequests": 1
+      },
+      {
+        "issue": 476,
+        "countComments": 0,
+        "malformed": 0,
+        "tasks": null,
+        "subagents": null,
+        "comments": 1,
+        "reviews": 0,
+        "pullRequests": 2
+      },
+      {
+        "issue": 475,
+        "countComments": 0,
+        "malformed": 0,
+        "tasks": null,
+        "subagents": null,
+        "comments": 1,
+        "reviews": 0,
+        "pullRequests": 2
+      },
+      {
+        "issue": 474,
+        "countComments": 0,
+        "malformed": 0,
+        "tasks": null,
+        "subagents": null,
+        "comments": 2,
+        "reviews": 0,
+        "pullRequests": 2
+      },
+      {
+        "issue": 473,
+        "countComments": 0,
+        "malformed": 0,
+        "tasks": null,
+        "subagents": null,
+        "comments": 1,
+        "reviews": 0,
+        "pullRequests": 13
+      },
+      {
+        "issue": 468,
+        "countComments": 0,
+        "malformed": 0,
+        "tasks": null,
+        "subagents": null,
+        "comments": 0,
+        "reviews": 0,
+        "pullRequests": 2
+      },
+      {
+        "issue": 467,
+        "countComments": 0,
+        "malformed": 0,
+        "tasks": null,
+        "subagents": null,
+        "comments": 2,
+        "reviews": 0,
+        "pullRequests": 7
+      },
+      {
+        "issue": 466,
+        "countComments": 0,
+        "malformed": 0,
+        "tasks": null,
+        "subagents": null,
+        "comments": 3,
+        "reviews": 0,
+        "pullRequests": 9
+      },
+      {
+        "issue": 465,
+        "countComments": 0,
+        "malformed": 0,
+        "tasks": null,
+        "subagents": null,
+        "comments": 2,
+        "reviews": 0,
+        "pullRequests": 5
+      },
+      {
+        "issue": 464,
+        "countComments": 0,
+        "malformed": 0,
+        "tasks": null,
+        "subagents": null,
+        "comments": 1,
+        "reviews": 0,
+        "pullRequests": 8
+      },
+      {
+        "issue": 463,
+        "countComments": 0,
+        "malformed": 0,
+        "tasks": null,
+        "subagents": null,
+        "comments": 1,
+        "reviews": 0,
+        "pullRequests": 10
+      },
+      {
+        "issue": 462,
+        "countComments": 0,
+        "malformed": 0,
+        "tasks": null,
+        "subagents": null,
+        "comments": 3,
+        "reviews": 0,
+        "pullRequests": 5
+      },
+      {
+        "issue": 461,
+        "countComments": 0,
+        "malformed": 0,
+        "tasks": null,
+        "subagents": null,
+        "comments": 0,
+        "reviews": 0,
+        "pullRequests": 5
+      },
+      {
+        "issue": 460,
+        "countComments": 0,
+        "malformed": 0,
+        "tasks": null,
+        "subagents": null,
+        "comments": 0,
+        "reviews": 0,
+        "pullRequests": 5
+      },
+      {
+        "issue": 459,
+        "countComments": 0,
+        "malformed": 0,
+        "tasks": null,
+        "subagents": null,
+        "comments": 0,
+        "reviews": 0,
+        "pullRequests": 6
+      },
+      {
+        "issue": 458,
+        "countComments": 0,
+        "malformed": 0,
+        "tasks": null,
+        "subagents": null,
+        "comments": 2,
+        "reviews": 0,
+        "pullRequests": 17
+      },
+      {
+        "issue": 454,
+        "countComments": 0,
+        "malformed": 0,
+        "tasks": null,
+        "subagents": null,
+        "comments": 1,
+        "reviews": 0,
+        "pullRequests": 2
+      },
+      {
+        "issue": 452,
+        "countComments": 0,
+        "malformed": 0,
+        "tasks": null,
+        "subagents": null,
+        "comments": 1,
+        "reviews": 0,
+        "pullRequests": 1
+      },
+      {
+        "issue": 441,
+        "countComments": 0,
+        "malformed": 0,
+        "tasks": null,
+        "subagents": null,
+        "comments": 0,
+        "reviews": 0,
+        "pullRequests": 1
+      },
+      {
+        "issue": 440,
+        "countComments": 0,
+        "malformed": 0,
+        "tasks": null,
+        "subagents": null,
+        "comments": 0,
+        "reviews": 0,
+        "pullRequests": 1
+      },
+      {
+        "issue": 439,
+        "countComments": 0,
+        "malformed": 0,
+        "tasks": null,
+        "subagents": null,
+        "comments": 1,
+        "reviews": 0,
+        "pullRequests": 2
+      },
+      {
+        "issue": 438,
+        "countComments": 0,
+        "malformed": 0,
+        "tasks": null,
+        "subagents": null,
+        "comments": 0,
+        "reviews": 0,
+        "pullRequests": 1
+      },
+      {
+        "issue": 437,
+        "countComments": 0,
+        "malformed": 0,
+        "tasks": null,
+        "subagents": null,
+        "comments": 1,
+        "reviews": 0,
+        "pullRequests": 4
+      },
+      {
+        "issue": 435,
+        "countComments": 0,
+        "malformed": 0,
+        "tasks": null,
+        "subagents": null,
+        "comments": 1,
+        "reviews": 0,
+        "pullRequests": 4
+      },
+      {
+        "issue": 434,
+        "countComments": 0,
+        "malformed": 0,
+        "tasks": null,
+        "subagents": null,
+        "comments": 1,
+        "reviews": 0,
+        "pullRequests": 2
+      },
+      {
+        "issue": 433,
+        "countComments": 0,
+        "malformed": 0,
+        "tasks": null,
+        "subagents": null,
+        "comments": 2,
+        "reviews": 0,
+        "pullRequests": 3
+      },
+      {
+        "issue": 432,
+        "countComments": 0,
+        "malformed": 0,
+        "tasks": null,
+        "subagents": null,
+        "comments": 1,
+        "reviews": 1,
+        "pullRequests": 2
+      },
+      {
+        "issue": 431,
+        "countComments": 0,
+        "malformed": 0,
+        "tasks": null,
+        "subagents": null,
+        "comments": 3,
+        "reviews": 1,
+        "pullRequests": 4
+      },
+      {
+        "issue": 429,
+        "countComments": 0,
+        "malformed": 0,
+        "tasks": null,
+        "subagents": null,
+        "comments": 8,
+        "reviews": 0,
+        "pullRequests": 8
+      },
+      {
+        "issue": 428,
+        "countComments": 0,
+        "malformed": 0,
+        "tasks": null,
+        "subagents": null,
+        "comments": 4,
+        "reviews": 0,
+        "pullRequests": 6
+      },
+      {
+        "issue": 421,
+        "countComments": 0,
+        "malformed": 0,
+        "tasks": null,
+        "subagents": null,
+        "comments": 0,
+        "reviews": 0,
+        "pullRequests": 5
+      },
+      {
+        "issue": 420,
+        "countComments": 0,
+        "malformed": 0,
+        "tasks": null,
+        "subagents": null,
+        "comments": 9,
+        "reviews": 0,
+        "pullRequests": 3
+      },
+      {
+        "issue": 418,
+        "countComments": 0,
+        "malformed": 0,
+        "tasks": null,
+        "subagents": null,
+        "comments": 4,
+        "reviews": 0,
+        "pullRequests": 7
+      },
+      {
+        "issue": 412,
+        "countComments": 0,
+        "malformed": 0,
+        "tasks": null,
+        "subagents": null,
+        "comments": 6,
+        "reviews": 2,
+        "pullRequests": 3
+      },
+      {
+        "issue": 410,
+        "countComments": 0,
+        "malformed": 0,
+        "tasks": null,
+        "subagents": null,
+        "comments": 5,
+        "reviews": 0,
+        "pullRequests": 2
+      },
+      {
+        "issue": 396,
+        "countComments": 0,
+        "malformed": 0,
+        "tasks": null,
+        "subagents": null,
+        "comments": 0,
+        "reviews": 0,
+        "pullRequests": 2
+      },
+      {
+        "issue": 390,
+        "countComments": 0,
+        "malformed": 0,
+        "tasks": null,
+        "subagents": null,
+        "comments": 5,
+        "reviews": 0,
+        "pullRequests": 4
+      },
+      {
+        "issue": 388,
+        "countComments": 0,
+        "malformed": 0,
+        "tasks": null,
+        "subagents": null,
+        "comments": 7,
+        "reviews": 0,
+        "pullRequests": 6
+      },
+      {
+        "issue": 387,
+        "countComments": 0,
+        "malformed": 0,
+        "tasks": null,
+        "subagents": null,
+        "comments": 5,
+        "reviews": 0,
+        "pullRequests": 3
+      },
+      {
+        "issue": 386,
+        "countComments": 0,
+        "malformed": 0,
+        "tasks": null,
+        "subagents": null,
+        "comments": 2,
+        "reviews": 0,
+        "pullRequests": 2
+      },
+      {
+        "issue": 385,
+        "countComments": 0,
+        "malformed": 0,
+        "tasks": null,
+        "subagents": null,
+        "comments": 2,
+        "reviews": 0,
+        "pullRequests": 4
+      },
+      {
+        "issue": 384,
+        "countComments": 0,
+        "malformed": 0,
+        "tasks": null,
+        "subagents": null,
+        "comments": 16,
+        "reviews": 0,
+        "pullRequests": 6
+      },
+      {
+        "issue": 383,
+        "countComments": 0,
+        "malformed": 0,
+        "tasks": null,
+        "subagents": null,
+        "comments": 8,
+        "reviews": 0,
+        "pullRequests": 3
+      },
+      {
+        "issue": 380,
+        "countComments": 0,
+        "malformed": 0,
+        "tasks": null,
+        "subagents": null,
+        "comments": 2,
+        "reviews": 0,
+        "pullRequests": 12
+      },
+      {
+        "issue": 378,
+        "countComments": 0,
+        "malformed": 0,
+        "tasks": null,
+        "subagents": null,
+        "comments": 6,
+        "reviews": 0,
+        "pullRequests": 2
+      },
+      {
+        "issue": 376,
+        "countComments": 0,
+        "malformed": 0,
+        "tasks": null,
+        "subagents": null,
+        "comments": 4,
+        "reviews": 0,
+        "pullRequests": 2
+      },
+      {
+        "issue": 347,
+        "countComments": 0,
+        "malformed": 0,
+        "tasks": null,
+        "subagents": null,
+        "comments": 4,
+        "reviews": 2,
+        "pullRequests": 13
+      },
+      {
+        "issue": 345,
+        "countComments": 0,
+        "malformed": 0,
+        "tasks": null,
+        "subagents": null,
+        "comments": 5,
+        "reviews": 2,
+        "pullRequests": 3
+      },
+      {
+        "issue": 291,
+        "countComments": 0,
+        "malformed": 0,
+        "tasks": null,
+        "subagents": null,
+        "comments": 1,
+        "reviews": 0,
+        "pullRequests": 2
+      },
+      {
+        "issue": 282,
+        "countComments": 0,
+        "malformed": 0,
+        "tasks": null,
+        "subagents": null,
+        "comments": 5,
+        "reviews": 0,
+        "pullRequests": 10
+      },
+      {
+        "issue": 270,
+        "countComments": 0,
+        "malformed": 0,
+        "tasks": null,
+        "subagents": null,
+        "comments": 0,
+        "reviews": 0,
+        "pullRequests": 2
+      },
+      {
+        "issue": 269,
+        "countComments": 0,
+        "malformed": 0,
+        "tasks": null,
+        "subagents": null,
+        "comments": 5,
+        "reviews": 0,
+        "pullRequests": 4
       }
     ]
   }

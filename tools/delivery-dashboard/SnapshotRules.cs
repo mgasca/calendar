@@ -9,7 +9,7 @@ namespace DeliveryDashboard;
 /// holds aggregates and public data only. Every field must be in the schema, and no string may look like a machine path,
 /// a session or task handle, a UUID or an e-mail address.
 /// </summary>
-public static class SnapshotRules
+public static partial class SnapshotRules
 {
   private static readonly TimeSpan RegexTimeout = TimeSpan.FromSeconds(1);
   private const RegexOptions Options = RegexOptions.CultureInvariant | RegexOptions.IgnoreCase;
@@ -27,6 +27,8 @@ public static class SnapshotRules
   private static readonly Regex WorkflowFile = new(@"^[\w.-]+\.ya?ml$", Options, RegexTimeout);
 
   private static readonly string[] RootKeys = ["version", "date", "generatedAt", "repository", "ci"];
+  // Sections added after version 1: absent from older files, validated when present.
+  private static readonly string[] OptionalRootKeys = ["quality"];
   private static readonly string[] CiKeys = ["workflow", "basis", "runs", "window", "jobs"];
   private static readonly string[] WindowKeys = ["from", "to"];
   private static readonly string[] JobKeys = ["job", "path", "count", "minSeconds", "medianSeconds", "p90Seconds", "maxSeconds"];
@@ -53,7 +55,7 @@ public static class SnapshotRules
       List<string> errors = [];
       JsonElement root = document.RootElement;
       Scan(root, "$", errors);
-      if (Keys(root, "$", RootKeys, errors))
+      if (Keys(root, "$", RootKeys, errors, OptionalRootKeys))
       {
         CheckRoot(root, errors);
       }
@@ -74,6 +76,10 @@ public static class SnapshotRules
     if (Keys(ci, "$.ci", CiKeys, errors))
     {
       CheckCi(ci, errors);
+    }
+    if (root.TryGetProperty("quality", out JsonElement quality))
+    {
+      CheckQuality(quality, errors);
     }
   }
 
@@ -192,7 +198,7 @@ public static class SnapshotRules
   }
 
   /// <summary>Requires an object with exactly the allowed keys; reports the others and the missing ones.</summary>
-  private static bool Keys(JsonElement element, string path, string[] allowed, List<string> errors)
+  private static bool Keys(JsonElement element, string path, string[] allowed, List<string> errors, string[]? optional = null)
   {
     if (element.ValueKind != JsonValueKind.Object)
     {
@@ -200,7 +206,8 @@ public static class SnapshotRules
       return false;
     }
     var present = element.EnumerateObject().Select(property => property.Name).ToList();
-    foreach (var extra in present.Where(name => !allowed.Contains(name, StringComparer.Ordinal)))
+    var known = optional is null ? allowed : [.. allowed, .. optional];
+    foreach (var extra in present.Where(name => !known.Contains(name, StringComparer.Ordinal)))
     {
       errors.Add($"{path}.{extra}: field is not in the schema");
     }
@@ -209,7 +216,7 @@ public static class SnapshotRules
     {
       errors.Add($"{path}.{name}: field is missing");
     }
-    return present.All(name => allowed.Contains(name, StringComparer.Ordinal)) && missing.Count == 0;
+    return present.All(name => known.Contains(name, StringComparer.Ordinal)) && missing.Count == 0;
   }
 
   private static void Date(JsonElement element, string path, List<string> errors)

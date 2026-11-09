@@ -3,13 +3,15 @@
 #:include ../ci-timings/Baseline.cs
 #:include Snapshot.cs
 #:include SnapshotRules.cs
+#:include QualitySection.cs
+#:include QualityRules.cs
 
 // The snapshot tool of the delivery dashboard (story 0053, ADR-0049, issue #596). It writes one JSON snapshot of
 // delivery data (aggregates and public data only) and checks snapshot files against the schema and the privacy rules.
 // Needs the GitHub CLI signed in (gh auth status) for `snapshot`.
 //
 //   dotnet run tools/delivery-dashboard/delivery-dashboard.cs -- snapshot [--repo OWNER/NAME] [--workflow ci.yml]
-//                                                                  [--runs 30] [--date YYYY-MM-DD] [--out FILE]
+//                                                                  [--runs 30] [--quality-runs 100] [--date YYYY-MM-DD] [--out FILE]
 //       samples the newest successful push runs of the workflow on main, writes the snapshot to --out (standard
 //       output without it) and fails, writing nothing, when the snapshot does not pass the rules
 //   dotnet run tools/delivery-dashboard/delivery-dashboard.cs -- check FILE...
@@ -36,6 +38,7 @@ if (args[0] != "snapshot")
 
 var workflow = "ci.yml";
 var runCount = 30;
+var qualityRuns = 100;
 string? repo = null;
 string? output = null;
 DateOnly? date = null;
@@ -55,6 +58,10 @@ while (pending.TryDequeue(out var arg))
       break;
     case "--runs" when pending.Count > 0 && int.TryParse(pending.Dequeue(), NumberStyles.None, CultureInfo.InvariantCulture, out var count):
       runCount = count;
+      break;
+    case "--quality-runs" when pending.Count > 0
+      && int.TryParse(pending.Dequeue(), NumberStyles.None, CultureInfo.InvariantCulture, out var sample):
+      qualityRuns = sample;
       break;
     case "--date" when pending.Count > 0
       && DateOnly.TryParseExact(
@@ -89,7 +96,8 @@ var snapshot = new Snapshot(
   date ?? DateOnly.FromDateTime(now.UtcDateTime),
   new DateTimeOffset(now.Year, now.Month, now.Day, now.Hour, now.Minute, now.Second, TimeSpan.Zero),
   repository,
-  CiSnapshot.Build(workflow, sampled));
+  CiSnapshot.Build(workflow, sampled),
+  QualityCollector.Build(workflow, await QualityCollector.CollectAsync(repository, workflow, qualityRuns)));
 var json = SnapshotJson.Write(snapshot);
 IReadOnlyList<string> problems = SnapshotRules.Validate(json);
 if (problems.Count > 0)
@@ -110,6 +118,8 @@ else
 {
   await File.WriteAllTextAsync(output, json);
   await Console.Out.WriteLineAsync($"wrote {output}: {sampled.Count} runs of {workflow}, {snapshot.Ci.Jobs.Count} job and path rows");
+  await Console.Out.WriteLineAsync(
+    $"quality: {snapshot.Quality?.Sample.Runs} runs in scope, {snapshot.Quality?.Sample.IgnoredRuns} ignored");
 }
 return 0;
 
@@ -137,7 +147,8 @@ static async Task<int> Usage(string message)
 {
   await Console.Error.WriteLineAsync(message);
   await Console.Error.WriteLineAsync(
-    "usage: delivery-dashboard snapshot [--repo OWNER/NAME] [--workflow FILE] [--runs N] [--date YYYY-MM-DD] [--out FILE]"
+    "usage: delivery-dashboard snapshot [--repo OWNER/NAME] [--workflow FILE] [--runs N] [--quality-runs N]"
+    + " [--date YYYY-MM-DD] [--out FILE]"
     + " | delivery-dashboard check FILE...");
   return 2;
 }

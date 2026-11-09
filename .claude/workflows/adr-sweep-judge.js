@@ -53,9 +53,10 @@ export const meta = {
 // leaves the rotation its k slots: at most 13 - 6 = 7 records at the defaults. A longer list takes
 // rotation slots first, and one longer than the admitted records holds the rotation off until it
 // drains; the log says so. Reserves a record does not use
-// go to a shared pool, and a record's further findings draw from that pool strictly in record
-// order, so who is verified does not depend on which judge returns first. Findings past either cap
-// come back unexamined, Fix now before Decide.
+// go to a shared pool. Once every judge has settled, the records' further findings draw from that
+// pool strictly in record order, so who is verified does not depend on which judge returns first
+// (#582); a record's first finding does not wait. Findings past either cap come back unexamined,
+// Fix now before Decide.
 
 const SKEPTIC = 'sweep-skeptic'
 // The select agent and the judges read untrusted issue and PR text through gh, so they run as the
@@ -356,65 +357,61 @@ if (left.length > 0 && K > 0 && left.length > slots - K) {
   log(`left over: ${left.length} record(s) ahead of the rotation leave it ${Math.max(0, slots - left.length)} of its ${K} slot(s); the every-record bound holds again once the list is at most ${Math.max(0, slots - K)}`)
 }
 
-// The shared pool, drawn in record order: record i draws only after record i-1 has drawn and released.
+// The shared pool (#582). Each record starts its first finding's pair from its own reserve as soon
+// as its judge returns. Its further findings wait for the pool, which is granted once every judge
+// has settled, strictly in record order, so the grants do not depend on which judge returned first
+// and no record waits on an earlier record's judge.
 let pool = available - admitCount * RESERVE
-const release = []
-const turns = admitted.map((_, i) => new Promise((resolve) => { release[i] = resolve }))
-const previousTurn = (i) => (i === 0 ? Promise.resolve() : turns[i - 1])
 let launched = selectAgents
 const pastRecordCap = []
 const pastRunCap = []
 
-const runRecord = async (r, i) => {
-  let done = false
-  const endTurn = () => { if (!done) { done = true; release[i]() } }
-  try {
-    launched += 1
-    const result = await agent(judgePrompt(r), { agentType: JUDGE, label: `judge:${r.id}`, phase: 'Judge', schema: FINDINGS })
-    if (!result) {
-      log(`${r.id}: the judge returned nothing; the record is left over for the next rotation`)
-      await previousTurn(i)
-      pool += PAIR
-      endTurn()
-      return { record: r, judged: false }
-    }
-    const findings = (result.findings ?? []).map((f, order) => ({ ...f, record: f.record || r.id, judgedFor: r.id, order }))
-    const watch = findings.filter((f) => f.class === 'watch').map((f) => ({ ...f, verdict: 'unverified' }))
-    const toVerify = findings.filter((f) => VERIFIED.includes(f.class))
-    toVerify.sort((a, b) => rank(a.class) - rank(b.class) || a.order - b.order)
-
-    const perRecord = Math.floor((CAP_RECORD - 1) / PAIR)
-    const overRecord = toVerify.slice(perRecord).map((f) => ({ ...f, verdict: 'unexamined', why: `past the per-record cap of ${CAP_RECORD} agents` }))
-    if (overRecord.length > 0) log(`${r.id}: record cap ${CAP_RECORD}: verifying ${perRecord} of ${toVerify.length} Fix now or Decide finding(s); ${overRecord.length} unexamined`)
-    pastRecordCap.push(...overRecord)
-    const within = toVerify.slice(0, perRecord)
-
-    // The first finding uses the record's own reserve at once; the rest wait for the record's turn.
-    const own = within.slice(0, 1)
-    launched += own.length * PAIR
-    const ownRun = verifyAll(own)
-
-    await previousTurn(i)
-    const rest = within.slice(own.length)
-    const granted = Math.min(rest.length, Math.floor(pool / PAIR))
-    pool -= granted * PAIR
-    pool += PAIR - own.length * PAIR
-    endTurn()
-    const overRun = rest.slice(granted).map((f) => ({ ...f, verdict: 'unexamined', why: `past the run cap of ${CAP_RUN} agents` }))
-    if (overRun.length > 0) log(`${r.id}: run cap ${CAP_RUN}: ${overRun.length} Fix now or Decide finding(s) unexamined`)
-    pastRunCap.push(...overRun)
-    launched += granted * PAIR
-    const restRun = verifyAll(rest.slice(0, granted))
-
-    const verified = [...(await ownRun), ...(await restRun)]
-    return { record: r, judged: true, summary: result.summary, watch, verified }
-  } finally {
-    endTurn()
+const judgeRecord = async (r) => {
+  launched += 1
+  const result = await agent(judgePrompt(r), { agentType: JUDGE, label: `judge:${r.id}`, phase: 'Judge', schema: FINDINGS })
+  if (!result) {
+    log(`${r.id}: the judge returned nothing; the record is left over for the next rotation`)
+    return { record: r, judged: false, unused: PAIR }
   }
+  const findings = (result.findings ?? []).map((f, order) => ({ ...f, record: f.record || r.id, judgedFor: r.id, order }))
+  const watch = findings.filter((f) => f.class === 'watch').map((f) => ({ ...f, verdict: 'unverified' }))
+  const toVerify = findings.filter((f) => VERIFIED.includes(f.class))
+  toVerify.sort((a, b) => rank(a.class) - rank(b.class) || a.order - b.order)
+
+  const perRecord = Math.floor((CAP_RECORD - 1) / PAIR)
+  const overRecord = toVerify.slice(perRecord).map((f) => ({ ...f, verdict: 'unexamined', why: `past the per-record cap of ${CAP_RECORD} agents` }))
+  if (overRecord.length > 0) log(`${r.id}: record cap ${CAP_RECORD}: verifying ${perRecord} of ${toVerify.length} Fix now or Decide finding(s); ${overRecord.length} unexamined`)
+  pastRecordCap.push(...overRecord)
+  const within = toVerify.slice(0, perRecord)
+
+  // The first finding uses the record's own reserve at once; the rest wait for the pool.
+  const own = within.slice(0, 1)
+  launched += own.length * PAIR
+  const ownRun = verifyAll(own)
+  return { record: r, judged: true, summary: result.summary, watch, ownRun, rest: within.slice(own.length), unused: PAIR - own.length * PAIR }
 }
 
 if (admitted.length > 0) phase('Judge')
-const outcomes = await pipeline(admitted, (r, _, i) => runRecord(r, i))
+// A stage that throws drops to null and releases nothing, as its pair may have started.
+const settled = await pipeline(admitted, (r) => judgeRecord(r))
+
+pool += settled.reduce((n, o) => n + (o ? o.unused : 0), 0)
+const restRuns = settled.map((o) => {
+  if (!o || !o.judged) return null
+  const granted = Math.min(o.rest.length, Math.floor(pool / PAIR))
+  pool -= granted * PAIR
+  const overRun = o.rest.slice(granted).map((f) => ({ ...f, verdict: 'unexamined', why: `past the run cap of ${CAP_RUN} agents` }))
+  if (overRun.length > 0) log(`${o.record.id}: run cap ${CAP_RUN}: ${overRun.length} Fix now or Decide finding(s) unexamined`)
+  pastRunCap.push(...overRun)
+  launched += granted * PAIR
+  return verifyAll(o.rest.slice(0, granted))
+})
+
+const outcomes = await Promise.all(settled.map(async (o, k) => {
+  if (!o || !o.judged) return o
+  const verified = [...(await o.ownRun), ...(await restRuns[k])]
+  return { record: o.record, judged: true, summary: o.summary, watch: o.watch, verified }
+}))
 
 const judged = []
 const summaries = []

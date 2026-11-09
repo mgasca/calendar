@@ -13,7 +13,7 @@ pr:
   - https://github.com/mgasca/calendar/pull/608
   - https://github.com/mgasca/calendar/pull/619
   - https://github.com/mgasca/calendar/pull/620
-  - https://github.com/mgasca/calendar/pull/621
+  - https://github.com/mgasca/calendar/pull/631
 adrs: ["0017", "0025", "0045", "0046", "0049"]
 ---
 
@@ -105,7 +105,7 @@ Agreed with the maintainer in a Claude Code session on 2026-11-09 and recorded o
 | Review findings on #607 | #613, #614 | #615 (pull request job names that `main` lacks are dropped), #617 (the jobs already fetched are reused) |
 | Count-comment line in the skill | #610 | #612 |
 
-The slices were delivered as stacked PRs and squash-merged on 2026-11-09. This card PR completes the story.
+The slices were delivered as stacked PRs and squash-merged on 2026-11-09. This card PR (#631) completes the story.
 
 ### Where things live
 

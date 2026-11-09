@@ -14,8 +14,30 @@ list:
 dev:
     pnpm dev
 
+# Copy the dashboard-data branch's snapshots into .dashboard-data/ (git-ignored) for the delivery dashboard pages.
+# No such branch is fine (the pages say "no snapshot yet"); any other failure stops the build. Keep in step with the
+# "Read the dashboard data branch" step of the docs job in .github/workflows/ci.yml.
+dashboard-data:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    rm -rf .dashboard-data
+    status=0
+    git ls-remote --exit-code --heads origin dashboard-data > /dev/null || status=$?
+    if [ "$status" -eq 2 ]; then
+        echo "No dashboard-data branch: the dashboard pages will say that no snapshot exists yet."
+    elif [ "$status" -ne 0 ]; then
+        echo "Could not read the dashboard-data branch (git exit $status)." >&2
+        exit "$status"
+    else
+        git fetch --quiet --depth 1 origin dashboard-data
+        if git cat-file -e FETCH_HEAD:snapshots 2> /dev/null; then
+            mkdir -p .dashboard-data/snapshots
+            git -C "$(git rev-parse --show-toplevel)" archive FETCH_HEAD:snapshots | tar -x -C .dashboard-data/snapshots
+        fi
+    fi
+
 # Build and verify the static documentation site (optional DOCS_SITE_URL for hosting URL)
-build:
+build: dashboard-data
     pnpm build
     pnpm verify:build
 

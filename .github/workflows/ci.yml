@@ -181,6 +181,28 @@ jobs:
           cache: pnpm
           cache-dependency-path: frontend/pnpm-lock.yaml
       - run: pnpm install --frozen-lockfile
+      # The delivery dashboard pages are rendered from the daily snapshots on the dashboard-data branch (story 0053,
+      # ADR-0049). Reading it needs only contents: read, so the ADR-0025 permission split is unchanged. No such branch is
+      # fine (the pages say "no snapshot yet"); any other git failure stops the job. Keep in step with `just docs dashboard-data`.
+      - name: Read the dashboard data branch
+        working-directory: frontend/apps/docs
+        run: |
+          rm -rf .dashboard-data
+          status=0
+          git ls-remote --exit-code --heads origin dashboard-data > /dev/null || status=$?
+          if [ "$status" -eq 2 ]; then
+            echo "No dashboard-data branch: the dashboard pages say that no snapshot exists yet."
+          elif [ "$status" -ne 0 ]; then
+            echo "::error::Could not read the dashboard-data branch (git exit $status)."
+            exit "$status"
+          else
+            git fetch --quiet --depth 1 origin dashboard-data
+            if git cat-file -e FETCH_HEAD:snapshots 2> /dev/null; then
+              mkdir -p .dashboard-data/snapshots
+              git -C "$(git rev-parse --show-toplevel)" archive FETCH_HEAD:snapshots | tar -x -C .dashboard-data/snapshots
+              ls .dashboard-data/snapshots
+            fi
+          fi
       # The Frontend job formats and lints the whole workspace, but it does not run for a change to the docs site alone
       # (story 0038), so this job checks the site's own sources whenever Frontend does not run.
       - name: Format and lint the docs site

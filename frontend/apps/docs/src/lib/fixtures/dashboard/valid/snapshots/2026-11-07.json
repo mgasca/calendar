@@ -1,0 +1,35 @@
+{
+  "version": 1,
+  "date": "2026-11-07",
+  "generatedAt": "2026-11-07T06:47:12Z",
+  "repository": "mgasca/calendar",
+  "ci": {
+    "workflow": "ci.yml",
+    "basis": "measured",
+    "runs": 30,
+    "window": {
+      "from": "2026-11-05T09:00:00Z",
+      "to": "2026-11-07T05:30:00Z"
+    },
+    "jobs": [
+      {
+        "job": "Backend",
+        "path": "check",
+        "count": 30,
+        "minSeconds": 62,
+        "medianSeconds": 81,
+        "p90Seconds": 91,
+        "maxSeconds": 94
+      },
+      {
+        "job": "Docs site",
+        "path": "publication",
+        "count": 12,
+        "minSeconds": 120,
+        "medianSeconds": 140.5,
+        "p90Seconds": 160,
+        "maxSeconds": 171
+      }
+    ]
+  }
+}

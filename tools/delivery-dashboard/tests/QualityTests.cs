@@ -276,7 +276,7 @@ public sealed class QualityRulesTests
   private static readonly DateTimeOffset Noon = new(2026, 11, 9, 12, 0, 0, TimeSpan.Zero);
 
   private static Snapshot With(QualitySection? quality) =>
-    new(1, new DateOnly(2026, 11, 9), Noon, "mgasca/calendar", CiSnapshot.Build("ci.yml", []), quality);
+    new(SnapshotJson.CurrentVersion, new DateOnly(2026, 11, 9), Noon, "mgasca/calendar", CiSnapshot.Build("ci.yml", []), quality);
 
   private static QualitySection Section()
   {

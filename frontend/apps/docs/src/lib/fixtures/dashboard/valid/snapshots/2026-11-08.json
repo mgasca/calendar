@@ -1,0 +1,64 @@
+{
+  "version": 2,
+  "date": "2026-11-08",
+  "generatedAt": "2026-11-08T06:47:30Z",
+  "repository": "mgasca/calendar",
+  "ci": {
+    "workflow": "ci.yml",
+    "basis": "measured",
+    "runs": 30,
+    "window": {
+      "from": "2026-11-06T09:00:00Z",
+      "to": "2026-11-08T05:30:00Z"
+    },
+    "trend": {
+      "runs": 20,
+      "required": 20,
+      "window": {
+        "from": "2026-11-07T09:00:00Z",
+        "to": "2026-11-08T05:30:00Z"
+      }
+    },
+    "queue": {
+      "runs": 30,
+      "medianSeconds": 4,
+      "p90Seconds": 9,
+      "maxSeconds": 31
+    },
+    "jobs": [
+      {
+        "job": "Backend",
+        "path": "check",
+        "count": 30,
+        "minSeconds": 63,
+        "medianSeconds": 82,
+        "p90Seconds": 92,
+        "maxSeconds": 95,
+        "baseline": {
+          "count": 30,
+          "medianSeconds": 81,
+          "thresholdSeconds": 126
+        },
+        "trend": {
+          "verdict": "noShift",
+          "recentRuns": 20,
+          "shiftSeconds": 1,
+          "lowSeconds": -2,
+          "highSeconds": 4,
+          "minEffectSeconds": 10
+        }
+      },
+      {
+        "job": "Docs site",
+        "path": "publication",
+        "count": 12,
+        "minSeconds": 121,
+        "medianSeconds": 141,
+        "p90Seconds": 161,
+        "maxSeconds": 172,
+        "baseline": null,
+        "trend": null
+      }
+    ]
+  }
+}

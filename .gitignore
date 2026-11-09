@@ -38,3 +38,6 @@ coverage/
 
 # Claude Code: personal hook/permission overrides stay local (the shared file is .claude/settings.json)
 .claude/settings.local.json
+
+# Delivery dashboard: the snapshots read from the dashboard-data branch at docs build time (story 0053)
+frontend/apps/docs/.dashboard-data/

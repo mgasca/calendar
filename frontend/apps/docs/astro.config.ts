@@ -12,6 +12,7 @@ import {
   modelFile,
   parseArchitecture,
 } from './src/lib/architecture';
+import { dashboardSidebar } from './src/lib/dashboard';
 import { documentRoutes } from './src/lib/docs-loader';
 import { staticThemeFallback } from './src/lib/static-theme';
 import { mermaidThemeCss } from './src/lib/mermaid-theme';
@@ -144,6 +145,8 @@ export default defineConfig({
           ],
         },
         { label: 'Architecture', items: architectureSidebar(flows) },
+        // One entry per page of src/lib/dashboard.ts, so a new dashboard page needs no change here.
+        { label: 'Delivery dashboard', items: dashboardSidebar() },
         {
           label: 'Any decision records',
           items: [{ autogenerate: { directory: '../../../docs/decisions' } }],

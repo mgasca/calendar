@@ -1,15 +1,19 @@
 #!/usr/bin/env -S dotnet run
 #:include ../ci-timings/CiTimings.cs
 #:include ../ci-timings/Baseline.cs
+#:include ../ci-timings/Trend.cs
 #:include Snapshot.cs
 #:include SnapshotRules.cs
+#:include QualitySection.cs
+#:include QualityRules.cs
 
 // The snapshot tool of the delivery dashboard (story 0053, ADR-0049, issue #596). It writes one JSON snapshot of
 // delivery data (aggregates and public data only) and checks snapshot files against the schema and the privacy rules.
 // Needs the GitHub CLI signed in (gh auth status) for `snapshot`.
 //
 //   dotnet run tools/delivery-dashboard/delivery-dashboard.cs -- snapshot [--repo OWNER/NAME] [--workflow ci.yml]
-//                                                                  [--runs 30] [--date YYYY-MM-DD] [--out FILE]
+//                                                                  [--runs 30] [--quality-runs 100] [--date YYYY-MM-DD] [--out FILE]
+//                                                                  [--baseline .github/ci-baseline.json]
 //       samples the newest successful push runs of the workflow on main, writes the snapshot to --out (standard
 //       output without it) and fails, writing nothing, when the snapshot does not pass the rules
 //   dotnet run tools/delivery-dashboard/delivery-dashboard.cs -- check FILE...
@@ -35,7 +39,9 @@ if (args[0] != "snapshot")
 }
 
 var workflow = "ci.yml";
+var baselinePath = ".github/ci-baseline.json";
 var runCount = 30;
+var qualityRuns = 100;
 string? repo = null;
 string? output = null;
 DateOnly? date = null;
@@ -47,6 +53,9 @@ while (pending.TryDequeue(out var arg))
     case "--workflow" when pending.Count > 0:
       workflow = pending.Dequeue();
       break;
+    case "--baseline" when pending.Count > 0:
+      baselinePath = pending.Dequeue();
+      break;
     case "--repo" when pending.Count > 0:
       repo = pending.Dequeue();
       break;
@@ -55,6 +64,10 @@ while (pending.TryDequeue(out var arg))
       break;
     case "--runs" when pending.Count > 0 && int.TryParse(pending.Dequeue(), NumberStyles.None, CultureInfo.InvariantCulture, out var count):
       runCount = count;
+      break;
+    case "--quality-runs" when pending.Count > 0
+      && int.TryParse(pending.Dequeue(), NumberStyles.None, CultureInfo.InvariantCulture, out var sample):
+      qualityRuns = sample;
       break;
     case "--date" when pending.Count > 0
       && DateOnly.TryParseExact(
@@ -74,14 +87,23 @@ var listJson = await Gh.RunAsync(
   "--json", "databaseId,status,conclusion,createdAt,event,headBranch,headSha",
 ]);
 List<SampledRun> sampled = [];
+List<double> queue = [];
 IEnumerable<WorkflowRun> wanted = Parser.ParseRuns(listJson)
   .Where(item => BaselineRuns.IsSuccessful(item) && BaselineRuns.IsMain(item))
   .Take(runCount);
 foreach (WorkflowRun run in wanted)
 {
   var jobsJson = await Gh.RunAsync(["api", $"repos/{repository}/actions/runs/{run.Id}/jobs?per_page=50"]);
-  sampled.Add(new SampledRun(run, [.. Baselines.Samples(run, Parser.ParseJobs(run.Id, jobsJson))]));
+  IReadOnlyList<JobTiming> jobs = Parser.ParseJobs(run.Id, jobsJson);
+  sampled.Add(new SampledRun(run, [.. Baselines.Samples(run, jobs)]));
+  if (CiSnapshot.QueueSeconds(run, jobs) is { } wait)
+  {
+    queue.Add(wait);
+  }
 }
+
+// The pinned baseline of ADR-0045; without the file (another checkout) the snapshot has no baseline or trend.
+BaselineFile? pinned = File.Exists(baselinePath) ? BaselineIo.Read(await File.ReadAllTextAsync(baselinePath)) : null;
 
 DateTimeOffset now = DateTimeOffset.UtcNow;
 var snapshot = new Snapshot(
@@ -89,7 +111,8 @@ var snapshot = new Snapshot(
   date ?? DateOnly.FromDateTime(now.UtcDateTime),
   new DateTimeOffset(now.Year, now.Month, now.Day, now.Hour, now.Minute, now.Second, TimeSpan.Zero),
   repository,
-  CiSnapshot.Build(workflow, sampled));
+  CiSnapshot.Build(workflow, sampled, pinned, TrendConstants.Default, queue),
+  QualityCollector.Build(workflow, await QualityCollector.CollectAsync(repository, workflow, qualityRuns)));
 var json = SnapshotJson.Write(snapshot);
 IReadOnlyList<string> problems = SnapshotRules.Validate(json);
 if (problems.Count > 0)
@@ -110,6 +133,8 @@ else
 {
   await File.WriteAllTextAsync(output, json);
   await Console.Out.WriteLineAsync($"wrote {output}: {sampled.Count} runs of {workflow}, {snapshot.Ci.Jobs.Count} job and path rows");
+  await Console.Out.WriteLineAsync(
+    $"quality: {snapshot.Quality?.Sample.Runs} runs in scope, {snapshot.Quality?.Sample.IgnoredRuns} ignored");
 }
 return 0;
 
@@ -137,7 +162,8 @@ static async Task<int> Usage(string message)
 {
   await Console.Error.WriteLineAsync(message);
   await Console.Error.WriteLineAsync(
-    "usage: delivery-dashboard snapshot [--repo OWNER/NAME] [--workflow FILE] [--runs N] [--date YYYY-MM-DD] [--out FILE]"
+    "usage: delivery-dashboard snapshot [--repo OWNER/NAME] [--workflow FILE] [--runs N] [--quality-runs N]"
+    + " [--date YYYY-MM-DD] [--out FILE]"
     + " | delivery-dashboard check FILE...");
   return 2;
 }

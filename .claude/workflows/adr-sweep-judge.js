@@ -18,9 +18,11 @@ export const meta = {
 //   Select  the delta. One read-only `sweep-judge` agent (Sonnet) does the parts that need git and gh: records
 //           whose file changed since the watermark, records whose cited tokens changed, J3
 //           triggers that moved, and records named by issues or PRs updated since (M5). The
-//           rotation is plain code over the watermark's judged= groups: the previous run's
-//           left-over records first, then the k records judged longest ago, ties by number.
-//           No watermark (or one that does not parse) means a full run: every record.
+//           rotation is plain code over the watermark's judged= groups: the k records judged
+//           longest ago, ties by number. No watermark (or one that does not parse) means a full
+//           run: every record.
+//           Admission order (#581): the previous run's left-over records, in the order given;
+//           then up to k rotation records, oldest first; then the rest by reason, then number.
 //   Judge   one `sweep-judge` agent per delta record (Sonnet) runs the J checks at the swept origin/main SHA.
 //   Verify  each Fix now or Decide finding goes to two skeptics (the read-only `sweep-skeptic`
 //           agent, one lens each) and is confirmed only if both decline. Watch is not verified.
@@ -36,13 +38,21 @@ export const meta = {
 //   checks: ['J1', 'J2', 'J3', 'J4', 'J5']   (default; add 'J7' on request)
 //   capRun: 40             the ceiling on agents per run, the select agent included
 //   capRecord: 12          the ceiling on agents per record, its judge and its skeptics together
-//   records: [{ id, path, reasons, checks }]   optional: skip selection and judge these, in order
-//                          (for a delta selected by hand, or a seeded proof run)
+//   records: [{ id, path, reasons, checks, kind }]   optional: skip selection and judge these, in
+//                          order (for a delta selected by hand, or a seeded proof run). A record may
+//                          name its kind ('left-over', 'rotation' or a selected kind); kinds take the
+//                          admission order above, and records without one keep the given order
 // }
 //
 // Caps. Each admitted record reserves 1 + 2 agents (its judge and one finding's skeptic pair), so
-// at most floor(capRun available / 3) records are admitted; the rest come back in `leftOver`, first
-// in the next rotation, as do records whose judge returned nothing. Reserves a record does not use
+// at most floor(capRun available / 3) records are admitted, in admission order. Left-over and
+// selected records past the cap come back in `leftOver`, left-over first, and the next run takes
+// them first, as it does records whose judge returned nothing. A rotation record past the cap is
+// not left over: it keeps its judged date, so the next rotation picks it again (caps.rotationDeferred).
+// So every record is judged within ceil(records / k) sweeps only while each run's left-over list
+// leaves the rotation its k slots: at most 13 - 6 = 7 records at the defaults. A longer list takes
+// rotation slots first, and one longer than the admitted records holds the rotation off until it
+// drains; the log says so. Reserves a record does not use
 // go to a shared pool, and a record's further findings draw from that pool strictly in record
 // order, so who is verified does not depend on which judge returns first. Findings past either cap
 // come back unexamined, Fix now before Decide.
@@ -58,8 +68,9 @@ const VERIFIED = ['fix-now', 'decide']
 const LENSES = ['true', 'matters']
 const PAIR = LENSES.length
 const RESERVE = 1 + PAIR
-// Reason priority, highest first; the delta is ordered by each record's best reason, then number.
-const KINDS = ['given', 'full', 'changed-record', 'changed-token', 'trigger', 'open-work', 'left-over', 'rotation']
+// Reason priority, highest first: a record's kind is its best reason. Left-over and rotation records
+// are admitted ahead of the rest (see Caps); the rest is ordered by best reason, then number.
+const KINDS =['given', 'full', 'changed-record', 'changed-token', 'trigger', 'open-work', 'left-over', 'rotation']
 const SELECTED_KINDS = ['changed-record', 'changed-token', 'trigger', 'open-work']
 
 const SHA = /^[0-9a-f]{7,40}$/
@@ -157,9 +168,15 @@ ${inventory.map(tokenLine).join('\n')}`
 // ---- Selection ----
 
 const delta = new Map()
+const GIVEN_KINDS = [...SELECTED_KINDS, 'left-over', 'rotation']
+let leftSeq = 0
+let rotationSeq = 0
 const addReason = (id, path, kind, reason) => {
-  const entry = delta.get(id) ?? { id, path, kinds: [], reasons: [] }
+  const entry = delta.get(id) ?? { id, path, kinds: [], reasons: [], seq: delta.size }
   if (!entry.kinds.includes(kind)) entry.kinds.push(kind)
+  // The order left-over records were given in, and the rotation's oldest-first order.
+  if (kind === 'left-over' && entry.leftSeq === undefined) { entry.leftSeq = leftSeq; leftSeq += 1 }
+  if (kind === 'rotation' && entry.rotationSeq === undefined) { entry.rotationSeq = rotationSeq; rotationSeq += 1 }
   entry.reasons.push(reason)
   delta.set(id, entry)
 }
@@ -170,7 +187,9 @@ if (Array.isArray(args?.records)) {
   for (const r of args.records) {
     if (!r || typeof r.id !== 'string' || typeof r.path !== 'string') { log(`dropped a given record without an id and path: ${JSON.stringify(r)}`); continue }
     const reasons = Array.isArray(r.reasons) && r.reasons.length > 0 ? r.reasons.map(String) : ['given by the session']
-    reasons.forEach((reason) => addReason(r.id, r.path, 'given', reason))
+    if (r.kind !== undefined && !GIVEN_KINDS.includes(r.kind)) log(`${r.id}: ignored kind ${r.kind} (known: ${GIVEN_KINDS.join(', ')})`)
+    const kind = GIVEN_KINDS.includes(r.kind) ? r.kind : 'given'
+    reasons.forEach((reason) => addReason(r.id, r.path, kind, reason))
     delta.get(r.id).checks = pickChecks(r.checks, r.id)
   }
   selection = { mode: 'given', watermark: null, summary: `${delta.size} record(s) given by the session; no selection ran` }
@@ -220,10 +239,24 @@ if (Array.isArray(args?.records)) {
   }
 }
 
+// Admission order (#581): left-over records in the order given, then up to k rotation records
+// oldest first, then the rest by best reason, ties by number (given records: by the given order).
+// Admitting the first records of this order keeps left-over and rotation records ahead of a busy
+// selection, which used to push them past the cap on every busy run.
 const best = (entry) => Math.min(...entry.kinds.map((k) => KINDS.indexOf(k)))
-const ordered = [...delta.values()]
-if (selection.mode !== 'given') ordered.sort((a, b) => best(a) - best(b) || (a.id < b.id ? -1 : a.id > b.id ? 1 : 0))
-const records = ordered.map((e) => ({ id: e.id, path: e.path, reasons: e.reasons, kind: KINDS[best(e)], checks: e.checks ?? RUN_CHECKS }))
+const all = [...delta.values()]
+const isLeft = (e) => e.kinds.includes('left-over')
+const isRotationOnly = (e) => e.kinds.every((k) => k === 'rotation')
+const left = all.filter(isLeft).sort((a, b) => a.leftSeq - b.leftSeq)
+const kept = all.filter((e) => !isLeft(e) && isRotationOnly(e)).sort((a, b) => a.rotationSeq - b.rotationSeq).slice(0, K)
+const rest = all.filter((e) => !left.includes(e) && !kept.includes(e))
+rest.sort(selection.mode === 'given'
+  ? (a, b) => best(a) - best(b) || a.seq - b.seq
+  : (a, b) => best(a) - best(b) || (a.id < b.id ? -1 : a.id > b.id ? 1 : 0))
+const ordered = [...left, ...kept, ...rest]
+const records = ordered.map((e) => ({
+  id: e.id, path: e.path, reasons: e.reasons, kind: KINDS[best(e)], rotationOnly: isRotationOnly(e), checks: e.checks ?? RUN_CHECKS,
+}))
 
 // ---- Judge and verify ----
 
@@ -302,14 +335,25 @@ const verifyAll = (findings) =>
   pipeline(findings, verifyFinding).then((out) =>
     out.map((v, k) => v ?? { ...findings[k], votes: [], verdict: 'unexamined', why: 'verification failed' }))
 
-// Admission under the run cap, in delta order. The select agent, if it ran, counts against the cap.
+// Admission under the run cap, in admission order. The select agent, if it ran, counts against the cap.
 const available = CAP_RUN - selectAgents
-const admitCount = Math.min(records.length, Math.floor(available / RESERVE))
+const slots = Math.floor(available / RESERVE)
+const admitCount = Math.min(records.length, slots)
 const admitted = records.slice(0, admitCount)
-const leftOver = records.slice(admitCount).map(({ id, path, reasons }) => ({ id, path, reasons, why: `past the run cap of ${CAP_RUN} agents` }))
+const past = records.slice(admitCount)
+// A rotation record past the cap keeps its judged date, so the next rotation picks it again;
+// listing it as left over would only lengthen the list that runs ahead of the rotation.
+const rotationDeferred = past.filter((r) => r.rotationOnly).map((r) => r.id)
+const leftOver = past.filter((r) => !r.rotationOnly).map(({ id, path, reasons }) => ({ id, path, reasons, why: `past the run cap of ${CAP_RUN} agents` }))
 if (records.length === 0 && selection.mode !== 'failed') log('the delta is empty: nothing to judge')
-if (leftOver.length > 0) {
-  log(`run cap ${CAP_RUN}: judging ${admitCount} of ${records.length} records; ${leftOver.length} left over for the next rotation: ${leftOver.map((r) => r.id).join(', ')}`)
+if (past.length > 0) {
+  log(`run cap ${CAP_RUN}: judging ${admitCount} of ${records.length} records; ${leftOver.length} left over for the next run: ${leftOver.map((r) => r.id).join(', ') || 'none'}`)
+}
+if (rotationDeferred.length > 0) {
+  log(`rotation: ${rotationDeferred.length} record(s) not admitted (${rotationDeferred.join(', ')}); they keep their judged date for the next rotation`)
+}
+if (left.length > 0 && K > 0 && left.length > slots - K) {
+  log(`left over: ${left.length} record(s) ahead of the rotation leave it ${Math.max(0, slots - left.length)} of its ${K} slot(s); the every-record bound holds again once the list is at most ${Math.max(0, slots - K)}`)
 }
 
 // The shared pool, drawn in record order: record i draws only after record i-1 has drawn and released.
@@ -405,6 +449,7 @@ const caps = {
   admitted: admitCount,
   launched,
   leftOverRecords: leftOver.length,
+  rotationDeferred,
   findingsPastRecordCap: pastRecordCap.length,
   findingsPastRunCap: pastRunCap.length,
 }

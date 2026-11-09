@@ -9,6 +9,7 @@ import {
   dashboardPages,
   dashboardSidebar,
   escapeText,
+  formatDuration,
   formatSeconds,
   history,
   parseSnapshot,
@@ -129,16 +130,16 @@ describe('reading snapshots', () => {
 
   it('accepts the optional sections that other slices add, and still scans their strings', async () => {
     const valid = await validText('2026-11-08.json');
-    const withSections = valid.replace(
-      '"version": 2,',
-      '"version": 2, "quality": {"scopes": []}, "agents": {"sample": {}},',
-    );
+    const withSections = valid.replace('"version": 2,', '"version": 2, "agents": {"sample": {}},');
     expect(withSections).not.toBe(valid);
     expect(parseSnapshot('x.json', withSections).date).toBe('2026-11-08');
-    const leaking = withSections.replace('"scopes"', '"/home/someone"');
+    const leaking = withSections.replace('"sample"', '"/home/someone"');
     expect(() => parseSnapshot('x.json', leaking)).toThrow('looks like a machine path');
-    const scalar = valid.replace('"version": 2,', '"version": 2, "quality": 3,');
-    expect(() => parseSnapshot('x.json', scalar)).toThrow('$.quality: must be an object');
+    const scalar = valid.replace('"version": 2,', '"version": 2, "agents": 3,');
+    expect(() => parseSnapshot('x.json', scalar)).toThrow('$.agents: must be an object');
+    // The fixture carries a quality section, so a duplicate key would not replace it: set the field on the parsed object.
+    const scalarQuality = JSON.stringify({ ...JSON.parse(valid), quality: 3 });
+    expect(() => parseSnapshot('x.json', scalarQuality)).toThrow('$.quality: must be an object');
   });
 
   it('fails when version 2 lacks the version 2 fields', () => {
@@ -245,6 +246,110 @@ describe('the CI-speed page', () => {
   });
 });
 
+describe('the quality page', () => {
+  /** The latest valid fixture with the value at a dotted path of its quality section replaced. */
+  async function withQuality(path: string, value: unknown) {
+    const json = JSON.parse(await validText('2026-11-09.json')) as { quality: unknown };
+    const keys = path.split('.');
+    const last = keys.pop() ?? '';
+    let target: unknown = json.quality;
+    for (const key of keys) target = (target as Record<string, unknown>)[key];
+    (target as Record<string, unknown>)[last] = value;
+    return JSON.stringify(json);
+  }
+
+  it('shows run classes, failure rates with intervals and links to the public runs, marked measured or inferred', async () => {
+    const page = render('quality', await present());
+    expect(page).toContain('## Pushes to `main`');
+    expect(page).toContain('## Pull requests');
+    expect(page).toContain('**measured**');
+    expect(page).toContain('**inferred**');
+    expect(page).toContain('| Passed after a rerun |');
+    expect(page).toContain('not failures');
+    expect(page).toContain('CI result (required check)');
+    expect(page).toMatch(/\d+\.\d %/);
+    expect(page).toContain('95.0 % interval');
+    expect(page).toContain(
+      'https://github.com/mgasca/calendar/actions/workflows/ci.yml?query=branch%3Amain%20event%3Apush%20is%3Afailure',
+    );
+    expect(page).toContain('https://github.com/mgasca/calendar/actions/runs/42620951160');
+  });
+
+  it('marks a job with too few trials inconclusive and shows no rate for it', async () => {
+    const page = render('quality', await present());
+    const row = page.split('\n').find((line) => line.startsWith('| ADR conventions'));
+    expect(row).toContain('inconclusive');
+    expect(row).toContain('| none | none |');
+    expect(row).not.toMatch(/\d %/);
+  });
+
+  it('says that the guard numbers are inferred, from the step they share with the other tool tests', async () => {
+    const page = render('quality', await present());
+    expect(page).toContain('## Delivery guards over time');
+    expect(page).toContain('Test and lint tooling');
+    expect(page).toContain('not necessarily a guard');
+  });
+
+  it('draws a history from the snapshots that have a quality section and needs two', async () => {
+    const page = render('quality', await present());
+    expect(page).toContain('## History');
+    expect(page).toContain('| 2026-11-08 |');
+    const single = await folder({ '2026-11-09.json': await validText('2026-11-09.json') });
+    expect(render('quality', await readDashboardData(single))).toContain(
+      'a history needs at least two',
+    );
+  });
+
+  it('says so when the latest snapshot has no quality section, and when there is no snapshot', async () => {
+    const old = await folder({ '2026-11-07.json': await validText('2026-11-07.json') });
+    expect(render('quality', await readDashboardData(old))).toContain('has no quality section');
+    expect(render('quality', { state: 'absent' })).toContain('No snapshot yet');
+  });
+
+  it('escapes a job name and prints no HTML from it', async () => {
+    const text = await withQuality('scopes.0.jobs.0.job', '<img src=x onerror=alert(1)> | **x**');
+    const page = render('quality', {
+      state: 'present',
+      snapshots: [parseSnapshot('2026-11-09.json', text)],
+    });
+    expect(page).not.toContain('<img');
+    expect(page).toContain('&lt;img');
+  });
+
+  it.each([
+    [
+      'a rate on an inconclusive row',
+      'scopes.0.jobs.0.rate',
+      0,
+      'inconclusive row must carry no rate',
+    ],
+    [
+      'a verdict that disagrees with the trials',
+      'scopes.0.jobs.1.verdict',
+      'inconclusive',
+      'verdict: must be conclusive',
+    ],
+    [
+      'a total that is not the sum',
+      'scopes.0.runs.total',
+      99,
+      'must equal the sum of the run classes',
+    ],
+    ['a field outside the schema', 'scopes.0.author', 'x', 'author: field is not in the schema'],
+    [
+      'a machine path in a job name',
+      'scopes.0.jobs.0.job',
+      '/home/someone/dev',
+      'looks like a machine path',
+    ],
+    ['a search that is not an Actions search', 'scopes.0.listQuery', 'x" onclick="y', 'listQuery'],
+    ['an interval that excludes the rate', 'scopes.0.jobs.1.low', 0.9, 'low <= rate <= high'],
+  ])('fails the build for %s', async (_name, path, value, rule) => {
+    const text = await withQuality(path, value);
+    expect(() => parseSnapshot('2026-11-09.json', text)).toThrow(rule);
+  });
+});
+
 describe('the pages and the sidebar', () => {
   it('derives the sidebar from the page list, one entry per page', () => {
     const entries = dashboardEntries({ state: 'absent' });
@@ -265,5 +370,93 @@ describe('formatting', () => {
     expect(formatSeconds(81)).toBe('81 s');
     expect(formatSeconds(12.34)).toBe('12.3 s');
     expect(formatSeconds(140.5)).toBe('2 min 21 s');
+  });
+
+  it('writes flow durations in the largest whole unit', () => {
+    expect(formatDuration(45)).toBe('45 s');
+    expect(formatDuration(5400)).toBe('90 min');
+    expect(formatDuration(3 * 3600)).toBe('3 h');
+    expect(formatDuration(3 * 86400)).toBe('3 days');
+  });
+});
+
+describe('the flow page', () => {
+  it('shows open pull requests, waiting reviews, lead time, issue to merge, stacks and epics with their samples', async () => {
+    const body = render('flow', await present());
+    expect(body).toContain('Snapshot of 2026-11-09');
+    expect(body).toContain('**measured**');
+    expect(body).toContain('2026-10-10 06:47 UTC to 2026-11-09 06:47 UTC');
+    expect(body).toContain('6 (1 draft)');
+    expect(body).toContain('| Waiting for a first review | 2 |  |  | 4.5 days |');
+    expect(body).toContain(
+      '| Pull request opened to merged into `main` | 42 | 90 min | 24 h | 3 days |',
+    );
+    expect(body).toContain('| 3 | [#607](https://github.com/mgasca/calendar/pull/607), [#608]');
+    expect(body).toContain(
+      '| [#595](https://github.com/mgasca/calendar/issues/595) | 2 | 6 | 33 % |',
+    );
+    expect(body).toContain('4 pull requests were merged into another pull request');
+  });
+
+  it('marks a thin sample inconclusive instead of showing a figure', async () => {
+    const body = render('flow', await present());
+    expect(body).toContain('| Issue opened to the merge that closed it | 3 | inconclusive |');
+  });
+
+  it('defines each metric, including how stacks and squash merges count, and ranks no person', async () => {
+    const body = render('flow', await present());
+    for (const term of ['Lead time', 'Issue to merge', 'Stack', 'squash-merged', 'No ranking'])
+      expect(body).toContain(term);
+  });
+
+  it('says there is no flow section when the latest snapshot predates it', async () => {
+    const data = await readDashboardData(
+      await folder({ '2026-11-08.json': await validText('2026-11-08.json') }),
+    );
+    expect(render('flow', data)).toContain('no flow section');
+    expect(render('flow', { state: 'absent' })).toContain('No snapshot yet');
+  });
+
+  const thin = '"sample": 3,\n      "stat": null';
+  const flowBroken: [string, (valid: string) => string, string][] = [
+    [
+      'a distribution on a thin sample',
+      (valid) =>
+        valid.replace(
+          thin,
+          '"sample": 3, "stat": {"count":3,"medianSeconds":1,"p90Seconds":1,"maxSeconds":1}',
+        ),
+      '$.flow.issueToMerge.stat: must be null while the sample is below 5',
+    ],
+    [
+      'more drafts than pull requests',
+      (valid) => valid.replace('"drafts": 1', '"drafts": 9'),
+      '$.flow.openPullRequests.drafts: must not exceed count',
+    ],
+    [
+      'an epic with more closed issues than listed',
+      (valid) => valid.replace('"done": 2', '"done": 9'),
+      '$.flow.epics[1].done: must not exceed total',
+    ],
+    [
+      'a field outside the schema',
+      (valid) => valid.replace('"minSample": 5,', '"minSample": 5, "login": "x",'),
+      '$.flow.login: field is not in the schema',
+    ],
+    [
+      'a machine path used as a field name',
+      (valid) => valid.replace('"epics"', '"/home/someone"'),
+      'looks like a machine path',
+    ],
+  ];
+  it.each(flowBroken)('fails the build for %s', async (_name, mutate, rule) => {
+    const text = await validText('2026-11-09.json');
+    const mutated = mutate(text);
+    expect(mutated).not.toBe(text);
+    const failure = await readDashboardData(await folder({ '2026-11-09.json': mutated })).catch(
+      (error: unknown) => error,
+    );
+    expect(failure).toBeInstanceOf(SnapshotError);
+    expect((failure as Error).message).toContain(rule);
   });
 });

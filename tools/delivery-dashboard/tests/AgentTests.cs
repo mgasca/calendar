@@ -208,8 +208,7 @@ public sealed class AgentRulesTests
         Noon,
         "mgasca/calendar",
         CiSnapshot.Build("ci.yml", []),
-        null,
-        section ?? Section()));
+        Agents: section ?? Section()));
 
   [Fact]
   public void A_snapshot_with_an_agents_section_is_valid_and_stable_and_one_without_it_still_is()

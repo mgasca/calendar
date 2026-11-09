@@ -127,3 +127,5 @@ CI looks at the files your pull request changes and runs only the checks those f
 ### Getting a docs preview
 
 Change anything under the docs and push. When CI succeeds, an **ADR preview** check and a comment on the pull request link the hosted preview, also when the pull request changes code too. It is replaced on every successful run and removed when the pull request closes.
+
+<!-- Measurement only for #572: a card-only CI run. This branch is never merged. -->

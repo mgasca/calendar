@@ -1,0 +1,119 @@
+name: Dashboard snapshot
+
+# Story 0053, ADR 0049, issue #596: daily, and on demand, this takes one snapshot of delivery data and commits it to the
+# never-merged `dashboard-data` branch, one file per day (snapshots/YYYY-MM-DD.json). A second run on the same day
+# replaces that day's file. It never runs for a pull request, so it fails no PR and is not part of `CI result`
+# (ADR 0046). The logic, the schema and the privacy rules are in tools/delivery-dashboard.
+#
+# Two jobs keep write access away from the code that reads GitHub: `snapshot` can read runs and cannot write the
+# repository, and `publish` can write the repository but runs only git commands on the file `snapshot` checked.
+on:
+  schedule:
+    - cron: "47 6 * * *"
+  workflow_dispatch:
+
+permissions: {}
+
+concurrency:
+  group: dashboard-snapshot
+  cancel-in-progress: false
+
+env:
+  DOTNET_NOLOGO: true
+  DOTNET_CLI_TELEMETRY_OPTOUT: true
+  DATA_BRANCH: dashboard-data
+
+jobs:
+  snapshot:
+    name: Take and check the snapshot
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      actions: read
+      contents: read
+    defaults:
+      run:
+        shell: bash
+    outputs:
+      date: ${{ steps.take.outputs.date }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-dotnet@v6
+        with:
+          dotnet-version: 10.0.x
+          cache: true
+          cache-dependency-path: tools/delivery-dashboard/packages.lock.json
+      - name: Take the snapshot
+        id: take
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          date=$(date -u +%F)
+          mkdir -p "$RUNNER_TEMP/snapshot"
+          dotnet run tools/delivery-dashboard/delivery-dashboard.cs -- snapshot \
+            --repo "$GITHUB_REPOSITORY" --date "$date" --out "$RUNNER_TEMP/snapshot/$date.json" | tee -a "$GITHUB_STEP_SUMMARY"
+          echo "date=$date" >> "$GITHUB_OUTPUT"
+      - name: Check the snapshot again, as the file that will be published
+        run: dotnet run tools/delivery-dashboard/delivery-dashboard.cs -- check "$RUNNER_TEMP/snapshot/${{ steps.take.outputs.date }}.json"
+      - uses: actions/upload-artifact@v7
+        with:
+          name: snapshot
+          path: ${{ runner.temp }}/snapshot/${{ steps.take.outputs.date }}.json
+          if-no-files-found: error
+          retention-days: 3
+
+  publish:
+    name: Commit the snapshot to the data branch
+    needs: snapshot
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: write
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          # The git credential is kept for the push. Nothing from this checkout is built or run: the data branch replaces it.
+          persist-credentials: true
+      - uses: actions/download-artifact@v8
+        with:
+          name: snapshot
+          path: ${{ runner.temp }}/snapshot
+      - name: Commit to the data branch
+        env:
+          DATE: ${{ needs.snapshot.outputs.date }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          if git ls-remote --exit-code --heads origin "$DATA_BRANCH" > /dev/null; then
+            git fetch --depth 1 origin "$DATA_BRANCH"
+            git switch -c "$DATA_BRANCH" FETCH_HEAD
+          else
+            git switch --orphan "$DATA_BRANCH"
+            git rm -rfq --ignore-unmatch .
+            printf '%s\n' \
+              '# Dashboard data' '' \
+              'One JSON snapshot per day in `snapshots/`, written by `.github/workflows/dashboard-snapshot.yml` on `main`.' \
+              'This branch is never merged. See story 0053 and ADR-0049.' > README.md
+          fi
+          mkdir -p snapshots
+          cp "$RUNNER_TEMP/snapshot/$DATE.json" "snapshots/$DATE.json"
+          git add -A
+          if git diff --cached --quiet; then
+            echo "The snapshot for $DATE is unchanged."
+            exit 0
+          fi
+          git commit -m "Snapshot $DATE"
+          # A concurrent push moves the branch; rebase and try again, up to three times.
+          for _ in 1 2 3; do
+            if git push origin "$DATA_BRANCH"; then
+              exit 0
+            fi
+            git pull --rebase origin "$DATA_BRANCH"
+          done
+          echo "Could not push the snapshot after three attempts." >&2
+          exit 1

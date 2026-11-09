@@ -65,6 +65,11 @@ ci-timings *args:
 handover-watch *args:
     dotnet run tools/handover-watch/handover-watch.cs -- "$@"
 
+# Take a delivery-dashboard snapshot, or check snapshot files (e.g. just tools delivery-dashboard snapshot --runs 5, or check FILE)
+[positional-arguments]
+delivery-dashboard *args:
+    dotnet run tools/delivery-dashboard/delivery-dashboard.cs -- "$@"
+
 # Validate ADRs in docs/decisions (e.g. just tools adr --fix-links)
 [positional-arguments]
 adr *args:

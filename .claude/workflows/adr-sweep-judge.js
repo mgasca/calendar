@@ -21,8 +21,8 @@ export const meta = {
 //           rotation is plain code over the watermark's judged= groups: the k records judged
 //           longest ago, ties by number. No watermark (or one that does not parse) means a full
 //           run: every record.
-//           Admission order (#581): the previous run's left-over records, in the order given;
-//           then up to k rotation records, oldest first; then the rest by reason, then number.
+//           Admission order (#581): up to k rotation records, oldest first; then the previous run's
+//           left-over records, in the order given; then the rest by reason, then number.
 //   Judge   one `sweep-judge` agent per delta record (Sonnet) runs the J checks at the swept origin/main SHA.
 //   Verify  each Fix now or Decide finding goes to two skeptics (the read-only `sweep-skeptic`
 //           agent, one lens each) and is confirmed only if both decline. Watch is not verified.
@@ -49,10 +49,10 @@ export const meta = {
 // selected records past the cap come back in `leftOver`, left-over first, and the next run takes
 // them first, as it does records whose judge returned nothing. A rotation record past the cap is
 // not left over: it keeps its judged date, so the next rotation picks it again (caps.rotationDeferred).
-// So every record is judged within ceil(records / k) sweeps only while each run's left-over list
-// leaves the rotation its k slots: at most 13 - 6 = 7 records at the defaults. A longer list takes
-// rotation slots first, and one longer than the admitted records holds the rotation off until it
-// drains; the log says so. Reserves a record does not use
+// The rotation is admitted first, so every record is judged within ceil(records / k) sweeps whatever
+// the selection, while a run admits at least k records (capRun >= 3k + 1, the select agent
+// counted: 19 at k = 6); below that the log says the bound does not hold. Left-over records drain at (admitted - k)
+// per run, 7 at the defaults. Reserves a record does not use
 // go to a shared pool. Once every judge has settled, the records' further findings draw from that
 // pool strictly in record order, so who is verified does not depend on which judge returns first
 // (#582); a record's first finding does not wait. Findings past either cap come back unexamined,
@@ -240,10 +240,10 @@ if (Array.isArray(args?.records)) {
   }
 }
 
-// Admission order (#581): left-over records in the order given, then up to k rotation records
-// oldest first, then the rest by best reason, ties by number (given records: by the given order).
-// Admitting the first records of this order keeps left-over and rotation records ahead of a busy
-// selection, which used to push them past the cap on every busy run.
+// Admission order (#581): up to k rotation records oldest first, then left-over records in the order
+// given, then the rest by best reason, ties by number (given records: by the given order). The
+// rotation goes first so that no backlog or busy selection can hold it off, which keeps the
+// every-record bound; the left-over backlog still runs ahead of new selections.
 const best = (entry) => Math.min(...entry.kinds.map((k) => KINDS.indexOf(k)))
 const all = [...delta.values()]
 const isLeft = (e) => e.kinds.includes('left-over')
@@ -254,7 +254,7 @@ const rest = all.filter((e) => !left.includes(e) && !kept.includes(e))
 rest.sort(selection.mode === 'given'
   ? (a, b) => best(a) - best(b) || a.seq - b.seq
   : (a, b) => best(a) - best(b) || (a.id < b.id ? -1 : a.id > b.id ? 1 : 0))
-const ordered = [...left, ...kept, ...rest]
+const ordered = [...kept, ...left, ...rest]
 const records = ordered.map((e) => ({
   id: e.id, path: e.path, reasons: e.reasons, kind: KINDS[best(e)], rotationOnly: isRotationOnly(e), checks: e.checks ?? RUN_CHECKS,
 }))
@@ -353,8 +353,8 @@ if (past.length > 0) {
 if (rotationDeferred.length > 0) {
   log(`rotation: ${rotationDeferred.length} record(s) not admitted (${rotationDeferred.join(', ')}); they keep their judged date for the next rotation`)
 }
-if (left.length > 0 && K > 0 && left.length > slots - K) {
-  log(`left over: ${left.length} record(s) ahead of the rotation leave it ${Math.max(0, slots - left.length)} of its ${K} slot(s); the every-record bound holds again once the list is at most ${Math.max(0, slots - K)}`)
+if (K > 0 && slots < K) {
+  log(`rotation: the run admits ${slots} record(s), fewer than k = ${K}; the every-record bound does not hold at capRun ${CAP_RUN}`)
 }
 
 // The shared pool (#582). Each record starts its first finding's pair from its own reserve as soon

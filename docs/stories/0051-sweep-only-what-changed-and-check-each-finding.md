@@ -168,6 +168,7 @@ No changes.
 ### Lessons learned, known issues and follow-ups
 
 * To be written on delivery.
+* **CI cost of M2 and J6 ([#572](https://github.com/mgasca/calendar/issues/572)):** #569 made a card-only or model-only pull request start the whole Tooling job for `check-adr`, which takes about a second. Since #579, those paths run a small ADR conventions job instead, and Tooling's path set is back to what story 0038 delivered. Measured in record [0019](../benchmarks/0019-adr-check-without-tooling.md): ADR conventions takes 0:24 (one cold run) where Tooling took a median of 1:22 on `main`.
 
 ## User guide
 

@@ -150,7 +150,7 @@ describe('reading snapshots', () => {
 describe('escaping', () => {
   it('turns markup, links and extra columns in a job name into plain text', () => {
     const escaped = escapeText('a | b <script>x</script> [l](http://e) `c` *d* _e_ & "q"');
-    expect(escaped).not.toMatch(/<script>/);
+    expect(escaped).not.toMatch(/<script>/i);
     expect(escaped).not.toMatch(/(?<!\\)\|/);
     expect(escaped).not.toMatch(/(?<!\\)[`*_[\]]/);
     expect(escaped).toContain('&lt;script&gt;');

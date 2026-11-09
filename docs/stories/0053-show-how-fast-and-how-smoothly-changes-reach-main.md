@@ -120,6 +120,15 @@ Agreed with the maintainer in a Claude Code session on 2026-11-09 and recorded o
 * **Epic progress** counts the issues named in the epic's task list by their real state, not by the ticked box.
 * **Tests:** constructed histories with a squash-merged stack, an issue closed by two pull requests, a full page, a branch cycle, task-list parsing, the GraphQL parser on constructed JSON and the schema rules (`tools/delivery-dashboard/tests/FlowTests.cs`); the docs page on the fixtures (`dashboard.test.ts`).
 
+### Flow page (#598)
+
+* **Collection:** two GraphQL calls per daily snapshot (one for open and merged pull requests and the open `epic` issues, one for the state of the issues the epics' task lists name), public data only. Branch names are used to find stacks and are not written to the snapshot; no title, login or path is kept.
+* **Schema:** an optional root section `flow` (older files stay valid, no version bump), in `FlowSection.cs` and `FlowRules.cs`; the privacy scan covers it. A distribution exists exactly when its sample reaches `minSample` (5); below it only the count is kept and the page says "inconclusive".
+* **Definitions** (also printed on the page): the age of an open pull request runs from opening; "waiting for a first review" is open, not draft and without a submitted review; lead time runs from opening to the merge into `main`; issue to merge runs from the issue's opening to the last merge into `main` of a pull request that closes it. **Stacks:** a pull request merged into another pull request's branch is a stack step, counted on its own and not in the lead time; when a stack is squash-merged and the pull requests above are retargeted to `main`, each counts from its own opening, so the time it waited for the ones below is part of its lead time. Open stacks are chains of open pull requests where one targets the branch of another.
+* **Window:** merged pull requests of the last 30 days; GitHub returns the newest 100, and when that page is full the window starts at the oldest merge returned, so the real window is shown. A real run on 2026-11-09 covered 2.1 days for that reason.
+* **Epic progress** counts the issues named in the epic's task list by their real state, not by the ticked box.
+* **Tests:** constructed histories with a squash-merged stack, an issue closed by two pull requests, a full page, a branch cycle, task-list parsing, the GraphQL parser on constructed JSON and the schema rules (`tools/delivery-dashboard/tests/FlowTests.cs`); the docs page on the fixtures (`dashboard.test.ts`).
+
 ### Quality section (#599)
 
 * **Data:** the optional `quality` section of the snapshot (`tools/delivery-dashboard/QualitySection.cs`, `QualityRules.cs`): run classes (`passed`, `passedAfterRerun`, `failed`, `cancelled`, `superseded`, `other`) for pushes to `main` and for pull requests, failure rate per job with a two-sided 95 % Clopper-Pearson interval, the required check `CI result` flagged, run ids and an Actions search query that back each count, and the guard step per day. Version 1 stays: the section is optional, so older files validate.

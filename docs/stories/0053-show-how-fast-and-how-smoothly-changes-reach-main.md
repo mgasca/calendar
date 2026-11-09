@@ -1,10 +1,12 @@
 ---
-status: planned
+status: in-progress
 date: 2026-11-09
 issue: https://github.com/mgasca/calendar/issues/595
 pr:
   - https://github.com/mgasca/calendar/pull/603
   - https://github.com/mgasca/calendar/pull/604
+  - https://github.com/mgasca/calendar/pull/606
+  - https://github.com/mgasca/calendar/pull/607
 adrs: ["0017", "0025", "0045", "0046", "0049"]
 ---
 
@@ -76,7 +78,8 @@ Agreed with the maintainer in a Claude Code session on 2026-11-09 and recorded o
 
 * **Schema version field:** every snapshot carries a version so older snapshots stay readable when the schema grows.
 * **Reuse, not copy:** the tool reuses `ci-timings` parsing so the dashboard and the gate cannot disagree.
-* **Retention and size:** the data branch gets a size and retention rule in slice 6 (#601).
+* **Answers to the review questions (maintainer, 2026-11-09, accepting ADR-0049):** the docs build reads the `dashboard-data` branch into a git-ignored folder in the Pages `assemble` job and for local builds; the public page shows PR and issue numbers and links, never titles; issues without count comments show no cost data.
+* **Retention and size:** the data branch keeps everything until it passes a size limit chosen from a measurement in slice 6 (#601), then thins to weekly files.
 * **Screenshots for every slice that shows something:** a slice that adds or changes a page (#597 to #600, and the architecture page in #601) shows the page in its PR description with the `github-screenshots` skill: the light and dark themes, and a before and after where a page changes, taken from the real build with the `run-calendar` skill's approach to driving a browser. A slice with no visible output (the snapshot pipeline, #596) says so in its PR and shows the tool's real output as text instead.
 
 ## Implementation notes

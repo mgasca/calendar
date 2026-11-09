@@ -39,6 +39,10 @@ typecheck:
 format:
     pnpm format
 
+# Check formatting without changing files (what CI runs)
+format-check:
+    pnpm format:check
+
 # Run the web UI (proxies /api to the API)
 dev:
     pnpm dev

@@ -18,7 +18,7 @@ podman behind the `docker` command; the driver blocks with .NET SDK 10.0.403, th
 Toolchain as in the README (`./tools/doctor/doctor.sh`), then dependencies:
 
 ```bash
-(cd backend && dotnet restore) && corepack pnpm --dir frontend install --frozen-lockfile
+(cd backend && dotnet restore) && just frontend install
 ```
 
 The driver uses `#:include`, which .NET SDK 10.0.1xx rejects (`Unrecognized directive 'include'`), and 10.0.1xx is
@@ -82,7 +82,7 @@ timeout 180 bash -c 'until curl -sf http://127.0.0.1:55041/api/health >/dev/null
 4. Web UI (Vite) proxying `/api` to that API:
 
 ```bash
-(CALENDAR_API_URL=http://127.0.0.1:55041 nohup corepack pnpm --dir frontend/apps/web exec vite --host 127.0.0.1 --port 55173 --strictPort > /tmp/calendar-agent/web.log 2>&1 &)
+(cd frontend/apps/web && CALENDAR_API_URL=http://127.0.0.1:55041 nohup corepack pnpm exec vite --host 127.0.0.1 --port 55173 --strictPort > /tmp/calendar-agent/web.log 2>&1 &)
 timeout 60 bash -c 'until curl -sf http://127.0.0.1:55173/api/health >/dev/null; do sleep 1; done'
 ```
 
@@ -182,7 +182,7 @@ database container and volume as every other checkout on the machine.
 ## Test
 
 ```bash
-corepack pnpm --dir frontend --filter @calendar/web test
+just frontend test-web
 ```
 
 ```bash

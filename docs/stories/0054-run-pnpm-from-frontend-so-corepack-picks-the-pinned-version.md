@@ -1,5 +1,5 @@
 ---
-status: planned
+status: in-progress
 date: 2026-11-09
 issue: https://github.com/mgasca/calendar/issues/592
 pr:

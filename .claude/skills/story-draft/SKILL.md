@@ -120,7 +120,7 @@ The site discovers cards from their filenames and reads the title and status fro
 The parser of the docs site checks the story files: filenames, titles, status, date, quoted `adrs` that exist, and links between documents. Run this from the repo root:
 
 ```sh
-corepack pnpm --dir frontend --filter @calendar/docs test
+just docs test
 ```
 
 It passes when the tests report no failures. A failure names the card and the rule it broke. Fix every failure and run it again.

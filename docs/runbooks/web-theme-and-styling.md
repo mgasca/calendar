@@ -263,9 +263,9 @@ Steps for your own view:
 
 Do all of these before opening the PR:
 
-1. **Guards.** `just frontend test-web dev/styles.test.ts` and `corepack pnpm --dir frontend --filter @calendar/theme test` fail on a colour literal or a theme selector outside `tokens.css`, a `var(--token)` that nothing defines, light and dark sets that differ, the OS-fallback block drifting from the dark set, or a contrast pair below its threshold. It reads every `.css` file under `src/` (and `@calendar/theme` scans the app and the docs site), so `index.css` and any stylesheet you add are covered automatically.
+1. **Guards.** `just frontend test-web dev/styles.test.ts` and `(cd frontend && corepack pnpm --filter @calendar/theme test)` fail on a colour literal or a theme selector outside `tokens.css`, a `var(--token)` that nothing defines, light and dark sets that differ, the OS-fallback block drifting from the dark set, or a contrast pair below its threshold. It reads every `.css` file under `src/` (and `@calendar/theme` scans the app and the docs site), so `index.css` and any stylesheet you add are covered automatically.
 2. **Component tests.** Test what the view says (roles, text, `aria-*`), not how it looks. jsdom has no CSS cascade, so a test cannot see colours; do not assert them.
-3. **Full frontend checks.** `just frontend lint`, `just frontend typecheck`, `just frontend test` and `corepack pnpm --dir frontend format:check`.
+3. **Full frontend checks.** `just frontend lint`, `just frontend typecheck`, `just frontend test` and `just frontend format-check`.
 4. **Look at it.** Run the app (the `run-calendar` skill describes the signed-in local setup), then switch the theme with the header control to Light, Dark and System. Check:
    - every state in the table above, in both themes, at a narrow width (360 px) and a wide one;
    - the keyboard focus ring on every control;

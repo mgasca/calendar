@@ -67,6 +67,8 @@ export interface Snapshot {
   generatedAt: string;
   repository: string;
   ci: CiSection;
+  quality?: Record<string, unknown> | null;
+  agents?: Record<string, unknown> | null;
 }
 
 /** What the build found: no snapshots yet (data branch absent or empty), or the snapshots, oldest first. */
@@ -88,6 +90,9 @@ export class SnapshotError extends Error {
 }
 
 const rootKeys = ['version', 'date', 'generatedAt', 'repository', 'ci'];
+// Sections whose pages other slices deliver: accepted as objects here (the .NET rules check them and the privacy scan
+// covers every string); the page for each replaces this with a full check.
+const optionalRootKeys = ['quality', 'agents'];
 const ciKeysV1 = ['workflow', 'basis', 'runs', 'window', 'jobs'];
 const jobKeysV1 = [
   'job',
@@ -122,14 +127,19 @@ const isObject = (value: Json): value is Record<string, Json> =>
 class Checker {
   readonly problems: string[] = [];
 
-  keys(value: Json, path: string, allowed: string[]): value is Record<string, Json> {
+  keys(
+    value: Json,
+    path: string,
+    allowed: string[],
+    optional: string[] = [],
+  ): value is Record<string, Json> {
     if (!isObject(value)) {
       this.problems.push(`${path}: must be an object`);
       return false;
     }
     let ok = true;
     for (const key of Object.keys(value)) {
-      if (!allowed.includes(key)) {
+      if (!allowed.includes(key) && !optional.includes(key)) {
         this.problems.push(`${path}.${key}: field is not in the schema`);
         ok = false;
       }
@@ -228,7 +238,7 @@ export function parseSnapshot(file: string, text: string): Snapshot {
   }
   const check = new Checker();
   check.scan(json, '$');
-  if (check.keys(json, '$', rootKeys)) {
+  if (check.keys(json, '$', rootKeys, optionalRootKeys)) {
     const version = json.version;
     if (
       typeof version !== 'number' ||
@@ -239,6 +249,8 @@ export function parseSnapshot(file: string, text: string): Snapshot {
       check.problems.push(`$.version: must be ${oldestVersion} to ${currentVersion}`);
     } else {
       checkRoot(check, json, version >= 2);
+      for (const key of ['quality', 'agents'])
+        if (key in json && !isObject(json[key])) check.problems.push(`$.${key}: must be an object`);
     }
   }
   if (check.problems.length > 0) throw new SnapshotError(file, check.problems);

@@ -94,6 +94,277 @@
       }
     ]
   },
+  "quality": {
+    "workflow": "ci.yml",
+    "basis": {
+      "runs": "measured",
+      "superseded": "inferred",
+      "jobs": "measured",
+      "guards": "inferred"
+    },
+    "sample": {
+      "runs": 100,
+      "ignoredRuns": 0,
+      "window": {
+        "from": "2026-11-08T15:35:08Z",
+        "to": "2026-11-09T17:05:16Z"
+      }
+    },
+    "rule": {
+      "confidence": 0.95,
+      "minTrials": 20
+    },
+    "guard": {
+      "job": "Tooling",
+      "step": "Test and lint tooling"
+    },
+    "scopes": [
+      {
+        "scope": "main",
+        "listQuery": "branch:main event:push",
+        "runs": {
+          "total": 23,
+          "passed": 20,
+          "passedAfterRerun": 0,
+          "failed": 2,
+          "cancelled": 1,
+          "superseded": 0,
+          "other": 0,
+          "reruns": 0
+        },
+        "failedRunIds": [42620951160, 42578792899],
+        "rerunRunIds": [],
+        "jobs": [
+          {
+            "job": "ADR conventions",
+            "required": false,
+            "trials": 8,
+            "failures": 0,
+            "verdict": "inconclusive",
+            "rate": null,
+            "low": null,
+            "high": null
+          },
+          {
+            "job": "Backend",
+            "required": false,
+            "trials": 22,
+            "failures": 0,
+            "verdict": "conclusive",
+            "rate": 0,
+            "low": 0,
+            "high": 0.1544
+          },
+          {
+            "job": "CI result",
+            "required": true,
+            "trials": 22,
+            "failures": 2,
+            "verdict": "conclusive",
+            "rate": 0.0909,
+            "low": 0.0112,
+            "high": 0.2916
+          },
+          {
+            "job": "Changes",
+            "required": false,
+            "trials": 22,
+            "failures": 0,
+            "verdict": "conclusive",
+            "rate": 0,
+            "low": 0,
+            "high": 0.1544
+          },
+          {
+            "job": "Container image",
+            "required": false,
+            "trials": 22,
+            "failures": 1,
+            "verdict": "conclusive",
+            "rate": 0.0455,
+            "low": 0.0012,
+            "high": 0.2284
+          },
+          {
+            "job": "Docs site",
+            "required": false,
+            "trials": 22,
+            "failures": 0,
+            "verdict": "conclusive",
+            "rate": 0,
+            "low": 0,
+            "high": 0.1544
+          },
+          {
+            "job": "Frontend",
+            "required": false,
+            "trials": 22,
+            "failures": 1,
+            "verdict": "conclusive",
+            "rate": 0.0455,
+            "low": 0.0012,
+            "high": 0.2284
+          },
+          {
+            "job": "Tooling",
+            "required": false,
+            "trials": 22,
+            "failures": 0,
+            "verdict": "conclusive",
+            "rate": 0,
+            "low": 0,
+            "high": 0.1544
+          }
+        ],
+        "guardDays": [
+          {
+            "date": "2026-11-08",
+            "trials": 2,
+            "failures": 0
+          },
+          {
+            "date": "2026-11-09",
+            "trials": 20,
+            "failures": 0
+          }
+        ]
+      },
+      {
+        "scope": "pullRequest",
+        "listQuery": "event:pull_request",
+        "runs": {
+          "total": 77,
+          "passed": 52,
+          "passedAfterRerun": 2,
+          "failed": 15,
+          "cancelled": 1,
+          "superseded": 7,
+          "other": 0,
+          "reruns": 2
+        },
+        "failedRunIds": [
+          42660958980, 42651472399, 42643384100, 42634883725, 42627173895, 42620999996, 42619980195,
+          42619441563, 42618666414, 42614440223, 42613765425, 42612266277, 42586406914, 42586340411,
+          42586131006
+        ],
+        "rerunRunIds": [42645319724, 42588104954],
+        "jobs": [
+          {
+            "job": "ADR conventions",
+            "required": false,
+            "trials": 1,
+            "failures": 0,
+            "verdict": "inconclusive",
+            "rate": null,
+            "low": null,
+            "high": null
+          },
+          {
+            "job": "ADR preview",
+            "required": false,
+            "trials": 6,
+            "failures": 0,
+            "verdict": "inconclusive",
+            "rate": null,
+            "low": null,
+            "high": null
+          },
+          {
+            "job": "Backend",
+            "required": false,
+            "trials": 18,
+            "failures": 0,
+            "verdict": "inconclusive",
+            "rate": null,
+            "low": null,
+            "high": null
+          },
+          {
+            "job": "CI result",
+            "required": true,
+            "trials": 72,
+            "failures": 18,
+            "verdict": "conclusive",
+            "rate": 0.25,
+            "low": 0.1554,
+            "high": 0.366
+          },
+          {
+            "job": "Cancel superseded runs",
+            "required": false,
+            "trials": 72,
+            "failures": 0,
+            "verdict": "conclusive",
+            "rate": 0,
+            "low": 0,
+            "high": 0.0499
+          },
+          {
+            "job": "Changes",
+            "required": false,
+            "trials": 72,
+            "failures": 0,
+            "verdict": "conclusive",
+            "rate": 0,
+            "low": 0,
+            "high": 0.0499
+          },
+          {
+            "job": "Container image",
+            "required": false,
+            "trials": 34,
+            "failures": 0,
+            "verdict": "conclusive",
+            "rate": 0,
+            "low": 0,
+            "high": 0.1028
+          },
+          {
+            "job": "Docs site",
+            "required": false,
+            "trials": 46,
+            "failures": 1,
+            "verdict": "conclusive",
+            "rate": 0.0217,
+            "low": 0.0006,
+            "high": 0.1153
+          },
+          {
+            "job": "Frontend",
+            "required": false,
+            "trials": 16,
+            "failures": 1,
+            "verdict": "inconclusive",
+            "rate": null,
+            "low": null,
+            "high": null
+          },
+          {
+            "job": "Tooling",
+            "required": false,
+            "trials": 52,
+            "failures": 10,
+            "verdict": "conclusive",
+            "rate": 0.1923,
+            "low": 0.0963,
+            "high": 0.3253
+          }
+        ],
+        "guardDays": [
+          {
+            "date": "2026-11-08",
+            "trials": 2,
+            "failures": 0
+          },
+          {
+            "date": "2026-11-09",
+            "trials": 50,
+            "failures": 0
+          }
+        ]
+      }
+    ]
+  },
   "flow": {
     "basis": "measured",
     "minSample": 5,

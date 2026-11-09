@@ -7,6 +7,7 @@ pr:
   - https://github.com/mgasca/calendar/pull/604
   - https://github.com/mgasca/calendar/pull/609
   - https://github.com/mgasca/calendar/pull/606
+  - https://github.com/mgasca/calendar/pull/607
 adrs: ["0017", "0025", "0045", "0046", "0049"]
 ---
 
@@ -57,7 +58,7 @@ Agreed with the maintainer in a Claude Code session on 2026-11-09 and recorded o
 3. **Given** a valid latest snapshot, **when** the documentation site is built, **then** the CI-speed page shows each CI job's run count, minimum, median, p90 and maximum, its baseline and threshold, and the trend verdict of ADR-0045 ([dashboard.test.ts](../../frontend/apps/docs/src/lib/dashboard.test.ts), [delivery-dashboard.tests.cs](../../tools/delivery-dashboard/tests/delivery-dashboard.tests.cs)).
 4. **Given** an invalid snapshot, **when** the site is built, **then** the build fails with a message that names the file, the field and the rule. **Given** no snapshot yet (the `dashboard-data` branch does not exist or holds none), **then** the build succeeds and the page says plainly that no snapshot exists yet, with no numbers, so a fresh clone, a fork and the time before the first daily run still build. *(Amended in #597: the original wording failed the build for a missing snapshot, but before the first workflow run there is nothing to read.)* ([dashboard.test.ts](../../frontend/apps/docs/src/lib/dashboard.test.ts))
 5. **Given** a number on the page, **when** I read it, **then** it states whether it is measured or inferred and gives its sample and window ([dashboard.test.ts](../../frontend/apps/docs/src/lib/dashboard.test.ts)).
-6. **Given** a job with too few runs, **when** the page shows its failure rate, **then** it is marked inconclusive, not shown as 0 % or 100 %.
+6. **Given** a job with too few runs, **when** the page shows its failure rate, **then** it is marked inconclusive, not shown as 0 % or 100 %. "Too few" is fewer than 20 trials; `main` and pull requests are separate tables. Data: [quality tests](../../tools/delivery-dashboard/tests/QualityTests.cs) (`Fewer_trials_than_the_rule_needs_are_inconclusive_with_no_rate_and_no_interval`, `An_inconclusive_row_with_a_rate_fails`); the page is delivered after #597.
 7. **Given** a metric breaches its threshold, **when** the daily workflow runs, **then** it opens or updates exactly one issue and opens no other alert.
 8. **Given** an issue with no count comments, **when** the agent proxies are computed, **then** the issue appears with no cost data and does not fail the run.
 9. **Given** the change is complete, **when** I run `just check`, **then** it passes, including the architecture model entry for the new components.
@@ -115,6 +116,14 @@ Agreed with the maintainer in a Claude Code session on 2026-11-09 and recorded o
 * **Window:** merged pull requests of the last 30 days; GitHub returns the newest 100, and when that page is full the window starts at the oldest merge returned, so the real window is shown. A real run on 2026-11-09 covered 2.1 days for that reason.
 * **Epic progress** counts the issues named in the epic's task list by their real state, not by the ticked box.
 * **Tests:** constructed histories with a squash-merged stack, an issue closed by two pull requests, a full page, a branch cycle, task-list parsing, the GraphQL parser on constructed JSON and the schema rules (`tools/delivery-dashboard/tests/FlowTests.cs`); the docs page on the fixtures (`dashboard.test.ts`).
+
+### Quality section (#599)
+
+* **Data:** the optional `quality` section of the snapshot (`tools/delivery-dashboard/QualitySection.cs`, `QualityRules.cs`): run classes (`passed`, `passedAfterRerun`, `failed`, `cancelled`, `superseded`, `other`) for pushes to `main` and for pull requests, failure rate per job with a two-sided 95 % Clopper-Pearson interval, the required check `CI result` flagged, run ids and an Actions search query that back each count, and the guard step per day. Version 1 stays: the section is optional, so older files validate.
+* **Cancelled and superseded runs are no failures**, and their jobs are trials in no rate (`CI result` fails there only because the others were cancelled; found on the first real sample, where it made 3 failures of 2 failed runs). A run is `superseded` when a later `pull_request` run of the same branch exists, which is **inferred**; the other counts are recorded conclusions (**measured**).
+* **Inconclusive below 20 trials**, with counts and no rate or interval. The number 20 is in the snapshot (`rule.minTrials`), so changing it needs no schema change.
+* **Guards over time are inferred:** the delivery guards have no CI job of their own; they run in the Tooling job's step "Test and lint tooling" with the other tool tests, so a failure of that step is not necessarily a guard.
+* **Answered by the maintainer on #607:** (1) a failure rate is conclusive from 20 trials, stored as `rule.minTrials` in the snapshot; (2) pull request runs are shown beside `main` in separate tables, `main` first; (3) the Tooling step "Test and lint tooling" is the delivery-guards proxy, marked inferred on the page, and a separate follow-up issue is opened only if the number proves too coarse.
 
 ### API
 

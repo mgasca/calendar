@@ -6,6 +6,9 @@
 #:include ../../ci-timings/Trend.cs
 #:include ../Snapshot.cs
 #:include ../SnapshotRules.cs
+#:include ../QualitySection.cs
+#:include ../QualityRules.cs
+#:include QualityTests.cs
 #:include ../FlowSection.cs
 #:include ../FlowRules.cs
 #:include FlowTests.cs

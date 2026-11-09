@@ -88,6 +88,7 @@ public sealed record CiSection(
 /// <param name="GeneratedAt">When the snapshot was taken.</param>
 /// <param name="Repository"><c>owner/name</c> of the repository the data comes from.</param>
 /// <param name="Ci">The CI-speed section.</param>
+/// <param name="Quality">The quality section (#599); null in a snapshot written without it.</param>
 /// <param name="Flow">The flow section (#598); null in a snapshot written without it.</param>
 public sealed record Snapshot(
   int Version,
@@ -95,6 +96,7 @@ public sealed record Snapshot(
   DateTimeOffset GeneratedAt,
   string Repository,
   CiSection Ci,
+  QualitySection? Quality = null,
   FlowSection? Flow = null);
 
 /// <summary>Builds the CI-speed section from sampled runs.</summary>
@@ -227,6 +229,11 @@ public static class SnapshotJson
       writer.WriteString("repository", snapshot.Repository);
       writer.WritePropertyName("ci");
       WriteCi(writer, snapshot.Ci);
+      if (snapshot.Quality is not null)
+      {
+        writer.WritePropertyName("quality");
+        QualityJson.Write(writer, snapshot.Quality);
+      }
       if (snapshot.Flow is not null)
       {
         writer.WritePropertyName("flow");

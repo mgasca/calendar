@@ -128,6 +128,21 @@ describe('reading snapshots', () => {
     },
   );
 
+  it('accepts the optional sections that other slices add, and still scans their strings', async () => {
+    const valid = await validText('2026-11-08.json');
+    const withSections = valid.replace(
+      '"version": 2,',
+      '"version": 2, "quality": {"scopes": []}, "agents": {"sample": {}},',
+    );
+    expect(withSections).not.toBe(valid);
+    expect(parseSnapshot('x.json', withSections).date).toBe('2026-11-08');
+    const leaking = withSections.replace('"scopes"', '"/home/someone"');
+    expect(() => parseSnapshot('x.json', leaking)).toThrow('looks like a machine path');
+    expect(() =>
+      parseSnapshot('x.json', valid.replace('"version": 2,', '"version": 2, "quality": 3,')),
+    ).toThrow('$.quality: must be an object');
+  });
+
   it('fails when version 2 lacks the version 2 fields', () => {
     const valid = JSON.parse(
       '{"version":2,"date":"2026-11-09","generatedAt":"2026-11-09T06:47:05Z","repository":"a/b",' +

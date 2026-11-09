@@ -89,6 +89,8 @@ export interface Snapshot {
   repository: string;
   ci: CiSection;
   flow: FlowSection | null;
+  quality?: Record<string, unknown> | null;
+  agents?: Record<string, unknown> | null;
 }
 
 /** What the build found: no snapshots yet (data branch absent or empty), or the snapshots, oldest first. */
@@ -111,7 +113,9 @@ export class SnapshotError extends Error {
 
 const rootKeys = ['version', 'date', 'generatedAt', 'repository', 'ci'];
 // Sections added after version 1: absent from older files, validated when present.
-const optionalRootKeys = ['flow'];
+// Sections whose pages are delivered by their own slices are accepted as objects here (the .NET rules check them, and
+// the privacy scan above covers every string); the page for each replaces this with a full check.
+const optionalRootKeys = ['flow', 'quality', 'agents'];
 const ciKeysV1 = ['workflow', 'basis', 'runs', 'window', 'jobs'];
 const jobKeysV1 = [
   'job',
@@ -269,6 +273,8 @@ export function parseSnapshot(file: string, text: string): Snapshot {
     } else {
       checkRoot(check, json, version >= 2);
       if ('flow' in json) checkFlow(check, json.flow);
+      for (const key of ['quality', 'agents'])
+        if (key in json && !isObject(json[key])) check.problems.push(`$.${key}: must be an object`);
     }
   }
   if (check.problems.length > 0) throw new SnapshotError(file, check.problems);

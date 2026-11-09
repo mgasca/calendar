@@ -238,7 +238,7 @@ public sealed class FlowRulesTests
   private static string Json(FlowSection? flow = null) => SnapshotJson.Write(Snapshot(flow ?? Section()));
 
   private static Snapshot Snapshot(FlowSection? flow) =>
-    new(SnapshotJson.CurrentVersion, new DateOnly(2026, 11, 9), Now, "mgasca/calendar", CiSnapshot.Build("ci.yml", []), flow);
+    new(SnapshotJson.CurrentVersion, new DateOnly(2026, 11, 9), Now, "mgasca/calendar", CiSnapshot.Build("ci.yml", []), Flow: flow);
 
   [Fact]
   public void A_snapshot_with_a_flow_section_is_valid_and_one_without_still_is()

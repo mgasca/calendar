@@ -109,6 +109,7 @@ Agreed with the maintainer in a Claude Code session on 2026-11-09 and recorded o
 * **Trend verdicts come from `ci-timings`.** The snapshot tool reads `.github/ci-baseline.json` and calls `Trend.RecentRuns` and `Trend.Evaluate` on the runs it already sampled, so the page and the gate cannot disagree and no GitHub call was added. With fewer recent runs than the check needs the verdict is `inconclusive`, never "no shift".
 * **Two readers, one set of fixtures.** The privacy rules live in the .NET tool and run before a snapshot is published; the docs reader re-checks shape and the same four privacy patterns before rendering, because the branch is outside the pull request flow, and escapes every job name it prints. The valid fixtures are read by both test suites so the two readers cannot drift apart. Known gap: the .NET rules test runs in the Tooling job and the docs tests in the Docs site job, and a change to a shared fixture runs only the Docs site job on a pull request; `main` runs both.
 * **Deferred: superseded-run waste.** It needs pull request runs and two jobs calls per pair (dozens of calls per daily snapshot), so the page states that it is not shown. A follow-up, not part of this slice.
+* **Answered by the maintainer on #609:** the absent-versus-invalid reading above is accepted, and superseded-run waste stays out of this slice (a follow-up, not yet filed as an issue).
 
 ### Flow page (#598)
 

@@ -31,17 +31,23 @@ The sweep is read-only. Its outputs are the report, published in step 7 as one d
      - one of its cited tokens changed: build a reverse index from cited token to records, and match it against `git diff --name-only W..origin/main` (a recipe or version counts as changed when the file that defines it did);
      - it has J3 deferral or trigger phrases, and a story card, ADR or issue it names moved;
      - an issue or PR updated since the watermark names it (the M5 search);
-     - it is one of the *k* = 6 records judged longest ago, ties by number (the rotation). The records the previous report lists as left over come first, ahead of the *k*: those past the workflow's run cap, those whose judge returned nothing, and those a by-hand run did not reach.
+     - it is one of the *k* = 6 records judged longest ago, ties by number (the rotation);
+     - the previous report lists it as left over: it was past the workflow's run cap, its judge returned nothing, or a by-hand run did not reach it.
 
-     Give each record its reason, naming the change (`0011: cited justfile changed`). Order the delta by reason, in the order of the list above: changed record, changed token, trigger, open work, left over, rotation. Ties go by number, and a record with several reasons takes its first. Every other record is carried.
+     Give each record its reason, naming the change (`0011: cited justfile changed`). Every other record is carried. Judge the delta in three groups, in this order:
+     1. **The rotation:** all *k* records, whatever else selected them.
+     2. **The left-over records,** in the order the previous report lists them.
+     3. **The rest, by reason:** changed record, changed token, trigger, open work. Ties go by number, and a record with several reasons takes its first.
+
+     The rotation goes first so that a busy day cannot starve it. A change to the `justfile` or a version file can select half the log. As long as each run judges at least *k* records, every record is judged at least once every ⌈records ÷ *k*⌉ sweeps, which is nine for the 49-record log. On the workflow path that holds while `capRun` is at least 3*k* + 1 (19). Records a run does not reach are left over, the older backlog first, and the next run takes them before new selections.
    - **Checks.** Run the catalogue, cheapest first. The mechanical checks (M) run in the session on every record on every sweep. The judgement checks (J) read only the delta records. They take one of two paths, and the report names the one that ran:
      - **Workflow (Claude Code only, ADR-0044 and its amendment of 2026-11-08).** Run the saved workflow `.claude/workflows/adr-sweep-judge.js` with the Workflow tool and its `scriptPath`. This instruction is the opt-in.
        - **What to pass.** `args` is `{ main: <step 1 SHA>, inventory: <the step 2 JSON array>, watermark: <the previous report's watermark line, or null>, leftOver: [<the ids it lists as left over>] }`.
          - `checks` defaults to `["J1","J2","J3","J4","J5"]`. Add `"J7"` on request or when the open issue list is short.
          - `k` (rotation, default 6), `capRun` (default 40 agents per run) and `capRecord` (default 12 agents per record) are passed only to change them.
          - Passing `records: [{ id, path, reasons, checks }]` skips selection and judges those records in the given order: a delta selected by hand, or a seeded proof run.
-       - **Selection.** The workflow selects the delta by the rules above. One read-only select agent (on Sonnet) does the parts that need `git` and `gh`: changed records, changed cited tokens, triggers and open work. The left-over records and the rotation over the watermark's `judged=` groups are computed in plain code. A `null` or unparseable watermark, or one not in the history of `main`, means a full run, and the workflow logs it.
-       - **Judging.** It runs one judge per record (on Sonnet) and two `sweep-skeptic` agents per Fix now or Decide finding, lenses *true* and *matters*. A finding is confirmed only if both decline, and uncertainty refutes. Watch findings come back unverified.
+       - **Selection.** The workflow selects the delta by the rules above. One `sweep-judge` agent does the parts that need `git` and `gh`: changed records, changed cited tokens, triggers and open work. The left-over records and the rotation over the watermark's `judged=` groups are computed in plain code. Admission follows the three groups above: each admitted record reserves its judge and one pair of skeptics, which gives 13 records at the default cap. A `null` or unparseable watermark, or one not in the history of `main`, means a full run, and the workflow logs it.
+       - **Judging.** It runs one `sweep-judge` agent per admitted record and two `sweep-skeptic` agents per Fix now or Decide finding, lenses *true* and *matters*. A finding is confirmed only if both decline, and uncertainty refutes. Watch findings come back unverified.
        - **What it returns:**
          - `selection`: the mode (`delta`, `full`, `given` or `failed`) and a summary;
          - `delta`: each record with its reasons, for the report;
@@ -52,6 +58,7 @@ The sweep is read-only. Its outputs are the report, published in step 7 as one d
 
          It never writes to GitHub or files.
        - **If selection failed**, select the delta by hand and run the workflow again with `records`, or take the by-hand path.
+       - **Agent types.** `sweep-judge` (Sonnet) and `sweep-skeptic` (Haiku) are read-only definitions in `.claude/agents/`, because these agents read untrusted issue and PR text. A session reads those definitions when it starts, so the first run after one changes needs a fresh session.
 
        Then, in the session:
        - **Group findings that share a cause** across records, such as one renamed recipe cited by three records. Report one finding that names every record.
@@ -60,7 +67,7 @@ The sweep is read-only. Its outputs are the report, published in step 7 as one d
        - **Records in `leftOver` were not judged.** They keep their previous judged date in the watermark. The report names them under `left over:`, so the next run takes them first.
 
        If the Workflow tool is not available or the run fails, take the by-hand path and say so in the report.
-     - **By hand (any harness).** Read each delta record at `origin/main` and run J1 to J5 yourself, adding J7 on the same terms, as the catalogue says. Classify as step 4 says and cite the evidence. No skeptic pass runs, so the report says the findings are unverified. When the delta is more than one context can judge well, judge the records in delta order, stop, and name the records not reached. They are not judged, and the next run's rotation takes them first.
+     - **By hand (any harness).** Read each delta record at `origin/main` and run J1 to J5 yourself, adding J7 on the same terms, as the catalogue says. Classify as step 4 says and cite the evidence. No skeptic pass runs, so the report says the findings are unverified. When the delta is more than one context can judge well, judge the records in the order of the three groups, stop, and name the records not reached. They are not judged, and the report lists them as left over, so the next run takes them first.
      - **Either path:** J8 is a session step, run only when the environment has network. J6 runs with the mechanical checks.
 4. **Classify each finding:**
    - **Fix now**: unambiguous and mechanical, such as a model status that differs from the file, or a superseding record that never names the one it replaced.

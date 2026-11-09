@@ -56,17 +56,21 @@ Both sweeps re-read everything on every run. Neither has a watermark, so neither
     * new issues;
     * a rotation of the issues judged longest ago.
 * **An ADR judgement workflow** ([#564](https://github.com/mgasca/calendar/issues/564)), `.claude/workflows/adr-sweep-judge.js`, Claude Code only.
-  * **Selection:** the session passes the previous watermark, the records the previous report left over, and the inventory. The workflow selects the delta itself, by the rules above, and returns it with each record's reason. One read-only agent on Sonnet does the parts that need `git` and `gh`. The left-over records and the rotation over the watermark come from plain code. Without a watermark it is a full run. The session can still pass records selected by hand. Changed in review of [#570](https://github.com/mgasca/calendar/pull/570), 2026-11-08.
-  * **Judges:** the workflow runs one judge per delta record, on Sonnet, (J1 to J5, plus J7 on request) against `origin/main`. Each judge returns findings with the check id, class, evidence as file and line, and whether the finding was inferred.
+  * **Selection:** the session passes the previous watermark, the records the previous report left over, and the inventory. The workflow selects the delta itself, by the rules above, and returns it with each record's reason. One read-only `sweep-judge` agent does the parts that need `git` and `gh`. The left-over records and the rotation over the watermark come from plain code. Without a watermark it is a full run. The session can still pass records selected by hand. Changed in review of [#570](https://github.com/mgasca/calendar/pull/570), 2026-11-08.
+  * **Judges:** the workflow runs one `sweep-judge` agent per admitted record, on Sonnet, (J1 to J5, plus J7 on request) against `origin/main`. Each judge returns findings with the check id, class, evidence as file and line, and whether the finding was inferred.
   * **Skeptics:** each Fix now or Decide finding goes to two `sweep-skeptic` agents, one per lens. *True* asks whether the claim holds on `origin/main`. *Matters* asks whether a reader of the record would act differently. Watch findings are not verified. A finding is confirmed only if both skeptics decline. Uncertainty refutes and says so, as in 0035.
   * **Two caps, both logged:**
     * **Per record, 12 agents:** the judge plus that record's skeptics. Findings past this cap come back as unexamined, highest class first (Fix now, then Decide).
-    * **Per run, 40 agents:** records are taken in order of their reason. Records past this cap come back as left over and are first in the next rotation. So does a record whose judge returned nothing (#570, 2026-11-08). Each admitted record reserves its judge and one pair of skeptics, so at most 13 records are judged at the default.
-    * **The rotation:** *k* = 6 records per sweep, so every record is judged at least once every nine sweeps of the 49-record log.
+    * **Per run, 40 agents:** each admitted record reserves its judge and one pair of skeptics, so at most 13 records are judged at the default.
+      * **Admission order:** the *k* rotation records first, then the previous run's left-over records, then the selected records by reason.
+      * **Left over:** records past this cap, and a record whose judge returned nothing, come back as left over. The older backlog comes first, and the next run takes them before new selections.
+      * **Skeptic grants:** the shared skeptic budget is granted once every judge has settled, in order of reason.
+      * Changed in review of #570, 2026-11-08 and 2026-11-09.
+    * **The rotation:** *k* = 6 records per sweep, so every record is judged at least once every nine sweeps of the 49-record log. Because the rotation is admitted first, this holds however busy the day is, as long as a run admits at least *k* records (`capRun` of 19 or more).
 
     All three are workflow `args` with these defaults.
   * **The workflow returns data and never writes to GitHub.**
-* **A `sweep-skeptic` agent definition**, `.claude/agents/sweep-skeptic.md`: read-only, on Haiku, for one claim about `origin/main` or GitHub state through one lens. It is separate from `skeptic`, which starts from a branch diff and which the review before a merge depends on.
+* **A `sweep-skeptic` agent definition**, `.claude/agents/sweep-skeptic.md`: read-only, on Haiku, for one claim about `origin/main` or GitHub state through one lens. It is separate from `skeptic`, which starts from a branch diff and which the review before a merge depends on. A `sweep-judge` definition, `.claude/agents/sweep-judge.md`, read-only and on Sonnet, runs the select agent and the judges (added in review of #570).
 * **Option B in both skills.** In Claude Code, the per-item judgement runs the workflow, and the skill's instruction counts as the opt-in, as `issue-handover` does for the review. Any other harness follows the by-hand steps. The session keeps the work that needs every result or writes to GitHub:
   * fetch and inventory;
   * the remaining mechanical steps, and the delta on the by-hand path;
@@ -129,7 +133,7 @@ An amendment to ADR-0044 is expected (#561). No new record is expected.
 * **Mechanical checks in `check-adr`, not in agents:** they are deterministic, free, and run in CI on every PR, which turns "found at the next sweep" into "refused at the PR" for every harness. The skill already named them as candidates. Agreed 2026-11-08.
 * **An epic with a child per deliverable:** each deliverable touches different files and can be reviewed and merged on its own, as in 0045. Agreed 2026-11-08.
 * **The session posts, not the script:** every GitHub write stays behind the public-post guard and the session's judgement, as in 0035.
-* **Sonnet judges, Haiku skeptics:** the judges run on Sonnet (the workflow's per-agent `model`), which keeps the per-record J checks cheap. `sweep-skeptic` is pinned to Haiku in its front matter, like `skeptic`. This differs from the reviewers, which run on Opus. The benchmark record shows whether Sonnet misses findings that matter. Answered on #566, 2026-11-08.
+* **Sonnet judges, Haiku skeptics:** the judges run on Sonnet, which keeps the per-record J checks cheap. The model is pinned in the front matter of `sweep-judge`. That is a read-only agent definition, because judges read untrusted issue and PR text (changed in review of #570). `sweep-skeptic` is pinned to Haiku in its front matter, like `skeptic`. This differs from the reviewers, which run on Opus. The benchmark record shows whether Sonnet misses findings that matter. Answered on #566, 2026-11-08.
 * **Caps of 12 per record and 40 per run, rotation 6:** the per-record cap stops one record with many findings from using up the run's budget. The run cap bounds a day with a large refactor. Answered on #566 and in conversation, 2026-11-08.
 * **No paired by-hand baseline:** the comparison uses the 2026-11-07 report, so the first runs cost no more than the workflow itself. The price is that the by-hand path has no token figure. Answered on #566, 2026-11-08.
 * **Two lenses, not three:** *reproduces* has nothing to run for a claim about a document or an issue thread.
@@ -149,7 +153,7 @@ An amendment to ADR-0044 is expected (#561). No new record is expected.
 | Mechanical checks and `--inventory` | `.claude/skills/adr-draft/scripts/check-adr/` (`AdrValidator.cs`, `check-adr.cs`) and its tests |
 | Sweep skills | `.claude/skills/adr-sweep/SKILL.md`, `.claude/skills/issue-sweep/SKILL.md` |
 | Workflows | `.claude/workflows/adr-sweep-judge.js`, `.claude/workflows/issue-sweep-verify.js` |
-| Skeptic agent | `.claude/agents/sweep-skeptic.md` |
+| Agents | `.claude/agents/sweep-skeptic.md`, `.claude/agents/sweep-judge.md` |
 | Measurements | a new record in `docs/benchmarks/` |
 | Sweep reports | `docs/sweeps/adr/`, `docs/sweeps/issue/` and their `docs/sweeps/README.md` (not published) |
 

@@ -1,5 +1,5 @@
 #!/usr/bin/env -S dotnet run
-#:package xunit.v3.mtp-v2@4.0.2
+#:package xunit.v3.mtp-v2@4.0.3
 #:package Shouldly@4.3.0
 #:package YamlDotNet@18.1.0
 #:include ../WorkflowYaml.cs

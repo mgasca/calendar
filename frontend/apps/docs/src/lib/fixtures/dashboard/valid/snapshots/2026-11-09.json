@@ -364,5 +364,61 @@
         ]
       }
     ]
+  },
+  "flow": {
+    "basis": "measured",
+    "minSample": 5,
+    "window": {
+      "from": "2026-10-10T06:47:05Z",
+      "to": "2026-11-09T06:47:05Z"
+    },
+    "openPullRequests": {
+      "count": 6,
+      "drafts": 1,
+      "age": {
+        "count": 6,
+        "medianSeconds": 172800,
+        "p90Seconds": 604800,
+        "maxSeconds": 777600
+      }
+    },
+    "waitingForReview": {
+      "count": 2,
+      "oldestSeconds": 389000
+    },
+    "leadTime": {
+      "sample": 42,
+      "stat": {
+        "count": 42,
+        "medianSeconds": 5400,
+        "p90Seconds": 86400,
+        "maxSeconds": 259200
+      }
+    },
+    "issueToMerge": {
+      "sample": 3,
+      "stat": null
+    },
+    "stacks": {
+      "mergedIntoBase": 4,
+      "open": [
+        {
+          "depth": 3,
+          "pullRequests": [607, 608, 611]
+        }
+      ]
+    },
+    "epics": [
+      {
+        "issue": 559,
+        "total": 10,
+        "done": 10
+      },
+      {
+        "issue": 595,
+        "total": 6,
+        "done": 2
+      }
+    ]
   }
 }

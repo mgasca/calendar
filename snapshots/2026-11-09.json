@@ -1,0 +1,80 @@
+{
+  "version": 1,
+  "date": "2026-11-09",
+  "generatedAt": "2026-11-09T16:18:29Z",
+  "repository": "mgasca/calendar",
+  "ci": {
+    "workflow": "ci.yml",
+    "basis": "measured",
+    "runs": 30,
+    "window": {
+      "from": "2026-11-08T06:46:09Z",
+      "to": "2026-11-09T16:00:51Z"
+    },
+    "jobs": [
+      {
+        "job": "ADR conventions",
+        "path": "publication",
+        "count": 4,
+        "minSeconds": 21,
+        "medianSeconds": 29,
+        "p90Seconds": 32,
+        "maxSeconds": 32
+      },
+      {
+        "job": "Backend",
+        "path": "publication",
+        "count": 30,
+        "minSeconds": 64,
+        "medianSeconds": 85,
+        "p90Seconds": 102,
+        "maxSeconds": 125
+      },
+      {
+        "job": "Changes",
+        "path": "publication",
+        "count": 30,
+        "minSeconds": 3,
+        "medianSeconds": 5,
+        "p90Seconds": 6,
+        "maxSeconds": 7
+      },
+      {
+        "job": "Container image",
+        "path": "publication",
+        "count": 30,
+        "minSeconds": 59,
+        "medianSeconds": 76,
+        "p90Seconds": 103,
+        "maxSeconds": 197
+      },
+      {
+        "job": "Docs site",
+        "path": "publication",
+        "count": 30,
+        "minSeconds": 76,
+        "medianSeconds": 105,
+        "p90Seconds": 123,
+        "maxSeconds": 125
+      },
+      {
+        "job": "Frontend",
+        "path": "publication",
+        "count": 30,
+        "minSeconds": 43,
+        "medianSeconds": 57,
+        "p90Seconds": 68,
+        "maxSeconds": 77
+      },
+      {
+        "job": "Tooling",
+        "path": "publication",
+        "count": 30,
+        "minSeconds": 62,
+        "medianSeconds": 87,
+        "p90Seconds": 216,
+        "maxSeconds": 319
+      }
+    ]
+  }
+}

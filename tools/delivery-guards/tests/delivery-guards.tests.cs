@@ -477,15 +477,21 @@ public sealed class ChangesRulesTests
 {
   private static readonly string Root = RepoRoot();
 
-  private static readonly string[] AllJobs = ["backend", "frontend", "docs", "tooling", "image"];
+  private static readonly string[] AllJobs = ["backend", "frontend", "docs", "tooling", "adr", "image"];
+
+  // Every job but ADR conventions, which never runs with Tooling because Tooling runs the same check (issue #572).
+  private const string EveryRun = "backend frontend docs tooling image";
 
   private static readonly string[] JqPaths = ["/usr/bin/jq", "/usr/local/bin/jq"];
 
   [Theory]
-  // `just tools adr` reads the story cards and the architecture model as well as the ADRs (story 0051, issue #562).
-  [InlineData("docs/stories/0038-x.md", "docs tooling")]
+  // `just tools adr` reads the story cards and the architecture model as well as the ADRs (story 0051, issue #562). A card
+  // or the model runs only the ADR check, not the whole Tooling job; an ADR still runs Tooling, which runs the check too.
+  [InlineData("docs/stories/0038-x.md", "docs adr")]
+  [InlineData("docs/architecture/calendar.architecture.json", "docs adr")]
+  [InlineData("docs/decisions/0001-x.md", "docs tooling")]
   [InlineData("docs/decisions/0046-x.md", "docs tooling")]
-  [InlineData("docs/architecture/calendar.architecture.json", "docs tooling")]
+  [InlineData("docs/storiesx/0038-x.md", "docs")]
   [InlineData("docs/architecture/README.md", "docs")]
   [InlineData("frontend/apps/docs/src/lib/adr.ts", "docs")]
   [InlineData("backend/src/Calendar.Api/Program.cs", "backend image")]
@@ -526,7 +532,7 @@ public sealed class ChangesRulesTests
   [InlineData(".github/workflows/ci.yml")]
   [InlineData(".github/ci-changes.jq")]
   public void AChangeToTheRules_RunsEverything(string file) =>
-    Run("pull_request", true, "README.md", file).ShouldBe(Expected(string.Join(' ', AllJobs)));
+    Run("pull_request", true, "README.md", file).ShouldBe(Expected(EveryRun));
 
   [Fact]
   public void FilesInSeveralSets_RunTheUnion() =>
@@ -551,14 +557,28 @@ public sealed class ChangesRulesTests
     Run("pull_request", true, "frontend/apps/web/src/main.tsx", "frontend/packages/api-client/src/index.ts", "contracts/openapi.json")
       .ShouldBe(Expected("backend frontend image"));
 
+  // ADR conventions runs for a card or the model only while nothing in the run starts Tooling, which runs the same check.
+  [Fact]
+  public void ACardWithAToolChange_RunsToolingInsteadOfTheAdrCheck() =>
+    Run("pull_request", true, "docs/stories/0038-x.md", "tools/ci-timings/CiTimings.cs").ShouldBe(Expected("docs tooling"));
+
+  [Fact]
+  public void TheModelWithAnAdr_RunsToolingInsteadOfTheAdrCheck() =>
+    Run("pull_request", true, "docs/architecture/calendar.architecture.json", "docs/decisions/0046-x.md")
+      .ShouldBe(Expected("docs tooling"));
+
+  [Fact]
+  public void ACardWithABackendChange_RunsTheAdrCheckBesideTheOthers() =>
+    Run("merge_group", true, "docs/stories/0038-x.md", "backend/src/A.cs").ShouldBe(Expected("backend docs adr image"));
+
   [Fact]
   public void AnIncompleteListing_RunsEverything() =>
-    Run("pull_request", false, "README.md").ShouldBe(Expected(string.Join(' ', AllJobs)));
+    Run("pull_request", false, "README.md").ShouldBe(Expected(EveryRun));
 
   [Theory]
   [InlineData("push")]
   [InlineData("workflow_dispatch")]
-  public void APushOrDispatch_RunsEverything(string @event) => Run(@event, true).ShouldBe(Expected(string.Join(' ', AllJobs)));
+  public void APushOrDispatch_RunsEverything(string @event) => Run(@event, true).ShouldBe(Expected(EveryRun));
 
   // Forks (ADR-0025): the rules above only decide whether the Docs site job runs. The publication artifact is built and
   // uploaded only after the Pages configuration step, which runs for main and same-repository pull requests only, so a
@@ -584,7 +604,7 @@ public sealed class ChangesRulesTests
   {
     var output = RunJq("""{"event":"pull_request","complete":true,"files":["README.md"]}""");
     output.ShouldContain("""
-      "skipped":["Backend","Frontend","Docs site","Tooling","Container image"]
+      "skipped":["Backend","Frontend","Docs site","Tooling","ADR conventions","Container image"]
       """.Trim());
     var workflow = Workflow.Parse(File.ReadAllText(Path.Combine(Root, RepoFiles.WorkflowPath)));
     foreach (var id in AllJobs)

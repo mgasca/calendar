@@ -4,11 +4,13 @@
 # Input:  {"event": "pull_request", "complete": true, "files": ["backend/src/A.cs", ...]}
 #         `files` holds every changed path, the old path of a rename included; `complete` is false when the listing may
 #         be truncated.
-# Output: {"backend": true, "frontend": false, "docs": false, "tooling": false, "image": true, "skipped": ["Frontend", ...]}
+# Output: {"backend": true, "frontend": false, "docs": false, "tooling": false, "adr": false, "image": true,
+#          "skipped": ["Frontend", ...]}
 #         one boolean per filtered job id, and the names of the jobs it skips, which CI result accepts as skipped.
 
 # The filtered jobs: id in ci.yml -> job name.
-def jobs: {backend: "Backend", frontend: "Frontend", docs: "Docs site", tooling: "Tooling", image: "Container image"};
+def jobs:
+  {backend: "Backend", frontend: "Frontend", docs: "Docs site", tooling: "Tooling", adr: "ADR conventions", image: "Container image"};
 
 # A change to the rules themselves runs everything, so the new rules are checked by every job they could skip.
 def rules_files: [".github/workflows/ci.yml", ".github/ci-changes.jq"];
@@ -29,8 +31,9 @@ def just_files: . == "justfile" or . == ".just-version" or endswith(".just");
 def tooling_github:
   [".github/ci-gate.jq", ".github/ci-baseline.json", ".github/workflows/ci-trend.yml", ".github/pull_request_template.md"];
 
-# Files beside docs/decisions/ that `just tools adr` checks (story 0051, issue #562): the architecture model's ADR
-# entries and citations (M2), and, with docs/stories/, the planned story cards that must not cite a superseded ADR (J6).
+# Files beside docs/decisions/ and docs/stories/ that `just tools adr` checks (story 0051, issue #562): the architecture
+# model's ADR entries and citations (M2); the story cards are checked for planned cards citing a superseded ADR (J6).
+# They run only ADR conventions, not the whole Tooling job, which a sub-second check does not justify (issue #572).
 def adr_inputs: ["docs/architecture/calendar.architecture.json"];
 
 # Docs site: its suite tests the publisher, .github/workflows/pages.yml (pages-workflow.test.ts), and it builds from the
@@ -46,7 +49,8 @@ def needs($job):
   elif $job == "frontend" then under(["frontend/apps/web/", "frontend/packages/", "contracts/"]) or frontend_root
   elif $job == "tooling" then
     under(["tools/", ".claude/", "infra/", "docker/", "just/", "docs/decisions/"]) or just_files or backend_msbuild
-      or IN(tooling_github[]) or IN(adr_inputs[]) or under(["docs/stories/"])
+      or IN(tooling_github[])
+  elif $job == "adr" then under(["docs/decisions/", "docs/stories/"]) or IN(adr_inputs[])
   elif $job == "image" then
     under(["backend/", "frontend/apps/web/", "frontend/packages/", "contracts/", "docker/"]) or frontend_root
       or IN("Dockerfile", ".dockerignore", "image.just")
@@ -61,4 +65,6 @@ def filtered: (.event | IN("pull_request", "merge_group")) and .complete == true
    then jobs | with_entries(.key as $job | .value = any($run.files[]; needs($job)))
    else jobs | map_values(true)
    end)
+# ADR conventions runs the check that Tooling's `just tools adr` step runs, so it runs only when Tooling does not.
+| .adr = (.adr and (.tooling | not))
 | . + {skipped: [to_entries[] | select(.value == false) | .key as $job | jobs[$job]]}

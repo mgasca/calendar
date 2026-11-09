@@ -12,6 +12,8 @@
 #:include ../FlowSection.cs
 #:include ../FlowRules.cs
 #:include FlowTests.cs
+#:include ../Alerts.cs
+#:include AlertTests.cs
 #:include QualityReuseTests.cs
 #:include QualityJobNameTests.cs
 

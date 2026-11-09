@@ -27,8 +27,9 @@ env:
 jobs:
   # Decides which jobs this run needs from the files it changes (ADR-0046, story 0038). Pull requests and merge groups
   # run only the jobs whose inputs they change; pushes and dispatches run every job, and so does a run whose file list
-  # may be truncated or that changes the rules (.github/ci-changes.jq, which tools/delivery-guards tests). CI result
-  # accepts a skipped job only when this job's output for it is false.
+  # may be truncated or that changes the rules (.github/ci-changes.jq, which tools/delivery-guards tests). ADR
+  # conventions is the one exception: a pull request or merge group never runs it with Tooling, which runs the same
+  # check. CI result accepts a skipped job only when this job's output for it is false.
   changes:
     name: Changes
     runs-on: ubuntu-latest
@@ -42,6 +43,7 @@ jobs:
       frontend: ${{ steps.decide.outputs.frontend }}
       docs: ${{ steps.decide.outputs.docs }}
       tooling: ${{ steps.decide.outputs.tooling }}
+      adr: ${{ steps.decide.outputs.adr }}
       image: ${{ steps.decide.outputs.image }}
       skipped: ${{ steps.decide.outputs.skipped }}
     steps:
@@ -279,6 +281,28 @@ jobs:
       - name: ADRs follow conventions
         run: just tools adr
 
+  # The ADR check alone, for a change to the ADRs, the story cards or the architecture model that runs no Tooling job
+  # (issue #572): `check-adr` reads all three (story 0051), and takes about a second. On a pull request or merge group,
+  # Changes never runs this job and Tooling together, because Tooling's last step runs the same check. Pushes and
+  # dispatches run both, so ADR-0045 can baseline and gate this job from main.
+  adr:
+    name: ADR conventions
+    needs: changes
+    if: needs.changes.outputs.adr == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v7
+      # The SDK Tooling uses (ADR-0017); the NuGet cache holds only the adr-draft skill's #:package pins.
+      - uses: actions/setup-dotnet@v6
+        with:
+          dotnet-version: 10.0.x
+          cache: true
+          cache-dependency-path: .claude/skills/adr-draft/**/packages.lock.json
+      # The script finds docs/decisions, docs/stories and the model from the repository root, as `just tools adr` does.
+      - name: ADRs follow conventions
+        run: dotnet run .claude/skills/adr-draft/scripts/check-adr/check-adr.cs
+
   image:
     name: Container image
     needs: changes
@@ -362,7 +386,7 @@ jobs:
   result:
     name: CI result
     if: ${{ always() }}
-    needs: [changes, backend, frontend, docs, tooling, image]
+    needs: [changes, backend, frontend, docs, tooling, adr, image]
     runs-on: ubuntu-latest
     # actions: read lets the steps below read this run's jobs from the API; contents: read checks out .github/ only,
     # for the run-time gate and its baseline from the commit under test.

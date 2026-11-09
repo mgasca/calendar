@@ -1,9 +1,10 @@
 ---
-status: planned
+status: implemented
 date: 2026-11-09
 issue: https://github.com/mgasca/calendar/issues/592
 pr:
   - https://github.com/mgasca/calendar/pull/634
+  - https://github.com/mgasca/calendar/pull/635
 adrs: ["0005", "0038"]
 ---
 
@@ -38,11 +39,11 @@ The same commands work from inside `frontend/`. The `just` recipes are not affec
 
 ### Acceptance criteria
 
-1. **Given** a clean checkout, **when** I run `just frontend format-check` from any folder, **then** it runs `prettier --check` over the frontend and exits 0 when everything is formatted and non-zero when a file is not.
-2. **Given** the guidance files in scope, **when** I search them for `pnpm --dir frontend`, **then** none is left, and each replaced command works when pasted at the repository root.
-3. **Given** the run-calendar skill, **when** an agent starts the throwaway stack from the repository root, **then** Vite starts and the health wait succeeds.
-4. **Given** a guidance file that reintroduces `corepack pnpm --dir frontend`, **when** the tests run, **then** a test fails (or the card says why no such guard was added).
-5. **Given** the change is complete, **when** I run `just check`, **then** it passes.
+1. **Given** a clean checkout, **when** I run `just frontend format-check` from any folder, **then** it runs `prettier --check` over the frontend and exits 0 when everything is formatted and non-zero when a file is not. Checked by hand: it passes on the delivery branch; it is the same `prettier --check .` that `pnpm format:check` runs, so a misformatted file fails it. No automatic test of its own.
+2. **Given** the guidance files in scope, **when** I search them for `pnpm --dir frontend`, **then** none is left, and each replaced command works when pasted at the repository root. [Guidance commands](../../frontend/apps/docs/src/lib/guidance-commands.test.ts) (`does not run pnpm with --dir from the repository root`, one case per file); the Vite and `just` forms were run from the root by hand.
+3. **Given** the run-calendar skill, **when** an agent starts the throwaway stack from the repository root, **then** Vite starts and the health wait succeeds. Partly checked: `(cd frontend/apps/web && corepack pnpm exec vite --version)` ran from the root and printed the version; the full stack was not started.
+4. **Given** a guidance file that reintroduces `corepack pnpm --dir frontend`, **when** the tests run, **then** a test fails. [Guidance commands](../../frontend/apps/docs/src/lib/guidance-commands.test.ts); it failed when the old form was appended to `frontend/AGENTS.md` and passed once it was removed.
+5. **Given** the change is complete, **when** I run `just check`, **then** it passes. CI on the delivery PR; locally `just frontend format-check` and `just docs test` (284 tests) passed.
 
 ## Design decisions
 
@@ -62,13 +63,12 @@ No new ADR is expected.
 
 ## Implementation notes
 
-*Planned. This section is completed as the story is built.*
-
 ### Where things live
 
 | Area | Location |
 | --- | --- |
-| New recipe | `frontend/mod.just` |
+| New recipe | `frontend/mod.just` (`format-check`) |
+| Guard | `frontend/apps/docs/src/lib/guidance-commands.test.ts` |
 | Guidance to update | `frontend/AGENTS.md`, `.claude/skills/run-calendar/SKILL.md`, `.claude/skills/story-draft/SKILL.md`, `docs/architecture/README.md`, `docs/runbooks/web-theme-and-styling.md` |
 
 ### API
@@ -77,16 +77,15 @@ No changes.
 
 ### Testing
 
-* The recipe is run once passing and once against a deliberately unformatted file.
-* The replaced commands are run from the repository root. Failure of the old form is reproduced first, for the record.
+* The guard test lists the guidance files by name; add a new guidance file to it when one gains commands.
+* The old form was run first and failed with `ERR_PNPM_BAD_PM_VERSION`; the new forms were run from the root.
 
 ### Lessons learned, known issues and follow-ups
 
-* To be filled in on delivery.
+* The recipe was not run against a deliberately unformatted file.
+* The guard covers a named list of files, not every file in the repository.
 
 ## User guide
-
-*Planned behaviour. This section is finalised when the story is implemented.*
 
 ### Checking the formatting of the frontend
 

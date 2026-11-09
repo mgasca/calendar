@@ -13,7 +13,7 @@ description: Show a screenshot or other image in a GitHub issue, PR or comment o
 - Add images with git plumbing from any checkout, without checking the branch out. With the number in `N` and the PNGs in `DIR`, and the commit message ending with the usual agent attribution:
 
 ```bash
-git fetch -q origin screenshots && P=$(git rev-parse origin/screenshots) && export GIT_INDEX_FILE=$(mktemp) && git read-tree "$P" && for f in "$DIR"/*.png; do git update-index --add --cacheinfo 100644,$(git hash-object -w "$f"),"$N/$(basename "$f")"; done && C=$(git commit-tree "$(git write-tree)" -p "$P" -m "Screenshots for #$N") && unset GIT_INDEX_FILE && git update-ref refs/heads/screenshots "$C" "$P" && git push -q origin screenshots && echo "$C"
+git fetch -q origin screenshots && P=$(git rev-parse origin/screenshots) && export GIT_INDEX_FILE=$(mktemp) && git read-tree "$P" && for f in "$DIR"/*.png; do git update-index --add --cacheinfo 100644,$(git hash-object -w "$f"),"$N/$(basename "$f")"; done && C=$(git commit-tree "$(git write-tree)" -p "$P" -m "Screenshots for #$N") && unset GIT_INDEX_FILE && git push -q origin "$C:refs/heads/screenshots" && echo "$C"
 ```
 
 If the push is rejected, someone added images meanwhile: run the block again, which starts from the new tip. The branch exists; never recreate it with `--orphan`.

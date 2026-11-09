@@ -1,8 +1,10 @@
 ---
-status: planned
+status: implemented
 date: 2026-11-09
 issue: https://github.com/mgasca/calendar/issues/593
-pr: []
+pr:
+  - https://github.com/mgasca/calendar/pull/636
+  - https://github.com/mgasca/calendar/pull/637
 adrs: []
 ---
 
@@ -35,9 +37,9 @@ The local ref is not needed: the block already holds the new commit in `$C`, and
 
 ### Acceptance criteria
 
-1. **Given** a checkout with no local `screenshots` branch, **when** I run the skill's publish block, **then** the commit is pushed to `origin/screenshots` and the block prints its hash.
-2. **Given** another publisher moved `origin/screenshots` after my fetch, **when** I run the block, **then** the push is rejected, and running the block again succeeds from the new tip.
-3. **Given** the change is complete, **when** I run `just check`, **then** it passes.
+1. **Given** a checkout with no local `screenshots` branch, **when** I run the skill's publish block, **then** the commit is pushed to `origin/screenshots` and the block prints its hash. Checked by hand (see Testing).
+2. **Given** another publisher moved `origin/screenshots` after my fetch, **when** I run the block, **then** the push is rejected, and running the block again succeeds from the new tip. Checked by hand (see Testing).
+3. **Given** the change is complete, **when** I run `just check`, **then** it passes. CI on the delivery PR.
 
 ## Design decisions
 
@@ -55,8 +57,6 @@ No new ADR is expected.
 
 ## Implementation notes
 
-*Planned. This section is completed as the story is built.*
-
 ### Where things live
 
 | Area | Location |
@@ -69,15 +69,13 @@ No changes.
 
 ### Testing
 
-* No automated test: the change is a command in a skill file. Criteria 1 and 2 are checked by hand, in a scratch worktree with no local `screenshots` branch, against a throwaway bare remote so the real branch is not touched; the result is recorded here on delivery.
+* No automated test: the change is a command in a skill file. Checked by hand on 2026-11-09 against a throwaway bare remote and fresh clones, never the real branch. The old block, in a clone with no local `screenshots` branch, failed with `cannot lock ref 'refs/heads/screenshots'`; the new block in the same state pushed the commit and printed its hash, and the remote then held the new file beside the old ones. With the remote moved after the fetch, the push was rejected ("fetch first"), and running the block again succeeded from the new tip.
 
 ### Lessons learned, known issues and follow-ups
 
-* None yet.
+* None. The local ref was never needed; the push of the commit already carries the old-value safety.
 
 ## User guide
-
-*Planned behaviour. This section is finalised when the story is implemented.*
 
 ### Publishing a screenshot
 

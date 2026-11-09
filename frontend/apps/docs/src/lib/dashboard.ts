@@ -61,6 +61,32 @@ export interface CiSection {
   jobs: JobRow[];
 }
 
+export interface AgentIssue {
+  issue: number;
+  countComments: number;
+  malformed: number;
+  tasks: number | null;
+  subagents: number | null;
+  comments: number;
+  reviews: number;
+  pullRequests: number;
+}
+
+/** The agent proxies section (#600): GitHub-visible activity per issue number, not token or money cost. */
+export interface AgentsSection {
+  basis: { activity: string; counts: string };
+  sample: { scanned: number; window: SnapshotWindow | null };
+  activity: {
+    issues: number;
+    withCounts: number;
+    comments: number;
+    reviews: number;
+    pullRequests: number;
+  };
+  counts: { countComments: number; malformed: number; tasks: number; subagents: number };
+  issues: AgentIssue[];
+}
+
 export interface Snapshot {
   version: number;
   date: string;
@@ -68,7 +94,7 @@ export interface Snapshot {
   repository: string;
   ci: CiSection;
   quality?: Record<string, unknown> | null;
-  agents?: Record<string, unknown> | null;
+  agents?: AgentsSection | null;
 }
 
 /** What the build found: no snapshots yet (data branch absent or empty), or the snapshots, oldest first. */
@@ -249,8 +275,9 @@ export function parseSnapshot(file: string, text: string): Snapshot {
       check.problems.push(`$.version: must be ${oldestVersion} to ${currentVersion}`);
     } else {
       checkRoot(check, json, version >= 2);
-      for (const key of ['quality', 'agents'])
+      for (const key of ['quality'])
         if (key in json && !isObject(json[key])) check.problems.push(`$.${key}: must be an object`);
+      if ('agents' in json) checkAgents(check, json.agents);
     }
   }
   if (check.problems.length > 0) throw new SnapshotError(file, check.problems);
@@ -358,7 +385,91 @@ function checkJob(check: Checker, job: Json, path: string, v2: boolean) {
   }
 }
 
-/** Where the build finds the snapshots: `DASHBOARD_DATA_DIR`, else `.dashboard-data/snapshots/` of the docs app. */
+const agentActivityKeys = ['issues', 'withCounts', 'comments', 'reviews', 'pullRequests'];
+const agentCountKeys = ['countComments', 'malformed', 'tasks', 'subagents'];
+const agentIssueKeys = [
+  'issue',
+  'countComments',
+  'malformed',
+  'tasks',
+  'subagents',
+  'comments',
+  'reviews',
+  'pullRequests',
+];
+
+function agentNumbers(check: Checker, value: Json, path: string, keys: string[]) {
+  const numbers: Record<string, number> = {};
+  if (check.keys(value, path, keys))
+    for (const key of keys) numbers[key] = check.count(value[key], `${path}.${key}`, 0);
+  return numbers;
+}
+
+/** The agents section's shape and sums; the .NET rules (AgentRules.cs) check the same. */
+function checkAgents(check: Checker, agents: Json) {
+  const path = '$.agents';
+  if (!check.keys(agents, path, ['basis', 'sample', 'activity', 'counts', 'issues'])) return;
+  const basis = agents.basis;
+  if (check.keys(basis, `${path}.basis`, ['activity', 'counts']))
+    for (const key of ['activity', 'counts'])
+      check.oneOf(basis[key], `${path}.basis.${key}`, ['measured', 'inferred']);
+  const sample = agents.sample;
+  let scanned = 0;
+  if (check.keys(sample, `${path}.sample`, ['scanned', 'window'])) {
+    scanned = check.count(sample.scanned, `${path}.sample.scanned`, 0);
+    check.window(sample.window, `${path}.sample.window`, scanned);
+  }
+  const activity = agentNumbers(check, agents.activity, `${path}.activity`, agentActivityKeys);
+  const counts = agentNumbers(check, agents.counts, `${path}.counts`, agentCountKeys);
+  if (!Array.isArray(agents.issues)) {
+    check.problems.push(`${path}.issues: must be an array`);
+    return;
+  }
+  const rows: Record<string, number>[] = [];
+  const seen = new Set<number>();
+  agents.issues.forEach((issue: Json, index) => {
+    const issuePath = `${path}.issues[${index}]`;
+    if (!check.keys(issue, issuePath, agentIssueKeys)) return;
+    const row: Record<string, number> = {};
+    for (const key of agentIssueKeys.filter((name) => name !== 'tasks' && name !== 'subagents'))
+      row[key] = check.count(issue[key], `${issuePath}.${key}`, key === 'issue' ? 1 : 0);
+    for (const key of ['tasks', 'subagents']) {
+      if ((row.countComments ?? 0) === 0) {
+        if (issue[key] !== null)
+          check.problems.push(`${issuePath}.${key}: must be null without a count comment`);
+        row[key] = 0;
+      } else {
+        row[key] = check.count(issue[key], `${issuePath}.${key}`, 0);
+      }
+    }
+    if (seen.has(row.issue ?? 0)) check.problems.push(`${issuePath}.issue: must be listed once`);
+    seen.add(row.issue ?? 0);
+    if ((row.comments ?? 0) === 0 && (row.pullRequests ?? 0) === 0)
+      check.problems.push(
+        `${issuePath}: an issue with no comment and no pull request is not listed`,
+      );
+    rows.push(row);
+  });
+  if (agents.issues.length > scanned)
+    check.problems.push(`${path}.issues: cannot hold more issues than sample.scanned (${scanned})`);
+  if (rows.length !== agents.issues.length) return;
+  const sum = (key: string) => rows.reduce((total, row) => total + (row[key] ?? 0), 0);
+  const same = (name: string, actual: number | undefined, expected: number) => {
+    if (actual !== undefined && actual !== expected)
+      check.problems.push(`${name}: must equal the sum over the listed issues (${expected})`);
+  };
+  same(`${path}.activity.issues`, activity.issues, rows.length);
+  same(
+    `${path}.activity.withCounts`,
+    activity.withCounts,
+    rows.filter((row) => (row.countComments ?? 0) > 0).length,
+  );
+  for (const key of ['comments', 'reviews', 'pullRequests'])
+    same(`${path}.activity.${key}`, activity[key], sum(key));
+  for (const key of agentCountKeys) same(`${path}.counts.${key}`, counts[key], sum(key));
+}
+
+/** Where the build finds the snapshots:`DASHBOARD_DATA_DIR`, else `.dashboard-data/snapshots/` of the docs app. */
 export function dashboardDataDirectory(): URL {
   const override = process.env.DASHBOARD_DATA_DIR;
   if (override) return pathToFileURL(override.endsWith('/') ? override : `${override}/`);
@@ -655,6 +766,121 @@ function ciSpeed(data: DashboardData): string {
   return lines.join('\n');
 }
 
+const noCostData = 'no cost data';
+
+function agentsHistory(data: Extract<DashboardData, { state: 'present' }>) {
+  const recent = data.snapshots.filter((snapshot) => snapshot.agents).slice(-historyLength);
+  if (recent.length < 2)
+    return `Only ${recent.length} snapshot${recent.length === 1 ? '' : 's'} with an agent section so far: a history needs at least two.`;
+  return [
+    `The last ${recent.length} daily snapshots. Each reads the 100 most recently updated issues, so consecutive rows overlap and the window moves: a row is a rolling sample, not an independent measurement.`,
+    '',
+    table(
+      [
+        'Snapshot',
+        'Issues listed',
+        'With count comments',
+        'Tasks (inferred)',
+        'Subagents (inferred)',
+        'Comments',
+      ],
+      recent.map((snapshot) => {
+        const agents = snapshot.agents;
+        return [
+          snapshot.date,
+          String(agents?.activity.issues ?? 0),
+          String(agents?.activity.withCounts ?? 0),
+          String(agents?.counts.tasks ?? 0),
+          String(agents?.counts.subagents ?? 0),
+          String(agents?.activity.comments ?? 0),
+        ];
+      }),
+    ),
+  ].join('\n');
+}
+
+function agentsPage(data: DashboardData): string {
+  if (data.state === 'absent') return noSnapshotNotice;
+  const latest = data.snapshots.at(-1);
+  if (!latest) return noSnapshotNotice;
+  const agents = latest.agents;
+  if (!agents) {
+    return `The latest snapshot (${latest.date}) has no agent section: it was written by an older version of the snapshot tool. Nothing on this page is measured until a newer snapshot exists.`;
+  }
+  const { activity, counts } = agents;
+  const lines: string[] = [
+    ':::caution[Proxies, not cost]',
+    'These numbers are **proxies for agent activity that GitHub shows**. They are **not token or money cost**: no transcript, token count or machine data is collected or published.',
+    ':::',
+    '',
+    `**Snapshot of ${latest.date}** (taken ${minute(latest.generatedAt)}). The page reads the ${agents.sample.scanned} most recently updated issues (updated ${windowText(agents.sample.window)}); **older issues are not covered**. ` +
+      `Issues are shown by number only. The decision is [ADR-0049](${adr49}) and the story is [0053](${story}).`,
+    '',
+    '## What is counted',
+    '',
+    '- **Count comments:** the line `Tasks started: N. Subagents started: M.` that an agent posts on an issue under the `issue-handover` skill. They exist only on issues handled in that mode, so an issue without one is shown with **no cost data**, not as zero. A comment that names a count without a usable number is counted as malformed and adds nothing.',
+    '- **Comments** on the issue, and **reviews** on the pull requests that mention it, are recorded by GitHub. A pull request counts for an issue when it mentions it, whether or not it delivers it.',
+    '',
+    `**Measured:** comments, reviews and pull requests (${agents.basis.activity}). **Inferred:** tasks and subagents (${agents.basis.counts}), because they are what an agent wrote, not what GitHub recorded.`,
+    '',
+    '## Summary of the listed issues',
+    '',
+    table(
+      ['What', 'Value', 'Basis'],
+      [
+        [
+          'Issues listed (with a comment or a pull request)',
+          String(activity.issues),
+          agents.basis.activity,
+        ],
+        ['Of them with a count comment', String(activity.withCounts), agents.basis.activity],
+        [
+          'Of them with no cost data',
+          String(activity.issues - activity.withCounts),
+          agents.basis.activity,
+        ],
+        ['Count comments read', String(counts.countComments), agents.basis.counts],
+        ['Count comments malformed (ignored)', String(counts.malformed), agents.basis.counts],
+        ['Tasks started', String(counts.tasks), agents.basis.counts],
+        ['Subagents started', String(counts.subagents), agents.basis.counts],
+        ['Comments', String(activity.comments), agents.basis.activity],
+        ['Reviews on mentioning pull requests', String(activity.reviews), agents.basis.activity],
+        [
+          'Mentioning pull requests, summed per issue',
+          String(activity.pullRequests),
+          agents.basis.activity,
+        ],
+      ],
+    ),
+    '',
+    '## Per issue',
+    '',
+  ];
+  lines.push(
+    agents.issues.length === 0
+      ? 'No issue in the sample has a comment or a mentioning pull request.'
+      : table(
+          ['Issue', 'Count comments', 'Tasks', 'Subagents', 'Comments', 'Reviews', 'Pull requests'],
+          agents.issues.map((row) => [
+            `[#${row.issue}](https://github.com/${latest.repository}/issues/${row.issue})`,
+            row.countComments === 0
+              ? `${noCostData}${row.malformed > 0 ? ` (${row.malformed} malformed)` : ''}`
+              : `${row.countComments}${row.malformed > 0 ? ` (+${row.malformed} malformed)` : ''}`,
+            row.tasks === null ? '–' : String(row.tasks),
+            row.subagents === null ? '–' : String(row.subagents),
+            String(row.comments),
+            String(row.reviews),
+            String(row.pullRequests),
+          ]),
+        ),
+    '',
+    '## History',
+    '',
+    agentsHistory(data),
+  );
+  return lines.join('\n');
+}
+
 function overview(data: DashboardData): string {
   const intro =
     'The delivery dashboard shows how fast and how smoothly changes reach `main`. It is rendered at build time from the daily snapshots on the `dashboard-data` branch, ' +
@@ -673,6 +899,7 @@ function overview(data: DashboardData): string {
 export const dashboardPages: DashboardPage[] = [
   { slug: '', title: 'Delivery dashboard', label: 'Overview', render: overview },
   { slug: 'ci-speed', title: 'CI speed', label: 'CI speed', render: ciSpeed },
+  { slug: 'agents', title: 'Agent activity', label: 'Agent activity', render: agentsPage },
 ];
 
 export const dashboardId = (page: DashboardPage) =>

@@ -129,10 +129,7 @@ describe('reading snapshots', () => {
 
   it('accepts the optional sections that other slices add, and still scans their strings', async () => {
     const valid = await validText('2026-11-08.json');
-    const withSections = valid.replace(
-      '"version": 2,',
-      '"version": 2, "quality": {"scopes": []}, "agents": {"sample": {}},',
-    );
+    const withSections = valid.replace('"version": 2,', '"version": 2, "quality": {"scopes": []},');
     expect(withSections).not.toBe(valid);
     expect(parseSnapshot('x.json', withSections).date).toBe('2026-11-08');
     const leaking = withSections.replace('"scopes"', '"/home/someone"');
@@ -242,6 +239,78 @@ describe('the CI-speed page', () => {
     expect(body).toContain('No snapshot yet');
     expect(body).toContain('dashboard-data');
     expect(render('', { state: 'absent' })).toContain('No snapshot yet');
+  });
+});
+
+describe('the agent activity page', () => {
+  /** The latest valid fixture with the value at a dotted path of its agents section replaced. */
+  async function withAgents(path: string, value: unknown) {
+    const json = JSON.parse(await validText('2026-11-09.json')) as { agents: unknown };
+    const keys = path.split('.');
+    const last = keys.pop() ?? '';
+    let target: unknown = json.agents;
+    for (const key of keys) target = (target as Record<string, unknown>)[key];
+    (target as Record<string, unknown>)[last] = value;
+    return JSON.stringify(json);
+  }
+
+  it('states that these are proxies, not token or money cost, and what is not covered', async () => {
+    const page = render('agents', await present());
+    expect(page).toContain('Proxies, not cost');
+    expect(page).toContain('not token or money cost');
+    expect(page).toContain('older issues are not covered');
+    expect(page).toContain('**Measured:**');
+    expect(page).toContain('**Inferred:**');
+  });
+
+  it('shows issues by number with links, and an issue without count comments as having no cost data', async () => {
+    const page = render('agents', await present());
+    expect(page).toContain('[#601](https://github.com/mgasca/calendar/issues/601)');
+    const row = page.split('\n').find((line) => line.startsWith('| [#601]'));
+    expect(row).toContain('no cost data');
+    expect(row).toContain('| – | – |');
+    const counted = page.split('\n').find((line) => line.startsWith('| [#598]'));
+    expect(counted).toContain('| 2 | 3 | 5 |');
+  });
+
+  it('shows the totals and a history from the snapshots that have the section', async () => {
+    const page = render('agents', await present());
+    expect(page).toContain('| Tasks started | 6 | inferred |');
+    expect(page).toContain('## History');
+    expect(page).toContain('| 2026-11-08 |');
+    const single = await folder({ '2026-11-09.json': await validText('2026-11-09.json') });
+    expect(render('agents', await readDashboardData(single))).toContain(
+      'a history needs at least two',
+    );
+  });
+
+  it('prints no login, title or comment text: the page shows numbers and links only', async () => {
+    const page = render('agents', await present());
+    expect(page).not.toMatch(/author|login|@[a-z]/i);
+  });
+
+  it('says so when the latest snapshot has no agent section, and when there is no snapshot', async () => {
+    const old = await folder({ '2026-11-07.json': await validText('2026-11-07.json') });
+    expect(render('agents', await readDashboardData(old))).toContain('has no agent section');
+    expect(render('agents', { state: 'absent' })).toContain('No snapshot yet');
+  });
+
+  it.each([
+    [
+      'a total that is not the sum',
+      'activity.comments',
+      999,
+      'must equal the sum over the listed issues',
+    ],
+    ['tasks without a count comment', 'issues.0.tasks', 4, 'must be null without a count comment'],
+    ['a field outside the schema', 'issues.0.author', 'x', 'author: field is not in the schema'],
+    ['a machine path in a field name', 'issues.0./home/someone', 1, 'looks like a machine path'],
+    ['a bad basis', 'basis.counts', 'exact', 'basis.counts: must be one of'],
+    ['more listed issues than scanned', 'sample.scanned', 1, 'cannot hold more issues'],
+    ['an issue listed twice', 'issues.1.issue', 601, 'must be listed once'],
+  ])('fails the build for %s', async (_name, path, value, rule) => {
+    const text = await withAgents(path, value);
+    expect(() => parseSnapshot('2026-11-09.json', text)).toThrow(rule);
   });
 });
 

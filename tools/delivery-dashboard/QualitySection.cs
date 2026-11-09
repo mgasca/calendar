@@ -286,6 +286,12 @@ public static class QualityCollector
     [
       .. Supersession.Pair(completed.Select(input => input.Run.Run)).Select(pair => pair.Cancelled.Id),
     ];
+    // A pull request from a fork can bring its own workflow file, so its job names are not trusted: only names that the
+    // runs on main also have are kept. Otherwise a name could break the privacy rules or pose as the required check.
+    HashSet<string> mainNames =
+    [
+      .. completed.Where(input => ScopeOf(input.Run.Run) == Main).SelectMany(input => input.Jobs).Select(job => job.Name),
+    ];
     List<QualityScope> scopes = [];
     var counted = 0;
     var dates = new List<DateTimeOffset>();
@@ -294,7 +300,7 @@ public static class QualityCollector
       List<QualityInput> inScope = [.. completed.Where(input => ScopeOf(input.Run.Run) == scope)];
       counted += inScope.Count;
       dates.AddRange(inScope.Select(input => input.Run.Run.CreatedAt));
-      scopes.Add(BuildScope(scope, inScope, superseded));
+      scopes.Add(BuildScope(scope, inScope, superseded, scope == Main ? null : mainNames));
     }
     SampleWindow? window = dates.Count == 0 ? null : new SampleWindow(dates.Min(), dates.Max());
     return new QualitySection(
@@ -306,7 +312,7 @@ public static class QualityCollector
       scopes);
   }
 
-  private static QualityScope BuildScope(string scope, List<QualityInput> inputs, HashSet<long> superseded)
+  private static QualityScope BuildScope(string scope, List<QualityInput> inputs, HashSet<long> superseded, HashSet<string>? trustedNames)
   {
     var classes = inputs.Select(input => (Input: input, Class: Classify(input.Run.Run, input.Run.Attempt, superseded))).ToList();
     int Count(string name) => classes.Count(item => item.Class == name);
@@ -321,7 +327,9 @@ public static class QualityCollector
     // A cancelled or superseded run is no verdict: its "CI result" job fails because the others were cancelled, so
     // its jobs are trials in no rate.
     List<QualityInput> judged = [.. classes.Where(item => item.Class is not ("cancelled" or "superseded")).Select(item => item.Input)];
-    IEnumerable<AttemptJob> jobs = judged.SelectMany(input => input.Jobs);
+    IEnumerable<AttemptJob> jobs = judged
+      .SelectMany(input => input.Jobs)
+      .Where(job => trustedNames is null || trustedNames.Contains(job.Name));
     List<JobRate> rates =
     [
       .. jobs

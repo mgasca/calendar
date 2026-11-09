@@ -1,6 +1,7 @@
 #!/usr/bin/env -S dotnet run
 #:include ../ci-timings/CiTimings.cs
 #:include ../ci-timings/Baseline.cs
+#:include ../ci-timings/Trend.cs
 #:include Snapshot.cs
 #:include SnapshotRules.cs
 
@@ -10,6 +11,7 @@
 //
 //   dotnet run tools/delivery-dashboard/delivery-dashboard.cs -- snapshot [--repo OWNER/NAME] [--workflow ci.yml]
 //                                                                  [--runs 30] [--date YYYY-MM-DD] [--out FILE]
+//                                                                  [--baseline .github/ci-baseline.json]
 //       samples the newest successful push runs of the workflow on main, writes the snapshot to --out (standard
 //       output without it) and fails, writing nothing, when the snapshot does not pass the rules
 //   dotnet run tools/delivery-dashboard/delivery-dashboard.cs -- check FILE...
@@ -35,6 +37,7 @@ if (args[0] != "snapshot")
 }
 
 var workflow = "ci.yml";
+var baselinePath = ".github/ci-baseline.json";
 var runCount = 30;
 string? repo = null;
 string? output = null;
@@ -46,6 +49,9 @@ while (pending.TryDequeue(out var arg))
   {
     case "--workflow" when pending.Count > 0:
       workflow = pending.Dequeue();
+      break;
+    case "--baseline" when pending.Count > 0:
+      baselinePath = pending.Dequeue();
       break;
     case "--repo" when pending.Count > 0:
       repo = pending.Dequeue();
@@ -74,14 +80,23 @@ var listJson = await Gh.RunAsync(
   "--json", "databaseId,status,conclusion,createdAt,event,headBranch,headSha",
 ]);
 List<SampledRun> sampled = [];
+List<double> queue = [];
 IEnumerable<WorkflowRun> wanted = Parser.ParseRuns(listJson)
   .Where(item => BaselineRuns.IsSuccessful(item) && BaselineRuns.IsMain(item))
   .Take(runCount);
 foreach (WorkflowRun run in wanted)
 {
   var jobsJson = await Gh.RunAsync(["api", $"repos/{repository}/actions/runs/{run.Id}/jobs?per_page=50"]);
-  sampled.Add(new SampledRun(run, [.. Baselines.Samples(run, Parser.ParseJobs(run.Id, jobsJson))]));
+  IReadOnlyList<JobTiming> jobs = Parser.ParseJobs(run.Id, jobsJson);
+  sampled.Add(new SampledRun(run, [.. Baselines.Samples(run, jobs)]));
+  if (CiSnapshot.QueueSeconds(run, jobs) is { } wait)
+  {
+    queue.Add(wait);
+  }
 }
+
+// The pinned baseline of ADR-0045; without the file (another checkout) the snapshot has no baseline or trend.
+BaselineFile? pinned = File.Exists(baselinePath) ? BaselineIo.Read(await File.ReadAllTextAsync(baselinePath)) : null;
 
 DateTimeOffset now = DateTimeOffset.UtcNow;
 var snapshot = new Snapshot(
@@ -89,7 +104,7 @@ var snapshot = new Snapshot(
   date ?? DateOnly.FromDateTime(now.UtcDateTime),
   new DateTimeOffset(now.Year, now.Month, now.Day, now.Hour, now.Minute, now.Second, TimeSpan.Zero),
   repository,
-  CiSnapshot.Build(workflow, sampled));
+  CiSnapshot.Build(workflow, sampled, pinned, TrendConstants.Default, queue));
 var json = SnapshotJson.Write(snapshot);
 IReadOnlyList<string> problems = SnapshotRules.Validate(json);
 if (problems.Count > 0)

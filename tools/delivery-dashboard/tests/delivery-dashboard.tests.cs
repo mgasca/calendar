@@ -3,12 +3,14 @@
 #:package Shouldly@4.3.0
 #:include ../../ci-timings/CiTimings.cs
 #:include ../../ci-timings/Baseline.cs
+#:include ../../ci-timings/Trend.cs
 #:include ../Snapshot.cs
 #:include ../SnapshotRules.cs
 
 // Tests for the delivery dashboard's snapshot tool. Run: dotnet run tools/delivery-dashboard/tests/delivery-dashboard.tests.cs
 // The GitHub CLI is never called: the tests build runs and samples by hand.
 
+using System.Runtime.CompilerServices;
 using CiTimings;
 using Shouldly;
 using Xunit;
@@ -108,7 +110,8 @@ public sealed class SnapshotRulesTests
   [Fact]
   public void A_snapshot_without_runs_is_valid_with_a_null_window()
   {
-    var empty = new Snapshot(1, new DateOnly(2026, 11, 9), Noon, "mgasca/calendar", CiSnapshot.Build("ci.yml", []));
+    var empty = new Snapshot(
+      SnapshotJson.CurrentVersion, new DateOnly(2026, 11, 9), Noon, "mgasca/calendar", CiSnapshot.Build("ci.yml", []));
 
     SnapshotRules.Validate(SnapshotJson.Write(empty)).ShouldBeEmpty();
   }
@@ -194,9 +197,9 @@ public sealed class SnapshotRulesTests
   [Fact]
   public void Another_version_fails()
   {
-    var json = ValidJson().Replace("\"version\": 1", "\"version\": 2", StringComparison.Ordinal);
+    var json = ValidJson().Replace("\"version\": 2", "\"version\": 3", StringComparison.Ordinal);
 
-    SnapshotRules.Validate(json).ShouldContain("$.version: must be 1");
+    SnapshotRules.Validate(json).ShouldContain("$.version: must be 1 to 2");
   }
 
   [Theory]
@@ -226,7 +229,9 @@ public sealed class SnapshotRulesTests
   [Fact]
   public void A_null_window_with_runs_fails()
   {
-    var json = SnapshotJson.Write(new Snapshot(1, new DateOnly(2026, 11, 9), Noon, "mgasca/calendar", CiSnapshot.Build("ci.yml", [])))
+    var empty = new Snapshot(
+      SnapshotJson.CurrentVersion, new DateOnly(2026, 11, 9), Noon, "mgasca/calendar", CiSnapshot.Build("ci.yml", []));
+    var json = SnapshotJson.Write(empty)
       .Replace("\"runs\": 0", "\"runs\": 3", StringComparison.Ordinal);
 
     SnapshotRules.Validate(json).ShouldContain("$.ci.window: must be set when runs is above 0");
@@ -239,4 +244,203 @@ public sealed class SnapshotRulesTests
   [InlineData("{}")]
   public void A_file_that_is_not_a_snapshot_fails_without_throwing(string json) =>
     SnapshotRules.Validate(json).ShouldNotBeEmpty();
+}
+
+public sealed class CiBaselineTrendTests
+{
+  private static readonly DateTimeOffset Noon = new(2026, 11, 9, 12, 0, 0, TimeSpan.Zero);
+
+  private static readonly BaselineFile Pinned = new(
+    "ci.yml",
+    "docs/benchmarks/0017-ci-baseline-with-changes.md",
+    30,
+    GateConstants.Default,
+    new Dictionary<string, PathBaseline>
+    {
+      ["check"] = new(
+        "check",
+        "pinned",
+        [new WorkflowRun(900, "completed", "success", Noon.AddDays(-5), "push", "main", "base")],
+        new Dictionary<string, JobBaseline>
+        {
+          ["Backend"] = new(30, 80, 4.38, 0.08, 90, 92, 95, 126, [.. Enumerable.Range(0, 30).Select(index => 76.0 + (index % 9))]),
+        }),
+    });
+
+  private static List<SampledRun> Recent(int count, double seconds) =>
+  [
+    .. Enumerable.Range(0, count).Select(index => new SampledRun(
+      new WorkflowRun(index + 1, "completed", "success", Noon.AddHours(-count + index), "push", "main", "abc"),
+      [new PathSample(index + 1, "Backend", "check", seconds + (index % 3)), new PathSample(index + 1, "Docs site", "check", 50)])),
+  ];
+
+  [Fact]
+  public void A_job_with_a_pinned_baseline_carries_it_and_a_job_without_one_carries_none()
+  {
+    CiSection section = CiSnapshot.Build("ci.yml", Recent(20, 80), Pinned);
+
+    section.Jobs.Single(job => job.Job == "Backend").Baseline.ShouldBe(new JobBaselineStat(30, 80, 126));
+    section.Jobs.Single(job => job.Job == "Docs site").Baseline.ShouldBeNull();
+    section.Jobs.Single(job => job.Job == "Docs site").Trend.ShouldBeNull();
+  }
+
+  [Fact]
+  public void Twenty_recent_runs_far_above_the_baseline_are_judged_slower()
+  {
+    CiSection section = CiSnapshot.Build("ci.yml", Recent(20, 125), Pinned);
+
+    JobTrend trend = section.Jobs.Single(job => job.Job == "Backend").Trend!;
+    trend.Verdict.ShouldBe("slower");
+    trend.ShiftSeconds.ShouldBeGreaterThan(trend.MinEffectSeconds);
+    section.Trend!.Runs.ShouldBe(20);
+    section.Trend.Required.ShouldBe(20);
+  }
+
+  [Fact]
+  public void Runs_at_the_baseline_are_no_shift() =>
+    CiSnapshot.Build("ci.yml", Recent(20, 79), Pinned).Jobs.Single(job => job.Job == "Backend").Trend!.Verdict.ShouldBe("noShift");
+
+  [Fact]
+  public void Too_few_recent_runs_are_inconclusive_not_no_shift()
+  {
+    CiSection section = CiSnapshot.Build("ci.yml", Recent(5, 125), Pinned);
+
+    section.Jobs.Single(job => job.Job == "Backend").Trend!.Verdict.ShouldBe("inconclusive");
+    section.Trend!.Runs.ShouldBe(5);
+    section.Trend.Required.ShouldBe(20);
+  }
+
+  [Fact]
+  public void Without_a_baseline_there_is_no_trend_section()
+  {
+    CiSection section = CiSnapshot.Build("ci.yml", Recent(20, 80));
+
+    section.Trend.ShouldBeNull();
+    section.Jobs.ShouldAllBe(job => job.Baseline == null && job.Trend == null);
+  }
+
+  [Fact]
+  public void Queue_time_is_the_wait_before_the_first_job_and_ignores_a_start_before_creation()
+  {
+    var run = new WorkflowRun(1, "completed", "success", Noon, "push", "main", "abc");
+    JobTiming Job(int startAfter) => new(1, "Job", "success", Noon.AddSeconds(startAfter), Noon.AddSeconds(startAfter + 10), []);
+
+    CiSnapshot.QueueSeconds(run, [Job(12), Job(5)]).ShouldBe(5);
+    CiSnapshot.QueueSeconds(run, [Job(-3)]).ShouldBeNull();
+    CiSnapshot.QueueSeconds(run, []).ShouldBeNull();
+    CiSnapshot.Build("ci.yml", Recent(3, 80), null, null, [4, 6, 20]).Queue.ShouldBe(new QueueStat(3, 6, 20, 20));
+  }
+
+  [Fact]
+  public void A_snapshot_with_baseline_trend_and_queue_is_valid()
+  {
+    var snapshot = new Snapshot(
+      SnapshotJson.CurrentVersion,
+      new DateOnly(2026, 11, 9),
+      Noon,
+      "mgasca/calendar",
+      CiSnapshot.Build("ci.yml", Recent(20, 125), Pinned, null, [3, 4]));
+
+    var json = SnapshotJson.Write(snapshot);
+
+    SnapshotRules.Validate(json).ShouldBeEmpty();
+    json.ShouldContain("\"verdict\": \"slower\"");
+  }
+}
+
+public sealed class SnapshotVersionTests
+{
+  private static readonly DateTimeOffset Morning = new(2026, 11, 9, 8, 0, 0, TimeSpan.Zero);
+
+  private const string VersionOne = """
+    {
+      "version": 1,
+      "date": "2026-11-09",
+      "generatedAt": "2026-11-09T12:00:00Z",
+      "repository": "mgasca/calendar",
+      "ci": {
+        "workflow": "ci.yml",
+        "basis": "measured",
+        "runs": 1,
+        "window": { "from": "2026-11-09T08:00:00Z", "to": "2026-11-09T08:00:00Z" },
+        "jobs": [
+          { "job": "Backend", "path": "check", "count": 1, "minSeconds": 70, "medianSeconds": 70, "p90Seconds": 70, "maxSeconds": 70 }
+        ]
+      }
+    }
+    """;
+
+  private static string RepoRoot([CallerFilePath] string path = "")
+  {
+    for (var dir = new DirectoryInfo(Path.GetDirectoryName(path)!); dir is not null; dir = dir.Parent)
+    {
+      if (File.Exists(Path.Combine(dir.FullName, ".just-version")))
+      {
+        return dir.FullName;
+      }
+    }
+    throw new InvalidOperationException($"No repo root above {path}.");
+  }
+
+  /// <summary>The docs site's tests read the same files, so the two readers cannot drift apart on a valid snapshot.</summary>
+  [Fact]
+  public void Every_valid_fixture_of_the_docs_site_passes_the_rules()
+  {
+    var directory = Path.Combine(RepoRoot(), "frontend", "apps", "docs", "src", "lib", "fixtures", "dashboard", "valid", "snapshots");
+    var files = Directory.GetFiles(directory, "*.json");
+
+    files.Length.ShouldBeGreaterThan(1);
+    foreach (var file in files)
+    {
+      SnapshotRules.Validate(File.ReadAllText(file)).ShouldBeEmpty(file);
+    }
+  }
+
+  [Fact]
+  public void A_version_1_file_still_validates() => SnapshotRules.Validate(VersionOne).ShouldBeEmpty();
+
+  [Fact]
+  public void Version_1_may_not_carry_version_2_fields()
+  {
+    var json = VersionOne.Replace("\"runs\": 1,", "\"runs\": 1, \"queue\": null,", StringComparison.Ordinal);
+
+    SnapshotRules.Validate(json).ShouldContain("$.ci.queue: field is not in the schema");
+  }
+
+  [Fact]
+  public void Version_2_requires_the_new_fields()
+  {
+    IReadOnlyList<string> errors = SnapshotRules.Validate(VersionOne.Replace("\"version\": 1", "\"version\": 2", StringComparison.Ordinal));
+
+    errors.ShouldContain("$.ci.trend: field is missing");
+  }
+
+  [Theory]
+  [InlineData("\"verdict\": \"slower\"", "\"verdict\": \"awful\"", "$.ci.jobs[0].trend.verdict")]
+  [InlineData("\"required\": 20", "\"required\": 0", "$.ci.trend.required")]
+  [InlineData("\"thresholdSeconds\": 126", "\"thresholdSeconds\": -1", "$.ci.jobs[0].baseline.thresholdSeconds")]
+  [InlineData("\"p90Seconds\": 7,", "\"p90Seconds\": 1,", "$.ci.queue")]
+  public void A_bad_version_2_value_fails_at_its_path(string good, string bad, string path)
+  {
+    var window = new SampleWindow(Morning, Morning);
+    var snapshot = new Snapshot(
+      SnapshotJson.CurrentVersion,
+      new DateOnly(2026, 11, 9),
+      Morning,
+      "mgasca/calendar",
+      new CiSection(
+        "ci.yml",
+        "measured",
+        1,
+        window,
+        [new JobStat("Backend", "check", 1, 70, 70, 70, 70, new JobBaselineStat(30, 80, 126), new JobTrend("slower", 20, 30, 20, 40, 10))],
+        new TrendSection(20, 20, window),
+        new QueueStat(3, 5, 7, 9)));
+    var valid = SnapshotJson.Write(snapshot);
+    SnapshotRules.Validate(valid).ShouldBeEmpty();
+    var json = valid.Replace(good, bad, StringComparison.Ordinal);
+
+    json.ShouldNotBe(valid);
+    SnapshotRules.Validate(json).ShouldContain(error => error.StartsWith(path, StringComparison.Ordinal));
+  }
 }

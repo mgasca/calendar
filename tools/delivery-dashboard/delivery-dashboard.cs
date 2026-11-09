@@ -5,6 +5,8 @@
 #:include SnapshotRules.cs
 #:include QualitySection.cs
 #:include QualityRules.cs
+#:include AgentSection.cs
+#:include AgentRules.cs
 
 // The snapshot tool of the delivery dashboard (story 0053, ADR-0049, issue #596). It writes one JSON snapshot of
 // delivery data (aggregates and public data only) and checks snapshot files against the schema and the privacy rules.
@@ -97,7 +99,8 @@ var snapshot = new Snapshot(
   new DateTimeOffset(now.Year, now.Month, now.Day, now.Hour, now.Minute, now.Second, TimeSpan.Zero),
   repository,
   CiSnapshot.Build(workflow, sampled),
-  QualityCollector.Build(workflow, await QualityCollector.CollectAsync(repository, workflow, qualityRuns)));
+  QualityCollector.Build(workflow, await QualityCollector.CollectAsync(repository, workflow, qualityRuns)),
+  AgentCollector.Build(await AgentCollector.CollectAsync(repository, AgentCollector.DefaultIssues)));
 var json = SnapshotJson.Write(snapshot);
 IReadOnlyList<string> problems = SnapshotRules.Validate(json);
 if (problems.Count > 0)
@@ -120,6 +123,9 @@ else
   await Console.Out.WriteLineAsync($"wrote {output}: {sampled.Count} runs of {workflow}, {snapshot.Ci.Jobs.Count} job and path rows");
   await Console.Out.WriteLineAsync(
     $"quality: {snapshot.Quality?.Sample.Runs} runs in scope, {snapshot.Quality?.Sample.IgnoredRuns} ignored");
+  await Console.Out.WriteLineAsync(
+    $"agents: {snapshot.Agents?.Sample.Scanned} issues scanned, {snapshot.Agents?.Activity.Issues} listed, "
+    + $"{snapshot.Agents?.Activity.WithCounts} with count comments");
 }
 return 0;
 

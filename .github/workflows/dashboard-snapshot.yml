@@ -31,6 +31,9 @@ jobs:
     permissions:
       actions: read
       contents: read
+      # The agent proxies read issues, their comments and the pull requests that mention them (read only).
+      issues: read
+      pull-requests: read
     defaults:
       run:
         shell: bash

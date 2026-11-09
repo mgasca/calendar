@@ -42,13 +42,15 @@ public sealed record CiSection(string Workflow, string Basis, int Runs, SampleWi
 /// <param name="Repository"><c>owner/name</c> of the repository the data comes from.</param>
 /// <param name="Ci">The CI-speed section.</param>
 /// <param name="Quality">The quality section (#599); null in a snapshot written without it.</param>
+/// <param name="Agents">The agent proxies section (#600); null in a snapshot written without it.</param>
 public sealed record Snapshot(
   int Version,
   DateOnly Date,
   DateTimeOffset GeneratedAt,
   string Repository,
   CiSection Ci,
-  QualitySection? Quality = null);
+  QualitySection? Quality = null,
+  AgentsSection? Agents = null);
 
 /// <summary>Builds the CI-speed section from sampled runs.</summary>
 public static class CiSnapshot
@@ -117,6 +119,11 @@ public static class SnapshotJson
       {
         writer.WritePropertyName("quality");
         QualityJson.Write(writer, snapshot.Quality);
+      }
+      if (snapshot.Agents is not null)
+      {
+        writer.WritePropertyName("agents");
+        AgentsJson.Write(writer, snapshot.Agents);
       }
       writer.WriteEndObject();
     }

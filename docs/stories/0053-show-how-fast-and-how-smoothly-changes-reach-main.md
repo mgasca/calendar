@@ -57,7 +57,7 @@ Agreed with the maintainer in a Claude Code session on 2026-11-09 and recorded o
 5. **Given** a number on the page, **when** I read it, **then** it states whether it is measured or inferred and gives its sample and window.
 6. **Given** a job with too few runs, **when** the page shows its failure rate, **then** it is marked inconclusive, not shown as 0 % or 100 %. Data: [quality tests](../../tools/delivery-dashboard/tests/QualityTests.cs) (`Fewer_trials_than_the_rule_needs_are_inconclusive_with_no_rate_and_no_interval`, `An_inconclusive_row_with_a_rate_fails`); the page is delivered after #597.
 7. **Given** a metric breaches its threshold, **when** the daily workflow runs, **then** it opens or updates exactly one issue and opens no other alert.
-8. **Given** an issue with no count comments, **when** the agent proxies are computed, **then** the issue appears with no cost data and does not fail the run.
+8. **Given** an issue with no count comments, **when** the agent proxies are computed, **then** the issue appears with no cost data and does not fail the run. Data: [agent tests](../../tools/delivery-dashboard/tests/AgentTests.cs) (`An_issue_without_count_comments_is_listed_with_no_cost_data_and_does_not_fail`, `A_count_comment_with_an_unusable_number_is_malformed_and_contributes_nothing`); the page is delivered after #597.
 9. **Given** the change is complete, **when** I run `just check`, **then** it passes, including the architecture model entry for the new components.
 
 ## Design decisions
@@ -100,6 +100,13 @@ Agreed with the maintainer in a Claude Code session on 2026-11-09 and recorded o
 * **Inconclusive below 20 trials**, with counts and no rate or interval. The number 20 is in the snapshot (`rule.minTrials`), so changing it needs no schema change.
 * **Guards over time are inferred:** the delivery guards have no CI job of their own; they run in the Tooling job's step "Test and lint tooling" with the other tool tests, so a failure of that step is not necessarily a guard.
 * **Assumptions awaiting the maintainer:** the 20-trial limit, main and pull requests shown separately, and the guard step as proxy.
+
+### Agent proxies section (#600)
+
+* **Data:** the optional `agents` section (`tools/delivery-dashboard/AgentSection.cs`, `AgentRules.cs`): per issue number, valid and malformed count comments, tasks and subagents started, comments, reviews on the pull requests that mention it, and those pull requests, with sums that the rules check. No logins, titles or comment text are read into the snapshot; a test feeds comments with a path, an e-mail address and a handle and checks that none of them reaches the file.
+* **Count comment shape:** the skill defines the comment only as numbers-only; the comments in the repository read `Tasks started: N. Subagents started: M.`, so that line is what the parser accepts, anywhere in a comment, ignoring quoted lines. A whole number above 1000, a negative or a non-number makes the comment malformed (counted, contributes nothing). Fixing the line's exact format in the `issue-handover` skill is a possible follow-up, not part of this slice.
+* **Coverage:** the 100 most recently updated issues, so older count comments are not seen; an issue without a count comment is listed with null totals. Maintainer's answer on #603: this coverage is acceptable.
+* **Limits to state on the page:** proxies for agent activity, not token or money cost; counts are self-reported by the agent (**inferred**), comment, review and pull request counts are recorded by GitHub (**measured**); pull requests are those that mention the issue, whether or not they deliver it. Local transcript aggregates stay a revisit trigger of ADR-0049.
 
 ### API
 

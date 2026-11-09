@@ -7,7 +7,10 @@
 #:include ../SnapshotRules.cs
 #:include ../QualitySection.cs
 #:include ../QualityRules.cs
+#:include ../AgentSection.cs
+#:include ../AgentRules.cs
 #:include QualityTests.cs
+#:include AgentTests.cs
 
 // Tests for the delivery dashboard's snapshot tool. Run: dotnet run tools/delivery-dashboard/tests/delivery-dashboard.tests.cs
 // The GitHub CLI is never called: the tests build runs and samples by hand.

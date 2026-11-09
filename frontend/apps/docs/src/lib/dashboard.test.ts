@@ -129,16 +129,13 @@ describe('reading snapshots', () => {
 
   it('accepts the optional sections that other slices add, and still scans their strings', async () => {
     const valid = await validText('2026-11-08.json');
-    const withSections = valid.replace(
-      '"version": 2,',
-      '"version": 2, "quality": {"scopes": []}, "agents": {"sample": {}},',
-    );
+    const withSections = valid.replace('"version": 2,', '"version": 2, "agents": {"sample": {}},');
     expect(withSections).not.toBe(valid);
     expect(parseSnapshot('x.json', withSections).date).toBe('2026-11-08');
-    const leaking = withSections.replace('"scopes"', '"/home/someone"');
+    const leaking = withSections.replace('"sample"', '"/home/someone"');
     expect(() => parseSnapshot('x.json', leaking)).toThrow('looks like a machine path');
-    const scalar = valid.replace('"version": 2,', '"version": 2, "quality": 3,');
-    expect(() => parseSnapshot('x.json', scalar)).toThrow('$.quality: must be an object');
+    const scalar = valid.replace('"version": 2,', '"version": 2, "agents": 3,');
+    expect(() => parseSnapshot('x.json', scalar)).toThrow('$.agents: must be an object');
   });
 
   it('fails when version 2 lacks the version 2 fields', () => {
@@ -242,6 +239,110 @@ describe('the CI-speed page', () => {
     expect(body).toContain('No snapshot yet');
     expect(body).toContain('dashboard-data');
     expect(render('', { state: 'absent' })).toContain('No snapshot yet');
+  });
+});
+
+describe('the quality page', () => {
+  /** The latest valid fixture with the value at a dotted path of its quality section replaced. */
+  async function withQuality(path: string, value: unknown) {
+    const json = JSON.parse(await validText('2026-11-09.json')) as { quality: unknown };
+    const keys = path.split('.');
+    const last = keys.pop() ?? '';
+    let target: unknown = json.quality;
+    for (const key of keys) target = (target as Record<string, unknown>)[key];
+    (target as Record<string, unknown>)[last] = value;
+    return JSON.stringify(json);
+  }
+
+  it('shows run classes, failure rates with intervals and links to the public runs, marked measured or inferred', async () => {
+    const page = render('quality', await present());
+    expect(page).toContain('## Pushes to `main`');
+    expect(page).toContain('## Pull requests');
+    expect(page).toContain('**measured**');
+    expect(page).toContain('**inferred**');
+    expect(page).toContain('| Passed after a rerun |');
+    expect(page).toContain('not failures');
+    expect(page).toContain('CI result (required check)');
+    expect(page).toMatch(/\d+\.\d %/);
+    expect(page).toContain('95.0 % interval');
+    expect(page).toContain(
+      'https://github.com/mgasca/calendar/actions/workflows/ci.yml?query=branch%3Amain%20event%3Apush%20is%3Afailure',
+    );
+    expect(page).toContain('https://github.com/mgasca/calendar/actions/runs/42620951160');
+  });
+
+  it('marks a job with too few trials inconclusive and shows no rate for it', async () => {
+    const page = render('quality', await present());
+    const row = page.split('\n').find((line) => line.startsWith('| ADR conventions'));
+    expect(row).toContain('inconclusive');
+    expect(row).toContain('| none | none |');
+    expect(row).not.toMatch(/\d %/);
+  });
+
+  it('says that the guard numbers are inferred, from the step they share with the other tool tests', async () => {
+    const page = render('quality', await present());
+    expect(page).toContain('## Delivery guards over time');
+    expect(page).toContain('Test and lint tooling');
+    expect(page).toContain('not necessarily a guard');
+  });
+
+  it('draws a history from the snapshots that have a quality section and needs two', async () => {
+    const page = render('quality', await present());
+    expect(page).toContain('## History');
+    expect(page).toContain('| 2026-11-08 |');
+    const single = await folder({ '2026-11-09.json': await validText('2026-11-09.json') });
+    expect(render('quality', await readDashboardData(single))).toContain(
+      'a history needs at least two',
+    );
+  });
+
+  it('says so when the latest snapshot has no quality section, and when there is no snapshot', async () => {
+    const old = await folder({ '2026-11-07.json': await validText('2026-11-07.json') });
+    expect(render('quality', await readDashboardData(old))).toContain('has no quality section');
+    expect(render('quality', { state: 'absent' })).toContain('No snapshot yet');
+  });
+
+  it('escapes a job name and prints no HTML from it', async () => {
+    const text = await withQuality('scopes.0.jobs.0.job', '<img src=x onerror=alert(1)> | **x**');
+    const page = render('quality', {
+      state: 'present',
+      snapshots: [parseSnapshot('2026-11-09.json', text)],
+    });
+    expect(page).not.toContain('<img');
+    expect(page).toContain('&lt;img');
+  });
+
+  it.each([
+    [
+      'a rate on an inconclusive row',
+      'scopes.0.jobs.0.rate',
+      0,
+      'inconclusive row must carry no rate',
+    ],
+    [
+      'a verdict that disagrees with the trials',
+      'scopes.0.jobs.1.verdict',
+      'inconclusive',
+      'verdict: must be conclusive',
+    ],
+    [
+      'a total that is not the sum',
+      'scopes.0.runs.total',
+      99,
+      'must equal the sum of the run classes',
+    ],
+    ['a field outside the schema', 'scopes.0.author', 'x', 'author: field is not in the schema'],
+    [
+      'a machine path in a job name',
+      'scopes.0.jobs.0.job',
+      '/home/someone/dev',
+      'looks like a machine path',
+    ],
+    ['a search that is not an Actions search', 'scopes.0.listQuery', 'x" onclick="y', 'listQuery'],
+    ['an interval that excludes the rate', 'scopes.0.jobs.1.low', 0.9, 'low <= rate <= high'],
+  ])('fails the build for %s', async (_name, path, value, rule) => {
+    const text = await withQuality(path, value);
+    expect(() => parseSnapshot('2026-11-09.json', text)).toThrow(rule);
   });
 });
 

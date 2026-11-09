@@ -61,13 +61,61 @@ export interface CiSection {
   jobs: JobRow[];
 }
 
+export interface QualityRunCounts {
+  total: number;
+  passed: number;
+  passedAfterRerun: number;
+  failed: number;
+  cancelled: number;
+  superseded: number;
+  other: number;
+  reruns: number;
+}
+
+export interface QualityJobRate {
+  job: string;
+  required: boolean;
+  trials: number;
+  failures: number;
+  verdict: 'conclusive' | 'inconclusive';
+  rate: number | null;
+  low: number | null;
+  high: number | null;
+}
+
+export interface QualityGuardDay {
+  date: string;
+  trials: number;
+  failures: number;
+}
+
+export interface QualityScope {
+  scope: 'main' | 'pullRequest';
+  listQuery: string;
+  runs: QualityRunCounts;
+  failedRunIds: number[];
+  rerunRunIds: number[];
+  jobs: QualityJobRate[];
+  guardDays: QualityGuardDay[];
+}
+
+/** The quality section (#599): run classes, failure rates with intervals, reruns and the guard step. */
+export interface QualitySection {
+  workflow: string;
+  basis: { runs: string; superseded: string; jobs: string; guards: string };
+  sample: { runs: number; ignoredRuns: number; window: SnapshotWindow | null };
+  rule: { confidence: number; minTrials: number };
+  guard: { job: string; step: string };
+  scopes: QualityScope[];
+}
+
 export interface Snapshot {
   version: number;
   date: string;
   generatedAt: string;
   repository: string;
   ci: CiSection;
-  quality?: Record<string, unknown> | null;
+  quality?: QualitySection | null;
   agents?: Record<string, unknown> | null;
 }
 
@@ -249,7 +297,8 @@ export function parseSnapshot(file: string, text: string): Snapshot {
       check.problems.push(`$.version: must be ${oldestVersion} to ${currentVersion}`);
     } else {
       checkRoot(check, json, version >= 2);
-      for (const key of ['quality', 'agents'])
+      if ('quality' in json) checkQuality(check, json.quality);
+      for (const key of ['agents'])
         if (key in json && !isObject(json[key])) check.problems.push(`$.${key}: must be an object`);
     }
   }
@@ -358,7 +407,134 @@ function checkJob(check: Checker, job: Json, path: string, v2: boolean) {
   }
 }
 
-/** Where the build finds the snapshots: `DASHBOARD_DATA_DIR`, else `.dashboard-data/snapshots/` of the docs app. */
+const qualityRunKeys = [
+  'total',
+  'passed',
+  'passedAfterRerun',
+  'failed',
+  'cancelled',
+  'superseded',
+  'other',
+  'reruns',
+];
+const qualityScopes = ['main', 'pullRequest'];
+const maxRunIds = 50;
+
+/** The quality section's shape; the .NET rules (QualityRules.cs) check the same fields. */
+function checkQuality(check: Checker, quality: Json) {
+  const path = '$.quality';
+  if (!check.keys(quality, path, ['workflow', 'basis', 'sample', 'rule', 'guard', 'scopes']))
+    return;
+  if (typeof quality.workflow !== 'string' || !/^[\w.-]+\.ya?ml$/.test(quality.workflow))
+    check.problems.push(`${path}.workflow: must be a workflow file name`);
+  const basis = quality.basis;
+  if (check.keys(basis, `${path}.basis`, ['runs', 'superseded', 'jobs', 'guards']))
+    for (const key of ['runs', 'superseded', 'jobs', 'guards'])
+      check.oneOf(basis[key], `${path}.basis.${key}`, ['measured', 'inferred']);
+  const sample = quality.sample;
+  if (check.keys(sample, `${path}.sample`, ['runs', 'ignoredRuns', 'window'])) {
+    const runs = check.count(sample.runs, `${path}.sample.runs`, 0);
+    check.count(sample.ignoredRuns, `${path}.sample.ignoredRuns`, 0);
+    check.window(sample.window, `${path}.sample.window`, runs);
+  }
+  const rule = quality.rule;
+  if (check.keys(rule, `${path}.rule`, ['confidence', 'minTrials'])) {
+    if (typeof rule.confidence !== 'number' || rule.confidence <= 0 || rule.confidence >= 1)
+      check.problems.push(`${path}.rule.confidence: must be a number above 0 and below 1`);
+    check.count(rule.minTrials, `${path}.rule.minTrials`, 1);
+  }
+  const guard = quality.guard;
+  if (check.keys(guard, `${path}.guard`, ['job', 'step']))
+    for (const key of ['job', 'step'])
+      if (typeof guard[key] !== 'string' || guard[key] === '')
+        check.problems.push(`${path}.guard.${key}: must be a non-empty string`);
+  const minTrials = isObject(rule) && typeof rule.minTrials === 'number' ? rule.minTrials : 1;
+  if (!Array.isArray(quality.scopes)) {
+    check.problems.push(`${path}.scopes: must be an array`);
+    return;
+  }
+  quality.scopes.forEach((scope: Json, index) => {
+    checkQualityScope(check, scope, `${path}.scopes[${index}]`, minTrials);
+  });
+}
+
+function checkQualityScope(check: Checker, scope: Json, path: string, minTrials: number) {
+  const keys = ['scope', 'listQuery', 'runs', 'failedRunIds', 'rerunRunIds', 'jobs', 'guardDays'];
+  if (!check.keys(scope, path, keys)) return;
+  check.oneOf(scope.scope, `${path}.scope`, qualityScopes);
+  if (
+    typeof scope.listQuery !== 'string' ||
+    !/^[a-z]+:[\w-]+( [a-z]+:[\w-]+)*$/.test(scope.listQuery)
+  )
+    check.problems.push(`${path}.listQuery: must be an Actions search such as branch:main`);
+  const runs = scope.runs;
+  if (check.keys(runs, `${path}.runs`, qualityRunKeys)) {
+    const counts = qualityRunKeys.map((key) => check.count(runs[key], `${path}.runs.${key}`, 0));
+    const [total = 0, ...classes] = counts;
+    if (classes.slice(0, 6).reduce((sum, value) => sum + value, 0) !== total)
+      check.problems.push(`${path}.runs.total: must equal the sum of the run classes`);
+  }
+  for (const key of ['failedRunIds', 'rerunRunIds']) {
+    const ids = scope[key];
+    if (!Array.isArray(ids) || ids.length > maxRunIds) {
+      check.problems.push(`${path}.${key}: must be an array of at most ${maxRunIds} run ids`);
+    } else {
+      ids.forEach((id: Json, index) => {
+        if (typeof id !== 'number' || !Number.isInteger(id) || id <= 0)
+          check.problems.push(`${path}.${key}[${index}]: must be a positive whole number`);
+      });
+    }
+  }
+  if (!Array.isArray(scope.jobs)) check.problems.push(`${path}.jobs: must be an array`);
+  else
+    scope.jobs.forEach((job: Json, index) => {
+      checkQualityRate(check, job, `${path}.jobs[${index}]`, minTrials);
+    });
+  if (!Array.isArray(scope.guardDays)) {
+    check.problems.push(`${path}.guardDays: must be an array`);
+    return;
+  }
+  scope.guardDays.forEach((entry: Json, index) => {
+    const dayPath = `${path}.guardDays[${index}]`;
+    if (!check.keys(entry, dayPath, ['date', 'trials', 'failures'])) return;
+    check.date(entry.date, `${dayPath}.date`);
+    const trials = check.count(entry.trials, `${dayPath}.trials`, 1);
+    if (check.count(entry.failures, `${dayPath}.failures`, 0) > trials)
+      check.problems.push(`${dayPath}.failures: must be at most trials`);
+  });
+}
+
+function checkQualityRate(check: Checker, job: Json, path: string, minTrials: number) {
+  const keys = ['job', 'required', 'trials', 'failures', 'verdict', 'rate', 'low', 'high'];
+  if (!check.keys(job, path, keys)) return;
+  if (typeof job.job !== 'string' || job.job.trim() === '' || job.job.length > 100)
+    check.problems.push(`${path}.job: must be a non-empty string of at most 100 characters`);
+  if (typeof job.required !== 'boolean')
+    check.problems.push(`${path}.required: must be true or false`);
+  const trials = check.count(job.trials, `${path}.trials`, 1);
+  if (check.count(job.failures, `${path}.failures`, 0) > trials)
+    check.problems.push(`${path}.failures: must be at most trials`);
+  check.oneOf(job.verdict, `${path}.verdict`, ['conclusive', 'inconclusive']);
+  const inconclusive = trials < minTrials;
+  if (job.verdict !== (inconclusive ? 'inconclusive' : 'conclusive'))
+    check.problems.push(
+      `${path}.verdict: must be ${inconclusive ? 'inconclusive' : 'conclusive'} for ${trials} trials`,
+    );
+  const numbers = [job.rate, job.low, job.high];
+  if (inconclusive) {
+    if (numbers.some((value) => value !== null))
+      check.problems.push(`${path}: an inconclusive row must carry no rate and no interval`);
+  } else if (
+    numbers.some((value) => typeof value !== 'number' || value < 0 || value > 1) ||
+    !((job.low as number) <= (job.rate as number) && (job.rate as number) <= (job.high as number))
+  ) {
+    check.problems.push(
+      `${path}: rate, low and high must be numbers from 0 to 1 with low <= rate <= high`,
+    );
+  }
+}
+
+/** Where the build finds the snapshots:`DASHBOARD_DATA_DIR`, else `.dashboard-data/snapshots/` of the docs app. */
 export function dashboardDataDirectory(): URL {
   const override = process.env.DASHBOARD_DATA_DIR;
   if (override) return pathToFileURL(override.endsWith('/') ? override : `${override}/`);
@@ -655,6 +831,180 @@ function ciSpeed(data: DashboardData): string {
   return lines.join('\n');
 }
 
+const percent = (value: number) => `${(value * 100).toFixed(1)} %`;
+
+const scopeTitle: Record<string, string> = {
+  main: 'Pushes to `main`',
+  pullRequest: 'Pull requests',
+};
+
+/** A link to GitHub's own list of runs of the workflow; the repository and workflow were checked when the file was read. */
+function runList(snapshot: Snapshot, quality: QualitySection, query: string) {
+  return `https://github.com/${snapshot.repository}/actions/workflows/${quality.workflow}?query=${encodeURIComponent(query)}`;
+}
+
+function runLinks(snapshot: Snapshot, ids: number[]) {
+  return ids.length === 0
+    ? 'none in the sample'
+    : ids
+        .map((id) => `[${id}](https://github.com/${snapshot.repository}/actions/runs/${id})`)
+        .join(', ');
+}
+
+function qualityScopeSection(snapshot: Snapshot, quality: QualitySection, scope: QualityScope) {
+  const { runs } = scope;
+  const list = (extra: string) => runList(snapshot, quality, `${scope.listQuery} ${extra}`.trim());
+  const lines: string[] = [`## ${scopeTitle[scope.scope] ?? scope.scope}`, ''];
+  if (runs.total === 0) return [...lines, 'No completed run of this kind in the sample.', ''];
+  lines.push(
+    `**Runs by class** (${runs.total} completed runs; **${quality.basis.runs}** except superseded, which is **${quality.basis.superseded}**):`,
+    '',
+    table(
+      ['Class', 'Runs', 'What it means'],
+      [
+        ['Passed', String(runs.passed), 'succeeded on the first attempt'],
+        [
+          'Passed after a rerun',
+          String(runs.passedAfterRerun),
+          'succeeded only on a later attempt: a failure that a rerun hid',
+        ],
+        ['Failed', String(runs.failed), 'failed, timed out or did not start'],
+        [
+          'Cancelled',
+          String(runs.cancelled),
+          'cancelled, and not by a newer push of the same branch',
+        ],
+        [
+          'Superseded',
+          String(runs.superseded),
+          'cancelled while a newer run of the same branch existed (inferred from that run)',
+        ],
+        ['Other', String(runs.other), 'skipped, neutral or another conclusion'],
+      ],
+    ),
+    '',
+    'Cancelled and superseded runs are **not failures** and are in no failure rate. ' +
+      `Runs attempted more than once: ${runs.reruns}.`,
+    '',
+    `GitHub's current lists (they reach further back than this sample): [all runs](${list('')}), [failed](${list('is:failure')}), ` +
+      `[cancelled](${list('is:cancelled')}), [successful](${list('is:success')}). ` +
+      `The newest failed runs in the sample: ${runLinks(snapshot, scope.failedRunIds)}. ` +
+      `The newest runs attempted more than once: ${runLinks(snapshot, scope.rerunRunIds)}.`,
+    '',
+    `**Failure rate per job** (**${quality.basis.jobs}**): job attempts that ended in success or failure, with a ` +
+      `${percent(quality.rule.confidence)} Clopper-Pearson interval. A job with fewer than ${quality.rule.minTrials} trials is ` +
+      '**inconclusive**: its counts are shown and no rate, because a small sample cannot tell 0 % from a real failure rate.',
+    '',
+  );
+  lines.push(
+    scope.jobs.length === 0
+      ? 'No job attempt in the sample.'
+      : table(
+          [
+            'Job',
+            'Trials',
+            'Failures',
+            'Failure rate',
+            `${percent(quality.rule.confidence)} interval`,
+            'Verdict',
+          ],
+          scope.jobs.map((job) => [
+            escapeText(job.job) + (job.required ? ' (required check)' : ''),
+            String(job.trials),
+            String(job.failures),
+            job.rate === null ? 'none' : percent(job.rate),
+            job.low === null || job.high === null
+              ? 'none'
+              : `${percent(job.low)} to ${percent(job.high)}`,
+            job.verdict === 'conclusive'
+              ? 'conclusive'
+              : `<span class="dashboard-verdict">inconclusive</span> (under ${quality.rule.minTrials} trials)`,
+          ]),
+        ),
+    '',
+  );
+  return lines;
+}
+
+function qualityHistory(data: Extract<DashboardData, { state: 'present' }>) {
+  const recent = data.snapshots.filter((snapshot) => snapshot.quality).slice(-historyLength);
+  if (recent.length < 2)
+    return `Only ${recent.length} snapshot${recent.length === 1 ? '' : 's'} with a quality section so far: a history needs at least two.`;
+  const scopeOf = (snapshot: Snapshot, name: string) =>
+    snapshot.quality?.scopes.find((scope) => scope.scope === name);
+  const guardFailures = (snapshot: Snapshot) =>
+    (snapshot.quality?.scopes ?? [])
+      .flatMap((scope) => scope.guardDays)
+      .reduce((sum, entry) => sum + entry.failures, 0);
+  return [
+    `**Measured**, the last ${recent.length} daily snapshots. Consecutive snapshots overlap (each samples the newest runs), so a row is a rolling sample, not an independent measurement.`,
+    '',
+    table(
+      [
+        'Snapshot',
+        'Runs on main',
+        'Failed on main',
+        'Passed after rerun on main',
+        'Failed in pull requests',
+        'Guard step failures (inferred)',
+      ],
+      recent.map((snapshot) => [
+        snapshot.date,
+        String(scopeOf(snapshot, 'main')?.runs.total ?? 0),
+        String(scopeOf(snapshot, 'main')?.runs.failed ?? 0),
+        String(scopeOf(snapshot, 'main')?.runs.passedAfterRerun ?? 0),
+        String(scopeOf(snapshot, 'pullRequest')?.runs.failed ?? 0),
+        String(guardFailures(snapshot)),
+      ]),
+    ),
+  ].join('\n');
+}
+
+function qualityPage(data: DashboardData): string {
+  if (data.state === 'absent') return noSnapshotNotice;
+  const latest = data.snapshots.at(-1);
+  if (!latest) return noSnapshotNotice;
+  const quality = latest.quality;
+  if (!quality) {
+    return `The latest snapshot (${latest.date}) has no quality section: it was written by an older version of the snapshot tool. Nothing on this page is measured until a newer snapshot exists.`;
+  }
+  const lines: string[] = [
+    `**Snapshot of ${latest.date}** (taken ${minute(latest.generatedAt)}). The newest ${quality.sample.runs} completed runs of \`${quality.workflow}\` ` +
+      `(created ${windowText(quality.sample.window)}), counted separately for pushes to \`main\` and for pull requests` +
+      `${quality.sample.ignoredRuns > 0 ? `; ${quality.sample.ignoredRuns} other runs (dispatches, merge groups) are not counted` : ''}. ` +
+      `Every number is marked **measured** (a conclusion GitHub recorded) or **inferred** (an estimate); the sample and the window are given.`,
+    '',
+    `The decision for this dashboard is [ADR-0049](${adr49}) and the story is [0053](${story}).`,
+    '',
+  ];
+  for (const scope of quality.scopes) lines.push(...qualityScopeSection(latest, quality, scope));
+  lines.push(
+    '## Delivery guards over time',
+    '',
+    `The delivery guards have no job of their own: they run inside the step "${escapeText(quality.guard.step)}" of the ${escapeText(quality.guard.job)} job, together with the other tool tests. ` +
+      `So these counts are **${quality.basis.guards}**: a failure of that step is not necessarily a guard. Attempts and failures of the step by day the run was created.`,
+    '',
+  );
+  for (const scope of quality.scopes) {
+    lines.push(`**${scopeTitle[scope.scope] ?? scope.scope}**`, '');
+    lines.push(
+      scope.guardDays.length === 0
+        ? 'No attempt of the step in the sample.'
+        : table(
+            ['Day', 'Attempts', 'Failures'],
+            scope.guardDays.map((entry) => [
+              entry.date,
+              String(entry.trials),
+              String(entry.failures),
+            ]),
+          ),
+      '',
+    );
+  }
+  lines.push('## History', '', qualityHistory(data));
+  return lines.join('\n');
+}
+
 function overview(data: DashboardData): string {
   const intro =
     'The delivery dashboard shows how fast and how smoothly changes reach `main`. It is rendered at build time from the daily snapshots on the `dashboard-data` branch, ' +
@@ -673,6 +1023,7 @@ function overview(data: DashboardData): string {
 export const dashboardPages: DashboardPage[] = [
   { slug: '', title: 'Delivery dashboard', label: 'Overview', render: overview },
   { slug: 'ci-speed', title: 'CI speed', label: 'CI speed', render: ciSpeed },
+  { slug: 'quality', title: 'Quality and failures', label: 'Quality', render: qualityPage },
 ];
 
 export const dashboardId = (page: DashboardPage) =>

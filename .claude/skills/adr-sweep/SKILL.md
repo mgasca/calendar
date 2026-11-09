@@ -40,8 +40,8 @@ The sweep is read-only. Its outputs are the report, published in step 7 as one d
          - `checks` defaults to `["J1","J2","J3","J4","J5"]`. Add `"J7"` on request or when the open issue list is short.
          - `k` (rotation, default 6), `capRun` (default 40 agents per run) and `capRecord` (default 12 agents per record) are passed only to change them.
          - Passing `records: [{ id, path, reasons, checks }]` skips selection and judges those records in the given order: a delta selected by hand, or a seeded proof run.
-       - **Selection.** The workflow selects the delta by the rules above. One read-only select agent (on Sonnet) does the parts that need `git` and `gh`: changed records, changed cited tokens, triggers and open work. The left-over records and the rotation over the watermark's `judged=` groups are computed in plain code. A `null` or unparseable watermark, or one not in the history of `main`, means a full run, and the workflow logs it.
-       - **Judging.** It runs one judge per record (on Sonnet) and two `sweep-skeptic` agents per Fix now or Decide finding, lenses *true* and *matters*. A finding is confirmed only if both decline, and uncertainty refutes. Watch findings come back unverified.
+       - **Selection.** The workflow selects the delta by the rules above. One select agent, the read-only `sweep-judge` agent type (on Sonnet), does the parts that need `git` and `gh`: changed records, changed cited tokens, triggers and open work. The left-over records and the rotation over the watermark's `judged=` groups are computed in plain code. A `null` or unparseable watermark, or one not in the history of `main`, means a full run, and the workflow logs it.
+       - **Judging.** It runs one judge per record (a `sweep-judge` agent, on Sonnet) and two `sweep-skeptic` agents per Fix now or Decide finding, lenses *true* and *matters*. A finding is confirmed only if both decline, and uncertainty refutes. Watch findings come back unverified.
        - **What it returns:**
          - `selection`: the mode (`delta`, `full`, `given` or `failed`) and a summary;
          - `delta`: each record with its reasons, for the report;

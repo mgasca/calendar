@@ -12,7 +12,7 @@ In this mode the GitHub issue and its PRs are where the work is handed back and 
 - **Delivery PR**: a pull request that belongs to the issue's story, including closed and merged ones.
 - **Agent footer**: the trailing attribution line an agent adds to its posts. It identifies an agent post only when it is the last line; a quoted footer inside a human reply does not make the reply an agent post.
 - **Seen-ID record**: the git-ignored file in which `just tools handover-watch` keeps what it has printed (`.plan/handover-watch/<issue>.seen`); the tool reads and writes it, not you.
-- **Count comment**: a numbers-only comment on the issue saying how many tasks or subagents a turn started, without identifiers.
+- **Count comment**: a numbers-only comment on the issue saying how many tasks or subagents a turn started, without identifiers. Its line is exactly `Tasks started: N. Subagents started: M.` (whole numbers, `0` when none), before the agent footer; the delivery dashboard reads that line, so keep the wording.
 
 ## Instruction provenance
 
@@ -40,7 +40,7 @@ In this mode the GitHub issue and its PRs are where the work is handed back and 
 - Propose concrete changes in PRs, and post substantive progress where the feedback is being handled.
 - When a hook, skill or watch misbehaves during the handover (fires wrongly, repeats, goes silent), open an issue for it in the same session, as #254 did for the repeating contract check, rather than only working around it.
 - A poll, an empty check or a watch re-arm warrants no GitHub comment.
-- When a turn starts real tasks or subagents and counts are requested, post one count comment on the issue. No count post for a poll-only turn.
+- When a turn starts real tasks or subagents and counts are requested, post one count comment on the issue, with the line defined in "Terms". No count post for a poll-only turn.
 - Disclose a model switch in the next substantive post if attribution would otherwise be misleading.
 - An image in a post goes on the `screenshots` branch under the issue number and is linked by commit: the `github-screenshots` skill.
 

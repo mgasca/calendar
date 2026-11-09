@@ -106,7 +106,7 @@ git push origin HEAD:dashboard-data
 cd - && git worktree remove ../dashboard-data-thin
 ```
 
-Then check `git ls-tree -r -l origin/dashboard-data snapshots | dotnet run tools/delivery-dashboard/delivery-dashboard.cs -- retention` and re-run the workflow. The history table on the CI speed page then has gaps of a week for old data, which it shows as it finds it.
+Then check `gh api "repos/mgasca/calendar/git/trees/dashboard-data?recursive=1" | dotnet run tools/delivery-dashboard/delivery-dashboard.cs -- retention` and re-run the workflow. The history table on the CI speed page then has gaps of a week for old data, which it shows as it finds it.
 
 ## Change the schema
 

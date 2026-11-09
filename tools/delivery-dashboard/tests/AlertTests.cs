@@ -156,6 +156,31 @@ public sealed class RetentionTests
   }
 
   [Fact]
+  public void The_trees_api_answer_is_read_for_blob_sizes_and_other_paths_and_trees_are_ignored()
+  {
+    var json = """
+      { "sha": "x", "truncated": false, "tree": [
+        { "path": "README.md", "type": "blob", "size": 5000 },
+        { "path": "snapshots", "type": "tree" },
+        { "path": "snapshots/2026-11-08.json", "type": "blob", "size": 900 },
+        { "path": "snapshots/2026-11-09.json", "type": "blob", "size": 90 } ] }
+      """;
+
+    Retention.Verdict verdict = Retention.Check(json, Limit);
+
+    (verdict.Files, verdict.Bytes, verdict.Status).ShouldBe((2, 990L, "warning"));
+    Retention.Check(json, Limit, incomingBytes: 20).Status.ShouldBe("over");
+  }
+
+  [Fact]
+  public void A_truncated_trees_api_answer_fails_instead_of_undercounting()
+  {
+    var json = """{ "truncated": true, "tree": [ { "path": "snapshots/a.json", "type": "blob", "size": 1 } ] }""";
+
+    Retention.Check(json, Limit).Status.ShouldBe("over");
+  }
+
+  [Fact]
   public void An_empty_tree_is_ok() => Retention.Check(string.Empty, Limit).Status.ShouldBe("ok");
 
   [Fact]

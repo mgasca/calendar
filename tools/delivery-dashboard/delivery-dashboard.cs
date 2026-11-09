@@ -222,7 +222,8 @@ static async Task<int> AlertCommand(string[] arguments)
   return 0;
 }
 
-// retention [--limit-mb 50] [--add BYTES] < `git ls-tree -r -l REF snapshots`: fails when the data branch would pass its limit.
+// retention [--limit-mb 50] [--add BYTES] < `git ls-tree -r -l REF snapshots` or the GitHub trees API answer
+// (`gh api repos/OWNER/NAME/git/trees/BRANCH?recursive=1`): fails when the data branch would pass its limit.
 static async Task<int> RetentionCommand(string[] arguments)
 {
   var limit = Retention.LimitBytes;

@@ -199,19 +199,41 @@ public static class Retention
   {
     var files = 0;
     long bytes = 0;
-    foreach (var line in lsTree.Split('\n', StringSplitOptions.RemoveEmptyEntries))
+    // The GitHub trees API answer (`git/trees/<branch>?recursive=1`) gives each blob's size without downloading any blob.
+    if (lsTree.TrimStart().StartsWith('{'))
     {
-      var tab = line.IndexOf('\t', StringComparison.Ordinal);
-      if (tab < 0 || !line[(tab + 1)..].StartsWith("snapshots/", StringComparison.Ordinal))
+      using var document = JsonDocument.Parse(lsTree);
+      if (document.RootElement.TryGetProperty("truncated", out JsonElement truncated) && truncated.GetBoolean())
       {
-        continue;
+        return new Verdict(0, 0, "over", "The tree listing was truncated by GitHub, so the size cannot be judged: thin the data branch.");
       }
-      var fields = line[..tab].Split(' ', StringSplitOptions.RemoveEmptyEntries);
-      if (fields.Length == 4 && fields[1] == "blob"
-        && long.TryParse(fields[3], NumberStyles.None, CultureInfo.InvariantCulture, out var size))
+      foreach (JsonElement entry in document.RootElement.GetProperty("tree").EnumerateArray())
       {
-        files++;
-        bytes += size;
+        if (entry.GetProperty("type").GetString() == "blob"
+          && (entry.GetProperty("path").GetString() ?? string.Empty).StartsWith("snapshots/", StringComparison.Ordinal)
+          && entry.TryGetProperty("size", out JsonElement size))
+        {
+          files++;
+          bytes += size.GetInt64();
+        }
+      }
+    }
+    else
+    {
+      foreach (var line in lsTree.Split('\n', StringSplitOptions.RemoveEmptyEntries))
+      {
+        var tab = line.IndexOf('\t', StringComparison.Ordinal);
+        if (tab < 0 || !line[(tab + 1)..].StartsWith("snapshots/", StringComparison.Ordinal))
+        {
+          continue;
+        }
+        var fields = line[..tab].Split(' ', StringSplitOptions.RemoveEmptyEntries);
+        if (fields.Length == 4 && fields[1] == "blob"
+          && long.TryParse(fields[3], NumberStyles.None, CultureInfo.InvariantCulture, out var size))
+        {
+          files++;
+          bytes += size;
+        }
       }
     }
     files += incomingBytes > 0 ? 1 : 0;

@@ -65,6 +65,7 @@ jobs:
       - name: Check that the data branch stays within its size limit
         run: |
           file="$RUNNER_TEMP/snapshot/${{ steps.take.outputs.date }}.json"
+          export GH_TOKEN="${{ github.token }}"
           status=0
           git ls-remote --exit-code --heads origin "$DATA_BRANCH" > /dev/null || status=$?
           if [ "$status" -eq 2 ]; then
@@ -73,8 +74,8 @@ jobs:
             echo "::error::Could not read the $DATA_BRANCH branch (git exit $status)."
             exit "$status"
           else
-            git fetch --quiet --depth 1 origin "$DATA_BRANCH"
-            git ls-tree -r -l FETCH_HEAD snapshots \
+            # The trees API gives every blob's size without downloading a blob (a shallow fetch would download them all).
+            gh api "repos/$GITHUB_REPOSITORY/git/trees/$DATA_BRANCH?recursive=1" \
               | dotnet run tools/delivery-dashboard/delivery-dashboard.cs -- retention --add "$(wc -c < "$file")" \
               | tee -a "$GITHUB_STEP_SUMMARY"
           fi

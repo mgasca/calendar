@@ -56,11 +56,12 @@ Both sweeps re-read everything on every run. Neither has a watermark, so neither
     * new issues;
     * a rotation of the issues judged longest ago.
 * **An ADR judgement workflow** ([#564](https://github.com/mgasca/calendar/issues/564)), `.claude/workflows/adr-sweep-judge.js`, Claude Code only.
-  * **Judges:** the session passes the delta records, each with the reason it was selected. The workflow runs one judge per record, on Sonnet, (J1 to J5, plus J7 on request) against `origin/main`. Each judge returns findings with the check id, class, evidence as file and line, and whether the finding was inferred.
+  * **Selection:** the session passes the previous watermark, the records the previous report left over, and the inventory. The workflow selects the delta itself, by the rules above, and returns it with each record's reason. One read-only agent on Sonnet does the parts that need `git` and `gh`. The left-over records and the rotation over the watermark come from plain code. Without a watermark it is a full run. The session can still pass records selected by hand. Changed in review of [#570](https://github.com/mgasca/calendar/pull/570), 2026-11-08.
+  * **Judges:** the workflow runs one judge per delta record, on Sonnet, (J1 to J5, plus J7 on request) against `origin/main`. Each judge returns findings with the check id, class, evidence as file and line, and whether the finding was inferred.
   * **Skeptics:** each Fix now or Decide finding goes to two `sweep-skeptic` agents, one per lens. *True* asks whether the claim holds on `origin/main`. *Matters* asks whether a reader of the record would act differently. Watch findings are not verified. A finding is confirmed only if both skeptics decline. Uncertainty refutes and says so, as in 0035.
   * **Two caps, both logged:**
     * **Per record, 12 agents:** the judge plus that record's skeptics. Findings past this cap come back as unexamined, highest class first (Fix now, then Decide).
-    * **Per run, 40 agents:** records are taken in order of their reason. Records past this cap come back as unexamined and are first in the next rotation.
+    * **Per run, 40 agents:** records are taken in order of their reason. Records past this cap come back as left over and are first in the next rotation. So does a record whose judge returned nothing (#570, 2026-11-08). Each admitted record reserves its judge and one pair of skeptics, so at most 13 records are judged at the default.
     * **The rotation:** *k* = 6 records per sweep, so every record is judged at least once every nine sweeps of the 49-record log.
 
     All three are workflow `args` with these defaults.
@@ -68,7 +69,7 @@ Both sweeps re-read everything on every run. Neither has a watermark, so neither
 * **A `sweep-skeptic` agent definition**, `.claude/agents/sweep-skeptic.md`: read-only, on Haiku, for one claim about `origin/main` or GitHub state through one lens. It is separate from `skeptic`, which starts from a branch diff and which the review before a merge depends on.
 * **Option B in both skills.** In Claude Code, the per-item judgement runs the workflow, and the skill's instruction counts as the opt-in, as `issue-handover` does for the review. Any other harness follows the by-hand steps. The session keeps the work that needs every result or writes to GitHub:
   * fetch and inventory;
-  * the delta and the remaining mechanical steps;
+  * the remaining mechanical steps, and the delta on the by-hand path;
   * grouping findings that share a cause across records;
   * the comparison with the previous report, the report itself and the watermark;
   * hand-offs one PR or closeout at a time.

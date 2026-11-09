@@ -366,6 +366,9 @@ let launched = selectAgents
 const pastRecordCap = []
 const pastRunCap = []
 
+// A promise inside the object a pipeline stage returns arrives as {} in the next step (#624), so the first
+// finding's verification is kept here, by record id, and the stage returns plain data.
+const ownRuns = new Map()
 const judgeRecord = async (r) => {
   launched += 1
   const result = await agent(judgePrompt(r), { agentType: JUDGE, label: `judge:${r.id}`, phase: 'Judge', schema: FINDINGS })
@@ -387,8 +390,8 @@ const judgeRecord = async (r) => {
   // The first finding uses the record's own reserve at once; the rest wait for the pool.
   const own = within.slice(0, 1)
   launched += own.length * PAIR
-  const ownRun = verifyAll(own)
-  return { record: r, judged: true, summary: result.summary, watch, ownRun, rest: within.slice(own.length), unused: PAIR - own.length * PAIR }
+  ownRuns.set(r.id, verifyAll(own))
+  return { record: r, judged: true, summary: result.summary, watch, rest: within.slice(own.length), unused: PAIR - own.length * PAIR }
 }
 
 if (admitted.length > 0) phase('Judge')
@@ -409,7 +412,7 @@ const restRuns = settled.map((o) => {
 
 const outcomes = await Promise.all(settled.map(async (o, k) => {
   if (!o || !o.judged) return o
-  const verified = [...(await o.ownRun), ...(await restRuns[k])]
+  const verified = [...(await ownRuns.get(o.record.id)), ...(await restRuns[k])]
   return { record: o.record, judged: true, summary: o.summary, watch: o.watch, verified }
 }))
 

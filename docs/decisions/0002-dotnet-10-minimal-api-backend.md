@@ -41,7 +41,7 @@ Chosen option: ".NET 10 LTS + Minimal APIs + Domain/Api projects", because it co
 
 Details:
 
-* The SDK is pinned in `backend/global.json`: `10.0.100` with `rollForward: latestFeature` when decided, an exact SDK with `rollForward: latestPatch` since the amendment of 2026-11-10.
+* The SDK is pinned in `backend/global.json` (`10.0.100`, `rollForward: latestFeature`).
 * Endpoints are grouped per feature as `IEndpointRouteBuilder` extension methods in `Calendar.Api/Endpoints/`.
 * ProblemDetails (RFC 9457) is used for errors (`AddProblemDetails`, `UseExceptionHandler`, `UseStatusCodePages`).
 * `Calendar.Domain` has no framework dependencies. Application and Infrastructure projects are added when real use cases and persistence arrive.
@@ -69,10 +69,6 @@ Recorded for the ADR sweep epic [#473](https://github.com/mgasca/calendar/issues
   * The CI `Container image` job builds the image, starts it against PostgreSQL and runs `just image smoke` (`image.just`) for `/`, `/week`, `/api/health`, `/api/unknown` and `/api/tasks`. Under [ADR-0046](0046-run-ci-jobs-only-for-the-paths-they-check.md) it runs only when a pull request changes the image's inputs, and on every push to `main`.
   * Both jobs passed on `main` at `082c64e08` (CI run [42406004961](https://github.com/mgasca/calendar/actions/runs/42406004961)), and the two hosting tests passed locally on 2026-11-07.
 * **Not verified:** no Azure deployment has run. HTTPS, ingress and cookie behavior in Azure Container Apps are deployment checks, tracked by #79 and #83.
-
-### Amendment, 2026-11-10: the SDK pin is exact and shared with the repo tools
-
-Recorded for [issue #645](https://github.com/mgasca/calendar/issues/645); the maintainer chose to pin the CI SDK on 2026-11-10, in conversation. The decision is unchanged and is not re-rated. `backend/global.json` now pins `10.0.404` with `rollForward: latestPatch`, and the repo-root `global.json` pins the same `sdk` block for the repo tools ([ADR-0017](0017-dotnet-file-based-apps-for-repo-tooling.md), amendment of the same date). CI installs exactly that SDK. Before, `latestFeature` let `actions/setup-dotnet` install the newest 10.0 SDK, and SDK 10.0.404 broke the tools' locked restore. `just tools versions` fails when the two pins differ, and Dependabot's `dotnet-sdk` ecosystem proposes each bump.
 
 ## Pros and Cons of the Options
 
@@ -106,4 +102,3 @@ Recorded for [issue #645](https://github.com/mgasca/calendar/issues/645); the ma
 
 * The `Program` class is not declared `public partial`: in .NET 10 the generated `Program` class is already accessible to `WebApplicationFactory<Program>`. Adding the declaration triggers Sonar S1118.
 * **Amendment, 2026-11-07:** the single-container follow-up was delivered by PR #108 (SPA serving) and PR #114 (multi-stage image), and is checked by the in-process hosting tests and the CI image smoke test; no Azure deployment has verified it yet. The decision is unchanged and not re-rated, so this ADR was amended, not superseded.
-* **Amendment, 2026-11-10:** the SDK pin became exact (`10.0.404`, `rollForward: latestPatch`) and is shared with the repo-root `global.json` that the repo tools use, after SDK 10.0.404 broke the tools' locked restore (#645). The decision is unchanged and not re-rated.

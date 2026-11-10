@@ -77,9 +77,9 @@ The maintainer gave this reading on the review of story 0035's card, in conversa
 
 File-based apps default to `PublishAot=true`, so the SDK adds implicit references to `Microsoft.DotNet.ILCompiler` and `Microsoft.NET.ILLink.Tasks` at its own runtime version, and every tool's `packages.lock.json` records them. When SDK 10.0.404 (runtime 10.0.15) was released, CI's `dotnet-version: 10.0.x` installed it, and every locked restore of a tool failed with `NU1004` because the lock files said 10.0.14 ([#645](https://github.com/mgasca/calendar/issues/645)). Leaving the SDK unpinned would repeat this at every SDK patch.
 
-* **Pin:** a repo-root `global.json` pins the exact SDK (`rollForward: latestPatch`). `backend/global.json` pins the same `sdk` block ([ADR-0002](0002-dotnet-10-minimal-api-backend.md), amendment of the same date). `just tools versions` fails when the two differ.
+* **Pin:** a repo-root `global.json` pins the exact SDK (`rollForward: latestPatch`). It covers the tools only. `backend/global.json` keeps its feature-band floor ([ADR-0002](0002-dotnet-10-minimal-api-backend.md)), because the backend has no AOT lock entries, and the build stage of its container image uses the SDK image, which ships after each SDK release. A first draft pinned both files to 10.0.404, and the image build failed because the newest `dotnet/sdk:10.0` image still held 10.0.403.
 * **CI:** every job that runs a tool installs the SDK with `global-json-file: global.json`, never `dotnet-version`.
-* **Bumps:** Dependabot's `dotnet-sdk` ecosystem proposes a new SDK for both files in one group. The bump's branch also refreshes the tool lock files, by the steps in `tools/README.md`. Until then CI's locked restore fails, which keeps the bump deliberate.
+* **Bumps:** Dependabot's `dotnet-sdk` ecosystem proposes each new SDK for the root `global.json`. The bump's branch also refreshes the tool lock files, by the steps in `tools/README.md`. Until then CI's locked restore fails, which keeps the bump deliberate.
 * **Contributors** need the pinned SDK or a later patch in its feature band. `just doctor` checks this at the repo root.
 * **Not chosen:** turning off AOT for the tools (`PublishAot=false`) would remove the coupling, but it would also remove the AOT and trimming analyzers the tools rely on (`tools/README.md`). Refreshing lock files whenever CI breaks would leave every pull request red until someone acted.
 
@@ -139,7 +139,7 @@ tools/                             # repo-wide tools
 * **Package versions:** `#:package` directives pin exact versions. Each file-based app sits in its own directory, because restore writes `packages.lock.json` next to it.
 * **Dependency updates:** Dependabot does **not** read `#:package` directives or folder-local `Directory.Build.props` files (verified, see Evidence). Versions are therefore **bumped manually**, matched to `backend/Directory.Packages.props` whenever Dependabot updates the backend. `tools/tool-versions` enforces this: `just tools versions` (in `just lint` and the CI `Tooling` job) fails when a tooling pin differs from the backend's version, and `just tools versions --fix` rewrites the pins. Packages the backend doesn't use are listed as `SKIP` and stay fully manual. There is deliberately no Dependabot entry for tool folders: it would run weekly and find nothing. Revisit if Dependabot adds support for file-based apps.
 * **Minimum SDK:** .NET SDK **10.0.300** or later (amended 2026-11-03; it said ".NET 10" before). `#:include`, which this layout uses to pull tool logic into entry points and tests, first ships in the 10.0.3xx feature band. On 10.0.1xx and 10.0.2xx every tool that uses it fails before compiling, with `Unrecognized directive 'include'` (see Evidence).
-  * In this repo the repo-root `global.json` pins the exact SDK the tools run on, the same `sdk` block as `backend/global.json` (amendment of 2026-11-10). The pin satisfies the minimum, and `just doctor` fails when no installed SDK satisfies the root file.
+  * In this repo the repo-root `global.json` pins the exact SDK the tools run on (amendment of 2026-11-10). The pin satisfies the minimum, and `just doctor` fails when no installed SDK satisfies the root file.
   * Before that amendment no `global.json` covered the repo root, so the tools used the newest installed SDK, and CI's `dotnet-version: 10.0.x` installed the newest band.
   * A host repo whose `global.json` pins an older SDK can't run a skill's tools; each `SKILL.md` that bundles tools states this.
 * **Invocation:**
@@ -176,7 +176,6 @@ All steps are implemented. Step 5 showed that Dependabot doesn't support file-ba
 * The CI tooling job runs every tool's xUnit tests, `dotnet format whitespace --folder --verify-no-changes` on `tools/` and each skill folder, shellcheck on bootstrap scripts, and the ADR validator.
 * Code review rejects new `.py`, `.sh` or other non-.NET tooling, unless it falls under the bootstrap exception or a new ADR supersedes this one.
 * `just doctor` fails when no installed SDK satisfies the repo-root `global.json`, whose pin is at least 10.0.300, the minimum for `#:include` (`tools/doctor/tests/doctor.tests.cs`).
-* `just tools versions` fails when the `sdk` blocks of `global.json` and `backend/global.json` differ (`tools/tool-versions/tests/tool-versions.tests.cs`).
 * A portability smoke test in the implementation PR: copy the skill folder to an empty temp directory and run the validator and its tests there.
 
 ## Pros and Cons of the Options
@@ -243,5 +242,5 @@ All steps are implemented. Step 5 showed that Dependabot doesn't support file-ba
   * Sharing skills with non-.NET repos is deferred.
 * **Amendment, 2026-11-03:** the minimum SDK was corrected from ".NET 10" to 10.0.300, after `just tools adr`, `just tools test`, `just tools versions` and `just db seed` failed locally on SDK 10.0.114 while CI passed. The decision itself is unchanged, so this ADR was amended, not superseded. The evidence was gathered on 10.0.403, which is why the gap went unnoticed.
 * **Amendment, 2026-11-06:** scripts whose language is fixed by the technology that runs them (Claude Code workflows first) are outside this record's scope; see the exception above. Given by the maintainer in conversation on the review of story 0035's card. The decision itself is unchanged.
-* **Amendment, 2026-11-10:** the repo-root `global.json` pins the SDK the tools run on, matching `backend/global.json`, and CI installs it from there, after SDK 10.0.404 broke every tool's locked restore (#645). Chosen by the maintainer in conversation. The decision itself is unchanged.
+* **Amendment, 2026-11-10:** the repo-root `global.json` pins the exact SDK the tools run on, and CI installs it from there, after SDK 10.0.404 broke every tool's locked restore (#645). Chosen by the maintainer in conversation. The decision itself is unchanged.
 * **Deferred:** if a skill must be shared with non-.NET repos, reconsider the language for that skill only, in a new ADR.

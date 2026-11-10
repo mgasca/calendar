@@ -12,8 +12,7 @@ fail() { printf '  %s✗%s %s\n      → %s\n' "$red" "$reset" "$1" "$2"; proble
 
 echo "Checking toolchain..."
 
-# .NET SDK: must satisfy backend/global.json (dotnet --version fails otherwise); global.json at the
-# root pins the same SDK, which `just tools versions` checks.
+# .NET SDK: must satisfy backend/global.json (dotnet --version fails otherwise).
 if ! command -v dotnet >/dev/null 2>&1; then
   fail "dotnet not found" "Install the .NET SDK pinned in backend/global.json: https://learn.microsoft.com/dotnet/core/install/linux"
 elif sdk="$(cd "$root/backend" && dotnet --version 2>/dev/null)"; then
@@ -22,7 +21,7 @@ else
   fail "no .NET SDK satisfies backend/global.json" "Install the SDK version in backend/global.json (dotnet --list-sdks shows what is installed)"
 fi
 
-# Repo tools run from the repo root, where global.json pins the same SDK as backend/global.json
+# Repo tools run from the repo root, where global.json pins their exact SDK
 # (ADR-0017). Their lock files record that SDK's implicit AOT packages, so another SDK fails CI's
 # locked restore (#645); an SDK before 10.0.300 also lacks #:include.
 if command -v dotnet >/dev/null 2>&1; then

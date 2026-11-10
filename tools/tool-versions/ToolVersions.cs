@@ -1,4 +1,3 @@
-using System.Text.Json;
 using System.Text.RegularExpressions;
 using System.Xml.Linq;
 
@@ -9,13 +8,6 @@ public sealed record PinnedPackage(string Package, string Version, string File);
 
 /// <summary>A pin whose version differs from the backend's central version.</summary>
 public sealed record VersionDrift(PinnedPackage Pin, string BackendVersion);
-
-/// <summary>The <c>sdk</c> block of a global.json; null fields are absent.</summary>
-public sealed record SdkPin(string? Version, string? RollForward)
-{
-  /// <inheritdoc/>
-  public override string ToString() => $"{Version ?? "(no version)"} ({RollForward ?? "no rollForward"})";
-}
 
 /// <summary>
 /// Keeps package versions pinned by repo tooling (ADR-0017) in step with backend/Directory.Packages.props.
@@ -105,25 +97,6 @@ public static partial class VersionChecker
     }
     return changed;
   }
-
-  /// <summary>
-  /// Reads the <c>sdk</c> block of a global.json. The repo-root file (repo tools, CI tool jobs) and
-  /// backend/global.json (backend, image) must pin the same SDK, because the tool lock files record the
-  /// SDK's implicit AOT package versions (#645).
-  /// </summary>
-  public static SdkPin ReadSdkPin(string globalJsonPath)
-  {
-    var options = new JsonDocumentOptions { CommentHandling = JsonCommentHandling.Skip, AllowTrailingCommas = true };
-    using var doc = JsonDocument.Parse(File.ReadAllText(globalJsonPath), options);
-    if (!doc.RootElement.TryGetProperty("sdk", out JsonElement sdk) || sdk.ValueKind != JsonValueKind.Object)
-    {
-      return new SdkPin(null, null);
-    }
-    return new SdkPin(ReadString(sdk, "version"), ReadString(sdk, "rollForward"));
-  }
-
-  private static string? ReadString(JsonElement element, string name) =>
-      element.TryGetProperty(name, out JsonElement value) && value.ValueKind == JsonValueKind.String ? value.GetString() : null;
 
   private static bool IsSkipped(string root, string file) =>
       Path.GetRelativePath(root, file).Split(PathSeparators)

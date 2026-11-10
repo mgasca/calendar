@@ -272,11 +272,11 @@ jobs:
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@v7
-      # No repo-root global.json: tools target the latest .NET 10 SDK (ADR-0017). The NuGet cache holds the tools'
+      # The SDK pinned in the repo-root global.json, which the tool lock files match (ADR-0017, #645). The NuGet cache holds the tools'
       # #:package pins, which the first test app otherwise downloads on every run (#351, record 0011).
       - uses: actions/setup-dotnet@v6
         with:
-          dotnet-version: 10.0.x
+          global-json-file: global.json
           cache: true
           cache-dependency-path: |
             tools/**/packages.lock.json
@@ -315,10 +315,10 @@ jobs:
     timeout-minutes: 5
     steps:
       - uses: actions/checkout@v7
-      # The SDK Tooling uses (ADR-0017); the NuGet cache holds only the adr-draft skill's #:package pins.
+      # The SDK Tooling uses, pinned in global.json (ADR-0017); the NuGet cache holds only the adr-draft skill's #:package pins.
       - uses: actions/setup-dotnet@v6
         with:
-          dotnet-version: 10.0.x
+          global-json-file: global.json
           cache: true
           cache-dependency-path: .claude/skills/adr-draft/**/packages.lock.json
       # The script finds docs/decisions, docs/stories and the model from the repository root, as `just tools adr` does.

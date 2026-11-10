@@ -21,16 +21,15 @@ else
   fail "no .NET SDK satisfies backend/global.json" "Install the SDK version in backend/global.json (dotnet --list-sdks shows what is installed)"
 fi
 
-# Repo tools run from the repo root, outside backend/global.json, and their #:include directive
-# needs SDK 10.0.300 or later (ADR-0017). Older SDKs fail with "Unrecognized directive 'include'".
-want_tools_sdk="10.0.300"
+# Repo tools run from the repo root, where global.json pins their exact SDK
+# (ADR-0017). Their lock files record that SDK's implicit AOT packages, so another SDK fails CI's
+# locked restore (#645); an SDK before 10.0.300 also lacks #:include.
 if command -v dotnet >/dev/null 2>&1; then
-  tools_sdk="$(cd "$root" && dotnet --version 2>/dev/null)"
-  if [ "$(printf '%s\n%s\n' "$want_tools_sdk" "$tools_sdk" | sort -V | head -n 1)" = "$want_tools_sdk" ]; then
-    ok ".NET SDK $tools_sdk for repo tools ($want_tools_sdk or later)"
+  if tools_sdk="$(cd "$root" && dotnet --version 2>/dev/null)"; then
+    ok ".NET SDK $tools_sdk for repo tools (satisfies global.json)"
   else
-    fail ".NET SDK ${tools_sdk:-unavailable} for repo tools, but #:include needs $want_tools_sdk or later (ADR-0017)" \
-      "Install SDK $want_tools_sdk or later, e.g. 'dotnet-install.sh --channel 10.0'; until then just tools adr, tools test, tools versions, db seed and lint fail"
+    fail "no .NET SDK satisfies global.json at the repo root, which the repo tools need (ADR-0017)" \
+      "Install the SDK version in global.json, e.g. 'dotnet-install.sh --version <version>'; until then just tools adr, tools test, tools versions, db seed and lint fail"
   fi
 fi
 

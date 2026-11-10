@@ -15,7 +15,7 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 
 /** The snapshot schema versions this reader accepts (tools/delivery-dashboard/Snapshot.cs). */
 export const oldestVersion = 1;
-export const currentVersion = 2;
+export const currentVersion = 3;
 
 export interface SnapshotWindow {
   from: string;
@@ -156,6 +156,31 @@ export interface AgentsSection {
   issues: AgentIssue[];
 }
 
+export interface SupersededWeek {
+  week: string;
+  pairs: number;
+  waitRuns: number;
+  waitMedianSeconds: number | null;
+  waitP90Seconds: number | null;
+  waitMaxSeconds: number | null;
+  pushGapMedianSeconds: number | null;
+  controlRuns: number;
+  controlWaitMedianSeconds: number | null;
+}
+
+export interface SupersededSection {
+  basis: { detection: string; timing: string };
+  sample: {
+    pairs: number;
+    ignored: number;
+    controlRuns: number;
+    cap: number;
+    minPairs: number;
+    window: SnapshotWindow | null;
+  };
+  weeks: SupersededWeek[];
+}
+
 export interface Snapshot {
   version: number;
   date: string;
@@ -165,6 +190,7 @@ export interface Snapshot {
   flow: FlowSection | null;
   quality?: QualitySection | null;
   agents?: AgentsSection | null;
+  superseded?: SupersededSection | null;
 }
 
 /** What the build found: no snapshots yet (data branch absent or empty), or the snapshots, oldest first. */
@@ -189,7 +215,7 @@ const rootKeys = ['version', 'date', 'generatedAt', 'repository', 'ci'];
 // Sections added after version 1: absent from older files, validated when present.
 // Sections whose pages are delivered by their own slices are accepted as objects here (the .NET rules check them, and
 // the privacy scan above covers every string); the page for each replaces this with a full check.
-const optionalRootKeys = ['flow', 'quality', 'agents'];
+const optionalRootKeys = ['flow', 'quality', 'agents', 'superseded'];
 const ciKeysV1 = ['workflow', 'basis', 'runs', 'window', 'jobs'];
 const jobKeysV1 = [
   'job',
@@ -322,7 +348,7 @@ class Checker {
 
 /**
  * Parses a snapshot's text. Throws a SnapshotError naming the file and every field that breaks the
- * schema (versions 1 and 2) or the privacy rules, so a build never renders a half-understood file.
+ * schema (versions 1 to 3) or the privacy rules, so a build never renders a half-understood file.
  */
 export function parseSnapshot(file: string, text: string): Snapshot {
   let json: Json;
@@ -349,6 +375,13 @@ export function parseSnapshot(file: string, text: string): Snapshot {
       if ('flow' in json) checkFlow(check, json.flow);
       if ('quality' in json) checkQuality(check, json.quality);
       if ('agents' in json) checkAgents(check, json.agents);
+      if ('superseded' in json) {
+        if (version < 3)
+          check.problems.push('$.superseded: field is not in the schema before version 3');
+        else checkSuperseded(check, json.superseded);
+      } else if (version >= 3) {
+        check.problems.push('$.superseded: field is missing (null when not sampled)');
+      }
     }
   }
   if (check.problems.length > 0) throw new SnapshotError(file, check.problems);
@@ -1025,10 +1058,9 @@ function ciSpeed(data: DashboardData): string {
         ['Median', 'p90', 'Max'],
         [[ci.queue.medianSeconds, ci.queue.p90Seconds, ci.queue.maxSeconds].map(formatSeconds)],
       ),
-      '',
-      'Time that pull request runs lose to a newer push cancelling them (superseded-run waste) is not on this page: it needs pull request runs, which this snapshot does not sample.',
     );
   }
+  lines.push('', ...supersededBlock(latest.superseded, latest.version));
   const recent = data.snapshots.slice(-historyLength);
   lines.push('', '## History of the median', '');
   if (recent.length < 2) {
@@ -1510,3 +1542,169 @@ export function dashboardEntries(data: DashboardData) {
 
 /** The folder the pages are built from, for the watcher. */
 export const dashboardDataPath = () => fileURLToPath(dashboardDataDirectory());
+
+const supersededWeekKeys = [
+  'week',
+  'pairs',
+  'waitRuns',
+  'waitMedianSeconds',
+  'waitP90Seconds',
+  'waitMaxSeconds',
+  'pushGapMedianSeconds',
+  'controlRuns',
+  'controlWaitMedianSeconds',
+];
+
+/** A number of seconds that is set exactly when `required`, as in the .NET rules (SupersededRules.cs). */
+function optionalSeconds(
+  check: Checker,
+  value: Json,
+  path: string,
+  required: boolean,
+  because: string,
+) {
+  if (value === null) {
+    if (required) check.problems.push(`${path}: must be set when ${because} is above 0`);
+    return undefined;
+  }
+  if (!required) check.problems.push(`${path}: must be null when ${because} is 0`);
+  return check.seconds(value, path);
+}
+
+/** The superseded section's shape and sums; the .NET rules check the same. */
+function checkSuperseded(check: Checker, section: Json) {
+  const path = '$.superseded';
+  if (section === null || !check.keys(section, path, ['basis', 'sample', 'weeks'])) return;
+  if (check.keys(section.basis, `${path}.basis`, ['detection', 'timing'])) {
+    check.oneOf(section.basis.detection, `${path}.basis.detection`, ['measured', 'inferred']);
+    check.oneOf(section.basis.timing, `${path}.basis.timing`, ['measured', 'inferred']);
+  }
+  let pairs = 0;
+  let controlRuns = 0;
+  const sample = section.sample;
+  if (
+    check.keys(sample, `${path}.sample`, [
+      'pairs',
+      'ignored',
+      'controlRuns',
+      'cap',
+      'minPairs',
+      'window',
+    ])
+  ) {
+    pairs = check.count(sample.pairs, `${path}.sample.pairs`, 0);
+    check.count(sample.ignored, `${path}.sample.ignored`, 0);
+    controlRuns = check.count(sample.controlRuns, `${path}.sample.controlRuns`, 0);
+    const cap = check.count(sample.cap, `${path}.sample.cap`, 1);
+    check.count(sample.minPairs, `${path}.sample.minPairs`, 1);
+    check.window(sample.window, `${path}.sample.window`, pairs);
+    if (cap > 0 && pairs > cap)
+      check.problems.push(`${path}.sample.pairs: cannot exceed sample.cap (${cap})`);
+  }
+  if (!Array.isArray(section.weeks)) {
+    check.problems.push(`${path}.weeks: must be an array`);
+    return;
+  }
+  let pairSum = 0;
+  let controlSum = 0;
+  let previous = '';
+  section.weeks.forEach((week: Json, index) => {
+    const at = `${path}.weeks[${index}]`;
+    if (!check.keys(week, at, supersededWeekKeys)) return;
+    const start = typeof week.week === 'string' ? week.week : '';
+    const monday =
+      /^\d{4}-\d{2}-\d{2}$/.test(start) && new Date(`${start}T00:00:00Z`).getUTCDay() === 1;
+    if (!monday) check.problems.push(`${at}.week: must be the Monday of the week as yyyy-MM-dd`);
+    else {
+      if (start <= previous)
+        check.problems.push(`${at}.week: weeks must be listed once, oldest first`);
+      previous = start;
+    }
+    const weekPairs = check.count(week.pairs, `${at}.pairs`, 0);
+    const waitRuns = check.count(week.waitRuns, `${at}.waitRuns`, 0);
+    if (waitRuns > weekPairs)
+      check.problems.push(`${at}.waitRuns: cannot exceed pairs (${weekPairs})`);
+    const weekControl = check.count(week.controlRuns, `${at}.controlRuns`, 0);
+    check.ascending(
+      ['waitMedianSeconds', 'waitP90Seconds', 'waitMaxSeconds'].map((key) =>
+        optionalSeconds(check, week[key], `${at}.${key}`, waitRuns > 0, 'waitRuns'),
+      ),
+      at,
+      'waitMedianSeconds <= waitP90Seconds <= waitMaxSeconds',
+    );
+    optionalSeconds(
+      check,
+      week.pushGapMedianSeconds,
+      `${at}.pushGapMedianSeconds`,
+      weekPairs > 0,
+      'pairs',
+    );
+    optionalSeconds(
+      check,
+      week.controlWaitMedianSeconds,
+      `${at}.controlWaitMedianSeconds`,
+      weekControl > 0,
+      'controlRuns',
+    );
+    pairSum += weekPairs;
+    controlSum += weekControl;
+  });
+  if (pairSum !== pairs)
+    check.problems.push(`${path}.weeks: pairs add up to ${pairSum}, but sample.pairs is ${pairs}`);
+  if (controlSum !== controlRuns)
+    check.problems.push(
+      `${path}.weeks: controlRuns add up to ${controlSum}, but sample.controlRuns is ${controlRuns}`,
+    );
+}
+
+/** The "Superseded runs" block of the CI-speed page: pull request runs a newer push cancelled, per week. */
+function supersededBlock(section: SupersededSection | null | undefined, version: number): string[] {
+  const lines = ['## Superseded pull request runs', ''];
+  if (version < 3) {
+    return [
+      ...lines,
+      'This snapshot was written by an older version of the snapshot tool (schema version below 3), which did not sample pull request runs. Nothing is shown and none is implied.',
+    ];
+  }
+  if (!section) {
+    return [...lines, 'This snapshot did not sample pull request runs, so no figure is shown.'];
+  }
+  const { sample, basis } = section;
+  lines.push(
+    `A pull request run is **superseded** when a newer push to the same branch cancels it. **${basis.detection === 'inferred' ? 'Inferred' : 'Measured'}**: the pairing (a later pull request run of the branch exists, and the old run had not ended when the new one was created; ${sample.ignored} cancelled run${sample.ignored === 1 ? '' : 's'} that had already ended were left out as cancelled by hand). ` +
+      `**${basis.timing === 'measured' ? 'Measured' : 'Inferred'}**: the wait of the newer run, from its creation to its first job starting, and the gap between the two pushes, both from timestamps GitHub recorded.`,
+    '',
+    sample.pairs === 0
+      ? `Sample: no superseded run among the newest runs read (at most ${sample.cap} pairs are measured per snapshot, because each costs two job calls).`
+      : `Sample: ${sample.pairs} superseded runs, newer runs created ${windowText(sample.window)}; at most ${sample.cap} pairs are measured per snapshot, so older weeks may be partial. Control: ${sample.controlRuns} successful pull request runs that superseded nothing, from the same period. A statistic needs at least ${sample.minPairs} pairs in the week.`,
+    '',
+  );
+  const shown = (value: number | null, enough: boolean) =>
+    value !== null && enough ? formatSeconds(value) : 'not enough runs';
+  lines.push(
+    table(
+      [
+        'Week starting',
+        'Superseded runs',
+        'Newer run waited, median',
+        'p90',
+        'Pushes apart, median',
+        'Control runs',
+        'Control wait, median',
+      ],
+      section.weeks.map((week) => {
+        const enough = week.waitRuns >= sample.minPairs;
+        return [
+          week.week,
+          String(week.pairs),
+          shown(week.waitMedianSeconds, enough),
+          shown(week.waitP90Seconds, enough),
+          shown(week.pushGapMedianSeconds, week.pairs >= sample.minPairs),
+          String(week.controlRuns),
+          shown(week.controlWaitMedianSeconds, week.controlRuns >= sample.minPairs),
+        ];
+      }),
+    ),
+  );
+  return lines;
+}

@@ -1,5 +1,5 @@
 {
-  "version": 2,
+  "version": 3,
   "date": "2026-11-09",
   "generatedAt": "2026-11-09T06:47:05Z",
   "repository": "mgasca/calendar",
@@ -566,6 +566,41 @@
         "comments": 1,
         "reviews": 0,
         "pullRequests": 4
+      }
+    ]
+  },
+  "superseded": {
+    "basis": { "detection": "inferred", "timing": "measured" },
+    "sample": {
+      "pairs": 5,
+      "ignored": 1,
+      "controlRuns": 4,
+      "cap": 30,
+      "minPairs": 3,
+      "window": { "from": "2026-11-03T10:00:00Z", "to": "2026-11-09T06:00:00Z" }
+    },
+    "weeks": [
+      {
+        "week": "2026-11-02",
+        "pairs": 4,
+        "waitRuns": 4,
+        "waitMedianSeconds": 20,
+        "waitP90Seconds": 40,
+        "waitMaxSeconds": 40,
+        "pushGapMedianSeconds": 200,
+        "controlRuns": 3,
+        "controlWaitMedianSeconds": 5
+      },
+      {
+        "week": "2026-11-09",
+        "pairs": 1,
+        "waitRuns": 1,
+        "waitMedianSeconds": 50,
+        "waitP90Seconds": 50,
+        "waitMaxSeconds": 50,
+        "pushGapMedianSeconds": 90,
+        "controlRuns": 1,
+        "controlWaitMedianSeconds": 7
       }
     ]
   }

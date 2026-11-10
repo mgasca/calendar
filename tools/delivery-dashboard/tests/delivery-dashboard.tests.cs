@@ -10,6 +10,9 @@
 #:include ../QualityRules.cs
 #:include ../AgentSection.cs
 #:include ../AgentRules.cs
+#:include ../SupersededSection.cs
+#:include ../SupersededRules.cs
+#:include SupersededTests.cs
 #:include QualityTests.cs
 #:include ../FlowSection.cs
 #:include ../FlowRules.cs
@@ -210,9 +213,9 @@ public sealed class SnapshotRulesTests
   [Fact]
   public void Another_version_fails()
   {
-    var json = ValidJson().Replace("\"version\": 2", "\"version\": 3", StringComparison.Ordinal);
+    var json = ValidJson().Replace("\"version\": 3", "\"version\": 4", StringComparison.Ordinal);
 
-    SnapshotRules.Validate(json).ShouldContain("$.version: must be 1 to 2");
+    SnapshotRules.Validate(json).ShouldContain("$.version: must be 1 to 3");
   }
 
   [Theory]

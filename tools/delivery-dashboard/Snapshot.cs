@@ -91,6 +91,7 @@ public sealed record CiSection(
 /// <param name="Quality">The quality section (#599); null in a snapshot written without it.</param>
 /// <param name="Flow">The flow section (#598); null in a snapshot written without it.</param>
 /// <param name="Agents">The agent proxies section (#600); null in a snapshot written without it.</param>
+/// <param name="Superseded">The superseded-run section (#618), schema version 3; null when it was not sampled.</param>
 public sealed record Snapshot(
   int Version,
   DateOnly Date,
@@ -99,7 +100,8 @@ public sealed record Snapshot(
   CiSection Ci,
   QualitySection? Quality = null,
   FlowSection? Flow = null,
-  AgentsSection? Agents = null);
+  AgentsSection? Agents = null,
+  SupersededSection? Superseded = null);
 
 /// <summary>Builds the CI-speed section from sampled runs.</summary>
 public static class CiSnapshot
@@ -205,7 +207,7 @@ public static class CiSnapshot
 public static class SnapshotJson
 {
   /// <summary>The schema version this tool writes; it accepts <see cref="OldestVersion"/> up to this one.</summary>
-  public const int CurrentVersion = 2;
+  public const int CurrentVersion = 3;
 
   /// <summary>The oldest schema version still accepted: version 1 has no baseline, trend or queue fields.</summary>
   public const int OldestVersion = 1;
@@ -245,6 +247,11 @@ public static class SnapshotJson
       {
         writer.WritePropertyName("agents");
         AgentsJson.Write(writer, snapshot.Agents);
+      }
+      if (snapshot.Version >= 3)
+      {
+        writer.WritePropertyName("superseded");
+        SupersededJson.Write(writer, snapshot.Superseded);
       }
       writer.WriteEndObject();
     }

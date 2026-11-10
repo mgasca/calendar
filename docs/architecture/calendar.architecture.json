@@ -617,7 +617,7 @@
       "unique-id": "github-actions",
       "node-type": "service",
       "name": "GitHub Actions (CI/CD)",
-      "description": "Workflows in .github/workflows: CI (a Changes job that decides from the changed paths which jobs a pull request or merge group needs; backend, frontend, docs site, tooling, ADR conventions (the ADR check alone, for a change to the ADRs, story cards or model that runs no tooling job), container image + smoke test, cancelling a pull request's superseded runs, 'CI result'), CodeQL, dependency review, Infrastructure preview (Bicep what-if), Azure OIDC check, Database migration (manual, per environment, OIDC login) and Publish ADR site (trusted workflow_run publisher for production and PR previews) and Dashboard snapshot (daily and on demand: takes and checks the delivery snapshot, commits it to the dashboard-data branch, and opens or updates the threshold issues; three jobs with separate permissions, never part of CI result).",
+      "description": "Workflows in .github/workflows: CI (a Changes job that decides from the changed paths which jobs a pull request or merge group needs; backend, frontend, docs site, tooling, ADR conventions (the ADR check alone, for a change to the ADRs, story cards or model that runs no tooling job), container image + smoke test, cancelling a pull request's superseded runs, 'CI result'), CodeQL, dependency review, Infrastructure preview (Bicep what-if), Azure OIDC check, Database migration (manual, per environment, OIDC login) and Publish docs site (trusted workflow_run publisher for production and PR previews) and Dashboard snapshot (daily and on demand: takes and checks the delivery snapshot, commits it to the dashboard-data branch, and opens or updates the threshold issues; three jobs with separate permissions, never part of CI result).",
       "interfaces": [
         { "unique-id": "ci-workflows", "workflows": ["ci.yml", "codeql.yml", "dependency-review.yml", "infra-whatif.yml", "azure-oidc-check.yml", "migrate.yml", "pages.yml", "dashboard-snapshot.yml"] }
       ],
@@ -1136,7 +1136,7 @@
     },
     {
       "unique-id": "ci-publishes-docs",
-      "description": "Builds the verified adr-site artifact in CI and publishes production and PR previews through the trusted workflow_run publisher to",
+      "description": "Builds the verified docs-site artifact in CI and publishes production and PR previews through the trusted workflow_run publisher to",
       "relationship-type": {
         "connects": {
           "source": { "node": "github-actions", "interfaces": ["ci-workflows"] },
@@ -1501,8 +1501,8 @@
       "requirement-url": "https://mgasca.github.io/calendar/adr/0023/",
       "transitions": [
         { "relationship-unique-id": "operator-operates-platform", "sequence-number": 1, "description": "A PR adds or changes an ADR, a story card, the architecture model, a runbook or a benchmark record (just tools adr and the docs tests pass locally) and is merged to main" },
-        { "relationship-unique-id": "docs-site-built-from-decision-log", "sequence-number": 2, "description": "The CI Docs site job builds the Astro Starlight site from docs/decisions, docs/stories, docs/architecture, docs/runbooks and docs/benchmarks, verifies it at the root path and at a project subpath, and uploads the adr-site artifact" },
-        { "relationship-unique-id": "ci-publishes-docs", "sequence-number": 3, "description": "After CI succeeds, the Publish ADR site workflow's assemble job validates the source run, revision and PR state and that CI uploaded a publication artifact (only main pushes and docs-only PRs build one), downloads the exact artifact, assembles the retained production snapshot plus open-PR previews and uploads it; a separate deploy job deploys it with the github-pages environment, unless gh-pages has moved on to a later publication" },
+        { "relationship-unique-id": "docs-site-built-from-decision-log", "sequence-number": 2, "description": "The CI Docs site job builds the Astro Starlight site from docs/decisions, docs/stories, docs/architecture, docs/runbooks and docs/benchmarks, verifies it at the root path and at a project subpath, and uploads the docs-site artifact" },
+        { "relationship-unique-id": "ci-publishes-docs", "sequence-number": 3, "description": "After CI succeeds, the Publish docs site workflow's assemble job validates the source run, revision and PR state and that CI uploaded a publication artifact (only main pushes and docs-only PRs build one), downloads the exact artifact, assembles the retained production snapshot plus open-PR previews and uploads it; a separate deploy job deploys it with the github-pages environment, unless gh-pages has moved on to a later publication" },
         { "relationship-unique-id": "docs-site-on-github-pages", "sequence-number": 4, "description": "The site is live at https://mgasca.github.io/calendar/ with each agent thought at agent-thoughts/NNNN/, each ADR at adr/NNNN/, each story at stories/NNNN/, each runbook at runbooks/<name>/ and each benchmark record at benchmarks/NNNN/; a docs-only PR gets an 'ADR preview' check and a sticky comment linking to pr-preview/pr-<number>/" }
       ],
       "metadata": { "adrs": ["ADR-0000", "ADR-0022", "ADR-0023", "ADR-0025", "ADR-0028"], "stories": ["0010", "0030", "0031"], "workflows": [".github/workflows/ci.yml", ".github/workflows/pages.yml"] }

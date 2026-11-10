@@ -19,6 +19,19 @@ updates:
       day: monday
     labels: [dependencies, backend]
 
+  # The .NET SDK in global.json and backend/global.json, which must match (`just tools versions`). The tool
+  # lock files record the SDK's implicit AOT packages, so the bump fails CI's locked restore until they are
+  # refreshed on its branch (tools/README.md, ADR-0017, #645).
+  - package-ecosystem: dotnet-sdk
+    directories: [/, /backend]
+    schedule:
+      interval: weekly
+      day: monday
+    labels: [dependencies, backend]
+    groups:
+      dotnet-sdk:
+        patterns: ["*"]
+
   # Dockerfile base images and the postgres image pinned in compose.yaml.
   - package-ecosystem: docker
     directory: /

@@ -39,7 +39,7 @@ jobs:
           persist-credentials: false
       - uses: actions/setup-dotnet@v6
         with:
-          dotnet-version: 10.0.x
+          global-json-file: global.json
           cache: true
           cache-dependency-path: tools/ci-timings/packages.lock.json
       - name: Compare recent push runs on main with the pinned baseline

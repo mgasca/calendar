@@ -100,6 +100,37 @@ public sealed class VersionCheckerTests : IDisposable
       .ShouldBe(before.Replace("Version=\"1.0.0\"", "Version=\"2.0.0\"", StringComparison.Ordinal));
   }
 
+  [Fact]
+  public void ReadSdkPin_ReadsVersionAndRollForward_IgnoringOtherSectionsAndComments()
+  {
+    Write("backend/global.json", """
+            {
+              // the backend also configures its test runner here
+              "sdk": { "version": "10.0.404", "rollForward": "latestPatch" },
+              "test": { "runner": "Microsoft.Testing.Platform" },
+            }
+            """);
+    Write("global.json", """{ "sdk": { "rollForward": "latestPatch", "version": "10.0.404" } }""");
+
+    SdkPin backend = VersionChecker.ReadSdkPin(Path.Combine(_root, "backend/global.json"));
+
+    backend.ShouldBe(new SdkPin("10.0.404", "latestPatch"));
+    VersionChecker.ReadSdkPin(Path.Combine(_root, "global.json")).ShouldBe(backend);
+  }
+
+  [Fact]
+  public void ReadSdkPin_DistinguishesADifferentVersionOrPolicy_AndAMissingBlock()
+  {
+    Write("a.json", """{ "sdk": { "version": "10.0.404", "rollForward": "latestPatch" } }""");
+    Write("b.json", """{ "sdk": { "version": "10.0.100", "rollForward": "latestFeature" } }""");
+    Write("c.json", """{ "test": { "runner": "Microsoft.Testing.Platform" } }""");
+
+    SdkPin a = VersionChecker.ReadSdkPin(Path.Combine(_root, "a.json"));
+
+    VersionChecker.ReadSdkPin(Path.Combine(_root, "b.json")).ShouldNotBe(a);
+    VersionChecker.ReadSdkPin(Path.Combine(_root, "c.json")).ShouldBe(new SdkPin(null, null));
+  }
+
   private IReadOnlyList<VersionDrift> Drifts() =>
       VersionChecker.FindDrift(
           VersionChecker.FindPins(_root),

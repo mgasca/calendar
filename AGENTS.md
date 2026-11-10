@@ -4,7 +4,7 @@ Guidance for AI coding agents (Claude Code, Codex, Cursor, …) working in this 
 
 ## Overview
 
-"Calendar": a monorepo with a .NET 10 backend (`backend/`, solution `Calendar.slnx`) and a pnpm/React/Vite/TypeScript frontend (`frontend/`). The API serves events, tasks, day and week agendas, and Google sign-in (cookie session, allow-listed emails), backed by PostgreSQL. The web app shows day, week and task views. Product stories live in `docs/stories/`, decisions in `docs/decisions/` (ADRs): read the relevant ADR before changing tooling, layout, dependencies or API conventions, and never contradict an accepted one (supersede it instead). Linux/WSL only. Toolchain pins: .NET SDK from `backend/global.json` (10.0.300 or later for the repo tools), Node from `frontend/.node-version`, pnpm via Corepack; `just doctor` verifies them. `.plan/` and `.env` are git-ignored.
+"Calendar": a monorepo with a .NET 10 backend (`backend/`, solution `Calendar.slnx`) and a pnpm/React/Vite/TypeScript frontend (`frontend/`). The API serves events, tasks, day and week agendas, and Google sign-in (cookie session, allow-listed emails), backed by PostgreSQL. The web app shows day, week and task views. Product stories live in `docs/stories/`, decisions in `docs/decisions/` (ADRs): read the relevant ADR before changing tooling, layout, dependencies or API conventions, and never contradict an accepted one (supersede it instead). Linux/WSL only. Toolchain pins: .NET SDK from `global.json`, which `backend/global.json` matches (the repo tools' lock files depend on it), Node from `frontend/.node-version`, pnpm via Corepack; `just doctor` verifies them. `.plan/` and `.env` are git-ignored.
 
 ## Commands
 

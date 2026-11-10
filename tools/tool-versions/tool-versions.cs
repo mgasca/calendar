@@ -53,20 +53,36 @@ foreach (PinnedPackage pin in pins)
   Console.WriteLine(line);
 }
 
-if (drifts.Count == 0)
+// The repo-root global.json (tools, CI tool jobs) and backend/global.json must pin the same SDK (#645).
+var sdkOk = true;
+var rootGlobal = Path.Combine(root, "global.json");
+var backendGlobal = Path.Combine(root, "backend", "global.json");
+if (File.Exists(rootGlobal) && File.Exists(backendGlobal))
 {
-  return 0;
+  SdkPin rootSdk = VersionChecker.ReadSdkPin(rootGlobal);
+  SdkPin backendSdk = VersionChecker.ReadSdkPin(backendGlobal);
+  sdkOk = rootSdk == backendSdk;
+  Console.WriteLine(sdkOk
+    ? $"OK    .NET SDK {rootSdk} in global.json and backend/global.json"
+    : $"DRIFT .NET SDK {rootSdk} in global.json; backend/global.json has {backendSdk}");
 }
 
-if (fix)
+if (drifts.Count > 0 && fix)
 {
   var changed = VersionChecker.Fix(root, drifts);
   Console.WriteLine($"Updated {changed} pin(s). Run 'just tools test' to refresh packages.lock.json files, then commit.");
-  return 0;
+}
+else if (drifts.Count > 0)
+{
+  Console.WriteLine($"{drifts.Count} pin(s) drifted from backend/Directory.Packages.props. Fix with: just tools versions --fix");
 }
 
-Console.WriteLine($"{drifts.Count} pin(s) drifted from backend/Directory.Packages.props. Fix with: just tools versions --fix");
-return 1;
+if (!sdkOk)
+{
+  Console.WriteLine("Set the same sdk block in both global.json files, then refresh the tool lock files (tools/README.md).");
+}
+
+return sdkOk && (drifts.Count == 0 || fix) ? 0 : 1;
 
 // The nearest ancestor of the working directory containing .git (a directory, or a file in worktrees).
 static string RepoRoot()

@@ -96,16 +96,19 @@ public sealed class DoctorTests : IDisposable
   }
 
   [Theory]
-  [InlineData("10.0.114", false)]
-  [InlineData("10.0.204", false)]
-  [InlineData("10.0.300", true)]
-  [InlineData("10.0.403", true)]
-  public async Task RepoToolsNeedSdkWithIncludeDirective(string sdk, bool success)
+  [InlineData(true)]
+  [InlineData(false)]
+  public async Task RepoToolsNeedTheSdkThatGlobalJsonPinsAtTheRoot(bool success)
   {
-    WriteExecutable("dotnet", $"echo {sdk}");
+    // The real dotnet fails `--version` where no installed SDK satisfies the nearest global.json.
+    WriteExecutable("dotnet", success
+      ? "echo 10.0.404"
+      : "case \"$PWD\" in */backend) echo 10.0.404 ;; *) echo 'A compatible .NET SDK was not found.' >&2; exit 145 ;; esac");
     (var code, var text) = await RunDoctor(infra: false);
     (code == 0).ShouldBe(success);
-    text.ShouldContain(success ? $".NET SDK {sdk} for repo tools" : "#:include needs 10.0.300 or later");
+    text.ShouldContain(success
+      ? ".NET SDK 10.0.404 for repo tools (satisfies global.json)"
+      : "no .NET SDK satisfies global.json at the repo root");
   }
 
   [Fact]

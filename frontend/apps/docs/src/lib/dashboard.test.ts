@@ -103,8 +103,8 @@ describe('reading snapshots', () => {
     ],
     [
       'an unknown version',
-      (valid) => valid.replace('"version": 2', '"version": 9'),
-      '$.version: must be 1 to 2',
+      (valid) => valid.replace('"version": 3', '"version": 9'),
+      '$.version: must be 1 to 3',
     ],
     [
       'a bad verdict',
@@ -529,5 +529,47 @@ describe('the flow page', () => {
     );
     expect(failure).toBeInstanceOf(SnapshotError);
     expect((failure as Error).message).toContain(rule);
+  });
+});
+
+describe('superseded runs (issue 618)', () => {
+  it('shows the weeks with their control, and no statistic for a week below the minimum', async () => {
+    const body = render('ci-speed', await present());
+    expect(body).toContain('## Superseded pull request runs');
+    expect(body).toContain('| 2026-11-02 | 4 | 20 s | 40 s | 3 min 20 s | 3 | 5 s |');
+    expect(body).toContain(
+      '| 2026-11-09 | 1 | not enough runs | not enough runs | not enough runs | 1 | not enough runs |',
+    );
+    expect(body).toContain('**Inferred**: the pairing');
+    expect(body).toContain('**Measured**: the wait of the newer run');
+    expect(body).toContain('1 cancelled run that had already ended were left out');
+  });
+
+  it('says an older snapshot did not sample pull request runs', async () => {
+    const older = await readDashboardData(
+      await folder({ '2026-11-08.json': await validText('2026-11-08.json') }),
+    );
+    expect(render('ci-speed', older)).toContain('schema version below 3');
+  });
+
+  it('rejects the section in version 2, a missing one in version 3 and bad sums', async () => {
+    const text = await validText('2026-11-09.json');
+    const asV2 = text.replace('"version": 3', '"version": 2');
+    expect(() => parseSnapshot('a.json', asV2)).toThrow('before version 3');
+    const json = JSON.parse(text) as Record<string, unknown>;
+    delete json.superseded;
+    expect(() => parseSnapshot('a.json', JSON.stringify(json))).toThrow('field is missing');
+    expect(() => parseSnapshot('a.json', text.replace('"pairs": 5,', '"pairs": 6,'))).toThrow(
+      'pairs add up to 5, but sample.pairs is 6',
+    );
+    expect(() =>
+      parseSnapshot('a.json', text.replace('"week": "2026-11-02"', '"week": "2026-11-03"')),
+    ).toThrow('must be the Monday');
+  });
+
+  it('accepts null for a snapshot that did not sample', async () => {
+    const json = JSON.parse(await validText('2026-11-09.json')) as Record<string, unknown>;
+    json.superseded = null;
+    expect(parseSnapshot('a.json', JSON.stringify(json)).superseded).toBeNull();
   });
 });

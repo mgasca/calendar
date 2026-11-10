@@ -68,7 +68,8 @@ Agreed with the maintainer in a Claude Code session on 2026-11-09 and recorded o
 6. **Given** a job with too few runs, **when** the page shows its failure rate, **then** it is marked inconclusive, not shown as 0 % or 100 %. "Too few" is fewer than 20 trials; `main` and pull requests are separate tables. Data: [quality tests](../../tools/delivery-dashboard/tests/QualityTests.cs) (`Fewer_trials_than_the_rule_needs_are_inconclusive_with_no_rate_and_no_interval`, `An_inconclusive_row_with_a_rate_fails`). Page: [dashboard tests](../../frontend/apps/docs/src/lib/dashboard.test.ts) ("the quality page": `marks a job with too few trials inconclusive and shows no rate for it`).
 7. **Given** a metric breaches its threshold, **when** the daily workflow runs, **then** it opens or updates exactly one issue and opens no other alert. Thresholds and the one-issue-per-kind rule: [AlertTests.cs](../../tools/delivery-dashboard/tests/AlertTests.cs) (`Several_breaches_of_one_kind_open_exactly_one_issue`, `An_open_issue_with_the_title_is_commented_on_instead_of_a_second_one_opened`).
 8. **Given** an issue with no count comments, **when** the agent proxies are computed, **then** the issue appears with no cost data and does not fail the run. Data: [agent tests](../../tools/delivery-dashboard/tests/AgentTests.cs) (`An_issue_without_count_comments_is_listed_with_no_cost_data_and_does_not_fail`, `A_count_comment_with_an_unusable_number_is_malformed_and_contributes_nothing`). Page: [dashboard tests](../../frontend/apps/docs/src/lib/dashboard.test.ts) ("the agent activity page": `shows issues by number with links, and an issue without count comments as having no cost data`, `states that these are proxies, not token or money cost, and what is not covered`).
-9. **Given** the change is complete, **when** I run `just check`, **then** it passes, including the architecture model entry for the new components. CI (the same checks as `just check`) passed on every delivering PR and on `main` at the merge of #620. `just docs architecture` validates the model entries added in #616.
+9. **Given** pull request runs that a newer push cancelled, **when** the snapshot and the CI-speed page are built (#618), **then** each week shows how many were superseded and how long the newer run waited, beside a control of runs that superseded nothing, labelled inferred (the pairing) and measured (the waits), and a week below the minimum shows no statistic. Data: [superseded tests](../../tools/delivery-dashboard/tests/SupersededTests.cs) (`Pairs_are_counted_and_timed_per_week_beside_the_control`, `A_run_cancelled_by_hand_before_the_newer_run_is_not_a_pair`, `Version_2_may_not_carry_the_section`). Page: [dashboard tests](../../frontend/apps/docs/src/lib/dashboard.test.ts) ("superseded runs": `shows the weeks with their control, and no statistic for a week below the minimum`).
+10. **Given** the change is complete, **when** I run `just check`, **then** it passes, including the architecture model entry for the new components. CI (the same checks as `just check`) passed on every delivering PR and on `main` at the merge of #620. `just docs architecture` validates the model entries added in #616.
 
 ## Design decisions
 
@@ -129,8 +130,17 @@ The slices were delivered as stacked PRs and squash-merged on 2026-11-09. This c
 * **Schema versions.** The writer emits version 2: per job a `baseline` (pinned count, median, threshold) and a `trend` (verdict, recent runs, shift and interval, minimum effect), at section level a `trend` (runs compared and required, window) and a `queue` (wait before the first job). Version 1 files already on the data branch still validate and render, with those parts shown as absent; a version 1 file may not carry version 2 fields and a version 2 file must carry them (null when unknown). The tool and the docs reader both accept 1 to 2. Fields are only ever added, with a new version.
 * **Trend verdicts come from `ci-timings`.** The snapshot tool reads `.github/ci-baseline.json` and calls `Trend.RecentRuns` and `Trend.Evaluate` on the runs it already sampled, so the page and the gate cannot disagree and no GitHub call was added. With fewer recent runs than the check needs the verdict is `inconclusive`, never "no shift".
 * **Two readers, one set of fixtures.** The privacy rules live in the .NET tool and run before a snapshot is published; the docs reader re-checks shape and the same four privacy patterns before rendering, because the branch is outside the pull request flow, and escapes every job name it prints. The valid fixtures are read by both test suites so the two readers cannot drift apart. Known gap: the .NET rules test runs in the Tooling job and the docs tests in the Docs site job, and a change to a shared fixture runs only the Docs site job on a pull request; `main` runs both.
-* **Deferred: superseded-run waste.** Showing it needs the pull request runs and two jobs calls per pair of runs, which is dozens of calls per daily snapshot. The page says it is not shown. It is a follow-up in #618.
+* **Deferred in this slice: superseded-run waste.** Showing it needs the pull request runs and two jobs calls per pair of runs, which is dozens of calls per daily snapshot. Delivered in #618 (below).
 * **Answered by the maintainer on #609:** the absent-versus-invalid reading above is accepted. Superseded-run waste stays out of this slice and moves to #618.
+
+### Superseded pull request runs (#618)
+
+* **What it shows.** Per ISO week (Monday start, UTC): how many pull request runs a newer push cancelled, how long the newer run waited from its creation to its first job starting (median, p90), how far apart the two pushes were (median), and the same wait for a control group, the successful pull request runs of that week that superseded nothing. A week with fewer pairs than `sample.minPairs` (3) shows the count and "not enough runs" instead of a statistic.
+* **Measured or inferred.** That a run was superseded is **inferred** (a later `pull_request` run of the same branch exists; a cancelled run that had already ended when the newer one was created is left out as a manual cancel and counted in `sample.ignored`). The waits and the push gap are **measured**: differences of timestamps GitHub recorded. The section carries both labels in `basis`.
+* **Schema version 3.** The writer emits version 3, which adds the root section `superseded` (`null` when not sampled). Versions 1 and 2 still validate and render, with the block saying that pull request runs were not sampled; a version 1 or 2 file may not carry the section and a version 3 file must carry the key. The tool and the docs reader accept 1 to 3. The section holds aggregates only: no run ids, branches or paths, and a test checks it.
+* **Reuses `ci-timings`.** Pairing and timing are `Supersession.Pair` and `Supersession.Measure`, the code behind `ci-timings --superseded` ([benchmark record 0008](../benchmarks/0008-superseded-run-wait.md)); the snapshot tool has no second implementation.
+* **Cost.** Each pair needs two jobs calls, and each control run one. A snapshot measures at most 30 pairs and 30 control runs (`sample.cap`), so at most about 90 calls, run once a day; older weeks can therefore be partial, and the page says so. The call count of the first real run is not yet measured.
+* **Not in scope.** Gating on it; ADR-0045 owns the gate.
 
 ### Flow page (#598)
 
@@ -175,8 +185,8 @@ No changes. The calendar API is not touched.
 
 ### Testing
 
-* **Tool (xUnit, run by `just tools test`):** pure tests of the metric calculations on constructed histories, including a squash-merged stack and cancelled or superseded runs. Also schema and privacy tests that reject private data, plus the alert and retention rules. The files are `delivery-dashboard.tests.cs`, `FlowTests.cs`, `QualityTests.cs`, `QualityReuseTests.cs`, `QualityJobNameTests.cs`, `AgentTests.cs` and `AlertTests.cs` under `tools/delivery-dashboard/tests/`.
-* **Docs site (Vitest, `dashboard.test.ts`):** the tests render every page from the fixture snapshots, in versions 1 and 2. They build an explicit "no snapshot yet" page from an absent or empty folder, and fail on an invalid snapshot, naming the file and the rule. They also escape hostile job names and check that no login, title or comment text reaches a page.
+* **Tool (xUnit, run by `just tools test`):** pure tests of the metric calculations on constructed histories, including a squash-merged stack and cancelled or superseded runs. Also schema and privacy tests that reject private data, plus the alert and retention rules. The files are `delivery-dashboard.tests.cs`, `FlowTests.cs`, `QualityTests.cs`, `QualityReuseTests.cs`, `QualityJobNameTests.cs`, `AgentTests.cs`, `SupersededTests.cs` and `AlertTests.cs` under `tools/delivery-dashboard/tests/`.
+* **Docs site (Vitest, `dashboard.test.ts`):** the tests render every page from the fixture snapshots, in versions 1 to 3. They build an explicit "no snapshot yet" page from an absent or empty folder, and fail on an invalid snapshot, naming the file and the rule. They also escape hostile job names and check that no login, title or comment text reaches a page.
 * **Shared fixtures:** both test suites read the same valid snapshots, so the .NET rules and the docs reader cannot drift apart.
 * **Not automated:** the workflow itself, meaning the commit to the data branch, the same-day replacement and the real alert issue. These were checked on real runs.
 
@@ -195,7 +205,7 @@ No changes. The calendar API is not touched.
   * Only the 100 most recently updated issues are read for the agent proxies.
   * The guard numbers are a proxy taken from a shared Tooling step.
 * **Follow-ups:**
-  * #618: show queue and superseded-run waste on the CI-speed page.
+  * #618: delivered in the CI-speed page; the first real daily run should confirm the number of GitHub calls it makes.
   * Revisit triggers in ADR-0049: several repositories, local transcript aggregates, or data leaving the organisation.
 
 ## User guide
@@ -204,7 +214,7 @@ No changes. The calendar API is not touched.
 
 Open **Delivery dashboard** in the documentation site's sidebar. Its **Overview** links to the four pages:
 
-* **CI speed:** for each CI job, the run count, minimum, median, p90 and maximum, set against the job's pinned baseline and threshold, with the trend verdict and the time runs wait in the queue.
+* **CI speed:** for each CI job, the run count, minimum, median, p90 and maximum, set against the job's pinned baseline and threshold, with the trend verdict, the time runs wait in the queue, and, per week, the pull request runs a newer push cancelled with how long the newer run waited.
 * **Flow:** open pull requests and their age, pull requests waiting for a first review, lead time to `main`, time from issue to merge, open stacks and epic progress. Each metric is defined on the page.
 * **Quality:** how runs on `main` and on pull requests ended, the failure rate per job with its 95 % interval, and the delivery-guard step by day. Each count links to the public runs behind it.
 * **Agent activity:** for each issue, the tasks and subagents started (from count comments), the comments and reviews, and the pull requests that mention the issue. These are proxies, not token or money cost.

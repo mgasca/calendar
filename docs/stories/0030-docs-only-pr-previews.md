@@ -18,15 +18,15 @@ Tracked in issue #332.
 
 ## Background
 
-[ADR-0025](../decisions/0025-github-pages-pr-previews.md) gives every open pull request from this repository a hosted preview of the docs site at `pr-preview/pr-N/`. The Docs site job in CI builds the publication artifact for the PR, and the Publish ADR site workflow publishes it, creates an **ADR preview** check and posts a sticky comment. Nothing in that chain looks at what the PR changes, so a backend or frontend PR gets a preview that shows the same content as production.
+[ADR-0025](../decisions/0025-github-pages-pr-previews.md) gives every open pull request from this repository a hosted preview of the docs site at `pr-preview/pr-N/`. The Docs site job in CI builds the publication artifact for the PR, and the Publish docs site workflow publishes it, creates an **ADR preview** check and posts a sticky comment. Nothing in that chain looks at what the PR changes, so a backend or frontend PR gets a preview that shows the same content as production.
 
 Each preview is a GitHub Pages deployment. Issue #285 showed that publishes between two `main` commits can collide and block the site for about half an hour; fewer publishes mean fewer collisions. The owner asked that the preview automation run only for docs-only pull requests.
 
 ### Agreed scope
 
 * **Docs-only** means every file the PR changes, as GitHub lists them against the merge base, is under `docs/` or `frontend/apps/docs/`: the sources the site is built from, and the site itself.
-* **CI decides.** The Docs site job lists the PR's files on same-repository `pull_request` events and builds and uploads the `adr-site` publication artifact only for `main` pushes and docs-only PRs. Every PR still builds and verifies the site at the root path and at a project subpath.
-* **The publisher follows the artifact.** In preview mode the Publish ADR site workflow ends without publishing when the CI run uploaded no `adr-site` artifact, instead of failing at the download. Production publication, removal on close, reconciliation of closed previews and the fork exclusion are unchanged.
+* **CI decides.** The Docs site job lists the PR's files on same-repository `pull_request` events and builds and uploads the `docs-site` publication artifact only for `main` pushes and docs-only PRs. Every PR still builds and verifies the site at the root path and at a project subpath.
+* **The publisher follows the artifact.** In preview mode the Publish docs site workflow ends without publishing when the CI run uploaded no `docs-site` artifact, instead of failing at the download. Production publication, removal on close, reconciliation of closed previews and the fork exclusion are unchanged.
 * **The guidance says so.** ADR-0025 gets an amendment narrowing eligibility, the docs app `README.md` and the architecture model say "docs-only", and this card records the rule.
 
 ### Not in this story
@@ -38,8 +38,8 @@ Each preview is a GitHub Pages deployment. Issue #285 showed that publishes betw
 
 ### Acceptance criteria
 
-1. **Given** an open same-repository PR whose every changed file is under `docs/` or `frontend/apps/docs/`, **when** its CI run succeeds, **then** the Docs site job uploads the `adr-site` artifact and the publisher publishes the preview, the **ADR preview** check and the sticky comment, as before.
-2. **Given** an open same-repository PR that changes any other file, **when** its CI run succeeds, **then** the Docs site job still builds and verifies the site at both URL variants but uploads no `adr-site` artifact, and the publisher's run for that CI run ends successfully without publishing, commenting or creating a check.
+1. **Given** an open same-repository PR whose every changed file is under `docs/` or `frontend/apps/docs/`, **when** its CI run succeeds, **then** the Docs site job uploads the `docs-site` artifact and the publisher publishes the preview, the **ADR preview** check and the sticky comment, as before.
+2. **Given** an open same-repository PR that changes any other file, **when** its CI run succeeds, **then** the Docs site job still builds and verifies the site at both URL variants but uploads no `docs-site` artifact, and the publisher's run for that CI run ends successfully without publishing, commenting or creating a check.
 3. **Given** a push to `main`, **when** its CI run succeeds, **then** production is published as before.
 4. **Given** a docs-only PR with a published preview, **when** the PR closes, **then** the preview is removed as before.
 
@@ -68,7 +68,7 @@ Delivered in the PRs listed in the front matter: the card, then the workflow, AD
 
 | Area | Location |
 | --- | --- |
-| The docs-only decision and the artifact gate | `.github/workflows/ci.yml`, Docs site job: the step "Decide whether this pull request is docs-only" and the `if` of "Read GitHub Pages configuration", which the publication build and the `adr-site` upload depend on |
+| The docs-only decision and the artifact gate | `.github/workflows/ci.yml`, Docs site job: the step "Decide whether this pull request is docs-only" and the `if` of "Read GitHub Pages configuration", which the publication build and the `docs-site` upload depend on |
 | The publisher's exit without an artifact | `.github/workflows/pages.yml`, assemble job, step "Validate source run and current revision", preview branch |
 | Eligibility rule in the guidance | [ADR-0025](../decisions/0025-github-pages-pr-previews.md) amendment of 2026-11-06, `frontend/apps/docs/README.md` ("Pull request previews"), `docs/architecture/calendar.architecture.json` (docs site, Pages, the publication flow) |
 

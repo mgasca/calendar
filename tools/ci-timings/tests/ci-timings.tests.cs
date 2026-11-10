@@ -133,7 +133,7 @@ public sealed class SupersessionTests
           "cancelled",
           "14:47:53",
           "14:49:11",
-          Step("Verify ADR site at a project subpath", "success", "14:48:52", "14:49:08"),
+          Step("Verify docs site at a project subpath", "success", "14:48:52", "14:49:08"),
           Step("Decide whether this pull request is docs-only", "cancelled", "14:49:08", "14:49:09"),
           Step("Post Run actions/checkout@v7", "success", "14:49:09", "14:49:10")),
         Job("Backend", "cancelled", "14:47:53", "14:49:24", Step("Run dotnet test", "cancelled", "14:49:02", "14:49:21")),

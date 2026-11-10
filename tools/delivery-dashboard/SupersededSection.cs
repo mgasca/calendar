@@ -151,7 +151,7 @@ public static class SupersededCollector
     var ignored = 0;
     foreach ((WorkflowRun cancelled, WorkflowRun superseding) in Supersession.Pair(listed))
     {
-      if (pairs.Count == cap)
+      if (Done(pairs.Count, ignored, cap))
       {
         break;
       }
@@ -167,6 +167,13 @@ public static class SupersededCollector
     }
     return SupersededCalculator.Build(pairs, ignored, await ControlAsync(listed, pairs, cap, JobsOf), cap);
   }
+
+  /// <summary>Whether enough pairs were examined: the cap of measured pairs, or twice it counting manual cancels.</summary>
+  /// <param name="measured">Pairs measured so far.</param>
+  /// <param name="ignored">Pairs left out so far.</param>
+  /// <param name="cap">The cap of measured pairs.</param>
+  /// <returns>True when the loop stops.</returns>
+  public static bool Done(int measured, int ignored, int cap) => measured >= cap || measured + ignored >= cap * 2;
 
   private static async Task<IReadOnlyList<(DateTimeOffset Created, double Wait)>> ControlAsync(
     IReadOnlyList<WorkflowRun> listed,

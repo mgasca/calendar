@@ -68,6 +68,15 @@ public sealed class SupersededTests
     section.Weeks[0].WaitMedianSeconds.ShouldBe(12);
   }
 
+  [Theory]
+  [InlineData(29, 0, false)]
+  [InlineData(30, 0, true)]
+  [InlineData(5, 54, false)]
+  [InlineData(5, 55, true)]
+  [InlineData(0, 60, true)]
+  public void Pairs_left_out_as_manual_cancels_still_count_toward_the_examination_bound(int measured, int ignored, bool done) =>
+    SupersededCollector.Done(measured, ignored, 30).ShouldBe(done);
+
   [Fact]
   public void Nothing_sampled_gives_no_section() => SupersededCalculator.Build([], 0, [], 30).ShouldBeNull();
 

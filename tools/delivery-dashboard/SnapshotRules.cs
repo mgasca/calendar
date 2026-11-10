@@ -28,7 +28,7 @@ public static partial class SnapshotRules
 
   private static readonly string[] RootKeys = ["version", "date", "generatedAt", "repository", "ci"];
   // Sections added after version 1: absent from older files, validated when present.
-  private static readonly string[] OptionalRootKeys = ["quality", "flow", "agents"];
+  private static readonly string[] OptionalRootKeys = ["quality", "flow", "agents", "superseded"];
   private static readonly string[] CiKeysV1 = ["workflow", "basis", "runs", "window", "jobs"];
   private static readonly string[] CiKeysV2 = [.. CiKeysV1, "trend", "queue"];
   private static readonly string[] WindowKeys = ["from", "to"];
@@ -99,6 +99,19 @@ public static partial class SnapshotRules
     if (root.TryGetProperty("agents", out JsonElement agents))
     {
       CheckAgents(agents, errors);
+    }
+    var hasSuperseded = root.TryGetProperty("superseded", out JsonElement superseded);
+    if (version >= 3 && !hasSuperseded)
+    {
+      errors.Add("$.superseded: field is missing (null when not sampled)");
+    }
+    else if (version < 3 && hasSuperseded)
+    {
+      errors.Add("$.superseded: field is not in the schema before version 3");
+    }
+    else if (hasSuperseded)
+    {
+      CheckSuperseded(superseded, errors);
     }
   }
 

@@ -8,6 +8,8 @@
 #:include QualityRules.cs
 #:include AgentSection.cs
 #:include AgentRules.cs
+#:include SupersededSection.cs
+#:include SupersededRules.cs
 #:include FlowSection.cs
 #:include FlowRules.cs
 #:include Alerts.cs
@@ -132,7 +134,8 @@ var snapshot = new Snapshot(
   CiSnapshot.Build(workflow, sampled, pinned, TrendConstants.Default, queue),
   QualityCollector.Build(workflow, await QualityCollector.CollectAsync(repository, workflow, qualityRuns, fetchedJobs)),
   await FlowCollector.CollectAsync(repository, taken),
-  AgentCollector.Build(await AgentCollector.CollectAsync(repository, AgentCollector.DefaultIssues)));
+  AgentCollector.Build(await AgentCollector.CollectAsync(repository, AgentCollector.DefaultIssues)),
+  await SupersededCollector.CollectAsync(repository, workflow));
 var json = SnapshotJson.Write(snapshot);
 IReadOnlyList<string> problems = SnapshotRules.Validate(json);
 if (problems.Count > 0)

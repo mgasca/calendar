@@ -108,6 +108,7 @@ Delivered in three stacks, one per session. PR 0, #391, carried the card and ADR
 | Trend test, issue decision | `tools/ci-timings/Trend.cs` (`--trend`, `--issue`) |
 | Pinned baseline | `.github/ci-baseline.json`: check path `pinned` (n = 30 dispatches), publication path `pinned` (n = 48 pushes), six jobs each, from the window after #422 (#420) |
 | Baseline records | [0014](../benchmarks/0014-ci-job-baseline.md) (first pin, check path), [0017](../benchmarks/0017-ci-baseline-with-changes.md) (six jobs, both paths) |
+| Trend findings | [0021](../benchmarks/0021-docs-site-trend-runner-mix.md) (Docs site slower on `main` from runner mix and corpus growth, no re-pin, #639) |
 | PR gate | step "Job run times are within the baseline (ADR 0045)" of `CI result` in `.github/workflows/ci.yml`, running `.github/ci-gate.jq` on the saved jobs API response |
 | Trend check | `.github/workflows/ci-trend.yml`, daily at 06:23 UTC and on demand |
 | Mechanism guards | `tools/delivery-guards/` (six guards over the workflow, recipes and MSBuild files), `backend/tests/Calendar.Api.Tests/ApiTestParallelismTests.cs`, `frontend/apps/web/dev/vitestConfig.test.ts`, and the existing `frontend/apps/docs/src/lib/docs-loader.test.ts` |

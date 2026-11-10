@@ -1,4 +1,4 @@
-name: Publish ADR site
+name: Publish docs site
 
 on:
   workflow_run:
@@ -63,9 +63,9 @@ jobs:
               const { data: pr } = await github.rest.pulls.get({ ...repo, pull_number: run.pull_requests[0].number });
               if (pr.state !== 'open' || pr.base.ref !== 'main' || pr.head.repo?.full_name !== fullName || pr.head.sha !== run.head_sha) return;
               // CI builds the publication artifact only for an eligible PR (ADR-0025 amendments); a run without one publishes nothing.
-              const { data: artifacts } = await github.rest.actions.listWorkflowRunArtifacts({ ...repo, run_id: run.id, name: 'adr-site' });
-              if (!artifacts.artifacts.some((artifact) => artifact.name === 'adr-site' && !artifact.expired)) {
-                core.notice(`CI run ${run.id} uploaded no adr-site artifact: PR ${pr.number} is not eligible for a preview.`);
+              const { data: artifacts } = await github.rest.actions.listWorkflowRunArtifacts({ ...repo, run_id: run.id, name: 'docs-site' });
+              if (!artifacts.artifacts.some((artifact) => artifact.name === 'docs-site' && !artifact.expired)) {
+                core.notice(`CI run ${run.id} uploaded no docs-site artifact: PR ${pr.number} is not eligible for a preview.`);
                 return;
               }
               core.setOutput('mode', 'preview');
@@ -77,7 +77,7 @@ jobs:
         if: steps.source.outputs.run != ''
         uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
-          name: adr-site
+          name: docs-site
           path: incoming
           github-token: ${{ github.token }}
           run-id: ${{ steps.source.outputs.run }}

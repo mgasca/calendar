@@ -14,10 +14,11 @@
   <ItemGroup Label="Data access">
     <PackageVersion Include="Microsoft.AspNetCore.DataProtection.EntityFrameworkCore" Version="10.0.14" />
     <PackageVersion Include="Microsoft.EntityFrameworkCore.Design" Version="10.0.14" />
-    <!-- Transitive pins: keep the EF Core runtime in step with Design / dotnet-ef (Npgsql 10.0.x floors it lower). -->
+    <!-- Referenced directly by Calendar.Infrastructure to keep the EF Core runtime in step with Design and
+         DataProtection (Npgsql 10.0.x floors it lower). Dependabot only bumps referenced packages: a version
+         listed here without a PackageReference stays behind and restore fails with NU1109. -->
     <PackageVersion Include="Microsoft.EntityFrameworkCore" Version="10.0.14" />
     <PackageVersion Include="Microsoft.EntityFrameworkCore.Relational" Version="10.0.14" />
-    <PackageVersion Include="Microsoft.EntityFrameworkCore.Abstractions" Version="10.0.14" />
     <PackageVersion Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="10.0.3" />
     <PackageVersion Include="Npgsql" Version="10.0.3" />
     <PackageVersion Include="EFCore.NamingConventions" Version="10.0.1" />

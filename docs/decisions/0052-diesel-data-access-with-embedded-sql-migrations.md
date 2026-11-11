@@ -1,5 +1,5 @@
 ---
-status: proposed
+status: accepted
 date: 2026-11-11
 decision-makers: mgasca, Claude (AI assistant)
 ---
@@ -86,9 +86,9 @@ Chosen option: "Diesel 2.3 query builder", over "diesel-async over tokio-postgre
 * **Adoption of an EF-migrated database:** when `__EFMigrationsHistory` exists, the migrator checks that its last row is `20261102232144_PerUserOwnership`, records the six translated migrations as applied **without running them**, then runs the newer ones. If the history is at any other point, it stops without changing anything. A database with no EF history gets all migrations from the first.
 * **Roles and grants:** unchanged. `calendar_app` keeps data rights only; `calendar_migrator` owns the schema.
 
-### Effect on earlier records, once this record is accepted
+### Effect on earlier records
 
-None of these edits is made while this record is `proposed`.
+These edits were made when this record was accepted, on 2026-11-11.
 
 * **[ADR-0015](0015-ef-core-data-access.md)** becomes `superseded by` this record. Its rules that migrations run only as `calendar_migrator` and never at application start, and that `xmin` is the concurrency token, are restated above. Its architecture-model entry needs no `note` if every node that cites it is moved to this record in the code pull request.
 * **[ADR-0018](0018-time-representation-and-bcl-date-time-types.md)** is handled by [ADR-0057](0057-chrono-time-types-for-the-rust-backend.md).
@@ -189,7 +189,5 @@ None of these edits is made while this record is `proposed`.
 * **Versions** resolved in the code branch's `Cargo.lock` on 2026-11-11: diesel 2.3.14, diesel-async 0.9.2, diesel_migrations 2.3.2, tokio-postgres 0.7.18, deadpool 0.13.1, tokio-postgres-rustls 0.14.0, rustls 0.23.46. Read from the lock file, not re-checked against crates.io. SQLx and SeaORM versions were not checked.
 * **Not verified:** query plans of the ported queries against the EF-generated ones; the adoption step against a copy of a real environment's database.
 * **Revisit when** a query cannot be expressed without large unchecked SQL fragments (reconsider SQLx for that path), or when diesel-async reaches 1.0 or stops being maintained.
-* **Open questions for the reviewer:**
-  1. Article 0007 proposed a 12 to 24 hour trial slice per library before choosing. The choice was made without it. Is that accepted, or should the slice be run for SQLx before this record is accepted?
-  2. After adoption, is `__EFMigrationsHistory` kept as a record or dropped by a later migration?
-  3. Is a rehearsal of the adoption step on a restored copy of the production database required before the production cutover?
+* **Resolved at acceptance, 2026-11-11:** Diesel was chosen by the maintainer without the trial slice article 0007 proposed, and the port was delivered on it.
+* **Still open:** whether `__EFMigrationsHistory` is dropped by a later migration (it is kept today), and whether the adoption step is rehearsed on a restored copy of the production database before the production cutover.

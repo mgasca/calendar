@@ -1,6 +1,6 @@
 //! The task repository: every read and write the task endpoints perform, each scoped to an owner (ADR-0041).
 //!
-//! Optimistic concurrency is PostgreSQL's `xmin`, as it was with EF Core (ADR-0015): a write names the version
+//! Optimistic concurrency is PostgreSQL's `xmin`, as it was with EF Core (ADR-0052): a write names the version
 //! the row must still have. A write that affects no row is told apart by one more read: the row is gone
 //! ([`Error::NotFound`]) or was changed ([`Error::Conflict`]).
 

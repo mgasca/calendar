@@ -4,7 +4,7 @@ date: 2026-11-11
 issue: https://github.com/mgasca/calendar/issues/657
 pr:
   - https://github.com/mgasca/calendar/pull/658
-adrs: ["0002", "0006", "0017", "0050"]
+adrs: ["0017", "0050", "0051"]
 ---
 
 # 0056 Move the repository to the .NET 11 SDK and target framework
@@ -14,6 +14,8 @@ adrs: ["0002", "0006", "0017", "0050"]
 > As a calendar owner, I need the backend and repo tooling to build and run on .NET 11, so that the SDK, runtime and packages (including the `dotnet-ef` 11 already adopted) stay on one supported major version.
 
 Tracked in issue #657. Wording derived from the issue; to be confirmed by the product owner.
+
+**Scope change, 2026-11-11:** the backend is now Rust ([0051](../decisions/0051-rust-backend-on-axum-and-tokio.md)), so the backend parts of this card no longer exist: the backend target framework and `backend/global.json`, the ASP.NET Core and EF Core packages, `dotnet-ef`, the .NET container images and the contract regeneration. What remains is the repo tools' SDK pin and target framework ([0050](../decisions/0050-adopt-dotnet-11-once-the-providers-support-it.md), as amended). The sections below still describe the original scope and must be rewritten for the narrowed one before delivery.
 
 ## Background
 
@@ -57,8 +59,7 @@ The backend, the repo tools and the container images target .NET 10. [0002](../d
 
 | ADR | Decision | Why it matters for this story |
 | --- | --- | --- |
-| [0002](../decisions/0002-dotnet-10-minimal-api-backend.md) | .NET 10 LTS, minimal APIs | The version choice is overridden by 0050 (amendment); Minimal APIs and the project structure stand. |
-| [0006](../decisions/0006-dotnet-dependency-management.md) | Central package management with lock files | Versions move in `Directory.Packages.props`; lock files are regenerated and committed. |
+| [0051](../decisions/0051-rust-backend-on-axum-and-tokio.md) | Rust backend on axum and tokio | The backend left .NET, so this story no longer touches it; it replaces the earlier rows for 0002 and 0006, which are superseded. |
 | [0017](../decisions/0017-dotnet-file-based-apps-for-repo-tooling.md) | Repo tooling as .NET file-based apps | Tools and skills retarget and their lock files depend on the exact SDK. |
 
 The version decision is [0050](../decisions/0050-adopt-dotnet-11-once-the-providers-support-it.md); no further ADR is expected.

@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://mgasca.github.io/calendar/architecture/controls/time-correctness.requirement.json",
   "title": "Time, time-zone and DST correctness requirement",
-  "description": "How instants, floating dates, time zones and the current day are represented and who decides them (ADR-0018, ADR-0021).",
+  "description": "How instants, floating dates, time zones and the current day are represented and who decides them (ADR-0057, ADR-0021).",
   "type": "object",
   "properties": {
     "day-defined-by": { "type": "string", "description": "Which party decides what day it is." },

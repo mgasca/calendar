@@ -1,4 +1,4 @@
-//! Ports `DatabaseRolesTests`: the two roles of ADR-0014/ADR-0015 on a migrated database.
+//! Ports `DatabaseRolesTests`: the two roles of ADR-0014/ADR-0052 on a migrated database.
 
 use calendar_infrastructure::migrations;
 use calendar_testing::TestDatabase;

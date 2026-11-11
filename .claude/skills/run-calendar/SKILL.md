@@ -62,7 +62,7 @@ docker run -d --rm --name calendar-agent-db -p 127.0.0.1:55432:5432 \
 timeout 60 bash -c 'until docker exec calendar-agent-db pg_isready -h 127.0.0.1 -U postgres -d calendar >/dev/null 2>&1; do sleep 1; done'
 ```
 
-2. Migrations, as `calendar_migrator` (ADR-0015):
+2. Migrations, as `calendar_migrator` (ADR-0052):
 
 ```bash
 (cd backend && CALENDAR_MIGRATOR_CONNECTION="Host=127.0.0.1;Port=55432;Database=calendar;Username=calendar_migrator;Password=dev-migrator-password" cargo run --locked --quiet -p calendar-migrate)

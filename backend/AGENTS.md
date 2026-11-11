@@ -37,7 +37,7 @@ For any query or index change, seed about 100k realistic rows (history spread ov
 - **Agenda reads are one snapshot** (ADR-0020): `agenda::read` runs every SELECT in one `REPEATABLE READ, READ ONLY` transaction. Add a query inside it, not beside it.
 - **Instants are microseconds in PostgreSQL**. `Clock::now()` is already truncated; an instant from a request keeps what the client sent until the row is read back.
 
-## Migrations (ADR-0015)
+## Migrations (ADR-0052)
 
 - A migration is a directory `crates/calendar-infrastructure/migrations/YYYY-MM-DD-HHMMSS_name/` with `up.sql` and `down.sql`, plain SQL, embedded in the binary. There is no Diesel CLI in this repo: write `schema.rs` by hand to match, then update the lists in `tests/database/migrations.rs` and `tests/database/schema_definition.rs`.
 - Only `calendar-migrate` applies them (`just db migrate`, as `calendar_migrator`); the API never does, and `calendar_app` cannot. New tables need no grant: the default privileges give `calendar_app` DML, so `REVOKE` what it must not have.

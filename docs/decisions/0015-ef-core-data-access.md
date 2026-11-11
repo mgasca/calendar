@@ -1,5 +1,5 @@
 ---
-status: accepted
+status: superseded by [ADR-0052](0052-diesel-data-access-with-embedded-sql-migrations.md)
 date: 2026-10-26
 decision-makers: mgasca, Claude (AI assistant)
 ---

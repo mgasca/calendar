@@ -1,5 +1,5 @@
 ---
-status: proposed
+status: accepted
 date: 2026-11-11
 decision-makers: mgasca, Claude (AI assistant)
 ---
@@ -50,9 +50,9 @@ Chosen option: "rustfmt, and Clippy's default and pedantic groups with warnings 
 * **Commands:** `just backend lint` and CI run `cargo fmt --all --check` and `cargo clippy --workspace --all-targets --locked -- -D warnings`. Tests are linted with the same rules as production code.
 * **Scope:** the Rust workspace under `backend/`. The .NET repo tools and the TypeScript code keep their rules.
 
-### Effect on earlier records, once this record is accepted
+### Effect on earlier records
 
-None of these edits is made while this record is `proposed`.
+These edits were made when this record was accepted, on 2026-11-11.
 
 * **[ADR-0009](0009-static-analysis-and-formatting.md)** stays `accepted` and gets a dated amendment bullet: its TypeScript half is untouched, and its .NET half now applies only to the repo tools ([ADR-0017](0017-dotnet-file-based-apps-for-repo-tooling.md)). It is amended, not superseded, because both of its chosen options stand for the code they still cover. [ADR-0014](0014-postgresql-database-engine.md) is the precedent for the other route (superseded, with a model `note` for what still stands); that route fits a record whose chosen option was partly withdrawn, which is not the case here.
 * **[ADR-0036](0036-csharp-layout-rules-with-stylecop-and-sonar.md)** stays `accepted` and gets a dated amendment bullet: the layout rules apply to the repo tools' C#; the banned-API analyzer, which ran only on `backend/src`, is replaced for the backend by the Clippy list above; the `Migrations/.editorconfig` exception goes with the EF migrations.
@@ -104,6 +104,5 @@ None of these edits is made while this record is `proposed`.
 * **State of the code branch on 2026-11-11:** `backend/Cargo.toml` and `backend/rustfmt.toml` are as described. `backend/clippy.toml` with the clock ban does not exist yet; adding it is part of delivering this record.
 * **Not verified:** how many pedantic findings the ported code produces, and Clippy's run time on the full workspace.
 * **Revisit when** a panic from `unwrap` or indexing reaches a deployed environment: enable those restriction lints for non-test code then.
-* **Open questions for the reviewer:**
-  1. Should public items require documentation (`missing_docs`), as CS1591 did, or is that rule dropped with C#?
-  2. Is amending [ADR-0009](0009-static-analysis-and-formatting.md) and [ADR-0036](0036-csharp-layout-rules-with-stylecop-and-sonar.md) right, as proposed, or should they be marked superseded with a model note?
+* **Resolved at acceptance, 2026-11-11:** [ADR-0009](0009-static-analysis-and-formatting.md) and [ADR-0036](0036-csharp-layout-rules-with-stylecop-and-sonar.md) are amended, not superseded.
+* **Still open:** whether public items must be documented (`missing_docs`), as CS1591 required. It is not enabled today.

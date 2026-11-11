@@ -111,3 +111,7 @@ Chosen option: "Docker Compose for development, Testcontainers for tests". It is
 * Bad, because **D3 Dev/prod parity**: the installed version drifts from production.
 * Bad, because **D4 Security**: a long-running service, often configured with `trust` auth for convenience.
 * Bad, because **D5 Growth to more services**: every new service is another native install.
+
+## More Information
+
+* **Amendment, 2026-11-11:** the test-library detail changed with the Rust backend: database tests use the `testcontainers` crate through the `calendar-testing` helper crate, one container per test process with a database per test, instead of `Testcontainers.PostgreSql` with an xUnit assembly fixture ([ADR-0054](0054-rust-backend-testing-stack.md)). The decision stands: Compose for development, Testcontainers for tests, the image tag read from `compose.yaml`.

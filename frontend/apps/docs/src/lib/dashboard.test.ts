@@ -204,9 +204,43 @@ describe('the CI-speed page', () => {
     expect(backend).toContain('+36.5 s');
   });
 
+  it('puts the trend verdict second, after the job, and keeps every row in step with the header', async () => {
+    const body = render('ci-speed', await present());
+    const lines = body.split('\n');
+    const header = lines.find((line) => line.startsWith('| Job |')) ?? '';
+    const cells = (line: string) =>
+      line
+        .split(/(?<!\\)\|/)
+        .slice(1, -1)
+        .map((cell) => cell.trim());
+    expect(cells(header)).toEqual([
+      'Job',
+      'Trend verdict',
+      'Path',
+      'Runs',
+      'Min',
+      'Median',
+      'p90',
+      'Max',
+      'Baseline median',
+      'Threshold',
+      'Shift vs baseline (95 % interval)',
+    ]);
+    const backend = cells(lines.find((line) => line.startsWith('| Backend |')) ?? '');
+    expect(backend).toHaveLength(cells(header).length);
+    expect(backend[1]).toContain('slower');
+    expect(backend[2]).toBe('check');
+    expect(backend.at(-1)).toContain('+36.5 s');
+  });
+
   it('marks a job with too few recent runs inconclusive and a job without a baseline as such', async () => {
     const body = render('ci-speed', await present());
-    expect(body).toContain('inconclusive</span> | 8 of 20 recent runs needed');
+    const inconclusive =
+      body.split('\n').find((line) => line.includes('inconclusive</span>')) ?? '';
+    expect(inconclusive).toMatch(
+      /^\| [^|]+ \| <span class="dashboard-verdict">inconclusive<\/span> \|/,
+    );
+    expect(inconclusive).toMatch(/\| 8 of 20 recent runs needed \|$/);
     const older = await readDashboardData(
       await folder({ '2026-11-07.json': await validText('2026-11-07.json') }),
     );

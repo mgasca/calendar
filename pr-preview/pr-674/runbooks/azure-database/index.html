@@ -60,7 +60,7 @@
 <ul>
 <li><strong>Server</strong>: the Azure Database for PostgreSQL Flexible Server. Its <strong>firewall</strong> allows only listed public IPv4 addresses to connect.</li>
 <li><strong>Role</strong>: a PostgreSQL identity with its own permissions. <code>calendar_migrator</code> changes the schema. <code>calendar_app</code> is the app’s identity and has fewer permissions.</li>
-<li><strong>Schema</strong>: the database’s tables and other structures. A <strong>migration</strong> is a versioned schema change. The app never applies migrations itself (<a href="/calendar/pr-preview/pr-674/adr/0015/">ADR-0015</a>).</li>
+<li><strong>Schema</strong>: the database’s tables and other structures. A <strong>migration</strong> is a versioned schema change. The app never applies migrations itself (<a href="/calendar/pr-preview/pr-674/adr/0015/">ADR-0015</a>); the <code>calendar-migrate</code> binary does, as <code>calendar_migrator</code>.</li>
 <li><strong>Vaults</strong>: two Azure Key Vaults that store secrets. The <strong>ops vault</strong> stores the administrator and role passwords. The <strong>app vault</strong> stores the app’s connection string, which holds the server address and the app password.</li>
 <li><strong>FQDN</strong>: the server’s full DNS hostname, for example <code>&#x3C;server-name>.postgres.database.azure.com</code>.</li>
 </ul>
@@ -88,7 +88,7 @@
 <p>Use the FQDN, not the server name, in <code>psql</code> connections. The certificate check needs the full hostname.</p>
 </li>
 <li>
-<p>Connections use TLS with <code>SSL Mode=VerifyFull</code>. This checks the server’s certificate and hostname against the system certificate authority (CA) store. The runner and the app image must trust DigiCert Global Root G2 and Microsoft RSA Root CA 2017. See <a href="https://learn.microsoft.com/azure/postgresql/flexible-server/security-tls">Azure PostgreSQL TLS guidance</a> and <a href="https://www.npgsql.org/doc/security.html">Npgsql certificate validation</a>.</p>
+<p>Connections use TLS with <code>SSL Mode=VerifyFull</code>. This checks the server’s certificate and hostname against the system certificate authority (CA) store. The runner and the app image must trust DigiCert Global Root G2 and Microsoft RSA Root CA 2017. See <a href="https://learn.microsoft.com/azure/postgresql/flexible-server/security-tls">Azure PostgreSQL TLS guidance</a>. The migrator and the app verify with rustls against that store; the connection strings keep the Npgsql keyword form (<code>SSL Mode=VerifyFull</code>).</p>
 </li>
 <li>
 <p>Only one person may initialize or migrate a server at a time. See <a href="#temporary-firewall-rules-and-concurrent-operators">Temporary firewall rules and concurrent operators</a>.</p>
@@ -209,9 +209,9 @@
 <p>Steps 3 and 4 do not happen together, so connections can fail between them. Never put the password in command arguments or logs.</p>
 <h2 id="migration-failure-and-rollback">Migration failure and rollback</h2>
 <p>Migrations only move forward. Make schema changes in two steps (expand, then contract): first add what the new app needs, and remove old structures only in a later release. Old and new app revisions then both work during a deployment.</p>
-<p>If the migration bundle (the program that applies migrations) fails, the current app revision keeps serving. Earlier migrations in the same run may already be committed. EF normally runs each PostgreSQL migration in a transaction, but operations outside a transaction, or a failure between migrations, can leave partial changes. Stopping the deployment does not undo them.</p>
+<p>If the migrator (<code>calendar-migrate</code>, the program that applies migrations) fails, the current app revision keeps serving. The migrator runs all pending migrations in one transaction, so a failed run normally leaves the schema as it was. A statement that PostgreSQL cannot run in a transaction would be the exception; no migration has one today. Stopping the deployment does not undo a committed run.</p>
 <ol>
-<li>Inspect the migration history and the database state.</li>
+<li>Inspect the migration history (the <code>__diesel_schema_migrations</code> table; <code>__EFMigrationsHistory</code> is the record from before the Rust migrator) and the database state.</li>
 <li>Fix the cause and apply a reviewed forward fix.</li>
 <li>Check the migration and the app before you change traffic.</li>
 </ol>

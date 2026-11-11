@@ -48,7 +48,7 @@ async fn the_app_role_cannot_migrate_and_the_failure_is_reported() {
   let message = text(&output.stderr);
   assert!(message.starts_with("calendar-migrate: "), "{message}");
   assert!(message.contains("permission denied"), "{message}");
-  assert!(!message.contains("test-app-password"), "{message}");
+  assert!(!message.contains(database.app_password()), "{message}");
 }
 
 #[test]

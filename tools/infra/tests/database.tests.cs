@@ -77,14 +77,13 @@ public sealed class DatabaseTests
   }
 
   [Fact]
-  public async Task SecretStorageUsesPrivateFileAndNeverArguments()
+  public async Task SecretStorageUsesStandardInputAndNeverArgumentsOrFiles()
   {
     var azure = new FakeAzure();
     await Infra.StoreSecret(azure, "ops-vault", "calendar-app-password", "secret-value");
-    azure.FileContents.ShouldBe("secret-value");
+    azure.Input.ShouldBe("secret-value");
     azure.Calls.SelectMany(x => x).ShouldNotContain("secret-value");
-    File.Exists(azure.FilePath).ShouldBeFalse();
-    azure.FileMode.ShouldBe(UnixFileMode.UserRead | UnixFileMode.UserWrite);
+    azure.Calls.Any(c => c.Contains("set") && c.Contains("--file") && c.Contains("/dev/stdin")).ShouldBeTrue();
   }
 
   [Fact]
@@ -257,9 +256,14 @@ public sealed class DatabaseTests
     public bool FailDelete { get; init; }
     public string? OverrideSecret { get; init; }
     public string RuleList { get; init; } = "[]";
-    public string FileContents { get; private set; } = "";
-    public string FilePath { get; private set; } = "";
-    public UnixFileMode FileMode { get; private set; }
+    public string Input { get; private set; } = "";
+
+    public Task<string> RunWithInputAsync(string input, params string[] args)
+    {
+      Input = input;
+      return RunAsync(args);
+    }
+
     public Task<string> RunAsync(params string[] args)
     {
       Calls.Add(args);
@@ -269,21 +273,11 @@ public sealed class DatabaseTests
       }
       if (args.Contains("show"))
       {
-        return Task.FromResult(OverrideSecret ?? FileContents);
+        return Task.FromResult(OverrideSecret ?? Input);
       }
       if (FailDelete && args.Contains("delete"))
       {
         throw new InvalidOperationException("Azure failure");
-      }
-      var index = Array.IndexOf(args, "--file");
-      if (index >= 0)
-      {
-        FilePath = args[index + 1];
-        FileContents = File.ReadAllText(FilePath);
-        if (!OperatingSystem.IsWindows())
-        {
-          FileMode = File.GetUnixFileMode(FilePath);
-        }
       }
       return Task.FromResult("");
     }

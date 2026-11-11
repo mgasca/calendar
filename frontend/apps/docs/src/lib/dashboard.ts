@@ -1000,26 +1000,31 @@ function ciSpeed(data: DashboardData): string {
     '## Run times per job and path',
     '',
   );
-  const rows = ci.jobs.map((row) => [
-    escapeText(row.job),
-    row.path,
-    String(row.count),
-    formatSeconds(row.minSeconds),
-    formatSeconds(row.medianSeconds),
-    formatSeconds(row.p90Seconds),
-    formatSeconds(row.maxSeconds),
-    row.baseline
-      ? `${formatSeconds(row.baseline.medianSeconds)} (${row.baseline.count} runs)`
-      : 'none pinned',
-    row.baseline ? formatSeconds(row.baseline.thresholdSeconds) : 'none',
-    ...verdictCells(row, ci.trend),
-  ]);
+  const rows = ci.jobs.map((row) => {
+    const [verdict, shift] = verdictCells(row, ci.trend);
+    return [
+      escapeText(row.job),
+      verdict,
+      row.path,
+      String(row.count),
+      formatSeconds(row.minSeconds),
+      formatSeconds(row.medianSeconds),
+      formatSeconds(row.p90Seconds),
+      formatSeconds(row.maxSeconds),
+      row.baseline
+        ? `${formatSeconds(row.baseline.medianSeconds)} (${row.baseline.count} runs)`
+        : 'none pinned',
+      row.baseline ? formatSeconds(row.baseline.thresholdSeconds) : 'none',
+      shift,
+    ];
+  });
   lines.push(
     rows.length === 0
       ? 'The sampled runs held no gated job.'
       : table(
           [
             'Job',
+            'Trend verdict',
             'Path',
             'Runs',
             'Min',
@@ -1028,7 +1033,6 @@ function ciSpeed(data: DashboardData): string {
             'Max',
             'Baseline median',
             'Threshold',
-            'Trend verdict',
             'Shift vs baseline (95 % interval)',
           ],
           rows,

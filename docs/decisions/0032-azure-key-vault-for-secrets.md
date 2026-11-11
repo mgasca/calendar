@@ -85,3 +85,5 @@ Review the infrastructure and deployment changes for separate vaults, secret-sco
 Standard vault operations are usage-priced; diagnostic destinations can also cost money. Check the [Azure pricing page](https://azure.microsoft.com/en-us/pricing/details/key-vault/) and the calculator for the subscription and UK South before provisioning; an actual estimate and region availability have not been verified. No numeric price is assumed here.
 
 ASP.NET Data Protection key persistence and protection is a related but separate decision: the hosting story [#76](https://github.com/mgasca/calendar/issues/76) must resolve it before production. Without persistent shared keys, restarts or revisions can invalidate existing authentication cookies. Key Vault secret storage alone does not persist the Data Protection key ring.
+
+* **Amendment, 2026-11-11:** the "related but separate decision" above is taken for the Rust backend in [ADR-0056](0056-session-cookie-sealed-with-a-database-held-key.md): there is no Data Protection key ring any more, and the session-sealing key is held in the database, deliberately not as a Key Vault secret. This record's decision stands.

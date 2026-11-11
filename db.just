@@ -1,5 +1,5 @@
 # Local PostgreSQL recipes (`just db <recipe>`), through Docker Compose (ADR-0016).
-# Migrations are applied only by `just db migrate`, as calendar_migrator (ADR-0015).
+# Migrations are applied only by `just db migrate`, as calendar_migrator (ADR-0052).
 
 set shell := ["bash", "-euo", "pipefail", "-c"]
 

@@ -1,5 +1,5 @@
 ---
-status: proposed
+status: accepted
 date: 2026-11-11
 decision-makers: mgasca, Claude (AI assistant)
 ---
@@ -49,9 +49,9 @@ Chosen option: "cargo test, standard assertions, hand-written fakes, Testcontain
 * **HTTP tests:** the test builds the same `Router` the binary serves, with the test pool and clock, and sends requests to it inside the test process. No test starts the compiled binary or depends on a fixed port. The image smoke test (`just image smoke`) stays the only test of the built artifact.
 * **Sign-in in tests:** through the Development seed key or a fake of the Google exchange, as the C# tests did, never through Google.
 
-### Effect on earlier records, once this record is accepted
+### Effect on earlier records
 
-None of these edits is made while this record is `proposed`.
+These edits were made when this record was accepted, on 2026-11-11.
 
 * **[ADR-0007](0007-backend-testing-stack.md)** becomes `superseded by` this record. Its architecture-model entry gets a `note`: the repo tools keep xUnit v3 file-based test apps, which [ADR-0017](0017-dotnet-file-based-apps-for-repo-tooling.md) decides for itself.
 * **[ADR-0016](0016-local-database-provisioning.md)** stands. Its mention of `Testcontainers.PostgreSql` and an xUnit assembly fixture gets a dated amendment naming the Rust crate and `calendar-testing`.
@@ -104,6 +104,4 @@ None of these edits is made while this record is `proposed`.
 * **Versions** resolved in the code branch's `Cargo.lock` on 2026-11-11: testcontainers 0.27.3, testcontainers-modules 0.15.0. Read from the lock file, not re-checked against crates.io.
 * **Not verified:** the run time of the Rust suite against the .NET suite; how many containers a full run starts.
 * **Revisit when** the backend job's run time regresses against its gate or tests interfere with each other: adopt cargo-nextest then. Revisit coverage when the maintainer answers question 1.
-* **Open questions for the reviewer:**
-  1. Is losing backend code coverage acceptable, or should the code pull request add `cargo-llvm-cov` (a pinned extra tool)?
-  2. May `calendar-testing` share one container across the tests of a binary, with a database per test, or is a container per test binary with a schema reset preferred?
+* **Resolved at acceptance, 2026-11-11:** backend coverage is kept: the maintainer chose `cargo-llvm-cov`, which CI installs at a pinned version and runs the tests under, uploading a Cobertura report. `calendar-testing` starts one container per test process (so one per test binary) and gives each test its own database cloned from a migrated template.

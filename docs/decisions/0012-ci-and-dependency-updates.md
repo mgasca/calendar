@@ -141,3 +141,7 @@ PR #1 ran CI, CodeQL and dependency review green under the active ruleset. Workf
 * Good, because **D5 Supply-chain security**: fully immutable.
 * Bad, because **D3 Setup & maintenance**: every line needs a SHA and a version comment.
 * Bad, because **D6 Signal-to-noise**: more Dependabot churn.
+
+## More Information
+
+* **Amendment, 2026-11-11:** with the Rust backend ([ADR-0051](0051-rust-backend-on-axum-and-tokio.md)) the Backend job runs Clippy, `cargo fmt --check`, the tests under `cargo-llvm-cov` and the contract check; CodeQL analyses Rust and, without a build, the C# of the repo tools; Dependabot gained the `cargo` and `rust-toolchain` ecosystems for `/backend` and lost the backend's NuGet entries ([ADR-0053](0053-cargo-workspace-dependency-management.md)). The decision (GitHub Actions, security scanning, Dependabot) stands.

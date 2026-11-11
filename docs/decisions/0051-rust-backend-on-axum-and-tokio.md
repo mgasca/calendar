@@ -1,5 +1,5 @@
 ---
-status: proposed
+status: accepted
 date: 2026-11-11
 decision-makers: mgasca, Claude (AI assistant)
 ---
@@ -61,12 +61,12 @@ D1 separates Rust from .NET. It is a requirement, not a weight, so the status qu
 * **Carried over unchanged:** per-user ownership ([ADR-0041](0041-per-user-data-ownership.md)), the read-only snapshot for agenda reads ([ADR-0020](0020-aggregate-day-agenda-endpoint-as-read-model.md)), client-supplied `today` and `timeZone` ([ADR-0021](0021-client-supplied-date-and-time-zone-define-the-day.md)), authentication on every endpoint except health and sign-in ([ADR-0027](0027-google-oidc-bff-session.md)), and the least-privilege `calendar_app` role.
 * **Cutover:** one code pull request ports the API and its tests, with the C# sources kept on disk as the reference until the port passes, then deleted in the same pull request. The repo tools under `tools/` and `.claude/skills/` stay .NET file-based apps ([ADR-0017](0017-dotnet-file-based-apps-for-repo-tooling.md)).
 
-### Effect on earlier records, once this record is accepted
+### Effect on earlier records
 
-None of these edits is made while this record is `proposed`.
+These edits were made when this record was accepted, on 2026-11-11.
 
 * **[ADR-0002](0002-dotnet-10-minimal-api-backend.md)** becomes `superseded by` this record. Its Domain/Api layering and problem-details convention are restated above.
-* **[ADR-0050](0050-adopt-dotnet-11-once-the-providers-support-it.md)** stays `accepted` and gets a dated amendment. Its gate (a stable Npgsql EF Core provider 11 and `EFCore.NamingConventions`) and its file set (target frameworks, runtime image, EF packages, `dotnet-ef`, the contract) concern the backend only and lapse with it. What remains is the .NET SDK that the repo tools run on, pinned in the root `global.json`: the chosen direction (".NET 11, then .NET 12") still governs that pin, and the move no longer waits for any EF package. Story 0056 needs the same narrowing. Open question 2 asks whether the maintainer prefers to supersede [ADR-0050](0050-adopt-dotnet-11-once-the-providers-support-it.md) instead.
+* **[ADR-0050](0050-adopt-dotnet-11-once-the-providers-support-it.md)** stays `accepted` and gets a dated amendment. Its gate (a stable Npgsql EF Core provider 11 and `EFCore.NamingConventions`) and its file set (target frameworks, runtime image, EF packages, `dotnet-ef`, the contract) concern the backend only and lapse with it. What remains is the .NET SDK that the repo tools run on, pinned in the root `global.json`: the chosen direction (".NET 11, then .NET 12") still governs that pin, and the move no longer waits for any EF package. Story 0056 needs the same narrowing.
 * **Amendments, each a dated bullet:** [ADR-0001](0001-monorepo-layout.md) (`backend/` holds a Cargo workspace; the repository has three languages: Rust, TypeScript, and C# for tooling), [ADR-0004](0004-openapi-contract-and-generated-client.md) (utoipa generates the contract), [ADR-0012](0012-ci-and-dependency-updates.md) (CI jobs, CodeQL languages and Dependabot ecosystems), [ADR-0017](0017-dotnet-file-based-apps-for-repo-tooling.md) (the tools' package versions can no longer be matched to `backend/Directory.Packages.props`) and [ADR-0030](0030-single-container-for-api-and-spa.md) (the runtime image is no longer an ASP.NET image).
 * **Architecture model:** the component and technology changes, and every node that cites [ADR-0002](0002-dotnet-10-minimal-api-backend.md), are updated in the code pull request, as is the planned story card that lists [ADR-0002](0002-dotnet-10-minimal-api-backend.md).
 
@@ -135,7 +135,5 @@ None of these edits is made while this record is `proposed`.
 * **Not verified:** nothing in this record was measured. No Rust build of the API has served the web app or been deployed, and axum was not compared with actix-web in code. The hours figure is article 0007's estimate, which its author calls a low-confidence judgment.
 * **Related:** [ADR-0052](0052-diesel-data-access-with-embedded-sql-migrations.md), [ADR-0053](0053-cargo-workspace-dependency-management.md), [ADR-0054](0054-rust-backend-testing-stack.md), [ADR-0055](0055-rust-static-analysis-and-formatting.md), [ADR-0056](0056-session-cookie-sealed-with-a-database-held-key.md), [ADR-0057](0057-chrono-time-types-for-the-rust-backend.md).
 * **Revisit when** the repo tools are the only .NET code left and a tool needs a larger change: whether they stay .NET is then a decision for [ADR-0017](0017-dotnet-file-based-apps-for-repo-tooling.md)'s successor, not for this record.
-* **Open questions for the reviewer:**
-  1. This draft records the Rust requirement as given, because the maintainer's reasons were not stated to the author. Should the Context name them (for example performance, memory use, image size or learning), so a later reader can tell whether the drivers changed?
-  2. [ADR-0050](0050-adopt-dotnet-11-once-the-providers-support-it.md): amend it to cover only the repo tools' SDK, as proposed above, or supersede it with a short record of its own?
-  3. Is utoipa's place inside this record acceptable, or should the contract generator get its own record that amends [ADR-0004](0004-openapi-contract-and-generated-client.md)?
+* **Resolved at acceptance, 2026-11-11:** [ADR-0050](0050-adopt-dotnet-11-once-the-providers-support-it.md) is amended, not superseded, and utoipa stays inside this record. Both follow the draft; the maintainer did not rule on them separately.
+* **Still open:** the maintainer's reasons for Rust are not recorded in the Context, so a later reader cannot tell whether the drivers changed.

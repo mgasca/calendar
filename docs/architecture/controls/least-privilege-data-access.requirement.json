@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://mgasca.github.io/calendar/architecture/controls/least-privilege-data-access.requirement.json",
   "title": "Least-privilege database access requirement",
-  "description": "Which database role a component connects as and what that role may do (ADR-0014, ADR-0015).",
+  "description": "Which database role a component connects as and what that role may do (ADR-0014, ADR-0052).",
   "type": "object",
   "properties": {
     "role": { "type": "string", "description": "The PostgreSQL login role used for the connection." },

@@ -1,5 +1,5 @@
 ---
-status: accepted
+status: superseded by [ADR-0057](0057-chrono-time-types-for-the-rust-backend.md)
 date: 2026-10-26
 decision-makers: mgasca, Claude (AI assistant)
 ---

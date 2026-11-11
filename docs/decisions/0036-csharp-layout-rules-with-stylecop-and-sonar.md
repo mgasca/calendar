@@ -152,3 +152,4 @@ These rules came out of the same review and are configured in the same `.editorc
   * when StyleCop.Analyzers ships a stable 1.3, to move off the beta;
   * if hand-wrapping long lines becomes a recurring cost, to reconsider CSharpier.
 * **Amendment, 2026-11-06:** CI no longer runs the full `dotnet format --verify-no-changes` (#350): the SA1501, SA1116 and SA1117 diagnostics fail the build, and CI checks formatting with `dotnet format whitespace`; see the note under Confirmation. The decision itself is unchanged, so this ADR was amended, not superseded.
+* **Amendment, 2026-11-11:** the backend moved to Rust ([ADR-0055](0055-rust-static-analysis-and-formatting.md)), so these layout rules now apply only to the repo tools' C#. The banned-API analyzer, which ran only on `backend/src`, is replaced for the backend by Clippy's `disallowed-methods` list in `backend/clippy.toml`, and the `Migrations/.editorconfig` exception went with the EF Core migrations.

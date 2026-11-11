@@ -160,4 +160,26 @@ CI would need to replace EF's pending-model check with checks appropriate to the
 
 A useful comparison exercise would implement the same small slice three times: a task change with optimistic concurrency, a range-overlap read, and the overdue-task query with its partial-index-friendly branches. Review the migration, Rust code, diagnostics and query plans together. Such an exercise would supply evidence about this workload without pretending to evaluate an entire ecosystem.
 
+## A rough budget in person-hours
+
+The maintainer also asked for a finger-in-the-air estimate. For planning a conversation, I would use the following ranges. These are my low-confidence engineering judgments about this repository, not measured implementation times, vendor claims or commitments.
+
+Assume one developer already productive in Rust, PostgreSQL and the chosen library, with access to a working development environment. The target is parity with the current backend, keeping PostgreSQL and the existing HTTP contract. Include implementation, tests, review fixes, a migration-history handover and deployment verification. Exclude new product features, learning Rust from scratch and changes to the frontend's behavior.
+
+| Option | Database and persistence slice | Complete backend migration, including that slice |
+| --- | ---: | ---: |
+| SQLx | 60–110 person-hours | 200–400 person-hours |
+| Diesel | 70–130 person-hours | 200–420 person-hours |
+| SeaORM | 60–120 person-hours | 200–410 person-hours |
+
+The database slice covers recipes and migration packaging, schema adoption, mappings, queries, concurrency handling, permissions and database-backed regression tests. It assumes enough Rust application structure exists to host and test that slice. Changing only the migration runner while retaining the .NET application would be a smaller, separately scoped job; these figures do not estimate that hybrid arrangement.
+
+The complete-backend column additionally includes porting domain and time-zone rules, endpoints and validation, Google sign-in and cookie sessions, OpenAPI generation, test infrastructure, CI and runtime packaging. It is a total, not an amount to add to the database column. At 40 focused hours per week, 200–420 hours represents roughly five to ten and a half developer-weeks; calendar duration also depends on review availability and interruptions.
+
+As a rough decomposition of the database work, allow 8–16 hours for recipes, connection configuration and runner packaging; 12–24 for schema history and upgrade tests; 24–64 for queries, mappings and concurrency; and 16–32 for permissions, regression coverage, plan checks and review fixes. Those bands describe where time could go rather than an independently precise sum. The modest differences between library estimates reflect likely implementation work: explicit SQL and result mapping for SQLx, typed query composition and schema integration for Diesel, and entity setup plus PostgreSQL-specific integration for SeaORM. A developer's familiarity could easily reverse that ordering.
+
+The ranges overlap heavily on purpose. There is no implemented comparison here that could justify treating a ten-hour difference as evidence of an advantage. Authentication parity, daylight-saving behavior, optimistic concurrency and adopting an existing populated database could move any option outside its band. Production cutover constraints or a team learning Rust would require a new estimate.
+
+A bounded first step would budget 12–24 person-hours per option for the representative slice described above, including tests and query-plan inspection. That is evaluation work, separately budgeted from the delivery totals; some code might later be reusable. Its useful output would be a revised estimate backed by actual implementation experience, including an explicit list of what remains untested.
+
 The familiar command can survive all three approaches. What changes is the conversation beneath it: whether we describe the database primarily in SQL, in typed query expressions, or through entities and relationships. Understanding that difference gives a maintainer a fairer basis for asking the next question, whichever direction the project eventually takes.

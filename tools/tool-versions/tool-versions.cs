@@ -1,11 +1,11 @@
 #!/usr/bin/env -S dotnet run
 #:include ToolVersions.cs
 
-// Fails when a package version pinned by repo tooling drifts from backend/Directory.Packages.props.
-// Dependabot updates the backend but can't see tooling pins (ADR-0017), so this keeps them in step.
+// Fails when repo tooling pins one package at different versions. Dependabot can't see tooling pins (ADR-0017), so
+// they are bumped by hand; this keeps a bump in one tool from leaving the others behind.
 //
 //   dotnet run tools/tool-versions/tool-versions.cs              report; exit 1 on drift
-//   dotnet run tools/tool-versions/tool-versions.cs -- --fix     rewrite drifted pins to the backend versions
+//   dotnet run tools/tool-versions/tool-versions.cs -- --fix     rewrite drifted pins to the newest pinned version
 //   dotnet run tools/tool-versions/tool-versions.cs -- --root P  use another repo root
 
 using ToolVersions;
@@ -30,27 +30,15 @@ while (pending.TryDequeue(out var arg))
 }
 
 root ??= RepoRoot();
-var centralPath = Path.Combine(root, "backend", "Directory.Packages.props");
-if (!File.Exists(centralPath))
-{
-  await Console.Error.WriteLineAsync($"not found: {centralPath}");
-  return 2;
-}
-
-IReadOnlyDictionary<string, string> central = VersionChecker.ReadCentralVersions(centralPath);
 IReadOnlyList<PinnedPackage> pins = VersionChecker.FindPins(root);
-IReadOnlyList<VersionDrift> drifts = VersionChecker.FindDrift(pins, central);
+IReadOnlyList<VersionDrift> drifts = VersionChecker.FindDrift(pins);
 
 foreach (PinnedPackage pin in pins)
 {
   VersionDrift? drift = drifts.FirstOrDefault(d => d.Pin == pin);
-  var line = (drift, central.ContainsKey(pin.Package)) switch
-  {
-    (not null, _) => $"DRIFT {pin.Package} {pin.Version} in {pin.File}; backend has {drift.BackendVersion}",
-    (null, true) => $"OK    {pin.Package} {pin.Version} in {pin.File}",
-    _ => $"SKIP  {pin.Package} {pin.Version} in {pin.File}; not in backend, bump it manually",
-  };
-  Console.WriteLine(line);
+  Console.WriteLine(drift is null
+    ? $"OK    {pin.Package} {pin.Version} in {pin.File}"
+    : $"DRIFT {pin.Package} {pin.Version} in {pin.File}; another tool pins {drift.ExpectedVersion}");
 }
 
 if (drifts.Count == 0)
@@ -65,7 +53,7 @@ if (fix)
   return 0;
 }
 
-Console.WriteLine($"{drifts.Count} pin(s) drifted from backend/Directory.Packages.props. Fix with: just tools versions --fix");
+Console.WriteLine($"{drifts.Count} pin(s) are behind the newest version pinned by another tool. Fix with: just tools versions --fix");
 return 1;
 
 // The nearest ancestor of the working directory containing .git (a directory, or a file in worktrees).

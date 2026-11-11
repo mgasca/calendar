@@ -86,30 +86,57 @@ jobs:
     needs: changes
     if: needs.changes.outputs.backend == 'true'
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 20
     defaults:
       run:
         working-directory: backend
+    env:
+      CARGO_TERM_COLOR: always
+      # CI builds from scratch or from the cache below, so incremental compilation only adds to the cache.
+      CARGO_INCREMENTAL: 0
     steps:
       - uses: actions/checkout@v7
-      - uses: actions/setup-dotnet@v6
-        with:
-          global-json-file: backend/global.json
-          cache: true
-          cache-dependency-path: backend/**/packages.lock.json
-      - run: dotnet restore --locked-mode
-      - run: dotnet build --no-restore -c Release
-      # Whitespace only: the build above already enforces code style (EnforceCodeStyleInBuild) and the analyzers, with
-      # warnings as errors; only formatting needs dotnet format (#350, record 0010).
-      - run: dotnet format whitespace --verify-no-changes --no-restore
-      - name: EF Core model matches migrations
+      # The toolchain pinned in backend/rust-toolchain.toml, with rustfmt and clippy. Runners ship rustup; naming the
+      # channel keeps the install independent of rustup's own defaults.
+      - name: Install the pinned Rust toolchain
+        id: toolchain
         run: |
-          dotnet tool restore
-          dotnet ef migrations has-pending-model-changes --project src/Calendar.Infrastructure --no-build --configuration Release
+          channel=$(sed -n 's/^channel *= *"\(.*\)"/\1/p' rust-toolchain.toml)
+          rustup toolchain install "$channel" --profile minimal --component rustfmt,clippy --no-self-update
+          echo "channel=$channel" >> "$GITHUB_OUTPUT"
+          cargo --version
+      # The registry and the compiled dependencies, per toolchain and lock file; an older cache of the same toolchain
+      # is a starting point when the lock file changed.
+      - uses: actions/cache@v6
+        with:
+          path: |
+            ~/.cargo/registry/index
+            ~/.cargo/registry/cache
+            ~/.cargo/git/db
+            backend/target
+          key: backend-${{ runner.os }}-rust-${{ steps.toolchain.outputs.channel }}-${{ hashFiles('backend/Cargo.lock') }}
+          restore-keys: backend-${{ runner.os }}-rust-${{ steps.toolchain.outputs.channel }}-
+      - run: cargo fetch --locked
+      # Clippy denies every warning; the workspace lints in Cargo.toml set the levels.
+      - run: cargo clippy --workspace --all-targets --locked -- -D warnings
+      - run: cargo fmt --all --check
       # Tests start PostgreSQL through Testcontainers; ubuntu-latest runners include Docker (ADR-0016).
-      - run: dotnet test --no-build --configuration Release -- --coverage --coverage-output-format cobertura --results-directory "$GITHUB_WORKSPACE/backend/TestResults"
+      # cargo-llvm-cov runs `cargo test` on an instrumented build and writes a Cobertura report. The release binary is
+      # pinned; llvm-tools is installed here rather than in rust-toolchain.toml so local and image builds skip it.
+      - name: Install cargo-llvm-cov
+        env:
+          LLVM_COV_VERSION: 0.9.1
+        run: |
+          rustup component add llvm-tools-preview
+          curl -LsSf "https://github.com/taiki-e/cargo-llvm-cov/releases/download/v${LLVM_COV_VERSION}/cargo-llvm-cov-x86_64-unknown-linux-gnu.tar.gz" \
+            | tar xzf - -C "$HOME/.cargo/bin"
+      - name: Test with coverage
+        run: |
+          mkdir -p TestResults
+          cargo llvm-cov --workspace --locked --cobertura --output-path TestResults/backend.cobertura.xml
       - name: OpenAPI contract is up to date
         run: |
+          cargo run --locked -p calendar-api -- --openapi ../contracts/openapi.json
           git diff --exit-code -- ../contracts || {
             echo "::error::contracts/openapi.json is stale. Run 'just contracts' and commit the result."
             exit 1
@@ -298,7 +325,7 @@ jobs:
         run: just tools test
       - name: Azure role SQL matches the local init script (PostgreSQL in Docker)
         run: just infra integration
-      - name: Tooling package pins match backend
+      - name: Tooling package pins agree
         run: just tools versions
       - name: ADRs follow conventions
         run: just tools adr

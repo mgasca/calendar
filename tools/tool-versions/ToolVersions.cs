@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Text.RegularExpressions;
 using System.Xml.Linq;
 
@@ -6,13 +7,14 @@ namespace ToolVersions;
 /// <summary>A package version pinned by repo tooling, and where it is pinned.</summary>
 public sealed record PinnedPackage(string Package, string Version, string File);
 
-/// <summary>A pin whose version differs from the backend's central version.</summary>
-public sealed record VersionDrift(PinnedPackage Pin, string BackendVersion);
+/// <summary>A pin whose version is behind the newest version another tooling file pins for the same package.</summary>
+public sealed record VersionDrift(PinnedPackage Pin, string ExpectedVersion);
 
 /// <summary>
-/// Keeps package versions pinned by repo tooling (ADR-0017) in step with backend/Directory.Packages.props.
-/// Dependabot can't see tooling pins (#:package directives, folder-local Directory.Build.props), but it
-/// does update the backend, so the backend's versions are the reference.
+/// Keeps the package versions pinned by repo tooling (ADR-0017) equal across the tools. Dependabot can't see tooling
+/// pins (#:package directives, folder-local Directory.Build.props), so they are bumped by hand, and a package bumped in
+/// one tool but not in another is the drift this finds. The newest version pinned anywhere is the reference. (Until
+/// the backend moved to Rust, the reference was its Directory.Packages.props, which Dependabot did update.)
 /// </summary>
 public static partial class VersionChecker
 {
@@ -22,15 +24,6 @@ public static partial class VersionChecker
   private static readonly string[] SkippedSegments = ["bin", "obj", "fixtures", "node_modules"];
 
   private static readonly char[] PathSeparators = [Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar];
-
-  /// <summary>Reads PackageVersion Include/Version pairs from a Central Package Management props file.</summary>
-  public static IReadOnlyDictionary<string, string> ReadCentralVersions(string propsPath)
-  {
-    var doc = XDocument.Load(propsPath);
-    return doc.Descendants("PackageVersion")
-        .Where(e => e.Attribute("Include") is not null && e.Attribute("Version") is not null)
-        .ToDictionary(e => e.Attribute("Include")!.Value, e => e.Attribute("Version")!.Value, StringComparer.OrdinalIgnoreCase);
-  }
 
   /// <summary>Finds pins in #:package directives (*.cs) and PackageReference Version attributes (Directory.Build.props).</summary>
   public static IReadOnlyList<PinnedPackage> FindPins(string root)
@@ -60,13 +53,19 @@ public static partial class VersionChecker
     return pins;
   }
 
-  /// <summary>Pins whose package the backend also uses, at a different version.</summary>
-  public static IReadOnlyList<VersionDrift> FindDrift(IEnumerable<PinnedPackage> pins, IReadOnlyDictionary<string, string> central) =>
-      [.. pins
-            .Where(p => central.TryGetValue(p.Package, out var v) && v != p.Version)
-            .Select(p => new VersionDrift(p, central[p.Package]))];
+  /// <summary>The newest version pinned for each package (ids compare case-insensitively, like NuGet ids).</summary>
+  public static IReadOnlyDictionary<string, string> NewestVersions(IEnumerable<PinnedPackage> pins) =>
+      pins.GroupBy(p => p.Package, StringComparer.OrdinalIgnoreCase)
+          .ToDictionary(g => g.Key, g => g.Select(p => p.Version).Max(VersionOrder.Instance)!, StringComparer.OrdinalIgnoreCase);
 
-  /// <summary>Rewrites each drifted pin to the backend version. Returns the number of pins changed.</summary>
+  /// <summary>Pins whose package another tooling file pins at a newer version.</summary>
+  public static IReadOnlyList<VersionDrift> FindDrift(IReadOnlyCollection<PinnedPackage> pins)
+  {
+    IReadOnlyDictionary<string, string> newest = NewestVersions(pins);
+    return [.. pins.Where(p => newest[p.Package] != p.Version).Select(p => new VersionDrift(p, newest[p.Package]))];
+  }
+
+  /// <summary>Rewrites each drifted pin to the expected version. Returns the number of pins changed.</summary>
   public static int Fix(string root, IEnumerable<VersionDrift> drifts)
   {
     var changed = 0;
@@ -84,7 +83,7 @@ public static partial class VersionChecker
         var updated = Regex.Replace(
           text,
           pattern,
-          m => m.Groups[1].Value + drift.BackendVersion + (m.Groups.Count > 2 ? m.Groups[2].Value : ""),
+          m => m.Groups[1].Value + drift.ExpectedVersion + (m.Groups.Count > 2 ? m.Groups[2].Value : ""),
           RegexOptions.IgnoreCase,
           TimeSpan.FromSeconds(1));
         if (updated != text)
@@ -104,4 +103,60 @@ public static partial class VersionChecker
 
   [GeneratedRegex(@"^#:package\s+(?<name>[^@\s]+)@(?<version>\S+)", RegexOptions.Multiline, 1000)]
   private static partial Regex PackageDirectiveRegex();
+}
+
+/// <summary>
+/// Orders package versions: the dotted numeric parts compare as numbers, a release sorts after its prereleases, and
+/// anything else falls back to ordinal text order.
+/// </summary>
+public sealed class VersionOrder : IComparer<string>
+{
+  /// <summary>The one instance.</summary>
+  public static readonly VersionOrder Instance = new();
+
+  /// <inheritdoc />
+  public int Compare(string? x, string? y)
+  {
+    if (x is null || y is null)
+    {
+      return (x is null ? 0 : 1) - (y is null ? 0 : 1);
+    }
+
+    (var xNumbers, var xLabel) = Split(x);
+    (var yNumbers, var yLabel) = Split(y);
+    for (var i = 0; i < Math.Max(xNumbers.Length, yNumbers.Length); i++)
+    {
+      var difference = Part(xNumbers, i).CompareTo(Part(yNumbers, i));
+      if (difference != 0)
+      {
+        return difference;
+      }
+    }
+
+    if (xLabel.Length == 0 || yLabel.Length == 0)
+    {
+      return (xLabel.Length == 0 ? 1 : 0) - (yLabel.Length == 0 ? 1 : 0);
+    }
+
+    return string.CompareOrdinal(xLabel, yLabel);
+  }
+
+  private static long Part(long[] numbers, int index) => index < numbers.Length ? numbers[index] : 0;
+
+  private static (long[] Numbers, string Label) Split(string version)
+  {
+    var parts = version.Split('-', 2);
+    var numbers = new List<long>();
+    foreach (var text in parts[0].Split('.'))
+    {
+      if (!long.TryParse(text, NumberStyles.None, CultureInfo.InvariantCulture, out var number))
+      {
+        return ([], version);
+      }
+
+      numbers.Add(number);
+    }
+
+    return ([.. numbers], parts.Length > 1 ? parts[1] : "");
+  }
 }

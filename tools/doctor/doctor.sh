@@ -12,19 +12,32 @@ fail() { printf '  %s✗%s %s\n      → %s\n' "$red" "$reset" "$1" "$2"; proble
 
 echo "Checking toolchain..."
 
-# .NET SDK: must satisfy backend/global.json (dotnet --version fails otherwise).
-if ! command -v dotnet >/dev/null 2>&1; then
-  fail "dotnet not found" "Install the .NET SDK pinned in backend/global.json: https://learn.microsoft.com/dotnet/core/install/linux"
-elif sdk="$(cd "$root/backend" && dotnet --version 2>/dev/null)"; then
-  ok ".NET SDK $sdk (satisfies backend/global.json)"
+# Rust: the backend's toolchain is pinned in backend/rust-toolchain.toml. With rustup, cargo and rustc in backend/
+# select that toolchain (and report an error when it is not installed), so the versions are read there.
+want_rust="$(sed -n 's/^channel *= *"\(.*\)"/\1/p' "$root/backend/rust-toolchain.toml")"
+if ! command -v cargo >/dev/null 2>&1 || ! command -v rustc >/dev/null 2>&1; then
+  fail "cargo or rustc not found" "Install rustup (https://rustup.rs), then run 'rustup toolchain install' in backend/ for Rust $want_rust; make sure ~/.cargo/bin is on PATH"
+elif have_rust="$(cd "$root/backend" && rustc --version 2>/dev/null | sed -n 's/^rustc \([^ ]*\).*/\1/p')" && [ "$have_rust" = "$want_rust" ] \
+  && (cd "$root/backend" && cargo --version >/dev/null 2>&1); then
+  ok "Rust $have_rust (backend/rust-toolchain.toml)"
 else
-  fail "no .NET SDK satisfies backend/global.json" "Install the SDK version in backend/global.json (dotnet --list-sdks shows what is installed)"
+  fail "Rust '${have_rust:-unavailable}' in backend/, but backend/rust-toolchain.toml wants $want_rust" \
+    "Run 'rustup toolchain install' in backend/ (rustup reads rust-toolchain.toml); without rustup, install Rust $want_rust with rustfmt and clippy"
+fi
+
+# A C compiler and linker: rustc links through cc, and some crates (the TLS backend) compile C.
+if command -v cc >/dev/null 2>&1 || command -v gcc >/dev/null 2>&1 || command -v clang >/dev/null 2>&1; then
+  ok "C compiler and linker ($(command -v cc || command -v gcc || command -v clang))"
+else
+  fail "no C compiler (cc, gcc or clang) found" "Install one, e.g. 'sudo apt install build-essential': the backend cannot link without it"
 fi
 
 # Repo tools run from the repo root, where global.json pins their exact SDK
 # (ADR-0017). Their lock files record that SDK's implicit AOT packages, so another SDK fails CI's
 # locked restore (#645); an SDK before 10.0.300 also lacks #:include.
-if command -v dotnet >/dev/null 2>&1; then
+if ! command -v dotnet >/dev/null 2>&1; then
+  fail "dotnet not found" "Install the .NET SDK pinned in global.json, which the repo tools need: https://learn.microsoft.com/dotnet/core/install/linux"
+else
   if tools_sdk="$(cd "$root" && dotnet --version 2>/dev/null)"; then
     ok ".NET SDK $tools_sdk for repo tools (satisfies global.json)"
   else

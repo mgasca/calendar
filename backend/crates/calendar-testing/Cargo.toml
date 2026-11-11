@@ -1,0 +1,16 @@
+[package]
+name = "calendar-testing"
+edition.workspace = true
+version.workspace = true
+publish.workspace = true
+license.workspace = true
+
+[dependencies]
+calendar-infrastructure.workspace = true
+diesel-async.workspace = true
+testcontainers-modules = { workspace = true, features = ["postgres"] }
+tokio = { workspace = true, features = ["sync", "rt", "time", "macros"] }
+tokio-postgres.workspace = true
+
+[lints]
+workspace = true

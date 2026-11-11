@@ -1,34 +1,20 @@
 using System.Globalization;
 using System.Text.RegularExpressions;
-using System.Xml.Linq;
 
 namespace DeliveryGuards;
 
 /// <summary>The files the guards read, as text, keyed by their path relative to the repo root.</summary>
-public sealed record RepoFiles(
-  string Workflow,
-  string BackendJustfile,
-  string ToolsJustfile,
-  IReadOnlyDictionary<string, string> BackendMsBuild)
+public sealed record RepoFiles(string Workflow, string ToolsJustfile)
 {
   /// <summary>The workflow the guards check.</summary>
   public const string WorkflowPath = ".github/workflows/ci.yml";
-
-  /// <summary>The MSBuild file that sets the backend's analysis switches.</summary>
-  public const string BackendPropsPath = "backend/Directory.Build.props";
 
   /// <summary>Reads the files from a checkout rooted at <paramref name="root"/>.</summary>
   public static RepoFiles Load(string root)
   {
     string Read(string path) => File.ReadAllText(Path.Combine(root, path));
 
-    var backend = Path.Combine(root, "backend");
-    var msbuild = Directory.EnumerateFiles(backend, "*.*", SearchOption.AllDirectories)
-      .Where(p => p.EndsWith(".props", StringComparison.Ordinal) || p.EndsWith(".targets", StringComparison.Ordinal)
-        || p.EndsWith(".csproj", StringComparison.Ordinal))
-      .Where(p => !p.Split(Path.DirectorySeparatorChar).Any(part => part is "bin" or "obj"))
-      .ToDictionary(p => Path.GetRelativePath(root, p).Replace(Path.DirectorySeparatorChar, '/'), File.ReadAllText);
-    return new RepoFiles(Read(WorkflowPath), Read("backend/mod.just"), Read("tools/mod.just"), msbuild);
+    return new RepoFiles(Read(WorkflowPath), Read("tools/mod.just"));
   }
 }
 
@@ -43,7 +29,7 @@ public sealed record RepoFiles(
 /// <param name="Check">Returns one message per violation; none means the guard passes.</param>
 public sealed record Guard(string Id, string Fix, string Record, string Mechanism, Func<RepoFiles, IEnumerable<string>> Check);
 
-/// <summary>The guards, and what they read from ci.yml, the just modules and the backend MSBuild files.</summary>
+/// <summary>The guards, and what they read from ci.yml and the just modules.</summary>
 public static partial class Guards
 {
   private const string SupersedeJobName = "Cancel superseded runs";
@@ -68,12 +54,6 @@ public static partial class Guards
       "0008",
       "A same-repository pull request run has a concurrency group of its own, and the Cancel superseded runs job cancels the older runs.",
       SupersededRuns),
-    new(
-      "format-whitespace-only",
-      "#350",
-      "0010",
-      "Backend formatting is checked with dotnet format whitespace only, and the build enforces code style with warnings as errors.",
-      FormatWhitespaceOnly),
     new(
       "parallel-tool-tests",
       "#351",
@@ -175,89 +155,6 @@ public static partial class Guards
   private static bool FetchesCode(YamlMapping step) =>
     (step.Text("uses") ?? "").StartsWith("actions/checkout", StringComparison.OrdinalIgnoreCase)
     || FetchCommand().IsMatch(Workflow.Run(step));
-
-  private static IEnumerable<string> FormatWhitespaceOnly(RepoFiles files)
-  {
-    var workflow = Workflow.Parse(files.Workflow);
-    if (workflow.JobNamed("Backend") is not { } backend)
-    {
-      yield return "no job is named `Backend`.";
-    }
-    else
-    {
-      var commands = backend.Steps.SelectMany(s => Workflow.Run(s).Split('\n')).ToList();
-      foreach (var failure in FormatCommands(commands, "the Backend job"))
-      {
-        yield return failure;
-      }
-    }
-
-    if (JustRecipe(files.BackendJustfile, "lint") is not { } lint)
-    {
-      yield return "backend/mod.just has no `lint` recipe.";
-    }
-    else
-    {
-      foreach (var failure in FormatCommands(lint, "backend/mod.just `lint`"))
-      {
-        yield return failure;
-      }
-    }
-
-    foreach (var failure in AnalysisSwitches(files.BackendMsBuild))
-    {
-      yield return failure;
-    }
-  }
-
-  /// <summary>Every <c>dotnet format</c> command must be the whitespace check, and there must be one.</summary>
-  private static IEnumerable<string> FormatCommands(IReadOnlyList<string> lines, string where)
-  {
-    var formats = lines.Select(l => l.Trim()).Where(l => DotnetFormat().IsMatch(l)).ToList();
-    if (!formats.Exists(l => WhitespaceCheck().IsMatch(l)))
-    {
-      yield return $"{where} has no `dotnet format whitespace --verify-no-changes` step.";
-    }
-
-    foreach (var line in formats.Where(l => !WhitespaceCheck().IsMatch(l)))
-    {
-      yield return $"{where} runs `{line}`: the build already enforces code style and the analyzers, so only "
-        + "`dotnet format whitespace` is needed.";
-    }
-  }
-
-  private static IEnumerable<string> AnalysisSwitches(IReadOnlyDictionary<string, string> msbuild)
-  {
-    string[] switches = ["EnforceCodeStyleInBuild", "TreatWarningsAsErrors"];
-    if (!msbuild.TryGetValue(RepoFiles.BackendPropsPath, out var props))
-    {
-      yield return $"{RepoFiles.BackendPropsPath} is missing.";
-      yield break;
-    }
-
-    var shared = XDocument.Parse(props);
-    foreach (var name in switches)
-    {
-      IEnumerable<XElement> unconditional = shared.Descendants(name)
-        .Where(e => e.Attribute("Condition") is null && e.Parent?.Attribute("Condition") is null);
-      if (!unconditional.Any(e => string.Equals(e.Value.Trim(), "true", StringComparison.OrdinalIgnoreCase)))
-      {
-        yield return $"{RepoFiles.BackendPropsPath} does not set `{name}` to true for every build.";
-      }
-    }
-
-    foreach ((var path, var text) in msbuild.OrderBy(f => f.Key, StringComparer.Ordinal))
-    {
-      foreach (var name in switches)
-      {
-        foreach (XElement element in XDocument.Parse(text).Descendants(name)
-          .Where(e => !string.Equals(e.Value.Trim(), "true", StringComparison.OrdinalIgnoreCase)))
-        {
-          yield return $"{path} sets `{name}` to `{element.Value.Trim()}`; the build must enforce code style with warnings as errors.";
-        }
-      }
-    }
-  }
 
   private static IEnumerable<string> ParallelToolTests(RepoFiles files)
   {
@@ -493,12 +390,6 @@ public static partial class Guards
 
   [GeneratedRegex(@"\b(git\s+(clone|fetch|checkout|pull|worktree)|gh\s+(repo\s+clone|pr\s+checkout))\b", RegexOptions.None, 1000)]
   private static partial Regex FetchCommand();
-
-  [GeneratedRegex(@"\bdotnet\s+format\b", RegexOptions.None, 1000)]
-  private static partial Regex DotnetFormat();
-
-  [GeneratedRegex(@"\bdotnet\s+format\s+whitespace\b.*--verify-no-changes\b", RegexOptions.None, 1000)]
-  private static partial Regex WhitespaceCheck();
 
   [GeneratedRegex(@"xargs\s+(?:\S+\s+)*?-P\s*""?\$\{TOOLS_TEST_JOBS:-(?<n>\d+)\}""?", RegexOptions.None, 1000)]
   private static partial Regex ParallelJobs();

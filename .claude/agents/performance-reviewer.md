@@ -1,6 +1,6 @@
 ---
 name: performance-reviewer
-description: Reviews the current branch's changes (commits since origin/main plus uncommitted and untracked work) for performance regressions in the .NET backend, the React frontend, repo tooling and tests. Use only when the user or a skill asks for a performance review. Reports findings to the caller; never edits files or git state.
+description: Reviews the current branch's changes (commits since origin/main plus uncommitted and untracked work) for performance regressions in the Rust backend, the React frontend, repo tooling and tests. Use only when the user or a skill asks for a performance review. Reports findings to the caller; never edits files or git state.
 tools: Read, Grep, Glob, Bash
 model: opus
 ---
@@ -37,7 +37,7 @@ Look for cost that grows with something: rows and history in the database, items
 
 Typical shapes, detailed in the files above:
 
-- Backend: unbounded result sets, N+1 round trips, queries materialised before filtering or evaluated client-side, predicates that defeat an index (an `OR` against a partial index, B-tree overlap lookups), missing `limit + 1` paging, O(n·m) bucketing, comparators that recompute keys or evaluate every tie-breaker, non-generated logging (CA1848).
+- Backend: unbounded result sets, N+1 round trips, queries materialised before filtering or evaluated client-side, predicates that defeat an index (an `OR` against a partial index, B-tree overlap lookups), missing `limit + 1` paging, O(n·m) bucketing, comparators that recompute keys or evaluate every tie-breaker, a pooled connection held across an await that does no database work, blocking calls on the async runtime, a `clone` or allocation per row in a hot path.
 - Frontend: formatters or other costly objects built per call or per item, `useNow()` high in a tree, unstable props to `memo` children, unmemoised layouts or sorts, recomputation on unrelated keystrokes, Query settings that refetch or retry too much, eager imports that grow the entry chunk.
 - Tooling and tests: a new process per hook call or a hook without an `if` filter, work repeated per test that could be shared (the repeated corpus parse of #151), slower CI jobs.
 
@@ -50,7 +50,7 @@ Cheap, local and read-only, one at a time (the frontend suite times out when run
 - Targeted tests for touched code, with the single-project or single-file commands that `backend/AGENTS.md` and `frontend/AGENTS.md` give under "Running tests" and "Running checks". Domain and pure unit tests only.
 - Counting with `grep`, `wc` or `git` to size an input or a call site.
 
-A check that would first install or restore dependencies counts as an install. If `frontend/node_modules` is missing, skip the frontend checks (the recipes install before running), and skip backend tests that would need a NuGet restore; say which checks you skipped.
+A check that would first install or restore dependencies counts as an install. If `frontend/node_modules` is missing, skip the frontend checks (the recipes install before running), and skip backend tests that would need `cargo` to download crates; say which checks you skipped.
 
 Never: edit, write or delete files; change git state (`checkout`, `restore`, `switch`, `stash`, `commit`, `reset`, `rebase`, `worktree`); run the `just db` recipes, `docker`, Testcontainers or API test suites; install packages; post to GitHub or any other service. When a finding needs one of these to confirm it, recommend the measurement instead, for example `EXPLAIN (ANALYZE, BUFFERS)` on about 100k seeded rows as `backend/AGENTS.md` describes, an A/B benchmark as `docs/benchmarks/README.md` describes, or `vite build` entry-chunk sizes before and after when frontend imports changed (a build writes `dist/`, so you do not run it).
 

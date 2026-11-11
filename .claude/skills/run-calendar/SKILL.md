@@ -11,14 +11,15 @@ the API's development seed key, and driven by
 commands on stdin and writes screenshots to `/tmp/calendar-shots/`. Use `curl` with the same key for the API.
 
 All paths are relative to the repo root. Each block below was run as written on Ubuntu 26.04 (WSL2), Node 24, with
-podman behind the `docker` command; the driver blocks with .NET SDK 10.0.403, the others with 10.0.114.
+podman behind the `docker` command and the driver blocks with .NET SDK 10.0.403. The backend blocks (migrations, API,
+`curl`) were run again with Docker after the backend moved to Rust (Cargo, the toolchain in `backend/rust-toolchain.toml`).
 
 ## Prerequisites (once per machine)
 
 Toolchain as in the README (`./tools/doctor/doctor.sh`), then dependencies:
 
 ```bash
-(cd backend && dotnet restore) && just frontend install
+just backend restore && just frontend install
 ```
 
 The driver uses `#:include`, which .NET SDK 10.0.1xx rejects (`Unrecognized directive 'include'`), and 10.0.1xx is
@@ -64,18 +65,18 @@ timeout 60 bash -c 'until docker exec calendar-agent-db pg_isready -h 127.0.0.1 
 2. Migrations, as `calendar_migrator` (ADR-0015):
 
 ```bash
-(cd backend && dotnet tool restore >/dev/null && CALENDAR_MIGRATOR_CONNECTION="Host=127.0.0.1;Port=55432;Database=calendar;Username=calendar_migrator;Password=dev-migrator-password" dotnet ef database update --project src/Calendar.Infrastructure)
+(cd backend && CALENDAR_MIGRATOR_CONNECTION="Host=127.0.0.1;Port=55432;Database=calendar;Username=calendar_migrator;Password=dev-migrator-password" cargo run --locked --quiet -p calendar-migrate)
 ```
 
 3. API in Development with the seed key, as `calendar_app`:
 
 ```bash
 mkdir -p /tmp/calendar-agent
-(cd backend && ASPNETCORE_ENVIRONMENT=Development \
+(cd backend && cargo build --locked -p calendar-api && ASPNETCORE_ENVIRONMENT=Development \
   ConnectionStrings__Calendar="Host=127.0.0.1;Port=55432;Database=calendar;Username=calendar_app;Password=dev-app-password" \
   Auth__DevSeedKey=local-development-seed-key-change-me-123456 \
   Auth__AllowedEmails__0=dev-seed@example.com \
-  nohup dotnet run --project src/Calendar.Api --no-launch-profile --urls http://127.0.0.1:55041 > /tmp/calendar-agent/api.log 2>&1 &)
+  nohup target/debug/calendar-api --urls http://127.0.0.1:55041 > /tmp/calendar-agent/api.log 2>&1 &)
 timeout 180 bash -c 'until curl -sf http://127.0.0.1:55041/api/health >/dev/null; do sleep 1; done'
 ```
 
@@ -162,7 +163,7 @@ Every endpoint except health and sign-in needs the key header (ADR-0027). Agenda
 curl -s -H 'X-Dev-Seed-Key: local-development-seed-key-change-me-123456' "http://127.0.0.1:55041/api/agenda/day?date=$(date -u +%F)&today=$(date -u +%F)&timeZone=UTC"
 ```
 
-The API log, including EF Core SQL, is `/tmp/calendar-agent/api.log`; Vite's is `/tmp/calendar-agent/web.log`.
+The API log is `/tmp/calendar-agent/api.log`; Vite's is `/tmp/calendar-agent/web.log`.
 
 ## Stop
 
@@ -186,15 +187,15 @@ just frontend test-web
 ```
 
 ```bash
-(cd backend && dotnet test --project tests/Calendar.Domain.Tests)
+just backend test -p calendar-domain
 ```
 
 ```bash
-(cd backend && dotnet test --project tests/Calendar.Api.Tests --filter-class "*TaskEndpoint*")
+just backend test -p calendar-api task
 ```
 
-Observed: 241 web tests, 172 domain tests, 51 task endpoint tests pass. The API tests start their own Testcontainers
-PostgreSQL; with podman they work because `DOCKER_HOST` points at the podman socket.
+The second command runs the API tests whose name contains `task`. The infrastructure and API tests start their own
+Testcontainers PostgreSQL (with podman, `DOCKER_HOST` must point at the podman socket); the domain tests need no Docker.
 
 The driver's own tests cover script parsing only, so they need neither Chromium nor the app; `just tools test` and the CI
 `Tooling` job run them:
@@ -212,8 +213,11 @@ Observed: 20 tests pass.
   first allow-listed email (`Auth__AllowedEmails__0`, any syntactically valid address here): the seed finds, claims
   or creates that user's row, and every event and task it creates belongs to it (ADR-0041). The driver sends the
   key on every browser request, so the SPA's `/api/auth/me` check passes and the nav shows "dev-seed".
-- **`--no-launch-profile` drops `ASPNETCORE_ENVIRONMENT=Development`** from `launchSettings.json`; set it yourself or
-  the seed scheme is never registered and every call is 401.
+- **The API is Production unless told otherwise.** The binary has no launch profile: without
+  `ASPNETCORE_ENVIRONMENT=Development` the seed scheme is off and every call is 401. `just backend dev` sets it; the
+  block above sets it by hand.
+- **The API does not serve the web app here.** It serves static files from `wwwroot` in its working directory (or
+  `ASPNETCORE_WEBROOT`), which only the container image has; locally the UI comes from Vite.
 - **Why not `just db up`:** `compose.yaml` pins the project name `calendar`, so every worktree shares one container
   and volume (`calendar_calendar-pgdata`) with the human's checkout. The agent database is a separate `--rm`
   container on 55432, and the agent ports stay clear of `just backend dev` (5041) and `just frontend dev` (5173).

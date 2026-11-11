@@ -89,8 +89,8 @@ internal static class Fixture
         if: needs.changes.outputs.backend == 'true'
         steps:
           - uses: actions/checkout@v7
-          - run: dotnet build --no-restore -c Release
-          - run: dotnet format whitespace --verify-no-changes --no-restore
+          - run: cargo build --workspace --all-targets --locked
+          - run: cargo fmt --all --check
       frontend:
         name: Frontend
         needs: changes
@@ -143,17 +143,6 @@ internal static class Fixture
                 | select(.conclusion != "skipped" or (.name | IN($skipped[]) | not))'
     """;
 
-  public const string BackendJustfile = """
-    # Analyzers and code style
-    lint:
-        dotnet build --no-restore
-        dotnet format whitespace --verify-no-changes --no-restore
-
-    # Auto-format the backend
-    format:
-        dotnet format
-    """;
-
   public const string ToolsJustfile = """
     tool_dirs := "tools"
 
@@ -163,30 +152,8 @@ internal static class Fixture
         printf '%s\n' $tests | xargs -P "${TOOLS_TEST_JOBS:-4}" -I{} bash -c 'dotnet run "$1"' _ {}
     """;
 
-  public const string Props = """
-    <Project>
-      <PropertyGroup>
-        <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
-        <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
-      </PropertyGroup>
-    </Project>
-    """;
-
-  public static RepoFiles Files(
-    Func<string, string>? workflow = null,
-    Func<string, string>? backendJust = null,
-    Func<string, string>? toolsJust = null,
-    Func<string, string>? props = null,
-    string? project = null)
-  {
-    var msbuild = new Dictionary<string, string> { [RepoFiles.BackendPropsPath] = (props ?? Same)(Props) };
-    if (project is not null)
-    {
-      msbuild["backend/src/Calendar.Api/Calendar.Api.csproj"] = project;
-    }
-
-    return new RepoFiles((workflow ?? Same)(Workflow), (backendJust ?? Same)(BackendJustfile), (toolsJust ?? Same)(ToolsJustfile), msbuild);
-  }
+  public static RepoFiles Files(Func<string, string>? workflow = null, Func<string, string>? toolsJust = null) =>
+    new((workflow ?? Same)(Workflow), (toolsJust ?? Same)(ToolsJustfile));
 
   public static IReadOnlyList<string> Failures(string id, RepoFiles files) => Guards.Run(Guards.All.Single(g => g.Id == id), files);
 
@@ -273,59 +240,6 @@ public sealed class SupersededRunsTests
     Failures(w => w.Replace("      - run: |\n          for id", step + "      - run: |\n          for id", StringComparison.Ordinal))
       .ShouldHaveSingleItem().ShouldContain("fetches code");
 
-}
-
-public sealed class FormatWhitespaceOnlyTests
-{
-  [Fact]
-  public void TheFullFormatCommandInCi_Fails() =>
-    Fixture.Failures("format-whitespace-only", Fixture.Files(workflow: w => w.Replace(
-      "dotnet format whitespace --verify-no-changes", "dotnet format --verify-no-changes", StringComparison.Ordinal)))
-      .ShouldBe([
-        "the Backend job has no `dotnet format whitespace --verify-no-changes` step.",
-        "the Backend job runs `dotnet format --verify-no-changes --no-restore`: the build already enforces code style and the "
-          + "analyzers, so only `dotnet format whitespace` is needed.",
-      ]);
-
-  [Fact]
-  public void AnExtraStyleCheckInCi_Fails() =>
-    Fixture.Failures("format-whitespace-only", Fixture.Files(workflow: w => w.Replace(
-      "      - run: dotnet format whitespace --verify-no-changes --no-restore\n",
-      "      - run: dotnet format whitespace --verify-no-changes --no-restore\n      - run: dotnet format style --verify-no-changes\n",
-      StringComparison.Ordinal)))
-      .ShouldHaveSingleItem().ShouldContain("dotnet format style");
-
-  [Fact]
-  public void TheFullFormatCommandInTheLintRecipe_Fails() =>
-    Fixture.Failures("format-whitespace-only", Fixture.Files(backendJust: j => j.Replace(
-      "dotnet format whitespace --verify-no-changes", "dotnet format --verify-no-changes", StringComparison.Ordinal)))
-      .ShouldAllBe(f => f.StartsWith("backend/mod.just `lint`", StringComparison.Ordinal));
-
-  [Fact]
-  public void TheFormatRecipe_IsNotTheLintRecipe() =>
-    Guards.JustRecipe(Fixture.BackendJustfile, "lint").ShouldNotBeNull().ShouldNotContain(l => l.Trim() == "dotnet format");
-
-  [Theory]
-  [InlineData("<EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>", "", "EnforceCodeStyleInBuild")]
-  [InlineData(
-    "<TreatWarningsAsErrors>true</TreatWarningsAsErrors>",
-    "<TreatWarningsAsErrors>false</TreatWarningsAsErrors>",
-    "TreatWarningsAsErrors")]
-  [InlineData(
-    "<EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>",
-    "<EnforceCodeStyleInBuild Condition=\"'$(CI)' == 'true'\">true</EnforceCodeStyleInBuild>",
-    "EnforceCodeStyleInBuild")]
-  public void ASharedSwitchOff_Fails(string from, string to, string name) =>
-    Fixture.Failures("format-whitespace-only", Fixture.Files(props: p => p.Replace(from, to, StringComparison.Ordinal)))
-      .ShouldContain(f => f.Contains(name, StringComparison.Ordinal));
-
-  [Fact]
-  public void AProjectThatTurnsASwitchOff_Fails() =>
-    Fixture.Failures("format-whitespace-only", Fixture.Files(project: """
-      <Project Sdk="Microsoft.NET.Sdk">
-        <PropertyGroup><TreatWarningsAsErrors>false</TreatWarningsAsErrors></PropertyGroup>
-      </Project>
-      """)).ShouldHaveSingleItem().ShouldStartWith("backend/src/Calendar.Api/Calendar.Api.csproj sets `TreatWarningsAsErrors`");
 }
 
 public sealed class ParallelToolTestsTests
@@ -495,8 +409,11 @@ public sealed class ChangesRulesTests
   [InlineData("docs/storiesx/0038-x.md", "docs")]
   [InlineData("docs/architecture/README.md", "docs")]
   [InlineData("frontend/apps/docs/src/lib/adr.ts", "docs")]
-  [InlineData("backend/src/Calendar.Api/Program.cs", "backend image")]
-  [InlineData("backend/Directory.Packages.props", "backend tooling image")]
+  [InlineData("backend/crates/calendar-api/src/app.rs", "backend image")]
+  [InlineData("backend/crates/calendar-infrastructure/migrations/2026-11-11-000000_session_keys/up.sql", "backend image")]
+  [InlineData("backend/Cargo.lock", "backend image")]
+  [InlineData("backend/crates/calendar-api/Cargo.toml", "backend image")]
+  [InlineData("backend/rust-toolchain.toml", "backend tooling image")]
   [InlineData("backend/mod.just", "backend tooling image")]
   [InlineData("contracts/openapi.json", "backend frontend image")]
   [InlineData("frontend/apps/web/src/main.tsx", "frontend image")]
@@ -537,7 +454,7 @@ public sealed class ChangesRulesTests
 
   [Fact]
   public void FilesInSeveralSets_RunTheUnion() =>
-    Run("merge_group", true, "docs/runbooks/x.md", "backend/src/A.cs").ShouldBe(Expected("backend docs image"));
+    Run("merge_group", true, "docs/runbooks/x.md", "backend/crates/a/src/lib.rs").ShouldBe(Expected("backend docs image"));
 
   [Fact]
   public void AThemeOnlyChange_RunsTheDocsSite() =>
@@ -570,7 +487,7 @@ public sealed class ChangesRulesTests
 
   [Fact]
   public void ACardWithABackendChange_RunsTheAdrCheckBesideTheOthers() =>
-    Run("merge_group", true, "docs/stories/0038-x.md", "backend/src/A.cs").ShouldBe(Expected("backend docs adr image"));
+    Run("merge_group", true, "docs/stories/0038-x.md", "backend/crates/a/src/lib.rs").ShouldBe(Expected("backend docs adr image"));
 
   [Fact]
   public void AnIncompleteListing_RunsEverything() =>

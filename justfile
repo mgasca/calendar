@@ -7,7 +7,7 @@
 set dotenv-load
 set shell := ["bash", "-euo", "pipefail", "-c"]
 
-# .NET backend, run in backend/ so backend/global.json applies
+# Rust backend (Cargo workspace), run in backend/ so backend/rust-toolchain.toml applies
 mod backend
 
 # pnpm workspace, run in frontend/
@@ -37,7 +37,7 @@ default:
 doctor *args:
     @./tools/doctor/doctor.sh "$@"
 
-# Restore .NET packages, install frontend dependencies, configure git blame
+# Fetch the backend crates, install frontend dependencies, configure git blame
 setup: doctor && backend::restore frontend::install
     git config blame.ignoreRevsFile .git-blame-ignore-revs
 
@@ -47,7 +47,7 @@ build: backend::build frontend::build
 # Run all tests
 test: backend::test frontend::test
 
-# Static analysis (analyzers run as part of the .NET build)
+# Static analysis (clippy and rustfmt for the backend, ESLint and tsc for the frontend, then the repo tooling checks)
 [parallel]
 lint: backend::lint frontend::lint frontend::typecheck && tools::test tools::versions tools::adr docs::architecture
 

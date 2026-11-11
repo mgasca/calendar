@@ -68,7 +68,8 @@ Do not state versions, support windows, licences or limits from memory. Check th
 
 | Fact | How |
 | --- | --- |
-| NuGet version | `dotnet package search <id> --exact-match --format json` (run inside `backend/`) |
+| NuGet version | `dotnet package search <id> --exact-match --format json` |
+| Crate version | `cargo search <crate> --limit 1`, or `cargo info <crate>` (run inside `backend/`) |
 | npm version and peer deps | `npm view <pkg> version peerDependencies` |
 | GitHub Action tags | `git ls-remote --tags --refs https://github.com/<owner>/<repo>.git` |
 | Container image tags | `https://hub.docker.com/v2/repositories/library/<image>/tags?name=<filter>` |
@@ -221,4 +222,4 @@ tests/fixtures/valid/                                 # minimal valid ADR set th
 
 - **Requirement:** .NET SDK 10.0.300 or later, the first band with `#:include` ([Microsoft Learn](https://learn.microsoft.com/dotnet/core/sdk/file-based-apps)). Older .NET 10 SDKs fail with `Unrecognized directive 'include'` before validating anything. A host repo whose `global.json` pins an older SDK can't run the validator. The first run on a machine compiles for about 30 s. After that, runs take under a second.
 - **Changing a rule:** edit `AdrValidator.cs`, add or adjust an `[InlineData]` case in the tests, then run `just tools test` (tests and whitespace check) and `just tools adr`. Success: both commands finish without errors.
-- **Package versions** in `Directory.Build.props` and the `#:package` directives are pinned exactly. Dependabot (the tool that opens dependency-update PRs) cannot see them (verified, ADR-0017). In this repo, `just tools versions` fails when they differ from `backend/Directory.Packages.props`, and `just tools versions --fix` updates them. In other repos, change them by hand.
+- **Package versions** in `Directory.Build.props` and the `#:package` directives are pinned exactly. Dependabot (the tool that opens dependency-update PRs) cannot see them (verified, ADR-0017). In this repo, `just tools versions` fails when two tools pin one package at different versions, and `just tools versions --fix` updates the older pins. In other repos, change them by hand.

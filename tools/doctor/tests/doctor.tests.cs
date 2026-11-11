@@ -21,6 +21,9 @@ public sealed class DoctorTests : IDisposable
       File.CreateSymbolicLink(Path.Combine(_bin, command), "/usr/bin/" + command);
     }
     WriteExecutable("dotnet", "echo 10.0.403");
+    WriteExecutable("cargo", "echo cargo " + PinnedRust());
+    WriteExecutable("rustc", "echo \"rustc " + PinnedRust() + " (0000000 2026-01-01)\"");
+    WriteExecutable("cc", "exit 0");
     WriteExecutable("node", "echo v24.0.0");
     WriteExecutable("pnpm", "exit 0");
     WriteExecutable("docker", "exit 0");
@@ -103,12 +106,66 @@ public sealed class DoctorTests : IDisposable
     // The real dotnet fails `--version` where no installed SDK satisfies the nearest global.json.
     WriteExecutable("dotnet", success
       ? "echo 10.0.404"
-      : "case \"$PWD\" in */backend) echo 10.0.404 ;; *) echo 'A compatible .NET SDK was not found.' >&2; exit 145 ;; esac");
+      : "echo 'A compatible .NET SDK was not found.' >&2; exit 145");
     (var code, var text) = await RunDoctor(infra: false);
     (code == 0).ShouldBe(success);
     text.ShouldContain(success
       ? ".NET SDK 10.0.404 for repo tools (satisfies global.json)"
       : "no .NET SDK satisfies global.json at the repo root");
+  }
+
+  [Fact]
+  public async Task RustMatchingThePinnedToolchainPasses()
+  {
+    (var code, var text) = await RunDoctor(infra: false);
+    code.ShouldBe(0, text);
+    text.ShouldContain($"Rust {PinnedRust()} (backend/rust-toolchain.toml)");
+    text.ShouldContain("C compiler and linker");
+  }
+
+  [Theory]
+  [InlineData("cargo")]
+  [InlineData("rustc")]
+  public async Task MissingCargoOrRustcFailsWithInstallHint(string tool)
+  {
+    File.Delete(Path.Combine(_bin, tool));
+    (var code, var text) = await RunDoctor(infra: false);
+    code.ShouldNotBe(0);
+    text.ShouldContain("cargo or rustc not found");
+    text.ShouldContain("rustup");
+  }
+
+  [Theory]
+  [InlineData("echo 'rustc 1.0.0 (0000000 2015-05-15)'", "Rust '1.0.0' in backend/")]
+  // rustup's proxy fails when the pinned toolchain is not installed.
+  [InlineData("echo \"error: toolchain is not installed\" >&2; exit 1", "Rust 'unavailable' in backend/")]
+  public async Task RustOtherThanThePinnedToolchainFails(string rustc, string expected)
+  {
+    WriteExecutable("rustc", rustc);
+    (var code, var text) = await RunDoctor(infra: false);
+    code.ShouldNotBe(0);
+    text.ShouldContain(expected);
+    text.ShouldContain($"backend/rust-toolchain.toml wants {PinnedRust()}");
+    text.ShouldContain("rustup toolchain install");
+  }
+
+  [Fact]
+  public async Task MissingCCompilerFailsWithInstallHint()
+  {
+    File.Delete(Path.Combine(_bin, "cc"));
+    (var code, var text) = await RunDoctor(infra: false);
+    code.ShouldNotBe(0);
+    text.ShouldContain("no C compiler (cc, gcc or clang) found");
+  }
+
+  [Fact]
+  public async Task MissingDotnetFailsBecauseTheRepoToolsNeedIt()
+  {
+    File.Delete(Path.Combine(_bin, "dotnet"));
+    (var code, var text) = await RunDoctor(infra: false);
+    code.ShouldNotBe(0);
+    text.ShouldContain("dotnet not found");
+    text.ShouldContain("global.json");
   }
 
   [Fact]
@@ -135,6 +192,7 @@ public sealed class DoctorTests : IDisposable
   {
     File.Delete(Path.Combine(_bin, "just"));
     WriteExecutable("dotnet", "printf '<%s>\\n' \"$@\"");
+    WriteExecutable("cargo", "printf '<%s>\\n' \"$@\"");
     WriteExecutable("pnpm", "printf '<%s>\\n' \"$@\"");
     var root = Path.GetFullPath(Path.Combine(Path.GetDirectoryName(SourcePath())!, "../../.."));
     var info = new ProcessStartInfo("just")
@@ -159,6 +217,14 @@ public sealed class DoctorTests : IDisposable
     await process.WaitForExitAsync(TestContext.Current.CancellationToken);
     process.ExitCode.ShouldBe(0, error);
     output.ShouldContain("<--example>\n<Docs site>\n<literal;$HOME>");
+  }
+
+  /// <summary>The channel in backend/rust-toolchain.toml, which doctor.sh compares the installed toolchain with.</summary>
+  private static string PinnedRust()
+  {
+    var file = Path.GetFullPath(Path.Combine(Path.GetDirectoryName(SourcePath())!, "../../../backend/rust-toolchain.toml"));
+    var line = File.ReadLines(file).First(l => l.StartsWith("channel", StringComparison.Ordinal));
+    return line.Split('"')[1];
   }
 
   private static string SourcePath([System.Runtime.CompilerServices.CallerFilePath] string path = "") => path;

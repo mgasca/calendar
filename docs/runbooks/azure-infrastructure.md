@@ -190,7 +190,7 @@ The first full deployment has no app secrets yet. The [database runbook](azure-d
 
 ### Why the password is a secure parameter
 
-The tool reads the ops-vault password and passes it to Bicep as a secure parameter, over a transport that does not log it. A checked-in `az.getSecret()` reference cannot work here: the foundation must deploy before the vault and secret exist, and the parameter files do not know the subscription-specific vault ID. See Microsoft's [secure deployment parameters and Key Vault references](https://learn.microsoft.com/azure/azure-resource-manager/templates/key-vault-parameter). The vault also allows template deployment, for future use.
+The tool does not read the ops-vault password. For a full deployment it looks up the ops vault's resource ID and writes a Key Vault reference for `postgresAdministratorPassword` into the parameters it generates; Resource Manager then fetches the secret during the deployment and passes it to Bicep as a secure parameter. This needs two things the setup already provides: the vault allows template deployment (`enabledForTemplateDeployment`), and the deployment identity's **Contributor** role on the resource group includes the vault's `deploy/action`. A checked-in `az.getSecret()` reference cannot work here: the foundation must deploy before the vault and secret exist, and the parameter files do not know the subscription-specific vault ID, which is why the tool writes the reference at run time. See Microsoft's [secure deployment parameters and Key Vault references](https://learn.microsoft.com/azure/azure-resource-manager/templates/key-vault-parameter).
 
 ## Parameters and application secrets
 

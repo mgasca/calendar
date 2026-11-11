@@ -1,6 +1,8 @@
 version: 2
 updates:
-  - package-ecosystem: nuget
+  # The backend's Cargo workspace (backend/Cargo.toml, the crate manifests and Cargo.lock). Compatible updates
+  # arrive as one pull request; a new major (or a new 0.x minor, which Cargo treats as breaking) gets its own.
+  - package-ecosystem: cargo
     directory: /backend
     schedule:
       interval: weekly
@@ -8,25 +10,12 @@ updates:
     open-pull-requests-limit: 10
     labels: [dependencies, backend]
     groups:
-      dotnet-minor-patch:
+      cargo-minor-patch:
         update-types: [minor, patch]
-    ignore:
-      # Stay on .NET 10 until story 0056 moves the SDK, target framework, images and packages together
-      # (ADR-0050): a lone 11.x package fails restore or the build.
-      - dependency-name: Microsoft.AspNetCore.*
-        update-types: [version-update:semver-major]
-      - dependency-name: Microsoft.EntityFrameworkCore*
-        update-types: [version-update:semver-major]
-      - dependency-name: Microsoft.Extensions.ApiDescription.Server
-        update-types: [version-update:semver-major]
-      - dependency-name: Npgsql*
-        update-types: [version-update:semver-major]
-      - dependency-name: EFCore.NamingConventions
-        update-types: [version-update:semver-major]
 
-  # dotnet-ef lives in the repo-root .config/dotnet-tools.json, outside /backend.
-  - package-ecosystem: nuget
-    directory: /
+  # The Rust toolchain pinned in backend/rust-toolchain.toml, which CI, the image build and `just doctor` read.
+  - package-ecosystem: rust-toolchain
+    directory: /backend
     schedule:
       interval: weekly
       day: monday
@@ -34,7 +23,7 @@ updates:
 
   # The exact .NET SDK the repo tools run on, pinned in the repo-root global.json. The tool lock files record
   # the SDK's implicit AOT packages, so the bump fails CI's locked restore until they are refreshed on its
-  # branch (tools/README.md, ADR-0017, #645). backend/global.json is a feature-band floor and is not listed.
+  # branch (tools/README.md, ADR-0017, #645).
   - package-ecosystem: dotnet-sdk
     directory: /
     schedule:
@@ -46,7 +35,9 @@ updates:
       - dependency-name: dotnet-sdk
         update-types: [version-update:semver-major]
 
-  # Dockerfile base images and the postgres image pinned in compose.yaml.
+  # Dockerfile base images and the postgres image pinned in compose.yaml. The rust image and
+  # backend/rust-toolchain.toml are bumped separately: while they differ, the image build downloads the pinned
+  # toolchain, so merge the two bumps together to keep the build fast.
   - package-ecosystem: docker
     directory: /
     schedule:
@@ -57,15 +48,10 @@ updates:
       # Stay on PostgreSQL 18 (ADR-0014); a major upgrade is a deliberate decision.
       - dependency-name: postgres
         update-types: [version-update:semver-major]
-      # The .NET 11 images arrive with the SDK and target framework in story 0056 (ADR-0050); an 11.0 SDK image
-      # alone cannot build against the 10.0 SDK pin in backend/global.json.
-      - dependency-name: dotnet/sdk
-        update-types: [version-update:semver-major]
-      - dependency-name: dotnet/aspnet
-        update-types: [version-update:semver-major]
 
   # Repo tooling (.claude/skills/*, tools/) is not listed: Dependabot doesn't read .NET file-based
-  # app #:package directives or folder-local Directory.Build.props, so those are bumped manually (ADR-0017).
+  # app #:package directives or folder-local Directory.Build.props, so those are bumped manually (ADR-0017);
+  # `just tools versions` keeps the pins of one package equal across the tools.
 
   - package-ecosystem: npm
     directory: /frontend

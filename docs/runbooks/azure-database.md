@@ -10,7 +10,7 @@ Terms used here:
 
 - **Server**: the Azure Database for PostgreSQL Flexible Server. Its **firewall** allows only listed public IPv4 addresses to connect.
 - **Role**: a PostgreSQL identity with its own permissions. `calendar_migrator` changes the schema. `calendar_app` is the app's identity and has fewer permissions.
-- **Schema**: the database's tables and other structures. A **migration** is a versioned schema change. The app never applies migrations itself ([ADR-0015](../decisions/0015-ef-core-data-access.md)).
+- **Schema**: the database's tables and other structures. A **migration** is a versioned schema change. The app never applies migrations itself ([ADR-0015](../decisions/0015-ef-core-data-access.md)); the `calendar-migrate` binary does, as `calendar_migrator`.
 - **Vaults**: two Azure Key Vaults that store secrets. The **ops vault** stores the administrator and role passwords. The **app vault** stores the app's connection string, which holds the server address and the app password.
 - **FQDN**: the server's full DNS hostname, for example `<server-name>.postgres.database.azure.com`.
 
@@ -30,7 +30,7 @@ See also [ADR-0031](../decisions/0031-azure-postgresql-flexible-server.md) and [
   ```
 
   Use the FQDN, not the server name, in `psql` connections. The certificate check needs the full hostname.
-- Connections use TLS with `SSL Mode=VerifyFull`. This checks the server's certificate and hostname against the system certificate authority (CA) store. The runner and the app image must trust DigiCert Global Root G2 and Microsoft RSA Root CA 2017. See [Azure PostgreSQL TLS guidance](https://learn.microsoft.com/azure/postgresql/flexible-server/security-tls) and [Npgsql certificate validation](https://www.npgsql.org/doc/security.html).
+- Connections use TLS with `SSL Mode=VerifyFull`. This checks the server's certificate and hostname against the system certificate authority (CA) store. The runner and the app image must trust DigiCert Global Root G2 and Microsoft RSA Root CA 2017. See [Azure PostgreSQL TLS guidance](https://learn.microsoft.com/azure/postgresql/flexible-server/security-tls). The migrator and the app verify with rustls against that store; the connection strings keep the Npgsql keyword form (`SSL Mode=VerifyFull`).
 - Only one person may initialize or migrate a server at a time. See [Temporary firewall rules and concurrent operators](#temporary-firewall-rules-and-concurrent-operators).
 
 ## First-time setup
@@ -146,9 +146,9 @@ Steps 3 and 4 do not happen together, so connections can fail between them. Neve
 
 Migrations only move forward. Make schema changes in two steps (expand, then contract): first add what the new app needs, and remove old structures only in a later release. Old and new app revisions then both work during a deployment.
 
-If the migration bundle (the program that applies migrations) fails, the current app revision keeps serving. Earlier migrations in the same run may already be committed. EF normally runs each PostgreSQL migration in a transaction, but operations outside a transaction, or a failure between migrations, can leave partial changes. Stopping the deployment does not undo them.
+If the migrator (`calendar-migrate`, the program that applies migrations) fails, the current app revision keeps serving. The migrator runs all pending migrations in one transaction, so a failed run normally leaves the schema as it was. A statement that PostgreSQL cannot run in a transaction would be the exception; no migration has one today. Stopping the deployment does not undo a committed run.
 
-1. Inspect the migration history and the database state.
+1. Inspect the migration history (the `__diesel_schema_migrations` table; `__EFMigrationsHistory` is the record from before the Rust migrator) and the database state.
 2. Fix the cause and apply a reviewed forward fix.
 3. Check the migration and the app before you change traffic.
 

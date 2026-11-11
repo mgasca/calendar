@@ -30,14 +30,13 @@ down:
 reset: && up
     docker compose down --volumes
 
-# Apply EF Core migrations to the local database as calendar_migrator
+# Apply the migrations to the local database as calendar_migrator (the calendar-migrate binary)
 migrate:
     #!/usr/bin/env bash
     set -euo pipefail
     cd backend
-    dotnet tool restore >/dev/null
     export CALENDAR_MIGRATOR_CONNECTION="Host=127.0.0.1;Port=5432;Database=${POSTGRES_DB};Username=calendar_migrator;Password=${CALENDAR_MIGRATOR_PASSWORD}"
-    dotnet ef database update --project src/Calendar.Infrastructure
+    cargo run --locked --quiet -p calendar-migrate
 
 # Seed a running API with a sample day (e.g. just db seed --date 2026-01-01 --time-zone UTC --api-url URL; additive)
 [positional-arguments]

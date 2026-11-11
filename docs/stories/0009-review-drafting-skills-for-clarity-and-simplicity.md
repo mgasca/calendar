@@ -4,7 +4,7 @@ date: 2026-10-30
 issue: https://github.com/mgasca/calendar/issues/139
 pr:
   - https://github.com/mgasca/calendar/pull/140
-adrs: ["0017"]
+adrs: ["0058"]
 ---
 
 # 0009 Review the adr-draft and story-draft skills for clarity and simplicity
@@ -59,7 +59,7 @@ None. The review should come after PR [#138](https://github.com/mgasca/calendar/
 
 | ADR | Decision | Why it matters for this story |
 | --- | --- | --- |
-| [0017](../decisions/0017-dotnet-file-based-apps-for-repo-tooling.md) | Repo tooling is .NET file-based apps, with analyzers and tests per folder | The `adr-draft` folder holds scripts and tests next to `SKILL.md`. Edits to the skill must keep the paths and commands those scripts use correct. |
+| [0058](../decisions/0058-typescript-on-deno-for-repository-tooling.md) | Repo tooling moves to TypeScript on Deno, with self-contained skill configuration and tests | The `adr-draft` folder holds scripts and tests next to `SKILL.md`. Review the commands appropriate to its migration stage; do not claim the port is already delivered. |
 
 No new ADR is expected.
 

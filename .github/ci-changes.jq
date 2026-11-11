@@ -1,7 +1,7 @@
 # Which CI jobs a run needs, from the files it changes (ADR-0046, story 0038, issue #418).
 # The Changes job in ci.yml runs it as `jq -c -f .github/ci-changes.jq`; tools/delivery-guards tests it with canned inputs.
 #
-# Input:  {"event": "pull_request", "complete": true, "files": ["backend/src/A.cs", ...]}
+# Input:  {"event": "pull_request", "complete": true, "files": ["backend/crates/calendar-api/src/app.rs", ...]}
 #         `files` holds every changed path, the old path of a rename included; `complete` is false when the listing may
 #         be truncated.
 # Output: {"backend": true, "frontend": false, "docs": false, "tooling": false, "adr": false, "image": true,
@@ -21,8 +21,8 @@ def under($prefixes): . as $file | any($prefixes[]; . as $prefix | $file | start
 # the prettier files, mod.just), but not its Markdown guidance.
 def frontend_root: test("^frontend/[^/]+$") and (endswith(".md") | not);
 
-# Backend MSBuild files: tool-versions reads Directory.Packages.props, and the delivery guards read every one.
-def backend_msbuild: startswith("backend/") and test("\\.(props|targets|csproj)$");
+# The backend file the tooling tests read: doctor.sh checks the installed toolchain against the pin (doctor.tests.cs).
+def backend_toolchain: . == "backend/rust-toolchain.toml";
 
 def just_files: . == "justfile" or . == ".just-version" or endswith(".just");
 
@@ -48,7 +48,7 @@ def needs($job):
   elif $job == "backend" then under(["backend/", "contracts/"])
   elif $job == "frontend" then under(["frontend/apps/web/", "frontend/packages/", "contracts/"]) or frontend_root
   elif $job == "tooling" then
-    under(["tools/", ".claude/", "infra/", "docker/", "just/", "docs/decisions/"]) or just_files or backend_msbuild
+    under(["tools/", ".claude/", "infra/", "docker/", "just/", "docs/decisions/"]) or just_files or backend_toolchain
       or IN(tooling_github[])
   elif $job == "adr" then under(["docs/decisions/", "docs/stories/"]) or IN(adr_inputs[])
   elif $job == "image" then

@@ -3,8 +3,8 @@
 #:include WorkflowYaml.cs
 #:include DeliveryGuards.cs
 
-// Mechanism guards for the delivery performance fixes (epic #380, issue #387): deterministic checks over ci.yml, the
-// just modules and the backend MSBuild files that fail when a fix's mechanism is reverted. They never measure time.
+// Mechanism guards for the delivery performance fixes (epic #380, issue #387): deterministic checks over ci.yml and
+// the just modules that fail when a fix's mechanism is reverted. They never measure time.
 // The tests (tests/delivery-guards.tests.cs, run by `just tools test`) run every guard against the checkout; this entry
 // prints the same report by hand.
 //

@@ -1,0 +1,16 @@
+[package]
+name = "calendar-migrate"
+edition.workspace = true
+version.workspace = true
+publish.workspace = true
+license.workspace = true
+
+[dependencies]
+calendar-infrastructure.workspace = true
+tokio = { workspace = true, features = ["full"] }
+
+[lints]
+workspace = true
+
+[dev-dependencies]
+calendar-testing.workspace = true

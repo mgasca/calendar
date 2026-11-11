@@ -5,9 +5,11 @@ public static class ContractCheck
 {
   private static readonly string[] ContractSources =
   [
-    "backend/src/Calendar.Api/Contracts/",
-    "backend/src/Calendar.Api/Endpoints/",
-    "backend/src/Calendar.Api/Program.cs",
+    "backend/crates/calendar-api/src/contracts/",
+    "backend/crates/calendar-api/src/contracts.rs",
+    "backend/crates/calendar-api/src/endpoints/",
+    "backend/crates/calendar-api/src/endpoints.rs",
+    "backend/crates/calendar-api/src/openapi.rs",
   ];
 
   private const string Contract = "contracts/openapi.json";

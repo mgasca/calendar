@@ -4,8 +4,9 @@
 # provider, ...) is added, re-evaluate .NET Aspire in a new ADR that supersedes the provisioning part of
 # ADR-0016 instead of growing this file by hand.
 #
-# The postgres image tag below is the single source of truth: Testcontainers reads it from this file, and
-# Dependabot (docker ecosystem) bumps it. Credentials come from the untracked .env (see .env.example).
+# The postgres image tag below is the single source of truth: the backend tests (calendar-testing) read it from
+# this file for Testcontainers, and Dependabot (docker ecosystem) bumps it. Credentials come from the untracked
+# .env (see .env.example).
 name: calendar
 
 services:

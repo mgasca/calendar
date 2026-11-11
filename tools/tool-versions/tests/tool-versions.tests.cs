@@ -17,14 +17,14 @@ public sealed class VersionCheckerTests : IDisposable
 
   public VersionCheckerTests()
   {
-    Write("backend/Directory.Packages.props", """
+    Write("tools/Directory.Build.props", """
             <Project>
               <ItemGroup>
-                <PackageVersion Include="SonarAnalyzer.CSharp" Version="2.0.0" />
-                <PackageVersion Include="Shouldly" Version="4.3.0" />
+                <PackageReference Include="SonarAnalyzer.CSharp" Version="2.0.0" PrivateAssets="all" />
               </ItemGroup>
             </Project>
             """);
+    Write("tools/other/other.cs", "#:package shouldly@4.3.0\n");
     Write(".claude/skills/demo/Directory.Build.props", """
             <Project>
               <ItemGroup>
@@ -43,13 +43,26 @@ public sealed class VersionCheckerTests : IDisposable
   public void Dispose() => Directory.Delete(_root, recursive: true);
 
   [Fact]
-  public void ReadCentralVersions_ReadsPackageVersions()
+  public void NewestVersions_TakesTheHighestPin_IgnoringIdCase()
   {
-    IReadOnlyDictionary<string, string> central =
-      VersionChecker.ReadCentralVersions(Path.Combine(_root, "backend/Directory.Packages.props"));
+    IReadOnlyDictionary<string, string> newest = VersionChecker.NewestVersions(VersionChecker.FindPins(_root));
 
-    central["SonarAnalyzer.CSharp"].ShouldBe("2.0.0");
-    central["shouldly"].ShouldBe("4.3.0", "lookups are case-insensitive, like NuGet ids");
+    newest["SonarAnalyzer.CSharp"].ShouldBe("2.0.0");
+    newest["SHOULDLY"].ShouldBe("4.3.0", "lookups are case-insensitive, like NuGet ids");
+    newest["Untracked.Package"].ShouldBe("9.9.9");
+  }
+
+  [Theory]
+  [InlineData("4.10.0", "4.9.0")]
+  [InlineData("10.35.0.4138", "10.35.0")]
+  [InlineData("4.0.3", "4.0.3-pre.1")]
+  [InlineData("4.0.3-pre.2", "4.0.3-pre.1")]
+  [InlineData("2.0.0", "1.99.99")]
+  public void VersionOrder_ComparesPartsAsNumbers_AndAReleaseAfterItsPrereleases(string newer, string older)
+  {
+    VersionOrder.Instance.Compare(newer, older).ShouldBeGreaterThan(0);
+    VersionOrder.Instance.Compare(older, newer).ShouldBeLessThan(0);
+    VersionOrder.Instance.Compare(newer, newer).ShouldBe(0);
   }
 
   [Fact]
@@ -59,7 +72,9 @@ public sealed class VersionCheckerTests : IDisposable
 
     pins.ShouldBe(
       [
-          new PinnedPackage("SonarAnalyzer.CSharp", "1.0.0", ".claude/skills/demo/Directory.Build.props"),
+          new PinnedPackage("SonarAnalyzer.CSharp", "2.0.0", "tools/Directory.Build.props"),
+              new PinnedPackage("shouldly", "4.3.0", "tools/other/other.cs"),
+              new PinnedPackage("SonarAnalyzer.CSharp", "1.0.0", ".claude/skills/demo/Directory.Build.props"),
               new PinnedPackage("Shouldly", "4.3.0", ".claude/skills/demo/tests/demo.tests.cs"),
               new PinnedPackage("Untracked.Package", "9.9.9", ".claude/skills/demo/tests/demo.tests.cs"),
           ],
@@ -67,13 +82,14 @@ public sealed class VersionCheckerTests : IDisposable
   }
 
   [Fact]
-  public void FindDrift_ReportsOnlyTrackedPackagesWithDifferentVersions()
+  public void FindDrift_ReportsOnlyPinsBehindTheNewestPinOfTheirPackage()
   {
     IReadOnlyList<VersionDrift> drifts = Drifts();
 
     VersionDrift drift = drifts.ShouldHaveSingleItem();
     drift.Pin.Package.ShouldBe("SonarAnalyzer.CSharp");
-    drift.BackendVersion.ShouldBe("2.0.0");
+    drift.ExpectedVersion.ShouldBe("2.0.0");
+    drift.Pin.File.ShouldBe(".claude/skills/demo/Directory.Build.props");
   }
 
   [Fact]
@@ -100,10 +116,7 @@ public sealed class VersionCheckerTests : IDisposable
       .ShouldBe(before.Replace("Version=\"1.0.0\"", "Version=\"2.0.0\"", StringComparison.Ordinal));
   }
 
-  private IReadOnlyList<VersionDrift> Drifts() =>
-      VersionChecker.FindDrift(
-          VersionChecker.FindPins(_root),
-          VersionChecker.ReadCentralVersions(Path.Combine(_root, "backend/Directory.Packages.props")));
+  private IReadOnlyList<VersionDrift> Drifts() => VersionChecker.FindDrift(VersionChecker.FindPins(_root));
 
   private void Write(string relative, string content)
   {

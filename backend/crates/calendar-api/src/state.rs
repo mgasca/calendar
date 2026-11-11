@@ -16,7 +16,7 @@ use crate::clock::{Clock, SystemClock};
 use crate::config::{ConfigError, Settings};
 use crate::error::ApiError;
 
-/// A pooled database connection, connected as the least-privilege `calendar_app` role (ADR-0015).
+/// A pooled database connection, connected as the least-privilege `calendar_app` role (ADR-0052).
 pub type DbConnection = Object<AsyncPgConnection>;
 
 /// What [`AppState::new`] is built from. Everything but the settings has a production default.

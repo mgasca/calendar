@@ -1,4 +1,4 @@
-//! The schema's migrations, embedded in the binary, and the one way they are applied (ADR-0015: only by the
+//! The schema's migrations, embedded in the binary, and the one way they are applied (ADR-0052: only by the
 //! migrator, as `calendar_migrator`, never by the application).
 //!
 //! The first six migrations are a one-to-one translation of the EF Core migrations the .NET backend shipped. A

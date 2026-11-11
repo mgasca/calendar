@@ -1,5 +1,5 @@
 //! The event repository: every read and write the event endpoints perform, each scoped to an owner
-//! (ADR-0041), with `xmin` optimistic concurrency (ADR-0015). The generated `span` and `date_span` columns are
+//! (ADR-0041), with `xmin` optimistic concurrency (ADR-0052). The generated `span` and `date_span` columns are
 //! the database's and appear in no insert or update here.
 
 #![allow(clippy::ref_option_ref, reason = "the AsChangeset derive borrows the Option<&str> fields")]

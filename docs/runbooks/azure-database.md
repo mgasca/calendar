@@ -10,7 +10,7 @@ Terms used here:
 
 - **Server**: the Azure Database for PostgreSQL Flexible Server. Its **firewall** allows only listed public IPv4 addresses to connect.
 - **Role**: a PostgreSQL identity with its own permissions. `calendar_migrator` changes the schema. `calendar_app` is the app's identity and has fewer permissions.
-- **Schema**: the database's tables and other structures. A **migration** is a versioned schema change. The app never applies migrations itself ([ADR-0015](../decisions/0015-ef-core-data-access.md)); the `calendar-migrate` binary does, as `calendar_migrator`.
+- **Schema**: the database's tables and other structures. A **migration** is a versioned schema change. The app never applies migrations itself ([ADR-0052](../decisions/0052-diesel-data-access-with-embedded-sql-migrations.md)); the `calendar-migrate` binary does, as `calendar_migrator`.
 - **Vaults**: two Azure Key Vaults that store secrets. The **ops vault** stores the administrator and role passwords. The **app vault** stores the app's connection string, which holds the server address and the app password.
 - **FQDN**: the server's full DNS hostname, for example `<server-name>.postgres.database.azure.com`.
 

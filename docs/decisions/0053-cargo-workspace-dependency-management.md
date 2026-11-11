@@ -1,5 +1,5 @@
 ---
-status: proposed
+status: accepted
 date: 2026-11-11
 decision-makers: mgasca, Claude (AI assistant)
 ---
@@ -46,9 +46,9 @@ Chosen option: "Workspace dependency table, committed `Cargo.lock`, `--locked` i
 * **Shared settings:** workspace-wide package metadata and lints live in `[workspace.package]` and `[workspace.lints]` ([ADR-0055](0055-rust-static-analysis-and-formatting.md)), the counterpart of `Directory.Build.props`.
 * **Repo tools:** unchanged. The .NET file-based tools keep their exact NuGet pins and lock files ([ADR-0017](0017-dotnet-file-based-apps-for-repo-tooling.md)).
 
-### Effect on earlier records, once this record is accepted
+### Effect on earlier records
 
-None of these edits is made while this record is `proposed`.
+These edits were made when this record was accepted, on 2026-11-11.
 
 * **[ADR-0006](0006-dotnet-dependency-management.md)** becomes `superseded by` this record. Its architecture-model entry gets a `note`, as [ADR-0014](0014-postgresql-database-engine.md)'s has: the repo tools still restore NuGet packages in locked mode from nuget.org under [ADR-0017](0017-dotnet-file-based-apps-for-repo-tooling.md); only the backend's Central Package Management is gone. The planned story card that lists [ADR-0006](0006-dotnet-dependency-management.md) is updated in the same change, because the validator rejects a planned card that cites a superseded record.
 * **[ADR-0017](0017-dotnet-file-based-apps-for-repo-tooling.md)** gets a dated amendment: `just tools versions` compared the tools' pins with `backend/Directory.Packages.props`, which no longer exists. The code pull request must give the tools another source of truth for their versions, or drop that check and say how the pins are bumped.
@@ -100,6 +100,4 @@ None of these edits is made while this record is `proposed`.
 * **Not verified:** Dependabot's handling of `[workspace.dependencies]` and of `rust-toolchain.toml` in this repository; that GitHub's dependency review reads `backend/Cargo.lock`. Each is checked on the code pull request.
 * **State of the code branch on 2026-11-11:** `backend/Cargo.toml` has the workspace, the lints and the internal crates in `[workspace.dependencies]`; third-party versions are still declared per crate. Moving them to the workspace table is part of delivering this record.
 * **Revisit when** a Dependabot alert shows a vulnerable crate that the build did not flag, or a licence question comes up: add cargo-deny then.
-* **Open questions for the reviewer:**
-  1. Is the workspace table required, as proposed, or are per-crate versions acceptable while the workspace has five crates?
-  2. Where do the repo tools' package versions come from once `backend/Directory.Packages.props` is deleted?
+* **Resolved at acceptance, 2026-11-11:** the workspace dependency table is used: every third-party version is in `[workspace.dependencies]`. The repo tools' package versions are now checked against each other by `just tools versions` ([ADR-0017](0017-dotnet-file-based-apps-for-repo-tooling.md), amendment of the same date).

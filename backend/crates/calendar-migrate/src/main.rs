@@ -1,4 +1,4 @@
-//! Applies the database migrations as `calendar_migrator` (ADR-0015). Reads the Npgsql keyword connection
+//! Applies the database migrations as `calendar_migrator` (ADR-0052). Reads the Npgsql keyword connection
 //! string from `CALENDAR_MIGRATOR_CONNECTION`, prints what it applied and exits non-zero on any failure.
 
 use std::process::ExitCode;

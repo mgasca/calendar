@@ -1,5 +1,5 @@
 ---
-status: proposed
+status: accepted
 date: 2026-11-11
 decision-makers: mgasca, Claude (AI assistant)
 ---
@@ -59,9 +59,9 @@ Rules:
 * **Wire formats are written explicitly.** Serialization and parsing of instants and dates go through functions in one module that reproduce the .NET formats; no handler relies on chrono's default serde output.
 * **`NaiveDateTime` is never stored or sent.** It appears only inside the day-window computation, between a date and its instant.
 
-### Effect on earlier records, once this record is accepted
+### Effect on earlier records
 
-None of these edits is made while this record is `proposed`.
+These edits were made when this record was accepted, on 2026-11-11.
 
 * **[ADR-0018](0018-time-representation-and-bcl-date-time-types.md)** becomes `superseded by` this record, because its chosen option ("BCL types") no longer exists in the backend. Its architecture-model entry gets a `note`, as [ADR-0014](0014-postgresql-database-engine.md)'s has: the value model, the storage types, the contract formats and the floating-date and UTC rules still stand and are restated here. Nodes that cite [ADR-0018](0018-time-representation-and-bcl-date-time-types.md) for those rules may keep citing it under that note, or move to this record in the code pull request.
 * **[ADR-0021](0021-client-supplied-date-and-time-zone-define-the-day.md)** stands unchanged: the client still supplies `today` and `timeZone`.
@@ -121,6 +121,4 @@ None of these edits is made while this record is `proposed`.
 * **Not verified:** every statement above about how .NET and chrono differ in formatting, parsing and zone lookup is expected from the libraries' documentation and has not been measured in this repository. The Confirmation tests are what establishes them.
 * **Related:** [ADR-0014](0014-postgresql-database-engine.md) (storage conventions), [ADR-0020](0020-aggregate-day-agenda-endpoint-as-read-model.md), [ADR-0021](0021-client-supplied-date-and-time-zone-define-the-day.md).
 * **Revisit when** the model needs recurrence across daylight-saving changes or zoned arithmetic ("every Monday at 09:00 local"): evaluate jiff then. The storage model is the same either way.
-* **Open questions for the reviewer:**
-  1. If chrono-tz and `TimeZoneInfo` accept different zone ids, does the Rust API match .NET exactly (extra code) or accept the difference as a documented contract change?
-  2. Should a check compare the time-zone database version in chrono-tz with the one in the PostgreSQL image, or is the gap accepted as it was under .NET?
+* **Resolved at acceptance, 2026-11-11:** the maintainer chose to keep chrono-tz's compiled-in tz database after the port measured its differences from .NET. The differences in accepted zone ids and in day windows for zones whose rules changed after tzdata 2025b are accepted and listed in `backend/README.md` ("Known differences from the .NET backend"). No check compares chrono-tz's tz database version with the PostgreSQL image's.

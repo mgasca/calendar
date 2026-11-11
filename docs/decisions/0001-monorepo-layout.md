@@ -89,3 +89,4 @@ The directory structure is visible in the README layout section. Reviewers rejec
 ## More Information
 
 * Revisit if the number of frontend apps makes Turborepo/Nx task caching worthwhile (can be added within `frontend/` only).
+* **Amendment, 2026-11-11:** `backend/` now holds a Cargo workspace instead of the .NET solution ([ADR-0051](0051-rust-backend-on-axum-and-tokio.md)). The layout decision stands; the repository has three languages: Rust for the backend, TypeScript for the frontend, and C# for the repo tools ([ADR-0017](0017-dotnet-file-based-apps-for-repo-tooling.md)).

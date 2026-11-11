@@ -116,3 +116,7 @@ Implementation:
 
 * Good, because **D3**, **D4**, **D5**: one fast tool for both linting and formatting.
 * Bad, because **D1 Bug-finding depth**: limited type-aware analysis, and a11y coverage is narrower than jsx-a11y.
+
+## More Information
+
+* **Amendment, 2026-11-11:** the backend moved to Rust, where rustfmt and Clippy take this record's place ([ADR-0055](0055-rust-static-analysis-and-formatting.md)). The TypeScript half is unchanged, and the .NET half now applies only to the repo tools ([ADR-0017](0017-dotnet-file-based-apps-for-repo-tooling.md)). Both chosen options stand for the code they still cover.

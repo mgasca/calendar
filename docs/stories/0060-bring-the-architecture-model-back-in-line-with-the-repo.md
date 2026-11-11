@@ -4,6 +4,7 @@ date: 2026-11-11
 issue: https://github.com/mgasca/calendar/issues/689
 pr:
   - https://github.com/mgasca/calendar/pull/690
+  - https://github.com/mgasca/calendar/pull/691
 adrs: ["0039", "0047", "0048", "0051", "0052", "0056"]
 ---
 
@@ -13,7 +14,7 @@ adrs: ["0039", "0047", "0048", "0051", "0052", "0056"]
 
 > As a reader of the documentation site's Architecture section, I need the CALM model to describe the system the repository actually builds, so that the diagrams, controls and flows can be trusted without checking the code.
 
-Tracked in issue #689.
+Tracked in issue #689. Card PR: [#690](https://github.com/mgasca/calendar/pull/690). Model update: [#691](https://github.com/mgasca/calendar/pull/691).
 
 ## Background
 

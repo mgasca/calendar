@@ -1,5 +1,8 @@
+use std::collections::hash_map::RandomState;
+use std::hash::{BuildHasher, Hasher};
 use std::process::{ChildStdin, Command, Stdio};
 use std::sync::Arc;
+use std::sync::LazyLock;
 use std::sync::atomic::{AtomicU32, Ordering};
 use std::time::Duration;
 
@@ -25,9 +28,39 @@ pub const MIGRATED_DATABASE: &str = "calendar";
 const MIGRATED_TEMPLATE: &str = "calendar_template";
 const EMPTY_TEMPLATE: &str = "calendar_empty_template";
 const ADMIN_USER: &str = "postgres";
-const ADMIN_PASSWORD: &str = "test-admin-password";
-const MIGRATOR_PASSWORD: &str = "test-migrator-password";
-const APP_PASSWORD: &str = "test-app-password";
+
+/// The passwords of this test process's container, made up when first needed. Nothing outside the process
+/// needs them, so they are random rather than written in the source.
+struct Passwords {
+  admin: String,
+  migrator: String,
+  app: String,
+}
+
+static PASSWORDS: LazyLock<Passwords> = LazyLock::new(|| Passwords {
+  admin: random_password(),
+  migrator: random_password(),
+  app: random_password(),
+});
+
+/// 32 hex digits from the standard library's randomly keyed hasher: enough for a container that lives as long
+/// as one test run, and free of characters a connection string would need to quote.
+fn random_password() -> String {
+  let word = || RandomState::new().build_hasher().finish();
+  format!("{:016x}{:016x}", word(), word())
+}
+
+fn admin_password() -> &'static str {
+  &PASSWORDS.admin
+}
+
+fn migrator_password() -> &'static str {
+  &PASSWORDS.migrator
+}
+
+fn app_password() -> &'static str {
+  &PASSWORDS.app
+}
 
 static SERVER: OnceCell<Server> = OnceCell::const_new();
 
@@ -71,19 +104,25 @@ impl TestDatabase {
     &self.name
   }
 
+  /// The `calendar_app` password of this test process's container, for tests that assert it never leaks into
+  /// a message or that swap it for a wrong one.
+  pub fn app_password(&self) -> &'static str {
+    app_password()
+  }
+
   /// Npgsql keyword connection string of the least-privilege role the application uses.
   pub fn app_connection_string(&self) -> String {
-    self.connection_string("calendar_app", APP_PASSWORD)
+    self.connection_string("calendar_app", app_password())
   }
 
   /// Npgsql keyword connection string of the schema owner that runs migrations.
   pub fn migrator_connection_string(&self) -> String {
-    self.connection_string("calendar_migrator", MIGRATOR_PASSWORD)
+    self.connection_string("calendar_migrator", migrator_password())
   }
 
   /// Npgsql keyword connection string of the container's bootstrap superuser.
   pub fn admin_connection_string(&self) -> String {
-    self.connection_string(ADMIN_USER, ADMIN_PASSWORD)
+    self.connection_string(ADMIN_USER, admin_password())
   }
 
   pub fn app_config(&self) -> ConnectionConfig {
@@ -204,7 +243,7 @@ impl Drop for TestDatabase {
   /// Drops the database on a thread of its own (a destructor cannot await, and the test's runtime may be
   /// shutting down), then frees its slot. A run that ends first leaves the database to the container's removal.
   fn drop(&mut self) {
-    let config = parse(&self.server.connection_string("postgres", ADMIN_USER, ADMIN_PASSWORD));
+    let config = parse(&self.server.connection_string("postgres", ADMIN_USER, admin_password()));
     let name = std::mem::take(&mut self.name);
     let permit = self.permit.take();
     std::thread::spawn(move || {
@@ -228,10 +267,10 @@ impl Server {
     let container = Postgres::default()
       .with_db_name(MIGRATED_DATABASE)
       .with_user(ADMIN_USER)
-      .with_password(ADMIN_PASSWORD)
+      .with_password(admin_password())
       .with_tag(tag)
-      .with_env_var("CALENDAR_MIGRATOR_PASSWORD", MIGRATOR_PASSWORD)
-      .with_env_var("CALENDAR_APP_PASSWORD", APP_PASSWORD)
+      .with_env_var("CALENDAR_MIGRATOR_PASSWORD", migrator_password())
+      .with_env_var("CALENDAR_APP_PASSWORD", app_password())
       .with_copy_to(
         CopyTargetOptions::new("/docker-entrypoint-initdb.d/01-roles.sh").with_mode(0o755),
         role_script,
@@ -268,7 +307,7 @@ impl Server {
     let admin = self.maintenance_client().await;
     copy_when_idle(&admin, EMPTY_TEMPLATE).await;
 
-    let migrator = parse(&self.connection_string(MIGRATED_DATABASE, "calendar_migrator", MIGRATOR_PASSWORD));
+    let migrator = parse(&self.connection_string(MIGRATED_DATABASE, "calendar_migrator", migrator_password()));
     let connection = connection::connect(&migrator).await.expect("connects as calendar_migrator");
     migrations::migrate(connection).await.expect("the migrations apply");
 
@@ -278,7 +317,7 @@ impl Server {
   /// A superuser client on the maintenance database, because PostgreSQL will not copy or drop the database a
   /// session is connected to. Retries while the container finishes starting.
   async fn maintenance_client(&self) -> tokio_postgres::Client {
-    let config = parse(&self.connection_string("postgres", ADMIN_USER, ADMIN_PASSWORD));
+    let config = parse(&self.connection_string("postgres", ADMIN_USER, admin_password()));
     let mut attempt = 0;
     loop {
       match connection::connect_client(&config).await {

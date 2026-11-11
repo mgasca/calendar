@@ -146,7 +146,9 @@ async fn a_server_without_tls_is_refused_by_require_and_accepted_by_prefer() {
 #[tokio::test]
 async fn a_wrong_password_reports_the_server_message_without_the_password() {
   let database = calendar_testing::TestDatabase::migrated().await;
-  let wrong = database.app_connection_string().replace("test-app-password", "not-the-password");
+  let wrong = database
+    .app_connection_string()
+    .replace(database.app_password(), "not-the-password");
 
   let error = connect(&wrong).await.unwrap_err().to_string();
 

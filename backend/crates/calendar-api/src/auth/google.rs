@@ -443,13 +443,16 @@ mod tests {
       client_secret: "secret".to_owned(),
     };
     let now = Utc.with_ymd_and_hms(2026, 10, 26, 15, 0, 0).unwrap();
-    let good = json!({"aud": "client", "iss": "https://accounts.google.com", "exp": now.timestamp() + 60, "nonce": "n", "sub": "s"});
-    assert_eq!(check_id_token(&token(&good), &credentials, "n", now), Ok("s".to_owned()));
+    // A fresh nonce per run, as in a real sign-in, rather than a literal.
+    let nonce = uuid::Uuid::new_v4().to_string();
+    let nonce = nonce.as_str();
+    let good = json!({"aud": "client", "iss": "https://accounts.google.com", "exp": now.timestamp() + 60, "nonce": nonce, "sub": "s"});
+    assert_eq!(check_id_token(&token(&good), &credentials, nonce, now), Ok("s".to_owned()));
 
     let with = |name: &str, value: Value| {
       let mut claims = good.clone();
       claims[name] = value;
-      check_id_token(&token(&claims), &credentials, "n", now)
+      check_id_token(&token(&claims), &credentials, nonce, now)
     };
     assert_eq!(with("aud", json!(["other", "client"])), Ok("s".to_owned()));
     assert_eq!(with("iss", json!("accounts.google.com")), Ok("s".to_owned()));
@@ -458,7 +461,7 @@ mod tests {
     assert!(with("exp", json!(now.timestamp())).is_err());
     assert!(with("nonce", json!("other")).is_err());
     assert!(with("sub", json!(" ")).is_err());
-    assert!(check_id_token("not-a-jwt", &credentials, "n", now).is_err());
+    assert!(check_id_token("not-a-jwt", &credentials, nonce, now).is_err());
   }
 
   #[test]

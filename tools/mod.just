@@ -50,7 +50,7 @@ test:
         echo "shellcheck not installed: skipped locally (CI runs it)"
     fi
 
-# Check tooling package pins match backend/Directory.Packages.props (--fix to update)
+# Check that the tools pin each package at one version (--fix to update to the newest pinned)
 [positional-arguments]
 versions *args:
     dotnet run tools/tool-versions/tool-versions.cs -- "$@"

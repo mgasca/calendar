@@ -25,6 +25,14 @@ jobs:
       - uses: actions/setup-dotnet@v6
         with:
           global-json-file: global.json
+      # The infra tool builds backend/crates/calendar-migrate and runs it, so the job needs the toolchain pinned in
+      # backend/rust-toolchain.toml (runners ship rustup) as well as the .NET SDK the tool itself runs on.
+      - name: Install the pinned Rust toolchain
+        working-directory: backend
+        run: |
+          channel=$(sed -n 's/^channel *= *"\(.*\)"/\1/p' rust-toolchain.toml)
+          rustup toolchain install "$channel" --profile minimal --no-self-update
+          cargo --version
       - name: Read the pinned just version
         id: just-version
         run: echo "version=$(tr -d '[:space:]v' < .just-version)" >> "$GITHUB_OUTPUT"

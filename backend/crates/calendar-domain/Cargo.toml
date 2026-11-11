@@ -1,0 +1,15 @@
+[package]
+name = "calendar-domain"
+edition.workspace = true
+version.workspace = true
+publish.workspace = true
+license.workspace = true
+
+[dependencies]
+chrono.workspace = true
+chrono-tz.workspace = true
+thiserror.workspace = true
+uuid = { workspace = true, features = ["v4", "v7"] }
+
+[lints]
+workspace = true

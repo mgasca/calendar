@@ -8,6 +8,7 @@ public static class EditGuard
     "contracts/openapi.json",
     "frontend/packages/api-client/src/schema.gen.ts",
     "packages.lock.json",
+    "Cargo.lock",
     "pnpm-lock.yaml",
   ];
 
@@ -19,7 +20,8 @@ public static class EditGuard
       ? new Verdict(
         "deny",
         $"{Path.GetFileName(filePath)} is generated. Run `just contracts` for the API contract and TS client, `dotnet restore` "
-        + "for packages.lock.json, or `pnpm install` for pnpm-lock.yaml, and commit the result instead of editing it.")
+        + "for packages.lock.json, `cargo add`, `cargo update` or a build for Cargo.lock, or `pnpm install` for pnpm-lock.yaml, "
+        + "and commit the result instead of editing it.")
       : null;
   }
 }

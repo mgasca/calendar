@@ -41,3 +41,6 @@ coverage/
 
 # Delivery dashboard: the snapshots read from the dashboard-data branch at docs build time (story 0053)
 frontend/apps/docs/.dashboard-data/
+
+# Rust build output (backend Cargo workspace)
+backend/target/

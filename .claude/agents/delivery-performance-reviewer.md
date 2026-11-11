@@ -15,7 +15,7 @@ The caller names the surfaces and, optionally, a workflow, job or recipe to focu
 
 ## 1. Map what runs
 
-For the workflow in scope, list each job, its `needs`, its steps and the command each step runs. Follow each command down to what actually executes: a `pnpm` script into its `package.json`, a recipe into its module file (`just --list <module>`, `just -n <recipe>` previews without running), `dotnet test` into the projects it builds. A step named "Verify X" may contain a full build.
+For the workflow in scope, list each job, its `needs`, its steps and the command each step runs. Follow each command down to what actually executes: a `pnpm` script into its `package.json`, a recipe into its module file (`just --list <module>`, `just -n <recipe>` previews without running), `cargo test` into the crates and test binaries it builds, `dotnet run` of a tool into its test app. A step named "Verify X" may contain a full build.
 
 From that, build two tables for the report:
 

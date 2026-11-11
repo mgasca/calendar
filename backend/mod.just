@@ -1,5 +1,5 @@
-# .NET backend recipes (`just backend <recipe>`). They run in backend/, so backend/global.json
-# (SDK pin, test runner) applies.
+# Rust backend recipes (`just backend <recipe>`). They run in backend/, the Cargo workspace, so
+# backend/rust-toolchain.toml (toolchain pin) and backend/Cargo.lock apply.
 
 set shell := ["bash", "-euo", "pipefail", "-c"]
 
@@ -11,32 +11,30 @@ import '../just/run.just'
 list:
     @just --list backend
 
-# Restore .NET packages; arguments go to dotnet restore (e.g. just backend restore -p:NuGetAudit=false offline)
+# Download the locked crates; arguments go to cargo fetch (e.g. just backend restore --target x86_64-unknown-linux-gnu)
 [positional-arguments]
 restore *args:
-    dotnet restore "$@"
+    cargo fetch --locked "$@"
 
-# Build the solution
+# Build the workspace, tests included
 build:
-    dotnet build --no-restore
+    cargo build --workspace --all-targets --locked
 
-# Run the tests; arguments go to dotnet test (e.g. just backend test --project tests/Calendar.Domain.Tests --filter-method "*Name*")
+# Run the tests; arguments go to cargo test (e.g. just backend test -p calendar-domain day_window, or -- --nocapture)
 [positional-arguments]
 test *args:
-    dotnet test "$@"
+    cargo test --locked "$@"
 
-# Analyzers and code style (in the build), the formatting check and the EF Core model check
+# Clippy with warnings as errors, and the formatting check
 lint:
-    dotnet build --no-restore
-    dotnet format whitespace --verify-no-changes --no-restore
-    dotnet tool restore
-    dotnet ef migrations has-pending-model-changes --project src/Calendar.Infrastructure --no-build
+    cargo clippy --workspace --all-targets --locked -- -D warnings
+    cargo fmt --all --check
 
 # Auto-format the backend
 format:
-    dotnet format
+    cargo fmt --all
 
-# Run the API on http://localhost:5041 (.env is loaded by the root justfile)
+# Run the API on http://localhost:5041 in Development (.env is loaded by the root justfile)
 dev:
     #!/usr/bin/env bash
     set -euo pipefail
@@ -44,12 +42,17 @@ dev:
     if [ -z "${Auth__Google__ClientId:-}" ] || [ -z "${Auth__Google__ClientSecret:-}" ]; then
         echo "Warning: Auth__Google__ClientId/ClientSecret are not set in .env, so 'Sign in with Google' will return 503 (see backend/README.md, 'Google sign-in setup')."
     fi
-    dotnet watch --project src/Calendar.Api
+    export ASPNETCORE_ENVIRONMENT="${ASPNETCORE_ENVIRONMENT:-Development}"
+    # The local database as calendar_app, from the passwords in .env, unless the connection string is already set.
+    if [ -z "${ConnectionStrings__Calendar:-}" ] && [ -n "${CALENDAR_APP_PASSWORD:-}" ]; then
+        export ConnectionStrings__Calendar="Host=127.0.0.1;Port=5432;Database=${POSTGRES_DB:-calendar};Username=calendar_app;Password=${CALENDAR_APP_PASSWORD}"
+    fi
+    cargo run --locked -p calendar-api
 
-# Build the API, which regenerates contracts/openapi.json (part of just contracts)
+# Regenerate contracts/openapi.json from the API's routes and types (part of just contracts)
 contract:
-    dotnet build src/Calendar.Api
+    cargo run --locked -p calendar-api -- --openapi ../contracts/openapi.json
 
-# Remove .NET build outputs
+# Remove Cargo build outputs
 clean:
-    dotnet clean
+    cargo clean

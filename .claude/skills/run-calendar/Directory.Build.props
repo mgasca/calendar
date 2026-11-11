@@ -1,7 +1,7 @@
 <Project>
   <!--
     Quality settings for every C# file-based app (`dotnet run <file>.cs`) below this folder.
-    Kept here, not inherited from backend/, so the folder is self-contained (ADR-0017).
+    Kept here, not inherited from a parent folder, so the folder is self-contained (ADR-0017).
     This file also stops MSBuild from importing a host repo's own Directory.Build.props.
   -->
   <PropertyGroup>

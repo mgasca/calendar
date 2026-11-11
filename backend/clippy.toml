@@ -1,0 +1,7 @@
+# The current time comes from the injected Clock (crates/calendar-api/src/clock.rs), never from the system clock
+# directly, so tests can fix it. This replaces the .NET backend's BannedSymbols.txt (RS0030).
+disallowed-methods = [
+  { path = "chrono::Utc::now", reason = "read the time from the injected Clock" },
+  { path = "chrono::Local::now", reason = "read the time from the injected Clock; the server has no local zone" },
+  { path = "std::time::SystemTime::now", reason = "read the time from the injected Clock" },
+]

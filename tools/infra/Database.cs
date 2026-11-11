@@ -54,52 +54,31 @@ public static partial class Infra
     {
       await PrepareServer(az, env, group, server);
       await SweepFirewall(az, group, server);
-      await RunLocal("dotnet", ["tool", "restore"], "backend", null, token: token);
-      await RunLocal("dotnet", ["restore", "src/Calendar.Infrastructure"], "backend", null, token: token);
-      await RunLocal(
-        "dotnet",
-        [
-          "ef",
-          "migrations",
-          "bundle",
-          "--self-contained",
-          "--target-runtime",
-          "linux-x64",
-          "--project",
-          "src/Calendar.Infrastructure",
-          "--output",
-          Path.Combine(
-            Path.GetTempPath(),
-            "calendar-bundle-" + Guid.NewGuid().ToString("N")
-          )
-        ],
-        "backend",
-        null,
-        async bundle =>
+      // The migrator is the calendar-migrate binary of the backend's Cargo workspace (ADR-0052). It is built
+      // before the firewall opens, so a build failure changes nothing on the server.
+      await RunLocal("cargo", ["build", "--release", "--locked", "-p", "calendar-migrate"], "backend", null, token);
+      var binary = Path.GetFullPath(Path.Combine("backend", "target", "release", "calendar-migrate"));
+      await WithFirewall(az, group, server, ip, async () =>
+      {
+        var password = await ReadSecret(az, ops, "calendar-migrator-password", output);
+        var host = await ServerHost(az, group, server);
+        var connection = Connection(host, "calendar_migrator", password);
+        await MaskSecret(output, connection);
+        if (env == "production")
         {
-          await WithFirewall(az, group, server, ip, async () =>
-          {
-            var password = await ReadSecret(az, ops, "calendar-migrator-password", output);
-            var host = await ServerHost(az, group, server);
-            var connection = Connection(host, "calendar_migrator", password);
-            await MaskSecret(output, connection);
-            if (env == "production")
-            {
-              await output.WriteLineAsync($"Production restore point (UTC): {DateTimeOffset.UtcNow:O}");
-            }
-            try
-            {
-              await RunLocal(bundle, [], ".", connection, token: token);
-            }
-            catch (InvalidOperationException)
-            {
-              throw new InvalidOperationException(
-                  "Migration bundle failed; the existing revision keeps serving. Inspect database migration state " +
-                  "before retrying.");
-            }
-          });
-        },
-        token);
+          await output.WriteLineAsync($"Production restore point (UTC): {DateTimeOffset.UtcNow:O}");
+        }
+        try
+        {
+          await RunLocal(binary, [], ".", connection, token);
+        }
+        catch (InvalidOperationException)
+        {
+          throw new InvalidOperationException(
+              "The migrator failed; the existing revision keeps serving. Inspect database migration state " +
+              "before retrying.");
+        }
+      });
       return 0;
     }
     await PrepareServer(az, env, group, server);
@@ -478,8 +457,6 @@ public static partial class Infra
     string[] args,
     string directory,
     string? connection,
-    Func<string,
-    Task>? after = null,
     CancellationToken token = default
   )
   {
@@ -512,18 +489,6 @@ public static partial class Infra
     if (process.ExitCode != 0)
     {
       throw new InvalidOperationException($"Migration command failed (exit {process.ExitCode}).");
-    }
-    if (after is not null)
-    {
-      var path = args[^1];
-      try
-      {
-        await after(path);
-      }
-      finally
-      {
-        File.Delete(path);
-      }
     }
   }
 }

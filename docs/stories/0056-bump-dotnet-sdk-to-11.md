@@ -4,7 +4,7 @@ date: 2026-11-11
 issue: https://github.com/mgasca/calendar/issues/657
 pr:
   - https://github.com/mgasca/calendar/pull/658
-adrs: ["0002", "0006", "0017"]
+adrs: ["0002", "0006", "0017", "0050"]
 ---
 
 # 0056 Move the repository to the .NET 11 SDK and target framework
@@ -19,7 +19,7 @@ Tracked in issue #657. Wording derived from the issue; to be confirmed by the pr
 
 The backend, the repo tools and the container images target .NET 10. [0002](../decisions/0002-dotnet-10-minimal-api-backend.md) chose ".NET 10 LTS". Dependabot has since moved `dotnet-ef` to 11.0.0 (#652), so the migration tool is a major version ahead of the SDK, runtime and EF Core packages it works against.
 
-.NET 11 is a standard-term release, not LTS. Adopting it contradicts the "LTS" part of an accepted ADR, so the version policy is decided in a superseding ADR before the code lands, not inside the bump.
+.NET 11 is a standard-term release, not LTS, but its support ends on the same date as .NET 10 (2028-11-14). The maintainer chose to adopt it in [0050](../decisions/0050-adopt-dotnet-11-once-the-providers-support-it.md), once the EF Core providers support it.
 
 ### Agreed scope
 
@@ -38,7 +38,7 @@ The backend, the repo tools and the container images target .NET 10. [0002](../d
 
 ### Dependencies
 
-* The version-policy ADR (LTS versus standard-term) must be accepted first.
+* [0050](../decisions/0050-adopt-dotnet-11-once-the-providers-support-it.md) is accepted. Delivery is gated on a stable `Npgsql.EntityFrameworkCore.PostgreSQL` 11.x (11.0.0-rc.3 is a pre-release today) and on `EFCore.NamingConventions` working on EF Core 11, or being replaced.
 * Npgsql and `EFCore.NamingConventions` must publish releases that support EF Core 11; if they do not, the story waits or pins an earlier provider and says so.
 
 ### Acceptance criteria
@@ -57,14 +57,15 @@ The backend, the repo tools and the container images target .NET 10. [0002](../d
 
 | ADR | Decision | Why it matters for this story |
 | --- | --- | --- |
-| [0002](../decisions/0002-dotnet-10-minimal-api-backend.md) | .NET 10 LTS, minimal APIs | The LTS choice is contradicted by .NET 11; a superseding ADR is needed. |
+| [0002](../decisions/0002-dotnet-10-minimal-api-backend.md) | .NET 10 LTS, minimal APIs | The version choice is overridden by 0050 (amendment); Minimal APIs and the project structure stand. |
 | [0006](../decisions/0006-dotnet-dependency-management.md) | Central package management with lock files | Versions move in `Directory.Packages.props`; lock files are regenerated and committed. |
 | [0017](../decisions/0017-dotnet-file-based-apps-for-repo-tooling.md) | Repo tooling as .NET file-based apps | Tools and skills retarget and their lock files depend on the exact SDK. |
 
-A new ADR is expected: the .NET version policy (stay on LTS, adopt each release, or adopt 11 only), drafted with `adr-draft`.
+The version decision is [0050](../decisions/0050-adopt-dotnet-11-once-the-providers-support-it.md); no further ADR is expected.
 
 ### Other decisions (not ADR-worthy)
 
+* **Start only at the gate:** the story stays `planned` until the provider ships; nothing in the repo changes before.
 * **One PR for the move:** target framework, images, packages and lock files change together, because a partial move does not restore or build.
 
 ## Implementation notes

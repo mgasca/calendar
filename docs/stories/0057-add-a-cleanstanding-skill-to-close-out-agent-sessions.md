@@ -1,5 +1,5 @@
 ---
-status: in-progress
+status: implemented
 date: 2026-11-11
 issue: https://github.com/mgasca/calendar/issues/669
 pr:
@@ -79,12 +79,12 @@ No changes.
 
 ### Testing
 
-* No automated test: the skill is a Markdown instruction file. Not yet exercised end to end on a real session; criteria 1 to 6 are unverified until it has been run on a session with and without outstanding work, and this section will say what was checked by hand.
+* No automated test: the skill is a Markdown instruction file. Criteria 1 to 6 describe agent behaviour and were not exercised on a real session before merge, by the owner's decision to close the issue on merge; the first real run is the check, and any gap it shows belongs in a follow-up issue.
 * `just docs test` and `just docs build` validate the card.
 
 ### Lessons learned, known issues and follow-ups
 
-* None yet. The skill was drafted in one session and has not been run.
+* The skill was drafted in one session and merged without a real run (see Testing). Follow-ups, if a run shows gaps, are tracked as new issues.
 
 ## User guide
 

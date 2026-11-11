@@ -1,6 +1,19 @@
 # Repo tooling
 
-Every script in this repo is a .NET 10 *file-based app* (`dotnet run x.cs`, no project file), kept in `tools/<name>/` or in the skill folder it belongs to, with that folder's own analyzers, `.editorconfig` and xUnit tests ([ADR-0017](../docs/decisions/0017-dotnet-file-based-apps-for-repo-tooling.md)). The only exception is `tools/doctor/doctor.sh`, a bootstrap check that must run without the SDK. Don't write new tooling in Python, Node or shell. Read this page before writing or fixing a tool.
+Repository tooling is migrating to TypeScript on Deno ([ADR-0058](../docs/decisions/0058-typescript-on-deno-for-repository-tooling.md)). New tooling uses Deno; existing .NET file-based apps and their checks stay operational until each owning slice switches its callers. The bootstrap doctor remains shell so it can diagnose missing runtimes. Read this page before writing or fixing a tool.
+
+## Deno tooling during migration
+
+- `.deno-version` pins the exact runtime used locally and in CI. Doctor requires Deno and the .NET SDK while both kinds of tools remain.
+- Repo tools share `tools/deno.json` and `tools/deno.lock`. The ADR and browser skills each carry their own configuration and lockfile so they can be copied outside this repository.
+- `just tools deno-test` installs frozen dependencies for all three configurations, checks TypeScript strictly, runs `deno lint` and `deno fmt --check`, then discovers every `*_test.ts` outside fixtures and integration directories. `just tools test` runs these checks before the existing .NET suites. `just tools format` formats both languages during transition.
+- Direct imports use exact versions in each configuration. Intentional updates use `deno install --config <configuration> --frozen=false`; commit the generated lockfile. Ordinary checks never rewrite locks.
+- Tests explicitly receive read, write, subprocess and environment permissions; production tasks specify their required permissions separately and disable interactive prompts.
+- Browser feasibility is opt-in: from `.claude/skills/run-calendar`, run `deno task browser-install` and `deno task test-browser`. It launches Chromium against a disposable local fixture, exercises the APIs needed by the browser command protocol, checks seed headers/timezone/viewport/dark mode and a screenshot, then removes its temporary files.
+
+Chromium still needs the Linux shared libraries documented in the browser skill. If those libraries were extracted into the user-local cache rather than installed system-wide, set `LD_LIBRARY_PATH` to that cache's `usr/lib/x86_64-linux-gnu` directory when running the feasibility test.
+
+The following .NET guidance applies only to the tools that have not yet been ported.
 
 ## Layout and discovery
 

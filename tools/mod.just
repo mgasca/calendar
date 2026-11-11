@@ -1,5 +1,4 @@
-# Repo tooling recipes (`just tools <recipe>`): .NET file-based apps kept in their skill folder or
-# tools/<name>/ (ADR-0017), and the doctor script. They run at the repo root.
+# Repo tooling recipes: Deno TypeScript tools, .NET tools during migration, and the bootstrap doctor.
 
 set shell := ["bash", "-euo", "pipefail", "-c"]
 set working-directory := '..'
@@ -18,7 +17,7 @@ list:
     @just --list tools
 
 # Test and lint repo tooling (skill scripts, tools/); test apps run TOOLS_TEST_JOBS at a time (default 4)
-test:
+test: deno-test
     #!/usr/bin/env bash
     set -euo pipefail
     # Each test app compiles and runs on its own, so they run in parallel; each one's output is kept and printed in
@@ -50,6 +49,21 @@ test:
         echo "shellcheck not installed: skipped locally (CI runs it)"
     fi
 
+# Strict type checking, lint, format checks and tests for each independent Deno configuration.
+deno-test:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    for d in {{ tool_dirs }}; do
+        deno install --config "$d/deno.json" --frozen
+        mapfile -d '' sources < <(find "$d" -name '*.ts' -not -path '*/fixtures/*' -not -path '*/node_modules/*' -print0)
+        deno fmt --config "$d/deno.json" --check
+        if [ "${#sources[@]}" -gt 0 ]; then
+            deno check --config "$d/deno.json" "${sources[@]}"
+            deno lint --config "$d/deno.json"
+        fi
+        deno task --config "$d/deno.json" test
+    done
+
 # Check that the tools pin each package at one version (--fix to update to the newest pinned)
 [positional-arguments]
 versions *args:
@@ -78,3 +92,4 @@ adr *args:
 # Auto-format repo tooling (whitespace; part of just format)
 format:
     for d in {{ tool_dirs }}; do dotnet format whitespace --folder "$d"; done
+    for d in {{ tool_dirs }}; do deno fmt --config "$d/deno.json"; done

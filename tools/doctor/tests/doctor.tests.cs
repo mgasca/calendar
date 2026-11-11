@@ -21,6 +21,7 @@ public sealed class DoctorTests : IDisposable
       File.CreateSymbolicLink(Path.Combine(_bin, command), "/usr/bin/" + command);
     }
     WriteExecutable("dotnet", "echo 10.0.403");
+    WriteExecutable("deno", "echo deno " + PinnedDeno());
     WriteExecutable("cargo", "echo cargo " + PinnedRust());
     WriteExecutable("rustc", "echo \"rustc " + PinnedRust() + " (0000000 2026-01-01)\"");
     WriteExecutable("cc", "exit 0");
@@ -228,6 +229,9 @@ public sealed class DoctorTests : IDisposable
   }
 
   private static string SourcePath([System.Runtime.CompilerServices.CallerFilePath] string path = "") => path;
+
+  private static string PinnedDeno() => File.ReadAllText(Path.GetFullPath(
+    Path.Combine(Path.GetDirectoryName(SourcePath())!, "../../../.deno-version"))).Trim();
 
   private async Task<(int, string)> RunDoctor(bool infra = true)
   {

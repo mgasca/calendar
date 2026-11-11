@@ -40,7 +40,7 @@ Chosen option: "Adopt .NET 11 once the EF Core providers support it, then .NET 1
 
 * **Gate:** the delivery PR starts when `Npgsql.EntityFrameworkCore.PostgreSQL` has a stable 11.x release (11.0.0-rc.3 is on NuGet today) and `EFCore.NamingConventions` is shown to work on EF Core 11, or is replaced. The SDK pin, `net11.0`, images, packages, lock files and contract move together in one PR (story 0056). Until then the repository stays on .NET 10.
 * **After 11:** the next move is .NET 12 LTS (expected November 2027). Each later release is a new decision; this record does not commit the repository to adopt every release.
-* **Relation to ADR-0002:** its choice of Minimal APIs and the Domain/Api structure stands; only its version choice (".NET 10 LTS") is overridden for the release dates above. It carries a dated amendment bullet pointing here.
+* **Relation to [ADR-0002](0002-dotnet-10-minimal-api-backend.md):** its choice of Minimal APIs and the Domain/Api structure stands; only its version choice (".NET 10 LTS") is overridden for the release dates above. It carries a dated amendment bullet pointing here.
 
 ### Consequences
 
@@ -48,7 +48,7 @@ Chosen option: "Adopt .NET 11 once the EF Core providers support it, then .NET 1
 * Good, because .NET 11 is supported until 2028-11-14, as .NET 10 is.
 * Bad, because the repository makes two major upgrades within a year (11 now, 12 in November 2027).
 * Bad, because the delivery is blocked on a third-party release. Until it ships, `dotnet-ef` 11 runs against EF Core 10 packages, which was not tested.
-* Neutral, because ADR-0002 keeps its status; reviewers may prefer to supersede it (open question 2).
+* Neutral, because [ADR-0002](0002-dotnet-10-minimal-api-backend.md) keeps its status; reviewers may prefer to supersede it (open question 2).
 
 ### Confirmation
 
@@ -85,4 +85,4 @@ Chosen option: "Adopt .NET 11 once the EF Core providers support it, then .NET 1
 * Verified on 2026-11-11: the official [releases index](https://dotnetcli.blob.core.windows.net/dotnet/release-metadata/releases-index.json) lists 11.0 as `sts`, active, SDK 11.0.100, end of support 2028-11-14, and 10.0 as `lts`, SDK 10.0.404, end of support 2028-11-14. The 11.0.0 release date is 2026-11-10 (11.0 `releases.json`). `Microsoft.EntityFrameworkCore` and `Microsoft.AspNetCore.OpenApi` 11.0.0 are on NuGet; `Npgsql.EntityFrameworkCore.PostgreSQL` is at 10.0.3 stable with 11.0.0-rc.3 as a pre-release, and `EFCore.NamingConventions` at 10.0.1. The 11.0 SDK and ASP.NET images exist on MCR.
 * **Correction:** the first version of issue #657 and PR #658 said .NET 11's support window is shorter than .NET 10's. It is the same, because standard-term releases get 24 months.
 * **Revisit when** the provider's stable 11.x ships (the gate), or if `EFCore.NamingConventions` stays without an 11.x release.
-* **Open questions for the reviewer:** (1) If `EFCore.NamingConventions` has no 11.x when the provider ships, replace it with EF Core's own naming code or wait? (2) Supersede ADR-0002 as a whole instead of amending it? That also touches the many records citing it.
+* **Open questions for the reviewer:** (1) If `EFCore.NamingConventions` has no 11.x when the provider ships, replace it with EF Core's own naming code or wait? (2) Supersede [ADR-0002](0002-dotnet-10-minimal-api-backend.md) as a whole instead of amending it? That also touches the many records citing it.

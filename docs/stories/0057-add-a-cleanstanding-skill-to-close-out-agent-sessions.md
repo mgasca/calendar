@@ -2,7 +2,8 @@
 status: in-progress
 date: 2026-11-11
 issue: https://github.com/mgasca/calendar/issues/669
-pr: []
+pr:
+  - https://github.com/mgasca/calendar/pull/670
 adrs: ["0042", "0044"]
 ---
 

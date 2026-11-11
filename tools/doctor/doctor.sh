@@ -46,6 +46,19 @@ else
   fi
 fi
 
+# Deno: exact version for TypeScript repo tooling. .NET remains required until all tools are ported.
+want_deno="$(tr -d '[:space:]v' < "$root/.deno-version")"
+if ! command -v deno >/dev/null 2>&1; then
+  fail "deno not found" "Install Deno $want_deno from https://docs.deno.com/runtime/getting_started/installation/"
+else
+  have_deno="$(deno --version 2>/dev/null | sed -n '1s/^deno \([^ ]*\).*/\1/p')"
+  if [ "$have_deno" = "$want_deno" ]; then
+    ok "Deno $have_deno (.deno-version)"
+  else
+    fail "Deno '${have_deno:-unavailable}', but .deno-version wants $want_deno" "Run 'deno upgrade --version $want_deno'"
+  fi
+fi
+
 # Node: major version must match frontend/.node-version.
 want_node="$(tr -d '[:space:]v' < "$root/frontend/.node-version")"
 if ! command -v node >/dev/null 2>&1; then

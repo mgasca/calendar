@@ -119,4 +119,6 @@ Implementation:
 
 ## More Information
 
+* **Amendment, 2026-11-11:** repository tooling moves to Deno's strict checking, built-in lint, formatting and tests under [ADR-0058](0058-typescript-on-deno-for-repository-tooling.md). The frontend's ESLint/Prettier decision stands; the .NET analyzer configuration remains only for unmigrated tools during transition.
+
 * **Amendment, 2026-11-11:** the backend moved to Rust, where rustfmt and Clippy take this record's place ([ADR-0055](0055-rust-static-analysis-and-formatting.md)). The TypeScript half is unchanged, and the .NET half now applies only to the repo tools ([ADR-0017](0017-dotnet-file-based-apps-for-repo-tooling.md)). Both chosen options stand for the code they still cover.

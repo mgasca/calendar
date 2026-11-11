@@ -1,5 +1,5 @@
 ---
-status: accepted
+status: superseded by [ADR-0058](0058-typescript-on-deno-for-repository-tooling.md)
 date: 2026-10-29
 decision-makers: mgasca, Claude (AI assistant)
 ---

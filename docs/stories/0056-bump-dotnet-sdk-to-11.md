@@ -4,7 +4,7 @@ date: 2026-11-11
 issue: https://github.com/mgasca/calendar/issues/657
 pr:
   - https://github.com/mgasca/calendar/pull/658
-adrs: ["0017", "0050", "0051"]
+adrs: ["0058", "0051"]
 ---
 
 # 0056 Move the repository to the .NET 11 SDK and target framework
@@ -14,6 +14,8 @@ adrs: ["0017", "0050", "0051"]
 > As a calendar owner, I need the backend and repo tooling to build and run on .NET 11, so that the SDK, runtime and packages (including the `dotnet-ef` 11 already adopted) stay on one supported major version.
 
 Tracked in issue #657. Wording derived from the issue; to be confirmed by the product owner.
+
+**Scope change, 2026-11-11:** the approved TypeScript/Deno tooling migration in story [0059](0059-run-repository-tooling-on-typescript-and-deno.md) displaces the remaining .NET SDK upgrade ([0058](../decisions/0058-typescript-on-deno-for-repository-tooling.md)). No .NET 11 delivery is claimed. The original scope below is retained as history; issue #657 remains open for explicit reconciliation in migration child [#685](https://github.com/mgasca/calendar/issues/685). Existing .NET pins remain transition requirements until their tools are replaced.
 
 **Scope change, 2026-11-11:** the backend is now Rust ([0051](../decisions/0051-rust-backend-on-axum-and-tokio.md)), so the backend parts of this card no longer exist: the backend target framework and `backend/global.json`, the ASP.NET Core and EF Core packages, `dotnet-ef`, the .NET container images and the contract regeneration. What remains is the repo tools' SDK pin and target framework ([0050](../decisions/0050-adopt-dotnet-11-once-the-providers-support-it.md), as amended). The sections below still describe the original scope and must be rewritten for the narrowed one before delivery.
 
@@ -60,9 +62,9 @@ The backend, the repo tools and the container images target .NET 10. [0002](../d
 | ADR | Decision | Why it matters for this story |
 | --- | --- | --- |
 | [0051](../decisions/0051-rust-backend-on-axum-and-tokio.md) | Rust backend on axum and tokio | The backend left .NET, so this story no longer touches it; it replaces the earlier rows for 0002 and 0006, which are superseded. |
-| [0017](../decisions/0017-dotnet-file-based-apps-for-repo-tooling.md) | Repo tooling as .NET file-based apps | Tools and skills retarget and their lock files depend on the exact SDK. |
+| [0058](../decisions/0058-typescript-on-deno-for-repository-tooling.md) | Repo tooling moves to TypeScript on Deno | Displaces this card's remaining SDK-upgrade scope; original requirements below are history, not planned delivery. |
 
-The version decision is [0050](../decisions/0050-adopt-dotnet-11-once-the-providers-support-it.md); no further ADR is expected.
+The original version decision was [0050](../decisions/0050-adopt-dotnet-11-once-the-providers-support-it.md); it is now superseded by [0058](../decisions/0058-typescript-on-deno-for-repository-tooling.md).
 
 ### Other decisions (not ADR-worthy)
 

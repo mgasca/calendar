@@ -291,25 +291,19 @@ public static partial class Infra
   internal static async Task StoreSecret(IAzureProcess az, string vault, string name, string value, TextWriter? output = null)
   {
     await MaskSecret(output ?? TextWriter.Null, value);
-    await WithPrivateFile(
+    await az.RunWithInputAsync(
       value,
-      async path =>
-      {
-        await az.RunAsync(
-        "keyvault",
-        "secret",
-        "set",
-        "--vault-name",
-        vault,
-        "--name",
-        name,
-        "--file",
-        path,
-        "--output",
-        "none"
-      );
-      }
-    );
+      "keyvault",
+      "secret",
+      "set",
+      "--vault-name",
+      vault,
+      "--name",
+      name,
+      "--file",
+      StandardInputPath,
+      "--output",
+      "none");
     var latest = await ReadSecret(az, vault, name, output ?? TextWriter.Null);
     if (latest != value)
     {

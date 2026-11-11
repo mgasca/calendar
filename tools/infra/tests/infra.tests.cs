@@ -25,12 +25,12 @@ public sealed class InfraTests
       error,
       TestContext.Current.CancellationToken
     )).ShouldBe(0);
-    az.FileContents.ShouldNotBeNullOrEmpty();
-    az.Calls.Any(c => c.Contains("ops-vault") && c.Contains("set")).ShouldBeTrue();
-    az.Calls.SelectMany(x => x).ShouldNotContain(az.FileContents);
-    WithoutMasks(output.ToString()).ShouldNotContain(az.FileContents);
-    error.ToString().ShouldNotContain(az.FileContents);
-    File.Exists(az.FilePath).ShouldBeFalse();
+    az.Input.ShouldNotBeNullOrEmpty();
+    az.Calls.Any(c => c.Contains("ops-vault") && c.Contains("set") && c.Contains("/dev/stdin")).ShouldBeTrue();
+    az.Calls.SelectMany(x => x).ShouldNotContain(az.Input);
+    WithoutMasks(output.ToString()).ShouldNotContain(az.Input);
+    error.ToString().ShouldNotContain(az.Input);
+    az.FilePath.ShouldBeEmpty();
   }
 
   [Fact]
@@ -63,17 +63,21 @@ public sealed class InfraTests
       var az = new FakeAzure { Existing = true };
       var output = new StringWriter();
       (await Infra.RunAsync(["what-if", "staging"], az, output, new StringWriter(), TestContext.Current.CancellationToken)).ShouldBe(0);
+      // The tool never asks for the password (asserted below), so it has no value to leak or to redact by;
+      // what the preview says about sensitive properties is still redacted by name.
       az.Calls.SelectMany(x => x).ShouldNotContain("secret-value");
-      WithoutMasks(output.ToString()).ShouldNotContain("secret-value");
       output.ToString().ShouldNotContain("transformed-secret");
       output.ToString().ShouldNotContain("encoded-value");
-      az.FileContents.ShouldContain("secret-value");
+      az.FileContents.ShouldNotContain("secret-value");
+      az.FileContents.ShouldContain(
+        "\"postgresAdministratorPassword\":{\"reference\":{\"keyVault\":{\"id\":\"" + FakeAzure.OpsVaultId
+        + "\"},\"secretName\":\"postgres-admin-password\"}}");
       az.FileContents.ShouldContain("calendar-connection-string");
       az.FileContents.ShouldContain("allowed-email-2");
       az.FileContents.ShouldContain("\"keyVaultSecretNames\":{\"value\":[\"allowed-email-2\",\"calendar-connection-string\"]}");
-      az.FileContents.ShouldNotContain("postgres-admin-password");
       az.FileContents.ShouldNotContain("google-client-secret");
       az.Calls.Any(c => c.Contains("ops-vault") && c.Contains("show")).ShouldBeTrue();
+      az.Calls.Any(c => c.Contains("secret") && c.Contains("show")).ShouldBeFalse();
       az.Calls.Any(c => c.Contains("app-vault") && c.Contains("list")).ShouldBeTrue();
       File.Exists(az.FilePath).ShouldBeFalse();
     }
@@ -179,6 +183,16 @@ public sealed class InfraTests
     public List<string[]> Calls { get; } = [];
     public string FileContents { get; private set; } = "";
     public string FilePath { get; private set; } = "";
+    public string Input { get; private set; } = "";
+    public const string OpsVaultId =
+      "/subscriptions/00000000-0000-0000-0000-000000000003/resourceGroups/rg-calendar-staging"
+      + "/providers/Microsoft.KeyVault/vaults/ops-vault";
+
+    public Task<string> RunWithInputAsync(string input, params string[] args)
+    {
+      Input = input;
+      return RunAsync(args);
+    }
 
     public Task<string> RunAsync(params string[] args)
     {
@@ -205,7 +219,8 @@ public sealed class InfraTests
       }
       if (args.Contains("show") && args.Contains("keyvault"))
       {
-        return Task.FromResult("secret-value");
+        // The vault's resource ID; a secret read would return the value, which a deployment must never ask for.
+        return Task.FromResult(args.Contains("secret") ? "secret-value" : OpsVaultId);
       }
       if (args.Contains("rest"))
       {
@@ -216,13 +231,13 @@ public sealed class InfraTests
         return Task.FromResult("{\"parametersJson\":\"{\\\"parameters\\\":{}}\"}");
       }
       var fileArg = Array.FindIndex(args, x => x == "--file" || x == "--parameters");
-      if (fileArg >= 0)
+      if (fileArg >= 0 && args[fileArg + 1] != "/dev/stdin")
       {
         FilePath = args[fileArg + 1].TrimStart('@');
         FileContents = File.ReadAllText(FilePath);
       }
       return Task.FromResult(args.Contains("what-if")
-        ? "{\"preview\":\"secret-value\",\"password\":\"transformed-secret\","
+        ? "{\"preview\":\"no-change\",\"password\":\"transformed-secret\","
           + "\"changes\":[{\"path\":\"properties.postgresAdministratorPassword\",\"after\":\"encoded-value\"}]}"
         : "");
     }

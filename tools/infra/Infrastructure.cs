@@ -14,6 +14,11 @@ public interface IAzureProcess
 {
   /// <summary>Runs az, returning output only on success.</summary>
   Task<string> RunAsync(params string[] args);
+  /// <summary>
+  /// Runs az with <paramref name="input"/> on its standard input, for a secret that must reach neither an
+  /// argument nor a file.
+  /// </summary>
+  Task<string> RunWithInputAsync(string input, params string[] args);
   /// <summary>Runs cleanup independently of cancellation.</summary>
   Task<string> RunCleanupAsync(params string[] args) => RunAsync(args);
 }
@@ -22,14 +27,21 @@ public interface IAzureProcess
 public sealed class AzureProcess(CancellationToken cancellationToken = default) : IAzureProcess
 {
   /// <inheritdoc />
-  public Task<string> RunAsync(params string[] args) => ExecuteAsync(args, cancellationToken);
+  public Task<string> RunAsync(params string[] args) => ExecuteAsync(args, null, cancellationToken);
   /// <inheritdoc />
-  public Task<string> RunCleanupAsync(params string[] args) => ExecuteAsync(args, CancellationToken.None);
+  public Task<string> RunWithInputAsync(string input, params string[] args) => ExecuteAsync(args, input, cancellationToken);
+  /// <inheritdoc />
+  public Task<string> RunCleanupAsync(params string[] args) => ExecuteAsync(args, null, CancellationToken.None);
 
-  private static async Task<string> ExecuteAsync(string[] args, CancellationToken token)
+  private static async Task<string> ExecuteAsync(string[] args, string? input, CancellationToken token)
   {
 #pragma warning disable S4036 // az is deliberately resolved from the user toolchain PATH.
-    var info = new ProcessStartInfo("az") { RedirectStandardOutput = true, RedirectStandardError = true };
+    var info = new ProcessStartInfo("az")
+    {
+      RedirectStandardOutput = true,
+      RedirectStandardError = true,
+      RedirectStandardInput = input is not null,
+    };
 #pragma warning restore S4036
     info.Environment["AZURE_BICEP_USE_BINARY_FROM_PATH"] = "false";
     foreach (var arg in args)
@@ -41,6 +53,12 @@ public sealed class AzureProcess(CancellationToken cancellationToken = default) 
     Task<string> stderr = process.StandardError.ReadToEndAsync(CancellationToken.None);
     try
     {
+      if (input is not null)
+      {
+        // Written after the readers start, then closed, so az sees the end of its input.
+        await process.StandardInput.WriteAsync(input.AsMemory(), token);
+        process.StandardInput.Close();
+      }
       await process.WaitForExitAsync(token);
     }
     catch (OperationCanceledException)
@@ -67,6 +85,12 @@ public sealed class AzureProcess(CancellationToken cancellationToken = default) 
 public static partial class Infra
 {
   private const string PasswordName = "postgres-admin-password";
+
+  /// <summary>
+  /// What <c>az keyvault secret set --file</c> is given so it reads the value from standard input: the secret
+  /// then reaches neither an argument nor a file. The tool is Linux-only, where this path always exists.
+  /// </summary>
+  internal const string StandardInputPath = "/dev/stdin";
 
   /// <summary>Executes a command using an injected Azure CLI.</summary>
   public static Task<int> RunAsync(
@@ -131,22 +155,19 @@ public static partial class Infra
         }
         var password = "Aa1!" + Convert.ToBase64String(RandomNumberGenerator.GetBytes(48));
         await MaskSecret(output, password);
-        await WithPrivateFile(password, async path =>
-        {
-          await az.RunAsync(
-            "keyvault",
-            "secret",
-            "set",
-            "--vault-name",
-            vault,
-            "--name",
-            PasswordName,
-            "--file",
-            path,
-            "--output",
-            "none"
-          );
-        });
+        await az.RunWithInputAsync(
+          password,
+          "keyvault",
+          "secret",
+          "set",
+          "--vault-name",
+          vault,
+          "--name",
+          PasswordName,
+          "--file",
+          StandardInputPath,
+          "--output",
+          "none");
         await output.WriteLineAsync("PostgreSQL password stored in Key Vault.");
         return 0;
       }
@@ -226,7 +247,6 @@ public static partial class Infra
       {
         parameters["containerImage"] = new JsonObject { ["value"] = "mcr.microsoft.com/azuredocs/containerapps-helloworld:latest" };
       }
-      string? secretValue = null;
       if (phase == "full")
       {
         var vault = await VaultName(az, args[1], "opsKeyVaultName");
@@ -235,22 +255,21 @@ public static partial class Infra
         {
           throw new InvalidOperationException("Postgres password missing; owner must run secret init-postgres-password first.");
         }
-        var password = await az.RunAsync(
-          "keyvault",
-          "secret",
-          "show",
-          "--vault-name",
-          vault,
-          "--name",
-          PasswordName,
-          "--query",
-          "value",
-          "-o",
-          "tsv"
-        );
-        await MaskSecret(output, password);
-        secretValue = password;
-        parameters["postgresAdministratorPassword"] = new JsonObject { ["value"] = password };
+        // The tool never reads the password: Resource Manager fetches it from the ops vault during the
+        // deployment, through a Key Vault reference written here at run time, once the vault exists.
+        var vaultId = await az.RunAsync("keyvault", "show", "--name", vault, "--query", "id", "-o", "tsv");
+        if (!IsVaultId(vaultId))
+        {
+          throw new InvalidOperationException("Azure returned an invalid Key Vault resource ID.");
+        }
+        parameters["postgresAdministratorPassword"] = new JsonObject
+        {
+          ["reference"] = new JsonObject
+          {
+            ["keyVault"] = new JsonObject { ["id"] = vaultId },
+            ["secretName"] = PasswordName,
+          },
+        };
         var appVault = await VaultName(az, args[1], "appKeyVaultName");
         var appNames = await SecretNames(az, appVault, true);
         JsonNode?[] secretNames = [.. appNames.Select(n => (JsonNode?)JsonValue.Create(n))];
@@ -278,7 +297,7 @@ public static partial class Infra
         var result = await az.RunAsync([.. command]);
         if (args[0] == "what-if")
         {
-          await output.WriteLineAsync(SafePreview(result, secretValue));
+          await output.WriteLineAsync(SafePreview(result));
         }
       });
       return 0;
@@ -421,12 +440,17 @@ public static partial class Infra
     return new JsonObject { ["startIpAddress"] = ToAddress(number & mask), ["endIpAddress"] = ToAddress(number | ~mask) };
   }
 
-  private static string SafePreview(string json, string? secret)
+  private static bool IsVaultId(string id) => Regex.IsMatch(
+    id,
+    "^/subscriptions/[0-9a-fA-F-]{36}/resourceGroups/[A-Za-z0-9._()-]+/providers/Microsoft\\.KeyVault/vaults/[A-Za-z0-9-]+$",
+    RegexOptions.CultureInvariant,
+    TimeSpan.FromSeconds(1));
+
+  private static string SafePreview(string json)
   {
     JsonNode node = JsonNode.Parse(json) ?? throw new InvalidOperationException("Invalid what-if result.");
     Redact(node);
-    var result = node.ToJsonString(new JsonSerializerOptions { WriteIndented = true });
-    return string.IsNullOrEmpty(secret) ? result : result.Replace(secret, "[redacted]", StringComparison.Ordinal);
+    return node.ToJsonString(new JsonSerializerOptions { WriteIndented = true });
   }
 
   private static void Redact(JsonNode node)

@@ -349,7 +349,8 @@ jobs:
       - uses: denoland/setup-deno@22d081ff2d3a40755e97629de92e3bcbfa7cf2ed # v2.0.5
         with:
           deno-version-file: .deno-version
-          cache: true
+          # Until the validator is ported, this job runs no Deno command to populate a cold cache (#696).
+          cache: false
       # The SDK Tooling uses, pinned in global.json (ADR-0017); the NuGet cache holds only the adr-draft skill's #:package pins.
       - uses: actions/setup-dotnet@v6
         with:

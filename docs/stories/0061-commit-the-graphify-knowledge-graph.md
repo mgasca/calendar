@@ -2,7 +2,8 @@
 status: implemented
 date: 2026-11-12
 issue: https://github.com/mgasca/calendar/issues/694
-pr: []
+pr:
+  - https://github.com/mgasca/calendar/pull/695
 adrs: []
 ---
 
@@ -12,7 +13,7 @@ adrs: []
 
 > As the maintainer, I need the knowledge graph that the graphify skill builds to live in the repository, so that any checkout or agent session can query it without rebuilding it, and so that a graphify run never leaves a folder of untracked files that a careless `git add` could commit by accident.
 
-Tracked in issue #694.
+Tracked in issue #694. Delivered in [#695](https://github.com/mgasca/calendar/pull/695).
 
 ## Background
 

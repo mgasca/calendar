@@ -5,3 +5,5 @@ pnpm-lock.yaml linguist-generated=true -diff
 **/packages.lock.json linguist-generated=true -diff
 backend/Cargo.lock linguist-generated=true -diff
 **/*.gen.ts linguist-generated=true
+graphify-out/graph.json linguist-generated=true -diff
+graphify-out/graph.html linguist-generated=true -diff

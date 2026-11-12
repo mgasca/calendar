@@ -1,0 +1,14 @@
+# What a graphify run writes but a checkout must not share (story 0061). Everything else in this folder is committed:
+# graph.json, graph.html, GRAPH_REPORT.md, manifest.json and the community labels with their signature.
+
+# The extraction cache and the dated copies of earlier builds: large, and rebuilt by the next run.
+/cache/
+/20[0-9][0-9]-[0-9][0-9]-[0-9][0-9]/
+
+# Local state of one run: the interpreter path (it names this machine), the scan root, the incremental-build state,
+# unconfirmed labels and the token tally.
+/.graphify_python
+/.graphify_root
+/.graphify_build_state.json
+/.graphify_labels.pending.json
+/cost.json

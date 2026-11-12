@@ -49,7 +49,7 @@ def needs($job):
   elif $job == "frontend" then under(["frontend/apps/web/", "frontend/packages/", "contracts/"]) or frontend_root
   elif $job == "tooling" then
     under(["tools/", ".claude/", "infra/", "docker/", "just/", "docs/decisions/"]) or just_files or backend_toolchain
-      or IN(tooling_github[])
+      or . == ".deno-version" or IN(tooling_github[])
   elif $job == "adr" then under(["docs/decisions/", "docs/stories/"]) or IN(adr_inputs[])
   elif $job == "image" then
     under(["backend/", "frontend/apps/web/", "frontend/packages/", "contracts/", "docker/"]) or frontend_root

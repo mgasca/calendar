@@ -299,6 +299,10 @@ jobs:
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@v7
+      - uses: denoland/setup-deno@22d081ff2d3a40755e97629de92e3bcbfa7cf2ed # v2.0.5
+        with:
+          deno-version-file: .deno-version
+          cache: true
       # The SDK pinned in the repo-root global.json, which the tool lock files match (ADR-0017, #645). The NuGet cache holds the tools'
       # #:package pins, which the first test app otherwise downloads on every run (#351, record 0011).
       - uses: actions/setup-dotnet@v6
@@ -342,6 +346,10 @@ jobs:
     timeout-minutes: 5
     steps:
       - uses: actions/checkout@v7
+      - uses: denoland/setup-deno@22d081ff2d3a40755e97629de92e3bcbfa7cf2ed # v2.0.5
+        with:
+          deno-version-file: .deno-version
+          cache: true
       # The SDK Tooling uses, pinned in global.json (ADR-0017); the NuGet cache holds only the adr-draft skill's #:package pins.
       - uses: actions/setup-dotnet@v6
         with:

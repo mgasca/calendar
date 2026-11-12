@@ -1,0 +1,17 @@
+{
+  "compilerOptions": { "strict": true, "noUncheckedIndexedAccess": true },
+  "lock": { "path": "deno.lock", "frozen": true },
+  "imports": {
+    "@std/assert": "jsr:@std/assert@1.0.19",
+    "@std/path": "jsr:@std/path@1.1.6",
+    "playwright": "npm:playwright@1.65.0"
+  },
+  "fmt": { "include": ["**/*.ts", "deno.json"], "exclude": ["**/fixtures/**"], "lineWidth": 120 },
+  "lint": { "include": ["**/*.ts"], "exclude": ["**/fixtures/**"] },
+  "test": { "include": ["tests/**/*_test.ts"], "exclude": ["**/fixtures/**"] },
+  "tasks": {
+    "test": "deno test --permit-no-files --no-prompt --allow-read --allow-write --allow-run --allow-env",
+    "browser-install": "deno run --no-prompt --allow-read --allow-write --allow-run --allow-env --allow-sys --allow-net npm:playwright@1.65.0 install chromium",
+    "test-browser": "deno test --no-prompt --allow-read --allow-write --allow-run --allow-env --allow-sys --allow-net=127.0.0.1 integration/playwright_test.ts"
+  }
+}

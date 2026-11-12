@@ -45,6 +45,7 @@ New UIs go under `frontend/apps/` (TypeScript) or a new top-level directory for 
 | Tool | Version source | Notes |
 | --- | --- | --- |
 | Rust | `backend/rust-toolchain.toml` | Install [rustup](https://rustup.rs); it installs the pinned toolchain (with rustfmt and clippy) the first time `cargo` runs in `backend/`. A C compiler and linker are needed too (`build-essential` on Ubuntu) |
+| Deno | `.deno-version` (exact) | Runs TypeScript repository tooling; install the pinned release from [Deno's installation guide](https://docs.deno.com/runtime/getting_started/installation/). The .NET SDK remains required during the staged migration ([ADR-0058](docs/decisions/0058-typescript-on-deno-for-repository-tooling.md)) |
 | .NET SDK | `global.json` (exact) | For the repo tools only (`tools/`, `.claude/skills/`): exactly the version in the root `global.json` (`rollForward: disable`; install it beside other SDKs). CI installs exactly that version, which the tools' lock files match ([ADR-0017](docs/decisions/0017-dotnet-file-based-apps-for-repo-tooling.md)) |
 | Node | `frontend/.node-version` | 24; use a version manager, since Ubuntu's apt `nodejs` is too old and lacks Corepack |
 | pnpm | `packageManager` in `frontend/package.json` | Provided by Corepack (bundled with Node 24); don't install it globally |
@@ -66,6 +67,10 @@ sudo apt install build-essential   # C compiler and linker, if missing
 curl -sSL https://dot.net/v1/dotnet-install.sh -o /tmp/dotnet-install.sh
 bash /tmp/dotnet-install.sh --jsonfile global.json --install-dir "$HOME/.dotnet"   # run in the repo root
 echo 'export DOTNET_ROOT=$HOME/.dotnet PATH=$HOME/.dotnet:$HOME/.dotnet/tools:$PATH' >> ~/.bashrc
+
+# Deno for TypeScript repo tooling (run from the repo root)
+curl -fsSL https://deno.land/install.sh | sh -s -- "v$(cat .deno-version)"
+echo 'export PATH=$HOME/.deno/bin:$PATH' >> ~/.bashrc
 
 # Node via fnm, which reads .node-version and switches automatically on cd
 curl -fsSL https://fnm.vercel.app/install | bash -s -- --skip-shell

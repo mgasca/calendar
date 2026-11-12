@@ -21,7 +21,7 @@
       "containers": {
         "title": "Containers and deployment",
         "description": "The parts that run, where they run and how they connect: the single container image in the Container Apps environment of a per-environment resource group, the database, the migrator, the tooling around them and the documentation site.",
-        "nodes": ["user", "operator", "google-identity", "web-app", "api-client", "openapi-contract", "calendar-api", "calendar-container", "container-apps-environment", "calendar-db", "db-migrator", "infra-tool", "github-actions", "container-registry", "azure-key-vault-app", "azure-key-vault-ops", "log-analytics", "azure-resource-group", "decision-log", "docs-site", "github-pages", "delivery-dashboard-tool", "dashboard-data-branch"]
+        "nodes": ["user", "operator", "google-identity", "web-app", "api-client", "theme-package", "openapi-contract", "calendar-api", "calendar-container", "container-apps-environment", "calendar-db", "db-migrator", "infra-tool", "github-actions", "container-registry", "azure-key-vault-app", "azure-key-vault-ops", "log-analytics", "azure-resource-group", "decision-log", "docs-site", "github-pages", "delivery-dashboard-tool", "dashboard-data-branch"]
       }
     },
     "adrs": [
@@ -129,7 +129,7 @@
           "requirement-url": "https://raw.githubusercontent.com/mgasca/calendar/main/docs/architecture/controls/contract-first.requirement.json",
           "config": {
             "contract": "contracts/openapi.json",
-            "format": "OpenAPI 3 (Microsoft.AspNetCore.OpenApi, code-first)",
+            "format": "OpenAPI 3, code-first: utoipa collects the paths and schemas, and calendar-api/src/openapi.rs rewrites them into the dialect of the committed contract (calendar-api --openapi)",
             "generated-by": "calendar-api --openapi (cargo run -p calendar-api, just contracts)",
             "regenerate-command": "just contracts",
             "staleness-gate": "CI job Backend: 'OpenAPI contract is up to date' (git diff --exit-code on contracts/); the frontend typecheck fails on a contract break",
@@ -141,7 +141,7 @@
       ]
     },
     "quality-gates": {
-      "description": "Every change passes the same gates locally (just check) and in CI: analyzers with warnings as errors, formatting, type-aware lint, tests, the EF model/migrations check, the contract check, the tooling tests and the ADR conventions check. The single required status check on main is 'CI result' (ADR-0009, ADR-0012, ADR-0036).",
+      "description": "Every change passes the same gates locally (just check) and in CI: analyzers and Clippy with warnings as errors, formatting, type-aware lint, tests (including the check that the migrated schema matches schema.rs), the contract check, the tooling tests and the ADR conventions check. The single required status check on main is 'CI result' (ADR-0009, ADR-0012, ADR-0036).",
       "requirements": [
         {
           "requirement-url": "https://raw.githubusercontent.com/mgasca/calendar/main/docs/architecture/controls/quality-gates.requirement.json",
@@ -322,7 +322,7 @@
                 "status-messages": "Confirmations use role=\"status\" (e.g. 'Dentist added for Thu 29 Oct' with a Show day link); form errors use a single role=\"alert\"",
                 "colour": "Overdue and past-due are conveyed in text as well as colour",
                 "landmarks": "Each day is a <section aria-labelledby>; hidden '+N more' events stay in the accessible list",
-                "theme": "Dark mode follows the system; plain CSS, no component library (adding one needs an ADR)",
+                "theme": "Switchable light and dark themes: semantic CSS tokens from @calendar/theme selected by a data-theme attribute, following the system until the user picks one (story 0039, ADR-0047); plain CSS, no component library (adding one needs an ADR)",
                 "small-screens": "Day, task and triage views usable on a phone; the week grid scrolls sideways (no mobile layout yet)",
                 "adrs": ["https://mgasca.github.io/calendar/adr/0009/"]
               }
@@ -349,6 +349,16 @@
       "metadata": { "adrs": ["ADR-0004", "ADR-0005"], "source": "frontend/packages/api-client" }
     },
     {
+      "unique-id": "theme-package",
+      "node-type": "library",
+      "name": "@calendar/theme",
+      "description": "TypeScript and CSS package (frontend/packages/theme) shared by the web app and the documentation site: the semantic colour tokens for the light and dark themes, selected by a data-theme attribute with a prefers-color-scheme fallback (tokens.css), the self-hosted Fontsource variable fonts (fonts.css), and the stored theme choice (THEME_STORAGE_KEY, isThemeChoice). Its tests check token contrast and that no colour literal escapes the token layer.",
+      "interfaces": [
+        { "unique-id": "theme-package-exports", "package": "@calendar/theme", "exports": [".", "./tokens.css", "./fonts.css"] }
+      ],
+      "metadata": { "adrs": ["ADR-0047", "ADR-0048", "ADR-0005"], "source": "frontend/packages/theme" }
+    },
+    {
       "unique-id": "openapi-contract",
       "node-type": "data-asset",
       "name": "OpenAPI contract",
@@ -364,12 +374,13 @@
       "name": "Calendar API",
       "description": "axum API in Rust (backend/crates/calendar-api) with a framework-free calendar-domain crate (time-zone and day-inclusion rules) and calendar-infrastructure (Diesel over diesel-async on tokio-postgres, SQL forms of the domain rules). Serves events, tasks, day and week agenda read models and Google sign-in with a cookie session; also serves the SPA's static files and index.html fallback. Every endpoint requires an authenticated user except health and sign-in.",
       "interfaces": [
-        { "unique-id": "api-http", "port": 8080, "description": "Kestrel listens on http://+:8080 inside the container; TLS terminates at the Container Apps ingress" },
+        { "unique-id": "api-http", "port": 8080, "description": "The axum server on tokio listens on http://+:8080 inside the container (ASPNETCORE_URLS, set in the image; http://localhost:5041 when unset); TLS terminates at the Container Apps ingress" },
         { "unique-id": "api-health", "path": "/api/health", "operations": ["GET /api/health"], "authentication": "anonymous" },
         { "unique-id": "api-auth", "path": "/api/auth", "operations": ["GET /api/auth/login?returnUrl=", "GET /api/auth/callback/google", "GET /api/auth/me", "POST /api/auth/logout"], "authentication": "login and callback anonymous; me and logout require the session cookie" },
         { "unique-id": "api-events", "path": "/api/events", "operations": ["POST /api/events", "GET /api/events/{id}", "PUT /api/events/{id}", "DELETE /api/events/{id}"], "authentication": "session cookie" },
         { "unique-id": "api-tasks", "path": "/api/tasks", "operations": ["GET /api/tasks?view=&today=&timeZone=&limit=&cursor=", "POST /api/tasks", "GET /api/tasks/{id}", "PUT /api/tasks/{id}", "DELETE /api/tasks/{id}", "POST /api/tasks/bulk", "POST /api/tasks/{id}/complete", "POST /api/tasks/{id}/reopen"], "authentication": "session cookie" },
         { "unique-id": "api-agenda", "path": "/api/agenda", "operations": ["GET /api/agenda/day?date=&timeZone=", "GET /api/agenda/week?date=&timeZone=&today="], "authentication": "session cookie" },
+        { "unique-id": "api-openapi-document", "path": "/openapi/v1.json", "operations": ["GET /openapi/v1.json"], "authentication": "anonymous", "description": "Development only: the OpenAPI document with the request's origin as its server URL. The route is not registered outside Development; the committed contracts/openapi.json comes from calendar-api --openapi" },
         { "unique-id": "api-static-spa", "path": "/", "description": "Static files from wwwroot (the built SPA); unknown non-file, non-/api paths return index.html with 200 and Cache-Control: no-cache; unknown /api/* paths return 404", "authentication": "anonymous" },
         { "unique-id": "api-container-image", "image": "crcalendar<suffix>.azurecr.io/calendar:<git-sha> (built from Dockerfile; gcr.io/distroless/cc-debian13 runtime, non-root user)" }
       ],
@@ -382,7 +393,7 @@
               "config": {
                 "identity-provider": "Google OpenID Connect (authorization-code flow with state, PKCE and nonce in calendar-api), callback /api/auth/callback/google",
                 "pattern": "Backend-for-frontend: the API holds the OAuth client secret and issues a same-origin cookie; the browser never sees tokens",
-                "fallback-policy": "RequireAuthenticatedUser on every endpoint (AddAuthorization FallbackPolicy)",
+                "fallback-policy": "Every handler outside health, sign-in and the static files takes a CurrentUser extractor, which answers 401 or 403 and never redirects (calendar-api/src/auth.rs)",
                 "anonymous-endpoints": ["GET /api/health", "GET /api/auth/login", "GET /api/auth/callback/google", "SPA static files and index.html fallback", "OpenAPI document (Development only)"],
                 "allow-list": {
                   "source": "Auth:AllowedEmails (Key Vault secrets allowed-email-N → Auth__AllowedEmails__N in Azure; .env locally)",
@@ -392,7 +403,7 @@
                 "session-cookie": {
                   "http-only": true,
                   "same-site": "Lax",
-                  "secure": "Always outside Development (SameAsRequest in Development)",
+                  "secure": "Always outside Development; in Development only when the request came over HTTPS",
                   "lifetime": "8 hours absolute",
                   "sliding-expiration": false,
                   "key-storage": "One 32-byte key in the session_keys table of the database, created by the API on first use; it seals the stateless session cookie (XChaCha20-Poly1305)"
@@ -405,7 +416,7 @@
           ]
         },
         "per-user-data-isolation": {
-          "description": "Every event and task belongs to one user (owner_id). CalendarDbContext applies a global query filter keyed by the signed-in user, so every read, count, ExecuteUpdate and ExecuteDelete is scoped by default; a context with no user sees nothing; another user's id answers 404 (ADR-0041).",
+          "description": "Every event and task belongs to one user (owner_id). Every event and task repository function takes the signed-in user's OwnerId and builds its query from queries::owned_events / owned_tasks, so every read, count and set-based update or delete is scoped; another user's id answers 404 (ADR-0041).",
           "requirements": [
             {
               "requirement-url": "https://raw.githubusercontent.com/mgasca/calendar/main/docs/architecture/controls/per-user-data-isolation.requirement.json",
@@ -413,9 +424,9 @@
                 "owner-column": "events.owner_id and tasks.owner_id: non-null uuid, FOREIGN KEY users(id) ON DELETE RESTRICT",
                 "identity-key": "users keyed by Google's sub claim (unique), email lower-cased and unique; resolved or created at the Google callback (calendar_infrastructure::users::resolve): by subject, else by email among rows without a subject, else the unclaimed legacy placeholder for the first allow-listed email, else a new row",
                 "scoping-mechanism": "Every event and task repository function takes an OwnerId (the user id in the session) and builds its query from queries::owned_events / owned_tasks, which start with the owner predicate; an insert refuses a row owned by anyone else",
-                "fail-closed": "No signed-in user (FixedCurrentUser.None, the migrator context, the design-time factory): the filter matches no rows; IgnoreQueryFilters is used only in tests",
-                "legacy-owner": "The PerUserOwnership migration inserts users row 11111111-1111-1111-1111-111111111111 and backfills every existing event and task to it; the first sign-in or seed run by Auth:AllowedEmails[0] claims it",
-                "session-claim": "The users.id travels in the cookie as urn:calendar:user-id; OnValidatePrincipal rejects and signs out a cookie without it (401 to API callers), so sessions issued before ADR-0041 end once",
+                "fail-closed": "There is no ambient user: a request without one never reaches a repository, because the CurrentUser extractor rejects it first, and no repository function runs without an OwnerId. Only the migrator (as calendar_migrator) and tests read the tables directly",
+                "legacy-owner": "The per_user_ownership migration inserts users row 11111111-1111-1111-1111-111111111111 and backfills every existing event and task to it; the first sign-in or seed run by Auth:AllowedEmails[0] claims it",
+                "session-claim": "The users.id travels in the sealed session ticket; a ticket without one is rejected with 401 and the cookie cleared (calendar-api/src/auth.rs, ADR-0056), so sessions issued before ADR-0041 end once",
                 "cross-user-response": "404 for GET/PUT/DELETE /api/events/{id}, GET/PUT/complete/reopen/DELETE /api/tasks/{id}; notFound outcome in POST /api/tasks/bulk by ids; filter-based bulk actions and agenda counts only ever cover the caller's rows",
                 "client-supplied-user": false,
                 "tests": [
@@ -436,9 +447,9 @@
             {
               "requirement-url": "https://raw.githubusercontent.com/mgasca/calendar/main/docs/architecture/controls/time-correctness.requirement.json",
               "config": {
-                "day-defined-by": "The client: every endpoint that judges overdue or upcoming takes today/date + timeZone, validated with FieldErrors.RequireDate / RequireTimeZone and marked required in OpenAPI (RequireQueryParameters)",
+                "day-defined-by": "The client: every endpoint that judges overdue or upcoming takes today/date + timeZone, validated with FieldErrors::require_date / require_time_zone (calendar-api/src/validation.rs) and marked required in OpenAPI",
                 "required-parameters": ["GET /api/agenda/day: date, timeZone", "GET /api/agenda/week: date, timeZone, today", "GET /api/tasks?view=upcoming|overdue: today, timeZone", "POST /api/tasks/bulk filter: today, timeZone, expectedTotal"],
-                "time-zone-ids": "IANA only; legacy aliases mapped to canonical ids from tzdata's backward table (IanaAliases); '+' must be sent as %2B",
+                "time-zone-ids": "IANA only; legacy aliases mapped to canonical ids from tzdata's backward table (calendar-domain time/iana_aliases.rs); '+' must be sent as %2B",
                 "rejected-time-zone-ids": ["Windows ids", "localtime", "unknown or hostile ids"],
                 "instants": "DateTimeOffset with an explicit offset (ExplicitOffsetConverter; missing offset → 400), normalised to UTC and stored as timestamptz; tasks have DueDate XOR DueAt (check constraint ck_tasks_due_date_xor_due_at)",
                 "floating-dates": "DateOnly stored as date; all-day events are [startDate, endDate) end-exclusive",
@@ -464,7 +475,7 @@
               "config": {
                 "isolation-level": "REPEATABLE READ",
                 "read-only": true,
-                "queries-per-read": "Four range queries (all-day events, timed events, due tasks, overdue tasks + two counts) whatever the range length; AsNoTracking projections, no N+1",
+                "queries-per-read": "Four range queries (all-day events, timed events, due tasks, overdue tasks + two counts) whatever the range length; each loads plain Diesel row structs, no N+1",
                 "single-rule-implementation": "calendar_domain::agenda::day_inclusion decides per-day membership in memory; calendar_infrastructure::queries holds the SQL forms; the agreement tests (agenda_agreement, week_agenda_agreement) prove they agree, and a week/day agreement test proves days[i] of a week equals the day agenda",
                 "adrs": ["https://mgasca.github.io/calendar/adr/0020/", "https://mgasca.github.io/calendar/adr/0024/"]
               }
@@ -523,9 +534,9 @@
                 ],
                 "logs": "Container Apps appLogsConfiguration → Log Analytics workspace law-calendar-<suffix>",
                 "log-retention-days": 30,
-                "telemetry": "Application Insights appi-calendar-<suffix> (workspace-based)",
+                "telemetry": "Application Insights appi-calendar-<suffix> (workspace-based) is provisioned, but the container app is given no connection string and the API sends it no telemetry; the API's logs reach Log Analytics through the container's standard output",
                 "audit-logs": ["Key Vault AuditEvent diagnostics for the app and ops vaults"],
-                "structured-logging": "CA1848 requires LoggerMessage source-generated logging methods",
+                "structured-logging": "tracing with tracing-subscriber's formatter at INFO, written to standard output",
                 "adrs": ["https://mgasca.github.io/calendar/adr/0029/", "https://mgasca.github.io/calendar/adr/0032/"]
               }
             }
@@ -595,9 +606,9 @@
                   "ix_events_owner_id (owner_id)"
                 ],
                 "overlap-strategy": "Generated half-open ranges queried with && / @> through Diesel's range expression methods, because a B-tree on (start, end) cannot narrow start < X AND end > Y",
-                "overdue-strategy": "Open and completed-within-today branches combined with EF Concat (UNION ALL) so each matches its own partial index (AgendaQueries.OverdueFor)",
-                "pagination-strategy": "Keyset pagination with hand-expanded seek predicates around nullable keys (TaskListQueries, TaskListCursor)",
-                "evidence": "Seed ~100k realistic rows in a throwaway Testcontainers test, ANALYZE, then EXPLAIN (ANALYZE, BUFFERS) on the SQL EF generates; put before/after plans in the PR; never commit the harness",
+                "overdue-strategy": "Open and completed-within-today branches combined with Diesel's union_all (UNION ALL) so each matches its own partial index (queries::agenda::overdue_open and overdue_completed_within)",
+                "pagination-strategy": "Keyset pagination with hand-expanded seek predicates around nullable keys (queries::task_list::for_view, endpoints/task_list_cursor.rs)",
+                "evidence": "Seed ~100k realistic rows in a throwaway Testcontainers test, ANALYZE, then EXPLAIN (ANALYZE, BUFFERS) on the SQL Diesel generates; put before/after plans in the PR; never commit the harness",
                 "measured": ["Bulk complete of 50k tasks: 1.5 s set-based vs 40 s one by one", "Bulk delete: 0.1 s vs 11 s"],
                 "adrs": ["https://mgasca.github.io/calendar/adr/0014/", "https://mgasca.github.io/calendar/adr/0052/"]
               }
@@ -638,7 +649,7 @@
       "name": "GitHub Actions (CI/CD)",
       "description": "Workflows in .github/workflows: CI (a Changes job that decides from the changed paths which jobs a pull request or merge group needs; backend, frontend, docs site, tooling, ADR conventions (the ADR check alone, for a change to the ADRs, story cards or model that runs no tooling job), container image + smoke test, cancelling a pull request's superseded runs, 'CI result'), CodeQL, dependency review, Infrastructure preview (Bicep what-if), Azure OIDC check, Database migration (manual, per environment, OIDC login) and Publish docs site (trusted workflow_run publisher for production and PR previews) and Dashboard snapshot (daily and on demand: takes and checks the delivery snapshot, commits it to the dashboard-data branch, and opens or updates the threshold issues; three jobs with separate permissions, never part of CI result).",
       "interfaces": [
-        { "unique-id": "ci-workflows", "workflows": ["ci.yml", "codeql.yml", "dependency-review.yml", "infra-whatif.yml", "azure-oidc-check.yml", "migrate.yml", "pages.yml", "dashboard-snapshot.yml"] }
+        { "unique-id": "ci-workflows", "workflows": ["ci.yml", "codeql.yml", "dependency-review.yml", "infra-whatif.yml", "azure-oidc-check.yml", "migrate.yml", "pages.yml", "dashboard-snapshot.yml", "ci-trend.yml"] }
       ],
       "controls": {
         "delivery-performance": {
@@ -830,7 +841,7 @@
       "name": "Azure Container Apps environment",
       "description": "cae-calendar-<suffix> on the Consumption workload profile hosting the single Container App ca-calendar-<suffix>: external HTTPS ingress (allowInsecure: false, transport auto) to target port 8080, single active revision, min 0 / max 1 replicas, startup/liveness/readiness probes on /api/health, logs to Log Analytics.",
       "interfaces": [
-        { "unique-id": "container-app-ingress", "url": "https://ca-calendar-<suffix>.<region>.azurecontainerapps.io/", "tls": "Terminated by the platform ingress; X-Forwarded-* headers trusted with ForwardLimit 1" }
+        { "unique-id": "container-app-ingress", "url": "https://ca-calendar-<suffix>.<region>.azurecontainerapps.io/", "tls": "Terminated by the platform ingress; of each X-Forwarded-* header only the last entry, written by the ingress, is trusted (calendar-api/src/hosting.rs)" }
       ],
       "metadata": { "ownership": "platform", "adrs": ["ADR-0029", "ADR-0030", "ADR-0032", "ADR-0035"], "region": "UK South", "source": "infra/modules/app.bicep", "cost-model": "Free within the per-subscription Consumption grant; cold starts accepted (scale to zero)" }
     },
@@ -887,7 +898,7 @@
       "relationship-type": {
         "composed-of": {
           "container": "calendar-system",
-          "nodes": ["web-app", "api-client", "openapi-contract", "calendar-api", "calendar-db", "db-migrator", "infra-tool", "decision-log", "docs-site", "delivery-dashboard-tool", "dashboard-data-branch"]
+          "nodes": ["web-app", "api-client", "theme-package", "openapi-contract", "calendar-api", "calendar-db", "db-migrator", "infra-tool", "decision-log", "docs-site", "delivery-dashboard-tool", "dashboard-data-branch"]
         }
       },
       "metadata": { "adrs": ["ADR-0001"] }
@@ -922,11 +933,11 @@
               "requirement-url": "https://raw.githubusercontent.com/mgasca/calendar/main/docs/architecture/controls/transport-security.requirement.json",
               "config": {
                 "tls-required": true,
-                "enforced-by": ["Container Apps ingress allowInsecure: false (HTTPS redirect at the platform)", "UseHsts + UseHttpsRedirection outside Development", "Cookie SecurePolicy Always outside Development"],
+                "enforced-by": ["Container Apps ingress allowInsecure: false (HTTPS redirect at the platform)", "HSTS and the HTTPS redirect in calendar-api/src/hosting.rs outside Development", "Session cookie Secure outside Development"],
                 "hsts": true,
                 "https-redirection": true,
-                "development-exception": "Plain http://localhost:5041 behind the Vite proxy; cookie Secure = SameAsRequest",
-                "forwarded-headers": { "trusted-source": "Only the Container Apps ingress (KnownProxies and KnownIPNetworks cleared)", "forward-limit": 1, "headers": ["X-Forwarded-For", "X-Forwarded-Proto", "X-Forwarded-Host"] },
+                "development-exception": "Plain http://localhost:5041 behind the Vite proxy; cookie Secure only when the request came over HTTPS",
+                "forwarded-headers": { "trusted-source": "The one proxy hop in front of the API, the Container Apps ingress", "forward-limit": 1, "headers": ["X-Forwarded-For", "X-Forwarded-Proto", "X-Forwarded-Host"] },
                 "cross-origin": "No CORS policy; the SPA is served from the same origin as /api",
                 "adrs": ["https://mgasca.github.io/calendar/adr/0003/", "https://mgasca.github.io/calendar/adr/0027/", "https://mgasca.github.io/calendar/adr/0029/", "https://mgasca.github.io/calendar/adr/0030/"]
               }
@@ -958,6 +969,28 @@
         }
       },
       "metadata": { "adrs": ["ADR-0004", "ADR-0005"], "binding": "pnpm workspace:* dependency" }
+    },
+    {
+      "unique-id": "web-app-uses-theme",
+      "description": "Imports the theme tokens, fonts and stored theme choice from",
+      "relationship-type": {
+        "connects": {
+          "source": { "node": "web-app" },
+          "destination": { "node": "theme-package", "interfaces": ["theme-package-exports"] }
+        }
+      },
+      "metadata": { "adrs": ["ADR-0047", "ADR-0048"], "binding": "pnpm workspace:* dependency" }
+    },
+    {
+      "unique-id": "docs-site-uses-theme",
+      "description": "Applies the same theme tokens and stored theme choice through a Starlight adapter, from",
+      "relationship-type": {
+        "connects": {
+          "source": { "node": "docs-site" },
+          "destination": { "node": "theme-package", "interfaces": ["theme-package-exports"] }
+        }
+      },
+      "metadata": { "adrs": ["ADR-0047", "ADR-0048"], "binding": "pnpm workspace:* dependency" }
     },
     {
       "unique-id": "api-client-generated-from-contract",
@@ -1326,7 +1359,7 @@
               "config": {
                 "identity-provider": "Google OpenID Connect",
                 "pattern": "Backend-for-frontend cookie session",
-                "fallback-policy": "RequireAuthenticatedUser",
+                "fallback-policy": "CurrentUser extractor on every non-anonymous handler",
                 "anonymous-endpoints": ["GET /api/auth/login", "GET /api/auth/callback/google"],
                 "allow-list": { "source": "Auth:AllowedEmails", "requires-verified-email": true },
                 "session-cookie": { "http-only": true, "same-site": "Lax", "secure": "Always outside Development", "lifetime": "8 hours", "sliding-expiration": false },
@@ -1348,7 +1381,7 @@
         { "relationship-unique-id": "user-uses-web-app", "sequence-number": 1, "description": "The person opens / (today) or /day/$date; the router validates the date (1900–2200) and useToday(zone) follows the clock" },
         { "relationship-unique-id": "web-app-calls-api", "sequence-number": 2, "description": "useDayAgenda calls GET /api/agenda/day?date=YYYY-MM-DD&timeZone=Area/City with the browser's IANA zone ('+' encoded as %2B); cached data is shown meanwhile (keepPreviousData)" },
         { "relationship-unique-id": "api-reads-writes-db", "sequence-number": 3, "description": "The API validates date and timeZone (400 problem details otherwise), computes the DST-correct DayWindow, opens one read-only REPEATABLE READ snapshot and runs the four range queries plus the overdue counts (overdue capped at 20)" },
-        { "relationship-unique-id": "api-reads-writes-db", "sequence-number": 4, "description": "Rows come back as AsNoTracking projections; AgendaBuilder buckets them into the day with DayInclusion and orders them (AgendaOrder)", "direction": "destination-to-source" },
+        { "relationship-unique-id": "api-reads-writes-db", "sequence-number": 4, "description": "Rows come back as plain Diesel row structs; endpoints/agenda_builder.rs buckets them into the days with the day-inclusion rules of calendar-domain and orders them (endpoints/agenda_order.rs)", "direction": "destination-to-source" },
         { "relationship-unique-id": "web-app-calls-api", "sequence-number": 5, "description": "200 DayAgendaResponse { date, timeZone, window, allDayEvents, events, tasks { overdue, overdueTotal, overdueOpenTotal, dueToday } }", "direction": "destination-to-source" },
         { "relationship-unique-id": "user-uses-web-app", "sequence-number": 6, "description": "The view renders in the viewer's zone with the now line, 'Past due' flags from the browser clock and 'View all N overdue'; it refetches on focus, every 5 minutes, at midnight and on manual Refresh, keeping the last data with a 'Couldn't refresh' notice on failure" }
       ],
@@ -1456,11 +1489,11 @@
       "transitions": [
         { "relationship-unique-id": "user-uses-web-app", "sequence-number": 1, "description": "The day view or the week's Overdue panel shows 'View all N overdue' (agendas cap the list at 20 plus the totals); the person opens the lazy-loaded /triage route" },
         { "relationship-unique-id": "web-app-calls-api", "sequence-number": 2, "description": "GET /api/tasks?view=overdue&today=&timeZone=&limit= pages with opaque keyset cursors (limit 1–200, default 50); the first page carries the authoritative total" },
-        { "relationship-unique-id": "api-reads-writes-db", "sequence-number": 3, "description": "TaskListQueries.ForView runs the keyset seek in SQL (local due date, due instant, id), fetching limit + 1 rows, and counts open overdue tasks for the first page" },
+        { "relationship-unique-id": "api-reads-writes-db", "sequence-number": 3, "description": "queries::task_list::for_view runs the keyset seek in SQL (local due date, due instant, id), fetching limit + 1 rows, and counts open overdue tasks for the first page" },
         { "relationship-unique-id": "web-app-calls-api", "sequence-number": 4, "description": "200 TaskPage { items, nextCursor, total }; rows show title, due value, priority and days overdue; notes load on demand (GET /api/tasks/{id})", "direction": "destination-to-source" },
         { "relationship-unique-id": "user-uses-web-app", "sequence-number": 5, "description": "The person selects ticked rows, 'Select all loaded' or 'Select all N overdue', picks an action and, for delete, confirms in a ConfirmDialog stating the count; a reschedule applies the DST rules (reject non-existent times, choose an ambiguous occurrence)" },
         { "relationship-unique-id": "web-app-calls-api", "sequence-number": 6, "description": "POST /api/tasks/bulk with { action, ids (chunks of ≤ 500) } or { action, filter: { view: overdue, today, timeZone, expectedTotal } }" },
-        { "relationship-unique-id": "api-reads-writes-db", "sequence-number": 7, "description": "Ids: load, apply per task (skipping deadline edits on completed tasks), save with xmin and report applied / skipped / notFound per id. Filter: SERIALIZABLE transaction, recount open overdue for today/timeZone, abort with 409 if it differs from expectedTotal, else ExecuteUpdate/ExecuteDelete set-based" },
+        { "relationship-unique-id": "api-reads-writes-db", "sequence-number": 7, "description": "Ids: load, apply per task (skipping deadline edits on completed tasks), save with xmin and report applied / skipped / notFound per id. Filter: SERIALIZABLE transaction, recount open overdue for today/timeZone, abort with 409 if it differs from expectedTotal, else one set-based UPDATE or DELETE" },
         { "relationship-unique-id": "web-app-calls-api", "sequence-number": 8, "description": "200 BulkTaskResponse { results[], applied, skipped, notFound } or 409 'The overdue task count changed' (also for serialization failures and deadlocks)", "direction": "destination-to-source" },
         { "relationship-unique-id": "user-uses-web-app", "sequence-number": 9, "description": "The UI reports what was skipped, asks the person to review the new count on 409, and invalidates the agenda queries so overdue counts and lists update on return" }
       ],

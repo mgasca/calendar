@@ -190,7 +190,7 @@ async fn delete_removes_open_and_completed_tasks_and_refuses_a_stale_version() {
   tasks::delete(&mut f.conn, OWNER, open.id(), open_version).await.unwrap();
   tasks::delete(&mut f.conn, OWNER, done.id(), done_version).await.unwrap();
   let client = f.database.migrator_client().await;
-  assert_eq!(scalar(&client, "SELECT count(*)::text FROM tasks").await, "0");
+  assert_eq!(scalar::<i64>(&client, "SELECT count(*) FROM tasks").await, 0);
 }
 
 /// Ports the data half of `OwnershipTests.AnotherUsersTask_*` and `BulkByIds_ReportsAnotherUsersTasksAsNotFound`.
@@ -230,7 +230,7 @@ async fn another_users_task_is_invisible_and_cannot_be_written() {
 
   assert_eq!(tasks::find(&mut f.conn, USER_B, theirs.id()).await.unwrap().unwrap(), their_row);
   let client = f.database.migrator_client().await;
-  assert_eq!(scalar(&client, "SELECT count(*)::text FROM tasks").await, "2");
+  assert_eq!(scalar::<i64>(&client, "SELECT count(*) FROM tasks").await, 2);
 }
 
 /// The bulk-by-ids save: each write applies if its row still has the version it was loaded with; a row that
@@ -399,7 +399,7 @@ async fn the_filtered_change_touches_exactly_the_owners_open_overdue_tasks() {
       "{action:?}"
     );
     assert_eq!(
-      scalar(&client, "SELECT completed_at::text FROM tasks WHERE title = 'completed overdue'").await,
+      scalar::<String>(&client, "SELECT completed_at::text FROM tasks WHERE title = 'completed overdue'").await,
       "2026-10-21 09:00:00+00"
     );
     assert_eq!(

@@ -1,6 +1,12 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { fileURLToPath } from 'node:url';
-import { decisionsDirectory, docsLoader, documentRoutes, resetDocumentRoutes } from './docs-loader';
+import {
+  decisionsDirectory,
+  docsLoader,
+  documentRoutes,
+  readNarratives,
+  resetDocumentRoutes,
+} from './docs-loader';
 import { fakeLoaderContext } from './fakeLoaderContext';
 
 // Counts directory listings, the first step of every corpus read.
@@ -36,5 +42,41 @@ describe('docs loader', () => {
     resetDocumentRoutes();
     expect(await documentRoutes()).not.toBe(first);
     expect(decisionListings()).toBe(2);
+  }, 60_000);
+});
+
+describe('narratives (ADR-0059)', () => {
+  const fixtures = new URL('fixtures/narratives/', import.meta.url);
+
+  it('publishes the stitched narratives only, skipping part directories and other files', async () => {
+    const { index, records } = await readNarratives(fixtures);
+    expect(index).toContain('Fixture conventions page.');
+    // calendar/ holds parts and stray-narrative.md/ is a directory: neither is read as a narrative.
+    // ticket-kata/ holds only a deck, so its stitched file is not generated from parts.
+    expect(records.map((record) => record.file)).toEqual([
+      'calendar-narrative.md',
+      'ticket-kata-narrative.md',
+    ]);
+    expect(records.map((record) => [record.slug, record.hasParts])).toEqual([
+      ['calendar', true],
+      ['ticket-kata', false],
+    ]);
+  });
+
+  it('publishes the repository narratives with an index page and an edit link per page', async () => {
+    const { entries, context } = fakeLoaderContext();
+    await docsLoader().load(context);
+    const index = entries.get('narratives');
+    expect(index).toBeDefined();
+    const { records } = await readNarratives();
+    for (const record of records) {
+      const entry = entries.get(`narratives/${record.slug}`);
+      expect(entry, record.file).toBeDefined();
+      expect(JSON.stringify(entry), record.file).toContain(
+        record.hasParts
+          ? `/tree/main/docs/narratives/${record.slug}`
+          : `/edit/main/docs/narratives/${record.file}`,
+      );
+    }
   }, 60_000);
 });

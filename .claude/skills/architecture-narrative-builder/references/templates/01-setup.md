@@ -2,7 +2,7 @@
 
 ### The problem
 
-The business problem in business terms, and the outcome the business wants.
+The business problem in business terms, and the outcome the business needs.
 
 ### Why now
 

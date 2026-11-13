@@ -138,3 +138,7 @@ Implementation:
 * Good, because **D4 Realistic API faking**: the client code still runs.
 * Bad, because **D4 Realistic API faking**: manual URL matching per test, which isn't reusable across tests or tools.
 * Neutral, because **D3 User behavior**: OK, but the setup noise obscures intent.
+
+## More Information
+
+* **Amendment, 2026-11-13:** the deferred Playwright end-to-end tests are now decided in [ADR-0061](0061-end-to-end-ui-tests-with-playwright-test-bound-to-the-architecture-flows.md): Playwright Test in `frontend/apps/e2e`, Chromium only, one test per user-facing architecture flow, run nightly and on demand. This record's choices stand: Vitest, Testing Library in jsdom and MSW remain the unit and component layer.

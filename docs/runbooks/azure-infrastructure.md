@@ -13,7 +13,7 @@ Each environment gets these resources. Tags on each resource name the app and th
 | Resource | What it is for |
 | --- | --- |
 | Log Analytics workspace | Stores operational logs, including vault audit events. |
-| Application Insights (workspace-based) | Collects telemetry from the running app. |
+| Application Insights (workspace-based) | Receives the API's traces and logs through the Container Apps OpenTelemetry agent. See [Monitoring: where to look](#monitoring-where-to-look). |
 | Azure Container Registry (Basic) | Stores container images: the packaged app. |
 | Two Key Vaults (Standard, RBAC) | Store secrets. The **app vault** holds the app's secrets. The **ops vault** holds the database administrator and role passwords. |
 | User-assigned managed identity | The identity the running app uses. Azure manages it, so the app holds no Azure password. |
@@ -227,7 +227,7 @@ After you change the references or role assignments, check in Azure that the app
 
 - S6: database roles, least-privilege grants and migrations; see the [database runbook](azure-database.md).
 - S7: publish and promote the real image.
-- S8: wire Application Insights and alerts.
+- S8 (#80): alerts and budget alerts. The telemetry route to Application Insights was delivered by #738; see [Monitoring: where to look](#monitoring-where-to-look).
 - S9: separate Google OAuth clients, credentials and allowed emails in each vault, and the redirect URIs.
 
 ## Staging database operations
@@ -273,6 +273,68 @@ While it is stopped:
 
 Burstable servers use CPU credits when they run above their baseline. Long periods of load can use up the credits and slow the server. Monitor the credits, alert on a low balance, and move to a larger SKU or tier if needed. See [compute guidance](https://learn.microsoft.com/azure/postgresql/flexible-server/concepts-compute-storage) and [stop and start](https://learn.microsoft.com/azure/postgresql/configure-maintain/how-to-stop-server).
 
+## Monitoring: where to look
+
+The API emits OpenTelemetry ([ADR-0062](../decisions/0062-opentelemetry-over-otlp-with-grafana-lgtm-locally-and-application-insights-in-azure.md)).
+
+### How the telemetry reaches Azure
+
+The Container Apps environment runs the **managed OpenTelemetry agent**.
+
+1. The agent gives the app the variables `OTEL_EXPORTER_OTLP_ENDPOINT` (gRPC on port 4317) and `OTEL_RESOURCE_ATTRIBUTES`.
+2. The API sends its traces and logs to that endpoint.
+3. The agent forwards them to Application Insights `appi-calendar-<suffix>`.
+
+Bicep also sets two variables on the app:
+
+- `OTEL_SERVICE_NAME=calendar-api`, which becomes the role name in Application Insights.
+- `OTEL_METRICS_EXPORTER=none`, because the agent does not pass metrics to Application Insights.
+
+Some things are not sent this way:
+
+- **Request metrics** come from the Container Apps platform metrics.
+- **The API's console output** still goes to Log Analytics, as before.
+- **The web app** sends no telemetry in Azure.
+
+Alerts and budgets are [#80](https://github.com/mgasca/calendar/issues/80).
+
+| What you want | Where to look |
+| --- | --- |
+| One request, from start to finish | Application Insights → **Transaction search**, or **Search** by operation ID. The operation ID is the W3C trace ID. A request is a `requests` row (the server span, named `<METHOD> <route template>`, for example `GET /api/agenda/day`). Its database queries are `dependencies` rows (named `<operation> <table>`, for example `SELECT events`). |
+| The logs of a request | Application Insights → **Logs**: `traces | where operation_Id == "<trace id>"`. In the workspace, the same rows are in `AppTraces`. |
+| Failed requests | Application Insights → **Failures**, or `requests | where success == false`. A 5xx has `error.type` set to the status code. |
+| Request counts and durations | The container app → **Metrics**: **Requests** (split by status code) and **Response time**. |
+| Console output, startup and probe failures | Log Analytics `law-calendar-<suffix>`: `ContainerAppConsoleLogs_CL`, and `ContainerAppSystemLogs_CL` for the platform. |
+
+What the telemetry may contain:
+
+- route templates, methods, status codes and durations;
+- database operation, table and statement shape, without bind values;
+- log messages and severities;
+- trace and span IDs.
+
+It never contains emails, names, titles, locations, notes, query-string values, cookies or tokens. An attribute allow-list in the API enforces this, and `backend/crates/calendar-api/tests/telemetry.rs` tests it.
+
+### Check telemetry in staging (owner)
+
+Run this after a revision that includes #731 is deployed to staging. Use only synthetic data.
+
+1. In the staging app, sign in and run a flow: add an event with a made-up title, location and notes, then open its day.
+2. In Application Insights, open **Transaction search**. Find the `POST /api/events` request. Check that it shows `SELECT` / `INSERT` dependencies under the same operation. Open the `traces` of that operation ID.
+3. In **Logs**, scan the last hour of telemetry for the values you typed and for your email. Replace the placeholders, then run:
+
+   ```kusto
+   let values = dynamic(["<your email>", "<event title>", "<location>", "<notes>"]);
+   union requests, dependencies, traces, exceptions
+   | where timestamp > ago(1h)
+   | extend text = strcat(name, " ", tostring(customDimensions), " ", message, " ", url, " ", data, " ", target)
+   | where text has_any (values)
+   | project timestamp, itemType, name, operation_Id
+   ```
+
+   The query must return no rows.
+4. Record the result on [#738](https://github.com/mgasca/calendar/issues/738): the revision, the trace you found, and the query result.
+
 ## Estimated monthly costs
 
 These are example USD retail prices from the [Microsoft retail prices API](https://prices.azure.com/api/retail/prices) for UK South on 2026-10-29. They exclude tax, discounts and currency conversion. They are not a quote and not a spending cap.
@@ -284,6 +346,8 @@ These are example USD retail prices from the [Microsoft retail prices API](https
 | PostgreSQL Flexible Server | Storage Data Stored | $0.133/GB-month |
 | PostgreSQL Flexible Server | Backup Storage LRS Data Stored | $0.10/GB-month |
 | Log Analytics | Analytics Logs Data Ingestion | $2.88/GB (a $0 free-tier meter also exists) |
+
+Application Insights is workspace-based, so the API's traces and logs are billed as ingestion into the same workspace, at the meter above. The OpenTelemetry agent has no compute charge of its own.
 | Key Vault | Operations | $0.03/10,000 operations |
 
 Assumptions per environment: 730 compute hours, 30 registry days, 32 GB storage, backups within the included storage, 1 GB of logs within the free allowance, 20,000 vault operations (10,000 per vault), and Container Apps usage within the subscription's shared free grant ([ADR-0029](../decisions/0029-azure-container-apps-compute-platform.md)). The second vault adds no fixed charge, only its operations ($0.03).
@@ -300,4 +364,4 @@ Staging and production together cost about **$46.37/month**. The staging figure 
 
 ## Not yet verified live
 
-When this runbook was written, nothing had been deployed or previewed against the subscription. On the first run, the owner must also check: role propagation, image pulls, secret resolution, health probes, network access, PostgreSQL TLS, and costs and quotas in Azure.
+When this runbook was written, nothing had been deployed or previewed against the subscription. The OpenTelemetry agent (#738) has not been previewed or deployed either: its what-if, and the staging check in [Monitoring: where to look](#monitoring-where-to-look), are the owner's. On the first run, the owner must also check: role propagation, image pulls, secret resolution, health probes, network access, PostgreSQL TLS, and costs and quotas in Azure.

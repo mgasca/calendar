@@ -383,3 +383,21 @@ async fn a_caller_cannot_switch_off_tracing_with_an_unsampled_traceparent() {
     "its database spans are recorded too"
   );
 }
+
+#[tokio::test]
+async fn health_probes_are_counted_but_not_traced() {
+  let capture = Capture::start();
+  let app = TestApp::builder().meter(capture.meter()).start().await;
+
+  // The Container Apps probes call this every few seconds per replica; a span each would be most of the telemetry.
+  let response = app.client().header("traceparent", TRACEPARENT).get("/api/health").await;
+  assert_eq!(response.status, StatusCode::OK);
+
+  let spans = capture.spans();
+  assert!(spans.is_empty(), "no span for a health probe: {spans:#?}");
+  let points = capture.request_metrics();
+  assert!(
+    points.contains(&("GET".to_owned(), Some("/api/health".to_owned()), 200, 1)),
+    "{points:#?}"
+  );
+}

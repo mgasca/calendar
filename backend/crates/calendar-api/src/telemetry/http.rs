@@ -17,6 +17,10 @@ use tracing_opentelemetry::OpenTelemetrySpanExt;
 
 use crate::state::AppState;
 
+/// The route of the startup, liveness and readiness probes. It is counted but not traced: the probes call it every
+/// few seconds per replica, so a span each would be most of what the API exports.
+const HEALTH_ROUTE: &str = "/api/health";
+
 /// The OpenTelemetry semantic-convention buckets for `http.server.request.duration`, in seconds.
 const DURATION_BUCKETS: [f64; 14] = [0.005, 0.01, 0.025, 0.05, 0.075, 0.1, 0.25, 0.5, 0.75, 1.0, 2.5, 5.0, 7.5, 10.0];
 
@@ -86,6 +90,15 @@ impl Extractor for HeaderExtractor<'_> {
 pub async fn middleware(State(state): State<AppState>, request: Request, next: Next) -> Response {
   let method = method_name(request.method());
   let route = request.extensions().get::<MatchedPath>().map(|path| path.as_str().to_owned());
+  if route.as_deref() == Some(HEALTH_ROUTE) {
+    let started = Instant::now();
+    let response = next.run(request).await;
+    let status = response.status().as_u16();
+    state
+      .http_metrics()
+      .record(started.elapsed().as_secs_f64(), method, route.as_deref(), status);
+    return response;
+  }
   let name = match &route {
     Some(route) => format!("{method} {route}"),
     None => method.to_owned(),

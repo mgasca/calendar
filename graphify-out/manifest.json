@@ -4044,9 +4044,9 @@
     "semantic_hash": ""
   },
   "docs/stories/0063-build-architecture-narratives-with-an-expert-panel.md": {
-    "mtime": 1794570245.2830865,
-    "seen": 1794570504.891035,
-    "ast_hash": "45d5d07efa396632e64ff266f1cec78e",
+    "mtime": 1794570970.3561304,
+    "seen": 1794570986.3363128,
+    "ast_hash": "0b123eb9976173fe1a015384d5a6e101",
     "semantic_hash": ""
   },
   "tools/narrative-panel/tests/fixtures/school-library/01-setup.md": {

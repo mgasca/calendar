@@ -4110,9 +4110,9 @@
     "semantic_hash": ""
   },
   ".claude/workflows/narrative-panel.js": {
-    "mtime": 1794567519.5084622,
-    "seen": 1794567565.5199993,
-    "ast_hash": "e971b1ee9df8a6022a94f4a0f0a928b0",
+    "mtime": 1794569354.9218874,
+    "seen": 1794569392.4001827,
+    "ast_hash": "50805d8af9d35b0aeeabc4da3dc1a186",
     "semantic_hash": ""
   },
   "tools/delivery-guards/delivery-guards.ts": {
@@ -4158,9 +4158,9 @@
     "semantic_hash": ""
   },
   "tools/narrative-panel/tests/narrative-panel_test.ts": {
-    "mtime": 1794567519.5144846,
-    "seen": 1794567565.5215664,
-    "ast_hash": "8c22d9c346cec55a490205712891a286",
+    "mtime": 1794569354.977241,
+    "seen": 1794569392.497764,
+    "ast_hash": "efd71026d59867a20d0428164e36a202",
     "semantic_hash": ""
   },
   "tools/tool-versions/tests/tool-versions_test.ts": {

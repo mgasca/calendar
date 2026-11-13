@@ -159,6 +159,17 @@ Deno.test("every agent is the read-only narrative-expert, with the phase's schem
   assert(calls.find((c) => c.opts.label === "questions:end-user")!.prompt.includes("references/experts/end-user.md"));
 });
 
+Deno.test("rebuttals re-read only the parts a peer cites; round 1 reads them all", async () => {
+  const { calls } = await run(PANEL, standardAnswer);
+  const reread = "Re-read a part only when a peer's point cites it";
+  const rebuttals = calls.filter((c) => c.opts.phase === "Rebuttal");
+  assertEquals(rebuttals.length, 4);
+  for (const c of rebuttals) assert(c.prompt.includes(reread), `${c.opts.label} limits its part reads`);
+  for (const c of calls.filter((x) => x.opts.phase === "Panel")) {
+    assertEquals(c.prompt.includes(reread), false, `${c.opts.label} reads every part`);
+  }
+});
+
 Deno.test("the alternatives phase lists the alternatives and uses the verdict schema", async () => {
   const args = {
     ...PANEL,
@@ -172,6 +183,10 @@ Deno.test("the alternatives phase lists the alternatives and uses the verdict sc
   const c = calls.find((x) => x.opts.label === "alternatives:cost")!;
   assert(c.prompt.includes("- A1: Hosted") && c.prompt.includes("- A2: Own app"));
   assertExists((c.opts.schema!.properties as Record<string, unknown>).verdicts);
+  assert(c.prompt.includes("from 0 (does not meet) to 3 (fully meets) in half steps"));
+  // deno-lint-ignore no-explicit-any
+  const rating = (c.opts.schema as any).properties.verdicts.items.properties.rating;
+  assertEquals([rating.type, rating.minimum, rating.maximum, rating.multipleOf], ["number", 0, 3, 0.5]);
 });
 
 Deno.test("invalid args return reasons and start no agent", async () => {

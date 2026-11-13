@@ -1,7 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import {
   deployment,
+  narrativeStatusCategory,
   parseAgentThoughts,
+  parseNarratives,
   parseBenchmarks,
   parseLog,
   parseRunbooks,
@@ -446,6 +448,170 @@ describe('agent thought links', () => {
   it('fails links to reports that are not published', () => {
     expect(() => rewrite('0002-missing.md', 'docs/agent-thoughts/README.md')).toThrow(
       'Broken document link',
+    );
+  });
+});
+
+describe('filesystem narratives (ADR-0059)', () => {
+  const narrative = [
+    '---',
+    'system: Calendar',
+    'audience: Review board',
+    'date: 2026-11-13',
+    'status: draft',
+    'slides: slides/calendar/',
+    '---',
+    '<!-- Generated from docs/narratives/calendar/ -->',
+    '',
+    '# Calendar architecture narrative',
+    '',
+    '## Act 1: Setup',
+  ].join('\n');
+  const parse = (text: string, file = 'calendar-narrative.md') =>
+    parseNarratives(new Map([[file, text]]));
+
+  it('reads the system, audience, date, status, deck and title, keeping the note before the title', () => {
+    const [record] = parse(narrative);
+    expect(record).toMatchObject({
+      slug: 'calendar',
+      file: 'calendar-narrative.md',
+      title: 'Calendar architecture narrative',
+      system: 'Calendar',
+      audience: 'Review board',
+      date: '2026-11-13',
+      status: 'draft',
+      slides: 'slides/calendar/',
+    });
+    expect(record?.body).toContain('<!-- Generated from docs/narratives/calendar/ -->');
+    expect(record?.body).toContain('## Act 1: Setup');
+    expect(record?.body).not.toContain('# Calendar architecture narrative');
+  });
+
+  it('accepts a quoted date, no deck and an empty collection', () => {
+    const [record] = parse(
+      narrative.replace('date: 2026-11-13', "date: '2026-11-13'").replace(/^slides:.*\n/m, ''),
+    );
+    expect(record?.date).toBe('2026-11-13');
+    expect(record?.slides).toBeUndefined();
+    expect(parseNarratives(new Map())).toEqual([]);
+  });
+
+  it('orders narratives by file name', () => {
+    const other = narrative
+      .replace('system: Calendar', 'system: Ticket kata')
+      .replace(/^slides:.*\n/m, '');
+    const records = parseNarratives(
+      new Map([
+        ['ticket-kata-narrative.md', other],
+        ['calendar-narrative.md', narrative],
+      ]),
+    );
+    expect(records.map((record) => record.slug)).toEqual(['calendar', 'ticket-kata']);
+  });
+
+  it.each([
+    ['Calendar-narrative.md'],
+    ['calendar.md'],
+    ['calendar--x-narrative.md'],
+    ['-narrative.md'],
+    ['01-setup.md'],
+  ])('rejects the file name %s', (file) => {
+    expect(() => parse(narrative, file)).toThrow('Invalid narrative filename');
+  });
+
+  it.each([
+    ['system: Calendar\n', '', 'Missing narrative system'],
+    ['system: Calendar', 'system: " "', 'Missing narrative system'],
+    ['audience: Review board\n', '', 'Missing narrative audience'],
+    ['date: 2026-11-13', 'date: 13/11/2026', 'Narrative date must be YYYY-MM-DD'],
+    ['date: 2026-11-13\n', '', 'Narrative date must be YYYY-MM-DD'],
+    ['status: draft', 'status: proposed', 'Narrative status must be draft or final'],
+    [
+      'slides: slides/calendar/',
+      'slides: slides/other/',
+      'Narrative slides must be slides/calendar/',
+    ],
+    ['slides: slides/calendar/', 'slides: /slides/calendar/', 'Narrative slides must be'],
+    ['slides: slides/calendar/', 'slides: true', 'Narrative slides must be'],
+    ['status: draft', 'status: draft\nowner: me', 'Unknown narrative front matter owner'],
+    ['## Act 1: Setup', '# Second title', 'Expected one title'],
+  ])('rejects %j replaced by %j', (from, to, message) => {
+    expect(() => parse(narrative.replace(from, to))).toThrow(message);
+  });
+
+  it('rejects two narratives of the same system, ignoring case', () => {
+    expect(() =>
+      parseNarratives(
+        new Map([
+          ['calendar-narrative.md', narrative],
+          [
+            'calendar-app-narrative.md',
+            narrative.replace('system: Calendar', 'system: calendar').replace(/^slides:.*\n/m, ''),
+          ],
+        ]),
+      ),
+    ).toThrow(
+      'Duplicate narrative of Calendar: calendar-app-narrative.md and calendar-narrative.md',
+    );
+  });
+
+  it.each([
+    ['final', 'accepted'],
+    ['draft', 'draft'],
+  ])('styles narrative status %s as %s', (status, category) => {
+    expect(narrativeStatusCategory(status)).toBe(category);
+  });
+});
+
+describe('narrative links', () => {
+  const base = '/calendar/';
+  const links = new Map([
+    ['docs/narratives/README.md', 'narratives/'],
+    ['docs/narratives/calendar-narrative.md', 'narratives/calendar/'],
+    ['docs/decisions/0001-test.md', 'adr/0001/'],
+  ]);
+  const rewrite = (url: string, from: string) => rewriteLink(url, base, links, from);
+  it('routes links between the narratives, their index and the other collections', () => {
+    expect(rewrite('calendar-narrative.md#act-1', 'docs/narratives/README.md')).toBe(
+      `${base}narratives/calendar/#act-1`,
+    );
+    expect(rewrite('README.md', 'docs/narratives/calendar-narrative.md')).toBe(
+      `${base}narratives/`,
+    );
+    expect(rewrite('../decisions/0001-test.md', 'docs/narratives/calendar-narrative.md')).toBe(
+      `${base}adr/0001/`,
+    );
+    expect(rewrite('../narratives/calendar-narrative.md', 'docs/decisions/0001-test.md')).toBe(
+      `${base}narratives/calendar/`,
+    );
+  });
+  it('fails links to unpublished narratives and to Markdown parts', () => {
+    for (const url of ['other-narrative.md', 'calendar/01-setup.md', 'calendar/ledger.md']) {
+      expect(() => rewrite(url, 'docs/narratives/calendar-narrative.md'), url).toThrow(
+        'Broken document link',
+      );
+    }
+    expect(() =>
+      rewrite('../narratives/calendar/slides.md', 'docs/decisions/0001-test.md'),
+    ).toThrow('Broken document link');
+  });
+  it('sends the link to a linked deck source to the published deck, and fails an unlinked one', async () => {
+    const { narrativeRoutes } = await import('./docs-loader');
+    const routes = new Map([
+      ...links,
+      ...narrativeRoutes([
+        { file: 'calendar-narrative.md', slug: 'calendar', slides: 'slides/calendar/' },
+        { file: 'kata-narrative.md', slug: 'kata' },
+      ]),
+    ]);
+    const from = 'docs/narratives/calendar-narrative.md';
+    expect(rewriteLink('calendar/slides.md', base, routes, from)).toBe(`${base}slides/calendar/`);
+    expect(rewriteLink('kata-narrative.md', base, routes, from)).toBe(`${base}narratives/kata/`);
+    expect(() => rewriteLink('kata/slides.md', base, routes, from)).toThrow('Broken document link');
+  });
+  it('sends a diagram source to GitHub like other repository files', () => {
+    expect(rewrite('calendar/context.mmd', 'docs/narratives/calendar-narrative.md')).toBe(
+      'https://github.com/mgasca/calendar/blob/main/docs/narratives/calendar/context.mmd',
     );
   });
 });

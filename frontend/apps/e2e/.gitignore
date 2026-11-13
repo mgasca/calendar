@@ -1,0 +1,3 @@
+# Playwright output (the HTML report and the per-test traces, kept on failure)
+playwright-report/
+test-results/

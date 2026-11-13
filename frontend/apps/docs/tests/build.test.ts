@@ -326,7 +326,12 @@ describe('published narratives (ADR-0059)', () => {
       const html = await readFile(`dist/narratives/${record.slug}/index.html`, 'utf8');
       expect(html).toContain(`<strong>System:</strong> ${record.system}`);
       expect(html).toContain(`<strong>Status:</strong> ${record.status}`);
-      if (record.slides) expect(html).toContain(`href="${base}${record.slides}"`);
+      if (record.slides) {
+        // The deck was built into the site for this base (ADR-0060); the link check above follows the link.
+        expect(html).toContain(`href="${base}${record.slides}"`);
+        const deck = await readFile(`dist/${record.slides}index.html`, 'utf8');
+        expect(deck).toContain(`${base}${record.slides}assets/`);
+      }
     }
     // Part directories are never published: the only pages under narratives/ are the routes above.
     const published = (await pages('dist/narratives')).sort();
@@ -335,6 +340,18 @@ describe('published narratives (ADR-0059)', () => {
         .map((path) => join(path))
         .sort(),
     );
+  });
+});
+
+describe('published decks (ADR-0060)', () => {
+  it('publishes a deck under slides/ for exactly the narratives that link one', async () => {
+    const { records } = await readNarratives();
+    const linked = records.flatMap((record) => (record.slides ? [record.slug] : [])).sort();
+    const built = await readdir('dist/slides').then(
+      (names) => names.sort(),
+      () => [],
+    );
+    expect(built).toEqual(linked);
   });
 });
 

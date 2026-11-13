@@ -1,0 +1,25 @@
+{
+  "name": "slidev-theme-calendar",
+  "version": "0.0.0",
+  "private": true,
+  "description": "The Calendar light and dark themes for narrative decks (ADR-0047, ADR-0060)",
+  "keywords": [
+    "slidev-theme",
+    "slidev"
+  ],
+  "engines": {
+    "slidev": ">=53.0.0"
+  },
+  "slidev": {
+    "colorSchema": "both",
+    "defaults": {
+      "favicon": "",
+      "fonts": {
+        "provider": "none",
+        "sans": "Plus Jakarta Sans Variable",
+        "serif": "Fraunces Variable",
+        "mono": "ui-monospace"
+      }
+    }
+  }
+}

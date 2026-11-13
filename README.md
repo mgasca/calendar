@@ -107,7 +107,9 @@ Signing in needs either a Google OAuth client ([backend README](backend/README.m
 
 | Service | Dev / test provisioning | Production | ADR |
 | --- | --- | --- | --- |
-| PostgreSQL 18 | Docker Compose (localhost only) / Testcontainers | Azure Database for PostgreSQL Flexible Server | [0014](docs/decisions/0014-postgresql-database-engine.md), [0031](docs/decisions/0031-azure-postgresql-flexible-server.md), [0037](docs/decisions/0037-postgresql-only-no-sqlite-fallback.md), [0016](docs/decisions/0016-local-database-provisioning.md) |
+| PostgreSQL 18 | Docker Compose (localhost only) / Testcontainers | Azure Database for PostgreSQL Flexible Server | [0014](docs/decisions/0014-postgresql-database-engine.md), [0031](docs/decisions/0031-azure-postgresql-flexible-server.md), [0037](docs/decisions/0037-postgresql-only-no-sqlite-fallback.md), [0063](docs/decisions/0063-docker-compose-profiles-for-local-backing-services-instead-of-aspire.md) |
+| Grafana LGTM (OpenTelemetry collector, Tempo, Loki, Prometheus, Grafana) | Docker Compose profile `observability` (opt-in, localhost only) / every E2E stack | Not deployed: Application Insights in Azure | [0062](docs/decisions/0062-opentelemetry-over-otlp-with-grafana-lgtm-locally-and-application-insights-in-azure.md), [0063](docs/decisions/0063-docker-compose-profiles-for-local-backing-services-instead-of-aspire.md) |
+| Stub OpenID Connect provider (`navikt/mock-oauth2-server`) | Docker Compose profile `sign-in-stub` (opt-in, localhost only, Development only) / every E2E stack | Not deployed: Google | [0064](docs/decisions/0064-stub-oidc-provider-for-sign-in-tests.md), [0063](docs/decisions/0063-docker-compose-profiles-for-local-backing-services-instead-of-aspire.md) |
 
 ### Local database
 
@@ -118,7 +120,19 @@ just db migrate   # applies the migrations as calendar_migrator (the calendar-mi
 
 `.env` is untracked and holds disposable local passwords. The roles, the API's connection string and the database recipes are described in the [backend README](backend/README.md#local-database).
 
-> **Adding a backing service?** Re-evaluate .NET Aspire for local orchestration before wiring it into Docker Compose by hand, and add a row here. See [ADR-0016](docs/decisions/0016-local-database-provisioning.md).
+### Optional services and the end-to-end stack
+
+```sh
+just db observability   # Grafana LGTM on 127.0.0.1:3000 (OTLP on 4317/4318); prints the API's OTEL_* settings
+just db sign-in-stub    # a stub OpenID Connect provider standing in for Google, for Development only
+just e2e up             # a throwaway stack (PostgreSQL, LGTM, stub, API, built web app) on its own ports
+just e2e check          # health, database, OTLP endpoint and a sign-in through the stub
+just e2e down           # removes only this checkout's runs
+```
+
+`just e2e` never touches the shared `calendar` project, its volume or port 5432. The [local stack runbook](docs/runbooks/local-stack-and-e2e.md) covers ports, settings and troubleshooting.
+
+> **Adding a backing service?** Add it to `compose.yaml` under a profile, bound to 127.0.0.1, and add a row here. Re-evaluate an orchestrator such as Aspire when the local stack needs more application processes than the API and the web app, or service discovery between them. See [ADR-0063](docs/decisions/0063-docker-compose-profiles-for-local-backing-services-instead-of-aspire.md).
 
 ## Authentication and limitations
 

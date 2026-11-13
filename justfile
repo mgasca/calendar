@@ -16,8 +16,11 @@ mod frontend
 # Documentation site (ADRs, stories, architecture, runbooks, benchmarks)
 mod docs 'frontend/apps/docs'
 
-# Local PostgreSQL through Docker Compose (ADR-0016)
+# Local PostgreSQL, and the opt-in LGTM and stub sign-in services, through Docker Compose (ADR-0063)
 mod db
+
+# Throwaway end-to-end stacks, one Compose project per run (ADR-0063)
+mod e2e
 
 # Container image
 mod image

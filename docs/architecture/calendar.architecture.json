@@ -542,7 +542,7 @@
                 ],
                 "logs": "Container Apps appLogsConfiguration → Log Analytics workspace law-calendar-<suffix>",
                 "log-retention-days": 30,
-                "telemetry": "Application Insights appi-calendar-<suffix> (workspace-based) is provisioned, but the container app is given no connection string and the API sends it no telemetry; the API's logs reach Log Analytics through the container's standard output",
+                "telemetry": "The Container Apps environment runs the managed OpenTelemetry agent (appInsightsConfiguration and openTelemetryConfiguration in infra/modules/app.bicep): it receives the API's OTLP over gRPC and sends traces and logs to Application Insights appi-calendar-<suffix> (workspace-based); the app sets OTEL_SERVICE_NAME=calendar-api and OTEL_METRICS_EXPORTER=none, request metrics come from the Container Apps platform metrics, and the API's console output still reaches Log Analytics (#738)",
                 "audit-logs": ["Key Vault AuditEvent diagnostics for the app and ops vaults"],
                 "structured-logging": "tracing with tracing-subscriber's formatter at INFO, written to standard output",
                 "telemetry-decision": {
@@ -555,7 +555,7 @@
                   "destinations": {
                     "local": "grafana/otel-lgtm, opt-in (Compose profile observability)",
                     "e2e": "grafana/otel-lgtm in each throwaway stack",
-                    "azure": "API traces and logs to Application Insights appi-calendar-<suffix> through the Container Apps managed OpenTelemetry agent; request metrics from Container Apps platform metrics; web telemetry not exported (#738)"
+                    "azure": "API traces and logs to Application Insights appi-calendar-<suffix> through the Container Apps managed OpenTelemetry agent, configured in Bicep (#738); request metrics from Container Apps platform metrics; web telemetry not exported. Where to look: docs/runbooks/azure-infrastructure.md, Monitoring: where to look"
                   },
                   "privacy": {
                     "allowed-attributes": ["service name and version", "route template", "HTTP method", "status code", "durations", "database system, operation and table", "error kind and message template", "opaque ids (trace, span, event or task UUID)"],

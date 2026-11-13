@@ -1,7 +1,7 @@
 //! The event repository against a real database: round trips, optimistic concurrency by `xmin`, and what a
 //! write that matches no row means.
 
-use calendar_infrastructure::{Error, OwnerId, RowVersion, events};
+use calendar_infrastructure::{Error, RowVersion, events};
 use uuid::Uuid;
 
 use crate::repositories::{OWNER, SqlLog, USER_B, all_day_event, date, fixture, timed_event, utc};
@@ -266,5 +266,4 @@ async fn an_event_can_only_be_inserted_for_its_own_owner() {
   assert_eq!(scalar(&client, "SELECT count(*)::text FROM events").await, "0");
   // The message is the .NET context's.
   assert_eq!(Error::OwnerMismatch.to_string(), "A row can only be added for the signed-in user.");
-  let _ = OwnerId(theirs.owner_id());
 }

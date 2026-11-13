@@ -5,7 +5,8 @@
 use base64::Engine;
 use base64::engine::general_purpose::URL_SAFE_NO_PAD;
 use calendar_infrastructure::queries::task_list::TaskListKey;
-use serde_json::{Map, Value, json};
+use serde::Serialize;
+use serde_json::Value;
 use uuid::Uuid;
 
 use crate::wire;
@@ -61,14 +62,29 @@ impl TryFrom<i64> for TaskListViewKind {
   }
 }
 
+/// The JSON a cursor encodes, with the .NET property names in the .NET order.
+#[derive(Serialize)]
+#[serde(rename_all = "PascalCase")]
+struct CursorPayload {
+  view: i64,
+  id: String,
+  due_date: Option<String>,
+  instant: Option<String>,
+}
+
 /// The cursor that continues `view` after the task with `key`.
+///
+/// # Panics
+///
+/// Never: the payload is a number and strings, which always serialize.
 pub fn encode(view: TaskListViewKind, key: &TaskListKey) -> String {
-  let mut payload = Map::new();
-  payload.insert("View".to_owned(), json!(view.number()));
-  payload.insert("Id".to_owned(), json!(key.id.to_string()));
-  payload.insert("DueDate".to_owned(), json!(key.due_date.map(|date| date.to_string())));
-  payload.insert("Instant".to_owned(), json!(key.instant.map(wire::format_instant)));
-  URL_SAFE_NO_PAD.encode(Value::Object(payload).to_string())
+  let payload = CursorPayload {
+    view: view.number(),
+    id: key.id.to_string(),
+    due_date: key.due_date.map(|date| date.to_string()),
+    instant: key.instant.map(wire::format_instant),
+  };
+  URL_SAFE_NO_PAD.encode(serde_json::to_vec(&payload).expect("a cursor payload always serializes"))
 }
 
 /// Decodes a cursor issued for `view`; `None` when it is malformed, incomplete or for another view.

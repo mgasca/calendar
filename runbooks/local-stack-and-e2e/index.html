@@ -143,7 +143,7 @@
 
 
 
-<table><thead><tr><th>Offset</th><th>Service</th></tr></thead><tbody><tr><td>17</td><td>OTLP gRPC</td></tr><tr><td>18</td><td>OTLP HTTP (the API’s <code>OTEL_EXPORTER_OTLP_ENDPOINT</code>, the web app’s <code>CALENDAR_OTLP_URL</code>)</td></tr><tr><td>20</td><td>Tempo</td></tr><tr><td>30</td><td>Grafana</td></tr><tr><td>31</td><td>Loki</td></tr><tr><td>32</td><td>PostgreSQL</td></tr><tr><td>41</td><td>API</td></tr><tr><td>73</td><td>Web app (<code>vite preview</code>)</td></tr><tr><td>80</td><td>Stub OpenID Connect provider (issuer <code>/google</code>)</td></tr><tr><td>90</td><td>Prometheus</td></tr></tbody></table>
+<table><thead><tr><th>Offset</th><th>Service</th></tr></thead><tbody><tr><td>17</td><td>OTLP gRPC</td></tr><tr><td>18</td><td>OTLP HTTP (the API’s <code>OTEL_EXPORTER_OTLP_ENDPOINT</code>, the web app’s <code>CALENDAR_OTLP_URL</code>); the API pushes metrics every 5 s here (<code>OTEL_METRIC_EXPORT_INTERVAL</code>)</td></tr><tr><td>20</td><td>Tempo</td></tr><tr><td>30</td><td>Grafana</td></tr><tr><td>31</td><td>Loki</td></tr><tr><td>32</td><td>PostgreSQL</td></tr><tr><td>41</td><td>API</td></tr><tr><td>73</td><td>Web app (<code>vite preview</code>)</td></tr><tr><td>80</td><td>Stub OpenID Connect provider (issuer <code>/google</code>)</td></tr><tr><td>90</td><td>Prometheus</td></tr></tbody></table>
 <p>For example, slot 2 serves the web app on <a href="http://127.0.0.1:55273">http://127.0.0.1:55273</a> and the API on <a href="http://127.0.0.1:55241">http://127.0.0.1:55241</a>. Set <code>CALENDAR_E2E_SLOT</code> to use one slot only.</p>
 <h2 id="what-a-run-never-touches">What a run never touches</h2>
 <ul>

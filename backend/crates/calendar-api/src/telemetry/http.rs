@@ -21,6 +21,28 @@ use crate::state::AppState;
 /// few seconds per replica, so a span each would be most of what the API exports.
 const HEALTH_ROUTE: &str = "/api/health";
 
+/// The target of the per-request log record (its module), which is exported over OTLP but not printed on standard
+/// output.
+pub const REQUEST_LOG_TARGET: &str = "calendar_api::telemetry::http::request_log";
+
+/// The per-request log record, in a module of its own so its target tells it apart.
+mod request_log {
+  /// Logs that a request finished, with only allow-listed fields: never the path's values or the query.
+  pub fn finished(method: &'static str, route: Option<&str>, status: u16) {
+    tracing::info!(
+      http.request.method = method,
+      http.route = route,
+      http.response.status_code = status,
+      "request finished"
+    );
+  }
+
+  #[test]
+  fn the_target_is_this_module() {
+    assert_eq!(module_path!(), super::REQUEST_LOG_TARGET);
+  }
+}
+
 /// The OpenTelemetry semantic-convention buckets for `http.server.request.duration`, in seconds.
 const DURATION_BUCKETS: [f64; 14] = [0.005, 0.01, 0.025, 0.05, 0.075, 0.1, 0.25, 0.5, 0.75, 1.0, 2.5, 5.0, 7.5, 10.0];
 
@@ -129,14 +151,7 @@ pub async fn middleware(State(state): State<AppState>, request: Request, next: N
   // One log record per traced request, inside its span, so the request's logs carry its trace id even when it
   // succeeds (ADR-0062: a flow's logs are found by its trace id). Only allow-listed fields; never the path or query.
   if !span.is_disabled() {
-    span.in_scope(|| {
-      tracing::info!(
-        http.request.method = method,
-        http.route = route.as_deref(),
-        http.response.status_code = status,
-        "request finished"
-      );
-    });
+    span.in_scope(|| request_log::finished(method, route.as_deref(), status));
   }
   state
     .http_metrics()

@@ -33,7 +33,7 @@ Ask only for what is missing, in the first question batch:
 | --- | --- | --- |
 | build (default) | "write/build a narrative" | Interview, quality checks, then `just tools narratives --remove-parts <system>`: only `<system>-narrative.md` remains (and `slides.md` when a deck exists). |
 | keep-parts | "keep the parts", "so I can edit acts later" | As build, but `just tools narratives <system>`: the parts and ledger stay committed, and the published file carries a generated-file note. |
-| stitch-only | "restitch", "I edited Act 2" | No interview. Run the quality checks on the existing parts, then `just tools narratives <system>`. |
+| stitch-only | "restitch", "I edited Act 2" | No interview. Run the quality checks on the existing parts; stitch with `just tools narratives <system>` only when they pass (see "Quality checks before stitching"). |
 | slides | "slides", "a deck", "present it" | Draft `docs/narratives/<system>/slides.md` from the confirmed parts (see "Slides"). Needs parts: in build mode, run it before the parts are removed. |
 
 Outside this repository, run the stitcher from the skill folder: `deno task --config <skill>/deno.json stitch -- --root <repo> [...]`.
@@ -112,6 +112,8 @@ Run the `review` panel round on the draft. Each expert signs off or objects; set
 
 Run these on the parts in every mode before stitching, and report each as passed or failed. A failure goes back to the user as a question batch, not a silent fix.
 
+**Any failed check blocks the stitch**, however minor it looks: one undefined term or one target without a number is enough, and a request to "just restitch" does not lift it. Do not stitch while a question about a check is open. Stitch only when every check passes, after the user's answers are written into the parts, or when the user explicitly accepts a failure. Offer accepting as one of the options, record each accepted failure in the ledger's "Accepted check failures" table (check, what failed, date, the user's words), and report it as accepted rather than passed. If the user does not answer, stop without stitching and say which checks are open.
+
 1. Every driving characteristic traces to a stated business requirement and a measurable target.
 2. Every major decision names at least one rejected alternative.
 3. Act 3 has both the solution (diagrams, decisions) and risks with likelihood, impact and mitigation.
@@ -121,6 +123,8 @@ Run these on the parts in every mode before stitching, and report each as passed
 7. The front matter has only the agreed keys; parts `01` to `05` start at H2 (the H1 is in `00-front-matter.md`).
 
 ## Stitch and finish
+
+Stitch only once the quality checks pass or their failures are accepted (see above).
 
 - keep-parts and stitch-only: `just tools narratives <system>`; then `just tools narratives --check` passes.
 - build: `just tools narratives --remove-parts <system>`, which stitches without the generated note and removes the parts and the ledger, keeping `slides.md` if it exists.

@@ -1,0 +1,8 @@
+schema_version: "1.1"
+name: quality-check-failure-blocks-stitch
+expected_outcome: |
+  The Cost driving characteristic has the target "Low", an adjective with no
+  number. In stitch-only mode the skill reports quality check 1 as failed,
+  names the Cost row and asks the user for a measurable target, and does not
+  stitch: no docs/narratives/ticket-kata-narrative.md is written, and the
+  skill does not invent a target.

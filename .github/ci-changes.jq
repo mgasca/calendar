@@ -31,6 +31,10 @@ def just_files: . == "justfile" or . == ".just-version" or endswith(".just");
 def tooling_github:
   [".github/ci-gate.jq", ".github/ci-baseline.json", ".github/workflows/ci-trend.yml", ".github/pull_request_template.md"];
 
+# Directories under .github/ that the tooling tests read whole: tools/azure-cli-install checks every workflow and the
+# install-azure-cli action, so a workflow that installs the Azure CLI another way fails on its own pull request (#745).
+def tooling_github_dirs: [".github/workflows/", ".github/actions/"];
+
 # Files beside docs/decisions/ and docs/stories/ that `just tools adr` checks (story 0051, issue #562): the architecture
 # model's ADR entries and citations (M2); the story cards are checked for planned cards citing a superseded ADR (J6).
 # They run only ADR conventions, not the whole Tooling job, which a sub-second check does not justify (issue #572).
@@ -53,8 +57,8 @@ def needs($job):
   elif $job == "backend" then under(["backend/", "contracts/"])
   elif $job == "frontend" then under(["frontend/apps/web/", "frontend/packages/", "contracts/"]) or frontend_root
   elif $job == "tooling" then
-    under(["tools/", ".claude/", "infra/", "docker/", "just/", "docs/decisions/"]) or just_files or backend_toolchain
-      or . == ".deno-version" or IN(tooling_github[])
+    under(["tools/", ".claude/", "infra/", "docker/", "just/", "docs/decisions/"] + tooling_github_dirs) or just_files
+      or backend_toolchain or . == ".deno-version" or IN(tooling_github[])
   elif $job == "adr" then under(["docs/decisions/", "docs/stories/"]) or IN(adr_inputs[])
   elif $job == "narratives" then under(narrative_inputs) or . == ".deno-version"
   elif $job == "image" then

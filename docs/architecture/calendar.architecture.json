@@ -939,11 +939,11 @@
       "unique-id": "e2e-suite",
       "node-type": "service",
       "name": "End-to-end flow tests (Playwright Test)",
-      "description": "Planned (story 0064). Playwright Test workspace package (frontend/apps/e2e) that drives the built web app in Chromium against its own throwaway stack (PostgreSQL, API, LGTM, stub OIDC provider), one test per user-facing flow, each tagged @flow:<unique-id>. A flow is user-facing when a transition uses user-uses-web-app; a browser-free binding check fails on an uncovered or unknown flow on every pull request. Each test also asserts the flow's trace, correlated logs, request metrics and the absence of personal data in the LGTM stack. Runs nightly and on demand, never in a deployed environment.",
+      "description": "Story 0064, harness and view-today-flow delivered in #733. Playwright Test workspace package (frontend/apps/e2e) that drives the built web app in Chromium against its own throwaway stack (PostgreSQL, API, LGTM, stub OIDC provider), one test per user-facing flow, each tagged @flow:<unique-id> and linked from its flow by metadata e2e-test. A flow is user-facing when a transition uses user-uses-web-app; a browser-free binding check (with an explicit pending list) fails on an uncovered or unknown flow on every pull request. Each test also asserts the flow's trace, correlated logs, request metrics and the absence of personal data in the LGTM stack. Runs nightly and on demand, never in a deployed environment.",
       "interfaces": [
         { "unique-id": "e2e-flow-tags", "tag-format": "@flow:<unique-id>", "binding": "user-facing flows (a transition on user-uses-web-app) ⇄ tagged tests, with a pending list that ends empty" }
       ],
-      "metadata": { "ownership": "ours", "adrs": ["ADR-0061", "ADR-0062", "ADR-0063", "ADR-0008"], "stories": ["0064"], "source": "frontend/apps/e2e (planned)", "delivery": "epic #728: harness #733, flows #734 to #736, nightly workflow #737" }
+      "metadata": { "ownership": "ours", "adrs": ["ADR-0061", "ADR-0062", "ADR-0063", "ADR-0008"], "stories": ["0064"], "source": "frontend/apps/e2e", "delivery": "epic #728: harness #733, flows #734 to #736, nightly workflow #737" }
     },
     {
       "unique-id": "lgtm",
@@ -1586,7 +1586,7 @@
           ]
         }
       },
-      "metadata": { "story": "0001", "adrs": ["ADR-0057", "ADR-0020", "ADR-0021"], "sibling": "The week view (story 0002, ADR-0024) follows the same flow with GET /api/agenda/week?date&timeZone&today and a seven-day range" }
+      "metadata": { "story": "0001", "adrs": ["ADR-0057", "ADR-0020", "ADR-0021"], "e2e-test": "frontend/apps/e2e/tests/view-today-flow.spec.ts", "sibling": "The week view (story 0002, ADR-0024) follows the same flow with GET /api/agenda/week?date&timeZone&today and a seven-day range" }
     },
     {
       "unique-id": "add-event-flow",

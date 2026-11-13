@@ -195,7 +195,9 @@ API telemetry (#731) lives in `calendar-api/src/telemetry/`:
 - **Recipes:** `just e2e test` (`up`, the suite, then `down` whatever the result) and `just e2e test-on <project>`. When the run-calendar skill's `~/.cache/calendar-chromium-libs` exists, the recipes add it to `LD_LIBRARY_PATH`.
 - **Request log (#797):** designing the logs assertion showed that a successful request logged nothing. #798 adds the `request finished` record (see "API" above).
 - **Measured** (WSL2 laptop, images present, API build cached):
-  - `just e2e test` ready in 40 s, and the view-today test took 57 s, most of it waiting for metrics (60 s export interval; #793 shortens it in E2E).
+  - Before #793, `just e2e test` was ready in 40 s, and the view-today test took 57 s, most of it waiting for metrics (60 s export interval).
+  - With #793's 5 s interval, on `main` with #798, the test took 7.3 s (the stack was ready in 99 s, because the API had to rebuild after the merge).
+- **Scan limit:** a scan stops with an error when Loki returns its 5,000-record limit, rather than quietly scanning part of the logs (review note on #832).
   - Negative control: against an API without #798, the test passed the trace assertion and failed with "API log records with trace id … not found within 90 s".
 
 ### Lessons learned, known issues and follow-ups

@@ -58,7 +58,27 @@ export async function waitForTraceLogs(
   );
 }
 
+/** The most records one scan reads; Loki returns no more than this per query. */
+export const SCAN_LIMIT = 5000;
+
+/**
+ * `streams`, or an error when they hold `limit` records: Loki stopped there, so a scan of them would quietly
+ * miss the rest. On a long-lived stack (`just e2e test-on`), start a new one.
+ */
+export function completeScan(streams: LogStream[], limit = SCAN_LIMIT): LogStream[] {
+  const count = streams.reduce((total, stream) => total + stream.lines.length, 0);
+  if (count >= limit) {
+    throw new Error(
+      `Loki returned ${String(count)} log records, its limit, so the personal-data scan would be incomplete. ` +
+        'Run the test on a fresh stack (just e2e test).',
+    );
+  }
+  return streams;
+}
+
 /** Every log record of the API and the web app since `since`, for the personal-data scan. */
 export async function logsSince(lokiUrl: string, since: Date): Promise<LogStream[]> {
-  return queryLogs(lokiUrl, '{service_name=~"calendar-api|calendar-web"}', since);
+  return completeScan(
+    await queryLogs(lokiUrl, '{service_name=~"calendar-api|calendar-web"}', since, SCAN_LIMIT),
+  );
 }

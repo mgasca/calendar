@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { streamsOf } from './loki.ts';
+import { completeScan, streamsOf } from './loki.ts';
 import { PersonalData, fromLogs, fromSeries, fromSpans, report, scan } from './personal-data.ts';
 import { api, flattenTrace, traceIdOf, traceProblems, web } from './tempo.ts';
 
@@ -237,5 +237,20 @@ describe('the personal-data scanner', () => {
       'a JWT-shaped token',
       'a cookie header',
     ]);
+  });
+});
+
+describe('completeScan', () => {
+  const stream = (lines: number) => ({
+    labels: {},
+    lines: Array.from({ length: lines }, () => 'x'),
+  });
+
+  it('passes streams below the limit', () => {
+    expect(completeScan([stream(2), stream(2)], 5)).toHaveLength(2);
+  });
+
+  it('refuses streams that reach the limit, where Loki may have cut records off', () => {
+    expect(() => completeScan([stream(3), stream(2)], 5)).toThrow(/scan would be incomplete/);
   });
 });

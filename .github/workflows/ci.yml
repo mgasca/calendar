@@ -349,17 +349,10 @@ jobs:
       - uses: denoland/setup-deno@22d081ff2d3a40755e97629de92e3bcbfa7cf2ed # v2.0.5
         with:
           deno-version-file: .deno-version
-          # Until the validator is ported, this job runs no Deno command to populate a cold cache (#696).
-          cache: false
-      # The SDK Tooling uses, pinned in global.json (ADR-0017); the NuGet cache holds only the adr-draft skill's #:package pins.
-      - uses: actions/setup-dotnet@v6
-        with:
-          global-json-file: global.json
           cache: true
-          cache-dependency-path: .claude/skills/adr-draft/**/packages.lock.json
       # The script finds docs/decisions, docs/stories and the model from the repository root, as `just tools adr` does.
       - name: ADRs follow conventions
-        run: dotnet run .claude/skills/adr-draft/scripts/check-adr/check-adr.cs
+        run: deno run --config .claude/skills/adr-draft/deno.json --frozen --no-prompt --allow-read --allow-run=git .claude/skills/adr-draft/scripts/check-adr/check-adr.ts
 
   image:
     name: Container image

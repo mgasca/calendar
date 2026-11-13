@@ -9,6 +9,7 @@
   "lint": { "include": ["**/*.ts"], "exclude": ["**/fixtures/**"] },
   "test": { "include": ["**/*_test.ts"], "exclude": ["**/fixtures/**"] },
   "tasks": {
+    "check-adr": "deno run --frozen --no-prompt --allow-read --allow-write --allow-run=git scripts/check-adr/check-adr.ts",
     "test": "deno test --permit-no-files --no-prompt --allow-read --allow-write --allow-run --allow-env"
   }
 }

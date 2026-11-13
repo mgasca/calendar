@@ -1,8 +1,6 @@
 //! Ports `UserDirectoryTests`: ADR-0041's lookup order. By Google subject; then by email among rows without a
 //! subject; then, for the first allow-listed email, the unclaimed legacy placeholder; otherwise a new row.
 
-use std::time::Duration;
-
 use calendar_domain::users::User;
 use calendar_infrastructure::users::{self, SignIn};
 use calendar_infrastructure::{Error, error};
@@ -12,7 +10,7 @@ use diesel_async::AsyncPgConnection;
 use uuid::Uuid;
 
 use crate::repositories::{Fixture, fixture, utc};
-use crate::support::scalar;
+use crate::support::{scalar, wait_until_blocked};
 
 const FIRST: &str = "First@Example.com";
 const OTHER: &str = "other@example.com";
@@ -144,21 +142,7 @@ async fn concurrent_first_sign_ins_converge_on_one_row() {
     let mut conn = f.conn;
     let resolving = tokio::spawn(async move { resolve(&mut conn, "race@example.com", Some("sub-race"), Some("Racer"), None).await });
     // The lookup found nothing and the insert is now waiting for the other request.
-    loop {
-      let waiting: i64 = admin
-        .query_one(
-          "SELECT count(*) FROM pg_stat_activity WHERE datname = current_database() AND wait_event_type = 'Lock'",
-          &[],
-        )
-        .await
-        .unwrap()
-        .get(0);
-      if waiting > 0 {
-        break;
-      }
-      assert!(!resolving.is_finished(), "the sign-in did not wait for the competing insert");
-      tokio::time::sleep(Duration::from_millis(20)).await;
-    }
+    wait_until_blocked(&admin, &resolving).await;
     racing.commit().await.unwrap();
     let resolved = resolving.await.unwrap().unwrap();
 

@@ -65,9 +65,14 @@ async fn user_info(State(google): State<Shared>, headers: HeaderMap) -> Result<J
   Ok(Json(google.lock().unwrap().claims.clone()))
 }
 
-/// Starts the fake and an app that signs in through it, allow-listing `first@example.com` and
+/// Starts the fake and a Development app that signs in through it, allow-listing `first@example.com` and
 /// `second@example.com`.
 async fn start(claims: Value) -> (TestApp, Shared) {
+  start_in("Development", claims).await
+}
+
+/// [`start`] in environment `environment`.
+async fn start_in(environment: &str, claims: Value) -> (TestApp, Shared) {
   let google: Shared = Arc::new(Mutex::new(FakeGoogle {
     claims,
     ..FakeGoogle::default()
@@ -81,6 +86,7 @@ async fn start(claims: Value) -> (TestApp, Shared) {
   tokio::spawn(async move { axum::serve(listener, fake).await });
 
   let app = TestApp::builder()
+    .environment(environment)
     .real_authentication()
     .setting("Auth__Google__ClientId", CLIENT_ID)
     .setting("Auth__Google__ClientSecret", CLIENT_SECRET)
@@ -112,10 +118,41 @@ fn cookie_named<'a>(response: &'a TestResponse, name: &str) -> Option<&'a str> {
     .find_map(|cookie| cookie.split(';').next().filter(|pair| pair.starts_with(&format!("{name}="))))
 }
 
+/// The attributes of the `Set-Cookie` for `name`, lower-cased and trimmed, without the `name=value` pair.
+fn cookie_attributes(response: &TestResponse, name: &str) -> Vec<String> {
+  let cookie = response
+    .set_cookies()
+    .into_iter()
+    .find(|cookie| cookie.starts_with(&format!("{name}=")))
+    .unwrap_or_else(|| panic!("no Set-Cookie for {name}: {:?}", response.set_cookies()));
+  cookie.split(';').skip(1).map(|attribute| attribute.trim().to_lowercase()).collect()
+}
+
+/// Asserts that the `Set-Cookie` for `name` is `Secure`, `HttpOnly` and `SameSite=Lax`.
+fn assert_secure_http_only_lax(response: &TestResponse, name: &str) {
+  let attributes = cookie_attributes(response, name);
+  for expected in ["secure", "httponly", "samesite=lax"] {
+    assert!(
+      attributes.iter().any(|attribute| attribute == expected),
+      "{name} lacks {expected}: {attributes:?}"
+    );
+  }
+}
+
 /// `GET /api/auth/login`, as a browser would: returns the authorization parameters and the sign-in cookie,
 /// and tells the fake what Google would remember.
 async fn begin(app: &TestApp, google: &Shared, return_url: &str) -> (HashMap<String, String>, String) {
-  let login = app.client().get(&format!("/api/auth/login?returnUrl={}", escape(return_url))).await;
+  begin_with(app, &app.client(), google, return_url).await.0
+}
+
+/// [`begin`] through `client`; also returns the login response.
+async fn begin_with(
+  app: &TestApp,
+  client: &TestClient,
+  google: &Shared,
+  return_url: &str,
+) -> ((HashMap<String, String>, String), TestResponse) {
+  let login = client.get(&format!("/api/auth/login?returnUrl={}", escape(return_url))).await;
   assert_eq!(login.status, StatusCode::FOUND);
   let location = login.header("location").unwrap().to_owned();
   assert!(location.starts_with(&app.state().google_endpoints().authorize), "{location}");
@@ -124,7 +161,7 @@ async fn begin(app: &TestApp, google: &Shared, return_url: &str) -> (HashMap<Str
   let mut google = google.lock().unwrap();
   google.nonce.clone_from(&parameters["nonce"]);
   google.code_challenge.clone_from(&parameters["code_challenge"]);
-  (parameters, cookie)
+  ((parameters, cookie), login)
 }
 
 async fn finish(app: &TestApp, cookie: &str, query: &str) -> TestResponse {
@@ -219,6 +256,19 @@ async fn assert_denied(app: &TestApp, callback: &TestResponse) {
   assert_eq!(callback.status, StatusCode::FOUND);
   assert_eq!(callback.header("location"), Some(FAILURE_REDIRECT));
   assert_eq!(cookie_named(callback, SESSION_COOKIE), None);
+  assert_eq!(
+    cookie_named(callback, SIGN_IN_COOKIE),
+    Some(format!("{SIGN_IN_COOKIE}=").as_str()),
+    "the flow cookie is cleared"
+  );
+  // Whatever the denial set, it is not a session.
+  let set: Vec<&str> = callback
+    .set_cookies()
+    .iter()
+    .filter_map(|cookie| cookie.split(';').next())
+    .collect();
+  let me = app.client().cookie(&set.join("; ")).get("/api/auth/me").await;
+  assert_eq!(me.status, StatusCode::UNAUTHORIZED);
   let client = app.database().migrator_client().await;
   let users: i64 = client
     .query_one("SELECT count(*) FROM users WHERE google_subject IS NOT NULL", &[])
@@ -281,4 +331,49 @@ async fn behind_the_proxy_the_redirect_uri_is_https_and_cookies_are_secure() {
     "{location}"
   );
   assert!(login.set_cookies().join("").contains("secure"));
+}
+
+#[tokio::test]
+async fn outside_development_behind_the_proxy_the_whole_sign_in_is_https_and_every_cookie_is_secure() {
+  let (app, google) = start_in("Production", person("sub-1", "first@example.com")).await;
+  // The ingress appends its entry to whatever the client sent; only the last one is trusted.
+  let proxied = app
+    .client()
+    .header("host", "internal")
+    .header("x-forwarded-proto", "http, https")
+    .header("x-forwarded-host", "spoofed.example, calendar.example");
+  let public_redirect_uri = format!("https://calendar.example{CALLBACK_PATH}");
+
+  let ((parameters, cookie), login) = begin_with(&app, &proxied, &google, "/day/2026-10-29").await;
+  assert_eq!(parameters["redirect_uri"], public_redirect_uri);
+  assert_secure_http_only_lax(&login, SIGN_IN_COOKIE);
+
+  let callback = proxied
+    .clone()
+    .cookie(&cookie)
+    .get(&format!("{CALLBACK_PATH}?code={CODE}&state={}", parameters["state"]))
+    .await;
+  assert_eq!(callback.status, StatusCode::FOUND);
+  assert_eq!(callback.header("location"), Some("/day/2026-10-29"));
+  assert_eq!(
+    google.lock().unwrap().token_request.as_ref().unwrap()["redirect_uri"],
+    public_redirect_uri,
+    "the code is redeemed for the redirect URI it was issued to"
+  );
+  assert_secure_http_only_lax(&callback, SIGN_IN_COOKIE);
+  assert_secure_http_only_lax(&callback, SESSION_COOKIE);
+
+  let session = cookie_named(&callback, SESSION_COOKIE).unwrap();
+  let me: AuthUserResponse = proxied.clone().cookie(session).get("/api/auth/me").await.success().json();
+  assert_eq!(me.email, "first@example.com");
+}
+
+#[tokio::test]
+async fn outside_development_cookies_are_secure_even_over_plain_http() {
+  let (app, google) = start_in("Production", person("sub-1", "first@example.com")).await;
+
+  let ((parameters, _cookie), login) = begin_with(&app, &app.client(), &google, "/").await;
+
+  assert_eq!(parameters["redirect_uri"], format!("http://{TEST_HOST}{CALLBACK_PATH}"));
+  assert_secure_http_only_lax(&login, SIGN_IN_COOKIE);
 }

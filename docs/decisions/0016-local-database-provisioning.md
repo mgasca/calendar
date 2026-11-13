@@ -1,5 +1,5 @@
 ---
-status: accepted
+status: superseded by [ADR-0063](0063-docker-compose-profiles-for-local-backing-services-instead-of-aspire.md)
 date: 2026-10-26
 decision-makers: mgasca, Claude (AI assistant)
 ---

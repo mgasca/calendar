@@ -60,7 +60,7 @@ pub struct TelemetryConfig {
 }
 
 /// A telemetry configuration the API refuses to start with.
-#[derive(Debug, thiserror::Error, PartialEq, Eq)]
+#[derive(Debug, thiserror::Error)]
 pub enum TelemetryError {
   /// `OTEL_EXPORTER_OTLP_PROTOCOL` (or a per-signal one) names a protocol this build does not export.
   #[error("{variable} '{value}' is not supported: use grpc or http/protobuf")]
@@ -71,12 +71,13 @@ pub enum TelemetryError {
     value: String,
   },
   /// An exporter cannot be built from the configuration.
-  #[error("the OTLP {signal} exporter could not be created: {reason}")]
+  #[error("the OTLP {signal} exporter could not be created: {source}")]
   Exporter {
     /// `traces`, `logs` or `metrics`.
     signal: &'static str,
     /// What the SDK said.
-    reason: String,
+    #[source]
+    source: opentelemetry_otlp::ExporterBuildError,
   },
 }
 
@@ -281,12 +282,7 @@ fn build(config: TelemetryConfig) -> Result<Telemetry, TelemetryError> {
     return Ok(Telemetry::default());
   }
   let resource = resource();
-  let failed = |signal: &'static str| {
-    move |error: opentelemetry_otlp::ExporterBuildError| TelemetryError::Exporter {
-      signal,
-      reason: error.to_string(),
-    }
-  };
+  let failed = |signal: &'static str| move |source: opentelemetry_otlp::ExporterBuildError| TelemetryError::Exporter { signal, source };
   let tracer_provider = match config.traces {
     Some(protocol) => {
       let builder = opentelemetry_otlp::SpanExporter::builder();
@@ -422,6 +418,20 @@ mod tests {
       error.to_string(),
       "OTEL_EXPORTER_OTLP_PROTOCOL 'http/json' is not supported: use grpc or http/protobuf"
     );
+  }
+
+  #[test]
+  fn an_exporter_error_keeps_the_sdk_error_as_its_source() {
+    let error = TelemetryError::Exporter {
+      signal: "traces",
+      source: opentelemetry_otlp::ExporterBuildError::InvalidConfiguration("endpoint: bad".to_owned()),
+    };
+    assert_eq!(
+      error.to_string(),
+      "the OTLP traces exporter could not be created: invalid exporter configuration: endpoint: bad"
+    );
+    let source = std::error::Error::source(&error).expect("a source");
+    assert!(source.is::<opentelemetry_otlp::ExporterBuildError>());
   }
 
   #[test]

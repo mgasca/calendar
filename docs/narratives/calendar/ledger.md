@@ -6,9 +6,9 @@ Never published or stitched. The interview resumes from this file.
 
 | Act | State |
 | --- | --- |
-| Act 1: Setup | drafted 2026-11-13; review in its pull request (the maintainer asked for each act to be reviewed as a PR) |
+| Act 1: Setup | confirmed 2026-11-13 (approved on #744) |
 | Driving characteristics | confirmed 2026-11-13 |
-| Act 2: Confrontation | open |
+| Act 2: Confrontation | drafted 2026-11-13; review in its stacked pull request |
 | Act 3: Resolution | open |
 
 ## Inputs (2026-11-13)
@@ -30,16 +30,25 @@ Never published or stitched. The interview resumes from this file.
 | S7 | 1 | Scope | closed | In: today and week views, events, tasks with date or exact-time deadlines, overdue triage, sign-in, themes; docs site, delivery dashboard, agent tooling. Out: sharing and invitations, sync with other calendars, native mobile apps. Future, not planned: recurring events. |
 | S8 | 1 | Vocabulary | closed | Product, delivery, agent-method and contract terms (see 01-setup.md). |
 
+| C1 | 2 | Business constraints | closed | One maintainer, near full-time bursts with gaps; run cost not tracked (A1); no external deadline, contract or regulator. |
+| C2 | 2 | Technical constraints | closed | Binding: agent rules (Claude-first, hooks, acceptance) and contract rules (generated contract, client supplies today, owner on every query). Not binding: hosting stack and toolchain pins (choices). |
+| C3 | 2 | Challenges | closed | Agents forget between sessions; one human reviewer; time is subtle; stacks change underneath. |
+| C4 | 2 | Characteristics | closed | The four driving characteristics, with requirements and targets. |
+| C5 | 2 | Alternatives | closed | Eight decisions; alternatives from the ADRs (material) and, for review before merge, from the maintainer. |
+| C6 | 2 | Panel verdicts | closed (fallback) | Owner scoping: RLS open question. Rust CI cost: accepted, gated. Review before merge: code PRs only. PR 0: kept, stack at once. |
+
 ## Contradictions
 
 | Statements | Resolution |
 | --- | --- |
+| Correctness of time is driving vs "I don't rely on it daily yet" | Time is the method's showcase: the hardest correctness problem, proven whatever the usage (2026-11-13). |
 | Problem is product and method "both, equally" vs success is "share a reusable method" | Method wins when they pull apart; the product is the vehicle (2026-11-13). |
 
 ## Assumptions
 
 | Id | Statement | Agreed | Risk |
 | --- | --- | --- | --- |
+| A1 | Azure staging's run cost stays within a personal budget and never forces an architecture choice. | 2026-11-13 | Act 3 risk |
 
 ## Driving characteristics
 
@@ -88,7 +97,21 @@ Never published or stitched. The interview resumes from this file.
 
 | Phase | Date | Answered | Returned nothing | What changed |
 | --- | --- | --- | --- | --- |
-| questions | 2026-11-13 | 0 | all six | Nothing: the session that ran it started before `narrative-expert` merged, so the agent type was not registered and every agent failed before starting (the workflow's result did not say why). Rerun from a session started after the merge. |
+| questions | 2026-11-13 | 0 | all six | Nothing: the session that ran it started before `narrative-expert` merged, so the agent type was not registered and every agent failed before starting (the workflow's result did not say why). Restart did not help (#747). Maintainer chose the skill's fallback: the facilitator asked the experts' standing questions. |
+| alternatives | 2026-11-13 | fallback | n/a | Facilitator voiced each expert from its brief; four conflicts settled with the maintainer (C6). |
+
+## Open questions
+
+| Question | Raised by | Decides |
+| --- | --- | --- |
+| Add PostgreSQL row-level security as defence in depth for owner isolation? | Security expert (fallback) | Maintainer |
+
+## Findings for #711
+
+* The stitcher requires every act; per-act review PRs fail the Narratives check until Act 3 (stacked PRs, merged down; no skill change).
+* `narrative-expert` unavailable in worktree sessions: agents load from the main checkout (#747); the workflow hides failure reasons.
+* Part links are copied verbatim, so they must be relative to the stitched file (`../decisions/`), not to the part; the skill and templates do not say so.
+* ADR-0041 has drifted: the Rust backend uses the explicit owner parameter it rejected; superseding ADR offered.
 
 ## Options
 

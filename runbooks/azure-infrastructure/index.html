@@ -297,7 +297,7 @@
 <li>log messages and severities;</li>
 <li>trace and span IDs.</li>
 </ul>
-<p>It never contains emails, names, titles, locations, notes, query-string values, cookies or tokens. An attribute allow-list in the API enforces this, and <code>backend/crates/calendar-api/tests/telemetry.rs</code> tests it.</p>
+<p>It never contains emails, names, titles, locations, notes, query-string values, cookies or tokens. An attribute allow-list in the API enforces this, and <code>backend/crates/calendar-api/tests/api/telemetry.rs</code> tests it.</p>
 <h3 id="check-telemetry-in-staging-owner">Check telemetry in staging (owner)</h3>
 <p>Run this after a revision that includes #731 is deployed to staging. Use only synthetic data.</p>
 <ol>

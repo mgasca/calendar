@@ -49,5 +49,5 @@ Real Google sign-in is configured on the API: see [Google sign-in setup](../back
 | Formatting         | Prettier                                                                            |
 | Unit tests         | Vitest, Testing Library, MSW                                                        |
 | Integration tests  | MSW-mocked API                                                                      |
-| Coverage           | `@vitest/coverage-v8`                                                               |
+| Coverage           | `@vitest/coverage-v8`; `@vitest/coverage-istanbul` in `apps/docs` (ADR-0008)        |
 | Dependency updates | Dependabot (`npm`)                                                                  |

@@ -4,8 +4,8 @@ import { findPr, findPrText } from "./pull-request-lookup.ts";
 import type { RepoProbe } from "./protocol.ts";
 export const maxTextFileBytes = 1 << 20;
 const lines = (s: string) => s.split("\n").map((l) => l.replace(/\r$/, "")).filter((l) => l.length > 0);
-async function git(cwd: string, args: string[]) {
-  return await runCommand("git", args, cwd, 5000) ?? { exitCode: 127, stdout: "" };
+async function git(cwd: string, args: string[], timeout: number | null = null) {
+  return await runCommand("git", args, cwd, timeout) ?? { exitCode: 127, stdout: "" };
 }
 export class GitProbe implements RepoProbe {
   async hasUnstagedChanges(cwd: string, paths: string[]) {
@@ -79,11 +79,11 @@ export class GitProbe implements RepoProbe {
     }
   }
   async currentBranch(cwd: string) {
-    const r = await git(cwd, ["symbolic-ref", "--quiet", "--short", "HEAD"]);
+    const r = await git(cwd, ["symbolic-ref", "--quiet", "--short", "HEAD"], 5000);
     return r.exitCode === 0 ? r.stdout.trim() || null : null;
   }
   async defaultBranch(cwd: string) {
-    const r = await git(cwd, ["symbolic-ref", "--quiet", "--short", "refs/remotes/origin/HEAD"]),
+    const r = await git(cwd, ["symbolic-ref", "--quiet", "--short", "refs/remotes/origin/HEAD"], 5000),
       head = r.exitCode === 0 ? r.stdout.trim() : "",
       slash = head.indexOf("/");
     return slash > 0 && slash < head.length - 1 ? head.slice(slash + 1) : null;

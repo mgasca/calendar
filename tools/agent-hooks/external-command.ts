@@ -21,7 +21,7 @@ export async function runCommand(
   executable: string,
   args: string[],
   cwd: string,
-  timeoutMs: number,
+  timeoutMs: number | null,
   environment: Record<string, string> = {},
 ): Promise<CommandOutput | null> {
   try {
@@ -45,7 +45,7 @@ export async function runCommand(
         stdout += chunk;
       });
       child.stderr.resume();
-      const timer = setTimeout(() => {
+      const timer = timeoutMs === null ? undefined : setTimeout(() => {
         timedOut = true;
         try {
           process.kill(-child.pid!, "SIGKILL");

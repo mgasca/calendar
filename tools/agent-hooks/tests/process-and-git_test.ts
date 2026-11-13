@@ -279,3 +279,18 @@ Deno.test("ExternalCommand: literal arguments never evaluated by a shell", () =>
     assertStringIncludes(r?.stdout ?? "", value);
     assertEquals(new GitProbe().pathExists(root, "marker"), false);
   }));
+
+Deno.test("GitProbe waits for a slow unstaged-change check", () =>
+  temp(async (root) => {
+    const git = join(root, "git");
+    Deno.writeTextFileSync(git, "#!/bin/sh\n/bin/sleep 5.2\nexit 1\n");
+    Deno.chmodSync(git, 0o700);
+    const originalPath = Deno.env.get("PATH");
+    try {
+      Deno.env.set("PATH", root);
+      assertEquals(await new GitProbe().hasUnstagedChanges(root, ["dirty"]), true);
+    } finally {
+      if (originalPath === undefined) Deno.env.delete("PATH");
+      else Deno.env.set("PATH", originalPath);
+    }
+  }));

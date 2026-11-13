@@ -36,7 +36,7 @@ struct TaskRow {
 
 impl TaskRow {
   fn into_versioned(self) -> Result<Versioned<TodoTask>, Error> {
-    let priority = Priority::parse(&self.priority).ok_or(Error::InvalidRow {
+    let priority = self.priority.parse::<Priority>().map_err(|_| Error::InvalidRow {
       entity: "task",
       reason: "the priority is not low, medium or high",
     })?;

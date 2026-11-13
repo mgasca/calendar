@@ -16,6 +16,18 @@
     "docs tooling"
   ],
   [
+    "docs/narratives/calendar-narrative.md",
+    "docs narratives"
+  ],
+  [
+    "docs/narratives/calendar/02-confrontation.md",
+    "docs narratives"
+  ],
+  [
+    ".claude/skills/architecture-narrative-builder/scripts/stitch/stitch.ts",
+    "tooling"
+  ],
+  [
     "docs/storiesx/0038-x.md",
     "docs"
   ],
@@ -25,6 +37,14 @@
   ],
   [
     "frontend/apps/docs/src/lib/adr.ts",
+    "docs"
+  ],
+  [
+    "frontend/apps/slides/src/decks.ts",
+    "docs"
+  ],
+  [
+    "frontend/apps/slides/theme/styles/calendar.css",
     "docs"
   ],
   [

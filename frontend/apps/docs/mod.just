@@ -54,6 +54,19 @@ bench:
 test *args:
     if (( $# )); then pnpm exec vitest run "$@"; else pnpm exec vitest run src; fi
 
+# Build the deck of one narrative, docs/narratives/<system>/slides.md, for the root path into
+# frontend/apps/slides/dist/<system>/ (ADR-0060); `just docs build` builds every deck into the site.
+slides system:
+    pnpm --filter @calendar/slides build --root --system {{ quote(system) }}
+
+# Present or edit one narrative's deck with Slidev's dev server, which reloads on every save
+slides-dev system:
+    pnpm --filter @calendar/slides dev {{ quote("../../../docs/narratives/" + system + "/slides.md") }}
+
+# Run the slides app's tests: deck discovery, the deck base and a real build of the fixture deck
+slides-test:
+    pnpm --filter @calendar/slides test
+
 # Validate the CALM architecture model in docs/architecture against the CALM schema (ADR-0039)
 architecture:
     pnpm validate:architecture

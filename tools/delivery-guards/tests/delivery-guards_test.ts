@@ -333,7 +333,7 @@ for (const yaml of ["a: [1", "a:\n  b: 1\n c: 2", "a: 1\n---\nb: 2", ""]) {
     assertThrows(() => parseYaml(yaml));
   });
 }
-const allJobs = ["backend", "frontend", "docs", "tooling", "adr", "image"];
+const allJobs = ["backend", "frontend", "docs", "tooling", "adr", "narratives", "image"];
 async function runRules(event: string, complete: boolean, files: string[]): Promise<Record<string, unknown>> {
   const process = new Deno.Command("jq", {
     args: ["-c", "-f", join(root, changesRulesPath)],
@@ -405,6 +405,17 @@ const combinedCases: [string, string, boolean, string[], string][] = [
     "docs/stories/0038-x.md",
     "backend/crates/a/src/lib.rs",
   ], "backend docs adr image"],
+  ["ANarrativeWithAToolChange_RunsToolingInsteadOfTheNarrativesCheck", "pull_request", true, [
+    "docs/narratives/kata/01-setup.md",
+    "tools/ci-timings/CiTimings.cs",
+  ], "docs tooling"],
+  ["ANarrativeWithABackendChange_RunsTheNarrativesCheckBesideTheOthers", "merge_group", true, [
+    "docs/narratives/kata/01-setup.md",
+    "backend/crates/a/src/lib.rs",
+  ], "backend docs narratives image"],
+  ["AStitcherChange_RunsToolingWhichRunsTheCheck", "pull_request", true, [
+    ".claude/skills/architecture-narrative-builder/scripts/stitch/stitch.ts",
+  ], "tooling"],
   ["AnIncompleteListing_RunsEverything", "pull_request", false, ["README.md"], "backend frontend docs tooling image"],
   [
     "AnIncompleteMergeGroupListing_RunsEverythingButTheAdrCheck",
@@ -432,7 +443,15 @@ Deno.test("ThePublicationArtifact_IsBuiltOnlyForMainAndSameRepositoryPullRequest
 });
 Deno.test("SkippedNames_AreTheJobNamesInCi", async () => {
   const output = await runRules("pull_request", true, ["README.md"]);
-  assertEquals(output.skipped, ["Backend", "Frontend", "Docs site", "Tooling", "ADR conventions", "Container image"]);
+  assertEquals(output.skipped, [
+    "Backend",
+    "Frontend",
+    "Docs site",
+    "Tooling",
+    "ADR conventions",
+    "Narratives",
+    "Container image",
+  ]);
   const workflow = Workflow.parse(loadFiles(root).workflow);
   for (const id of allJobs) {
     assert(workflow.jobs.some((j) => j.id === id && (output.skipped as string[]).includes(j.name)));

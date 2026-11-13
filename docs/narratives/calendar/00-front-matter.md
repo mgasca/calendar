@@ -3,6 +3,7 @@ system: Calendar
 audience: New contributors, human and agent, who need to know why the system looks the way it does before changing it
 date: 2026-11-13
 status: draft
+slides: slides/calendar/
 ---
 
 # Calendar architecture narrative

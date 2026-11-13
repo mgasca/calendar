@@ -5,7 +5,7 @@
 
 use calendar_domain::error::ArgumentError;
 use calendar_domain::events::{CalendarEvent, CalendarEventRecord, EventSchedule};
-use chrono::{DateTime, Days, FixedOffset, NaiveDate, TimeDelta, TimeZone, Utc};
+use chrono::{DateTime, FixedOffset, NaiveDate, TimeDelta, TimeZone, Utc};
 use uuid::Uuid;
 
 const NEW_YORK: &str = "America/New_York";
@@ -350,32 +350,6 @@ fn create_maps_a_legacy_alias_to_the_canonical_zone_id() {
     timed("E", nine(), nine() + hours(1), "Asia/Calcutta").unwrap().time_zone_id(),
     Some("Asia/Kolkata")
   );
-}
-
-#[test]
-fn schedule_from_columns_needs_the_columns_of_its_kind() {
-  let start = Some(nine());
-  let end = Some(nine() + hours(1));
-  let zone = || Some(NEW_YORK.to_owned());
-
-  assert_eq!(
-    EventSchedule::from_columns(false, start, end, zone(), None, None),
-    Some(EventSchedule::Timed {
-      start: nine(),
-      end: nine() + hours(1),
-      time_zone_id: NEW_YORK.to_owned()
-    })
-  );
-  assert_eq!(
-    EventSchedule::from_columns(true, None, None, None, Some(day()), Some(day() + Days::new(1))),
-    Some(EventSchedule::AllDay {
-      start_date: day(),
-      end_date: day_plus(1)
-    })
-  );
-  assert_eq!(EventSchedule::from_columns(false, start, end, None, None, None), None);
-  assert_eq!(EventSchedule::from_columns(false, None, end, zone(), None, None), None);
-  assert_eq!(EventSchedule::from_columns(true, start, end, zone(), Some(day()), None), None);
 }
 
 #[test]

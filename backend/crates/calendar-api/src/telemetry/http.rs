@@ -126,6 +126,18 @@ pub async fn middleware(State(state): State<AppState>, request: Request, next: N
     span.record("otel.status_code", "error");
     span.record("error.type", status.to_string());
   }
+  // One log record per traced request, inside its span, so the request's logs carry its trace id even when it
+  // succeeds (ADR-0062: a flow's logs are found by its trace id). Only allow-listed fields; never the path or query.
+  if !span.is_disabled() {
+    span.in_scope(|| {
+      tracing::info!(
+        http.request.method = method,
+        http.route = route.as_deref(),
+        http.response.status_code = status,
+        "request finished"
+      );
+    });
+  }
   state
     .http_metrics()
     .record(started.elapsed().as_secs_f64(), method, route.as_deref(), status);

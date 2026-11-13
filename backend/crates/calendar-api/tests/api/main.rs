@@ -9,7 +9,6 @@ mod agenda_bucketing;
 mod agenda_endpoints;
 mod agenda_order;
 mod authentication;
-mod contract;
 mod events;
 mod google_sign_in;
 mod health;

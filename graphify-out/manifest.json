@@ -1326,9 +1326,9 @@
     "semantic_hash": "6771462cb9982af2688d35fe84fb76c9"
   },
   "frontend/apps/docs/tests/build.test.ts": {
-    "mtime": 1794573157.849033,
-    "seen": 1794573194.725988,
-    "ast_hash": "fe2fd5e89257f44bdce906419945f722",
+    "mtime": 1794573736.497188,
+    "seen": 1794573753.2953482,
+    "ast_hash": "fd9b777fe959de02257fd3461a37a31c",
     "semantic_hash": ""
   },
   "frontend/apps/docs/tsconfig.json": {

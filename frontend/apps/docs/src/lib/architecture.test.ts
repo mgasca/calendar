@@ -640,7 +640,7 @@ describe('architecture pages', () => {
       { slug: 'architecture/containers' },
       { slug: 'architecture/components' },
       { slug: 'architecture/controls' },
-      { label: 'Flows', items: [{ slug: 'architecture/flows/read' }] },
+      { label: 'Flows', collapsed: true, items: [{ slug: 'architecture/flows/read' }] },
     ]);
   });
 });

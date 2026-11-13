@@ -1,8 +1,10 @@
 ---
-status: planned
+status: implemented
 date: 2026-11-13
 issue: https://github.com/mgasca/calendar/issues/702
-pr: []
+pr:
+  - https://github.com/mgasca/calendar/pull/703
+  - https://github.com/mgasca/calendar/pull/704
 adrs: []
 ---
 
@@ -12,7 +14,7 @@ adrs: []
 
 > As the maintainer, I need the graphify skill, its hooks and a short rule for agents to live in the repository, so that every checkout, worktree and agent session can refresh and query the committed knowledge graph the same way, without a per-machine install of the skill.
 
-Tracked in issue #702.
+Tracked in issue #702. Card in [#703](https://github.com/mgasca/calendar/pull/703); the skill, hooks and guidance are delivered in [#704](https://github.com/mgasca/calendar/pull/704), stacked on it.
 
 ## Background
 
@@ -24,8 +26,8 @@ The `graphify` tool installs three kinds of file for Claude Code in a project: t
 
 * **Commit the skill:** `.claude/skills/graphify/` (the `SKILL.md`, the `references/` files and `.graphify_version`) and `.claude/CLAUDE.md`, so `/graphify` is available in every checkout.
 * **Add the agent rule:** the `graphify` section of `AGENTS.md`: query the graph (`graphify query`, `path`, `explain`) before the first search or source read for a codebase question, run `graphify update .` after changing code, and do not flag a large `graph.json` diff as churn.
-* **Register the three hooks** in `.claude/settings.json`, beside the existing hooks of `tools/agent-hooks`, which are not changed.
-* **Keep the tool optional for people.** The hooks must not fail a session on a machine where `graphify` is not installed (see criterion 3).
+* **Register the three hooks** in `.claude/settings.json`, beside the existing hooks of `tools/agent-hooks`, which are not changed. Each command is prefixed with a guard, `command -v graphify >/dev/null 2>&1 || exit 0;`, so it does nothing on a machine without `graphify` and otherwise runs the tool and keeps its exit code.
+* **Keep the tool optional for people.** The hooks must not fail or show a notice on a machine where `graphify` is not installed (see criterion 3). The maintainer chose to guard the commands now, not wait to see whether the notices prove noisy.
 
 ### Not in this story
 
@@ -38,7 +40,7 @@ The `graphify` tool installs three kinds of file for Claude Code in a project: t
 
 1. **Given** a fresh checkout of `main`, **when** Claude Code starts in it, **then** `/graphify` is listed as a skill, without running `graphify install`.
 2. **Given** the change, **when** `AGENTS.md` is read, **then** it has a `graphify` section that tells an agent to query the graph before searching, to run `graphify update .` after code changes, and not to flag a large `graph.json` diff.
-3. **Given** a machine where the `graphify` program is not installed, **when** Claude Code runs a Bash, Grep, Read or Glob call, **then** the session carries on, and the call is not blocked by the missing program.
+3. **Given** a machine where the `graphify` program is not installed, **when** Claude Code runs a Bash, Grep, Read or Glob call, **then** the session carries on, the call is not blocked, and the hook does not report an error.
 4. **Given** a machine with `graphify` installed, **when** an agent runs a Bash, Grep, Read or Glob call, **then** a hook reminds it that the graph exists, and the call still runs.
 5. **Given** the hooks, **when** `.claude/settings.json` is read, **then** the hooks of `tools/agent-hooks` are unchanged, and the file is valid JSON that ends with a newline.
 6. **Given** the change, **when** the maintainer runs `just docs test` and `just docs build`, **then** they pass.
@@ -57,12 +59,10 @@ No new ADR is expected. Story 0061 said that a rule that agents consult the grap
 
 ### Other decisions (not ADR-worthy)
 
-* **Commit the tool's output unchanged.** The skill is about 1,800 lines of third-party instructions. Editing them would make every upgrade a merge, so the card records what to check instead (criteria 3 and 5).
+* **Commit the tool's output unchanged, except the guard on the three hook commands.** The skill is about 1,800 lines of third-party instructions. Editing them would make every upgrade a merge, so the card records what to check instead (criteria 3 and 5). The hook commands are three short lines and the maintainer asked for the guard, so they are the one edit.
 * **Leave out the stray files a run left behind.** `package.json` and `package-lock.json` at the repository root (a placeholder `node.js` dependency, not the repository's), `.claude/settings.json.graphify-bak` (a backup of `settings.json`) and `.claude/worktrees/` (agent worktrees) are not part of the install and are not committed.
 
 ## Implementation notes
-
-*Planned. This section is completed as the story is built.*
 
 ### Where things live
 
@@ -79,16 +79,18 @@ No changes.
 
 ### Testing
 
-* Criteria 1 to 4 are behaviour of Claude Code and the `graphify` program. They are checked by hand, and the delivery PR records the commands and their output. There is no committed test.
-* `just docs test`, `just docs build` and `just check` run on the delivery PR.
+* Criteria 1 to 4 are behaviour of Claude Code and the `graphify` program, so they have no committed test of that behaviour. The one committed test covers the hook registration (see criterion 3 below). Criterion 1 follows from the skill being a tracked file under `.claude/skills/`: a new worktree contains it. Not observed in a fresh Claude Code session. Criterion 4: with `graphify` installed, `graphify hook-guard search` prints a reminder and exits 0.
+* Criterion 3 was checked by running the guarded `search` command in a shell with `graphify` off `PATH`: it exits 0 and prints nothing, where the unguarded command exits 127 with "command not found". With the real `graphify` on `PATH` it ran and exited 0, with no output from a directory that has no graph. With a stand-in `graphify` that exits 2, the guarded command exits 2, so a blocking result is kept. These were run in a shell, not in a live Claude Code session, so whether Claude Code shows a notice for a failed hook was not observed. The registered text is covered by a committed test: the hook-registration test in `tools/agent-hooks/tests/protocol-and-registration_test.ts` requires exactly the three graphify hooks, each in its guarded form, and still requires every other hook to be a frozen, no-prompt Deno hook. That test required every hook to be a Deno hook, so it failed in CI on this PR as soon as the graphify hooks were added, before the guard. A graphify hook without its guard, as a later `graphify install` might write it, now fails it.
+* Criterion 5: `.claude/settings.json` parses as JSON and ends with a newline (the install had removed the final newline, restored here); the existing hooks are untouched in the diff.
+* Criterion 6: `just docs test` passes. `just docs build` fails here on a 5 s timeout of the link-check test, which also fails on `origin/main`, so it was not verified locally. `just tools deno-test` (format check, type check, lint and 735 tests) passes locally. `just check` was not run in full.
 
 ### Lessons learned, known issues and follow-ups
 
-* To be filled in on delivery. The open question for the delivery PR is what the three hooks do on a machine without `graphify` (criterion 3): the installed command is `graphify hook-guard …` with no guard of its own.
+* **Machines without `graphify`.** As installed, the command is `graphify hook-guard …` with no guard of its own, so it exits 127 on every Bash, Grep, Read, Glob call and on compaction. The first version of this story left it as the tool wrote it and asked on the PR. The maintainer answered to guard it now, so the three commands carry the guard. The cost: they no longer match what `graphify install` writes, so a later install may rewrite them without the guard, and the diff will show it. Whether it does was not tested; if it does, put the guard back.
+* **A second install run** rewrites `.claude/settings.json` and may drop the final newline again, and leaves a `.graphify-bak` backup and root `package.json` files, which are not committed.
+* **`just doctor`** does not check for `graphify`; a follow-up if the missing-program notices prove noisy.
 
 ## User guide
-
-*Planned behaviour. This section is finalised when the story is implemented.*
 
 ### The task the user performs
 

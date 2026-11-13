@@ -67,9 +67,15 @@ Deno.test("Malformed JSON, bad root shapes, missing fields, unknown commands and
 Deno.test("Hook registrations switch atomically with frozen config and explicit noninteractive permissions", () => {
   const settings = JSON.parse(Deno.readTextFileSync(new URL("../../../.claude/settings.json", import.meta.url)));
   const commands: string[] = [];
+  const graphify: string[] = [];
   for (const entries of Object.values(settings.hooks) as { hooks: { command: string; if?: string }[] }[][]) {
     for (const entry of entries) {
       for (const hook of entry.hooks) {
+        // `graphify install` writes these hooks (story 0062), so they are not Deno hooks; they are checked below.
+        if (hook.command.includes("graphify")) {
+          graphify.push(hook.command);
+          continue;
+        }
         commands.push(hook.command);
         assertStringIncludes(hook.command, "deno run");
         assertStringIncludes(hook.command, "--frozen");
@@ -82,6 +88,10 @@ Deno.test("Hook registrations switch atomically with frozen config and explicit 
     }
   }
   assert(commands.length > 10);
+  // Exactly the three graphify hooks, each guarded so that it does nothing where the program is not installed and
+  // otherwise keeps its exit code, which is what blocks a call (story 0062, issue #702).
+  const guarded = (mode: string) => `command -v graphify >/dev/null 2>&1 || exit 0; graphify hook-guard ${mode}`;
+  assertEquals([...graphify].sort(), ["compact", "read", "search"].map(guarded));
   const edits = settings.hooks.PreToolUse.find((e: { matcher: string }) => e.matcher === "Edit|Write").hooks;
   for (
     const pattern of [

@@ -23,7 +23,16 @@ export async function main(args: string[]): Promise<number> {
       // Use the npm entry point so Deno preserves npm dependency resolution.
       const cli = config.imports.playwright;
       return (await new Deno.Command(Deno.execPath(), {
-        args: ["run", "--config", fileURLToPath(new URL("../../deno.json", import.meta.url)), "--frozen", "-A", cli, "install", "chromium"],
+        args: [
+          "run",
+          "--config",
+          fileURLToPath(new URL("../../deno.json", import.meta.url)),
+          "--frozen",
+          "-A",
+          cli,
+          "install",
+          "chromium",
+        ],
         stdin: "inherit",
         stdout: "inherit",
         stderr: "inherit",

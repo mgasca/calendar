@@ -32,6 +32,18 @@ function sidebarGroups(html: string) {
   return [...sidebar.matchAll(/<span class="large[^"]*">([^<]*)<\/span>/g)].map((m) => m[1] ?? '');
 }
 
+/** The labels of the sidebar groups that render open, nested ones included, in page order. */
+function openSidebarGroups(html: string) {
+  const sidebar = /<sl-sidebar-pane\b[^>]*>([\s\S]*?)<\/sl-sidebar-pane>/.exec(html)?.[1] ?? '';
+  return [
+    ...sidebar.matchAll(
+      /<details\b([^>]*)>\s*<summary[\s\S]*?<span class="large[^"]*">([^<]*)<\/span>/g,
+    ),
+  ]
+    .filter((m) => /\bopen\b/.test(m[1] ?? ''))
+    .map((m) => m[2] ?? '');
+}
+
 function sidebarRoutes(html: string) {
   const sidebar = /<sl-sidebar-pane\b[^>]*>([\s\S]*?)<\/sl-sidebar-pane>/.exec(html)?.[1];
   expect(sidebar).toBeDefined();
@@ -82,6 +94,25 @@ describe('site root', () => {
     expect(routes.indexOf(`${base}architecture/controls/`)).toBeLessThan(
       routes.findIndex((href) => href.startsWith(`${base}adr/`)),
     );
+  });
+});
+
+describe('sidebar groups', () => {
+  it('start collapsed except Agent thoughts, and open the group that holds the current page', async () => {
+    const { adr, architecture } = await readDocuments();
+    const thought = await readFile('dist/agent-thoughts/index.html', 'utf8');
+    // Every other group, nested Flows included, is rendered but closed.
+    const groups = sidebarGroups(thought);
+    expect(groups).toEqual(expect.arrayContaining(['Architecture', 'Flows', 'Delivery dashboard']));
+    expect(openSidebarGroups(thought)).toEqual(['Agent thoughts']);
+    const record = await readFile(`dist/adr/${adr.records[0]?.number ?? ''}/index.html`, 'utf8');
+    expect(openSidebarGroups(record)).toEqual(['Agent thoughts', 'Any decision records']);
+    const overview = await readFile('dist/architecture/index.html', 'utf8');
+    expect(openSidebarGroups(overview)).toEqual(['Agent thoughts', 'Architecture']);
+    const flow = architecture.flows[0];
+    expect(flow).toBeDefined();
+    const flowPage = await readFile(`dist/architecture/flows/${flow?.id ?? ''}/index.html`, 'utf8');
+    expect(openSidebarGroups(flowPage)).toEqual(['Agent thoughts', 'Architecture', 'Flows']);
   });
 });
 

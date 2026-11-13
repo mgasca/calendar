@@ -9,6 +9,16 @@
             "timeout": 10
           }
         ]
+      },
+      {
+        "matcher": "compact",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "graphify hook-guard compact",
+            "timeout": 10
+          }
+        ]
       }
     ],
     "PreToolUse": [
@@ -103,6 +113,26 @@
             "if": "Edit(**/deno.lock)",
             "command": "deno run --config \"$CLAUDE_PROJECT_DIR/tools/deno.json\" --frozen --no-prompt --allow-read --allow-run --allow-env \"$CLAUDE_PROJECT_DIR/tools/agent-hooks/agent-hooks.ts\" pre-edit",
             "timeout": 30
+          }
+        ]
+      },
+      {
+        "matcher": "Bash|Grep",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "graphify hook-guard search",
+            "timeout": 10
+          }
+        ]
+      },
+      {
+        "matcher": "Read|Glob",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "graphify hook-guard read",
+            "timeout": 10
           }
         ]
       }

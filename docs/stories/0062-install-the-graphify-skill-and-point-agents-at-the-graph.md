@@ -1,8 +1,9 @@
 ---
-status: planned
+status: implemented
 date: 2026-11-13
 issue: https://github.com/mgasca/calendar/issues/702
-pr: []
+pr:
+  - https://github.com/mgasca/calendar/pull/703
 adrs: []
 ---
 
@@ -12,7 +13,7 @@ adrs: []
 
 > As the maintainer, I need the graphify skill, its hooks and a short rule for agents to live in the repository, so that every checkout, worktree and agent session can refresh and query the committed knowledge graph the same way, without a per-machine install of the skill.
 
-Tracked in issue #702.
+Tracked in issue #702. Card in [#703](https://github.com/mgasca/calendar/pull/703); the skill, hooks and guidance are delivered in the pull request stacked on it.
 
 ## Background
 
@@ -62,8 +63,6 @@ No new ADR is expected. Story 0061 said that a rule that agents consult the grap
 
 ## Implementation notes
 
-*Planned. This section is completed as the story is built.*
-
 ### Where things live
 
 | Area | Location |
@@ -79,16 +78,18 @@ No changes.
 
 ### Testing
 
-* Criteria 1 to 4 are behaviour of Claude Code and the `graphify` program. They are checked by hand, and the delivery PR records the commands and their output. There is no committed test.
-* `just docs test`, `just docs build` and `just check` run on the delivery PR.
+* Criteria 1 to 4 are behaviour of Claude Code and the `graphify` program, so they have no committed test. Criterion 1 follows from the skill being a tracked file under `.claude/skills/`: a new worktree contains it. Not observed in a fresh Claude Code session. Criterion 4: with `graphify` installed, `graphify hook-guard search` prints a reminder and exits 0.
+* Criterion 3 was checked with `graphify` removed from `PATH`: the hook command fails with exit code 127. Claude Code treats an exit code other than 2 as a non-blocking error, so the call is not blocked; whether it shows a notice on every call was not observed.
+* Criterion 5: `.claude/settings.json` parses as JSON and ends with a newline (the install had removed the final newline, restored here); the existing hooks are untouched in the diff.
+* Criterion 6: `just docs test` passes. `just docs build` fails here on a 5 s timeout of the link-check test, which also fails on `origin/main`, so it was not verified locally. `just check` was not run in full.
 
 ### Lessons learned, known issues and follow-ups
 
-* To be filled in on delivery. The open question for the delivery PR is what the three hooks do on a machine without `graphify` (criterion 3): the installed command is `graphify hook-guard …` with no guard of its own.
+* **Machines without `graphify`.** The installed command is `graphify hook-guard …` with no guard of its own, so it exits 127 on every Bash, Grep, Read, Glob call and on compaction. Guarding it (`command -v graphify >/dev/null || exit 0; …`) would make the file differ from what `graphify install` writes. Left as the tool wrote it; decide on the PR.
+* **A second install run** rewrites `.claude/settings.json` and may drop the final newline again, and leaves a `.graphify-bak` backup and root `package.json` files, which are not committed.
+* **`just doctor`** does not check for `graphify`; a follow-up if the missing-program notices prove noisy.
 
 ## User guide
-
-*Planned behaviour. This section is finalised when the story is implemented.*
 
 ### The task the user performs
 

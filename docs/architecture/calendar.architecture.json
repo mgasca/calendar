@@ -650,7 +650,7 @@
         }
       },
       "metadata": {
-        "adrs": ["ADR-0014", "ADR-0052", "ADR-0016", "ADR-0031", "ADR-0035", "ADR-0037", "ADR-0041"],
+        "adrs": ["ADR-0014", "ADR-0052", "ADR-0016", "ADR-0063", "ADR-0031", "ADR-0035", "ADR-0037", "ADR-0041"],
         "schema-management": "SQL migrations in backend/crates/calendar-infrastructure/migrations (the first six translate the EF Core migrations one to one), embedded in the calendar-migrate binary, snake_case naming; applied only by the migrator, never by the app",
         "local": "docker compose (compose.yaml), roles created by docker/postgres/init/01-roles.sh, credentials in untracked .env",
         "azure": "infra/modules/database.bicep; roles created by `just infra init-roles` with the same SQL (checked by CI)"
@@ -949,10 +949,10 @@
       "unique-id": "lgtm",
       "node-type": "system",
       "name": "Grafana LGTM (local and E2E only)",
-      "description": "Planned (story 0064). The grafana/otel-lgtm container (OpenTelemetry Collector, Tempo, Loki, Prometheus, Pyroscope, Grafana), bound to loopback: opt-in for development under the Compose profile observability, and part of every E2E stack, where the flow tests query it. A development and test tool only; it never runs in Azure.",
+      "description": "Story 0064, delivered in #730. The grafana/otel-lgtm container (OpenTelemetry Collector, Tempo, Loki, Prometheus, Pyroscope, Grafana) in compose.yaml, bound to loopback: opt-in for development under the Compose profile observability (just db observability), and part of every E2E stack (just e2e up), where the flow tests query it. A development and test tool only; it never runs in Azure.",
       "interfaces": [
         { "unique-id": "lgtm-otlp", "protocol": "OTLP", "ports": { "grpc": 4317, "http": 4318 }, "bind": "127.0.0.1" },
-        { "unique-id": "lgtm-query", "description": "Grafana and the Tempo, Loki and Prometheus query APIs", "port": 3000, "bind": "127.0.0.1" }
+        { "unique-id": "lgtm-query", "description": "Grafana and the Tempo, Loki and Prometheus query APIs", "ports": { "grafana": 3000, "loki": 3100, "tempo": 3200, "prometheus": 9090 }, "bind": "127.0.0.1", "e2e-ports": "a 55xxx slot per run (e2e.just)" }
       ],
       "metadata": { "ownership": "external", "adrs": ["ADR-0062", "ADR-0063"], "stories": ["0064"], "environments": ["local (opt-in)", "E2E"], "delivery": "#730" }
     },
@@ -960,7 +960,7 @@
       "unique-id": "oidc-stub",
       "node-type": "system",
       "name": "Stub OIDC provider (local and E2E only)",
-      "description": "Planned (story 0064). navikt/mock-oauth2-server standing in for Google in the E2E stack (and, opt-in, in development under the Compose profile sign-in-stub): authorization code with PKCE, token and userinfo endpoints, and an interactive login page where the test chooses email and email_verified. The API reaches it only through the Development-only, loopback-only Auth__Google__* endpoint and issuer overrides, and refuses to start with them anywhere else; never in infra/.",
+      "description": "Story 0064, delivered in #730. navikt/mock-oauth2-server standing in for Google in the E2E stack (and, opt-in, in development under the Compose profile sign-in-stub): authorization code with PKCE, token and userinfo endpoints, and an interactive login page where the test chooses email and email_verified. The API reaches it only through the Development-only, loopback-only Auth__Google__* endpoint and issuer overrides, and refuses to start with them anywhere else; never in infra/.",
       "interfaces": [
         { "unique-id": "oidc-stub-issuer", "url": "http://127.0.0.1:<port>/google", "protocol": "OpenID Connect authorization code" }
       ],

@@ -50,6 +50,9 @@ L=~/.cache/calendar-chromium-libs; mkdir -p $L/debs && (cd $L/debs && apt-get do
 
 (With sudo, `sudo apt-get install -y libnss3 libnspr4 libasound2t64` does the same.)
 
+For the full stack with Grafana LGTM and the stub sign-in provider on its own Compose project and ports, use
+`just e2e up` instead (`just e2e env` prints its URLs and seed key, `just e2e down` removes it).
+
 ## Start the stack (agent path)
 
 1. Throwaway PostgreSQL. The roles come from `docker/postgres/init`; the data dies with the container.

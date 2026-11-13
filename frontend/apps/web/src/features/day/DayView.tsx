@@ -180,8 +180,9 @@ export function DayView({ date, timeZone: zoneOverride, locale }: DayViewProps) 
             setEditing(undefined);
             if (result)
               notify({ message: `${result.title} ${result.deleted ? 'deleted' : 'saved'}.` });
-            // After a delete the row is gone, so focus moves to the day's heading.
-            requestAnimationFrame(() => {
+            // After a delete, or a save that moved the event to another day, the row is gone and
+            // focus moves to the day's heading. Decided after the render (#698).
+            afterRender(() => {
               focusTitleOrHeading(result?.deleted ? undefined : eventTitleId(id));
             });
           }}

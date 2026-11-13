@@ -1,6 +1,7 @@
 use calendar_testing::TestDatabase;
 use tokio_postgres::Client;
 use tokio_postgres::error::SqlState;
+use tokio_postgres::types::FromSql;
 use uuid::Uuid;
 
 /// Inserts a user to own rows, as the schema owner, and returns its id (`UserA` in the .NET tests).
@@ -23,7 +24,8 @@ pub async fn failure(client: &Client, sql: &str) -> (SqlState, Option<String>) {
   (db.code().clone(), db.constraint().map(str::to_owned))
 }
 
-pub async fn scalar(client: &Client, sql: &str) -> String {
+/// The first column of the one row `sql` returns, decoded as `T`.
+pub async fn scalar<T: for<'a> FromSql<'a>>(client: &Client, sql: &str) -> T {
   client.query_one(sql, &[]).await.unwrap().get(0)
 }
 

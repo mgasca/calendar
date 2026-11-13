@@ -47,8 +47,8 @@ async fn insert_legacy_placeholder(database: &TestDatabase) {
 }
 
 /// Users in the table; the fixture seeds two.
-async fn count_users(database: &TestDatabase) -> String {
-  scalar(&database.migrator_client().await, "SELECT count(*)::text FROM users").await
+async fn count_users(database: &TestDatabase) -> i64 {
+  scalar(&database.migrator_client().await, "SELECT count(*) FROM users").await
 }
 
 async fn resolve(
@@ -90,7 +90,7 @@ async fn a_new_person_gets_a_row_and_signs_in_again_to_the_same_row() {
   assert_eq!(again.display_name(), Some("Renamed"));
   assert_eq!(again.picture_url(), Some("https://pic/1"));
   assert_eq!(users::find(&mut f.conn, created.id()).await.unwrap(), Some(again));
-  assert_eq!(count_users(&f.database).await, "3");
+  assert_eq!(count_users(&f.database).await, 3);
 }
 
 #[tokio::test]
@@ -104,7 +104,7 @@ async fn a_seed_created_row_is_claimed_by_the_real_sign_in_which_fills_in_the_su
   let signed_in = resolve(&mut f.conn, OTHER, Some("sub-2"), Some("Other"), None).await.unwrap();
   assert_eq!(signed_in.id(), seeded.id());
   assert_eq!(signed_in.google_subject(), Some("sub-2"));
-  assert_eq!(count_users(&f.database).await, "3");
+  assert_eq!(count_users(&f.database).await, 3);
 }
 
 #[tokio::test]
@@ -119,7 +119,7 @@ async fn the_seed_scheme_after_the_real_sign_in_resolves_the_same_row_and_keeps_
   assert_eq!(seeded.id(), signed_in.id());
   assert_eq!(seeded.google_subject(), Some("sub-6"));
   assert_eq!(seeded.display_name(), Some("Other"));
-  assert_eq!(count_users(&f.database).await, "3");
+  assert_eq!(count_users(&f.database).await, 3);
 }
 
 /// Another request inserts the same person's row between this one's lookup and its insert. The .NET test
@@ -166,7 +166,7 @@ async fn concurrent_first_sign_ins_converge_on_one_row() {
     assert_eq!(resolved.google_subject(), Some("sub-race"));
     assert_eq!(resolved.display_name(), Some("Racer"));
     assert_eq!(resolved.last_signed_in_at(), Some(now()));
-    assert_eq!(count_users(&f.database).await, "3");
+    assert_eq!(count_users(&f.database).await, 3);
   }
 }
 
@@ -185,7 +185,7 @@ async fn the_first_allow_listed_email_claims_the_legacy_placeholder_once_only() 
 
   let again = resolve(&mut f.conn, FIRST, Some("sub-first"), None, None).await.unwrap();
   assert_eq!(again.id(), User::LEGACY_OWNER_ID);
-  assert_eq!(count_users(&f.database).await, "3");
+  assert_eq!(count_users(&f.database).await, 3);
 }
 
 #[tokio::test]
@@ -239,7 +239,7 @@ async fn another_subject_with_a_claimed_email_does_not_take_over_the_row() {
     "{result:?}"
   );
   assert_eq!(users::find(&mut f.conn, owner.id()).await.unwrap(), Some(owner));
-  assert_eq!(count_users(&f.database).await, "3");
+  assert_eq!(count_users(&f.database).await, 3);
 }
 
 /// Beyond the .NET tests: the domain's refusal of a blank email surfaces as a domain error, before any query.
@@ -250,6 +250,6 @@ async fn a_blank_email_is_a_domain_error() {
   let result = resolve(&mut f.conn, "  ", Some("sub-7"), None, None).await;
 
   assert!(matches!(result, Err(error::Error::Domain(_))), "{result:?}");
-  assert_eq!(count_users(&f.database).await, "2");
+  assert_eq!(count_users(&f.database).await, 2);
   assert_eq!(users::find(&mut f.conn, Uuid::new_v4()).await.unwrap(), None);
 }

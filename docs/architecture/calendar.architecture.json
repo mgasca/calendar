@@ -93,7 +93,9 @@
       { "id": "ADR-0056", "title": "Session cookie sealed with a key held in the database, replacing ASP.NET Data Protection", "status": "accepted", "file": "docs/decisions/0056-session-cookie-sealed-with-a-database-held-key.md", "url": "https://mgasca.github.io/calendar/adr/0056/" },
       { "id": "ADR-0057", "title": "chrono and chrono-tz types for instants, floating dates and IANA zones in the Rust backend", "status": "accepted",
         "supersedes": "ADR-0018", "file": "docs/decisions/0057-chrono-time-types-for-the-rust-backend.md", "url": "https://mgasca.github.io/calendar/adr/0057/" },
-      { "id": "ADR-0058", "title": "TypeScript on Deno for repository tooling, replacing .NET file-based apps", "status": "accepted", "file": "docs/decisions/0058-typescript-on-deno-for-repository-tooling.md", "url": "https://mgasca.github.io/calendar/adr/0058/", "note": "Accepted policy; delivery is staged in story 0059. Existing component descriptions remain until each implementation switches." }
+      { "id": "ADR-0058", "title": "TypeScript on Deno for repository tooling, replacing .NET file-based apps", "status": "accepted", "file": "docs/decisions/0058-typescript-on-deno-for-repository-tooling.md", "url": "https://mgasca.github.io/calendar/adr/0058/", "note": "Accepted policy; delivery is staged in story 0059. Existing component descriptions remain until each implementation switches." },
+      { "id": "ADR-0059", "title": "Publish architecture narratives from docs/narratives, stitched from per-system part files", "status": "proposed", "file": "docs/decisions/0059-publish-architecture-narratives-stitched-from-part-files.md", "url": "https://mgasca.github.io/calendar/adr/0059/" },
+      { "id": "ADR-0060", "title": "Build narrative decks with Slidev as a frontend workspace app, published with the docs site", "status": "proposed", "file": "docs/decisions/0060-build-narrative-decks-with-slidev.md", "url": "https://mgasca.github.io/calendar/adr/0060/" }
     ],
     "stories": [
       { "id": "0001", "title": "Today view", "status": "implemented", "url": "https://mgasca.github.io/calendar/stories/0001/" },

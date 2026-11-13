@@ -16,3 +16,13 @@ overrides:
   # katex.renderToString. Stays below 0.19, which has further breaking changes. The docs app's own
   # Mermaid 12 already uses ^0.18. Remove this override once @finos/calm-cli moves to Mermaid 12.
   'katex@>=0.11.0 <0.18.2': ^0.18.2
+  # GHSA-cg2g-xh64-v4q7 (critical), GHSA-mrv2-3pqr-j5jr (high), GHSA-cmwh-pvxp-8882 and GHSA-55q2-fjhq-7xh7: dompurify
+  # <3.4.17 is vulnerable, and monaco-editor, which @slidev/cli depends on (^0.56.0), pins it exactly (0.56.0: 3.4.8;
+  # 0.57.0, the latest: 3.4.15), so Dependabot can't fix it. The rest of the workspace already resolves 3.4.17. Remove
+  # this override once a monaco-editor release that Slidev accepts depends on dompurify >=3.4.17.
+  'dompurify@<3.4.17': ^3.4.17
+  # GHSA-w3rx-r6r6-pgpr and GHSA-5p2g-fcmc-qvqq (high): image-size <=2.0.2 loops forever on crafted ICNS, JXL or HEIF
+  # images. pptxgenjs 4.0.1 (Slidev's PPTX export, the latest release) declares image-size ^1.2.1, but its built code never
+  # imports it, and nothing else in the workspace does, so the major-version override changes no code path. Pinned to
+  # 2.0.4 rather than the newest. Remove this override once pptxgenjs depends on image-size >=2.0.3 or drops it.
+  'image-size@<2.0.3': 2.0.4

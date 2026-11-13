@@ -104,28 +104,51 @@ export async function readAgentThoughts() {
   return { index, records: parseAgentThoughts(sources) };
 }
 
-/**
- * Reads the stitched narratives (ADR-0059). The per-system part directories beside them (acts,
- * ledger, diagrams, slides) are skipped; a narrative whose parts are kept is edited through them.
- * The collection may be empty, but its conventions page must exist.
- */
 /** A narrative part that the stitcher joins, `00-front-matter.md` to `05-panel.md` (ADR-0059). */
 const partFileName = /^0[0-5]-[a-z0-9-]+\.md$/;
 
+/**
+ * Reads the stitched narratives (ADR-0059). The per-system part directories beside them (acts,
+ * ledger, diagrams, slides) are skipped; a narrative whose parts are kept is edited through them.
+ * A deck (ADR-0060) is `<system>/slides.md`: a narrative links its deck exactly when it has one, so
+ * every deck the build publishes is linked and every link has a deck. The collection may be empty,
+ * but its conventions page must exist.
+ */
 export async function readNarratives(directory: URL = narrativesDirectory) {
   const sources = await readSources(directory, narrativeFileName);
   const index = await readFile(new URL('README.md', directory), 'utf8');
-  const records = await Promise.all(
-    parseNarratives(sources).map(async (record) => ({
-      ...record,
-      // Kept parts are the act files 00 to 05; after a build without keep-parts the directory may
-      // still hold slides.md and its diagrams, and then the stitched file is what to edit.
-      hasParts: await readdir(new URL(`${record.slug}/`, directory)).then(
-        (names) => names.some((name) => partFileName.test(name)),
-        () => false,
-      ),
-    })),
+  const partDirectories = new Map(
+    await Promise.all(
+      (await readdir(directory, { withFileTypes: true }))
+        .filter((entry) => entry.isDirectory())
+        .map(
+          async (entry) =>
+            [entry.name, await readdir(new URL(`${entry.name}/`, directory))] as const,
+        ),
+    ),
   );
+  const records = parseNarratives(sources).map((record) => {
+    const parts = partDirectories.get(record.slug) ?? [];
+    const hasDeck = parts.includes('slides.md');
+    if (record.slides !== undefined && !hasDeck)
+      throw new Error(
+        `Narrative links a deck without docs/narratives/${record.slug}/slides.md: ${record.file}`,
+      );
+    if (record.slides === undefined && hasDeck)
+      throw new Error(
+        `Deck docs/narratives/${record.slug}/slides.md is not linked: add slides: slides/${record.slug}/ to ${record.file}`,
+      );
+    // Kept parts are the act files 00 to 05; after a build without keep-parts the directory may
+    // still hold slides.md and its diagrams, and then the stitched file is what to edit.
+    return { ...record, hasParts: parts.some((name) => partFileName.test(name)) };
+  });
+  const narrated = new Set(records.map((record) => record.slug));
+  for (const [name, parts] of partDirectories) {
+    if (parts.includes('slides.md') && !narrated.has(name))
+      throw new Error(
+        `Deck docs/narratives/${name}/slides.md has no narrative ${name}-narrative.md`,
+      );
+  }
   return { index, records };
 }
 

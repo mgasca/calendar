@@ -40,6 +40,14 @@
     "docs"
   ],
   [
+    "frontend/apps/slides/src/decks.ts",
+    "docs"
+  ],
+  [
+    "frontend/apps/slides/theme/styles/calendar.css",
+    "docs"
+  ],
+  [
     "backend/crates/calendar-api/src/app.rs",
     "backend image"
   ],

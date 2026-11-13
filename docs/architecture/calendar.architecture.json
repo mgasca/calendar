@@ -140,7 +140,7 @@
             "format": "OpenAPI 3, code-first: utoipa collects the paths and schemas, and calendar-api/src/openapi.rs rewrites them into the dialect of the committed contract (calendar-api --openapi)",
             "generated-by": "calendar-api --openapi (cargo run -p calendar-api, just contracts)",
             "regenerate-command": "just contracts",
-            "staleness-gate": "CI job Backend: 'OpenAPI contract is up to date' (git diff --exit-code on contracts/); the frontend typecheck fails on a contract break",
+            "staleness-gate": "CI job Backend: the calendar-api test contract::the_committed_contract_is_what_the_api_generates (byte-exact against contracts/openapi.json); the frontend typecheck fails on a contract break",
             "consumers": ["frontend/packages/api-client (openapi-typescript + openapi-fetch, schema.gen.ts)", "frontend/apps/web"],
             "hand-edits-allowed": false,
             "adrs": ["https://mgasca.github.io/calendar/adr/0004/"]

@@ -152,13 +152,6 @@ jobs:
         run: |
           mkdir -p TestResults
           cargo llvm-cov --workspace --locked --cobertura --output-path TestResults/backend.cobertura.xml
-      - name: OpenAPI contract is up to date
-        run: |
-          cargo run --locked -p calendar-api -- --openapi ../contracts/openapi.json
-          git diff --exit-code -- ../contracts || {
-            echo "::error::contracts/openapi.json is stale. Run 'just contracts' and commit the result."
-            exit 1
-          }
       - uses: actions/upload-artifact@v7
         if: ${{ !cancelled() }}
         with:

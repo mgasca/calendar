@@ -281,7 +281,7 @@ pub async fn count_open_overdue(conn: &mut AsyncPgConnection, owner: OwnerId, to
 /// What a bulk-by-filter does to every open overdue task.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum OverdueAction {
-  /// Complete them at this instant (pass `TodoTask::normalize_completion_time(now)`).
+  /// Complete them at this instant.
   Complete(DateTime<Utc>),
   /// Give them this deadline (`TodoTask::for_due_date`, `for_due_instant` or `without_deadline`). Tasks that
   /// already have exactly it are not written and not counted.

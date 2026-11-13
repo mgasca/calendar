@@ -4866,9 +4866,9 @@
     "semantic_hash": ""
   },
   "tools/infra/tests/infrastructure_test.ts": {
-    "mtime": 1794578069.532872,
-    "seen": 1794596279.014433,
-    "ast_hash": "df4470665f9960223c05d09265b56e90",
+    "mtime": 1794596359.383573,
+    "seen": 1794596380.9998329,
+    "ast_hash": "00e93972f83691a7a0ae89522ae30fd8",
     "semantic_hash": ""
   },
   "tools/seed-dev/integration/seed_test.ts": {

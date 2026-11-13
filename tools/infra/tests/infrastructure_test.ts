@@ -73,6 +73,7 @@ async function isolated(action: () => Promise<void>) {
 }
 Deno.test("secret initialization keeps password off arguments and output", () =>
   isolated(async () => {
+    Deno.env.set("GITHUB_ACTIONS", "true");
     const az = new FakeAzure();
     const output: string[] = [];
     const error: string[] = [];

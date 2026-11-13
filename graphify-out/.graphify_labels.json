@@ -1,10 +1,8 @@
 {
-  "0": "Agenda, Time Zones, Theme ADRs",
   "3": "Task Repository and Fixtures",
   "4": "CI, Pages and Architecture ADRs",
   "8": "Web Test Harness (MSW)",
   "10": "Dashboard Quality Section",
-  "14": "Rust Backend Guidance and ADRs",
   "15": "Docs Site Loader",
   "20": "Docs Dashboard Pages",
   "22": "Dashboard Flow Metrics",

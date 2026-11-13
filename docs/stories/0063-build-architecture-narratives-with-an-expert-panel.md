@@ -157,12 +157,13 @@ Five cases are in `.claude/skills/architecture-narrative-builder/evals/`, built 
 | [resume-skips-confirmed-act](../../.claude/skills/architecture-narrative-builder/evals/resume-skips-confirmed-act/case.yaml) | 2/3: it read the ledger first and re-asked nothing, but 2 of its 4 questions had no concrete options |
 | [slides-mode-links-deck](../../.claude/skills/architecture-narrative-builder/evals/slides-mode-links-deck/case.yaml) | 3/3 |
 | [build-removes-parts](../../.claude/skills/architecture-narrative-builder/evals/build-removes-parts/case.yaml) | 3/3 on the corrected fixture |
+| [quality-check-minor-failure-blocks-stitch](../../.claude/skills/architecture-narrative-builder/evals/quality-check-minor-failure-blocks-stitch/case.yaml) | 4/4 in two runs (#762); the skill before the fix scored 3/4 in two runs, missing the offer to accept the failure |
 
 The first runs of stitch-only and build were invalid, because the fixture itself was inconsistent. In each, the agent correctly refused to stitch and asked. The fixture had an Act 2 edit that contradicted the Cost requirement, no panel record, terms its vocabulary did not define, and two names for one component. The fixture was fixed and both cases were rerun. The runs also showed three gaps in the skill, recorded on #711 for follow-up:
 
 * **Panel never ran.** Quality check 4 does not say what to do when no panel round was run.
 * **Slides mode.** It does not say whether the quality checks must be reported in that mode.
-* **Stitched despite a failed check.** One stitch-only rerun stitched even though check 6 failed and it was asking about it, although the skill says a failed check goes back to the user as a question.
+* **Stitched despite a failed check.** One stitch-only rerun stitched even though check 6 failed and it was asking about it, although the skill says a failed check goes back to the user as a question. Fixed in #762: any failed check, however minor, now blocks the stitch until the user answers or explicitly accepts the failure, which the ledger records. The case `quality-check-minor-failure-blocks-stitch` covers a single undefined term in a restitch the user calls trivial. Its control runs on the skill before the fix also refused to stitch, so the original slip did not reproduce in two runs; what only the fix produces is the offer to accept the failure.
 
 ## User guide
 

@@ -49,7 +49,7 @@ test: backend::test frontend::test
 
 # Static analysis (clippy and rustfmt for the backend, ESLint and tsc for the frontend, then the repo tooling checks)
 [parallel]
-lint: backend::lint frontend::lint frontend::typecheck && tools::test tools::versions tools::adr docs::architecture
+lint: backend::lint frontend::lint frontend::typecheck && tools::test tools::versions tools::adr (tools::narratives "--check") docs::architecture
 
 # Auto-format all code
 format: backend::format tools::format frontend::format

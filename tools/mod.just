@@ -7,7 +7,8 @@ import '../just/run.just'
 
 adr_skill := ".claude/skills/adr-draft"
 run_skill := ".claude/skills/run-calendar"
-tool_dirs := adr_skill + " " + run_skill + " tools"
+narrative_skill := ".claude/skills/architecture-narrative-builder"
+tool_dirs := adr_skill + " " + run_skill + " " + narrative_skill + " tools"
 shell_tools := "tools/doctor/doctor.sh"
 
 # List this module's recipes
@@ -88,6 +89,11 @@ delivery-dashboard *args:
 [positional-arguments]
 adr *args:
     deno run --config {{ adr_skill }}/deno.json --frozen --no-prompt --allow-read --allow-write --allow-run=git {{ adr_skill }}/scripts/check-adr/check-adr.ts "$@"
+
+# Stitch docs/narratives/<system>/ parts into <system>-narrative.md (--check for drift, --remove-parts SYSTEM for build mode)
+[positional-arguments]
+narratives *args:
+    deno run --config {{ narrative_skill }}/deno.json --frozen --no-prompt --allow-read --allow-write {{ narrative_skill }}/scripts/stitch/stitch.ts "$@"
 
 # Auto-format repo tooling (whitespace; part of just format)
 format:

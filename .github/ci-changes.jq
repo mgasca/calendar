@@ -48,7 +48,7 @@ def needs($job):
   elif $job == "backend" then under(["backend/", "contracts/"])
   elif $job == "frontend" then under(["frontend/apps/web/", "frontend/packages/", "contracts/"]) or frontend_root
   elif $job == "tooling" then
-    under(["tools/", ".claude/", "infra/", "docker/", "just/", "docs/decisions/"]) or just_files or backend_toolchain
+    under(["tools/", ".claude/", "infra/", "docker/", "just/", "docs/decisions/", "docs/narratives/"]) or just_files or backend_toolchain
       or . == ".deno-version" or IN(tooling_github[])
   elif $job == "adr" then under(["docs/decisions/", "docs/stories/"]) or IN(adr_inputs[])
   elif $job == "image" then

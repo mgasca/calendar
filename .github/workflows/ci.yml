@@ -333,6 +333,8 @@ jobs:
         run: just tools versions
       - name: ADRs follow conventions
         run: just tools adr
+      - name: Narratives match their parts
+        run: just tools narratives --check
 
   # The ADR check alone, for a change to the ADRs, the story cards or the architecture model that runs no Tooling job
   # (issue #572): `check-adr` reads all three (story 0051), and takes about a second. On a pull request or merge group,

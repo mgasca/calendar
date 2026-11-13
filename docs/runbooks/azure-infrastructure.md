@@ -321,18 +321,18 @@ Run this after a revision that includes #731 is deployed to staging. Use only sy
 
 1. In the staging app, sign in and run a flow: add an event with a made-up title, location and notes, then open its day.
 2. In Application Insights, open **Transaction search**. Find the `POST /api/events` request. Check that it shows `SELECT` / `INSERT` dependencies under the same operation. Open the `traces` of that operation ID.
-3. In **Logs**, scan the last hour of telemetry for the values you typed and for your email. Replace the placeholders, then run:
+3. In **Logs**, scan the last hour of telemetry for the values you typed and for your email. The query packs every column of every row, so it searches every field, including exception messages. Replace the placeholders, then run:
 
    ```kusto
    let values = dynamic(["<your email>", "<event title>", "<location>", "<notes>"]);
    union requests, dependencies, traces, exceptions
    | where timestamp > ago(1h)
-   | extend text = strcat(name, " ", tostring(customDimensions), " ", message, " ", url, " ", data, " ", target)
+   | extend text = tostring(pack_all())
    | where text has_any (values)
    | project timestamp, itemType, name, operation_Id
    ```
 
-   The query must return no rows.
+   The query must return no rows. Then check that the scan can find something. Run it again with `values` set to `dynamic(["/api/events"])`, a route template that is always present. It must return rows.
 4. Record the result on [#738](https://github.com/mgasca/calendar/issues/738): the revision, the trace you found, and the query result.
 
 ## Estimated monthly costs
@@ -346,9 +346,9 @@ These are example USD retail prices from the [Microsoft retail prices API](https
 | PostgreSQL Flexible Server | Storage Data Stored | $0.133/GB-month |
 | PostgreSQL Flexible Server | Backup Storage LRS Data Stored | $0.10/GB-month |
 | Log Analytics | Analytics Logs Data Ingestion | $2.88/GB (a $0 free-tier meter also exists) |
-
-Application Insights is workspace-based, so the API's traces and logs are billed as ingestion into the same workspace, at the meter above. The OpenTelemetry agent has no compute charge of its own.
 | Key Vault | Operations | $0.03/10,000 operations |
+
+Application Insights is workspace-based, so the API's traces and logs are billed as ingestion into the same workspace, at the Log Analytics meter above. The OpenTelemetry agent has no compute charge of its own. The telemetry volume has not been measured yet. After the first staging deployment, measure it with `union AppRequests, AppDependencies, AppTraces | where TimeGenerated > ago(1d) | summarize rows = count(), bytes = sum(_BilledSize) by Type`, and update the assumption below.
 
 Assumptions per environment: 730 compute hours, 30 registry days, 32 GB storage, backups within the included storage, 1 GB of logs within the free allowance, 20,000 vault operations (10,000 per vault), and Container Apps usage within the subscription's shared free grant ([ADR-0029](../decisions/0029-azure-container-apps-compute-platform.md)). The second vault adds no fixed charge, only its operations ($0.03).
 

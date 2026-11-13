@@ -68,6 +68,12 @@ public sealed class InfraTests
       az.Calls.SelectMany(x => x).ShouldNotContain("secret-value");
       output.ToString().ShouldNotContain("transformed-secret");
       output.ToString().ShouldNotContain("encoded-value");
+      // The preview is published to a public job summary: an Application Insights connection string or a workspace
+      // key would let anyone write to the environment's telemetry.
+      output.ToString().ShouldNotContain("delta-key");
+      output.ToString().ShouldNotContain("after-key");
+      output.ToString().ShouldNotContain("shared-key-value");
+      output.ToString().ShouldContain("workspace-id");
       az.FileContents.ShouldNotContain("secret-value");
       az.FileContents.ShouldContain(
         "\"postgresAdministratorPassword\":{\"reference\":{\"keyVault\":{\"id\":\"" + FakeAzure.OpsVaultId
@@ -238,7 +244,12 @@ public sealed class InfraTests
       }
       return Task.FromResult(args.Contains("what-if")
         ? "{\"preview\":\"no-change\",\"password\":\"transformed-secret\","
-          + "\"changes\":[{\"path\":\"properties.postgresAdministratorPassword\",\"after\":\"encoded-value\"}]}"
+          + "\"changes\":[{\"path\":\"properties.postgresAdministratorPassword\",\"after\":\"encoded-value\"},"
+          + "{\"path\":\"properties.appInsightsConfiguration.connectionString\",\"after\":\"InstrumentationKey=delta-key\"},"
+          + "{\"resourceId\":\"cae\",\"after\":{\"properties\":{"
+          + "\"appInsightsConfiguration\":{\"connectionString\":\"InstrumentationKey=after-key\"},"
+          + "\"appLogsConfiguration\":{\"logAnalyticsConfiguration\":"
+          + "{\"customerId\":\"workspace-id\",\"sharedKey\":\"shared-key-value\"}}}}}]}"
         : "");
     }
   }

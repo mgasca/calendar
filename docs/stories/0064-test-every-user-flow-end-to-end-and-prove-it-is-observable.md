@@ -200,6 +200,12 @@ API telemetry (#731) lives in `calendar-api/src/telemetry/`:
 - **Scan limit:** a scan stops with an error when Loki returns its 5,000-record limit, rather than quietly scanning part of the logs (review note on #832).
   - Negative control: against an API without #798, the test passed the trace assertion and failed with "API log records with trace id … not found within 90 s".
 
+### Delivered in #734
+
+- **`add-event-flow`** (`tests/add-event-flow.spec.ts`, day 2026-04-07): adds a timed and an all-day event from the day page through the dialog, and checks the focus, the confirmation, the exclusive `endDate` of an all-day event and the agenda's refetch. Each save is its own `ui.event.create` trace down to `INSERT events`.
+- **`edit-event-flow`** (`tests/edit-event-flow.spec.ts`, day 2026-04-09): opens an event, changes it "elsewhere" through the API, and saves. The 409 reloads the latest version into the form, and the API's server span records the 409. Saving again succeeds. The test then deletes another event after the in-dialog confirmation, after first checking that **Keep event** sends nothing. Six traces in all: open, conflict, reload, save, open, delete.
+- **Harness, reusable by #735 and #736:** `expectFlow({ …, traces })` asserts several user actions' traces in one flow; `flowRequest(page, method, routeTemplate)` gives a request and its trace id; `seed.updateEvent` writes as the same user outside the browser and registers its texts.
+
 ### Lessons learned, known issues and follow-ups
 
 - Browser OpenTelemetry is marked experimental upstream, and the Rust traces signal is beta; ADR-0062 records the versions checked.

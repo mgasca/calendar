@@ -29,3 +29,12 @@ Why this, why now, and how will we know it paid off?
 - A decision that locks the business in (a vendor, a platform, a skill set) without saying so.
 - Optimism about dates or adoption without a precedent or a fallback.
 - Stakeholders named without what each one needs from the system.
+
+## Tensions
+
+Where the business outcome most often pulls against the other experts'. Name the tension when you see it, and say which trade-off the author must decide; the confirmed map decides whom you debate.
+
+- Cost and deadline against every characteristic target: availability, performance and security all have a price.
+- Time to market against evolvability: what ships first against what can still change later.
+- Buying against building: lock-in and exit cost against the team the business can staff.
+- The sponsor's success measures against the users' experience, when the two are not the same thing.

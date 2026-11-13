@@ -170,6 +170,33 @@ Deno.test("rebuttals re-read only the parts a peer cites; round 1 reads them all
   }
 });
 
+Deno.test("every brief file has the six fields, and each can be overridden", async () => {
+  const root = fromFileUrl(new URL("../../../", import.meta.url));
+  const fields = ["Concern", "Voice", "Standing question", "Evidence", "Pushback", "Tensions"];
+  for (const role of ["characteristic", "end-user", "business"]) {
+    const brief = await Deno.readTextFile(
+      `${root}.claude/skills/architecture-narrative-builder/references/experts/${role}.md`,
+    );
+    for (const f of fields) assert(brief.includes(`\n## ${f}\n`), `${role}.md has a ${f} section`);
+  }
+  const overrides = {
+    concern: "c",
+    voice: "v",
+    question: "q",
+    evidence: "e",
+    pushback: "p",
+    tensions: "Pupils against cost",
+  };
+  const panel = { ...PANEL, experts: PANEL.experts.map((e) => (e.id === "end-user" ? { ...e, brief: overrides } : e)) };
+  const { result, calls } = await run(panel, standardAnswer);
+  assertEquals(result.invalid, undefined);
+  assert(
+    calls.find((c) => c.opts.label === "questions:end-user")!.prompt.includes(
+      "Override of the brief's tensions: Pupils against cost",
+    ),
+  );
+});
+
 Deno.test("the alternatives phase lists the alternatives and uses the verdict schema", async () => {
   const args = {
     ...PANEL,

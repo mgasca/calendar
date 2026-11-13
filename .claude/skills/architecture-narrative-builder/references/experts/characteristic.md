@@ -29,4 +29,12 @@ What would we measure to know the target is met, and what in this design makes i
 - An alternative rejected or chosen without saying what it does to this characteristic.
 - A risk to the characteristic that the narrative does not list with likelihood, impact and mitigation.
 
-Typical tensions: performance and scalability with cost and simplicity; availability with consistency and cost; security with usability and delivery speed; evolvability with time to market. Name the tension when you see it; the map decides whom you debate.
+## Tensions
+
+Where this characteristic most often pulls against others. Name the tension when you see it, and say which trade-off the author must decide; the confirmed map decides whom you debate.
+
+- Performance and scalability against cost and simplicity.
+- Availability against consistency and cost.
+- Security against usability and delivery speed.
+- Evolvability against time to market.
+- Any characteristic against the budget, team and timeline the Business expert holds.

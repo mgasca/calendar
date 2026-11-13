@@ -10,12 +10,13 @@ Role briefs for the narrative panel (story 0063). The `narrative-panel` workflow
 
 ## Brief fields
 
-Every brief has the same five fields. The facilitator may override any of them per expert with the workflow's `experts[].brief` argument, for example to name the actual end users or the sponsor's real question; an override replaces the field, it does not append to it.
+Every brief has the same six fields. The facilitator may override any of them per expert with the workflow's `experts[].brief` argument, for example to name the actual end users or the sponsor's real question; an override replaces the field, it does not append to it.
 
 - **Concern**: what this expert protects.
 - **Voice**: how it speaks, so the author hears distinct people rather than one reviewer.
 - **Standing question**: the one question it asks of every act.
 - **Evidence**: the metric or evidence it wants before it is satisfied.
 - **Pushback**: what it challenges on sight.
+- **Tensions**: where its concern most often pulls against the other experts', so the rebuttal argues trade-offs rather than positions.
 
 Keep briefs short: the agent reads one per run, at every phase.

@@ -18,7 +18,7 @@ export const meta = {
 //   parts: ['docs/narratives/<system>/01-setup.md', ...]   repo-relative; the only narrative files the experts read
 //   experts: [{ id, role: 'characteristic' | 'end-user' | 'business', name,
 //               characteristic, requirement, target,         characteristic experts only (characteristic required)
-//               brief: { concern, voice, question, evidence, pushback } }]   optional field overrides
+//               brief: { concern, voice, question, evidence, pushback, tensions } }]   optional field overrides
 //            at most five characteristic experts, exactly one end-user and one business expert
 //   map: [{ a, b, relation: 'synergy' | 'conflict' | 'neutral', reason }]    the user-confirmed map; unlisted = neutral
 //   alternatives: [{ id, title, summary }]                   phase 'alternatives' only (required there)
@@ -40,7 +40,7 @@ const PHASES = ['questions', 'alternatives', 'review']
 const ROLES = ['characteristic', 'end-user', 'business']
 const RELATIONS = ['synergy', 'conflict', 'neutral']
 const ROUTED = ['synergy', 'conflict']
-const BRIEF_FIELDS = ['concern', 'voice', 'question', 'evidence', 'pushback']
+const BRIEF_FIELDS = ['concern', 'voice', 'question', 'evidence', 'pushback', 'tensions']
 const MAX_CHARACTERISTICS = 5
 const BRIEFS = '.claude/skills/architecture-narrative-builder/references/experts'
 const ID = /^[a-z0-9][a-z0-9-]*$/

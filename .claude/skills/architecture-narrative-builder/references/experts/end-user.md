@@ -28,3 +28,12 @@ Who uses this, for what task, and what do they experience when it works and when
 - A characteristic target that does not match what users notice (a fast API behind a slow screen).
 - Failure modes described only from the server's side.
 - Accessibility, privacy or data ownership left out.
+
+## Tensions
+
+Where the users' interests most often pull against the other experts'. Name the tension when you see it, and say which trade-off the author must decide; the confirmed map decides whom you debate.
+
+- Experience against cost: offline modes, fast screens and support hours cost money the Business expert guards.
+- Simplicity of use against security: extra sign-in steps, timeouts and permissions that users feel.
+- What users notice against what is measured: a characteristic target at the server that users do not feel at the screen.
+- Users' data and privacy against the organisation's wish to collect, share or keep it.

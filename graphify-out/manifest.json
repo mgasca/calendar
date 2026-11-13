@@ -4110,9 +4110,9 @@
     "semantic_hash": ""
   },
   ".claude/workflows/narrative-panel.js": {
-    "mtime": 1794569354.9218874,
-    "seen": 1794569392.4001827,
-    "ast_hash": "50805d8af9d35b0aeeabc4da3dc1a186",
+    "mtime": 1794569670.1806448,
+    "seen": 1794569705.4503522,
+    "ast_hash": "dea87d945bd50cd788163895bb23f023",
     "semantic_hash": ""
   },
   "tools/delivery-guards/delivery-guards.ts": {
@@ -4158,9 +4158,9 @@
     "semantic_hash": ""
   },
   "tools/narrative-panel/tests/narrative-panel_test.ts": {
-    "mtime": 1794569354.977241,
-    "seen": 1794569392.497764,
-    "ast_hash": "efd71026d59867a20d0428164e36a202",
+    "mtime": 1794569660.8610625,
+    "seen": 1794569705.4818044,
+    "ast_hash": "a26a65deaa662567a51e2d3dcc087f41",
     "semantic_hash": ""
   },
   "tools/tool-versions/tests/tool-versions_test.ts": {
@@ -4182,27 +4182,27 @@
     "semantic_hash": ""
   },
   ".claude/skills/architecture-narrative-builder/references/experts/README.md": {
-    "mtime": 1794567399.1560974,
-    "seen": 1794567565.5216484,
-    "ast_hash": "c359c07f98fd5128633d503d5eeb557d",
+    "mtime": 1794569632.8069816,
+    "seen": 1794569705.4834988,
+    "ast_hash": "518df4a4c239a24638de629dfffd07be",
     "semantic_hash": ""
   },
   ".claude/skills/architecture-narrative-builder/references/experts/business.md": {
-    "mtime": 1794567399.167011,
-    "seen": 1794567565.5216527,
-    "ast_hash": "171614cc1cc23d940f12d0ee23a879fb",
+    "mtime": 1794569632.795251,
+    "seen": 1794569705.483502,
+    "ast_hash": "949de3f0462dc6556e56bdaa5062bc1d",
     "semantic_hash": ""
   },
   ".claude/skills/architecture-narrative-builder/references/experts/characteristic.md": {
-    "mtime": 1794567399.1608927,
-    "seen": 1794567565.5216556,
-    "ast_hash": "274d3f597d94b83b881e431dd29dc2ca",
+    "mtime": 1794569632.791352,
+    "seen": 1794569705.483504,
+    "ast_hash": "1f971c57b957f31ead6bbf5244086b0a",
     "semantic_hash": ""
   },
   ".claude/skills/architecture-narrative-builder/references/experts/end-user.md": {
-    "mtime": 1794567399.1630106,
-    "seen": 1794567565.5216582,
-    "ast_hash": "606232019bba9d97c0a0073d7b39a4a5",
+    "mtime": 1794569632.7914944,
+    "seen": 1794569705.4835062,
+    "ast_hash": "e07bd0d167e4cb6707e72a845da592ed",
     "semantic_hash": ""
   },
   "docs/decisions/0059-publish-architecture-narratives-stitched-from-part-files.md": {

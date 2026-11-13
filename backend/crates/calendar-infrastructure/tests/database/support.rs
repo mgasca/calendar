@@ -39,11 +39,7 @@ pub async fn ef_migrated_database(history_sql: &str) -> TestDatabase {
   let database = TestDatabase::empty().await;
   let admin = database.admin_client().await;
   // psql meta-commands (\restrict) are not SQL; the rest of a plain pg_dump is.
-  let schema: String = include_str!("../fixtures/ef-schema.sql")
-    .lines()
-    .filter(|line| !line.starts_with('\\'))
-    .flat_map(|line| [line, "\n"])
-    .collect();
+  let schema = without_meta_commands(include_str!("../fixtures/ef-schema.sql"));
   admin.batch_execute(&schema).await.expect("the EF Core schema restores");
   admin.batch_execute(history_sql).await.expect("the EF Core history restores");
   admin
@@ -57,11 +53,7 @@ pub async fn ef_migrated_database(history_sql: &str) -> TestDatabase {
 /// random) and without the objects of either migration-history table.
 pub fn normalize_dump(dump: &str) -> String {
   const SEPARATOR: &str = "\n--\n-- Name: ";
-  let text: String = dump
-    .lines()
-    .filter(|line| !line.starts_with('\\'))
-    .flat_map(|line| [line, "\n"])
-    .collect();
+  let text = without_meta_commands(dump);
   let mut sections = text.split(SEPARATOR);
   let mut kept = sections.next().unwrap_or_default().to_owned();
   for section in sections {

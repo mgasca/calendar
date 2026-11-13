@@ -22,9 +22,9 @@ Grep recipes:
 ```sh
 git grep -n -i -E '<words>' origin/main -- AGENTS.md backend/AGENTS.md frontend/AGENTS.md .claude docs/*/README.md tools/README.md
 git grep -n -i -E '<words>' origin/main -- docs/stories docs/decisions docs/benchmarks
-git show origin/main:tools/agent-hooks/agent-hooks.cs | sed -n '1,40p'   # the usage comment lists every hooked rule
-git show origin/main:tools/agent-hooks/BashGuard.cs | grep -n -i -E 'deny|ask'
-git show origin/main:tools/agent-hooks/EditGuard.cs | grep -n -i -E 'deny|ask'
+git show origin/main:tools/agent-hooks/agent-hooks.ts | sed -n '1,40p'   # the usage comment lists every hooked rule
+git show origin/main:tools/agent-hooks/bash-guard.ts | grep -n -i -E 'deny|ask'
+git show origin/main:tools/agent-hooks/checks.ts | grep -n -i -E 'deny|ask'
 ```
 
 ## Local memory roots

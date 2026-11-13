@@ -350,6 +350,13 @@ These are example USD retail prices from the [Microsoft retail prices API](https
 
 Application Insights is workspace-based, so the API's traces and logs are billed as ingestion into the same workspace, at the Log Analytics meter above. The OpenTelemetry agent has no compute charge of its own. The telemetry volume has not been measured yet. After the first staging deployment, measure it with `union AppRequests, AppDependencies, AppTraces | where TimeGenerated > ago(1d) | summarize rows = count(), bytes = sum(_BilledSize) by Type`, and update the assumption below.
 
+**Risk: telemetry ingestion has no cap.**
+
+- **Why it can grow:** the API traces every request except health probes, and the ingress is public. Nothing bounds how much telemetry the workspace ingests, so anyone who sends many requests raises the bill.
+- **Illustration (inferred, not measured):** a sustained 50 requests per second would ingest about 2–4 GB a day, about $6–12 a day at the meter above.
+- **Why there is no workspace cap:** a daily cap (`workspaceCapping.dailyQuotaGb`) applies to the whole workspace. Once it is reached, the console logs and the Key Vault audit events also stop for the rest of the day, which is worse during an incident than the cost.
+- **Mitigation:** the budget alert of [#80](https://github.com/mgasca/calendar/issues/80), which is not delivered yet. This choice was agreed on #769.
+
 Assumptions per environment: 730 compute hours, 30 registry days, 32 GB storage, backups within the included storage, 1 GB of logs within the free allowance, 20,000 vault operations (10,000 per vault), and Container Apps usage within the subscription's shared free grant ([ADR-0029](../decisions/0029-azure-container-apps-compute-platform.md)). The second vault adds no fixed charge, only its operations ($0.03).
 
 | Item | Per environment |

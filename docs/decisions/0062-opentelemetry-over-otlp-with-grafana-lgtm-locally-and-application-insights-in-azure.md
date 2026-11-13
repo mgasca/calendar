@@ -144,4 +144,5 @@ Each flow test ([ADR-0061](0061-end-to-end-ui-tests-with-playwright-test-bound-t
   * Azure Monitor native OTLP ingestion: generally available, Azure update AZ565090, 2026-06-04.
 * **Related:** [ADR-0029](0029-azure-container-apps-compute-platform.md) (Container Apps), [ADR-0030](0030-single-container-for-api-and-spa.md) (one container serves API and SPA), [ADR-0032](0032-azure-key-vault-for-secrets.md) (secrets), [ADR-0041](0041-per-user-data-ownership.md) (per-user data).
 * **Delivery:** epic #728, children #731 (API), #732 (web), #733 (assertions) and #738 (Azure). Alerts and budgets: #80.
+* **Answered on #729 (2026-11-13, the maintainer through the epic coordinator):** the browser exports to the same-origin `/otlp` path forwarded by `vite dev` and `vite preview` to LGTM, and the API gains no endpoint. Web telemetry stays off in Azure for this epic (`traceparent` is still sent); turning it on is a follow-up for a later decision.
 * **Revisit** when the managed agent leaves preview or gains Application Insights metrics, or when web telemetry is wanted in Azure.

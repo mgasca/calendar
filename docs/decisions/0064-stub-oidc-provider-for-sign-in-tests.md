@@ -131,4 +131,5 @@ Chosen option: "`navikt/mock-oauth2-server`", because it implements the whole au
   * Sources: each project's GitHub README and releases; the Keycloak memory and CPU sizing guide.
   * Not measured: memory and start-up time.
 * **Related:** story [0005](../stories/0005-google-sign-in.md) (Google sign-in), [ADR-0056](0056-session-cookie-sealed-with-a-database-held-key.md) (session cookie).
+* **Answered on #729 (2026-11-13, the maintainer through the epic coordinator):** no new environment. The end-to-end stack runs the API as `Development`, the overrides are honoured only there and only for loopback URLs, and the API refuses to start otherwise.
 * **Delivery:** #730 (the stub in the stack and the API's guarded settings), #736 (`sign-in-flow`) and #104 (API-level gaps).

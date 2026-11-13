@@ -149,7 +149,7 @@ No endpoint changes expected. New settings: the OpenTelemetry `OTEL_*` variables
 ### Lessons learned, known issues and follow-ups
 
 - Browser OpenTelemetry is marked experimental upstream, and the Rust traces signal is beta; ADR-0062 records the versions checked.
-- Web telemetry in Azure is not configured in this story (ADR-0062).
+- **Follow-up:** web telemetry in Azure stays off in this story (`traceparent` is still sent), as the maintainer chose on #729 on 2026-11-13; turning it on is a later decision (ADR-0062).
 
 ## User guide
 

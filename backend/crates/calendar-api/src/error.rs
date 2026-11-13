@@ -6,11 +6,13 @@ use axum::response::{IntoResponse, Response};
 use crate::problem::Problem;
 
 /// A handler's failure: a deliberate problem response, or anything else, which is logged and answered `500`.
-#[derive(Debug)]
+#[derive(Debug, thiserror::Error)]
 pub enum ApiError {
   /// The response to send.
+  #[error("problem response {}", .0.status_code())]
   Problem(Box<Problem>),
   /// An unexpected failure. Its text goes to the log, never to the client.
+  #[error("{0}")]
   Internal(String),
 }
 
@@ -42,5 +44,19 @@ impl IntoResponse for ApiError {
         Problem::status(StatusCode::INTERNAL_SERVER_ERROR).into_response()
       }
     }
+  }
+}
+
+#[cfg(test)]
+mod tests {
+  use super::*;
+
+  #[test]
+  fn an_error_displays_its_message_not_its_debug_form() {
+    assert_eq!(ApiError::internal("no database connection").to_string(), "no database connection");
+    assert_eq!(
+      ApiError::from(Problem::status(StatusCode::SERVICE_UNAVAILABLE)).to_string(),
+      "problem response 503 Service Unavailable"
+    );
   }
 }

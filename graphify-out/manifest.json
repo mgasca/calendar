@@ -4182,9 +4182,9 @@
     "semantic_hash": ""
   },
   ".claude/skills/architecture-narrative-builder/references/experts/README.md": {
-    "mtime": 1794569632.8069816,
-    "seen": 1794569705.4834988,
-    "ast_hash": "518df4a4c239a24638de629dfffd07be",
+    "mtime": 1794569898.7403476,
+    "seen": 1794570504.875025,
+    "ast_hash": "a0d5bc5b970e12e717ad310c4148c524",
     "semantic_hash": ""
   },
   ".claude/skills/architecture-narrative-builder/references/experts/business.md": {
@@ -4224,9 +4224,9 @@
     "semantic_hash": ""
   },
   "docs/stories/0063-build-architecture-narratives-with-an-expert-panel.md": {
-    "mtime": 1794567289.9576874,
-    "seen": 1794567565.522674,
-    "ast_hash": "14d0121d43c867db906428b986b7bd66",
+    "mtime": 1794570245.2830865,
+    "seen": 1794570504.891035,
+    "ast_hash": "45d5d07efa396632e64ff266f1cec78e",
     "semantic_hash": ""
   },
   "tools/narrative-panel/tests/fixtures/school-library/01-setup.md": {
@@ -4245,6 +4245,12 @@
     "mtime": 1794567496.1404624,
     "seen": 1794567565.522775,
     "ast_hash": "b0149ffdb21d02f571d5682549c01587",
+    "semantic_hash": ""
+  },
+  "docs/benchmarks/0022-narrative-panel-rebuttal-part-reads.md": {
+    "mtime": 1794570236.5142953,
+    "seen": 1794570504.882676,
+    "ast_hash": "bf4ec35610a12860d7169da9ba720695",
     "semantic_hash": ""
   },
   "frontend/pnpm-lock.yaml": {

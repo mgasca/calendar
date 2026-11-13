@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import { fileURLToPath } from 'node:url';
 import {
   decisionsDirectory,
@@ -9,10 +9,20 @@ import {
 } from './docs-loader';
 import { fakeLoaderContext } from './fakeLoaderContext';
 
-// Counts directory listings, the first step of every corpus read.
+// Every read of the real corpus starts with one listing of docs/decisions, then parses each document
+// under docs/: several seconds of the Docs site job's `test:coverage` on a CI runner (#752). This file
+// reads it three times: one sync shared by the tests that need its entries (`syncCorpus()`), and the
+// two route-map computations of the test that counts them. `corpusReads.file` counts the whole file
+// and is never cleared, because Vitest clears a mock's calls between tests.
+const corpusReadBudget = 3;
+const corpusReads = vi.hoisted(() => ({ file: 0 }));
 vi.mock('node:fs/promises', async (importOriginal) => {
   const actual = await importOriginal<typeof import('node:fs/promises')>();
-  return { ...actual, readdir: vi.fn(actual.readdir) };
+  const readdir = ((...args: Parameters<typeof actual.readdir>) => {
+    if (String(args[0]).endsWith('/docs/decisions/')) corpusReads.file += 1;
+    return actual.readdir(...args);
+  }) as typeof actual.readdir;
+  return { ...actual, readdir: vi.fn(readdir) };
 });
 const { readdir } = await import('node:fs/promises');
 const decisionsPath = fileURLToPath(decisionsDirectory);
@@ -25,13 +35,25 @@ beforeEach(() => {
   resetDocumentRoutes();
 });
 
-describe('docs loader', () => {
-  it('reads the corpus once per sync, however many documents the remark plugin rewrites', async () => {
+afterAll(() => {
+  // Before #752 the narratives test ran a second full sync: four reads.
+  expect(corpusReads.file).toBeLessThanOrEqual(corpusReadBudget);
+});
+
+let corpus: Promise<{ entries: Map<string, unknown>; listings: number }> | undefined;
+const syncCorpus = () =>
+  (corpus ??= (async () => {
     const { entries, context } = fakeLoaderContext();
     await docsLoader().load(context);
+    return { entries, listings: decisionListings() };
+  })());
+
+describe('docs loader', () => {
+  it('reads the corpus once per sync, however many documents the remark plugin rewrites', async () => {
+    const { entries, listings } = await syncCorpus();
     expect(entries.size).toBeGreaterThan(50);
     // Before #273 the plugin called readDocuments() for every rendered entry: one listing per document.
-    expect(decisionListings()).toBe(1);
+    expect(listings).toBe(1);
   }, 60_000);
 
   it('computes the route map once for callers outside a sync', async () => {
@@ -78,8 +100,7 @@ describe('narratives (ADR-0059)', () => {
   });
 
   it('publishes the repository narratives with an index page and an edit link per page', async () => {
-    const { entries, context } = fakeLoaderContext();
-    await docsLoader().load(context);
+    const { entries } = await syncCorpus();
     const index = entries.get('narratives');
     expect(index).toBeDefined();
     const { records } = await readNarratives();

@@ -63,7 +63,7 @@ export function unwrap(words: string[], cwd: string) {
       i++;
       continue;
     }
-    const name = basename(words[i]!), wrapper = wrappers[name];
+    const name = basename(words[i]!), wrapper = Object.hasOwn(wrappers, name) ? wrappers[name] : undefined;
     if (!wrapper) break;
     inShell &&= wrapper.inShell;
     let j = i + 1;

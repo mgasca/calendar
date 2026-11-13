@@ -1602,7 +1602,7 @@
         { "relationship-unique-id": "user-uses-web-app", "sequence-number": 6, "description": "The dialog closes, focus returns to 'Add event', a role=status message says e.g. 'Dentist added for Thu 29 Oct' with a Show day link, and the ['agenda'] queries are invalidated" },
         { "relationship-unique-id": "web-app-calls-api", "sequence-number": 7, "description": "The visible day or week agenda refetches (GET /api/agenda/day or /week) and now shows the event" }
       ],
-      "metadata": { "story": "0004", "adrs": ["ADR-0057", "ADR-0020", "ADR-0021", "ADR-0026"], "sibling": "Adding a task (stories 0003 and 0006) follows the same flow with POST /api/tasks { title, dueDate | dueAt, priority, notes }" }
+      "metadata": { "story": "0004", "adrs": ["ADR-0057", "ADR-0020", "ADR-0021", "ADR-0026"], "e2e-test": "frontend/apps/e2e/tests/add-event-flow.spec.ts", "sibling": "Adding a task (stories 0003 and 0006) follows the same flow with POST /api/tasks { title, dueDate | dueAt, priority, notes }" }
     },
     {
       "unique-id": "edit-event-flow",
@@ -1618,7 +1618,7 @@
         { "relationship-unique-id": "web-app-calls-api", "sequence-number": 6, "description": "200 with the new version or 204; 400 field errors; 404 gone or another user's; 409 stale version", "direction": "destination-to-source" },
         { "relationship-unique-id": "user-uses-web-app", "sequence-number": 7, "description": "Success closes the dialog, says 'Dentist saved.' or 'Dentist deleted.', refetches ['agenda'] and returns focus to the title or the day heading; 409 reloads the latest version into the form and says the event was changed elsewhere; other errors keep the values for a retry" }
       ],
-      "metadata": { "story": "0043", "adrs": ["ADR-0014", "ADR-0052", "ADR-0020", "ADR-0041"] }
+      "metadata": { "story": "0043", "adrs": ["ADR-0014", "ADR-0052", "ADR-0020", "ADR-0041"], "e2e-test": "frontend/apps/e2e/tests/edit-event-flow.spec.ts" }
     },
     {
       "unique-id": "edit-task-flow",

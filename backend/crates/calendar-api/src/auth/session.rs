@@ -103,12 +103,12 @@ pub struct SessionTicket {
 
 impl SessionTicket {
   /// A ticket for `principal`, signed in at `now`.
-  pub fn issue(principal: &Principal, now: DateTime<Utc>) -> Self {
+  pub fn issue(principal: Principal, now: DateTime<Utc>) -> Self {
     Self {
       user_id: Some(principal.owner.0),
-      name: principal.name.clone(),
-      email: principal.email.clone(),
-      picture: principal.picture.clone(),
+      name: principal.name,
+      email: principal.email,
+      picture: principal.picture,
       expires_at: now + SESSION_LIFETIME,
     }
   }
@@ -126,13 +126,13 @@ impl SessionTicket {
     (now < ticket.expires_at).then_some(ticket)
   }
 
-  /// The person the ticket signs in, or `None` when it carries no user id.
-  pub fn principal(&self) -> Option<Principal> {
+  /// The person the ticket signs in, or `None` when it carries no user id. Spends the ticket.
+  pub fn into_principal(self) -> Option<Principal> {
     Some(Principal {
       owner: OwnerId(self.user_id?),
-      name: self.name.clone(),
-      email: self.email.clone(),
-      picture: self.picture.clone(),
+      name: self.name,
+      email: self.email,
+      picture: self.picture,
     })
   }
 }
@@ -184,12 +184,12 @@ mod tests {
   fn a_ticket_opens_under_its_key_until_it_expires() {
     let sealer = Sealer::new(&[1; 32]);
     let now = Utc.with_ymd_and_hms(2026, 10, 26, 15, 0, 0).unwrap();
-    let ticket = SessionTicket::issue(&principal(), now);
+    let ticket = SessionTicket::issue(principal(), now);
     assert_eq!(ticket.expires_at, now + TimeDelta::hours(8));
     let cookie = ticket.seal(&sealer);
 
     let opened = SessionTicket::open(&sealer, &cookie, now + TimeDelta::hours(8) - TimeDelta::seconds(1)).unwrap();
-    assert_eq!(opened.principal(), Some(principal()));
+    assert_eq!(opened.into_principal(), Some(principal()));
     assert_eq!(SessionTicket::open(&sealer, &cookie, now + TimeDelta::hours(8)), None);
     assert_eq!(SessionTicket::open(&Sealer::new(&[2; 32]), &cookie, now), None);
   }
@@ -213,9 +213,9 @@ mod tests {
   fn a_ticket_without_a_user_id_signs_nobody_in() {
     let ticket = SessionTicket {
       user_id: None,
-      ..SessionTicket::issue(&principal(), DateTime::UNIX_EPOCH)
+      ..SessionTicket::issue(principal(), DateTime::UNIX_EPOCH)
     };
-    assert_eq!(ticket.principal(), None);
+    assert_eq!(ticket.into_principal(), None);
   }
 
   #[test]

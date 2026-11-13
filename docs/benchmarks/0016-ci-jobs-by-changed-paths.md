@@ -1,6 +1,6 @@
 ---
 subject: "CI runner time and wall clock when each job runs only for the paths it checks (ADR-0046)"
-harness: "tools/ci-timings/ci-timings.cs"
+harness: "tools/ci-timings/ci-timings.ts"
 ---
 
 # 0016 CI runner time and wall clock when jobs run only for their paths

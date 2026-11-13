@@ -1,6 +1,6 @@
 ---
 subject: "The pinned run-time baseline re-measured with the Changes job gated (J = 6), both paths pinned, and the false-failure budget recalibrated (ADR-0045)"
-harness: "tools/ci-timings/ci-timings.cs"
+harness: "tools/ci-timings/ci-timings.ts"
 ---
 
 # 0017 The CI job baseline with `Changes`, both paths pinned

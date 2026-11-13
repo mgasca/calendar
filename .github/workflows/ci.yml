@@ -241,10 +241,11 @@ jobs:
       - name: Architecture model conforms to the CALM schema
         run: pnpm --filter @calendar/docs validate:architecture
       - run: pnpm --filter @calendar/docs test:coverage
-      # Deck discovery, the deck base and a real Slidev build of the fixture deck (ADR-0060).
+      # Deck discovery, the deck base and a real Slidev build of the fixture deck (ADR-0060). The app is plain
+      # TypeScript, so `tsc` checks it; the Docs site's own typecheck is `astro check --noSync` further down.
       - name: Test and type-check the narrative decks
         run: |
-          pnpm --filter @calendar/slides typecheck
+          pnpm --filter @calendar/slides exec tsc --noEmit
           pnpm --filter @calendar/slides test
       - name: Build docs site at the root path
         run: pnpm --filter @calendar/docs build

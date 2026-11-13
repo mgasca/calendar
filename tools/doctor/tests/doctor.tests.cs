@@ -193,6 +193,7 @@ public sealed class DoctorTests : IDisposable
   {
     File.Delete(Path.Combine(_bin, "just"));
     WriteExecutable("dotnet", "printf '<%s>\\n' \"$@\"");
+    WriteExecutable("deno", "printf '<%s>\\n' \"$@\"");
     WriteExecutable("cargo", "printf '<%s>\\n' \"$@\"");
     WriteExecutable("pnpm", "printf '<%s>\\n' \"$@\"");
     var root = Path.GetFullPath(Path.Combine(Path.GetDirectoryName(SourcePath())!, "../../.."));

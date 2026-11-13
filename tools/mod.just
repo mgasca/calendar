@@ -67,7 +67,7 @@ deno-test:
 # Check that the tools pin each package at one version (--fix to update to the newest pinned)
 [positional-arguments]
 versions *args:
-    dotnet run tools/tool-versions/tool-versions.cs -- "$@"
+    deno run --config tools/deno.json --frozen --no-prompt --allow-read --allow-write --allow-run=deno tools/tool-versions/tool-versions.ts "$@"
 
 # Sample a workflow's job and step durations from GitHub (e.g. just tools ci-timings --job Frontend)
 [positional-arguments]
@@ -87,7 +87,7 @@ delivery-dashboard *args:
 # Validate ADRs in docs/decisions (e.g. just tools adr --fix-links)
 [positional-arguments]
 adr *args:
-    dotnet run {{ adr_skill }}/scripts/check-adr/check-adr.cs -- "$@"
+    deno run --config {{ adr_skill }}/deno.json --frozen --no-prompt --allow-read --allow-write --allow-run=git {{ adr_skill }}/scripts/check-adr/check-adr.ts "$@"
 
 # Auto-format repo tooling (whitespace; part of just format)
 format:

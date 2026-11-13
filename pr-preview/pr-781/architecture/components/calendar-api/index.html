@@ -430,7 +430,7 @@
 </li>
 <li><strong>logs</strong>: Container Apps appLogsConfiguration → Log Analytics workspace law-calendar-<suffix></suffix></li>
 <li><strong>log-retention-days</strong>: 30</li>
-<li><strong>telemetry</strong>: Application Insights appi-calendar-<suffix> (workspace-based) is provisioned, but the container app is given no connection string and the API sends it no telemetry; the API’s logs reach Log Analytics through the container’s standard output</suffix></li>
+<li><strong>telemetry</strong>: The Container Apps environment runs the managed OpenTelemetry agent (appInsightsConfiguration and openTelemetryConfiguration in infra/modules/app.bicep): it receives the API’s OTLP over gRPC and sends traces and logs to Application Insights appi-calendar-<suffix> (workspace-based); the app sets OTEL_SERVICE_NAME=calendar-api and OTEL_METRICS_EXPORTER=none, request metrics come from the Container Apps platform metrics, and the API’s console output still reaches Log Analytics (#738)</suffix></li>
 <li><strong>audit-logs</strong>: Key Vault AuditEvent diagnostics for the app and ops vaults</li>
 <li><strong>structured-logging</strong>: tracing with tracing-subscriber’s formatter at INFO, written to standard output</li>
 <li><strong>telemetry-decision</strong>:
@@ -442,7 +442,7 @@
 <ul>
 <li><strong>local</strong>: grafana/otel-lgtm, opt-in (Compose profile observability)</li>
 <li><strong>e2e</strong>: grafana/otel-lgtm in each throwaway stack</li>
-<li><strong>azure</strong>: API traces and logs to Application Insights appi-calendar-<suffix> through the Container Apps managed OpenTelemetry agent; request metrics from Container Apps platform metrics; web telemetry not exported (#738)</suffix></li>
+<li><strong>azure</strong>: API traces and logs to Application Insights appi-calendar-<suffix> through the Container Apps managed OpenTelemetry agent, configured in Bicep (#738); request metrics from Container Apps platform metrics; web telemetry not exported. Where to look: docs/runbooks/azure-infrastructure.md, Monitoring: where to look</suffix></li>
 </ul>
 </li>
 <li><strong>privacy</strong>:

@@ -58,7 +58,7 @@ L=~/.cache/calendar-chromium-libs; mkdir -p $L/debs && (cd $L/debs && apt-get do
 docker run -d --rm --name calendar-agent-db -p 127.0.0.1:55432:5432 \
   -e POSTGRES_USER=postgres -e POSTGRES_PASSWORD=dev-admin-password -e POSTGRES_DB=calendar \
   -e CALENDAR_MIGRATOR_PASSWORD=dev-migrator-password -e CALENDAR_APP_PASSWORD=dev-app-password \
-  -v "$PWD/docker/postgres/init:/docker-entrypoint-initdb.d:ro" "$(grep -oP 'image: \K\S+' compose.yaml)"
+  -v "$PWD/docker/postgres/init:/docker-entrypoint-initdb.d:ro" "$(grep -oP 'image: \Kpostgres:\S+' compose.yaml)"
 timeout 60 bash -c 'until docker exec calendar-agent-db pg_isready -h 127.0.0.1 -U postgres -d calendar >/dev/null 2>&1; do sleep 1; done'
 ```
 

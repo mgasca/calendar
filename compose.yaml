@@ -1,21 +1,26 @@
-# Local backing services for development (ADR-0016). Start with `just db up`.
+# Local backing services for development and end-to-end runs (ADR-0063). Start the database with `just db up`.
 #
-# REVISIT TRIGGER: when a second backing service (Redis, a message queue, blob storage, an identity
-# provider, ...) is added, re-evaluate .NET Aspire in a new ADR that supersedes the provisioning part of
-# ADR-0016 instead of growing this file by hand.
+# `postgres` is the only default service. The others are opt-in through profiles: `observability` (Grafana LGTM,
+# ADR-0062: `just db observability`) and `sign-in-stub` (a stub OpenID Connect provider standing in for Google,
+# ADR-0064). Every port is published on 127.0.0.1 only, and every host port is a variable with the default below,
+# so `just e2e up` can run its own project (calendar-e2e-*) from this file on other ports without touching this one.
+#
+# REVISIT TRIGGER (ADR-0063): when the local stack needs more application processes than the API and the web app,
+# or service discovery between them, re-evaluate an orchestrator (such as Aspire) in a new ADR. Until then, a new
+# backing service joins this file under a profile.
 #
 # The postgres image tag below is the single source of truth: the backend tests (calendar-testing) read it from
-# this file for Testcontainers, and Dependabot (docker ecosystem) bumps it. Credentials come from the untracked
-# .env (see .env.example).
+# this file for Testcontainers, and Dependabot (docker ecosystem) bumps it; keep postgres the first image. Credentials
+# come from the untracked .env (see .env.example).
 name: calendar
 
 services:
   postgres:
     image: postgres:18.6-alpine
-    restart: unless-stopped
+    restart: ${CALENDAR_POSTGRES_RESTART:-unless-stopped}
     ports:
       # Loopback only: the database must not be reachable from the network.
-      - "127.0.0.1:5432:5432"
+      - "127.0.0.1:${CALENDAR_POSTGRES_PORT:-5432}:5432"
     environment:
       # Bootstrap superuser; the application never uses it.
       POSTGRES_USER: ${POSTGRES_ADMIN_USER:?copy .env.example to .env}
@@ -40,6 +45,46 @@ services:
       timeout: 3s
       retries: 10
       start_period: 10s
+
+  # Grafana LGTM (ADR-0062): an OpenTelemetry collector with Tempo, Loki, Prometheus and Grafana, for development
+  # and end-to-end runs only; it never appears in infra/. Grafana's admin/admin login is acceptable because it
+  # listens on loopback only. Telemetry is kept in the container and lost with it.
+  lgtm:
+    image: grafana/otel-lgtm:0.40.0
+    profiles: [observability]
+    ports:
+      - "127.0.0.1:${CALENDAR_GRAFANA_PORT:-3000}:3000"
+      - "127.0.0.1:${CALENDAR_OTLP_GRPC_PORT:-4317}:4317"
+      - "127.0.0.1:${CALENDAR_OTLP_HTTP_PORT:-4318}:4318"
+      # The query APIs the end-to-end tests read (#733).
+      - "127.0.0.1:${CALENDAR_LOKI_PORT:-3100}:3100"
+      - "127.0.0.1:${CALENDAR_TEMPO_PORT:-3200}:3200"
+      - "127.0.0.1:${CALENDAR_PROMETHEUS_PORT:-9090}:9090"
+    healthcheck:
+      # The image's own check (Grafana, Loki, Tempo, Prometheus and the collector), polled faster than its 30 s.
+      test: ["CMD", "/otel-lgtm/docker/healthcheck.sh"]
+      interval: 3s
+      timeout: 5s
+      retries: 60
+      start_period: 120s
+
+  # Stub OpenID Connect provider standing in for Google (ADR-0064), for development and end-to-end runs only. The
+  # issuer is the first path segment: http://127.0.0.1:<port>/google. The API reaches it only through the
+  # Development-only, loopback-only Auth__Google__* overrides; it never appears in infra/. The interactive login
+  # page lets a test type the username and the claims (email, email_verified) of each sign-in.
+  oidc-stub:
+    image: ghcr.io/navikt/mock-oauth2-server:6.1.5
+    profiles: [sign-in-stub]
+    ports:
+      - "127.0.0.1:${CALENDAR_OIDC_STUB_PORT:-8080}:8080"
+    environment:
+      JSON_CONFIG: '{"interactiveLogin": true, "httpServer": "NettyWrapper"}'
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:8080/google/.well-known/openid-configuration"]
+      interval: 2s
+      timeout: 3s
+      retries: 30
+      start_period: 30s
 
 volumes:
   calendar-pgdata:

@@ -1,14 +1,12 @@
 //! Ports `Endpoints/SessionAndSeedTests`. Sessions carry the user id (ADR-0041): a cookie issued before
 //! per-user ownership is rejected, and the Development seed scheme acts as the first allow-listed email's user.
 
-mod common;
-
 use std::io::Write;
 use std::sync::{Arc, Mutex};
 
+use crate::common::*;
 use calendar_api::auth::dev_seed::{self, NO_ALLOWED_EMAIL_MESSAGE};
 use calendar_domain::users::User;
-use common::*;
 
 const SEED_KEY: &str = "12345678901234567890123456789012";
 const FIRST_ALLOWED: &str = "Owner@Example.com";

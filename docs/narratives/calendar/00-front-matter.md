@@ -8,4 +8,4 @@ slides: slides/calendar/
 
 # Calendar architecture narrative
 
-Why Calendar is built the way it is: the problem it serves, the forces that shaped it, and the architecture and risks that follow. Read it before changing the system, whether you are a person or an agent.
+Why Calendar is built the way it is: the problem it exists to solve, the forces that shaped it, and the architecture, decisions and risks that follow. Read it before you change the system, whether you are a person or an agent.

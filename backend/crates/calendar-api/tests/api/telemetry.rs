@@ -3,10 +3,8 @@
 //! data out of all three. The pipeline is the production one ([`telemetry::subscriber`] and the providers),
 //! with in-memory exporters in place of OTLP and spans and logs delivered as they end.
 
-mod common;
-
+use crate::common::*;
 use calendar_api::telemetry::{self, Delivery, Telemetry};
-use common::*;
 use opentelemetry::metrics::{Meter, MeterProvider as _};
 use opentelemetry::trace::{SpanId, SpanKind, Status, TraceId};
 use opentelemetry_sdk::logs::in_memory_exporter::LogDataWithResource;

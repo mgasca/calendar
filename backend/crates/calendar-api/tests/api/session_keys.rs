@@ -2,10 +2,8 @@
 //! `session_keys` table (migration 7), which seals the stateless session cookie: every instance of the API
 //! on one database reads the same key, so what one instance seals another opens.
 
-mod common;
-
+use crate::common::*;
 use calendar_api::auth::session::Sealer;
-use common::*;
 
 async fn host() -> TestApp {
   TestApp::builder().real_authentication().start().await

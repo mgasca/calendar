@@ -1,8 +1,6 @@
 //! Ports `Endpoints/AgendaEndpointsTests.cs`: `GET /api/agenda/day`.
 
-mod common;
-
-use common::*;
+use crate::common::*;
 
 const NEW_YORK: &str = "America/New_York";
 

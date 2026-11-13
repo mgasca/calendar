@@ -1,9 +1,7 @@
 //! Ports `Endpoints/HostingTests`: static files and the web app's fallback, the forwarded scheme and host,
 //! `403` for a denied API request, and the session cookie's attributes.
 
-mod common;
-
-use common::*;
+use crate::common::*;
 
 /// A signed-in user who is denied: no production route denies a signed-in user today.
 struct DeniesEveryone;

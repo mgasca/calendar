@@ -2,11 +2,9 @@
 //! `attach_user` resolves the person's users row and returns the principal that carries its id. The whole
 //! round trip against a fake Google is in `google_sign_in.rs`.
 
-mod common;
-
+use crate::common::*;
 use calendar_api::auth::google::{SignInError, attach_user};
 use calendar_domain::users::User;
-use common::*;
 
 const FIRST: &str = "first@example.com";
 

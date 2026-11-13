@@ -21,6 +21,8 @@ use rustls::crypto::CryptoProvider;
 use rustls::pki_types::pem::PemObject;
 use rustls::pki_types::{CertificateDer, ServerName, UnixTime};
 use rustls::{CertificateError, ClientConfig, DigitallySignedStruct, RootCertStore, SignatureScheme};
+use tokio_postgres::tls::MakeTlsConnect;
+use tokio_postgres::{Client, Connection, NoTls, Socket};
 use tokio_postgres_rustls::MakeRustlsConnect;
 
 /// The application's connection pool.
@@ -241,47 +243,58 @@ pub enum ConnectionError {
 
 /// Opens one connection for Diesel, outside any pool. The migrator uses this.
 pub async fn connect(config: &ConnectionConfig) -> Result<AsyncPgConnection, ConnectionError> {
-  let postgres = config.to_postgres_config();
-  let connection = match tls_connector(config)? {
-    None => {
-      let (client, connection) = postgres
-        .connect(tokio_postgres::NoTls)
-        .await
-        .map_err(|e| connect_error(config, &e))?;
-      AsyncPgConnection::try_from_client_and_connection(client, connection).await
-    }
-    Some(tls) => {
-      let (client, connection) = postgres.connect(tls).await.map_err(|e| connect_error(config, &e))?;
-      AsyncPgConnection::try_from_client_and_connection(client, connection).await
-    }
-  };
-  connection.map_err(|e| ConnectionError::Connect {
-    host: config.host.clone(),
-    port: config.port,
-    username: config.username.clone(),
-    reason: e.to_string(),
-  })
+  // Two arms because the connectors' stream types differ; the step itself is written once, in `connect_with`.
+  match tls_connector(config)? {
+    None => connect_with(config, NoTls).await,
+    Some(tls) => connect_with(config, tls).await,
+  }
 }
 
 /// Opens one plain `tokio_postgres` client, driving its connection on the current runtime. For tools and tests
 /// that run SQL text directly; application code uses [`connect`] or [`create_pool`].
-pub async fn connect_client(config: &ConnectionConfig) -> Result<tokio_postgres::Client, ConnectionError> {
-  let postgres = config.to_postgres_config();
+pub async fn connect_client(config: &ConnectionConfig) -> Result<Client, ConnectionError> {
   match tls_connector(config)? {
-    None => {
-      let (client, connection) = postgres
-        .connect(tokio_postgres::NoTls)
-        .await
-        .map_err(|e| connect_error(config, &e))?;
-      tokio::spawn(connection.map(drop));
-      Ok(client)
-    }
-    Some(tls) => {
-      let (client, connection) = postgres.connect(tls).await.map_err(|e| connect_error(config, &e))?;
-      tokio::spawn(connection.map(drop));
-      Ok(client)
-    }
+    None => client_with(config, NoTls).await,
+    Some(tls) => client_with(config, tls).await,
   }
+}
+
+async fn connect_with<T>(config: &ConnectionConfig, tls: T) -> Result<AsyncPgConnection, ConnectionError>
+where
+  T: MakeTlsConnect<Socket>,
+  T::Stream: Unpin + Send + 'static,
+{
+  let (client, connection) = open(config, tls).await?;
+  AsyncPgConnection::try_from_client_and_connection(client, connection)
+    .await
+    .map_err(|e| ConnectionError::Connect {
+      host: config.host.clone(),
+      port: config.port,
+      username: config.username.clone(),
+      reason: e.to_string(),
+    })
+}
+
+async fn client_with<T>(config: &ConnectionConfig, tls: T) -> Result<Client, ConnectionError>
+where
+  T: MakeTlsConnect<Socket>,
+  T::Stream: Send + 'static,
+{
+  let (client, connection) = open(config, tls).await?;
+  tokio::spawn(connection.map(drop));
+  Ok(client)
+}
+
+/// The one connect step: opens the session over `tls` and maps a failure to [`ConnectionError::Connect`].
+async fn open<T>(config: &ConnectionConfig, tls: T) -> Result<(Client, Connection<Socket, T::Stream>), ConnectionError>
+where
+  T: MakeTlsConnect<Socket>,
+{
+  config
+    .to_postgres_config()
+    .connect(tls)
+    .await
+    .map_err(|e| connect_error(config, &e))
 }
 
 /// The deadpool manager behind [`create_pool`], for callers that configure the pool themselves.

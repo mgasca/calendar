@@ -5,7 +5,7 @@ use std::sync::Arc;
 use calendar_infrastructure::connection::{self, ConnectionConfig, ConnectionStringError, PgPool};
 use calendar_infrastructure::session_keys;
 use chrono::{DateTime, Utc};
-use diesel_async::pooled_connection::deadpool::Object;
+use diesel_async::pooled_connection::deadpool::{BuildError, Object};
 use diesel_async::{AsyncConnection, AsyncPgConnection};
 use opentelemetry::metrics::Meter;
 use tokio::sync::OnceCell;
@@ -61,10 +61,10 @@ pub enum StartupError {
   ConnectionString(#[from] ConnectionStringError),
   /// The connection pool cannot be built.
   #[error("the database connection pool could not be created: {0}")]
-  Pool(String),
+  Pool(#[source] BuildError),
   /// The HTTP client for Google cannot be built.
   #[error("the HTTP client could not be created: {0}")]
-  HttpClient(String),
+  HttpClient(#[source] reqwest::Error),
 }
 
 struct Inner {
@@ -90,7 +90,7 @@ impl AppState {
     let pool = match options.settings.connection_string.as_deref() {
       Some(connection_string) => {
         let config = ConnectionConfig::parse(connection_string)?;
-        Some(connection::create_pool(&config).map_err(|error| StartupError::Pool(error.to_string()))?)
+        Some(connection::create_pool(&config).map_err(StartupError::Pool)?)
       }
       None => None,
     };
@@ -101,7 +101,7 @@ impl AppState {
           .timeout(std::time::Duration::from_secs(60))
           .redirect(reqwest::redirect::Policy::none())
           .build()
-          .map_err(|error| StartupError::HttpClient(error.to_string()))?,
+          .map_err(StartupError::HttpClient)?,
       ),
       None => None,
     };
@@ -198,4 +198,17 @@ fn random_key() -> [u8; session_keys::KEY_LENGTH] {
   let mut key = [0_u8; session_keys::KEY_LENGTH];
   rand::fill(&mut key);
   key
+}
+
+#[cfg(test)]
+mod tests {
+  use super::*;
+
+  #[test]
+  fn a_pool_error_keeps_the_build_error_as_its_source() {
+    let error = StartupError::Pool(BuildError::NoRuntimeSpecified);
+    assert!(error.to_string().starts_with("the database connection pool could not be created: "));
+    let source = std::error::Error::source(&error).expect("a source");
+    assert!(source.is::<BuildError>());
+  }
 }

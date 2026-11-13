@@ -19,7 +19,7 @@ async fn the_key_is_created_once_and_then_read_back() {
   assert_eq!(created, SessionKey([7; KEY_LENGTH]));
   assert_eq!(again, created);
   let client = f.database.migrator_client().await;
-  assert_eq!(scalar(&client, "SELECT count(*)::text FROM session_keys").await, "1");
+  assert_eq!(scalar::<i64>(&client, "SELECT count(*) FROM session_keys").await, 1);
   assert_eq!(format!("{created:?}"), "SessionKey(<redacted>)");
 }
 
@@ -41,7 +41,7 @@ async fn instances_that_start_together_agree_on_one_key() {
 
   assert!(keys.iter().all(|key| *key == keys[0]), "{keys:?}");
   let client = f.database.migrator_client().await;
-  assert_eq!(scalar(&client, "SELECT count(*)::text FROM session_keys").await, "1");
+  assert_eq!(scalar::<i64>(&client, "SELECT count(*) FROM session_keys").await, 1);
 }
 
 #[tokio::test]

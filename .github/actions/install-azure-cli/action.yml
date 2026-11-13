@@ -1,0 +1,50 @@
+name: Install pinned Azure CLI
+description: >-
+  Installs the Azure CLI (and optionally Bicep) at the exact versions in tools/azure-versions.env, from Microsoft's
+  signed apt repository. The ubuntu-24.04 runner image no longer carries that repository (#771), so the action adds it
+  itself, after checking the signing key's fingerprint. Run actions/checkout first.
+inputs:
+  bicep:
+    description: Also install the pinned Bicep CLI.
+    required: false
+    default: "false"
+runs:
+  using: composite
+  steps:
+    - name: Add Microsoft's azure-cli apt repository
+      shell: bash
+      run: |
+        # The pin is "<version>-1~noble", so the repository suite and the runner's release must both be noble.
+        test "$(lsb_release -cs)" = noble
+        # Microsoft (Release signing) <gpgsecurity@microsoft.com>, the key that signs the azure-cli repository.
+        expected=BC528686B50D79E339D3721CEB3E94ADBE1229CF
+        key=$(mktemp)
+        curl -fsSL https://packages.microsoft.com/keys/microsoft.asc -o "$key"
+        actual=$(gpg --show-keys --with-colons "$key" | awk -F: '$1 == "fpr" { print $10; exit }')
+        test "$actual" = "$expected"
+        sudo install -d -m 0755 /etc/apt/keyrings
+        gpg --dearmor < "$key" | sudo tee /etc/apt/keyrings/microsoft.gpg > /dev/null
+        sudo chmod 0644 /etc/apt/keyrings/microsoft.gpg
+        rm -f "$key"
+        printf '%s\n' \
+          'Types: deb' \
+          'URIs: https://packages.microsoft.com/repos/azure-cli/' \
+          'Suites: noble' \
+          'Components: main' \
+          "Architectures: $(dpkg --print-architecture)" \
+          'Signed-By: /etc/apt/keyrings/microsoft.gpg' \
+          | sudo tee /etc/apt/sources.list.d/azure-cli.sources > /dev/null
+    - name: Install the pinned Azure CLI
+      shell: bash
+      run: |
+        source tools/azure-versions.env
+        sudo apt-get update -qq
+        sudo apt-get install -y --allow-downgrades "azure-cli=${AZURE_CLI_VERSION}-1~noble"
+        test "$(az version --query '"azure-cli"' -o tsv)" = "$AZURE_CLI_VERSION"
+    - name: Install the pinned Bicep CLI
+      if: inputs.bicep == 'true'
+      shell: bash
+      run: |
+        source tools/azure-versions.env
+        az bicep install --version "v${BICEP_VERSION}"
+        az bicep version | grep -F "Bicep CLI version $BICEP_VERSION "

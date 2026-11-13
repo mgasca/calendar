@@ -131,7 +131,7 @@ Dependencies: #729 first; then #730, #731 and #732 in parallel; #733 when all th
 | Stub issuer settings and guard | `backend/crates/calendar-api/src/config.rs`, `src/auth/google.rs` |
 | Web telemetry | `frontend/apps/web` |
 | Nightly workflow | `.github/workflows/` (#737) |
-| Azure route | `infra/` (#738) |
+| Azure route | `infra/modules/app.bicep`: the Container Apps managed OpenTelemetry agent on the environment sends traces and logs to Application Insights; the app sets `OTEL_SERVICE_NAME=calendar-api` and `OTEL_METRICS_EXPORTER=none` (#738). Where to look: [the Azure infrastructure runbook](../runbooks/azure-infrastructure.md#monitoring-where-to-look) |
 | Model | `docs/architecture/calendar.architecture.json` (nodes `e2e-suite`, `lgtm`, `oidc-stub`; the `observability` control; flow test links) |
 
 ### API

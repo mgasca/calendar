@@ -1,6 +1,6 @@
 ---
 subject: "A superseding pull request run no longer waits for the old one to stop (#348)"
-harness: "tools/ci-timings/ci-timings.cs"
+harness: "tools/ci-timings/ci-timings.ts"
 ---
 
 # 0008 A superseding pull request run no longer waits for the old one to stop

@@ -571,7 +571,7 @@ jobs:
           echo "All CI jobs passed."
       # ADR 0045: fails a pull request or merge-queue run when a job took longer than its pinned threshold in
       # .github/ci-baseline.json, and only reports on pushes, dispatches and provisional baselines. All of the logic is in
-      # .github/ci-gate.jq, which tools/ci-timings/tests/GateTests.cs runs; this step only feeds it the saved response.
+      # .github/ci-gate.jq, which tools/ci-timings/tests/gate_test.ts runs; this step only feeds it the saved response.
       - name: Job run times are within the baseline (ADR 0045)
         run: |
           gate=(jq -r -f .github/ci-gate.jq --slurpfile baseline .github/ci-baseline.json --arg event "$GITHUB_EVENT_NAME")

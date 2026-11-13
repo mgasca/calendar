@@ -166,6 +166,7 @@ overrides:
   minimatch@>=7.0.0 <11.0.1: ^11.0.1
   katex@>=0.11.0 <0.18.2: ^0.18.2
   dompurify@<3.4.17: ^3.4.17
+  image-size@<2.0.3: 2.0.4
 
 importers:
 
@@ -4023,9 +4024,9 @@ packages:
     resolution: {integrity: sha512-wCBiZ77u1tuWde6G/nfOtLaCTYcFDU5yCzARzK10y+rLhzYoL7a7yEemcopcc2Mzow7gZOIjnV2ym1NYmdiJOQ==}
     engines: {node: '>= 4'}
 
-  image-size@1.2.1:
-    resolution: {integrity: sha512-rH+46sQJ2dlwfjfhCyNx5thzrv+dtmBIhPHk0zgRUukHzZ/kRueTJXoYYsclBaKcSMBWuGbOFXtioLpzTb5euw==}
-    engines: {node: '>=16.x'}
+  image-size@2.0.4:
+    resolution: {integrity: sha512-QRUkFFsRV/6fuESxb9Vkq+a0LkSrgKXuc2NEqfikiXxxN/G3tjWt5EVUlMaImRBZRZK/jRBEbYvpPYZL8t08Zw==}
+    engines: {node: '>=18'}
     hasBin: true
 
   immediate@3.0.6:
@@ -5149,9 +5150,6 @@ packages:
 
   queue-microtask@1.2.3:
     resolution: {integrity: sha512-NuaNSa6flKT5JaSYQzJok04JzTL1CA6aGhv5rfLW3PgqA+M2ChpZQnAC8h8i4ZFkBS8X5RqkDBHA7r4hej3K9A==}
-
-  queue@6.0.2:
-    resolution: {integrity: sha512-iHZWu+q3IdFZFX36ro/lKBkSvfkztY5Y7HMiPlOUjhupPcG2JMfst2KKEpu5XndviX/3UhFbRngUPNKtgvtZiA==}
 
   radix3@1.1.2:
     resolution: {integrity: sha512-b484I/7b8rDEdSDKckSSBA8knMpcdsXudlE/LNL639wFoHKwLbEkQFZHWEYwDC0wa0FKUcCY+GAF73Z7wxNVFA==}
@@ -10913,9 +10911,7 @@ snapshots:
 
   ignore@7.0.14: {}
 
-  image-size@1.2.1:
-    dependencies:
-      queue: 6.0.2
+  image-size@2.0.4: {}
 
   immediate@3.0.6: {}
 
@@ -12293,7 +12289,7 @@ snapshots:
     dependencies:
       '@types/node': 22.20.5
       https: 1.0.0
-      image-size: 1.2.1
+      image-size: 2.0.4
       jszip: 3.10.2
 
   prelude-ls@1.2.1: {}
@@ -12343,10 +12339,6 @@ snapshots:
   quansync@1.0.0: {}
 
   queue-microtask@1.2.3: {}
-
-  queue@6.0.2:
-    dependencies:
-      inherits: 2.0.4
 
   radix3@1.1.2: {}
 

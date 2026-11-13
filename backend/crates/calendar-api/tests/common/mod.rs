@@ -156,6 +156,7 @@ pub struct TestAppBuilder {
   clock: Arc<TestClock>,
   authenticator: Option<Arc<dyn Authenticator>>,
   google_endpoints: GoogleEndpoints,
+  meter: opentelemetry::metrics::Meter,
 }
 
 enum DatabaseChoice {
@@ -172,7 +173,15 @@ impl TestAppBuilder {
       clock: Arc::new(TestClock::new(start_time())),
       authenticator: Some(Arc::new(FakeAuthenticator)),
       google_endpoints: GoogleEndpoints::default(),
+      meter: opentelemetry::global::meter("calendar-api-tests"),
     }
+  }
+
+  /// Records the HTTP server metrics with `meter` (the telemetry tests' in-memory one).
+  #[must_use]
+  pub fn meter(mut self, meter: opentelemetry::metrics::Meter) -> Self {
+    self.meter = meter;
+    self
   }
 
   /// Sets a setting by the name the host reads, e.g. `Auth__DevSeedKey` or `Auth__AllowedEmails__0`. A later
@@ -252,6 +261,7 @@ impl TestAppBuilder {
       clock: self.clock.clone(),
       google_endpoints: self.google_endpoints.clone(),
       authenticator: self.authenticator.clone(),
+      meter: self.meter.clone(),
     })
     .expect("the test settings are valid");
     TestApp {
@@ -272,6 +282,7 @@ impl TestAppBuilder {
       clock: self.clock,
       google_endpoints: self.google_endpoints,
       authenticator: self.authenticator,
+      meter: self.meter,
     }) {
       Ok(_) => panic!("the app started"),
       Err(error) => error.to_string(),
@@ -323,6 +334,7 @@ impl TestApp {
       clock: self.clock.clone(),
       authenticator: self.authenticator.clone(),
       google_endpoints: self.google_endpoints.clone(),
+      meter: opentelemetry::global::meter("calendar-api-tests"),
     }
   }
 

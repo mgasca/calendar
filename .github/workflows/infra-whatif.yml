@@ -6,6 +6,7 @@ on:
       - "tools/infra/**"
       - "tools/azure-versions.env"
       - ".github/workflows/infra-whatif.yml"
+      - ".github/actions/install-azure-cli/**"
   workflow_dispatch:
     inputs:
       phase:
@@ -24,13 +25,9 @@ jobs:
     steps:
       - uses: actions/checkout@v7
       - name: Install pinned Azure CLI and Bicep
-        run: |
-          source tools/azure-versions.env
-          sudo apt-get update -qq
-          sudo apt-get install -y --allow-downgrades "azure-cli=${AZURE_CLI_VERSION}-1~noble"
-          az bicep install --version "v${BICEP_VERSION}"
-          test "$(az version --query '"azure-cli"' -o tsv)" = "$AZURE_CLI_VERSION"
-          az bicep version | grep -F "Bicep CLI version $BICEP_VERSION "
+        uses: ./.github/actions/install-azure-cli
+        with:
+          bicep: true
       - name: Lint and build
         run: |
           az bicep lint --file infra/main.bicep
@@ -60,13 +57,9 @@ jobs:
         with:
           global-json-file: global.json
       - name: Install pinned Azure CLI and Bicep
-        run: |
-          source tools/azure-versions.env
-          sudo apt-get update -qq
-          sudo apt-get install -y --allow-downgrades "azure-cli=${AZURE_CLI_VERSION}-1~noble"
-          az bicep install --version "v${BICEP_VERSION}"
-          test "$(az version --query '"azure-cli"' -o tsv)" = "$AZURE_CLI_VERSION"
-          az bicep version | grep -F "Bicep CLI version $BICEP_VERSION "
+        uses: ./.github/actions/install-azure-cli
+        with:
+          bicep: true
       - uses: azure/login@a641126d1b8aa4d1fa005f4f92df94a3a4c4c906 # v3.1.0
         with:
           client-id: ${{ vars.AZURE_CLIENT_ID }}

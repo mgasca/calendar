@@ -5,8 +5,18 @@
         "hooks": [
           {
             "type": "command",
-            "command": "dotnet run \"$CLAUDE_PROJECT_DIR\"/tools/agent-hooks/agent-hooks.cs -- warm",
-            "timeout": 120
+            "command": "deno run --config \"$CLAUDE_PROJECT_DIR/tools/deno.json\" --frozen --no-prompt --allow-read --allow-run --allow-env \"$CLAUDE_PROJECT_DIR/tools/agent-hooks/agent-hooks.ts\" warm",
+            "timeout": 10
+          }
+        ]
+      },
+      {
+        "matcher": "compact",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "command -v graphify >/dev/null 2>&1 || exit 0; graphify hook-guard compact",
+            "timeout": 10
           }
         ]
       }
@@ -18,55 +28,55 @@
           {
             "type": "command",
             "if": "Bash(git *)",
-            "command": "dotnet run \"$CLAUDE_PROJECT_DIR\"/tools/agent-hooks/agent-hooks.cs -- pre-bash",
+            "command": "deno run --config \"$CLAUDE_PROJECT_DIR/tools/deno.json\" --frozen --no-prompt --allow-read --allow-run --allow-env \"$CLAUDE_PROJECT_DIR/tools/agent-hooks/agent-hooks.ts\" pre-bash",
             "timeout": 30
           },
           {
             "type": "command",
             "if": "Bash(gh *)",
-            "command": "dotnet run \"$CLAUDE_PROJECT_DIR\"/tools/agent-hooks/agent-hooks.cs -- pre-bash",
+            "command": "deno run --config \"$CLAUDE_PROJECT_DIR/tools/deno.json\" --frozen --no-prompt --allow-read --allow-run --allow-env \"$CLAUDE_PROJECT_DIR/tools/agent-hooks/agent-hooks.ts\" pre-bash",
             "timeout": 30
           },
           {
             "type": "command",
             "if": "Bash(just *)",
-            "command": "dotnet run \"$CLAUDE_PROJECT_DIR\"/tools/agent-hooks/agent-hooks.cs -- pre-bash",
+            "command": "deno run --config \"$CLAUDE_PROJECT_DIR/tools/deno.json\" --frozen --no-prompt --allow-read --allow-run --allow-env \"$CLAUDE_PROJECT_DIR/tools/agent-hooks/agent-hooks.ts\" pre-bash",
             "timeout": 30
           },
           {
             "type": "command",
             "if": "Bash(docker *)",
-            "command": "dotnet run \"$CLAUDE_PROJECT_DIR\"/tools/agent-hooks/agent-hooks.cs -- pre-bash",
+            "command": "deno run --config \"$CLAUDE_PROJECT_DIR/tools/deno.json\" --frozen --no-prompt --allow-read --allow-run --allow-env \"$CLAUDE_PROJECT_DIR/tools/agent-hooks/agent-hooks.ts\" pre-bash",
             "timeout": 30
           },
           {
             "type": "command",
             "if": "Bash(env *)",
-            "command": "dotnet run \"$CLAUDE_PROJECT_DIR\"/tools/agent-hooks/agent-hooks.cs -- pre-bash",
+            "command": "deno run --config \"$CLAUDE_PROJECT_DIR/tools/deno.json\" --frozen --no-prompt --allow-read --allow-run --allow-env \"$CLAUDE_PROJECT_DIR/tools/agent-hooks/agent-hooks.ts\" pre-bash",
             "timeout": 30
           },
           {
             "type": "command",
             "if": "Bash(sudo *)",
-            "command": "dotnet run \"$CLAUDE_PROJECT_DIR\"/tools/agent-hooks/agent-hooks.cs -- pre-bash",
+            "command": "deno run --config \"$CLAUDE_PROJECT_DIR/tools/deno.json\" --frozen --no-prompt --allow-read --allow-run --allow-env \"$CLAUDE_PROJECT_DIR/tools/agent-hooks/agent-hooks.ts\" pre-bash",
             "timeout": 30
           },
           {
             "type": "command",
             "if": "Bash(exec *)",
-            "command": "dotnet run \"$CLAUDE_PROJECT_DIR\"/tools/agent-hooks/agent-hooks.cs -- pre-bash",
+            "command": "deno run --config \"$CLAUDE_PROJECT_DIR/tools/deno.json\" --frozen --no-prompt --allow-read --allow-run --allow-env \"$CLAUDE_PROJECT_DIR/tools/agent-hooks/agent-hooks.ts\" pre-bash",
             "timeout": 30
           },
           {
             "type": "command",
             "if": "Bash(builtin *)",
-            "command": "dotnet run \"$CLAUDE_PROJECT_DIR\"/tools/agent-hooks/agent-hooks.cs -- pre-bash",
+            "command": "deno run --config \"$CLAUDE_PROJECT_DIR/tools/deno.json\" --frozen --no-prompt --allow-read --allow-run --allow-env \"$CLAUDE_PROJECT_DIR/tools/agent-hooks/agent-hooks.ts\" pre-bash",
             "timeout": 30
           },
           {
             "type": "command",
             "if": "Bash(command *)",
-            "command": "dotnet run \"$CLAUDE_PROJECT_DIR\"/tools/agent-hooks/agent-hooks.cs -- pre-bash",
+            "command": "deno run --config \"$CLAUDE_PROJECT_DIR/tools/deno.json\" --frozen --no-prompt --allow-read --allow-run --allow-env \"$CLAUDE_PROJECT_DIR/tools/agent-hooks/agent-hooks.ts\" pre-bash",
             "timeout": 30
           }
         ]
@@ -77,26 +87,52 @@
           {
             "type": "command",
             "if": "Edit(**/openapi.json)",
-            "command": "dotnet run \"$CLAUDE_PROJECT_DIR\"/tools/agent-hooks/agent-hooks.cs -- pre-edit",
+            "command": "deno run --config \"$CLAUDE_PROJECT_DIR/tools/deno.json\" --frozen --no-prompt --allow-read --allow-run --allow-env \"$CLAUDE_PROJECT_DIR/tools/agent-hooks/agent-hooks.ts\" pre-edit",
             "timeout": 30
           },
           {
             "type": "command",
             "if": "Edit(**/schema.gen.ts)",
-            "command": "dotnet run \"$CLAUDE_PROJECT_DIR\"/tools/agent-hooks/agent-hooks.cs -- pre-edit",
+            "command": "deno run --config \"$CLAUDE_PROJECT_DIR/tools/deno.json\" --frozen --no-prompt --allow-read --allow-run --allow-env \"$CLAUDE_PROJECT_DIR/tools/agent-hooks/agent-hooks.ts\" pre-edit",
             "timeout": 30
           },
           {
             "type": "command",
             "if": "Edit(**/packages.lock.json)",
-            "command": "dotnet run \"$CLAUDE_PROJECT_DIR\"/tools/agent-hooks/agent-hooks.cs -- pre-edit",
+            "command": "deno run --config \"$CLAUDE_PROJECT_DIR/tools/deno.json\" --frozen --no-prompt --allow-read --allow-run --allow-env \"$CLAUDE_PROJECT_DIR/tools/agent-hooks/agent-hooks.ts\" pre-edit",
             "timeout": 30
           },
           {
             "type": "command",
             "if": "Edit(**/pnpm-lock.yaml)",
-            "command": "dotnet run \"$CLAUDE_PROJECT_DIR\"/tools/agent-hooks/agent-hooks.cs -- pre-edit",
+            "command": "deno run --config \"$CLAUDE_PROJECT_DIR/tools/deno.json\" --frozen --no-prompt --allow-read --allow-run --allow-env \"$CLAUDE_PROJECT_DIR/tools/agent-hooks/agent-hooks.ts\" pre-edit",
             "timeout": 30
+          },
+          {
+            "type": "command",
+            "if": "Edit(**/deno.lock)",
+            "command": "deno run --config \"$CLAUDE_PROJECT_DIR/tools/deno.json\" --frozen --no-prompt --allow-read --allow-run --allow-env \"$CLAUDE_PROJECT_DIR/tools/agent-hooks/agent-hooks.ts\" pre-edit",
+            "timeout": 30
+          }
+        ]
+      },
+      {
+        "matcher": "Bash|Grep",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "command -v graphify >/dev/null 2>&1 || exit 0; graphify hook-guard search",
+            "timeout": 10
+          }
+        ]
+      },
+      {
+        "matcher": "Read|Glob",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "command -v graphify >/dev/null 2>&1 || exit 0; graphify hook-guard read",
+            "timeout": 10
           }
         ]
       }
@@ -107,8 +143,14 @@
         "hooks": [
           {
             "type": "command",
-            "if": "Edit(**/*.cs)",
-            "command": "dotnet run \"$CLAUDE_PROJECT_DIR\"/tools/agent-hooks/agent-hooks.cs -- post-edit",
+            "if": "Edit(**/tools/**/*.ts)",
+            "command": "deno run --config \"$CLAUDE_PROJECT_DIR/tools/deno.json\" --frozen --no-prompt --allow-read --allow-run --allow-env \"$CLAUDE_PROJECT_DIR/tools/agent-hooks/agent-hooks.ts\" post-edit",
+            "timeout": 30
+          },
+          {
+            "type": "command",
+            "if": "Edit(**/.claude/skills/**/*.ts)",
+            "command": "deno run --config \"$CLAUDE_PROJECT_DIR/tools/deno.json\" --frozen --no-prompt --allow-read --allow-run --allow-env \"$CLAUDE_PROJECT_DIR/tools/agent-hooks/agent-hooks.ts\" post-edit",
             "timeout": 30
           }
         ]
@@ -119,7 +161,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "dotnet run \"$CLAUDE_PROJECT_DIR\"/tools/agent-hooks/agent-hooks.cs -- stop",
+            "command": "deno run --config \"$CLAUDE_PROJECT_DIR/tools/deno.json\" --frozen --no-prompt --allow-read --allow-run --allow-env \"$CLAUDE_PROJECT_DIR/tools/agent-hooks/agent-hooks.ts\" stop",
             "timeout": 60
           }
         ]

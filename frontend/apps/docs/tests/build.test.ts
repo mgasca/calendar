@@ -3,7 +3,7 @@ import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { deployment, runbookSlug, storySlug } from '../src/lib/adr';
 import { architecturePages, pageRoute } from '../src/lib/architecture';
-import { readAgentThoughts, readDocuments } from '../src/lib/docs-loader';
+import { readAgentThoughts, readDocuments, readNarratives } from '../src/lib/docs-loader';
 
 const { base } = deployment(process.env.DOCS_SITE_URL);
 
@@ -32,6 +32,18 @@ function sidebarGroups(html: string) {
   return [...sidebar.matchAll(/<span class="large[^"]*">([^<]*)<\/span>/g)].map((m) => m[1] ?? '');
 }
 
+/** The labels of the sidebar groups that render open, nested ones included, in page order. */
+function openSidebarGroups(html: string) {
+  const sidebar = /<sl-sidebar-pane\b[^>]*>([\s\S]*?)<\/sl-sidebar-pane>/.exec(html)?.[1] ?? '';
+  return [
+    ...sidebar.matchAll(
+      /<details\b([^>]*)>\s*<summary[\s\S]*?<span class="large[^"]*">([^<]*)<\/span>/g,
+    ),
+  ]
+    .filter((m) => /\bopen\b/.test(m[1] ?? ''))
+    .map((m) => m[2] ?? '');
+}
+
 function sidebarRoutes(html: string) {
   const sidebar = /<sl-sidebar-pane\b[^>]*>([\s\S]*?)<\/sl-sidebar-pane>/.exec(html)?.[1];
   expect(sidebar).toBeDefined();
@@ -42,27 +54,45 @@ describe('published documentation links', () => {
   it('resolves every internal link and anchor, and leaves no repository Markdown links', async () => {
     const files = await pages('dist');
     expect(files.length).toBeGreaterThan(0);
+    // Every page repeats the sidebar, so the ~49,000 links hold only ~2,100 distinct hrefs.
+    // Collect them, with the first page that uses each, and check each href once: a check
+    // per occurrence ran close to Vitest's 5 s timeout on a loaded machine (#721).
+    const linkedFrom = new Map<string, string>();
     for (const file of files) {
       const html = await readFile(file, 'utf8');
       for (const [, href = ''] of html.matchAll(/href="([^"]*)"/g)) {
-        // Absolute links leave the site; GitHub links to repository Markdown are expected.
-        if (/^(?:[a-z][a-z\d+.-]*:|\/\/|#)/i.test(href)) continue;
-        expect(href, file).not.toMatch(/\.md(?:[?#]|$)/);
-        if (!href.startsWith(base)) continue;
-        // Starlight's default icon link; the site does not ship a favicon yet.
-        if (href === `${base}favicon.svg`) continue;
-        const target = builtFile(href);
-        expect(target, `${file} -> ${href}`).toBeDefined();
-        const fragment = href.split('#')[1];
-        // Reading the page fails if it is missing, so no separate existence check is needed.
-        if (fragment && target?.endsWith('.html')) {
-          const targetHtml = await readFile(target, 'utf8');
-          expect(targetHtml, `${file} -> ${href}`).toContain(`id="${fragment}"`);
-        } else {
-          await stat(target ?? '');
-        }
+        if (!linkedFrom.has(href)) linkedFrom.set(href, file);
       }
     }
+    const targetPages = new Map<string, string>();
+    let fileChecks = 0;
+    for (const [href, file] of linkedFrom) {
+      // Absolute links leave the site; GitHub links to repository Markdown are expected.
+      if (/^(?:[a-z][a-z\d+.-]*:|\/\/|#)/i.test(href)) continue;
+      expect(href, file).not.toMatch(/\.md(?:[?#]|$)/);
+      if (!href.startsWith(base)) continue;
+      // Starlight's default icon link; the site does not ship a favicon yet.
+      if (href === `${base}favicon.svg`) continue;
+      const target = builtFile(href);
+      expect(target, `${file} -> ${href}`).toBeDefined();
+      const fragment = href.split('#')[1];
+      // Reading the page fails if it is missing, so no separate existence check is needed.
+      if (fragment && target?.endsWith('.html')) {
+        let targetHtml = targetPages.get(target);
+        if (targetHtml === undefined) {
+          fileChecks += 1;
+          targetHtml = await readFile(target, 'utf8');
+          targetPages.set(target, targetHtml);
+        }
+        expect(targetHtml, `${file} -> ${href}`).toContain(`id="${fragment}"`);
+      } else {
+        fileChecks += 1;
+        await stat(target ?? '');
+      }
+    }
+    // Guards the cost: at most one file check per distinct href, never one per link.
+    expect(fileChecks).toBeGreaterThan(0);
+    expect(fileChecks).toBeLessThanOrEqual(linkedFrom.size);
   });
 });
 
@@ -82,6 +112,25 @@ describe('site root', () => {
     expect(routes.indexOf(`${base}architecture/controls/`)).toBeLessThan(
       routes.findIndex((href) => href.startsWith(`${base}adr/`)),
     );
+  });
+});
+
+describe('sidebar groups', () => {
+  it('start collapsed except Agent thoughts, and open the group that holds the current page', async () => {
+    const { adr, architecture } = await readDocuments();
+    const thought = await readFile('dist/agent-thoughts/index.html', 'utf8');
+    // Every other group, nested Flows included, is rendered but closed.
+    const groups = sidebarGroups(thought);
+    expect(groups).toEqual(expect.arrayContaining(['Architecture', 'Flows', 'Delivery dashboard']));
+    expect(openSidebarGroups(thought)).toEqual(['Agent thoughts']);
+    const record = await readFile(`dist/adr/${adr.records[0]?.number ?? ''}/index.html`, 'utf8');
+    expect(openSidebarGroups(record)).toEqual(['Agent thoughts', 'Any decision records']);
+    const overview = await readFile('dist/architecture/index.html', 'utf8');
+    expect(openSidebarGroups(overview)).toEqual(['Agent thoughts', 'Architecture']);
+    const flow = architecture.flows[0];
+    expect(flow).toBeDefined();
+    const flowPage = await readFile(`dist/architecture/flows/${flow?.id ?? ''}/index.html`, 'utf8');
+    expect(openSidebarGroups(flowPage)).toEqual(['Agent thoughts', 'Architecture', 'Flows']);
   });
 });
 
@@ -312,8 +361,51 @@ describe('published benchmarks', () => {
   });
 });
 
+describe('published narratives (ADR-0059)', () => {
+  it('renders every stitched narrative with navigation and its metadata, and no part', async () => {
+    const { records } = await readNarratives();
+    const routes = records.map((record) => `${base}narratives/${record.slug}/`);
+    const index = await readFile('dist/narratives/index.html', 'utf8');
+    expect(sidebarGroups(index)).toContain('Architecture narratives');
+    expect(sidebarRoutes(index).filter((href) => href.startsWith(`${base}narratives/`))).toEqual([
+      `${base}narratives/`,
+      ...routes,
+    ]);
+    for (const record of records) {
+      const html = await readFile(`dist/narratives/${record.slug}/index.html`, 'utf8');
+      expect(html).toContain(`<strong>System:</strong> ${record.system}`);
+      expect(html).toContain(`<strong>Status:</strong> ${record.status}`);
+      if (record.slides) {
+        // The deck was built into the site for this base (ADR-0060); the link check above follows the link.
+        expect(html).toContain(`href="${base}${record.slides}"`);
+        const deck = await readFile(`dist/${record.slides}index.html`, 'utf8');
+        expect(deck).toContain(`${base}${record.slides}assets/`);
+      }
+    }
+    // Part directories are never published: the only pages under narratives/ are the routes above.
+    const published = (await pages('dist/narratives')).sort();
+    expect(published).toEqual(
+      ['dist/narratives/index.html', ...records.map((r) => `dist/narratives/${r.slug}/index.html`)]
+        .map((path) => join(path))
+        .sort(),
+    );
+  });
+});
+
+describe('published decks (ADR-0060)', () => {
+  it('publishes a deck under slides/ for exactly the narratives that link one', async () => {
+    const { records } = await readNarratives();
+    const linked = records.flatMap((record) => (record.slides ? [record.slug] : [])).sort();
+    const built = await readdir('dist/slides').then(
+      (names) => names.sort(),
+      () => [],
+    );
+    expect(built).toEqual(linked);
+  });
+});
+
 describe('conventions pages', () => {
-  it.each(['stories', 'benchmarks', 'agent-thoughts', 'runbooks'])(
+  it.each(['stories', 'benchmarks', 'agent-thoughts', 'runbooks', 'narratives'])(
     'publishes %s without a maintained inventory',
     async (area) => {
       const html = await readFile(`dist/${area}/index.html`, 'utf8');

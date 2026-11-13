@@ -1,0 +1,51 @@
+/*
+ * Maps Slidev's variables and slide surfaces onto the semantic tokens of @calendar/theme
+ * (ADR-0047). No colour literals: the token set follows data-theme, which setup/main.ts keeps in
+ * step with Slidev's own light/dark switch. `html:root` outranks Slidev's `:root` and `html.dark`.
+ */
+html:root,
+html.dark:root {
+  --slidev-theme-primary: var(--color-accent);
+  --slidev-code-background: var(--color-surface-sunken);
+  --slidev-code-foreground: var(--color-text);
+  --slidev-code-tab-divider: var(--color-border);
+  --slidev-code-tab-text-color: var(--color-text-muted);
+  --slidev-code-tab-active-text-color: var(--color-text);
+  --slidev-slide-container-background: var(--color-surface-sunken);
+}
+
+.slidev-layout {
+  background: var(--color-surface);
+  color: var(--color-text);
+  font-family: var(--font-body);
+  line-height: var(--leading);
+}
+
+.slidev-layout h1,
+.slidev-layout h2,
+.slidev-layout h3 {
+  font-family: var(--font-heading);
+  font-weight: var(--font-heading-weight);
+  letter-spacing: var(--font-heading-tracking);
+  color: var(--color-text);
+}
+
+.slidev-layout a {
+  color: var(--color-accent);
+  text-decoration: underline;
+}
+
+.slidev-layout a:hover {
+  color: var(--color-accent-hover);
+}
+
+.slidev-layout blockquote {
+  border-left: 4px solid var(--color-accent);
+  background: var(--color-accent-soft);
+  color: var(--color-text);
+}
+
+.slidev-layout table th,
+.slidev-layout table td {
+  border-color: var(--color-border);
+}

@@ -4,6 +4,7 @@ date: 2026-11-13
 issue: https://github.com/mgasca/calendar/issues/728
 pr:
   - https://github.com/mgasca/calendar/pull/740
+  - https://github.com/mgasca/calendar/pull/765
   - https://github.com/mgasca/calendar/pull/767
   - https://github.com/mgasca/calendar/pull/769
 adrs: ["0008", "0021", "0027", "0030", "0039", "0058", "0061", "0062", "0063", "0064"]
@@ -131,7 +132,7 @@ Dependencies: #729 first; then #730, #731 and #732 in parallel; #733 when all th
 | E2E stack and recipes | `compose.yaml` profiles `observability` (`lgtm`) and `sign-in-stub` (`oidc-stub`); `e2e.just` (`just e2e up`, `check`, `env`, `ls`, `down`); `just db observability` and `just db sign-in-stub`; [runbook](../runbooks/local-stack-and-e2e.md) (#730) |
 | API telemetry | `backend/crates/calendar-api` (startup in `src/main.rs`, request and database spans) |
 | Stub issuer settings and guard | `backend/crates/calendar-api/src/config.rs` (`GoogleOverrides`, the two refusals), `src/auth/google.rs`, `src/state.rs`; tests in `config.rs`, `google.rs` and `tests/google_overrides_startup.rs` (#730) |
-| Web telemetry | `frontend/apps/web` |
+| Web telemetry | `frontend/apps/web`: `src/telemetry/` (`action.ts` with `traceAction`, always bundled; `sdk.ts`, loaded by `main.tsx` only in a `VITE_OTEL_TRACES_EXPORTER=otlp` build; `attributes.ts` and `allowListExporter.ts`, the allow-list); `dev/otlpProxy.ts` and `vite.config.ts` (the `/otlp/v1/traces` proxy) (#732) |
 | Nightly workflow | `.github/workflows/` (#737) |
 | Azure route | `infra/modules/app.bicep`: the Container Apps managed OpenTelemetry agent on the environment sends traces and logs to Application Insights; the app sets `OTEL_SERVICE_NAME=calendar-api` and `OTEL_METRICS_EXPORTER=none` (#738). Where to look: [the Azure infrastructure runbook](../runbooks/azure-infrastructure.md#monitoring-where-to-look) |
 | Model | `docs/architecture/calendar.architecture.json` (nodes `e2e-suite`, `lgtm`, `oidc-stub`; the `observability` control; flow test links) |
@@ -153,21 +154,31 @@ API telemetry (#731) lives in `calendar-api/src/telemetry/`:
 
 - Browser: the Playwright flow tests, nightly and on demand.
 - Binding: the browser-free check on every pull request.
-- API: `cargo test` for the exporter wiring, `traceparent` extraction, redaction and the stub guard. `crates/calendar-api/tests/telemetry.rs` runs the production pipeline with in-memory exporters and scans every exported span, log and metric for seeded personal data. The unit tests in `src/telemetry*` cover the `OTEL_*` configuration, the statement shape and the allow-list.
-- Web: Vitest for the attribute filter and the no-exporter default.
+- API: `cargo test` for the exporter wiring, `traceparent` extraction, redaction and the stub guard. `crates/calendar-api/tests/api/telemetry.rs` runs the production pipeline with in-memory exporters and scans every exported span, log and metric for seeded personal data. The unit tests in `src/telemetry*` cover the `OTEL_*` configuration, the statement shape and the allow-list.
+- Web: Vitest. `src/telemetry/telemetry.test.tsx` runs the real SDK with an in-memory exporter, the real API client and MSW: a save's action span, fetch span and the `traceparent` the API receives share one trace, every bulk batch stays in that trace, nothing outside `/api` gets the header, no planted personal data is exported, and no tracer is registered when telemetry is off. `src/telemetry/attributes.test.ts` covers the allow-list rules, and `dev/otlpProxy.test.ts` runs `vite dev` and `vite preview` against a fake collector.
+
+### Delivered in #732
+
+- **Switch:** web telemetry is built in only with `VITE_OTEL_TRACES_EXPORTER=otlp`. Without it, Vite drops the dynamic import and emits no OpenTelemetry chunk, so the fetch instrumentation does not run and no `traceparent` is sent. Azure builds don't set it.
+- **Spans:** `traceAction` wraps the API call of each flow step in a user-action span (`ui.day.load`, `ui.week.load`, `ui.event.create`, `ui.event.open`, `ui.event.update`, `ui.event.delete`, `ui.task.create`, `ui.task.open`, `ui.task.update`, `ui.task.complete`, `ui.task.reopen`, `ui.triage.load`, `ui.tasks.bulk`). Its child fetch span is named `<METHOD> <route template>`, like the API's server span. `sign-in-flow` has no action span: sign-in and the callback are full-page navigations. Service name `calendar-web`.
+- **Privacy:** every span is copied before export with only allow-listed names, attributes and values (checked by shape), and without status messages or links. The `/otlp` proxy forwards only `/otlp/v1/traces`, to `${CALENDAR_OTLP_URL:-http://localhost:4318}/v1/traces`, and removes `Cookie` and `Authorization`.
+- **Measured bundle size** (`vite build`, total JS, gzip -9 per file, against `main` 132e31be4): switch off +507 B raw, +143 B gzip; switch on +71,945 B raw, +25,660 B gzip, with a 69.96 kB `sdk` chunk.
+- **Versions:** `@opentelemetry/instrumentation-fetch` and `exporter-trace-otlp-http` ~0.301.1, not ADR-0062's 0.301.2, which was inside pnpm's minimum release age; `sdk-trace`, `core` and `resources` 3.1.1; `api` 1.10.0.
+- **Not verified in #732:** a browser run against LGTM and the real API; #733's flow tests cover it.
 
 ### Delivered in #730
 
 - **Settings:** `Auth__Google__AuthorizationEndpoint`, `Auth__Google__TokenEndpoint`, `Auth__Google__UserInfoEndpoint`, `Auth__Google__Issuer`; each replaces only its own value. Refused at startup outside `Development` (`GoogleOverrideOutsideDevelopment`) or when not an `http(s)` URL on `localhost`, `127.0.0.1` or `[::1]` (`GoogleOverrideNotLoopback`); the binary test runs `calendar-api` with each override to prove both.
 - **Ports:** a run takes a 55xxx slot k ∈ {2, 3, 5, 6, 7, 8, 9}: 55k00 + 17 OTLP gRPC, 18 OTLP HTTP, 20 Tempo, 30 Grafana, 31 Loki, 32 PostgreSQL, 41 API, 73 web, 80 stub, 90 Prometheus, away from the agent stack's 55041, 55173 and 55432.
-- **Stack settings for the next slices:** the API gets `OTEL_EXPORTER_OTLP_ENDPOINT` (OTLP HTTP), `OTEL_EXPORTER_OTLP_PROTOCOL=http/protobuf` and `OTEL_SERVICE_NAME=calendar-api` (#731); the web app is built with `VITE_OTEL_TRACES_EXPORTER=otlp` and served with `CALENDAR_OTLP_URL` (#732); `just e2e env` gives the harness every URL, the seed key and the allow-listed email (#733).
+- **Stack settings for the next slices:** the API gets `OTEL_EXPORTER_OTLP_ENDPOINT` (OTLP HTTP), `OTEL_EXPORTER_OTLP_PROTOCOL=http/protobuf`, `OTEL_SERVICE_NAME=calendar-api` and `OTEL_METRIC_EXPORT_INTERVAL=5000` (#731; with #731 merged, a run's API traces, logs with trace ids and `http_server_request_duration_seconds` series reached Tempo, Loki and Prometheus, the metric 4 s after the request); the web app is built with `VITE_OTEL_TRACES_EXPORTER=otlp` and served with `CALENDAR_OTLP_URL` (#732); `just e2e env` gives the harness every URL, the seed key and the allow-listed email (#733).
 - **Measured (WSL2 laptop, Docker Desktop 29.9.2, images present):** the stub was ready 3.9 s after `docker run` and used 173 MiB; containers healthy in 33 to 48 s; `just e2e up` ready in 49 s with cached builds, 111 s with the first build. ADR-0064 had left the stub's start-up unmeasured.
 - **Image pin:** `grafana/otel-lgtm:0.41.0` failed to pull three times with the same layer digest mismatch, so `0.40.0` is pinned; Dependabot can propose the next tag.
 
 ### Lessons learned, known issues and follow-ups
 
 - Browser OpenTelemetry is marked experimental upstream, and the Rust traces signal is beta; ADR-0062 records the versions checked.
-- **Follow-up:** web telemetry in Azure stays off in this story (`traceparent` is still sent), as the maintainer chose on #729 on 2026-11-13; turning it on is a later decision (ADR-0062).
+- **Follow-up:** web telemetry in Azure stays off in this story, as the maintainer chose on #729 on 2026-11-13; turning it on is a later decision (ADR-0062). With the switch off the fetch instrumentation is not loaded, so Azure requests carry no `traceparent` either (#732).
+- **Follow-up:** `@opentelemetry/instrumentation-fetch` is deprecated upstream in favour of the experimental `@opentelemetry/browser-instrumentation`; `sdk.ts` keeps it with an ESLint exception, and the move is #768.
 
 ## User guide
 

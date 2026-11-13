@@ -95,8 +95,34 @@ jobs:
       CARGO_TERM_COLOR: always
       # CI builds from scratch or from the cache below, so incremental compilation only adds to the cache.
       CARGO_INCREMENTAL: 0
+      # File and line tables only, for panics and backtraces; coverage comes from instrumentation, not debug info. Full
+      # debug info made the cached dependencies and every test binary several times larger (#776). The test profile
+      # inherits dev, so Clippy, the instrumented build and the contract build still share one setting.
+      CARGO_PROFILE_DEV_DEBUG: line-tables-only
+      # The cargo-llvm-cov release installed below. Its instrumentation flags change every instrumented dependency, so
+      # the cache key reads it from here.
+      LLVM_COV_VERSION: 0.9.1
     steps:
       - uses: actions/checkout@v7
+      # The PostgreSQL image the database tests start (ADR-0016), pulled in the background so the download overlaps the
+      # toolchain, the cache restore and the build instead of landing in the first database test (#777). The tag comes
+      # from compose.yaml by calendar-testing's rule (repo_files.rs: the first `image: postgres:<tag>` line), so there is
+      # no second pin. The pull writes to files, so this step returns at once; "Wait for the PostgreSQL image" reports.
+      - name: Start pulling the PostgreSQL image
+        run: |
+          pull="$RUNNER_TEMP/postgres-pull"
+          image=$(sed -n 's/^[[:space:]]*image:[[:space:]]*\(postgres:[^[:space:]]\{1,\}\)[[:space:]]*$/\1/p' ../compose.yaml | head -n 1)
+          echo "$image" > "$pull.image"
+          if [ -z "$image" ]; then
+            echo "no postgres image in compose.yaml" > "$pull.log"
+            echo 1 > "$pull.status"
+            exit 0
+          fi
+          echo "Pulling $image"
+          # `|| status=$?`: the step's shell exits on the first failing command, and so would the background group,
+          # before writing the status the wait step reads.
+          { status=0; docker pull "$image" > "$pull.log" 2>&1 || status=$?; echo "$status" > "$pull.status.tmp"
+            mv "$pull.status.tmp" "$pull.status"; } > /dev/null 2>&1 &
       # The toolchain pinned in backend/rust-toolchain.toml, with rustfmt and clippy. Runners ship rustup; naming the
       # channel keeps the install independent of rustup's own defaults.
       - name: Install the pinned Rust toolchain
@@ -106,17 +132,29 @@ jobs:
           rustup toolchain install "$channel" --profile minimal --component rustfmt,clippy --no-self-update
           echo "channel=$channel" >> "$GITHUB_OUTPUT"
           cargo --version
-      # The registry and the compiled dependencies, per toolchain and lock file; an older cache of the same toolchain
-      # is a starting point when the lock file changed.
-      - uses: actions/cache@v6
+      # The registry and the compiled dependencies. The key holds everything that decides how they are built: the
+      # toolchain, the debug setting and the cargo-llvm-cov release (both in the job's env), the manifests (profiles,
+      # features) and the lock file. Without the settings, changing one would restore stale dependencies on an exact
+      # hit, rebuild them on every run and never save them (#785). An older cache with the same toolchain and settings
+      # is a starting point when only the manifests or the lock file changed. It is saved at the end of the job, after
+      # the prune, and only holds dependencies (`deps` in the key, so no older cache with the workspace's own
+      # artifacts is restored).
+      - name: Restore the dependency cache
+        id: cache
+        uses: actions/cache/restore@v6
         with:
           path: |
             ~/.cargo/registry/index
             ~/.cargo/registry/cache
             ~/.cargo/git/db
             backend/target
-          key: backend-${{ runner.os }}-rust-${{ steps.toolchain.outputs.channel }}-${{ hashFiles('backend/Cargo.lock') }}
-          restore-keys: backend-${{ runner.os }}-rust-${{ steps.toolchain.outputs.channel }}-
+          key: >-
+            backend-${{ runner.os }}-rust-${{ steps.toolchain.outputs.channel }}-deps-debug-${{ env.CARGO_PROFILE_DEV_DEBUG
+            }}-llvmcov-${{ env.LLVM_COV_VERSION }}-${{ hashFiles('backend/Cargo.toml', 'backend/crates/*/Cargo.toml',
+            'backend/Cargo.lock') }}
+          restore-keys: >-
+            backend-${{ runner.os }}-rust-${{ steps.toolchain.outputs.channel }}-deps-debug-${{ env.CARGO_PROFILE_DEV_DEBUG
+            }}-llvmcov-${{ env.LLVM_COV_VERSION }}-
       - run: cargo fetch --locked
       # Clippy denies every warning; the workspace lints in Cargo.toml set the levels.
       - run: cargo clippy --workspace --all-targets --locked -- -D warnings
@@ -125,29 +163,66 @@ jobs:
       # cargo-llvm-cov runs `cargo test` on an instrumented build and writes a Cobertura report. The release binary is
       # pinned; llvm-tools is installed here rather than in rust-toolchain.toml so local and image builds skip it.
       - name: Install cargo-llvm-cov
-        env:
-          LLVM_COV_VERSION: 0.9.1
         run: |
           rustup component add llvm-tools-preview
           curl -LsSf "https://github.com/taiki-e/cargo-llvm-cov/releases/download/v${LLVM_COV_VERSION}/cargo-llvm-cov-x86_64-unknown-linux-gnu.tar.gz" \
             | tar xzf - -C "$HOME/.cargo/bin"
+      # A failed pull is reported, not fatal: Testcontainers then pulls the image in the test step, as it would without
+      # the step above.
+      - name: Wait for the PostgreSQL image
+        run: |
+          pull="$RUNNER_TEMP/postgres-pull"
+          for _ in $(seq 120); do [ -f "$pull.status" ] && break; sleep 1; done
+          cat "$pull.log" 2>/dev/null || true
+          if [ "$(cat "$pull.status" 2>/dev/null)" != 0 ]; then
+            echo "::warning::The PostgreSQL image '$(cat "$pull.image")' was not pulled ahead of the tests; the first database test pulls it instead."
+          fi
       - name: Test with coverage
         run: |
           mkdir -p TestResults
           cargo llvm-cov --workspace --locked --cobertura --output-path TestResults/backend.cobertura.xml
-      - name: OpenAPI contract is up to date
-        run: |
-          cargo run --locked -p calendar-api -- --openapi ../contracts/openapi.json
-          git diff --exit-code -- ../contracts || {
-            echo "::error::contracts/openapi.json is stale. Run 'just contracts' and commit the result."
-            exit 1
-          }
       - uses: actions/upload-artifact@v7
         if: ${{ !cancelled() }}
         with:
           name: backend-test-results
           path: backend/TestResults
           if-no-files-found: ignore
+      # Cache only what pays: the workspace's own crates are rebuilt on every run (the checkout gives their sources a
+      # new mtime), so their artifacts, incremental data and llvm-cov's profiles are dropped before the save. They were
+      # most of the 2 GB that every run restored (#776). Cargo names a package's fingerprint and build directories
+      # after the package and its outputs in deps/ after each target, with `-` as `_`; the names come from cargo
+      # metadata, so a new crate or test file needs no edit here. Saved, like before, only when the job succeeded.
+      - name: Keep only the dependencies in the cache
+        if: steps.cache.outputs.cache-hit != 'true'
+        run: |
+          du -sh target
+          names=$(cargo metadata --no-deps --locked --format-version 1 \
+            | jq -r '.packages[] | .name, (.name, .targets[].name | gsub("-"; "_"))' | sort -u)
+          find target -name '*.profraw' -delete
+          # Cargo's 16-digit hash follows the name, so a test file named like a dependency (tests/time.rs) cannot also
+          # match that dependency's `time-core-...` entries.
+          hash='[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]'
+          find target -mindepth 1 -maxdepth 3 -type d -name .fingerprint | while read -r fingerprint; do
+            profile=$(dirname "$fingerprint")
+            find "$profile" -maxdepth 1 -type f -delete
+            rm -rf "$profile/incremental" "$profile/examples"
+            for name in $names; do
+              # shellcheck disable=SC2086 # $hash is a glob on purpose
+              rm -rf "$profile/.fingerprint/$name-"$hash "$profile/build/$name-"$hash "$profile/deps/$name-"$hash* \
+                "$profile/deps/lib$name-"$hash*
+            done
+          done
+          du -sh target
+      - name: Save the dependency cache
+        if: steps.cache.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v6
+        with:
+          path: |
+            ~/.cargo/registry/index
+            ~/.cargo/registry/cache
+            ~/.cargo/git/db
+            backend/target
+          key: ${{ steps.cache.outputs.cache-primary-key }}
 
   # The web app and the API client. Format and lint cover the whole workspace, docs sources included;
   # the docs site's own checks, tests and builds run in the Docs site job beside this one (#274).
@@ -525,7 +600,7 @@ jobs:
           echo "All CI jobs passed."
       # ADR 0045: fails a pull request or merge-queue run when a job took longer than its pinned threshold in
       # .github/ci-baseline.json, and only reports on pushes, dispatches and provisional baselines. All of the logic is in
-      # .github/ci-gate.jq, which tools/ci-timings/tests/GateTests.cs runs; this step only feeds it the saved response.
+      # .github/ci-gate.jq, which tools/ci-timings/tests/gate_test.ts runs; this step only feeds it the saved response.
       - name: Job run times are within the baseline (ADR 0045)
         run: |
           gate=(jq -r -f .github/ci-gate.jq --slurpfile baseline .github/ci-baseline.json --arg event "$GITHUB_EVENT_NAME")

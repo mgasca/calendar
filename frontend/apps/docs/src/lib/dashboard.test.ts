@@ -18,7 +18,7 @@ import {
   type DashboardData,
 } from './dashboard';
 
-// The same files the .NET rules test (tools/delivery-dashboard/tests) reads, so the two readers
+// The same files the Deno rules test (tools/delivery-dashboard/tests) reads, so the two readers
 // cannot drift apart on a valid snapshot.
 const validDirectory = new URL('./fixtures/dashboard/valid/snapshots/', import.meta.url);
 

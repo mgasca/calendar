@@ -140,7 +140,7 @@
             "format": "OpenAPI 3, code-first: utoipa collects the paths and schemas, and calendar-api/src/openapi.rs rewrites them into the dialect of the committed contract (calendar-api --openapi)",
             "generated-by": "calendar-api --openapi (cargo run -p calendar-api, just contracts)",
             "regenerate-command": "just contracts",
-            "staleness-gate": "CI job Backend: 'OpenAPI contract is up to date' (git diff --exit-code on contracts/); the frontend typecheck fails on a contract break",
+            "staleness-gate": "CI job Backend: the calendar-api unit test openapi::tests::the_committed_contract_is_the_generated_document (byte-exact against contracts/openapi.json); the frontend typecheck fails on a contract break",
             "consumers": ["frontend/packages/api-client (openapi-typescript + openapi-fetch, schema.gen.ts)", "frontend/apps/web"],
             "hand-edits-allowed": false,
             "adrs": ["https://mgasca.github.io/calendar/adr/0004/"]
@@ -438,10 +438,10 @@
                 "cross-user-response": "404 for GET/PUT/DELETE /api/events/{id}, GET/PUT/complete/reopen/DELETE /api/tasks/{id}; notFound outcome in POST /api/tasks/bulk by ids; filter-based bulk actions and agenda counts only ever cover the caller's rows",
                 "client-supplied-user": false,
                 "tests": [
-                  "backend/crates/calendar-api/tests/ownership.rs (two users, every endpoint)",
+                  "backend/crates/calendar-api/tests/api/ownership.rs (two users, every endpoint)",
                   "backend/crates/calendar-infrastructure/tests/database/user_directory.rs (lookup order, legacy claim)",
                   "backend/crates/calendar-infrastructure/tests/database/ownership_migration.rs (backfill)",
-                  "backend/crates/calendar-api/tests/session_and_seed.rs (old cookie, seed scheme)",
+                  "backend/crates/calendar-api/tests/api/session_and_seed.rs (old cookie, seed scheme)",
                   "backend/crates/calendar-infrastructure/tests/database/schema_definition.rs (owner columns, keys, indexes)"
                 ],
                 "adrs": ["https://mgasca.github.io/calendar/adr/0041/"]
@@ -723,7 +723,7 @@
                   "fails-on": ["pull_request", "merge_group"],
                   "reports-on": ["push", "workflow_dispatch", "any run on a provisional path"],
                   "remedy": "Re-run all jobs; Re-run failed jobs repeats only CI result on the same durations",
-                  "tests": "tools/ci-timings/tests/GateTests.cs runs the committed jq program against canned jobs API responses, and checks that ci.yml runs that file",
+                  "tests": "tools/ci-timings/tests/gate_test.ts runs the committed jq program against canned jobs API responses, and checks that ci.yml runs that file",
                   "critical-path-cost": "CI result +3 s: median 6 s (n = 11) with the gate against 3 s (n = 23) without, measured in #395; the comparison itself takes 0 s, the rest is the sparse checkout and its post step. Accepted by the maintainer on 2026-11-07"
                 },
                 "trend-check": {
@@ -734,7 +734,7 @@
                   "significance": 0.002,
                   "minimum-effect": "Hodges-Lehmann shift of at least max(10 s, 5 % of the baseline median)",
                   "output": "Opens, or comments on, the one open performance issue titled 'CI run-time trend: …'; never fails a run",
-                  "tests": "tools/ci-timings/tests/TrendTests.cs, on constructed histories"
+                  "tests": "tools/ci-timings/tests/trend_test.ts, on constructed histories"
                 },
                 "mechanism-guards": [
                   { "id": "superseded-runs", "protects": "#348", "record": "0008", "mechanism": "A same-repository pull request run has its own concurrency group, and Cancel superseded runs cancels the older runs with actions: write and no checkout", "test": "tools/delivery-guards" },
@@ -759,22 +759,22 @@
       "unique-id": "delivery-dashboard-tool",
       "node-type": "service",
       "name": "Delivery dashboard tool",
-      "description": ".NET 10 file-based app (tools/delivery-dashboard) that gathers delivery data from the GitHub API (CI job run times against the pinned baseline and the ADR-0045 trend verdicts, queue time, the failure rates of CI jobs and reruns, pull request and issue flow, open stacks and epic progress) into one versioned, public-safe JSON snapshot per day. It validates every snapshot against the schema and the privacy rules (aggregates and public numbers only, no paths, handles or e-mail addresses) before it is published, checks the size of the data branch against its limit, and compares the snapshot with the thresholds, opening or updating one performance issue per kind of alert and no other alert.",
+      "description": "TypeScript tool on Deno (tools/delivery-dashboard, ADR-0058) that gathers delivery data from the GitHub API (CI job run times against the pinned baseline and the ADR-0045 trend verdicts, queue time, the failure rates of CI jobs and reruns, pull request and issue flow, open stacks and epic progress) into one versioned, public-safe JSON snapshot per day. It validates every snapshot against the schema and the privacy rules (aggregates and public numbers only, no paths, handles or e-mail addresses) before it is published, checks the size of the data branch against its limit, and compares the snapshot with the thresholds, opening or updating one performance issue per kind of alert and no other alert.",
       "interfaces": [
         {
           "unique-id": "dashboard-commands",
           "commands": [
-            "dotnet run tools/delivery-dashboard/delivery-dashboard.cs -- snapshot",
-            "dotnet run tools/delivery-dashboard/delivery-dashboard.cs -- check FILE...",
-            "dotnet run tools/delivery-dashboard/delivery-dashboard.cs -- alerts --snapshot FILE [--issue]",
-            "dotnet run tools/delivery-dashboard/delivery-dashboard.cs -- retention"
+            "just tools delivery-dashboard snapshot",
+            "just tools delivery-dashboard check FILE...",
+            "just tools delivery-dashboard alerts --snapshot FILE [--issue]",
+            "just tools delivery-dashboard retention"
           ]
         }
       ],
       "metadata": {
-        "adrs": ["ADR-0017", "ADR-0045", "ADR-0049"],
+        "adrs": ["ADR-0058", "ADR-0045", "ADR-0049"],
         "stories": ["0053"],
-        "source": "tools/delivery-dashboard (Snapshot.cs, SnapshotRules.cs, QualitySection.cs, FlowSection.cs, Alerts.cs), tools/ci-timings"
+        "source": "tools/delivery-dashboard (snapshot.ts, snapshot-rules.ts, quality.ts, flow.ts, alerts.ts), tools/ci-timings"
       }
     },
     {
@@ -791,7 +791,7 @@
       "metadata": {
         "adrs": ["ADR-0049"],
         "stories": ["0053"],
-        "validation": "dotnet run tools/delivery-dashboard/delivery-dashboard.cs -- check (schema and privacy rules) before publication; the docs build re-checks every file and fails naming the file and the rule"
+        "validation": "just tools delivery-dashboard check (schema and privacy rules) before publication; the docs build re-checks every file and fails naming the file and the rule"
       }
     },
     {

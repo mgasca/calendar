@@ -1,6 +1,6 @@
 ---
 subject: "Docs site CI job slower than its pinned baseline on main: runner mix and corpus growth, no code change (issue #639)"
-harness: "tools/ci-timings/ci-timings.cs"
+harness: "tools/ci-timings/ci-timings.ts"
 ---
 
 # 0021 Docs site trend on main: runner mix and corpus growth

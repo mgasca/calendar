@@ -10,6 +10,7 @@ import { browserTimeZone, formatDateTime, isPastDue } from '../agenda/dayTime.ts
 import { useNow, useToday } from '../agenda/useNow.ts';
 import { apiError } from '../../api/apiError.ts';
 import { useNotify } from '../../components/notify.ts';
+import { useAfterRender } from '../../components/useAfterRender.ts';
 import { taskTitleId } from '../agenda/taskTitleId.ts';
 import { EditTask } from './EditTask.tsx';
 import {
@@ -78,6 +79,7 @@ export function TaskList() {
   /** The task open in its edit dialog (story 0048). */
   const [editingTask, setEditingTask] = useState<string>();
   const notify = useNotify();
+  const afterRender = useAfterRender();
   const visible = tasks.data?.pages.flatMap((page) => page.items) ?? [];
   return (
     <section aria-labelledby="personal-tasks-heading">
@@ -168,7 +170,8 @@ export function TaskList() {
             const id = editingTask;
             setEditingTask(undefined);
             if (saved) notify({ message: 'Task saved.' });
-            requestAnimationFrame(() => {
+            // After the render, not on the next frame, which can still see the old row (#698).
+            afterRender(() => {
               focusTitleOrHeading(taskTitleId(id));
             });
           }}

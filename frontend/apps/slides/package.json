@@ -14,7 +14,7 @@
     "@calendar/theme": "workspace:*"
   },
   "devDependencies": {
-    "@slidev/cli": "53.0.0",
+    "@slidev/cli": "53.1.0",
     "@slidev/theme-default": "0.25.0",
     "@types/node": "^26.6.6",
     "@vitest/coverage-v8": "^5.1.0",

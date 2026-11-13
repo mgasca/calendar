@@ -1,6 +1,6 @@
 ---
 subject: "Docs site CI job after one corpus read in the build checks, Istanbul coverage and one subpath build (issue #755)"
-harness: "tools/ci-timings/ci-timings.cs"
+harness: "tools/ci-timings/ci-timings.ts"
 ---
 
 # 0024 Docs site job: one corpus read, Istanbul coverage, one subpath build

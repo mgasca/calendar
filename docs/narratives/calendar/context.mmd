@@ -1,16 +1,18 @@
 flowchart LR
-  maintainer(["Maintainer"])
-  agents(["Delivery, reviewer and skeptic agents"])
-  readers(["Public readers"])
-  calendar["Calendar product"]
-  repo["Repository: code, guidance, records"]
-  google["Google sign-in"]
-  github["GitHub: issues, pull requests, CI"]
-  docs["Documentation site"]
-  maintainer -->|plans the day and week| calendar
-  calendar -->|verifies identity| google
-  maintainer -->|accepts and merges| github
-  agents -->|design, build, review| github
-  github -->|holds| repo
-  repo -->|publishes| docs
-  readers -->|read and copy the method| docs
+    maintainer([Maintainer])
+    agents([Delivery agents, reviewers and skeptics])
+    readers([Public readers])
+    subgraph repo[Calendar repository]
+        app[Calendar application<br/>web UI, API, PostgreSQL]
+        method[Method<br/>guidance, skills, hooks, ADRs, story cards]
+        site[Docs site]
+    end
+    google[Google sign-in]
+    github[GitHub<br/>issues, pull requests, CI, Pages]
+    maintainer -->|plans the day and week| app
+    maintainer -->|sets scope, accepts ADRs, authorizes merges| github
+    agents -->|follow| method
+    agents -->|propose changes as pull requests| github
+    app -->|signs the owner in with| google
+    github -->|checks and publishes| repo
+    readers -->|read the evidence, lift pieces| site

@@ -4,6 +4,7 @@ import { useIsMutating, useMutation, useQueryClient } from '@tanstack/react-quer
 import { api } from '../../api/client.ts';
 import { AGENDA_KEY } from './agendaQuery.ts';
 import type { AgendaTask } from './dayTime.ts';
+import { traceAction } from '../../telemetry/action.ts';
 
 /** Prefix of the task list queries (`My tasks`), which also show completion. */
 const TASKS_KEY = ['tasks'] as const;
@@ -63,8 +64,8 @@ export function useToggleTask<TData>(queryKey: QueryKey, patch: TaskPatch<TData>
     mutationFn: async ({ id, complete }: ToggleTaskVariables) => {
       const params = { params: { path: { id } } };
       const { data, response } = complete
-        ? await api.POST('/api/tasks/{id}/complete', params)
-        : await api.POST('/api/tasks/{id}/reopen', params);
+        ? await traceAction('ui.task.complete', () => api.POST('/api/tasks/{id}/complete', params))
+        : await traceAction('ui.task.reopen', () => api.POST('/api/tasks/{id}/reopen', params));
       if (!data) {
         throw new TaskUpdateError(response.status);
       }

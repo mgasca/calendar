@@ -1,0 +1,9 @@
+schema_version: "1.1"
+name: stitch-only-restitches-edited-part
+expected_outcome: |
+  In stitch-only mode, the skill asks no interview questions. It runs the seven
+  quality checks on the existing ticket-kata parts and reports each one, then
+  stitches docs/narratives/ticket-kata-narrative.md with the parts kept. The
+  stitched file carries the edited launch date (15 March) and the stitcher's
+  check passes. Nothing outside docs/narratives/ticket-kata* changes, and
+  nothing is pushed.

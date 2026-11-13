@@ -249,6 +249,75 @@ export function parseAgentThoughts(sources: Map<string, string>): AgentThought[]
   });
 }
 
+export const narrativeStatuses = ['draft', 'final'];
+/** A stitched narrative, `<system>-narrative.md`; the part directories beside them are never read. */
+export const narrativeFileName = /^([a-z0-9]+(?:-[a-z0-9]+)*)-narrative\.md$/;
+const narrativeKeys = new Set(['system', 'audience', 'date', 'status', 'slides']);
+
+export interface Narrative {
+  /** The file name without `-narrative.md`, which is also the part directory and the route. */
+  slug: string;
+  file: string;
+  title: string;
+  /** The narrated system's display name. */
+  system: string;
+  audience: string;
+  date: string;
+  status: string;
+  /** The deck's path under the site base, `slides/<slug>/`, when the narrative has a deck. */
+  slides?: string | undefined;
+  body: string;
+}
+
+/** Reads and validates the stitched narratives (ADR-0059), in file-name order. */
+export function parseNarratives(sources: Map<string, string>): Narrative[] {
+  const systems = new Map<string, string>();
+  return [...sources.keys()].sort().map((file) => {
+    const slug = narrativeFileName.exec(file)?.[1];
+    if (slug === undefined) throw new Error(`Invalid narrative filename: ${file}`);
+    const source = sources.get(file);
+    if (source === undefined) throw new Error(`Missing narrative: ${file}`);
+    const { metadata, title, body } = parseDocument(source, file);
+    for (const key of Object.keys(metadata)) {
+      if (!narrativeKeys.has(key))
+        throw new Error(`Unknown narrative front matter ${key}: ${file}`);
+    }
+    const { system, audience, status, slides } = metadata;
+    if (typeof system !== 'string' || !system.trim())
+      throw new Error(`Missing narrative system: ${file}`);
+    const other = systems.get(system.trim().toLowerCase());
+    if (other !== undefined)
+      throw new Error(`Duplicate narrative of ${system}: ${other} and ${file}`);
+    systems.set(system.trim().toLowerCase(), file);
+    if (typeof audience !== 'string' || !audience.trim())
+      throw new Error(`Missing narrative audience: ${file}`);
+    const date =
+      metadata.date instanceof Date ? metadata.date.toISOString().slice(0, 10) : metadata.date;
+    if (typeof date !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(date))
+      throw new Error(`Narrative date must be YYYY-MM-DD: ${file}`);
+    if (typeof status !== 'string' || !narrativeStatuses.includes(status))
+      throw new Error(`Narrative status must be draft or final: ${file}`);
+    if (slides !== undefined && slides !== `slides/${slug}/`)
+      throw new Error(`Narrative slides must be slides/${slug}/: ${file}`);
+    return {
+      slug,
+      file,
+      title,
+      system: system.trim(),
+      audience: audience.trim(),
+      date,
+      status,
+      slides,
+      body,
+    };
+  });
+}
+
+/** Maps a narrative status onto the existing status colours: final is accepted, draft is draft. */
+export function narrativeStatusCategory(status: string) {
+  return status === 'final' ? 'accepted' : 'draft';
+}
+
 /** URL segment for a story: its number, or its slug while it is unnumbered. */
 export function storySlug(file: string) {
   const number = /^(\d{4})-/.exec(file)?.[1];
@@ -270,10 +339,10 @@ export function deployment(url = 'http://localhost:4321/') {
   return { site: parsed.origin, base: `${parsed.pathname.replace(/\/$/, '')}/` };
 }
 
-// Paths that name an ADR, story, benchmark record, agent thought or runbook: linking one that is
-// not published is an error.
+// Paths that name an ADR, story, benchmark record, agent thought, runbook or narrative, or a
+// narrative's Markdown part (never published, ADR-0059): linking one that is not published is an error.
 const brokenDocumentLink =
-  /^docs\/(?:(?:decisions|stories|benchmarks|agent-thoughts)\/(?:\d{4}|XXXX)-[^/]*|runbooks\/[a-z0-9-]+)\.md$/;
+  /^docs\/(?:(?:decisions|stories|benchmarks|agent-thoughts)\/(?:\d{4}|XXXX)-[^/]*|runbooks\/[a-z0-9-]+|narratives\/[^/]+(?:\/.+)?)\.md$/;
 
 /**
  * Rewrites one link in the document at `from`, a repository-relative path. `links` maps

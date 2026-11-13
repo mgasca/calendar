@@ -145,6 +145,14 @@ export default defineConfig({
           ],
         },
         { label: 'Architecture', items: architectureSidebar(flows) },
+        // Stitched narratives only; their part directories are never published (ADR-0059).
+        {
+          label: 'Architecture narratives',
+          items: [
+            { slug: 'narratives', label: 'All narratives' },
+            { autogenerate: { directory: '../../../docs/narratives' } },
+          ],
+        },
         // One entry per page of src/lib/dashboard.ts, so a new dashboard page needs no change here.
         { label: 'Delivery dashboard', items: dashboardSidebar() },
         {

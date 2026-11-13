@@ -3,7 +3,7 @@ import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { deployment, runbookSlug, storySlug } from '../src/lib/adr';
 import { architecturePages, pageRoute } from '../src/lib/architecture';
-import { readAgentThoughts, readDocuments } from '../src/lib/docs-loader';
+import { readAgentThoughts, readDocuments, readNarratives } from '../src/lib/docs-loader';
 
 const { base } = deployment(process.env.DOCS_SITE_URL);
 
@@ -312,8 +312,34 @@ describe('published benchmarks', () => {
   });
 });
 
+describe('published narratives (ADR-0059)', () => {
+  it('renders every stitched narrative with navigation and its metadata, and no part', async () => {
+    const { records } = await readNarratives();
+    const routes = records.map((record) => `${base}narratives/${record.slug}/`);
+    const index = await readFile('dist/narratives/index.html', 'utf8');
+    expect(sidebarGroups(index)).toContain('Architecture narratives');
+    expect(sidebarRoutes(index).filter((href) => href.startsWith(`${base}narratives/`))).toEqual([
+      `${base}narratives/`,
+      ...routes,
+    ]);
+    for (const record of records) {
+      const html = await readFile(`dist/narratives/${record.slug}/index.html`, 'utf8');
+      expect(html).toContain(`<strong>System:</strong> ${record.system}`);
+      expect(html).toContain(`<strong>Status:</strong> ${record.status}`);
+      if (record.slides) expect(html).toContain(`href="${base}${record.slides}"`);
+    }
+    // Part directories are never published: the only pages under narratives/ are the routes above.
+    const published = (await pages('dist/narratives')).sort();
+    expect(published).toEqual(
+      ['dist/narratives/index.html', ...records.map((r) => `dist/narratives/${r.slug}/index.html`)]
+        .map((path) => join(path))
+        .sort(),
+    );
+  });
+});
+
 describe('conventions pages', () => {
-  it.each(['stories', 'benchmarks', 'agent-thoughts', 'runbooks'])(
+  it.each(['stories', 'benchmarks', 'agent-thoughts', 'runbooks', 'narratives'])(
     'publishes %s without a maintained inventory',
     async (area) => {
       const html = await readFile(`dist/${area}/index.html`, 'utf8');

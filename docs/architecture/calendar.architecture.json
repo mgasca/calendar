@@ -120,6 +120,7 @@
       { "id": "0046", "title": "Apply the Calendar light and dark themes to the published docs site", "status": "implemented", "url": "https://mgasca.github.io/calendar/stories/0046/" },
       { "id": "0053", "title": "Show how fast and how smoothly changes reach main", "status": "implemented", "url": "https://mgasca.github.io/calendar/stories/0053/" },
       { "id": "0059", "title": "Run repository tooling on TypeScript and Deno", "status": "planned", "url": "https://mgasca.github.io/calendar/stories/0059/" },
+      { "id": "0063", "title": "Build architecture narratives with an interviewing agent and an expert panel", "status": "planned", "url": "https://mgasca.github.io/calendar/stories/0063/" },
       { "id": "XXXX", "title": "Create events and tasks from the week view", "status": "planned", "url": "https://mgasca.github.io/calendar/stories/create-events-and-tasks-from-week-view/" }
     ]
   },
@@ -860,13 +861,14 @@
     {
       "unique-id": "decision-log",
       "node-type": "data-asset",
-      "name": "Decision log, story cards, runbooks and benchmarks",
-      "description": "docs/decisions (MADR 4.0 ADRs with decision drivers, star-rating tables and driver-tagged pros/cons, indexed in README.md and validated by just tools adr) and docs/stories (story cards: the long-lived source of truth for each story). Both are the input of the documentation site, together with the runbooks in docs/runbooks (indexed in order in README.md) and the benchmark records in docs/benchmarks.",
+      "name": "Decision log, story cards, runbooks, benchmarks and narratives",
+      "description": "docs/decisions (MADR 4.0 ADRs with decision drivers, star-rating tables and driver-tagged pros/cons, indexed in README.md and validated by just tools adr) and docs/stories (story cards: the long-lived source of truth for each story). Both are the input of the documentation site, together with the runbooks in docs/runbooks (indexed in order in README.md) the benchmark records in docs/benchmarks and the stitched architecture narratives in docs/narratives (ADR-0059).",
       "interfaces": [
         { "unique-id": "adr-files", "path": "docs/decisions/NNNN-*.md" },
         { "unique-id": "story-files", "path": "docs/stories/NNNN-*.md" },
         { "unique-id": "runbook-files", "path": "docs/runbooks/*.md" },
-        { "unique-id": "benchmark-files", "path": "docs/benchmarks/NNNN-*.md" }
+        { "unique-id": "benchmark-files", "path": "docs/benchmarks/NNNN-*.md" },
+        { "unique-id": "narrative-files", "path": "docs/narratives/<system>-narrative.md" }
       ],
       "metadata": { "adrs": ["ADR-0000", "ADR-0028"], "validation": "just tools adr; frontend/apps/docs tests fail on broken links, anchors, unknown or duplicate ADRs, unlisted stories, runbooks or benchmarks, titles that differ from their index or a missing benchmark harness" }
     },
@@ -874,13 +876,13 @@
       "unique-id": "docs-site",
       "node-type": "webclient",
       "name": "Documentation site (Calendar · Docs)",
-      "description": "Astro Starlight site (frontend/apps/docs) built from the agent thoughts, the decision log, the story cards, the CALM model, the runbooks and the benchmark records; the root redirects to the first agent thought, the report on why the repository exists; each agent thought has the stable route agent-thoughts/NNNN/, each ADR adr/NNNN/, each story stories/NNNN/, each runbook runbooks/<name>/, each benchmark record benchmarks/NNNN/ and the delivery dashboard pages under dashboard/, rendered at build time from the snapshots on the dashboard-data branch. Production is published from main; docs-only pull requests from this repository (every changed file under docs/ or frontend/apps/docs/) get previews at pr-preview/pr-N/. The site holds no authentication or sensitive state.",
+      "description": "Astro Starlight site (frontend/apps/docs) built from the agent thoughts, the decision log, the story cards, the CALM model, the runbooks, the benchmark records and the stitched architecture narratives (never their part directories, ADR-0059); the root redirects to the first agent thought, the report on why the repository exists; each agent thought has the stable route agent-thoughts/NNNN/, each ADR adr/NNNN/, each story stories/NNNN/, each runbook runbooks/<name>/, each benchmark record benchmarks/NNNN/, each narrative narratives/<system>/ and the delivery dashboard pages under dashboard/, rendered at build time from the snapshots on the dashboard-data branch. Production is published from main; docs-only pull requests from this repository (every changed file under docs/ or frontend/apps/docs/) get previews at pr-preview/pr-N/. The site holds no authentication or sensitive state.",
       "interfaces": [
         { "unique-id": "docs-site-url", "url": "https://mgasca.github.io/calendar/" },
         { "unique-id": "docs-preview-url", "url": "https://mgasca.github.io/calendar/pr-preview/pr-<number>/" },
         { "unique-id": "dashboard-pages-url", "url": "https://mgasca.github.io/calendar/dashboard/" }
       ],
-      "metadata": { "adrs": ["ADR-0022", "ADR-0023", "ADR-0025", "ADR-0028", "ADR-0049"], "stories": ["0053"], "source": "frontend/apps/docs", "build": "just docs build (DOCS_SITE_URL sets site and base; it first copies the dashboard-data branch into the git-ignored .dashboard-data/)" }
+      "metadata": { "adrs": ["ADR-0022", "ADR-0023", "ADR-0025", "ADR-0028", "ADR-0049", "ADR-0059"], "stories": ["0053", "0063"], "source": "frontend/apps/docs", "build": "just docs build (DOCS_SITE_URL sets site and base; it first copies the dashboard-data branch into the git-ignored .dashboard-data/)" }
     },
     {
       "unique-id": "github-pages",

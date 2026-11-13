@@ -1,9 +1,13 @@
-import { access, readdir, readFile } from 'node:fs/promises';
+import { access, readdir, readFile, stat } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 import { relative, resolve } from 'node:path';
 import type { Loader } from 'astro/loaders';
 import type { Adr, Story } from './adr';
 import {
+  deployment,
+  narrativeFileName,
+  narrativeStatusCategory,
+  parseNarratives,
   parseAgentThoughts,
   parseBenchmarks,
   parseLog,
@@ -30,11 +34,14 @@ import {
 } from './architecture';
 
 const repositoryRoot = new URL('../../../../../', import.meta.url);
+/** The site base, for links to pages the site does not render itself (the narratives' decks). */
+const { base } = deployment(process.env.DOCS_SITE_URL);
 export const decisionsDirectory = new URL('docs/decisions/', repositoryRoot);
 export const storiesDirectory = new URL('docs/stories/', repositoryRoot);
 export const runbooksDirectory = new URL('docs/runbooks/', repositoryRoot);
 export const benchmarksDirectory = new URL('docs/benchmarks/', repositoryRoot);
 export const agentThoughtsDirectory = new URL('docs/agent-thoughts/', repositoryRoot);
+export const narrativesDirectory = new URL('docs/narratives/', repositoryRoot);
 /** The renderer of the dashboard pages (src/lib/dashboard.ts), the source behind their edit links. */
 const dashboardSourceDirectory = new URL('./', import.meta.url);
 /** The folder under `docs/` behind each Markdown collection, for edit links. */
@@ -44,10 +51,14 @@ const folders = new Map([
   [runbooksDirectory.href, 'runbooks'],
   [benchmarksDirectory.href, 'benchmarks'],
   [agentThoughtsDirectory.href, 'agent-thoughts'],
+  [narrativesDirectory.href, 'narratives'],
 ]);
 
 async function readSources(directory: URL, pattern: RegExp) {
-  const names = (await readdir(directory)).filter((name) => pattern.test(name));
+  // Only files: a directory whose name matches (a narrative's parts) is never a document.
+  const names = (await readdir(directory, { withFileTypes: true }))
+    .filter((entry) => entry.isFile() && pattern.test(entry.name))
+    .map((entry) => entry.name);
   return new Map(
     await Promise.all(
       names.map(async (name) => [name, await readFile(new URL(name, directory), 'utf8')] as const),
@@ -97,6 +108,26 @@ export async function readAgentThoughts() {
 }
 
 /**
+ * Reads the stitched narratives (ADR-0059). The per-system part directories beside them (acts,
+ * ledger, diagrams, slides) are skipped; a narrative whose parts are kept is edited through them.
+ * The collection may be empty, but its conventions page must exist.
+ */
+export async function readNarratives(directory: URL = narrativesDirectory) {
+  const sources = await readSources(directory, narrativeFileName);
+  const index = await readFile(new URL('README.md', directory), 'utf8');
+  const records = await Promise.all(
+    parseNarratives(sources).map(async (record) => ({
+      ...record,
+      hasParts: await stat(new URL(`${record.slug}/`, directory)).then(
+        (entry) => entry.isDirectory(),
+        () => false,
+      ),
+    })),
+  );
+  return { index, records };
+}
+
+/**
  * Reads the CALM model (ADR-0039) and checks its references against the decision log and the
  * stories. `url-mapping.json` must map every control requirement URL to a schema that exists.
  */
@@ -129,7 +160,8 @@ export async function readDocuments() {
   const runbook = await readRunbooks();
   const benchmark = await readBenchmarks();
   const agentThought = await readAgentThoughts();
-  return { adr, story, architecture, runbook, benchmark, agentThought };
+  const narrative = await readNarratives();
+  return { adr, story, architecture, runbook, benchmark, agentThought, narrative };
 }
 
 type Documents = Awaited<ReturnType<typeof readDocuments>>;
@@ -155,7 +187,15 @@ export function resetDocumentRoutes() {
   routes = undefined;
 }
 
-function routesOf({ adr, story, architecture, runbook, benchmark, agentThought }: Documents) {
+function routesOf({
+  adr,
+  story,
+  architecture,
+  runbook,
+  benchmark,
+  agentThought,
+  narrative,
+}: Documents) {
   // The decision log index has no page of its own: the sidebar lists every ADR with its status,
   // so a link to docs/decisions/README.md goes to the repository.
   const routes = new Map([
@@ -163,6 +203,7 @@ function routesOf({ adr, story, architecture, runbook, benchmark, agentThought }
     ['docs/runbooks/README.md', 'runbooks/'],
     ['docs/benchmarks/README.md', 'benchmarks/'],
     ['docs/agent-thoughts/README.md', 'agent-thoughts/'],
+    ['docs/narratives/README.md', 'narratives/'],
   ]);
   for (const record of adr.records)
     routes.set(`docs/decisions/${record.file}`, `adr/${record.number}/`);
@@ -178,6 +219,9 @@ function routesOf({ adr, story, architecture, runbook, benchmark, agentThought }
   for (const record of agentThought.records) {
     routes.set(`docs/agent-thoughts/${record.file}`, `agent-thoughts/${record.number}/`);
   }
+  for (const record of narrative.records) {
+    routes.set(`docs/narratives/${record.file}`, `narratives/${record.slug}/`);
+  }
   for (const page of architecturePages(architecture, { stories: story.records })) {
     routes.set(pagePath(page.id), pageRoute(page.id));
   }
@@ -191,8 +235,12 @@ function adrLink(number: string, adrFiles: Map<string, string>) {
   return `[ADR-${number}](../decisions/${file})`;
 }
 
-/** Where a page's "Edit page" link points: the model for architecture pages, else the Markdown file. */
-function editUrl(directory: URL, file: string) {
+/**
+ * Where a page's "Edit page" link points: the model for architecture pages, the part directory for a
+ * narrative whose parts are kept (its stitched file is generated), else the Markdown file.
+ */
+function editUrl(directory: URL, file: string, parts?: string) {
+  if (parts !== undefined) return `${repository}/tree/main/docs/narratives/${parts}`;
   if (directory === architectureDirectory) return modelEditUrl;
   // The dashboard pages are rendered by code from snapshots, so editing means editing the renderer.
   if (directory === dashboardSourceDirectory)
@@ -208,14 +256,22 @@ export function docsLoader(): Loader {
     async load(context) {
       const sync = async () => {
         const documents = await readDocuments();
-        const { adr, story, architecture, runbook, benchmark, agentThought } = documents;
+        const { adr, story, architecture, runbook, benchmark, agentThought, narrative } = documents;
         // An invalid snapshot throws here and fails the build; no snapshot at all gives the "no snapshot yet" pages.
         const dashboard = await readDashboardData();
         // One read serves the entries below and every link the remark plugin rewrites in them.
         routes = Promise.resolve(routesOf(documents));
         const adrFiles = new Map(adr.records.map((record) => [record.number, record.file]));
         context.store.clear();
-        const entries = [
+        const entries: {
+          id: string;
+          title: string;
+          body: string;
+          directory: URL;
+          file: string;
+          parts?: string;
+          sidebar: Record<string, unknown>;
+        }[] = [
           ...adr.records.map((record, order) => ({
             id: `adr/${record.number}`,
             title: `${record.number} · ${record.title}`,
@@ -334,6 +390,42 @@ export function docsLoader(): Loader {
             file: record.file,
             sidebar: { order, label: record.title },
           })),
+          {
+            id: 'narratives',
+            title: 'Architecture narratives',
+            body: narrative.index.replace(/^# Architecture narratives\s*/m, ''),
+            directory: narrativesDirectory,
+            file: 'README.md',
+            sidebar: { order: -1, label: 'Architecture narratives', hidden: true },
+          },
+          // Each narrative opens with its front matter: the system, its audience, date, status and deck.
+          ...narrative.records.map((record, order) => ({
+            id: `narratives/${record.slug}`,
+            title: record.title,
+            body: [
+              [
+                `**System:** ${record.system}`,
+                `**Audience:** ${record.audience}`,
+                `**Date:** ${record.date}`,
+                `**Status:** ${record.status}`,
+                record.slides ? `[Slides](${base}${record.slides})` : '',
+              ]
+                .filter(Boolean)
+                .join(' · '),
+              record.body,
+            ].join('\n\n'),
+            directory: narrativesDirectory,
+            file: record.file,
+            ...(record.hasParts && { parts: record.slug }),
+            sidebar: {
+              order,
+              label: record.system,
+              badge: {
+                text: record.status,
+                class: `adr-status adr-status-${narrativeStatusCategory(record.status)}`,
+              },
+            },
+          })),
           ...dashboardEntries(dashboard).map((entry) => ({
             ...entry,
             directory: dashboardSourceDirectory,
@@ -369,7 +461,7 @@ export function docsLoader(): Loader {
             data: {
               title: entry.title,
               sidebar: entry.sidebar,
-              editUrl: editUrl(entry.directory, entry.file),
+              editUrl: editUrl(entry.directory, entry.file, entry.parts),
             },
           });
           const fileURL = new URL(entry.file, entry.directory);
@@ -392,6 +484,7 @@ export function docsLoader(): Loader {
           runbooksDirectory,
           benchmarksDirectory,
           agentThoughtsDirectory,
+          narrativesDirectory,
         ].map((url) => fileURLToPath(url));
         for (const directory of directories) context.watcher.add(directory);
         let pending = Promise.resolve();

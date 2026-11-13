@@ -1,14 +1,13 @@
 ## Appendix: Expert panel
 
-The narrative was challenged by a panel of six experts: one per driving characteristic (verifiability, delivery speed, correctness of time, and security and privacy), plus an end-user expert and a business expert. Rebuttals were limited to the pairs whose concerns meet: verifiability conflicts with delivery speed and with the end user; delivery speed conflicts with correctness of time and with security; security conflicts with the end user; the end user conflicts with the business; the remaining related pairs are in synergy.
-
-For this first narrative the expert agents could not run (they were not available to the session that built it), so the facilitator voiced each expert from its brief, and the narrator settled every disagreement. The independent panel dialogue is still to be verified on a later revision.
+The narrative was reviewed by a panel of expert agents, one per driving characteristic plus an end-user and a business expert. The panel asked questions after Act 1, rated the 23 alternatives of Act 2 and reviewed Act 3. In Act 2 the chosen alternative had the highest average rating for every decision; the closest was CI time, where path-scoped jobs with run-time gates scored 2.1 of 3 against 2.0 for every job on every change.
 
 | Expert | Verdict | Objections and their outcome |
 | --- | --- | --- |
-| Verifiability | object | The correction-rounds outcome is not measured: a risk, with a dashboard measure as mitigation. The failing-test rule is enforced by guidance and review, not automation: revised in Act 3. |
-| Delivery speed | object | Rust builds lengthen CI: accepted, held by the run-time gate (Act 2). PR 0 adds a review round: kept, with delivery stacked on it (Act 2). Review before merge costs time: kept for code pull requests only (Act 2). "Met" needed evidence: revised with measured job times (Act 3). |
-| Correctness of time | sign-off | The day rules are supplied by the client and tested in domain and SQL forms against a zone and daylight-saving matrix. |
-| Security and privacy | object | Owner isolation without row-level security: an open question and a risk. Hooks protect Claude Code sessions only: a risk. |
-| End user | sign-off | The single user does not yet rely on Calendar daily, so failures cost little today; correctness of time protects the experience that matters. |
-| Business | object | Two success signs have no owner or date: an accepted risk. Run cost is untracked: assumption A1 and a risk. |
+| Verifiability | object | The decisions are credited with proving a change, without evidence of what causes correction rounds, and review is optional: revision (characteristics table, D7). The baseline is a single count with no source, repeat or response: revision (the checkpoint; risk 1 impact raised to high). Nobody notices a missed target: revision (the checkpoint). |
+| Auditability | object | "Nothing enforces" ignored the hook on the completing pull request, and the likelihood had no figure: revision (characteristics table; the checkpoint measures the link rate). D7 merged without an ADR and "significant" is undefined: revision (known exception) and open question. The status of ADR-0057: checked, accepted, no change. |
+| Portability of the method | object | D2 was credited with making the bundle portable: revision (characteristics table, D2). The portability test has no pass criterion: open question. The bundle's prerequisites are undocumented: risk 11. |
+| Delivery speed | object | A missed ceiling was rated low impact, with re-pinning as the mitigation: revision (risk 6 impact raised to medium; the checkpoint). Per-job gates cannot bound total CI time: revision (D6, characteristics table). The wait for reviewers has no metric: open question (the cost of the method). |
+| Correctness of time | object | The matrix is not sized: open question. Time tests can be skipped by design: open question. Divergence of time-zone data rated low likelihood: declined by the maintainer, the rating stands (risk 7). No risk for a wrong clock, a stale Today or an unknown zone: risk 12. |
+| End user | sign-off | None. |
+| Business | object | No risk had a checkpoint: revision (the checkpoint, tied to the next story card). The limit to Claude Code was not tied to adoption: revision (D2). The cost of the method is not sized: open question. |

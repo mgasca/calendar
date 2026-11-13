@@ -8,36 +8,27 @@ Architecture narrative for new contributors, human and agent
 
 ---
 
-# Act 1: Two problems, one project
+# Act 1: The problem
 
-- **Planning:** one view of today's and this week's events and tasks, including overdue ones, in the owner's own time zone
-- **Engineering:** make AI-assisted software engineering dependable: decided before built, checked before merged, improved when it goes wrong
-- When they pull apart, **the method wins**: the product is the vehicle
-- **Why now:** agentic coding became useful in 2026, and the practices to trust it do not exist yet
-
----
-
-# Success means a reusable method
-
-| Sign | Measure |
-| --- | --- |
-| A skill travels | A copied skill folder works without this repository's tooling |
-| The method is adopted | Another repository adopts the guidance, skills and hooks |
-| Lessons stick | Repeated lessons fall month over month |
-| Agent work merges clean | Median agent pull request: at most 2 correction rounds |
+- Software written by AI coding agents cannot yet be trusted without close human checking
+- Calendar develops and tests the **method** that makes agent delivery dependable
+- The planning application is the **vehicle**: real, and small enough for one person to own
+- **Why now:** agents became capable enough, but the practices are missing, and the maintainer's skill gap widens without hands-on work
 
 ---
 
-# Who is involved
+# Outcomes, and who decides
+
+- A reusable method others adopt: the bundle works in another repository
+- The median pull request by a delivery agent merges after **at most 2 correction rounds**
+- Personal depth in agentic engineering
 
 | Role | Decides |
 | --- | --- |
-| Maintainer | Scope, which ADRs are accepted, every merge |
-| Delivery agents | Nothing alone: they propose, build and report |
-| Reviewer and skeptic agents | Whether a finding stands before it reaches the maintainer |
-| Public readers | Whether the method is worth copying |
-
-One product user: the maintainer. Staging on Azure; production not live.
+| Maintainer | Scope, every ADR, every merge |
+| Delivery agent | Nothing: it proposes |
+| Reviewer and skeptic | Nothing: they report and refute findings |
+| Public reader | Whether to copy the method, and which pieces |
 
 ---
 
@@ -45,33 +36,42 @@ One product user: the maintainer. Staging on Azure; production not live.
 
 ```mermaid
 flowchart LR
-  maintainer(["Maintainer"])
-  agents(["Delivery, reviewer and skeptic agents"])
-  readers(["Public readers"])
-  calendar["Calendar product"]
-  repo["Repository: code, guidance, records"]
-  google["Google sign-in"]
-  github["GitHub: issues, pull requests, CI"]
-  docs["Documentation site"]
-  maintainer -->|plans the day and week| calendar
-  calendar -->|verifies identity| google
-  maintainer -->|accepts and merges| github
-  agents -->|design, build, review| github
-  github -->|holds| repo
-  repo -->|publishes| docs
-  readers -->|read and copy the method| docs
+    maintainer([Maintainer])
+    agents([Delivery agents, reviewers and skeptics])
+    readers([Public readers])
+    subgraph repo[Calendar repository]
+        app[Calendar application<br/>web UI, API, PostgreSQL]
+        method[Method<br/>guidance, skills, hooks, ADRs, story cards]
+        site[Docs site]
+    end
+    google[Google sign-in]
+    github[GitHub<br/>issues, pull requests, CI, Pages]
+    maintainer -->|plans the day and week| app
+    maintainer -->|sets scope, accepts ADRs, authorizes merges| github
+    agents -->|follow| method
+    agents -->|propose changes as pull requests| github
+    app -->|signs the owner in with| google
+    github -->|checks and publishes| repo
+    readers -->|read the evidence, lift pieces| site
 ```
+
+One user, the maintainer, occasionally. Local only. Out of scope: sharing, sync with other calendars, native mobile apps.
 
 ---
 
 # Act 2: Constraints and challenges
 
-**Binding:** agent rules (Claude Code first, hooks, acceptance) and contract rules (generated contract, client supplies today, owner on every query)
+**Binding rules**
+
+- Agent rules: agents propose and never decide; automation for Claude Code first; hooks stop forbidden actions
+- Contract rules: a generated contract; the client supplies Today; every query takes the owner
+
+**Challenges**
 
 - Agents forget between sessions
-- One human reviewer, working in bursts
-- Time is subtle: floating dates, daylight saving, the same rules in Rust and SQL
-- Stacks change underneath: .NET to Rust, .NET to Deno
+- One human decides, in bursts
+- Time is subtle, in two forms: domain and SQL
+- The method must leave, as a bundle
 
 ---
 
@@ -79,39 +79,42 @@ flowchart LR
 
 | Characteristic | Target |
 | --- | --- |
-| Verifiability | Median agent pull request merges after at most 2 correction rounds |
-| Delivery speed | No job over its baseline; full CI under 15 minutes at p90 |
-| Correctness of time | Zero day-boundary defects; zone and DST matrix in domain and SQL |
-| Security and privacy | No cross-owner access, tested per endpoint; no leaks to the public repository |
+| Verifiability | Median of at most 2 correction rounds |
+| Auditability | Every merged pull request links an issue or story card; every significant decision has an accepted ADR first |
+| Portability of the method | The bundle runs elsewhere after only its documented edits |
+| Delivery speed | No CI job over its baseline; full CI under 5 minutes at p90 |
+| Correctness of time | No event or task on the wrong day; the matrix passes in domain and SQL forms |
 
-Set aside: evolvability, portability, cost
+Set aside: security and privacy, evolvability, cost.
 
 ---
 
-# Act 3: The product
+# The closest calls
+
+- **CI time:** path-scoped jobs with run-time gates (2.1 of 3) against every job on every change (2.0). A skipped job is a check not run; the risk is accepted
+- **Hooks against portability:** hooks cut correction rounds but tie the bundle to Claude Code and to this repository's paths; accepted
+- **Records against portability:** the records are the evidence, and weight for an adopter; the direction is a minimal record kit
+
+---
+
+# Act 3: The application
 
 ```mermaid
 flowchart TB
-  user(["Owner"])
-  subgraph product["Calendar product (one container on Azure Container Apps)"]
-    web["Web app: React SPA, today, week and task views"]
-    api["Calendar API: Rust, axum"]
-  end
-  client["Generated TypeScript client"]
-  contract["contracts/openapi.json"]
-  db[("PostgreSQL: events, tasks, sessions")]
-  migrator["Migrator: applies SQL migrations"]
-  google["Google sign-in"]
-  vault["Key Vault: secrets"]
-  user -->|"browser, session cookie"| web
-  web -->|"same-origin /api, sends today and time zone"| api
-  web -->|imports| client
-  client -->|generated from| contract
-  api -->|writes at build| contract
-  api -->|"every query takes the owner, as calendar_app"| db
-  migrator -->|"as calendar_migrator"| db
-  api -->|verifies identity| google
-  api -->|secrets via managed identity| vault
+    maintainer([Maintainer])
+    subgraph app[Calendar application]
+        web[Web UI<br/>React, generated typed client]
+        api[API<br/>Rust, axum]
+        db[(PostgreSQL)]
+    end
+    contract[[Contract<br/>contracts/openapi.json]]
+    google[Google sign-in]
+    maintainer -->|"Today: local date and time zone"| web
+    web -->|"day agenda, week agenda, events, tasks"| api
+    api -->|"every query takes the owner"| db
+    api -->|signs the owner in with| google
+    api -.->|generates| contract
+    contract -.->|generates the client of| web
 ```
 
 ---
@@ -120,47 +123,41 @@ flowchart TB
 
 ```mermaid
 flowchart LR
-  issue["Issue: request and design"]
-  card["PR 0: story card and ADRs"]
-  worker["Worker agents, one worktree each"]
-  guidance["Agent guidance, skills and hooks"]
-  ci["CI: path-filtered jobs and run-time gates"]
-  review["Review before merge: reviewers and skeptics"]
-  maintainer(["Maintainer accepts and merges"])
-  lessons["Dream-weaver: lessons into guidance"]
-  dashboard["Delivery dashboard: daily snapshots"]
-  issue --> card --> worker
-  guidance -->|loaded and enforced| worker
-  worker -->|stacked pull requests| ci
-  ci --> review --> maintainer
-  maintainer -->|merged work and transcripts| lessons
-  lessons --> guidance
-  ci --> dashboard
+    issue[Issue] --> card[Story card]
+    card --> adr[ADR<br/>accepted by the maintainer]
+    adr --> change[Change by a delivery agent<br/>guidance, skills, hooks]
+    change --> ci[CI<br/>path-scoped jobs, run-time gates]
+    change --> review[Reviewers and skeptics<br/>on request]
+    ci --> merge{Maintainer<br/>authorizes the merge}
+    review --> merge
+    merge -->|correction round| change
+    merge --> main[main and the docs site]
+    main -->|lesson from a miss| guidance[Guidance, skill or hook]
+    guidance --> change
 ```
 
 ---
 
 # Decisions
 
-- **D1** Generated contract and client, not hand-written types
-- **D2** The client decides what day it is, not a stored zone
-- **D3** Every query takes an `OwnerId`; row-level security still open (ADR-0041 drifted)
-- **D4** Rust replacing .NET in place, not route by route
-- **D5** Story cards and ADRs as the source of truth, with PR 0
-- **D6** Layered guidance with enforcing hooks, not lint-only checks
-- **D7** Reviewers and skeptics before merge, on code pull requests
-- **D8** Path-filtered CI with run-time gates and a dashboard
+- **D1** Layered guidance with hooks, over prose in one file
+- **D2** Claude Code first for automation, over a twin of every automation
+- **D3** ADRs and story cards in the repository, over no formal records
+- **D4** A contract generated from the API, over a hand-written one
+- **D5** The client defines the day, over a UTC range or a stored zone
+- **D6** Run-time gates and path-scoped jobs, over every job on every change
+- **D7** Review before merge with a skeptic per finding, over maintainer review only
 
 ---
 
-# How the targets are met
+# Where the targets stand
 
-| Characteristic | Status |
-| --- | --- |
-| Verifiability | Mechanism in place; outcome **not measured** yet |
-| Delivery speed | Met: slowest job p90 229 s, no run over about 5 minutes (12 Nov 2026) |
-| Correctness of time | Matrix passes in domain and SQL forms |
-| Security and privacy | Owner on every query, ownership tests, hooks, Key Vault |
+- Correction rounds: **not measured yet**
+- Links and ADR acceptance: **by convention only**; review before merge has no ADR
+- The bundle: **never copied**; the next project is the test
+- Full CI: p90 of 2:07 **before the Rust backend**, not measured since
+
+**The checkpoint:** before the next story card opens, sample the last 30 merged pull requests by delivery agents and measure full CI. A median above 2 or a p90 above 5 minutes opens an issue first.
 
 ---
 
@@ -168,9 +165,10 @@ flowchart LR
 
 | Risk | Likelihood | Impact |
 | --- | --- | --- |
-| One maintainer is the only reviewer | high | medium |
-| Prompt injection steers an agent | medium | high |
-| Records drift from the code | high | medium |
-| Hooks protect Claude Code sessions only | medium | high |
+| Portability is unproven | high | high |
+| Correction rounds are unmeasured | high | high |
+| Enforcement depends on Claude Code | medium | high |
+| The maintainer's time stops | medium | high |
+| A skipped job hides a regression | low | high |
 
-**Open:** row-level security · measuring correction rounds · superseding ADR-0041
+Open: a link and ADR check in CI, the minimal record kit, an ADR for review before merge, the size of the time matrix, what counts as the bundle running, what makes a decision significant, what the method costs.

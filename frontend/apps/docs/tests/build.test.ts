@@ -4,6 +4,7 @@ import { describe, expect, it } from 'vitest';
 import { deployment, runbookSlug, storySlug } from '../src/lib/adr';
 import { architecturePages, pageRoute } from '../src/lib/architecture';
 import { readAgentThoughts, readDocuments } from '../src/lib/docs-loader';
+import { brokenLinks } from './siteLinks';
 
 const { base } = deployment(process.env.DOCS_SITE_URL);
 
@@ -17,13 +18,6 @@ async function pages(directory: string): Promise<string[]> {
     }),
   );
   return nested.flat();
-}
-
-/** Returns the built file behind a site-relative href, or undefined for links that leave the site. */
-function builtFile(href: string): string | undefined {
-  if (!href.startsWith(base)) return undefined;
-  const path = href.slice(base.length).split(/[?#]/)[0] ?? '';
-  return join('dist', path.endsWith('/') || path === '' ? join(path, 'index.html') : path);
 }
 
 /** The labels of the sidebar's groups, nested ones included, in page order. */
@@ -54,27 +48,16 @@ describe('published documentation links', () => {
   it('resolves every internal link and anchor, and leaves no repository Markdown links', async () => {
     const files = await pages('dist');
     expect(files.length).toBeGreaterThan(0);
-    for (const file of files) {
-      const html = await readFile(file, 'utf8');
-      for (const [, href = ''] of html.matchAll(/href="([^"]*)"/g)) {
-        // Absolute links leave the site; GitHub links to repository Markdown are expected.
-        if (/^(?:[a-z][a-z\d+.-]*:|\/\/|#)/i.test(href)) continue;
-        expect(href, file).not.toMatch(/\.md(?:[?#]|$)/);
-        if (!href.startsWith(base)) continue;
-        // Starlight's default icon link; the site does not ship a favicon yet.
-        if (href === `${base}favicon.svg`) continue;
-        const target = builtFile(href);
-        expect(target, `${file} -> ${href}`).toBeDefined();
-        const fragment = href.split('#')[1];
-        // Reading the page fails if it is missing, so no separate existence check is needed.
-        if (fragment && target?.endsWith('.html')) {
-          const targetHtml = await readFile(target, 'utf8');
-          expect(targetHtml, `${file} -> ${href}`).toContain(`id="${fragment}"`);
-        } else {
-          await stat(target ?? '');
-        }
-      }
-    }
+    // The rules and their one-check-per-target cost are unit-tested in siteLinks.test.ts.
+    const problems = await brokenLinks(files, base, {
+      readFile: (path) => readFile(path, 'utf8'),
+      exists: (path) =>
+        stat(path).then(
+          () => true,
+          () => false,
+        ),
+    });
+    expect(problems).toEqual([]);
   });
 });
 

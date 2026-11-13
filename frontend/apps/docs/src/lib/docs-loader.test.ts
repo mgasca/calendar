@@ -52,15 +52,29 @@ describe('narratives (ADR-0059)', () => {
     const { index, records } = await readNarratives(fixtures);
     expect(index).toContain('Fixture conventions page.');
     // calendar/ holds parts and stray-narrative.md/ is a directory: neither is read as a narrative.
-    // ticket-kata/ holds only a deck, so its stitched file is not generated from parts.
+    // ticket-kata/ holds only a deck, so its stitched file is not generated from parts, and the
+    // narrative links that deck.
     expect(records.map((record) => record.file)).toEqual([
       'calendar-narrative.md',
       'ticket-kata-narrative.md',
     ]);
-    expect(records.map((record) => [record.slug, record.hasParts])).toEqual([
-      ['calendar', true],
-      ['ticket-kata', false],
+    expect(records.map((record) => [record.slug, record.hasParts, record.slides])).toEqual([
+      ['calendar', true, undefined],
+      ['ticket-kata', false, 'slides/ticket-kata/'],
     ]);
+  });
+
+  it.each([
+    [
+      'narratives-missing-deck',
+      'Narrative links a deck without docs/narratives/calendar/slides.md',
+    ],
+    ['narratives-unlinked-deck', 'Deck docs/narratives/calendar/slides.md is not linked'],
+    ['narratives-orphan-deck', 'Deck docs/narratives/kata/slides.md has no narrative'],
+  ])('fails the build for %s (ADR-0060)', async (fixture, message) => {
+    await expect(readNarratives(new URL(`fixtures/${fixture}/`, import.meta.url))).rejects.toThrow(
+      message,
+    );
   });
 
   it('publishes the repository narratives with an index page and an edit link per page', async () => {

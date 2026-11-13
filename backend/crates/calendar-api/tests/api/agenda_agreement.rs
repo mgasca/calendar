@@ -7,15 +7,6 @@ use crate::common::*;
 use calendar_domain::agenda::day_inclusion;
 use calendar_domain::time::{DayWindow, time_zones};
 use calendar_infrastructure::{OwnerId, events, tasks};
-use chrono::Days;
-
-fn add_days(date: NaiveDate, days: i64) -> NaiveDate {
-  if days >= 0 {
-    date + Days::new(days.unsigned_abs())
-  } else {
-    date - Days::new(days.unsigned_abs())
-  }
-}
 
 fn sorted(mut ids: Vec<Uuid>) -> Vec<Uuid> {
   ids.sort_unstable();
@@ -61,8 +52,8 @@ fn build_events(date: NaiveDate, zone_id: &str, window: &DayWindow) -> Vec<Calen
         CalendarEvent::create_all_day(
           OWNER,
           &format!("all-day {start}..{end}"),
-          add_days(date, start),
-          add_days(date, end),
+          date + TimeDelta::days(start),
+          date + TimeDelta::days(end),
           None,
           None,
         )
@@ -82,7 +73,7 @@ fn build_tasks(date: NaiveDate, window: &DayWindow) -> Vec<TodoTask> {
     for offset in -2..=2_i64 {
       built.push(build_task(
         &format!("date {offset}"),
-        Some(add_days(date, offset)),
+        Some(date + TimeDelta::days(offset)),
         None,
         completed_at,
       ));

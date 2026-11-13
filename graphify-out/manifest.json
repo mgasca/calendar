@@ -156,8 +156,8 @@
     "semantic_hash": "60008519f306a60068c3c46ff6c297bf"
   },
   ".github/workflows/ci.yml": {
-    "mtime": 1794585894.6848392,
-    "seen": 1794585920.5998752,
+    "mtime": 1794584130.8305242,
+    "seen": 1794585316.6848495,
     "ast_hash": "7a577100876319a391a7f28a0edc9a6d",
     "semantic_hash": ""
   },
@@ -1014,8 +1014,8 @@
     "semantic_hash": "4a571b41e775004eb7b3ab0a7db2a593"
   },
   "docs/architecture/calendar.architecture.json": {
-    "mtime": 1794585895.5168393,
-    "seen": 1794585920.6090167,
+    "mtime": 1794585177.9488595,
+    "seen": 1794585316.6850448,
     "ast_hash": "381d96e1dc4c0acb887e47b216756e49",
     "semantic_hash": ""
   },
@@ -1158,8 +1158,8 @@
     "semantic_hash": "3dbdcea7b940168f4bc1f56d461c7fbe"
   },
   "frontend/apps/docs/package.json": {
-    "mtime": 1794585895.5168393,
-    "seen": 1794585920.6105344,
+    "mtime": 1794585180.0968592,
+    "seen": 1794585316.6850815,
     "ast_hash": "c144e4e8e19c057cbee5ff4e118214fa",
     "semantic_hash": ""
   },
@@ -1326,9 +1326,9 @@
     "semantic_hash": "6771462cb9982af2688d35fe84fb76c9"
   },
   "frontend/apps/docs/tests/build.test.ts": {
-    "mtime": 1794585894.6888392,
-    "seen": 1794585920.6124947,
-    "ast_hash": "5c7daae440d4716d55c3a1a27490c046",
+    "mtime": 1794585177.9488595,
+    "seen": 1794585316.6851258,
+    "ast_hash": "fd9b777fe959de02257fd3461a37a31c",
     "semantic_hash": ""
   },
   "frontend/apps/docs/tsconfig.json": {
@@ -2766,8 +2766,8 @@
     "semantic_hash": "565d6824d97bccf51864f0e08e2c37cb"
   },
   "AGENTS.md": {
-    "mtime": 1794585895.512839,
-    "seen": 1794585920.633386,
+    "mtime": 1794585177.9488595,
+    "seen": 1794585316.6855946,
     "ast_hash": "0ef44d1db19487c51fb67f537a81dddd",
     "semantic_hash": ""
   },
@@ -3042,8 +3042,8 @@
     "semantic_hash": ""
   },
   "docs/decisions/0008-frontend-testing-stack.md": {
-    "mtime": 1794585895.5168393,
-    "seen": 1794585920.6361938,
+    "mtime": 1794585268.0168579,
+    "seen": 1794585316.6856663,
     "ast_hash": "0323b2ab37661ca1e9acb6af88f4733d",
     "semantic_hash": ""
   },
@@ -3090,8 +3090,8 @@
     "semantic_hash": ""
   },
   "docs/decisions/0016-local-database-provisioning.md": {
-    "mtime": 1794585895.5168393,
-    "seen": 1794585920.6365633,
+    "mtime": 1794585177.9488595,
+    "seen": 1794585316.6856778,
     "ast_hash": "b3dcbd3debbdf0e429d64484b7b34a53",
     "semantic_hash": ""
   },
@@ -3804,8 +3804,8 @@
     "semantic_hash": "affb65609a2a15afd278f148f6be31d3"
   },
   "frontend/README.md": {
-    "mtime": 1794585895.5168393,
-    "seen": 1794585920.6442657,
+    "mtime": 1794585278.4168575,
+    "seen": 1794585316.6859858,
     "ast_hash": "3bd5539b349ded38b75bbf49f9e6d833",
     "semantic_hash": ""
   },
@@ -4512,38 +4512,38 @@
     "semantic_hash": ""
   },
   "frontend/apps/docs/src/lib/vitest-config.test.ts": {
-    "mtime": 1794585895.5168393,
-    "seen": 1794585920.6122923,
+    "mtime": 1794585185.9408593,
+    "seen": 1794585316.6851192,
     "ast_hash": "59204dbc9dc9f62c71f5f7c0acd378e5",
     "semantic_hash": ""
   },
   "frontend/apps/docs/vitest.config.ts": {
-    "mtime": 1794585895.5168393,
-    "seen": 1794585920.612615,
+    "mtime": 1794585226.2834961,
+    "seen": 1794585316.6851304,
     "ast_hash": "d42fbd1a6f162ff519e427d7d33a132d",
     "semantic_hash": ""
   },
   "docs/decisions/0061-end-to-end-ui-tests-with-playwright-test-bound-to-the-architecture-flows.md": {
-    "mtime": 1794585895.5168393,
-    "seen": 1794585920.639102,
+    "mtime": 1794585177.9488595,
+    "seen": 1794585316.685817,
     "ast_hash": "6c224e24dbe22e0425751dcab1d0ada6",
     "semantic_hash": ""
   },
   "docs/decisions/0062-opentelemetry-over-otlp-with-grafana-lgtm-locally-and-application-insights-in-azure.md": {
-    "mtime": 1794585895.5168393,
-    "seen": 1794585920.639104,
+    "mtime": 1794585177.9488595,
+    "seen": 1794585316.685819,
     "ast_hash": "60a673f5afc6bee2a7977c74d69e3c2e",
     "semantic_hash": ""
   },
   "docs/decisions/0063-docker-compose-profiles-for-local-backing-services-instead-of-aspire.md": {
-    "mtime": 1794585895.5168393,
-    "seen": 1794585920.6391065,
+    "mtime": 1794585177.9488595,
+    "seen": 1794585316.6858203,
     "ast_hash": "bb2681e376dc2c89927165bf2819a745",
     "semantic_hash": ""
   },
   "docs/decisions/0064-stub-oidc-provider-for-sign-in-tests.md": {
-    "mtime": 1794585895.5168393,
-    "seen": 1794585920.6391087,
+    "mtime": 1794585177.9488595,
+    "seen": 1794585316.6858222,
     "ast_hash": "410c231b7041a89d32a5e96489f84ecc",
     "semantic_hash": ""
   },
@@ -4596,14 +4596,14 @@
     "semantic_hash": ""
   },
   "docs/stories/0064-test-every-user-flow-end-to-end-and-prove-it-is-observable.md": {
-    "mtime": 1794585895.5168393,
-    "seen": 1794585920.643576,
+    "mtime": 1794585177.9488595,
+    "seen": 1794585316.6859646,
     "ast_hash": "62860322bda1bf001ec7b9906de15494",
     "semantic_hash": ""
   },
   "frontend/pnpm-lock.yaml": {
-    "mtime": 1794585895.5208392,
-    "seen": 1794585920.646453,
+    "mtime": 1794585180.0208592,
+    "seen": 1794585316.6860325,
     "ast_hash": "2b69746c650510f08d35854cc0198a2c",
     "semantic_hash": ""
   }

@@ -186,9 +186,9 @@
     "semantic_hash": ""
   },
   ".github/workflows/migrate.yml": {
-    "mtime": 1794596232.1238947,
-    "seen": 1794596279.0134153,
-    "ast_hash": "4fadd79dd9cb1c5c7affe0126e051473",
+    "mtime": 1794596957.7294505,
+    "seen": 1794597015.264537,
+    "ast_hash": "7290033c26fbf62e2d16f9244648a9c6",
     "semantic_hash": ""
   },
   ".github/workflows/pages.yml": {
@@ -5271,6 +5271,12 @@
     "mtime": 1794596232.1389503,
     "seen": 1794596279.0152407,
     "ast_hash": "475ffc4b1fe67d3b8d02a82e14fc214e",
+    "semantic_hash": ""
+  },
+  "tools/doctor/tests/migration_summary_test.ts": {
+    "mtime": 1794596971.697832,
+    "seen": 1794597015.2653677,
+    "ast_hash": "8f864476933ca3af5d30d525cde9509c",
     "semantic_hash": ""
   },
   "frontend/pnpm-lock.yaml": {

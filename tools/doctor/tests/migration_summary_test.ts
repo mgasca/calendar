@@ -32,7 +32,7 @@ async function migrationStep(exitCode: number): Promise<{ code: number; stdout: 
   try {
     await Deno.writeTextFile(
       `${directory}/just`,
-      `#!/bin/sh\nprintf '%s\\n' '${commandLine}' 'Role grants applied.'\nexit ${exitCode}\n`,
+      `#!/bin/sh\nprintf '%s\\n' '${commandLine}' '::notice::fixture notice' 'Role grants applied.'\nexit ${exitCode}\n`,
       { mode: 0o700 },
     );
     await Deno.symlink("/usr/bin/tee", `${directory}/tee`);
@@ -63,10 +63,12 @@ Deno.test("migration keeps mask commands on stdout and excludes them from the pu
   const result = await migrationStep(0);
   assertEquals(result.code, 0);
   assertStringIncludes(result.stdout, commandLine);
+  assertStringIncludes(result.stdout, "::notice::fixture notice");
   assertStringIncludes(result.stdout, "Role grants applied.");
   assertStringIncludes(result.summary, "Role grants applied.");
   assertStringIncludes(result.summary, "Database migration: staging");
   assertEquals(result.summary.includes("::add-mask::"), false);
+  assertEquals(result.summary.includes("::notice::"), false);
   assertEquals(scrubSummary(result.summary, result.stdout).includes(commandData), false);
 });
 

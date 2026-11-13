@@ -9,6 +9,7 @@ use std::process::ExitCode;
 
 use calendar_api::config::Settings;
 use calendar_api::state::AppOptions;
+use calendar_api::telemetry::{self, TelemetryConfig};
 use calendar_api::{app, openapi};
 
 #[tokio::main]
@@ -18,8 +19,19 @@ async fn main() -> ExitCode {
     return write_openapi(arguments.get(1).map(String::as_str));
   }
 
-  tracing_subscriber::fmt().with_max_level(tracing::Level::INFO).init();
-  match run(&arguments).await {
+  // Standard output as before; OpenTelemetry over OTLP as well when an `OTEL_*` endpoint is set (ADR-0062).
+  let telemetry = match TelemetryConfig::from_env().and_then(telemetry::init) {
+    Ok(telemetry) => telemetry,
+    Err(error) => {
+      eprintln!("calendar-api: {error}");
+      return ExitCode::FAILURE;
+    }
+  };
+  let result = run(&arguments).await;
+  if !telemetry.is_disabled() {
+    let _ = tokio::task::spawn_blocking(move || telemetry.shutdown()).await;
+  }
+  match result {
     Ok(()) => ExitCode::SUCCESS,
     Err(message) => {
       eprintln!("calendar-api: {message}");

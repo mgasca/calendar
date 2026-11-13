@@ -12,9 +12,14 @@ calendar-domain.workspace = true
 calendar-infrastructure.workspace = true
 chacha20poly1305.workspace = true
 chrono = { workspace = true, features = ["serde"] }
+diesel = { workspace = true, features = ["postgres_backend"] }
 diesel-async.workspace = true
 form_urlencoded.workspace = true
 mime_guess.workspace = true
+opentelemetry = { workspace = true, features = ["trace", "metrics", "logs"] }
+# grpc-tonic: the Azure Container Apps managed agent accepts OTLP over gRPC only; http-proto: the OTLP default.
+opentelemetry-otlp = { workspace = true, features = ["trace", "metrics", "logs", "grpc-tonic", "http-proto", "reqwest-blocking-client"] }
+opentelemetry_sdk = { workspace = true, features = ["trace", "metrics", "logs"] }
 rand.workspace = true
 reqwest = { workspace = true, features = ["rustls", "json"] }
 serde = { workspace = true, features = ["derive"] }
@@ -27,13 +32,14 @@ tokio = { workspace = true, features = ["full"] }
 tower = { workspace = true, features = ["util"] }
 tower-http = { workspace = true, features = ["fs"] }
 tracing.workspace = true
+tracing-opentelemetry.workspace = true
 tracing-subscriber.workspace = true
 utoipa = { workspace = true, features = ["chrono", "uuid", "preserve_order", "preserve_path_order"] }
 uuid = { workspace = true, features = ["serde", "v4"] }
 
 [dev-dependencies]
 calendar-testing.workspace = true
-diesel = { workspace = true, features = ["postgres_backend"] }
+opentelemetry_sdk = { workspace = true, features = ["testing"] }
 tempfile.workspace = true
 tokio-postgres.workspace = true
 

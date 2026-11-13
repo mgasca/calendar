@@ -4,6 +4,8 @@ date: 2026-11-13
 issue: https://github.com/mgasca/calendar/issues/728
 pr:
   - https://github.com/mgasca/calendar/pull/740
+  - https://github.com/mgasca/calendar/pull/767
+  - https://github.com/mgasca/calendar/pull/769
 adrs: ["0008", "0021", "0027", "0030", "0039", "0058", "0061", "0062", "0063", "0064"]
 ---
 
@@ -138,11 +140,19 @@ Dependencies: #729 first; then #730, #731 and #732 in parallel; #733 when all th
 
 No endpoint changes expected. New settings: the OpenTelemetry `OTEL_*` variables, and the Development-only Google endpoint and issuer overrides of ADR-0064.
 
+API telemetry (#731) lives in `calendar-api/src/telemetry/`:
+
+- **Switch:** telemetry is on only when `OTEL_EXPORTER_OTLP_ENDPOINT` or a per-signal endpoint is set. `OTEL_EXPORTER_OTLP_PROTOCOL` chooses `grpc` or `http/protobuf`, which is the default. `OTEL_SDK_DISABLED=true` and `OTEL_<SIGNAL>_EXPORTER=none` turn signals off. With no endpoint, no exporter is built, and request spans are disabled at their callsites. Standard output keeps its plain-text format, which shows events only.
+- **Server spans:** a `Router::layer` middleware makes one server span per routed request, named `<METHOD> <route template>`. It is the child of the W3C `traceparent` the request carries. The layer also records the `http.server.request.duration` histogram by method, route template and status. Its count is the request count.
+- **Database spans:** a Diesel `Instrumentation` is set on each pooled connection in `AppState::db()`. It makes one client span per query, named `<operation> <table>`. The span holds `db.query.text` cut before Diesel's `-- binds:`, so bind values are never formatted.
+- **Logs:** an in-repo bridge layer (`logs.rs`) exports INFO and above with the trace and span ids of the entered span. It copies only allow-listed fields. `opentelemetry-appender-tracing` was not used because it copies every field, and an SDK log record cannot drop an attribute afterwards.
+- **Allow-list:** the allow-list is in `allow_list.rs`. A span processor drops every other attribute and all span events before export.
+
 ### Testing
 
 - Browser: the Playwright flow tests, nightly and on demand.
 - Binding: the browser-free check on every pull request.
-- API: `cargo test` for the exporter wiring, `traceparent` extraction, redaction and the stub guard.
+- API: `cargo test` for the exporter wiring, `traceparent` extraction, redaction and the stub guard. `crates/calendar-api/tests/telemetry.rs` runs the production pipeline with in-memory exporters and scans every exported span, log and metric for seeded personal data. The unit tests in `src/telemetry*` cover the `OTEL_*` configuration, the statement shape and the allow-list.
 - Web: Vitest for the attribute filter and the no-exporter default.
 
 ### Lessons learned, known issues and follow-ups

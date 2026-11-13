@@ -17,6 +17,7 @@ use crate::hosting::{self, RequestOrigin};
 use crate::openapi;
 use crate::problem::Problem;
 use crate::state::{AppOptions, AppState, StartupError};
+use crate::telemetry;
 
 /// Builds the application from `options`. Fails only on a configuration the API must not start with.
 pub fn build(options: AppOptions) -> Result<Router, StartupError> {
@@ -43,9 +44,12 @@ pub fn router(state: AppState) -> Router {
   if state.settings().is_development() {
     routes = routes.route("/openapi/v1.json", get(openapi_document));
   }
+  // The request span and metrics wrap each route (and the fallbacks), where the matched route template is
+  // known; the static files the hosting middleware serves itself get none.
   let routes = routes
     .fallback(fallback)
     .method_not_allowed_fallback(fallback)
+    .layer(middleware::from_fn_with_state(state.clone(), telemetry::http::middleware))
     .with_state(state.clone());
 
   // The hosting middleware must see a request before it is routed (it rewrites API paths and serves static

@@ -36,10 +36,7 @@ struct TaskRow {
 
 impl TaskRow {
   fn into_versioned(self) -> Result<Versioned<TodoTask>, Error> {
-    let priority = self.priority.parse::<Priority>().map_err(|_| Error::InvalidRow {
-      entity: "task",
-      reason: "the priority is not low, medium or high",
-    })?;
+    let priority = stored_priority(&self.priority)?;
     let deadline = Deadline::from_parts(self.due_date, self.due_at).map_err(|_| Error::InvalidRow {
       entity: "task",
       reason: "both the due date and the due instant are set",
@@ -57,6 +54,15 @@ impl TaskRow {
       version: self.xmin,
     })
   }
+}
+
+/// The priority of a stored task row: its `priority` column, or [`Error::InvalidRow`] for text that is not
+/// one. Every read of a task row maps the column through here.
+pub(crate) fn stored_priority(text: &str) -> Result<Priority, Error> {
+  text.parse().map_err(|_| Error::InvalidRow {
+    entity: "task",
+    reason: "the priority is not low, medium or high",
+  })
 }
 
 /// The columns an insert writes. `xmin` is the database's.

@@ -7,6 +7,8 @@ pr:
   - https://github.com/mgasca/calendar/pull/765
   - https://github.com/mgasca/calendar/pull/767
   - https://github.com/mgasca/calendar/pull/769
+  - https://github.com/mgasca/calendar/pull/798
+  - https://github.com/mgasca/calendar/pull/832
 adrs: ["0008", "0021", "0027", "0030", "0039", "0058", "0061", "0062", "0063", "0064"]
 ---
 
@@ -128,7 +130,7 @@ Dependencies: #729 first; then #730, #731 and #732 in parallel; #733 when all th
 
 | Area | Location |
 | --- | --- |
-| E2E suite, fixtures, telemetry helpers, binding check | `frontend/apps/e2e` |
+| E2E suite, fixtures, telemetry helpers, binding check | `frontend/apps/e2e` (`tests/`, `src/fixtures.ts`, `src/telemetry/`, `src/binding/`, `pending-flows.json`); `just e2e test` and `test-on` in `e2e.just` (#733) |
 | E2E stack and recipes | `compose.yaml` profiles `observability` (`lgtm`) and `sign-in-stub` (`oidc-stub`); `e2e.just` (`just e2e up`, `check`, `env`, `ls`, `down`); `just db observability` and `just db sign-in-stub`; [runbook](../runbooks/local-stack-and-e2e.md) (#730) |
 | API telemetry | `backend/crates/calendar-api` (startup in `src/main.rs`, request and database spans) |
 | Stub issuer settings and guard | `backend/crates/calendar-api/src/config.rs` (`GoogleOverrides`, the two refusals), `src/auth/google.rs`, `src/state.rs`; tests in `config.rs`, `google.rs` and `tests/google_overrides_startup.rs` (#730) |
@@ -147,7 +149,7 @@ API telemetry (#731) lives in `calendar-api/src/telemetry/`:
 - **Server spans:** a `Router::layer` middleware makes one server span per routed request, named `<METHOD> <route template>`. It is the child of the W3C `traceparent` the request carries. The layer also records the `http.server.request.duration` histogram by method, route template and status. Its count is the request count.
 - **Database spans:** a Diesel `Instrumentation` is set on each pooled connection in `AppState::db()`. It makes one client span per query, named `<operation> <table>`. The span holds `db.query.text` cut before Diesel's `-- binds:`, so bind values are never formatted.
 - **Logs:** an in-repo bridge layer (`logs.rs`) exports INFO and above with the trace and span ids of the entered span. It copies only allow-listed fields. `opentelemetry-appender-tracing` was not used because it copies every field, and an SDK log record cannot drop an attribute afterwards.
-- **Request log:** the server-span middleware emits one INFO event, `request finished`, inside each traced request's span, with only the method, route template and status. It is the record that carries a successful flow's trace id into Loki; without it, only failures were logged (found while designing #733). Health probes are not logged, and with telemetry off nothing changes.
+- **Request log:** the server-span middleware emits one INFO event, `request finished`, inside each traced request's span, with only the method, route template and status. It is the record that carries a successful flow's trace id into Loki; without it, only failures were logged (found while designing #733). It goes to OTLP only: its target (`telemetry::http::request_log`) is left out of standard output, so the console gets no line per request. Health probes are not logged, and with telemetry off nothing changes.
 - **Allow-list:** the allow-list is in `allow_list.rs`. A span processor drops every other attribute and all span events before export.
 
 ### Testing
@@ -173,6 +175,30 @@ API telemetry (#731) lives in `calendar-api/src/telemetry/`:
 - **Stack settings for the next slices:** the API gets `OTEL_EXPORTER_OTLP_ENDPOINT` (OTLP HTTP), `OTEL_EXPORTER_OTLP_PROTOCOL=http/protobuf`, `OTEL_SERVICE_NAME=calendar-api` and `OTEL_METRIC_EXPORT_INTERVAL=5000` (#731; with #731 merged, a run's API traces, logs with trace ids and `http_server_request_duration_seconds` series reached Tempo, Loki and Prometheus, the metric 4 s after the request); the web app is built with `VITE_OTEL_TRACES_EXPORTER=otlp` and served with `CALENDAR_OTLP_URL` (#732); `just e2e env` gives the harness every URL, the seed key and the allow-listed email (#733).
 - **Measured (WSL2 laptop, Docker Desktop 29.9.2, images present):** the stub was ready 3.9 s after `docker run` and used 173 MiB; containers healthy in 33 to 48 s; `just e2e up` ready in 49 s with cached builds, 111 s with the first build. ADR-0064 had left the stub's start-up unmeasured.
 - **Image pin:** `grafana/otel-lgtm:0.41.0` failed to pull three times with the same layer digest mismatch, so `0.40.0` is pinned; Dependabot can propose the next tag.
+
+### Delivered in #733
+
+- **Package:** `frontend/apps/e2e` (`@calendar/e2e`), Playwright Test 1.65, one `chromium` project, `workers: 1`, a 180 s test timeout, `trace: 'retain-on-failure'`, and the HTML report. `README.md` there says how to add a flow test.
+- **Fixtures** (`src/fixtures.ts`):
+  - Signed-in page: a route on the web app's `/api/**` adds the development seed key, so the key never reaches `/otlp`. The `signedIn` option turns it off for the sign-in flow.
+  - `seed`: through `@calendar/api-client`, and every title, location and notes is registered with the scanner.
+  - `run`: a per-test id carried by every seeded text.
+  - `pinClock`: fixes `Date` only, so the web exporter's timers keep running. Each test also pins its zone and owns its day, because the seed scheme acts as one user.
+- **Telemetry** (`src/telemetry/`):
+  - `traceIdOf` reads the trace id from the `traceparent` the browser sent.
+  - Tempo: `traceProblems` checks a chain of spans, each a descendant of the one before (browser action, fetch, server, database), plus further spans in the same trace.
+  - Loki: `{service_name="calendar-api"} | trace_id="<id>"`.
+  - Prometheus: `http_server_request_duration_seconds_count` grows by the requests made, and the `_bucket` series exist.
+  - `Observer.expectFlow` makes the four assertions.
+- **Scanner** (`personal-data.ts`): it runs over every string of the trace, every API and web log record since the test began (lines and labels), and every label of the API's and web app's series. It looks for the registered values (case-insensitive) and for any email address, JWT, bearer token or cookie header. A finding names the signal and the place, never the value.
+- **Binding** (`src/binding/`): `bindingProblems` reads the model and `playwright test --list --reporter=json`. It runs as a Vitest test in `just frontend test`, so it needs no browser and runs on every pull request. Covered flows are linked by `metadata["e2e-test"]` in the model (`view-today-flow` now), and `pending-flows.json` holds the other six with their issues.
+- **Recipes:** `just e2e test` (`up`, the suite, then `down` whatever the result) and `just e2e test-on <project>`. When the run-calendar skill's `~/.cache/calendar-chromium-libs` exists, the recipes add it to `LD_LIBRARY_PATH`.
+- **Request log (#797):** designing the logs assertion showed that a successful request logged nothing. #798 adds the `request finished` record (see "API" above).
+- **Measured** (WSL2 laptop, images present, API build cached):
+  - Before #793, `just e2e test` was ready in 40 s, and the view-today test took 57 s, most of it waiting for metrics (60 s export interval).
+  - With #793's 5 s interval, on `main` with #798, the test took 7.3 s (the stack was ready in 99 s, because the API had to rebuild after the merge).
+- **Scan limit:** a scan stops with an error when Loki returns its 5,000-record limit, rather than quietly scanning part of the logs (review note on #832).
+  - Negative control: against an API without #798, the test passed the trace assertion and failed with "API log records with trace id … not found within 90 s".
 
 ### Lessons learned, known issues and follow-ups
 

@@ -24,6 +24,38 @@
     "telemetry": { "type": "string" },
     "audit-logs": { "type": "array", "items": { "type": "string" } },
     "structured-logging": { "type": "string" },
+    "telemetry-decision": {
+      "description": "The decided telemetry wiring and its privacy rules, recorded before delivery (ADR-0062).",
+      "type": "object",
+      "properties": {
+        "status": { "type": "string" },
+        "standard": { "type": "string" },
+        "signals": { "type": "array", "items": { "type": "string" } },
+        "destinations": {
+          "type": "object",
+          "properties": {
+            "local": { "type": "string" },
+            "e2e": { "type": "string" },
+            "azure": { "type": "string" }
+          },
+          "additionalProperties": false
+        },
+        "privacy": {
+          "type": "object",
+          "properties": {
+            "allowed-attributes": { "type": "array", "items": { "type": "string" } },
+            "never": { "type": "array", "items": { "type": "string" } },
+            "enforcement": { "type": "string" }
+          },
+          "required": ["allowed-attributes", "never"],
+          "additionalProperties": false
+        },
+        "e2e-assertions": { "type": "array", "items": { "type": "string" } },
+        "alerts-and-budgets": { "type": "string" }
+      },
+      "required": ["status", "standard", "privacy"],
+      "additionalProperties": false
+    },
     "adrs": { "type": "array", "items": { "type": "string", "format": "uri" } }
   },
   "required": ["health-endpoint"],

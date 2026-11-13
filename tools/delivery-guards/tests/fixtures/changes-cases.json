@@ -17,11 +17,11 @@
   ],
   [
     "docs/narratives/calendar-narrative.md",
-    "docs tooling"
+    "docs narratives"
   ],
   [
     "docs/narratives/calendar/02-confrontation.md",
-    "docs tooling"
+    "docs narratives"
   ],
   [
     ".claude/skills/architecture-narrative-builder/scripts/stitch/stitch.ts",

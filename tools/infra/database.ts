@@ -2,6 +2,7 @@
 import pg from "pg";
 import { isIP } from "node:net";
 import { resolve } from "node:path";
+import { checkServerIdentity, getCACertificates } from "node:tls";
 import type { Azure } from "./process.ts";
 import { execute } from "./process.ts";
 import {
@@ -293,6 +294,15 @@ async function runLocal(
   });
   if (result.code !== 0) throw new Error(`Migration command failed (exit ${result.code}).`);
 }
+/** Match Npgsql VerifyFull: use the system trust store and validate the requested host. */
+export function postgresTlsOptions(host: string) {
+  return {
+    rejectUnauthorized: true,
+    ca: getCACertificates("system"),
+    checkServerIdentity: (_name: string, certificate: import("node:tls").PeerCertificate) =>
+      checkServerIdentity(host, certificate),
+  };
+}
 async function withClient<T>(
   host: string,
   user: string,
@@ -306,7 +316,7 @@ async function withClient<T>(
     user,
     password,
     database: "calendar",
-    ssl: { rejectUnauthorized: true },
+    ssl: postgresTlsOptions(host),
     connectionTimeoutMillis: 15000,
     query_timeout: 30000,
   });

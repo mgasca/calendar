@@ -1,0 +1,822 @@
+<!DOCTYPE html><html lang="en" dir="ltr" data-has-toc data-has-sidebar class="astro-bl77apqj"><head><meta charset="utf-8"/><meta name="viewport" content="width=device-width, initial-scale=1"/><title>Calendar architecture narrative | Calendar · Docs</title><link rel="canonical" href="https://mgasca.github.io/calendar/pr-preview/pr-791/narratives/calendar/"/><link rel="sitemap" href="/calendar/pr-preview/pr-791/sitemap-index.xml"/><link rel="shortcut icon" href="/calendar/pr-preview/pr-791/favicon.svg" type="image/svg+xml"/><meta name="generator" content="Astro v7.4.7"/><meta name="generator" content="Starlight v0.42.10"/><meta property="og:title" content="Calendar architecture narrative"/><meta property="og:type" content="article"/><meta property="og:url" content="https://mgasca.github.io/calendar/pr-preview/pr-791/narratives/calendar/"/><meta property="og:locale" content="en"/><meta property="og:description" content="Agent thoughts, any decision records, user stories, the architecture model, runbooks and benchmarks for Calendar, with their context, alternatives, consequences and user guides."/><meta property="og:site_name" content="Calendar · Docs"/><meta name="twitter:card" content="summary_large_image"/><meta name="description" content="Agent thoughts, any decision records, user stories, the architecture model, runbooks and benchmarks for Calendar, with their context, alternatives, consequences and user guides."/><script>
+  (function () {
+    var theme = 'light';
+    var choice = null;
+    try {
+      choice = localStorage.getItem('calendar.theme');
+    } catch (e) {}
+    if (choice === 'light' || choice === 'dark') theme = choice;
+    else {
+      try {
+        if (window.matchMedia('(prefers-color-scheme: dark)').matches) theme = 'dark';
+      } catch (e) {}
+    }
+    document.documentElement.dataset.theme = theme;
+  })();
+</script><link rel="stylesheet" href="/calendar/pr-preview/pr-791/_astro/print.C9eyqPGL.css" media="print"><link rel="stylesheet" href="/calendar/pr-preview/pr-791/_astro/common.I2rt_p8j.css"><script type="module" src="/calendar/pr-preview/pr-791/_astro/page.DQhwmIIh.js"></script></head><body class="astro-bl77apqj"><a class="sl-skip-link astro-bwrxlu4p" href="#_top">Skip to content</a><div class="page sl-flex astro-et6de5cw"><header class="header astro-et6de5cw"><div class="header astro-uxzeftij"><div class="title-wrapper sl-flex astro-uxzeftij"><a href="/calendar/pr-preview/pr-791/" class="site-title sl-flex astro-7kg4sbal"><span class="astro-7kg4sbal" translate="no">Calendar · Docs</span></a></div><div class="sl-flex print:hidden astro-uxzeftij"><site-search class="astro-uxzeftij astro-cb7bjju3" data-translations="{&quot;placeholder&quot;:&quot;Search&quot;}"><button data-open-modal disabled aria-label="Search" aria-keyshortcuts="Control+K" class="astro-cb7bjju3"><svg aria-hidden="true" class="astro-cb7bjju3 astro-a5vyvfug" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1em;"><path d="M21.71 20.29 18 16.61A9 9 0 1 0 16.61 18l3.68 3.68a.999.999 0 0 0 1.42 0 1 1 0 0 0 0-1.39ZM11 18a7 7 0 1 1 0-14 7 7 0 0 1 0 14Z"/></svg><span class="sl-hidden md:sl-block astro-cb7bjju3" aria-hidden="true">Search</span><kbd class="sl-hidden md:sl-flex astro-cb7bjju3" style="display: none"><kbd class="astro-cb7bjju3">Ctrl</kbd><kbd class="astro-cb7bjju3">K</kbd></kbd></button><dialog style="padding: 0" aria-label="Search" class="astro-cb7bjju3"><div class="dialog-frame sl-flex astro-cb7bjju3"><button data-close-modal class="sl-flex md:sl-hidden astro-cb7bjju3">Cancel</button><div class="search-container astro-cb7bjju3"><div id="starlight__search" class="astro-cb7bjju3"></div></div></div></dialog></site-search><script>
+	(() => {
+		const openBtn = document.querySelector('button[data-open-modal]');
+		const shortcut = openBtn?.querySelector('kbd');
+		if (!openBtn || !(shortcut instanceof HTMLElement)) return;
+		const platformKey = shortcut.querySelector('kbd');
+		if (platformKey && /(Mac|iPhone|iPod|iPad)/i.test(navigator.platform)) {
+			platformKey.textContent = '⌘';
+			openBtn.setAttribute('aria-keyshortcuts', 'Meta+K');
+		}
+		shortcut.style.display = '';
+	})();
+</script><script type="module" src="/calendar/pr-preview/pr-791/_astro/Search.astro_astro_type_script_index_0_lang.4y1KPQlG.js"></script></div><div class="sl-hidden md:sl-flex print:hidden right-group astro-uxzeftij"><div class="sl-flex social-icons astro-uxzeftij"><a href="https://github.com/mgasca/calendar" rel="me" class="sl-flex astro-q3zvzfet"><span class="sr-only astro-q3zvzfet">GitHub</span><svg aria-hidden="true" class="astro-q3zvzfet astro-a5vyvfug" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1em;"><path d="M12 .3a12 12 0 0 0-3.8 23.38c.6.12.83-.26.83-.57L9 21.07c-3.34.72-4.04-1.61-4.04-1.61-.55-1.39-1.34-1.76-1.34-1.76-1.08-.74.09-.73.09-.73 1.2.09 1.83 1.24 1.83 1.24 1.08 1.83 2.81 1.3 3.5 1 .1-.78.42-1.31.76-1.61-2.67-.3-5.47-1.33-5.47-5.93 0-1.31.47-2.38 1.24-3.22-.14-.3-.54-1.52.1-3.18 0 0 1-.32 3.3 1.23a11.5 11.5 0 0 1 6 0c2.28-1.55 3.29-1.23 3.29-1.23.64 1.66.24 2.88.12 3.18a4.65 4.65 0 0 1 1.23 3.22c0 4.61-2.8 5.63-5.48 5.92.42.36.81 1.1.81 2.22l-.01 3.29c0 .31.2.69.82.57A12 12 0 0 0 12 .3Z"/></svg></a></div><fieldset class="theme-control"><legend>Theme</legend><label><input type="radio" value="light"> Light</label><label><input type="radio" value="dark"> Dark</label><label><input type="radio" value="system" checked> System</label></fieldset><script type="module">var e=[`light`,`dark`,`system`],t=`calendar.theme`;function n(t){return e.some(e=>e===t)}var r=`(prefers-color-scheme: dark)`;function i(){try{let e=window.localStorage.getItem(t);return n(e)?e:`system`}catch{return`system`}}function a(e){try{window.localStorage.setItem(t,e)}catch{}}function o(){try{return typeof window.matchMedia==`function`?window.matchMedia(r):null}catch{return null}}function s(e){return e===`system`?o()?.matches?`dark`:`light`:e}function c(e=document){let t=[...e.querySelectorAll(`.theme-control`)];t.forEach((e,t)=>{for(let n of e.querySelectorAll(`input`))n.name=`calendar-theme-${String(t)}`});let r=i(),c=()=>{document.documentElement.dataset.theme=s(r);for(let e of t.flatMap(e=>[...e.querySelectorAll(`input`)]))e.checked=e.value===r};c();let l=t.map(e=>{let t=e=>{let t=e.target;t instanceof HTMLInputElement&&n(t.value)&&(r=t.value,a(r),c())};return e.addEventListener(`change`,t),()=>{e.removeEventListener(`change`,t)}}),u=o(),d=()=>{r===`system`&&c()};return u?.addEventListener(`change`,d),()=>{for(let e of l)e();u?.removeEventListener(`change`,d)}}c();</script><script type="module">var e=class extends HTMLElement{constructor(){super();let e=this.querySelector(`select`);e&&(e.addEventListener(`change`,e=>{e.currentTarget instanceof HTMLSelectElement&&(window.location.pathname=e.currentTarget.value)}),window.addEventListener(`pageshow`,t=>{if(!t.persisted)return;let n=e.querySelector(`option[selected]`)?.index;n!==e.selectedIndex&&(e.selectedIndex=n??0)}))}};customElements.define(`starlight-lang-select`,e);</script></div></div></header><nav class="sidebar print:hidden astro-et6de5cw" aria-label="Main"><button popovertarget="starlight__sidebar" class="sl-menu-button sl-flex md:sl-hidden print:hidden astro-fndvseyv"><svg aria-hidden="true" class="open-menu astro-fndvseyv astro-a5vyvfug" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1em;"><path d="M3 8h18a1 1 0 1 0 0-2H3a1 1 0 0 0 0 2Zm18 8H3a1 1 0 0 0 0 2h18a1 1 0 0 0 0-2Zm0-5H3a1 1 0 0 0 0 2h18a1 1 0 0 0 0-2Z"/></svg><svg aria-hidden="true" class="close-menu astro-fndvseyv astro-a5vyvfug" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1em;"><path d="m13.41 12 6.3-6.29a1.004 1.004 0 1 0-1.42-1.42L12 10.59l-6.29-6.3a1.004 1.004 0 0 0-1.42 1.42l6.3 6.29-6.3 6.29a1 1 0 0 0 0 1.42.998.998 0 0 0 1.42 0l6.29-6.3 6.29 6.3a.999.999 0 0 0 1.42 0 1 1 0 0 0 0-1.42L13.41 12Z"/></svg><span class="sr-only astro-fndvseyv">Menu</span></button><script type="module">var e=class extends HTMLElement{constructor(){super();let e=matchMedia(`(min-width: 50em)`),t=()=>{this.popover=e.matches?null:`auto`};t(),e.addEventListener(`change`,()=>t()),this.addEventListener(`toggle`,({newState:e})=>this.trapFocus(e===`open`))}trapFocus(e){document.querySelectorAll(`.main-frame, .sl-skip-link`).forEach(t=>{t.toggleAttribute(`inert`,e)})}};customElements.define(`sl-sidebar-pane`,e);</script><sl-sidebar-pane popover id="starlight__sidebar" class="sidebar-pane astro-et6de5cw"><div class="sidebar-content sl-flex astro-et6de5cw"><sl-sidebar-state-persist data-hash="0w86n5s" class="astro-njvnt7cg"><script aria-hidden="true">
+		(() => {
+			try {
+				if (!matchMedia('(min-width: 50em)').matches) return;
+				/** @type {HTMLElement | null} */
+				const target = document.querySelector('sl-sidebar-state-persist');
+				const state = JSON.parse(sessionStorage.getItem('sl-sidebar-state') || '0');
+				if (!target || !state || target.dataset.hash !== state.hash) return;
+				window._starlightScrollRestore = state.scroll;
+				customElements.define(
+					'sl-sidebar-restore',
+					class SidebarRestore extends HTMLElement {
+						connectedCallback() {
+							try {
+								const idx = parseInt(this.dataset.index || '');
+								const details = this.closest('details');
+								if (details && typeof state.open[idx] === 'boolean') details.open = state.open[idx];
+							} catch {}
+						}
+					}
+				);
+			} catch {}
+		})();
+	</script><ul class="top-level astro-onicl5lc"><li class="astro-onicl5lc"><details open class="astro-onicl5lc"><summary class="astro-onicl5lc"><span class="group-label astro-onicl5lc"><span class="large astro-onicl5lc">Agent thoughts</span></span><svg aria-hidden="true" class="caret astro-onicl5lc astro-a5vyvfug" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1.25rem;"><path d="m14.83 11.29-4.24-4.24a1 1 0 1 0-1.42 1.41L12.71 12l-3.54 3.54a1 1 0 0 0 0 1.41 1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.24-4.24a1.002 1.002 0 0 0 0-1.42Z"/></svg></summary><sl-sidebar-restore data-index="0"></sl-sidebar-restore><ul class="astro-onicl5lc"><li class="astro-onicl5lc"><a href="/calendar/pr-preview/pr-791/agent-thoughts/" class="astro-onicl5lc"><span class="astro-onicl5lc">All agent thoughts</span></a></li><li class="astro-onicl5lc"><a href="/calendar/pr-preview/pr-791/agent-thoughts/0001/" class="astro-onicl5lc" data-doc-number="0001"><span class="astro-onicl5lc">Repository purpose and value</span></a></li><li class="astro-onicl5lc"><a href="/calendar/pr-preview/pr-791/agent-thoughts/0002/" class="astro-onicl5lc" data-doc-number="0002"><span class="astro-onicl5lc">The handover watch, from finding to fix</span></a></li><li class="astro-onicl5lc"><a href="/calendar/pr-preview/pr-791/agent-thoughts/0003/" class="astro-onicl5lc" data-doc-number="0003"><span class="astro-onicl5lc">Workflows, and a proposal for our first one</span></a></li><li class="astro-onicl5lc"><a href="/calendar/pr-preview/pr-791/agent-thoughts/0004/" class="astro-onicl5lc" data-doc-number="0004"><span class="astro-onicl5lc">A haiku, and what it holds</span></a></li><li class="astro-onicl5lc"><a href="/calendar/pr-preview/pr-791/agent-thoughts/0005/" class="astro-onicl5lc" data-doc-number="0005"><span class="astro-onicl5lc">Dream weaver: how a session becomes a lesson</span></a></li><li class="astro-onicl5lc"><a href="/calendar/pr-preview/pr-791/agent-thoughts/0006/" class="astro-onicl5lc" data-doc-number="0006"><span class="astro-onicl5lc">The stack we change and photograph it with</span></a></li><li class="astro-onicl5lc"><a href="/calendar/pr-preview/pr-791/agent-thoughts/0007/" class="astro-onicl5lc" data-doc-number="0007"><span class="astro-onicl5lc">Rust database migrations, from one familiar command to three different approaches</span></a></li><li class="astro-onicl5lc"><a href="/calendar/pr-preview/pr-791/agent-thoughts/0008/" class="astro-onicl5lc" data-doc-number="0008"><span class="astro-onicl5lc">A knowledge graph, an architecture model, and what each one noticed</span></a></li></ul></details></li><li class="astro-onicl5lc"><details class="astro-onicl5lc"><summary class="astro-onicl5lc"><span class="group-label astro-onicl5lc"><span class="large astro-onicl5lc">Architecture</span></span><svg aria-hidden="true" class="caret astro-onicl5lc astro-a5vyvfug" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1.25rem;"><path d="m14.83 11.29-4.24-4.24a1 1 0 1 0-1.42 1.41L12.71 12l-3.54 3.54a1 1 0 0 0 0 1.41 1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.24-4.24a1.002 1.002 0 0 0 0-1.42Z"/></svg></summary><sl-sidebar-restore data-index="1"></sl-sidebar-restore><ul class="astro-onicl5lc"><li class="astro-onicl5lc"><a href="/calendar/pr-preview/pr-791/architecture/" class="astro-onicl5lc"><span class="astro-onicl5lc">Overview</span></a></li><li class="astro-onicl5lc"><a href="/calendar/pr-preview/pr-791/architecture/containers/" class="astro-onicl5lc"><span class="astro-onicl5lc">Containers and deployment</span></a></li><li class="astro-onicl5lc"><a href="/calendar/pr-preview/pr-791/architecture/components/" class="astro-onicl5lc"><span class="astro-onicl5lc">Components</span></a></li><li class="astro-onicl5lc"><a href="/calendar/pr-preview/pr-791/architecture/controls/" class="astro-onicl5lc"><span class="astro-onicl5lc">Controls</span></a></li><li class="astro-onicl5lc"><details class="astro-onicl5lc"><summary class="astro-onicl5lc"><span class="group-label astro-onicl5lc"><span class="large astro-onicl5lc">Flows</span></span><svg aria-hidden="true" class="caret astro-onicl5lc astro-a5vyvfug" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1.25rem;"><path d="m14.83 11.29-4.24-4.24a1 1 0 1 0-1.42 1.41L12.71 12l-3.54 3.54a1 1 0 0 0 0 1.41 1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.24-4.24a1.002 1.002 0 0 0 0-1.42Z"/></svg></summary><sl-sidebar-restore data-index="2"></sl-sidebar-restore><ul class="astro-onicl5lc"><li class="astro-onicl5lc"><a href="/calendar/pr-preview/pr-791/architecture/flows/sign-in-flow/" class="astro-onicl5lc"><span class="astro-onicl5lc">Google sign-in</span></a></li><li class="astro-onicl5lc"><a href="/calendar/pr-preview/pr-791/architecture/flows/view-today-flow/" class="astro-onicl5lc"><span class="astro-onicl5lc">View today&#39;s agenda</span></a></li><li class="astro-onicl5lc"><a href="/calendar/pr-preview/pr-791/architecture/flows/add-event-flow/" class="astro-onicl5lc"><span class="astro-onicl5lc">Add an event</span></a></li><li class="astro-onicl5lc"><a href="/calendar/pr-preview/pr-791/architecture/flows/edit-event-flow/" class="astro-onicl5lc"><span class="astro-onicl5lc">Edit or delete an event</span></a></li><li class="astro-onicl5lc"><a href="/calendar/pr-preview/pr-791/architecture/flows/edit-task-flow/" class="astro-onicl5lc"><span class="astro-onicl5lc">Edit a task</span></a></li><li class="astro-onicl5lc"><a href="/calendar/pr-preview/pr-791/architecture/flows/toggle-task-flow/" class="astro-onicl5lc"><span class="astro-onicl5lc">Tick a task off (optimistic)</span></a></li><li class="astro-onicl5lc"><a href="/calendar/pr-preview/pr-791/architecture/flows/overdue-triage-flow/" class="astro-onicl5lc"><span class="astro-onicl5lc">Triage all overdue tasks</span></a></li><li class="astro-onicl5lc"><a href="/calendar/pr-preview/pr-791/architecture/flows/database-migration-flow/" class="astro-onicl5lc"><span class="astro-onicl5lc">Apply database migrations to an environment</span></a></li><li class="astro-onicl5lc"><a href="/calendar/pr-preview/pr-791/architecture/flows/publish-docs-flow/" class="astro-onicl5lc"><span class="astro-onicl5lc">Publish the decision log</span></a></li></ul></details></li></ul></details></li><li class="astro-onicl5lc"><details open class="astro-onicl5lc"><summary class="astro-onicl5lc"><span class="group-label astro-onicl5lc"><span class="large astro-onicl5lc">Architecture narratives</span></span><svg aria-hidden="true" class="caret astro-onicl5lc astro-a5vyvfug" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1.25rem;"><path d="m14.83 11.29-4.24-4.24a1 1 0 1 0-1.42 1.41L12.71 12l-3.54 3.54a1 1 0 0 0 0 1.41 1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.24-4.24a1.002 1.002 0 0 0 0-1.42Z"/></svg></summary><sl-sidebar-restore data-index="3"></sl-sidebar-restore><ul class="astro-onicl5lc"><li class="astro-onicl5lc"><a href="/calendar/pr-preview/pr-791/narratives/" class="astro-onicl5lc"><span class="astro-onicl5lc">All narratives</span></a></li><li class="astro-onicl5lc"><a href="/calendar/pr-preview/pr-791/narratives/calendar/" aria-current="page" class="astro-onicl5lc"><span class="astro-onicl5lc">Calendar</span><span class="sl-badge default small adr-status adr-status-draft astro-onicl5lc astro-2s7smcnq">draft</span></a></li></ul></details></li><li class="astro-onicl5lc"><details class="astro-onicl5lc"><summary class="astro-onicl5lc"><span class="group-label astro-onicl5lc"><span class="large astro-onicl5lc">Delivery dashboard</span></span><svg aria-hidden="true" class="caret astro-onicl5lc astro-a5vyvfug" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1.25rem;"><path d="m14.83 11.29-4.24-4.24a1 1 0 1 0-1.42 1.41L12.71 12l-3.54 3.54a1 1 0 0 0 0 1.41 1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.24-4.24a1.002 1.002 0 0 0 0-1.42Z"/></svg></summary><sl-sidebar-restore data-index="4"></sl-sidebar-restore><ul class="astro-onicl5lc"><li class="astro-onicl5lc"><a href="/calendar/pr-preview/pr-791/dashboard/" class="astro-onicl5lc"><span class="astro-onicl5lc">Overview</span></a></li><li class="astro-onicl5lc"><a href="/calendar/pr-preview/pr-791/dashboard/ci-speed/" class="astro-onicl5lc"><span class="astro-onicl5lc">CI speed</span></a></li><li class="astro-onicl5lc"><a href="/calendar/pr-preview/pr-791/dashboard/flow/" class="astro-onicl5lc"><span class="astro-onicl5lc">Flow</span></a></li><li class="astro-onicl5lc"><a href="/calendar/pr-preview/pr-791/dashboard/quality/" class="astro-onicl5lc"><span class="astro-onicl5lc">Quality</span></a></li><li class="astro-onicl5lc"><a href="/calendar/pr-preview/pr-791/dashboard/agents/" class="astro-onicl5lc"><span class="astro-onicl5lc">Agent activity</span></a></li></ul></details></li><li class="astro-onicl5lc"><details class="astro-onicl5lc"><summary class="astro-onicl5lc"><span class="group-label astro-onicl5lc"><span class="large astro-onicl5lc">Any decision records</span></span><svg aria-hidden="true" class="caret astro-onicl5lc astro-a5vyvfug" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1.25rem;"><path d="m14.83 11.29-4.24-4.24a1 1 0 1 0-1.42 1.41L12.71 12l-3.54 3.54a1 1 0 0 0 0 1.41 1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.24-4.24a1.002 1.002 0 0 0 0-1.42Z"/></svg></summary><sl-sidebar-restore data-index="5"></sl-sidebar-restore><ul class="astro-onicl5lc"><li class="astro-onicl5lc"><a href="/calendar/pr-preview/pr-791/adr/0000/" class="astro-onicl5lc" data-doc-number="0000" aria-label="0000 · accepted · Use MADR for Any Decision Records"><span class="astro-onicl5lc">Use MADR for Any Decision Records</span><span class="sl-badge default small adr-status adr-status-accepted astro-onicl5lc astro-2s7smcnq">accepted</span></a></li><li class="astro-onicl5lc"><a href="/calendar/pr-preview/pr-791/adr/0001/" class="astro-onicl5lc" data-doc-number="0001" aria-label="0001 · accepted · Single repository with per-stack top-level directories"><span class="astro-onicl5lc">Single repository with per-stack top-level directories</span><span class="sl-badge default small adr-status adr-status-accepted astro-onicl5lc astro-2s7smcnq">accepted</span></a></li><li class="astro-onicl5lc"><a href="/calendar/pr-preview/pr-791/adr/0002/" class="astro-onicl5lc" data-doc-number="0002" aria-label="0002 · superseded by ADR-0051 · .NET 10 LTS with ASP.NET Core Minimal APIs, Domain + Api projects"><span class="astro-onicl5lc">.NET 10 LTS with ASP.NET Core Minimal APIs, Domain + Api projects</span><span class="sl-badge default small adr-status adr-status-superseded astro-onicl5lc astro-2s7smcnq">superseded by ADR-0051</span></a></li><li class="astro-onicl5lc"><a href="/calendar/pr-preview/pr-791/adr/0003/" class="astro-onicl5lc" data-doc-number="0003" aria-label="0003 · accepted · React + Vite + TypeScript SPA for the web UI"><span class="astro-onicl5lc">React + Vite + TypeScript SPA for the web UI</span><span class="sl-badge default small adr-status adr-status-accepted astro-onicl5lc astro-2s7smcnq">accepted</span></a></li><li class="astro-onicl5lc"><a href="/calendar/pr-preview/pr-791/adr/0004/" class="astro-onicl5lc" data-doc-number="0004" aria-label="0004 · accepted · OpenAPI document as the API contract, with a generated TypeScript client"><span class="astro-onicl5lc">OpenAPI document as the API contract, with a generated TypeScript client</span><span class="sl-badge default small adr-status adr-status-accepted astro-onicl5lc astro-2s7smcnq">accepted</span></a></li><li class="astro-onicl5lc"><a href="/calendar/pr-preview/pr-791/adr/0005/" class="astro-onicl5lc" data-doc-number="0005" aria-label="0005 · accepted · pnpm workspaces for frontend packages"><span class="astro-onicl5lc">pnpm workspaces for frontend packages</span><span class="sl-badge default small adr-status adr-status-accepted astro-onicl5lc astro-2s7smcnq">accepted</span></a></li><li class="astro-onicl5lc"><a href="/calendar/pr-preview/pr-791/adr/0006/" class="astro-onicl5lc" data-doc-number="0006" aria-label="0006 · superseded by ADR-0053 · NuGet Central Package Management with lock files and source mapping"><span class="astro-onicl5lc">NuGet Central Package Management with lock files and source mapping</span><span class="sl-badge default small adr-status adr-status-superseded astro-onicl5lc astro-2s7smcnq">superseded by ADR-0053</span></a></li><li class="astro-onicl5lc"><a href="/calendar/pr-preview/pr-791/adr/0007/" class="astro-onicl5lc" data-doc-number="0007" aria-label="0007 · superseded by ADR-0054 · xUnit v3 on Microsoft.Testing.Platform, Shouldly and NSubstitute for .NET tests"><span class="astro-onicl5lc">xUnit v3 on Microsoft.Testing.Platform, Shouldly and NSubstitute for .NET tests</span><span class="sl-badge default small adr-status adr-status-superseded astro-onicl5lc astro-2s7smcnq">superseded by ADR-0054</span></a></li><li class="astro-onicl5lc"><a href="/calendar/pr-preview/pr-791/adr/0008/" class="astro-onicl5lc" data-doc-number="0008" aria-label="0008 · accepted · Vitest, Testing Library and MSW for frontend tests"><span class="astro-onicl5lc">Vitest, Testing Library and MSW for frontend tests</span><span class="sl-badge default small adr-status adr-status-accepted astro-onicl5lc astro-2s7smcnq">accepted</span></a></li><li class="astro-onicl5lc"><a href="/calendar/pr-preview/pr-791/adr/0009/" class="astro-onicl5lc" data-doc-number="0009" aria-label="0009 · accepted · Static analysis and formatting enforced at build time"><span class="astro-onicl5lc">Static analysis and formatting enforced at build time</span><span class="sl-badge default small adr-status adr-status-accepted astro-onicl5lc astro-2s7smcnq">accepted</span></a></li><li class="astro-onicl5lc"><a href="/calendar/pr-preview/pr-791/adr/0010/" class="astro-onicl5lc" data-doc-number="0010" aria-label="0010 · accepted · Pin TypeScript 6.0 and ESLint 9 for ecosystem compatibility"><span class="astro-onicl5lc">Pin TypeScript 6.0 and ESLint 9 for ecosystem compatibility</span><span class="sl-badge default small adr-status adr-status-accepted astro-onicl5lc astro-2s7smcnq">accepted</span></a></li><li class="astro-onicl5lc"><a href="/calendar/pr-preview/pr-791/adr/0011/" class="astro-onicl5lc" data-doc-number="0011" aria-label="0011 · superseded by ADR-0038 · GNU Make as a thin top-level task runner"><span class="astro-onicl5lc">GNU Make as a thin top-level task runner</span><span class="sl-badge default small adr-status adr-status-superseded astro-onicl5lc astro-2s7smcnq">superseded by ADR-0038</span></a></li><li class="astro-onicl5lc"><a href="/calendar/pr-preview/pr-791/adr/0012/" class="astro-onicl5lc" data-doc-number="0012" aria-label="0012 · accepted · GitHub Actions CI, security scanning and Dependabot"><span class="astro-onicl5lc">GitHub Actions CI, security scanning and Dependabot</span><span class="sl-badge default small adr-status adr-status-accepted astro-onicl5lc astro-2s7smcnq">accepted</span></a></li><li class="astro-onicl5lc"><a href="/calendar/pr-preview/pr-791/adr/0013/" class="astro-onicl5lc" data-doc-number="0013" aria-label="0013 · accepted · Public GitHub repository to enable branch rules and security scanning"><span class="astro-onicl5lc">Public GitHub repository to enable branch rules and security scanning</span><span class="sl-badge default small adr-status adr-status-accepted astro-onicl5lc astro-2s7smcnq">accepted</span></a></li><li class="astro-onicl5lc"><a href="/calendar/pr-preview/pr-791/adr/0014/" class="astro-onicl5lc" data-doc-number="0014" aria-label="0014 · superseded by ADR-0037 · PostgreSQL as the database engine, with SQLite on a volume as a budget fallback"><span class="astro-onicl5lc">PostgreSQL as the database engine, with SQLite on a volume as a budget fallback</span><span class="sl-badge default small adr-status adr-status-superseded astro-onicl5lc astro-2s7smcnq">superseded by ADR-0037</span></a></li><li class="astro-onicl5lc"><a href="/calendar/pr-preview/pr-791/adr/0015/" class="astro-onicl5lc" data-doc-number="0015" aria-label="0015 · superseded by ADR-0052 · EF Core 10 with code-first migrations for data access"><span class="astro-onicl5lc">EF Core 10 with code-first migrations for data access</span><span class="sl-badge default small adr-status adr-status-superseded astro-onicl5lc astro-2s7smcnq">superseded by ADR-0052</span></a></li><li class="astro-onicl5lc"><a href="/calendar/pr-preview/pr-791/adr/0016/" class="astro-onicl5lc" data-doc-number="0016" aria-label="0016 · superseded by ADR-0063 · Docker Compose for local databases and Testcontainers for tests; adopt .NET Aspire later"><span class="astro-onicl5lc">Docker Compose for local databases and Testcontainers for tests; adopt .NET Aspire later</span><span class="sl-badge default small adr-status adr-status-superseded astro-onicl5lc astro-2s7smcnq">superseded by ADR-0063</span></a></li><li class="astro-onicl5lc"><a href="/calendar/pr-preview/pr-791/adr/0017/" class="astro-onicl5lc" data-doc-number="0017" aria-label="0017 · superseded by ADR-0058 · .NET 10 file-based apps for all repo tooling scripts, in their skill folder or tools/<name>/"><span class="astro-onicl5lc">.NET 10 file-based apps for all repo tooling scripts, in their skill folder or tools/&lt;name&gt;/</span><span class="sl-badge default small adr-status adr-status-superseded astro-onicl5lc astro-2s7smcnq">superseded by ADR-0058</span></a></li><li class="astro-onicl5lc"><a href="/calendar/pr-preview/pr-791/adr/0018/" class="astro-onicl5lc" data-doc-number="0018" aria-label="0018 · superseded by ADR-0057 · UTC instants plus an IANA zone id and floating dates, using BCL time types instead of NodaTime"><span class="astro-onicl5lc">UTC instants plus an IANA zone id and floating dates, using BCL time types instead of NodaTime</span><span class="sl-badge default small adr-status adr-status-superseded astro-onicl5lc astro-2s7smcnq">superseded by ADR-0057</span></a></li><li class="astro-onicl5lc"><a href="/calendar/pr-preview/pr-791/adr/0019/" class="astro-onicl5lc" data-doc-number="0019" aria-label="0019 · superseded by ADR-0027 · Single-user mode with authentication deferred: no auth and no owner column yet"><span class="astro-onicl5lc">Single-user mode with authentication deferred: no auth and no owner column yet</span><span class="sl-badge default small adr-status adr-status-superseded astro-onicl5lc astro-2s7smcnq">superseded by ADR-0027</span></a></li><li class="astro-onicl5lc"><a href="/calendar/pr-preview/pr-791/adr/0020/" class="astro-onicl5lc" data-doc-number="0020" aria-label="0020 · accepted · A dedicated day-agenda endpoint as the read model, beside resource endpoints for writes"><span class="astro-onicl5lc">A dedicated day-agenda endpoint as the read model, beside resource endpoints for writes</span><span class="sl-badge default small adr-status adr-status-accepted astro-onicl5lc astro-2s7smcnq">accepted</span></a></li><li class="astro-onicl5lc"><a href="/calendar/pr-preview/pr-791/adr/0021/" class="astro-onicl5lc" data-doc-number="0021" aria-label="0021 · accepted · The client's IANA time zone and local date define &quot;today&quot;, with the server computing the day window"><span class="astro-onicl5lc">The client&#39;s IANA time zone and local date define &quot;today&quot;, with the server computing the day window</span><span class="sl-badge default small adr-status adr-status-accepted astro-onicl5lc astro-2s7smcnq">accepted</span></a></li><li class="astro-onicl5lc"><a href="/calendar/pr-preview/pr-791/adr/0022/" class="astro-onicl5lc" data-doc-number="0022" aria-label="0022 · accepted · Astro and Starlight for the developer documentation UI"><span class="astro-onicl5lc">Astro and Starlight for the developer documentation UI</span><span class="sl-badge default small adr-status adr-status-accepted astro-onicl5lc astro-2s7smcnq">accepted</span></a></li><li class="astro-onicl5lc"><a href="/calendar/pr-preview/pr-791/adr/0023/" class="astro-onicl5lc" data-doc-number="0023" aria-label="0023 · accepted · Build the canonical ADR log as a static site and publish main to GitHub Pages"><span class="astro-onicl5lc">Build the canonical ADR log as a static site and publish main to GitHub Pages</span><span class="sl-badge default small adr-status adr-status-accepted astro-onicl5lc astro-2s7smcnq">accepted</span></a></li><li class="astro-onicl5lc"><a href="/calendar/pr-preview/pr-791/adr/0024/" class="astro-onicl5lc" data-doc-number="0024" aria-label="0024 · accepted · A sibling week-agenda endpoint as a read model, built on range-based internals"><span class="astro-onicl5lc">A sibling week-agenda endpoint as a read model, built on range-based internals</span><span class="sl-badge default small adr-status adr-status-accepted astro-onicl5lc astro-2s7smcnq">accepted</span></a></li><li class="astro-onicl5lc"><a href="/calendar/pr-preview/pr-791/adr/0025/" class="astro-onicl5lc" data-doc-number="0025" aria-label="0025 · accepted · GitHub Pages pull-request previews alongside production using a retained static snapshot"><span class="astro-onicl5lc">GitHub Pages pull-request previews alongside production using a retained static snapshot</span><span class="sl-badge default small adr-status adr-status-accepted astro-onicl5lc astro-2s7smcnq">accepted</span></a></li><li class="astro-onicl5lc"><a href="/calendar/pr-preview/pr-791/adr/0026/" class="astro-onicl5lc" data-doc-number="0026" aria-label="0026 · accepted · Client-side routing with TanStack Router and code-based route definitions"><span class="astro-onicl5lc">Client-side routing with TanStack Router and code-based route definitions</span><span class="sl-badge default small adr-status adr-status-accepted astro-onicl5lc astro-2s7smcnq">accepted</span></a></li><li class="astro-onicl5lc"><a href="/calendar/pr-preview/pr-791/adr/0027/" class="astro-onicl5lc" data-doc-number="0027" aria-label="0027 · accepted · Google OpenID Connect with a backend-for-frontend cookie session"><span class="astro-onicl5lc">Google OpenID Connect with a backend-for-frontend cookie session</span><span class="sl-badge default small adr-status adr-status-accepted astro-onicl5lc astro-2s7smcnq">accepted</span></a></li><li class="astro-onicl5lc"><a href="/calendar/pr-preview/pr-791/adr/0028/" class="astro-onicl5lc" data-doc-number="0028" aria-label="0028 · accepted · Publish user stories on the documentation site alongside the ADR log"><span class="astro-onicl5lc">Publish user stories on the documentation site alongside the ADR log</span><span class="sl-badge default small adr-status adr-status-accepted astro-onicl5lc astro-2s7smcnq">accepted</span></a></li><li class="astro-onicl5lc"><a href="/calendar/pr-preview/pr-791/adr/0029/" class="astro-onicl5lc" data-doc-number="0029" aria-label="0029 · accepted · Use Azure Container Apps as the compute platform"><span class="astro-onicl5lc">Use Azure Container Apps as the compute platform</span><span class="sl-badge default small adr-status adr-status-accepted astro-onicl5lc astro-2s7smcnq">accepted</span></a></li><li class="astro-onicl5lc"><a href="/calendar/pr-preview/pr-791/adr/0030/" class="astro-onicl5lc" data-doc-number="0030" aria-label="0030 · accepted · Single container for the API and SPA"><span class="astro-onicl5lc">Single container for the API and SPA</span><span class="sl-badge default small adr-status adr-status-accepted astro-onicl5lc astro-2s7smcnq">accepted</span></a></li><li class="astro-onicl5lc"><a href="/calendar/pr-preview/pr-791/adr/0031/" class="astro-onicl5lc" data-doc-number="0031" aria-label="0031 · accepted · Azure Database for PostgreSQL Flexible Server with public access and firewall rules"><span class="astro-onicl5lc">Azure Database for PostgreSQL Flexible Server with public access and firewall rules</span><span class="sl-badge default small adr-status adr-status-accepted astro-onicl5lc astro-2s7smcnq">accepted</span></a></li><li class="astro-onicl5lc"><a href="/calendar/pr-preview/pr-791/adr/0032/" class="astro-onicl5lc" data-doc-number="0032" aria-label="0032 · accepted · Azure Key Vault for secrets via managed identity"><span class="astro-onicl5lc">Azure Key Vault for secrets via managed identity</span><span class="sl-badge default small adr-status adr-status-accepted astro-onicl5lc astro-2s7smcnq">accepted</span></a></li><li class="astro-onicl5lc"><a href="/calendar/pr-preview/pr-791/adr/0033/" class="astro-onicl5lc" data-doc-number="0033" aria-label="0033 · accepted · Bicep for Azure infrastructure as code"><span class="astro-onicl5lc">Bicep for Azure infrastructure as code</span><span class="sl-badge default small adr-status adr-status-accepted astro-onicl5lc astro-2s7smcnq">accepted</span></a></li><li class="astro-onicl5lc"><a href="/calendar/pr-preview/pr-791/adr/0034/" class="astro-onicl5lc" data-doc-number="0034" aria-label="0034 · accepted · Deploy with GitHub Actions and OIDC federation"><span class="astro-onicl5lc">Deploy with GitHub Actions and OIDC federation</span><span class="sl-badge default small adr-status adr-status-accepted astro-onicl5lc astro-2s7smcnq">accepted</span></a></li><li class="astro-onicl5lc"><a href="/calendar/pr-preview/pr-791/adr/0035/" class="astro-onicl5lc" data-doc-number="0035" aria-label="0035 · accepted · Separate staging and production environments"><span class="astro-onicl5lc">Separate staging and production environments</span><span class="sl-badge default small adr-status adr-status-accepted astro-onicl5lc astro-2s7smcnq">accepted</span></a></li><li class="astro-onicl5lc"><a href="/calendar/pr-preview/pr-791/adr/0036/" class="astro-onicl5lc" data-doc-number="0036" aria-label="0036 · superseded by ADR-0058 · C# layout rules enforced with a StyleCop subset and Sonar's line-length rule"><span class="astro-onicl5lc">C# layout rules enforced with a StyleCop subset and Sonar&#39;s line-length rule</span><span class="sl-badge default small adr-status adr-status-superseded astro-onicl5lc astro-2s7smcnq">superseded by ADR-0058</span></a></li><li class="astro-onicl5lc"><a href="/calendar/pr-preview/pr-791/adr/0037/" class="astro-onicl5lc" data-doc-number="0037" aria-label="0037 · accepted · PostgreSQL only: drop the SQLite budget fallback"><span class="astro-onicl5lc">PostgreSQL only: drop the SQLite budget fallback</span><span class="sl-badge default small adr-status adr-status-accepted astro-onicl5lc astro-2s7smcnq">accepted</span></a></li><li class="astro-onicl5lc"><a href="/calendar/pr-preview/pr-791/adr/0038/" class="astro-onicl5lc" data-doc-number="0038" aria-label="0038 · accepted · just as the top-level task runner, replacing GNU Make"><span class="astro-onicl5lc">just as the top-level task runner, replacing GNU Make</span><span class="sl-badge default small adr-status adr-status-accepted astro-onicl5lc astro-2s7smcnq">accepted</span></a></li><li class="astro-onicl5lc"><a href="/calendar/pr-preview/pr-791/adr/0039/" class="astro-onicl5lc" data-doc-number="0039" aria-label="0039 · accepted · Architecture model and visualization tooling for the documentation site"><span class="astro-onicl5lc">Architecture model and visualization tooling for the documentation site</span><span class="sl-badge default small adr-status adr-status-accepted astro-onicl5lc astro-2s7smcnq">accepted</span></a></li><li class="astro-onicl5lc"><a href="/calendar/pr-preview/pr-791/adr/0040/" class="astro-onicl5lc" data-doc-number="0040" aria-label="0040 · accepted · Derive the decision log from the ADR files instead of an index table"><span class="astro-onicl5lc">Derive the decision log from the ADR files instead of an index table</span><span class="sl-badge default small adr-status adr-status-accepted astro-onicl5lc astro-2s7smcnq">accepted</span></a></li><li class="astro-onicl5lc"><a href="/calendar/pr-preview/pr-791/adr/0041/" class="astro-onicl5lc" data-doc-number="0041" aria-label="0041 · accepted · Per-user data ownership: scope every query and write with an EF Core global query filter keyed by the signed-in user"><span class="astro-onicl5lc">Per-user data ownership: scope every query and write with an EF Core global query filter keyed by the signed-in user</span><span class="sl-badge default small adr-status adr-status-accepted astro-onicl5lc astro-2s7smcnq">accepted</span></a></li><li class="astro-onicl5lc"><a href="/calendar/pr-preview/pr-791/adr/0042/" class="astro-onicl5lc" data-doc-number="0042" aria-label="0042 · accepted · Layer agent guidance by scope and enforce its invariants with Claude Code hooks built as repo tools"><span class="astro-onicl5lc">Layer agent guidance by scope and enforce its invariants with Claude Code hooks built as repo tools</span><span class="sl-badge default small adr-status adr-status-accepted astro-onicl5lc astro-2s7smcnq">accepted</span></a></li><li class="astro-onicl5lc"><a href="/calendar/pr-preview/pr-791/adr/0043/" class="astro-onicl5lc" data-doc-number="0043" aria-label="0043 · accepted · Show form errors as red borders with a bubble, from the forms' own on-submit validation"><span class="astro-onicl5lc">Show form errors as red borders with a bubble, from the forms&#39; own on-submit validation</span><span class="sl-badge default small adr-status adr-status-accepted astro-onicl5lc astro-2s7smcnq">accepted</span></a></li><li class="astro-onicl5lc"><a href="/calendar/pr-preview/pr-791/adr/0044/" class="astro-onicl5lc" data-doc-number="0044" aria-label="0044 · accepted · Focus new agent automation on Claude Code for a while, keeping the guidance files agent-neutral"><span class="astro-onicl5lc">Focus new agent automation on Claude Code for a while, keeping the guidance files agent-neutral</span><span class="sl-badge default small adr-status adr-status-accepted astro-onicl5lc astro-2s7smcnq">accepted</span></a></li><li class="astro-onicl5lc"><a href="/calendar/pr-preview/pr-791/adr/0045/" class="astro-onicl5lc" data-doc-number="0045" aria-label="0045 · accepted · Gate each CI job's run time against a pinned baseline with a robust log-normal bound"><span class="astro-onicl5lc">Gate each CI job&#39;s run time against a pinned baseline with a robust log-normal bound</span><span class="sl-badge default small adr-status adr-status-accepted astro-onicl5lc astro-2s7smcnq">accepted</span></a></li><li class="astro-onicl5lc"><a href="/calendar/pr-preview/pr-791/adr/0046/" class="astro-onicl5lc" data-doc-number="0046" aria-label="0046 · accepted · Run each CI job only for the paths it checks, decided by a Changes job inside the workflow"><span class="astro-onicl5lc">Run each CI job only for the paths it checks, decided by a Changes job inside the workflow</span><span class="sl-badge default small adr-status adr-status-accepted astro-onicl5lc astro-2s7smcnq">accepted</span></a></li><li class="astro-onicl5lc"><a href="/calendar/pr-preview/pr-791/adr/0047/" class="astro-onicl5lc" data-doc-number="0047" aria-label="0047 · accepted · Theme the web app with semantic CSS custom-property tokens selected by a data-theme attribute"><span class="astro-onicl5lc">Theme the web app with semantic CSS custom-property tokens selected by a data-theme attribute</span><span class="sl-badge default small adr-status adr-status-accepted astro-onicl5lc astro-2s7smcnq">accepted</span></a></li><li class="astro-onicl5lc"><a href="/calendar/pr-preview/pr-791/adr/0048/" class="astro-onicl5lc" data-doc-number="0048" aria-label="0048 · accepted · Self-host the theme fonts from Fontsource variable-font packages"><span class="astro-onicl5lc">Self-host the theme fonts from Fontsource variable-font packages</span><span class="sl-badge default small adr-status adr-status-accepted astro-onicl5lc astro-2s7smcnq">accepted</span></a></li><li class="astro-onicl5lc"><a href="/calendar/pr-preview/pr-791/adr/0049/" class="astro-onicl5lc" data-doc-number="0049" aria-label="0049 · accepted · Build the delivery dashboard from daily JSON snapshots on a data branch, rendered by the documentation site"><span class="astro-onicl5lc">Build the delivery dashboard from daily JSON snapshots on a data branch, rendered by the documentation site</span><span class="sl-badge default small adr-status adr-status-accepted astro-onicl5lc astro-2s7smcnq">accepted</span></a></li><li class="astro-onicl5lc"><a href="/calendar/pr-preview/pr-791/adr/0050/" class="astro-onicl5lc" data-doc-number="0050" aria-label="0050 · superseded by ADR-0058 · Move to .NET 11 once the EF Core providers support it"><span class="astro-onicl5lc">Move to .NET 11 once the EF Core providers support it</span><span class="sl-badge default small adr-status adr-status-superseded astro-onicl5lc astro-2s7smcnq">superseded by ADR-0058</span></a></li><li class="astro-onicl5lc"><a href="/calendar/pr-preview/pr-791/adr/0051/" class="astro-onicl5lc" data-doc-number="0051" aria-label="0051 · accepted · Rust backend on axum and tokio, replacing the .NET minimal API in place"><span class="astro-onicl5lc">Rust backend on axum and tokio, replacing the .NET minimal API in place</span><span class="sl-badge default small adr-status adr-status-accepted astro-onicl5lc astro-2s7smcnq">accepted</span></a></li><li class="astro-onicl5lc"><a href="/calendar/pr-preview/pr-791/adr/0052/" class="astro-onicl5lc" data-doc-number="0052" aria-label="0052 · accepted · Diesel's query builder over diesel-async, with SQL migrations embedded in a migrator binary"><span class="astro-onicl5lc">Diesel&#39;s query builder over diesel-async, with SQL migrations embedded in a migrator binary</span><span class="sl-badge default small adr-status adr-status-accepted astro-onicl5lc astro-2s7smcnq">accepted</span></a></li><li class="astro-onicl5lc"><a href="/calendar/pr-preview/pr-791/adr/0053/" class="astro-onicl5lc" data-doc-number="0053" aria-label="0053 · accepted · Cargo workspace dependencies with a committed lock file, locked builds and a pinned toolchain"><span class="astro-onicl5lc">Cargo workspace dependencies with a committed lock file, locked builds and a pinned toolchain</span><span class="sl-badge default small adr-status adr-status-accepted astro-onicl5lc astro-2s7smcnq">accepted</span></a></li><li class="astro-onicl5lc"><a href="/calendar/pr-preview/pr-791/adr/0054/" class="astro-onicl5lc" data-doc-number="0054" aria-label="0054 · accepted · cargo test with Testcontainers PostgreSQL and in-process axum tests on an injected clock"><span class="astro-onicl5lc">cargo test with Testcontainers PostgreSQL and in-process axum tests on an injected clock</span><span class="sl-badge default small adr-status adr-status-accepted astro-onicl5lc astro-2s7smcnq">accepted</span></a></li><li class="astro-onicl5lc"><a href="/calendar/pr-preview/pr-791/adr/0055/" class="astro-onicl5lc" data-doc-number="0055" aria-label="0055 · accepted · rustfmt and Clippy with warnings denied for the Rust backend"><span class="astro-onicl5lc">rustfmt and Clippy with warnings denied for the Rust backend</span><span class="sl-badge default small adr-status adr-status-accepted astro-onicl5lc astro-2s7smcnq">accepted</span></a></li><li class="astro-onicl5lc"><a href="/calendar/pr-preview/pr-791/adr/0056/" class="astro-onicl5lc" data-doc-number="0056" aria-label="0056 · accepted · Session cookie sealed with a key held in the database, replacing ASP.NET Data Protection"><span class="astro-onicl5lc">Session cookie sealed with a key held in the database, replacing ASP.NET Data Protection</span><span class="sl-badge default small adr-status adr-status-accepted astro-onicl5lc astro-2s7smcnq">accepted</span></a></li><li class="astro-onicl5lc"><a href="/calendar/pr-preview/pr-791/adr/0057/" class="astro-onicl5lc" data-doc-number="0057" aria-label="0057 · accepted · chrono and chrono-tz types for instants, floating dates and IANA zones in the Rust backend"><span class="astro-onicl5lc">chrono and chrono-tz types for instants, floating dates and IANA zones in the Rust backend</span><span class="sl-badge default small adr-status adr-status-accepted astro-onicl5lc astro-2s7smcnq">accepted</span></a></li><li class="astro-onicl5lc"><a href="/calendar/pr-preview/pr-791/adr/0058/" class="astro-onicl5lc" data-doc-number="0058" aria-label="0058 · accepted · TypeScript on Deno for repository tooling, replacing .NET file-based apps"><span class="astro-onicl5lc">TypeScript on Deno for repository tooling, replacing .NET file-based apps</span><span class="sl-badge default small adr-status adr-status-accepted astro-onicl5lc astro-2s7smcnq">accepted</span></a></li><li class="astro-onicl5lc"><a href="/calendar/pr-preview/pr-791/adr/0059/" class="astro-onicl5lc" data-doc-number="0059" aria-label="0059 · proposed · Publish architecture narratives from docs/narratives, stitched from per-system part files"><span class="astro-onicl5lc">Publish architecture narratives from docs/narratives, stitched from per-system part files</span><span class="sl-badge default small adr-status adr-status-draft astro-onicl5lc astro-2s7smcnq">proposed</span></a></li><li class="astro-onicl5lc"><a href="/calendar/pr-preview/pr-791/adr/0060/" class="astro-onicl5lc" data-doc-number="0060" aria-label="0060 · proposed · Build narrative decks with Slidev as a frontend workspace app, published with the docs site"><span class="astro-onicl5lc">Build narrative decks with Slidev as a frontend workspace app, published with the docs site</span><span class="sl-badge default small adr-status adr-status-draft astro-onicl5lc astro-2s7smcnq">proposed</span></a></li><li class="astro-onicl5lc"><a href="/calendar/pr-preview/pr-791/adr/0061/" class="astro-onicl5lc" data-doc-number="0061" aria-label="0061 · accepted · End-to-end UI tests with Playwright Test in frontend/apps/e2e, bound to the architecture flows"><span class="astro-onicl5lc">End-to-end UI tests with Playwright Test in frontend/apps/e2e, bound to the architecture flows</span><span class="sl-badge default small adr-status adr-status-accepted astro-onicl5lc astro-2s7smcnq">accepted</span></a></li><li class="astro-onicl5lc"><a href="/calendar/pr-preview/pr-791/adr/0062/" class="astro-onicl5lc" data-doc-number="0062" aria-label="0062 · accepted · OpenTelemetry over OTLP from the API and the web app, with Grafana LGTM locally and Application Insights in Azure"><span class="astro-onicl5lc">OpenTelemetry over OTLP from the API and the web app, with Grafana LGTM locally and Application Insights in Azure</span><span class="sl-badge default small adr-status adr-status-accepted astro-onicl5lc astro-2s7smcnq">accepted</span></a></li><li class="astro-onicl5lc"><a href="/calendar/pr-preview/pr-791/adr/0063/" class="astro-onicl5lc" data-doc-number="0063" aria-label="0063 · accepted · Docker Compose with opt-in profiles and per-run projects for local backing services, instead of Aspire"><span class="astro-onicl5lc">Docker Compose with opt-in profiles and per-run projects for local backing services, instead of Aspire</span><span class="sl-badge default small adr-status adr-status-accepted astro-onicl5lc astro-2s7smcnq">accepted</span></a></li><li class="astro-onicl5lc"><a href="/calendar/pr-preview/pr-791/adr/0064/" class="astro-onicl5lc" data-doc-number="0064" aria-label="0064 · accepted · Stub OIDC provider for sign-in tests, reached only through Development-only loopback settings"><span class="astro-onicl5lc">Stub OIDC provider for sign-in tests, reached only through Development-only loopback settings</span><span class="sl-badge default small adr-status adr-status-accepted astro-onicl5lc astro-2s7smcnq">accepted</span></a></li></ul></details></li><li class="astro-onicl5lc"><details class="astro-onicl5lc"><summary class="astro-onicl5lc"><span class="group-label astro-onicl5lc"><span class="large astro-onicl5lc">User stories</span></span><svg aria-hidden="true" class="caret astro-onicl5lc astro-a5vyvfug" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1.25rem;"><path d="m14.83 11.29-4.24-4.24a1 1 0 1 0-1.42 1.41L12.71 12l-3.54 3.54a1 1 0 0 0 0 1.41 1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.24-4.24a1.002 1.002 0 0 0 0-1.42Z"/></svg></summary><sl-sidebar-restore data-index="6"></sl-sidebar-restore><ul class="astro-onicl5lc"><li class="astro-onicl5lc"><a href="/calendar/pr-preview/pr-791/stories/" class="astro-onicl5lc"><span class="astro-onicl5lc">All stories</span></a></li><li class="astro-onicl5lc"><a href="/calendar/pr-preview/pr-791/stories/0001/" class="astro-onicl5lc" data-doc-number="0001" aria-label="0001 · implemented · Today view: see everything for today in one place"><span class="astro-onicl5lc">Today view: see everything for today in one place</span><span class="sl-badge default small adr-status adr-status-accepted astro-onicl5lc astro-2s7smcnq">implemented</span></a></li><li class="astro-onicl5lc"><a href="/calendar/pr-preview/pr-791/stories/0002/" class="astro-onicl5lc" data-doc-number="0002" aria-label="0002 · implemented · Week view: plan and track the whole week in one place"><span class="astro-onicl5lc">Week view: plan and track the whole week in one place</span><span class="sl-badge default small adr-status adr-status-accepted astro-onicl5lc astro-2s7smcnq">implemented</span></a></li><li class="astro-onicl5lc"><a href="/calendar/pr-preview/pr-791/stories/0003/" class="astro-onicl5lc" data-doc-number="0003" aria-label="0003 · implemented · Add todo tasks"><span class="astro-onicl5lc">Add todo tasks</span><span class="sl-badge default small adr-status adr-status-accepted astro-onicl5lc astro-2s7smcnq">implemented</span></a></li><li class="astro-onicl5lc"><a href="/calendar/pr-preview/pr-791/stories/0004/" class="astro-onicl5lc" data-doc-number="0004" aria-label="0004 · implemented · Add event entries so I know when my appointments are"><span class="astro-onicl5lc">Add event entries so I know when my appointments are</span><span class="sl-badge default small adr-status adr-status-accepted astro-onicl5lc astro-2s7smcnq">implemented</span></a></li><li class="astro-onicl5lc"><a href="/calendar/pr-preview/pr-791/stories/0005/" class="astro-onicl5lc" data-doc-number="0005" aria-label="0005 · implemented · Google sign-in"><span class="astro-onicl5lc">Google sign-in</span><span class="sl-badge default small adr-status adr-status-accepted astro-onicl5lc astro-2s7smcnq">implemented</span></a></li><li class="astro-onicl5lc"><a href="/calendar/pr-preview/pr-791/stories/0006/" class="astro-onicl5lc" data-doc-number="0006" aria-label="0006 · implemented · Add tasks and events in a modal dialog"><span class="astro-onicl5lc">Add tasks and events in a modal dialog</span><span class="sl-badge default small adr-status adr-status-accepted astro-onicl5lc astro-2s7smcnq">implemented</span></a></li><li class="astro-onicl5lc"><a href="/calendar/pr-preview/pr-791/stories/0007/" class="astro-onicl5lc" data-doc-number="0007" aria-label="0007 · implemented · Overdue triage and task deletion"><span class="astro-onicl5lc">Overdue triage and task deletion</span><span class="sl-badge default small adr-status adr-status-accepted astro-onicl5lc astro-2s7smcnq">implemented</span></a></li><li class="astro-onicl5lc"><a href="/calendar/pr-preview/pr-791/stories/0008/" class="astro-onicl5lc" data-doc-number="0008" aria-label="0008 · implemented · Review the runbooks for clarity and simplicity"><span class="astro-onicl5lc">Review the runbooks for clarity and simplicity</span><span class="sl-badge default small adr-status adr-status-accepted astro-onicl5lc astro-2s7smcnq">implemented</span></a></li><li class="astro-onicl5lc"><a href="/calendar/pr-preview/pr-791/stories/0009/" class="astro-onicl5lc" data-doc-number="0009" aria-label="0009 · planned · Review the adr-draft and story-draft skills for clarity and simplicity"><span class="astro-onicl5lc">Review the adr-draft and story-draft skills for clarity and simplicity</span><span class="sl-badge default small adr-status adr-status-pending astro-onicl5lc astro-2s7smcnq">planned</span></a></li><li class="astro-onicl5lc"><a href="/calendar/pr-preview/pr-791/stories/0010/" class="astro-onicl5lc" data-doc-number="0010" aria-label="0010 · implemented · Sweep pending ADRs to a decided status"><span class="astro-onicl5lc">Sweep pending ADRs to a decided status</span><span class="sl-badge default small adr-status adr-status-accepted astro-onicl5lc astro-2s7smcnq">implemented</span></a></li><li class="astro-onicl5lc"><a href="/calendar/pr-preview/pr-791/stories/0011/" class="astro-onicl5lc" data-doc-number="0011" aria-label="0011 · implemented · Review the top-level task runner"><span class="astro-onicl5lc">Review the top-level task runner</span><span class="sl-badge default small adr-status adr-status-accepted astro-onicl5lc astro-2s7smcnq">implemented</span></a></li><li class="astro-onicl5lc"><a href="/calendar/pr-preview/pr-791/stories/0012/" class="astro-onicl5lc" data-doc-number="0012" aria-label="0012 · implemented · Architecture visualization on the documentation site"><span class="astro-onicl5lc">Architecture visualization on the documentation site</span><span class="sl-badge default small adr-status adr-status-accepted astro-onicl5lc astro-2s7smcnq">implemented</span></a></li><li class="astro-onicl5lc"><a href="/calendar/pr-preview/pr-791/stories/0013/" class="astro-onicl5lc" data-doc-number="0013" aria-label="0013 · implemented · Derive the decision log from the ADR files"><span class="astro-onicl5lc">Derive the decision log from the ADR files</span><span class="sl-badge default small adr-status adr-status-accepted astro-onicl5lc astro-2s7smcnq">implemented</span></a></li><li class="astro-onicl5lc"><a href="/calendar/pr-preview/pr-791/stories/0014/" class="astro-onicl5lc" data-doc-number="0014" aria-label="0014 · implemented · Supersede ADR-0014: drop the SQLite fallback"><span class="astro-onicl5lc">Supersede ADR-0014: drop the SQLite fallback</span><span class="sl-badge default small adr-status adr-status-accepted astro-onicl5lc astro-2s7smcnq">implemented</span></a></li><li class="astro-onicl5lc"><a href="/calendar/pr-preview/pr-791/stories/0015/" class="astro-onicl5lc" data-doc-number="0015" aria-label="0015 · implemented · Close out the backend performance review"><span class="astro-onicl5lc">Close out the backend performance review</span><span class="sl-badge default small adr-status adr-status-accepted astro-onicl5lc astro-2s7smcnq">implemented</span></a></li><li class="astro-onicl5lc"><a href="/calendar/pr-preview/pr-791/stories/0016/" class="astro-onicl5lc" data-doc-number="0016" aria-label="0016 · implemented · Colour the architecture flow diagrams by ownership, with the legend"><span class="astro-onicl5lc">Colour the architecture flow diagrams by ownership, with the legend</span><span class="sl-badge default small adr-status adr-status-accepted astro-onicl5lc astro-2s7smcnq">implemented</span></a></li><li class="astro-onicl5lc"><a href="/calendar/pr-preview/pr-791/stories/0017/" class="astro-onicl5lc" data-doc-number="0017" aria-label="0017 · implemented · Per-user calendar ownership: my events and tasks are mine alone"><span class="astro-onicl5lc">Per-user calendar ownership: my events and tasks are mine alone</span><span class="sl-badge default small adr-status adr-status-accepted astro-onicl5lc astro-2s7smcnq">implemented</span></a></li><li class="astro-onicl5lc"><a href="/calendar/pr-preview/pr-791/stories/0018/" class="astro-onicl5lc" data-doc-number="0018" aria-label="0018 · implemented · Preserve transcript insights in agent guidance"><span class="astro-onicl5lc">Preserve transcript insights in agent guidance</span><span class="sl-badge default small adr-status adr-status-accepted astro-onicl5lc astro-2s7smcnq">implemented</span></a></li><li class="astro-onicl5lc"><a href="/calendar/pr-preview/pr-791/stories/0019/" class="astro-onicl5lc" data-doc-number="0019" aria-label="0019 · implemented · Split the justfile into modules"><span class="astro-onicl5lc">Split the justfile into modules</span><span class="sl-badge default small adr-status adr-status-accepted astro-onicl5lc astro-2s7smcnq">implemented</span></a></li><li class="astro-onicl5lc"><a href="/calendar/pr-preview/pr-791/stories/0020/" class="astro-onicl5lc" data-doc-number="0020" aria-label="0020 · implemented · Restructure agent guidance: a short root AGENTS.md, nested area files, a skill and hooks"><span class="astro-onicl5lc">Restructure agent guidance: a short root AGENTS.md, nested area files, a skill and hooks</span><span class="sl-badge default small adr-status adr-status-accepted astro-onicl5lc astro-2s7smcnq">implemented</span></a></li><li class="astro-onicl5lc"><a href="/calendar/pr-preview/pr-791/stories/0021/" class="astro-onicl5lc" data-doc-number="0021" aria-label="0021 · implemented · Sign in to the local web app without Google"><span class="astro-onicl5lc">Sign in to the local web app without Google</span><span class="sl-badge default small adr-status adr-status-accepted astro-onicl5lc astro-2s7smcnq">implemented</span></a></li><li class="astro-onicl5lc"><a href="/calendar/pr-preview/pr-791/stories/0022/" class="astro-onicl5lc" data-doc-number="0022" aria-label="0022 · implemented · Make the architecture diagrams easier to read: rounded, shadowed boxes and labels off the arrows"><span class="astro-onicl5lc">Make the architecture diagrams easier to read: rounded, shadowed boxes and labels off the arrows</span><span class="sl-badge default small adr-status adr-status-accepted astro-onicl5lc astro-2s7smcnq">implemented</span></a></li><li class="astro-onicl5lc"><a href="/calendar/pr-preview/pr-791/stories/0023/" class="astro-onicl5lc" data-doc-number="0023" aria-label="0023 · implemented · Chain a module's recipes in one command"><span class="astro-onicl5lc">Chain a module&#39;s recipes in one command</span><span class="sl-badge default small adr-status adr-status-accepted astro-onicl5lc astro-2s7smcnq">implemented</span></a></li><li class="astro-onicl5lc"><a href="/calendar/pr-preview/pr-791/stories/0024/" class="astro-onicl5lc" data-doc-number="0024" aria-label="0024 · implemented · One way to show what to fix in Add task and Add event"><span class="astro-onicl5lc">One way to show what to fix in Add task and Add event</span><span class="sl-badge default small adr-status adr-status-accepted astro-onicl5lc astro-2s7smcnq">implemented</span></a></li><li class="astro-onicl5lc"><a href="/calendar/pr-preview/pr-791/stories/0025/" class="astro-onicl5lc" data-doc-number="0025" aria-label="0025 · implemented · Consolidate what agent sessions learned into guidance"><span class="astro-onicl5lc">Consolidate what agent sessions learned into guidance</span><span class="sl-badge default small adr-status adr-status-accepted astro-onicl5lc astro-2s7smcnq">implemented</span></a></li><li class="astro-onicl5lc"><a href="/calendar/pr-preview/pr-791/stories/0026/" class="astro-onicl5lc" data-doc-number="0026" aria-label="0026 · implemented · Read module recipe chains with run"><span class="astro-onicl5lc">Read module recipe chains with run</span><span class="sl-badge default small adr-status adr-status-accepted astro-onicl5lc astro-2s7smcnq">implemented</span></a></li><li class="astro-onicl5lc"><a href="/calendar/pr-preview/pr-791/stories/0027/" class="astro-onicl5lc" data-doc-number="0027" aria-label="0027 · implemented · Focus agent guidance on Claude Code for a while"><span class="astro-onicl5lc">Focus agent guidance on Claude Code for a while</span><span class="sl-badge default small adr-status adr-status-accepted astro-onicl5lc astro-2s7smcnq">implemented</span></a></li><li class="astro-onicl5lc"><a href="/calendar/pr-preview/pr-791/stories/0028/" class="astro-onicl5lc" data-doc-number="0028" aria-label="0028 · implemented · Coordinate epic delivery across agent sessions"><span class="astro-onicl5lc">Coordinate epic delivery across agent sessions</span><span class="sl-badge default small adr-status adr-status-accepted astro-onicl5lc astro-2s7smcnq">implemented</span></a></li><li class="astro-onicl5lc"><a href="/calendar/pr-preview/pr-791/stories/0029/" class="astro-onicl5lc" data-doc-number="0029" aria-label="0029 · implemented · Preserve independent perspectives on our work"><span class="astro-onicl5lc">Preserve independent perspectives on our work</span><span class="sl-badge default small adr-status adr-status-accepted astro-onicl5lc astro-2s7smcnq">implemented</span></a></li><li class="astro-onicl5lc"><a href="/calendar/pr-preview/pr-791/stories/0030/" class="astro-onicl5lc" data-doc-number="0030" aria-label="0030 · implemented · Publish a docs-site preview only for docs-only pull requests"><span class="astro-onicl5lc">Publish a docs-site preview only for docs-only pull requests</span><span class="sl-badge default small adr-status adr-status-accepted astro-onicl5lc astro-2s7smcnq">implemented</span></a></li><li class="astro-onicl5lc"><a href="/calendar/pr-preview/pr-791/stories/0031/" class="astro-onicl5lc" data-doc-number="0031" aria-label="0031 · implemented · Open the docs site on why the repository exists"><span class="astro-onicl5lc">Open the docs site on why the repository exists</span><span class="sl-badge default small adr-status adr-status-accepted astro-onicl5lc astro-2s7smcnq">implemented</span></a></li><li class="astro-onicl5lc"><a href="/calendar/pr-preview/pr-791/stories/0032/" class="astro-onicl5lc" data-doc-number="0032" aria-label="0032 · implemented · Give each Pages publication attempt a distinct build version"><span class="astro-onicl5lc">Give each Pages publication attempt a distinct build version</span><span class="sl-badge default small adr-status adr-status-accepted astro-onicl5lc astro-2s7smcnq">implemented</span></a></li><li class="astro-onicl5lc"><a href="/calendar/pr-preview/pr-791/stories/0033/" class="astro-onicl5lc" data-doc-number="0033" aria-label="0033 · implemented · Review how long delivery automation makes us wait"><span class="astro-onicl5lc">Review how long delivery automation makes us wait</span><span class="sl-badge default small adr-status adr-status-accepted astro-onicl5lc astro-2s7smcnq">implemented</span></a></li><li class="astro-onicl5lc"><a href="/calendar/pr-preview/pr-791/stories/0034/" class="astro-onicl5lc" data-doc-number="0034" aria-label="0034 · implemented · Gate CI job run times against a pinned baseline"><span class="astro-onicl5lc">Gate CI job run times against a pinned baseline</span><span class="sl-badge default small adr-status adr-status-accepted astro-onicl5lc astro-2s7smcnq">implemented</span></a></li><li class="astro-onicl5lc"><a href="/calendar/pr-preview/pr-791/stories/0035/" class="astro-onicl5lc" data-doc-number="0035" aria-label="0035 · implemented · Review before merge with a workflow and a skeptic per finding"><span class="astro-onicl5lc">Review before merge with a workflow and a skeptic per finding</span><span class="sl-badge default small adr-status adr-status-accepted astro-onicl5lc astro-2s7smcnq">implemented</span></a></li><li class="astro-onicl5lc"><a href="/calendar/pr-preview/pr-791/stories/0036/" class="astro-onicl5lc" data-doc-number="0036" aria-label="0036 · implemented · Preserve arguments passed to recipes"><span class="astro-onicl5lc">Preserve arguments passed to recipes</span><span class="sl-badge default small adr-status adr-status-accepted astro-onicl5lc astro-2s7smcnq">implemented</span></a></li><li class="astro-onicl5lc"><a href="/calendar/pr-preview/pr-791/stories/0037/" class="astro-onicl5lc" data-doc-number="0037" aria-label="0037 · implemented · Set the model for each custom agent so reviews cost what they are worth"><span class="astro-onicl5lc">Set the model for each custom agent so reviews cost what they are worth</span><span class="sl-badge default small adr-status adr-status-accepted astro-onicl5lc astro-2s7smcnq">implemented</span></a></li><li class="astro-onicl5lc"><a href="/calendar/pr-preview/pr-791/stories/0038/" class="astro-onicl5lc" data-doc-number="0038" aria-label="0038 · implemented · Run each CI job only when a pull request changes what it checks"><span class="astro-onicl5lc">Run each CI job only when a pull request changes what it checks</span><span class="sl-badge default small adr-status adr-status-accepted astro-onicl5lc astro-2s7smcnq">implemented</span></a></li><li class="astro-onicl5lc"><a href="/calendar/pr-preview/pr-791/stories/0039/" class="astro-onicl5lc" data-doc-number="0039" aria-label="0039 · implemented · Switchable light and dark themes across the whole calendar"><span class="astro-onicl5lc">Switchable light and dark themes across the whole calendar</span><span class="sl-badge default small adr-status adr-status-accepted astro-onicl5lc astro-2s7smcnq">implemented</span></a></li><li class="astro-onicl5lc"><a href="/calendar/pr-preview/pr-791/stories/0040/" class="astro-onicl5lc" data-doc-number="0040" aria-label="0040 · implemented · Make just doctor require the GitHub CLI and jq"><span class="astro-onicl5lc">Make just doctor require the GitHub CLI and jq</span><span class="sl-badge default small adr-status adr-status-accepted astro-onicl5lc astro-2s7smcnq">implemented</span></a></li><li class="astro-onicl5lc"><a href="/calendar/pr-preview/pr-791/stories/0041/" class="astro-onicl5lc" data-doc-number="0041" aria-label="0041 · implemented · Run the lint recipe's checks in parallel"><span class="astro-onicl5lc">Run the lint recipe&#39;s checks in parallel</span><span class="sl-badge default small adr-status adr-status-accepted astro-onicl5lc astro-2s7smcnq">implemented</span></a></li><li class="astro-onicl5lc"><a href="/calendar/pr-preview/pr-791/stories/0042/" class="astro-onicl5lc" data-doc-number="0042" aria-label="0042 · implemented · Refine the Today view so it behaves predictably and lets me act on what I see"><span class="astro-onicl5lc">Refine the Today view so it behaves predictably and lets me act on what I see</span><span class="sl-badge default small adr-status adr-status-accepted astro-onicl5lc astro-2s7smcnq">implemented</span></a></li><li class="astro-onicl5lc"><a href="/calendar/pr-preview/pr-791/stories/0043/" class="astro-onicl5lc" data-doc-number="0043" aria-label="0043 · implemented · Edit and delete events from the Today view"><span class="astro-onicl5lc">Edit and delete events from the Today view</span><span class="sl-badge default small adr-status adr-status-accepted astro-onicl5lc astro-2s7smcnq">implemented</span></a></li><li class="astro-onicl5lc"><a href="/calendar/pr-preview/pr-791/stories/0044/" class="astro-onicl5lc" data-doc-number="0044" aria-label="0044 · implemented · Edit a task from the Today view"><span class="astro-onicl5lc">Edit a task from the Today view</span><span class="sl-badge default small adr-status adr-status-accepted astro-onicl5lc astro-2s7smcnq">implemented</span></a></li><li class="astro-onicl5lc"><a href="/calendar/pr-preview/pr-791/stories/0045/" class="astro-onicl5lc" data-doc-number="0045" aria-label="0045 · implemented · Resolve the ADR sweep findings of 2026-11-07"><span class="astro-onicl5lc">Resolve the ADR sweep findings of 2026-11-07</span><span class="sl-badge default small adr-status adr-status-accepted astro-onicl5lc astro-2s7smcnq">implemented</span></a></li><li class="astro-onicl5lc"><a href="/calendar/pr-preview/pr-791/stories/0046/" class="astro-onicl5lc" data-doc-number="0046" aria-label="0046 · implemented · Apply the Calendar light and dark themes to the published docs site"><span class="astro-onicl5lc">Apply the Calendar light and dark themes to the published docs site</span><span class="sl-badge default small adr-status adr-status-accepted astro-onicl5lc astro-2s7smcnq">implemented</span></a></li><li class="astro-onicl5lc"><a href="/calendar/pr-preview/pr-791/stories/0047/" class="astro-onicl5lc" data-doc-number="0047" aria-label="0047 · implemented · Edit and delete events from the Week view"><span class="astro-onicl5lc">Edit and delete events from the Week view</span><span class="sl-badge default small adr-status adr-status-accepted astro-onicl5lc astro-2s7smcnq">implemented</span></a></li><li class="astro-onicl5lc"><a href="/calendar/pr-preview/pr-791/stories/0048/" class="astro-onicl5lc" data-doc-number="0048" aria-label="0048 · implemented · Edit a task from the Week view and My tasks"><span class="astro-onicl5lc">Edit a task from the Week view and My tasks</span><span class="sl-badge default small adr-status adr-status-accepted astro-onicl5lc astro-2s7smcnq">implemented</span></a></li><li class="astro-onicl5lc"><a href="/calendar/pr-preview/pr-791/stories/0049/" class="astro-onicl5lc" data-doc-number="0049" aria-label="0049 · implemented · Assert the partly tested SPA hosting requirements"><span class="astro-onicl5lc">Assert the partly tested SPA hosting requirements</span><span class="sl-badge default small adr-status adr-status-accepted astro-onicl5lc astro-2s7smcnq">implemented</span></a></li><li class="astro-onicl5lc"><a href="/calendar/pr-preview/pr-791/stories/0050/" class="astro-onicl5lc" data-doc-number="0050" aria-label="0050 · planned · Rearrange the day view buttons so the page starts with content sooner"><span class="astro-onicl5lc">Rearrange the day view buttons so the page starts with content sooner</span><span class="sl-badge default small adr-status adr-status-pending astro-onicl5lc astro-2s7smcnq">planned</span></a></li><li class="astro-onicl5lc"><a href="/calendar/pr-preview/pr-791/stories/0051/" class="astro-onicl5lc" data-doc-number="0051" aria-label="0051 · implemented · Sweep only what changed, and check each finding before it reaches me"><span class="astro-onicl5lc">Sweep only what changed, and check each finding before it reaches me</span><span class="sl-badge default small adr-status adr-status-accepted astro-onicl5lc astro-2s7smcnq">implemented</span></a></li><li class="astro-onicl5lc"><a href="/calendar/pr-preview/pr-791/stories/0052/" class="astro-onicl5lc" data-doc-number="0052" aria-label="0052 · implemented · Remove the Refresh button from the day and week views, because they keep themselves up to date"><span class="astro-onicl5lc">Remove the Refresh button from the day and week views, because they keep themselves up to date</span><span class="sl-badge default small adr-status adr-status-accepted astro-onicl5lc astro-2s7smcnq">implemented</span></a></li><li class="astro-onicl5lc"><a href="/calendar/pr-preview/pr-791/stories/0053/" class="astro-onicl5lc" data-doc-number="0053" aria-label="0053 · implemented · Show how fast and how smoothly changes reach main"><span class="astro-onicl5lc">Show how fast and how smoothly changes reach main</span><span class="sl-badge default small adr-status adr-status-accepted astro-onicl5lc astro-2s7smcnq">implemented</span></a></li><li class="astro-onicl5lc"><a href="/calendar/pr-preview/pr-791/stories/0054/" class="astro-onicl5lc" data-doc-number="0054" aria-label="0054 · implemented · Run pnpm from the frontend folder so Corepack picks the pinned version"><span class="astro-onicl5lc">Run pnpm from the frontend folder so Corepack picks the pinned version</span><span class="sl-badge default small adr-status adr-status-accepted astro-onicl5lc astro-2s7smcnq">implemented</span></a></li><li class="astro-onicl5lc"><a href="/calendar/pr-preview/pr-791/stories/0055/" class="astro-onicl5lc" data-doc-number="0055" aria-label="0055 · implemented · Publish screenshots from a checkout that has no local screenshots branch"><span class="astro-onicl5lc">Publish screenshots from a checkout that has no local screenshots branch</span><span class="sl-badge default small adr-status adr-status-accepted astro-onicl5lc astro-2s7smcnq">implemented</span></a></li><li class="astro-onicl5lc"><a href="/calendar/pr-preview/pr-791/stories/0056/" class="astro-onicl5lc" data-doc-number="0056" aria-label="0056 · planned · Move the repository to the .NET 11 SDK and target framework"><span class="astro-onicl5lc">Move the repository to the .NET 11 SDK and target framework</span><span class="sl-badge default small adr-status adr-status-pending astro-onicl5lc astro-2s7smcnq">planned</span></a></li><li class="astro-onicl5lc"><a href="/calendar/pr-preview/pr-791/stories/0057/" class="astro-onicl5lc" data-doc-number="0057" aria-label="0057 · implemented · Add a cleanstanding skill so an agent session can be closed out safely"><span class="astro-onicl5lc">Add a cleanstanding skill so an agent session can be closed out safely</span><span class="sl-badge default small adr-status adr-status-accepted astro-onicl5lc astro-2s7smcnq">implemented</span></a></li><li class="astro-onicl5lc"><a href="/calendar/pr-preview/pr-791/stories/0058/" class="astro-onicl5lc" data-doc-number="0058" aria-label="0058 · implemented · Move the backend from .NET to Rust to learn the stack and its performance characteristics"><span class="astro-onicl5lc">Move the backend from .NET to Rust to learn the stack and its performance characteristics</span><span class="sl-badge default small adr-status adr-status-accepted astro-onicl5lc astro-2s7smcnq">implemented</span></a></li><li class="astro-onicl5lc"><a href="/calendar/pr-preview/pr-791/stories/0059/" class="astro-onicl5lc" data-doc-number="0059" aria-label="0059 · planned · Run repository tooling on TypeScript and Deno"><span class="astro-onicl5lc">Run repository tooling on TypeScript and Deno</span><span class="sl-badge default small adr-status adr-status-pending astro-onicl5lc astro-2s7smcnq">planned</span></a></li><li class="astro-onicl5lc"><a href="/calendar/pr-preview/pr-791/stories/0060/" class="astro-onicl5lc" data-doc-number="0060" aria-label="0060 · implemented · Bring the architecture model back in line with the repo"><span class="astro-onicl5lc">Bring the architecture model back in line with the repo</span><span class="sl-badge default small adr-status adr-status-accepted astro-onicl5lc astro-2s7smcnq">implemented</span></a></li><li class="astro-onicl5lc"><a href="/calendar/pr-preview/pr-791/stories/0061/" class="astro-onicl5lc" data-doc-number="0061" aria-label="0061 · implemented · Commit the graphify knowledge graph"><span class="astro-onicl5lc">Commit the graphify knowledge graph</span><span class="sl-badge default small adr-status adr-status-accepted astro-onicl5lc astro-2s7smcnq">implemented</span></a></li><li class="astro-onicl5lc"><a href="/calendar/pr-preview/pr-791/stories/0062/" class="astro-onicl5lc" data-doc-number="0062" aria-label="0062 · implemented · Install the graphify skill and point agents at the committed graph"><span class="astro-onicl5lc">Install the graphify skill and point agents at the committed graph</span><span class="sl-badge default small adr-status adr-status-accepted astro-onicl5lc astro-2s7smcnq">implemented</span></a></li><li class="astro-onicl5lc"><a href="/calendar/pr-preview/pr-791/stories/0063/" class="astro-onicl5lc" data-doc-number="0063" aria-label="0063 · in-progress · Build architecture narratives with an interviewing agent and an expert panel"><span class="astro-onicl5lc">Build architecture narratives with an interviewing agent and an expert panel</span><span class="sl-badge default small adr-status adr-status-draft astro-onicl5lc astro-2s7smcnq">in-progress</span></a></li><li class="astro-onicl5lc"><a href="/calendar/pr-preview/pr-791/stories/0064/" class="astro-onicl5lc" data-doc-number="0064" aria-label="0064 · planned · Test every user flow end to end and prove it is observable"><span class="astro-onicl5lc">Test every user flow end to end and prove it is observable</span><span class="sl-badge default small adr-status adr-status-pending astro-onicl5lc astro-2s7smcnq">planned</span></a></li><li class="astro-onicl5lc"><a href="/calendar/pr-preview/pr-791/stories/create-events-and-tasks-from-week-view/" class="astro-onicl5lc" data-doc-number="XXXX" aria-label="XXXX · planned · Create events and tasks from the week view"><span class="astro-onicl5lc">Create events and tasks from the week view</span><span class="sl-badge default small adr-status adr-status-pending astro-onicl5lc astro-2s7smcnq">planned</span></a></li></ul></details></li><li class="astro-onicl5lc"><details class="astro-onicl5lc"><summary class="astro-onicl5lc"><span class="group-label astro-onicl5lc"><span class="large astro-onicl5lc">Runbooks</span></span><svg aria-hidden="true" class="caret astro-onicl5lc astro-a5vyvfug" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1.25rem;"><path d="m14.83 11.29-4.24-4.24a1 1 0 1 0-1.42 1.41L12.71 12l-3.54 3.54a1 1 0 0 0 0 1.41 1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.24-4.24a1.002 1.002 0 0 0 0-1.42Z"/></svg></summary><sl-sidebar-restore data-index="7"></sl-sidebar-restore><ul class="astro-onicl5lc"><li class="astro-onicl5lc"><a href="/calendar/pr-preview/pr-791/runbooks/" class="astro-onicl5lc"><span class="astro-onicl5lc">All runbooks</span></a></li><li class="astro-onicl5lc"><a href="/calendar/pr-preview/pr-791/runbooks/azure-bootstrap/" class="astro-onicl5lc"><span class="astro-onicl5lc">Azure bootstrap</span></a></li><li class="astro-onicl5lc"><a href="/calendar/pr-preview/pr-791/runbooks/azure-infrastructure/" class="astro-onicl5lc"><span class="astro-onicl5lc">Azure infrastructure</span></a></li><li class="astro-onicl5lc"><a href="/calendar/pr-preview/pr-791/runbooks/azure-database/" class="astro-onicl5lc"><span class="astro-onicl5lc">Azure PostgreSQL operations</span></a></li><li class="astro-onicl5lc"><a href="/calendar/pr-preview/pr-791/runbooks/web-theme-and-styling/" class="astro-onicl5lc"><span class="astro-onicl5lc">Style a web view in both themes</span></a></li><li class="astro-onicl5lc"><a href="/calendar/pr-preview/pr-791/runbooks/delivery-dashboard/" class="astro-onicl5lc"><span class="astro-onicl5lc">Operate the delivery dashboard</span></a></li><li class="astro-onicl5lc"><a href="/calendar/pr-preview/pr-791/runbooks/local-stack-and-e2e/" class="astro-onicl5lc"><span class="astro-onicl5lc">Run the optional local services and the end-to-end stack</span></a></li></ul></details></li><li class="astro-onicl5lc"><details class="astro-onicl5lc"><summary class="astro-onicl5lc"><span class="group-label astro-onicl5lc"><span class="large astro-onicl5lc">Benchmarks</span></span><svg aria-hidden="true" class="caret astro-onicl5lc astro-a5vyvfug" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1.25rem;"><path d="m14.83 11.29-4.24-4.24a1 1 0 1 0-1.42 1.41L12.71 12l-3.54 3.54a1 1 0 0 0 0 1.41 1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.24-4.24a1.002 1.002 0 0 0 0-1.42Z"/></svg></summary><sl-sidebar-restore data-index="8"></sl-sidebar-restore><ul class="astro-onicl5lc"><li class="astro-onicl5lc"><a href="/calendar/pr-preview/pr-791/benchmarks/" class="astro-onicl5lc"><span class="astro-onicl5lc">All benchmarks</span></a></li><li class="astro-onicl5lc"><a href="/calendar/pr-preview/pr-791/benchmarks/0001/" class="astro-onicl5lc" data-doc-number="0001" aria-label="0001 · Loading the ADRs and stories"><span class="astro-onicl5lc">Loading the ADRs and stories</span></a></li><li class="astro-onicl5lc"><a href="/calendar/pr-preview/pr-791/benchmarks/0002/" class="astro-onicl5lc" data-doc-number="0002" aria-label="0002 · The Frontend CI job before the fixes of #272"><span class="astro-onicl5lc">The Frontend CI job before the fixes of #272</span></a></li><li class="astro-onicl5lc"><a href="/calendar/pr-preview/pr-791/benchmarks/0003/" class="astro-onicl5lc" data-doc-number="0003" aria-label="0003 · One corpus read per docs sync"><span class="astro-onicl5lc">One corpus read per docs sync</span></a></li><li class="astro-onicl5lc"><a href="/calendar/pr-preview/pr-791/benchmarks/0004/" class="astro-onicl5lc" data-doc-number="0004" aria-label="0004 · The docs site in its own CI job"><span class="astro-onicl5lc">The docs site in its own CI job</span></a></li><li class="astro-onicl5lc"><a href="/calendar/pr-preview/pr-791/benchmarks/0005/" class="astro-onicl5lc" data-doc-number="0005" aria-label="0005 · The web test suite: one jsdom per worker and a unit-level batching test"><span class="astro-onicl5lc">The web test suite: one jsdom per worker and a unit-level batching test</span></a></li><li class="astro-onicl5lc"><a href="/calendar/pr-preview/pr-791/benchmarks/0006/" class="astro-onicl5lc" data-doc-number="0006" aria-label="0006 · The web build step without a second tsc -b"><span class="astro-onicl5lc">The web build step without a second tsc -b</span></a></li><li class="astro-onicl5lc"><a href="/calendar/pr-preview/pr-791/benchmarks/0007/" class="astro-onicl5lc" data-doc-number="0007" aria-label="0007 · The Frontend CI job after the fixes of #272"><span class="astro-onicl5lc">The Frontend CI job after the fixes of #272</span></a></li><li class="astro-onicl5lc"><a href="/calendar/pr-preview/pr-791/benchmarks/0008/" class="astro-onicl5lc" data-doc-number="0008" aria-label="0008 · A superseding pull request run no longer waits for the old one to stop"><span class="astro-onicl5lc">A superseding pull request run no longer waits for the old one to stop</span></a></li><li class="astro-onicl5lc"><a href="/calendar/pr-preview/pr-791/benchmarks/0009/" class="astro-onicl5lc" data-doc-number="0009" aria-label="0009 · API test classes in parallel, a database copy per test"><span class="astro-onicl5lc">API test classes in parallel, a database copy per test</span></a></li><li class="astro-onicl5lc"><a href="/calendar/pr-preview/pr-791/benchmarks/0010/" class="astro-onicl5lc" data-doc-number="0010" aria-label="0010 · The Backend format check runs whitespace only"><span class="astro-onicl5lc">The Backend format check runs whitespace only</span></a></li><li class="astro-onicl5lc"><a href="/calendar/pr-preview/pr-791/benchmarks/0011/" class="astro-onicl5lc" data-doc-number="0011" aria-label="0011 · The Tooling job with a NuGet cache and parallel test apps"><span class="astro-onicl5lc">The Tooling job with a NuGet cache and parallel test apps</span></a></li><li class="astro-onicl5lc"><a href="/calendar/pr-preview/pr-791/benchmarks/0012/" class="astro-onicl5lc" data-doc-number="0012" aria-label="0012 · A CI run on main after the five fixes of #347"><span class="astro-onicl5lc">A CI run on main after the five fixes of #347</span></a></li><li class="astro-onicl5lc"><a href="/calendar/pr-preview/pr-791/benchmarks/0013/" class="astro-onicl5lc" data-doc-number="0013" aria-label="0013 · Two GraphQL queries per handover-watch tick instead of 2 + 3N REST calls"><span class="astro-onicl5lc">Two GraphQL queries per handover-watch tick instead of 2 + 3N REST calls</span></a></li><li class="astro-onicl5lc"><a href="/calendar/pr-preview/pr-791/benchmarks/0014/" class="astro-onicl5lc" data-doc-number="0014" aria-label="0014 · The pinned CI job baseline and its back-test"><span class="astro-onicl5lc">The pinned CI job baseline and its back-test</span></a></li><li class="astro-onicl5lc"><a href="/calendar/pr-preview/pr-791/benchmarks/0015/" class="astro-onicl5lc" data-doc-number="0015" aria-label="0015 · What three skeptics per finding add to the review before a merge"><span class="astro-onicl5lc">What three skeptics per finding add to the review before a merge</span></a></li><li class="astro-onicl5lc"><a href="/calendar/pr-preview/pr-791/benchmarks/0016/" class="astro-onicl5lc" data-doc-number="0016" aria-label="0016 · CI runner time and wall clock when jobs run only for their paths"><span class="astro-onicl5lc">CI runner time and wall clock when jobs run only for their paths</span></a></li><li class="astro-onicl5lc"><a href="/calendar/pr-preview/pr-791/benchmarks/0017/" class="astro-onicl5lc" data-doc-number="0017" aria-label="0017 · The CI job baseline with Changes, both paths pinned"><span class="astro-onicl5lc">The CI job baseline with Changes, both paths pinned</span></a></li><li class="astro-onicl5lc"><a href="/calendar/pr-preview/pr-791/benchmarks/0018/" class="astro-onicl5lc" data-doc-number="0018" aria-label="0018 · The agent cap and a reviewer that dies in the review before a merge"><span class="astro-onicl5lc">The agent cap and a reviewer that dies in the review before a merge</span></a></li><li class="astro-onicl5lc"><a href="/calendar/pr-preview/pr-791/benchmarks/0019/" class="astro-onicl5lc" data-doc-number="0019" aria-label="0019 · Story-card-only pull requests run the ADR check, not the Tooling job"><span class="astro-onicl5lc">Story-card-only pull requests run the ADR check, not the Tooling job</span></a></li><li class="astro-onicl5lc"><a href="/calendar/pr-preview/pr-791/benchmarks/0020/" class="astro-onicl5lc" data-doc-number="0020" aria-label="0020 · Proof runs of the ADR sweep and issue verification workflows"><span class="astro-onicl5lc">Proof runs of the ADR sweep and issue verification workflows</span></a></li><li class="astro-onicl5lc"><a href="/calendar/pr-preview/pr-791/benchmarks/0021/" class="astro-onicl5lc" data-doc-number="0021" aria-label="0021 · Docs site trend on main: runner mix and corpus growth"><span class="astro-onicl5lc">Docs site trend on main: runner mix and corpus growth</span></a></li><li class="astro-onicl5lc"><a href="/calendar/pr-preview/pr-791/benchmarks/0022/" class="astro-onicl5lc" data-doc-number="0022" aria-label="0022 · Narrative panel rebuttal part reads"><span class="astro-onicl5lc">Narrative panel rebuttal part reads</span></a></li><li class="astro-onicl5lc"><a href="/calendar/pr-preview/pr-791/benchmarks/0023/" class="astro-onicl5lc" data-doc-number="0023" aria-label="0023 · Docs loader tests: one corpus sync"><span class="astro-onicl5lc">Docs loader tests: one corpus sync</span></a></li><li class="astro-onicl5lc"><a href="/calendar/pr-preview/pr-791/benchmarks/0024/" class="astro-onicl5lc" data-doc-number="0024" aria-label="0024 · Docs site job: one corpus read, Istanbul coverage, one subpath build"><span class="astro-onicl5lc">Docs site job: one corpus read, Istanbul coverage, one subpath build</span></a></li></ul></details></li></ul><script aria-hidden="true">
+		(() => {
+			const scroller = document.getElementById('starlight__sidebar');
+			if (!window._starlightScrollRestore || !scroller) return;
+			scroller.scrollTop = window._starlightScrollRestore;
+			delete window._starlightScrollRestore;
+		})();
+	</script></sl-sidebar-state-persist><div class="md:sl-hidden"><div class="mobile-preferences sl-flex astro-xef7yald"><div class="social-icons astro-xef7yald"><a href="https://github.com/mgasca/calendar" rel="me" class="sl-flex astro-q3zvzfet"><span class="sr-only astro-q3zvzfet">GitHub</span><svg aria-hidden="true" class="astro-q3zvzfet astro-a5vyvfug" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1em;"><path d="M12 .3a12 12 0 0 0-3.8 23.38c.6.12.83-.26.83-.57L9 21.07c-3.34.72-4.04-1.61-4.04-1.61-.55-1.39-1.34-1.76-1.34-1.76-1.08-.74.09-.73.09-.73 1.2.09 1.83 1.24 1.83 1.24 1.08 1.83 2.81 1.3 3.5 1 .1-.78.42-1.31.76-1.61-2.67-.3-5.47-1.33-5.47-5.93 0-1.31.47-2.38 1.24-3.22-.14-.3-.54-1.52.1-3.18 0 0 1-.32 3.3 1.23a11.5 11.5 0 0 1 6 0c2.28-1.55 3.29-1.23 3.29-1.23.64 1.66.24 2.88.12 3.18a4.65 4.65 0 0 1 1.23 3.22c0 4.61-2.8 5.63-5.48 5.92.42.36.81 1.1.81 2.22l-.01 3.29c0 .31.2.69.82.57A12 12 0 0 0 12 .3Z"/></svg></a></div><fieldset class="theme-control"><legend>Theme</legend><label><input type="radio" value="light"> Light</label><label><input type="radio" value="dark"> Dark</label><label><input type="radio" value="system" checked> System</label></fieldset></div></div></div></sl-sidebar-pane></nav><div class="main-frame astro-et6de5cw"><script type="module">var e=document.getElementById(`starlight__sidebar`),t=e?.querySelector(`sl-sidebar-state-persist`),n=`sl-sidebar-state`,r=()=>{let r=[],i=t?.dataset.hash||``;try{let e=sessionStorage.getItem(n),t=JSON.parse(e||`{}`);Array.isArray(t.open)&&t.hash===i&&(r=t.open)}catch{}return{hash:i,open:r,scroll:e?.scrollTop||0}},i=e=>{try{sessionStorage.setItem(n,JSON.stringify(e))}catch{}},a=()=>i(r()),o=(e,t)=>{let n=r();n.open[t]=e,i(n)};t?.addEventListener(`click`,e=>{if(!(e.target instanceof Element))return;let t=e.target.closest(`summary`)?.closest(`details`);if(!t)return;let n=t.querySelector(`sl-sidebar-restore`),r=parseInt(n?.dataset.index||``);isNaN(r)||o(!t.open,r)}),addEventListener(`visibilitychange`,()=>{document.visibilityState===`hidden`&&a()});</script><div class="lg:sl-flex astro-odkak3o5"><aside class="right-sidebar-container print:hidden astro-odkak3o5"><div class="right-sidebar astro-odkak3o5"><div class="lg:sl-hidden astro-xxtyouic"><mobile-starlight-toc data-min-h="2" data-max-h="3" class="astro-yooziv7o"><nav aria-labelledby="starlight__on-this-page--mobile" class="astro-yooziv7o"><details id="starlight__mobile-toc" class="astro-yooziv7o"><summary id="starlight__on-this-page--mobile" class="sl-flex astro-yooziv7o"><span class="toggle sl-flex astro-yooziv7o">On this page<svg aria-hidden="true" class="caret astro-yooziv7o astro-a5vyvfug" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1rem;"><path d="m14.83 11.29-4.24-4.24a1 1 0 1 0-1.42 1.41L12.71 12l-3.54 3.54a1 1 0 0 0 0 1.41 1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.24-4.24a1.002 1.002 0 0 0 0-1.42Z"/></svg></span><span class="display-current astro-yooziv7o"></span></summary><div class="dropdown astro-yooziv7o"><ul class="isMobile astro-mjxwra5r" style="--depth: 0;"><li style="--depth: 0;" class="astro-mjxwra5r"><a href="#_top" style="--depth: 0;" class="astro-mjxwra5r"><span style="--depth: 0;" class="astro-mjxwra5r">Overview</span></a></li><li style="--depth: 0;" class="astro-mjxwra5r"><a href="#act-1-setup" style="--depth: 0;" class="astro-mjxwra5r"><span style="--depth: 0;" class="astro-mjxwra5r">Act 1: Setup</span></a><ul class="isMobile astro-mjxwra5r" style="--depth: 1;"><li style="--depth: 1;" class="astro-mjxwra5r"><a href="#the-problem" style="--depth: 1;" class="astro-mjxwra5r"><span style="--depth: 1;" class="astro-mjxwra5r">The problem</span></a></li><li style="--depth: 1;" class="astro-mjxwra5r"><a href="#why-now" style="--depth: 1;" class="astro-mjxwra5r"><span style="--depth: 1;" class="astro-mjxwra5r">Why now</span></a></li><li style="--depth: 1;" class="astro-mjxwra5r"><a href="#stakeholders" style="--depth: 1;" class="astro-mjxwra5r"><span style="--depth: 1;" class="astro-mjxwra5r">Stakeholders</span></a></li><li style="--depth: 1;" class="astro-mjxwra5r"><a href="#users-and-scale" style="--depth: 1;" class="astro-mjxwra5r"><span style="--depth: 1;" class="astro-mjxwra5r">Users and scale</span></a></li><li style="--depth: 1;" class="astro-mjxwra5r"><a href="#scope" style="--depth: 1;" class="astro-mjxwra5r"><span style="--depth: 1;" class="astro-mjxwra5r">Scope</span></a></li><li style="--depth: 1;" class="astro-mjxwra5r"><a href="#vocabulary" style="--depth: 1;" class="astro-mjxwra5r"><span style="--depth: 1;" class="astro-mjxwra5r">Vocabulary</span></a></li></ul></li><li style="--depth: 0;" class="astro-mjxwra5r"><a href="#act-2-confrontation" style="--depth: 0;" class="astro-mjxwra5r"><span style="--depth: 0;" class="astro-mjxwra5r">Act 2: Confrontation</span></a><ul class="isMobile astro-mjxwra5r" style="--depth: 1;"><li style="--depth: 1;" class="astro-mjxwra5r"><a href="#constraints" style="--depth: 1;" class="astro-mjxwra5r"><span style="--depth: 1;" class="astro-mjxwra5r">Constraints</span></a></li><li style="--depth: 1;" class="astro-mjxwra5r"><a href="#challenges" style="--depth: 1;" class="astro-mjxwra5r"><span style="--depth: 1;" class="astro-mjxwra5r">Challenges</span></a></li><li style="--depth: 1;" class="astro-mjxwra5r"><a href="#driving-characteristics" style="--depth: 1;" class="astro-mjxwra5r"><span style="--depth: 1;" class="astro-mjxwra5r">Driving characteristics</span></a></li><li style="--depth: 1;" class="astro-mjxwra5r"><a href="#alternatives" style="--depth: 1;" class="astro-mjxwra5r"><span style="--depth: 1;" class="astro-mjxwra5r">Alternatives</span></a></li></ul></li><li style="--depth: 0;" class="astro-mjxwra5r"><a href="#act-3-resolution" style="--depth: 0;" class="astro-mjxwra5r"><span style="--depth: 0;" class="astro-mjxwra5r">Act 3: Resolution</span></a><ul class="isMobile astro-mjxwra5r" style="--depth: 1;"><li style="--depth: 1;" class="astro-mjxwra5r"><a href="#the-architecture" style="--depth: 1;" class="astro-mjxwra5r"><span style="--depth: 1;" class="astro-mjxwra5r">The architecture</span></a></li><li style="--depth: 1;" class="astro-mjxwra5r"><a href="#decisions" style="--depth: 1;" class="astro-mjxwra5r"><span style="--depth: 1;" class="astro-mjxwra5r">Decisions</span></a></li><li style="--depth: 1;" class="astro-mjxwra5r"><a href="#how-the-driving-characteristics-are-met" style="--depth: 1;" class="astro-mjxwra5r"><span style="--depth: 1;" class="astro-mjxwra5r">How the driving characteristics are met</span></a></li><li style="--depth: 1;" class="astro-mjxwra5r"><a href="#risks" style="--depth: 1;" class="astro-mjxwra5r"><span style="--depth: 1;" class="astro-mjxwra5r">Risks</span></a></li><li style="--depth: 1;" class="astro-mjxwra5r"><a href="#open-questions" style="--depth: 1;" class="astro-mjxwra5r"><span style="--depth: 1;" class="astro-mjxwra5r">Open questions</span></a></li></ul></li><li style="--depth: 0;" class="astro-mjxwra5r"><a href="#assumptions" style="--depth: 0;" class="astro-mjxwra5r"><span style="--depth: 0;" class="astro-mjxwra5r">Assumptions</span></a></li><li style="--depth: 0;" class="astro-mjxwra5r"><a href="#appendix-expert-panel" style="--depth: 0;" class="astro-mjxwra5r"><span style="--depth: 0;" class="astro-mjxwra5r">Appendix: Expert panel</span></a></li></ul></div></details></nav></mobile-starlight-toc><script type="module" src="/calendar/pr-preview/pr-791/_astro/MobileTableOfContents.astro_astro_type_script_index_0_lang.C3fM4Kra.js"></script></div><div class="right-sidebar-panel sl-hidden lg:sl-block astro-xxtyouic"><div class="sl-container astro-xxtyouic"><starlight-toc data-min-h="2" data-max-h="3"><nav aria-labelledby="starlight__on-this-page"><h2 id="starlight__on-this-page">On this page</h2><ul class="astro-mjxwra5r" style="--depth: 0;"><li style="--depth: 0;" class="astro-mjxwra5r"><a href="#_top" style="--depth: 0;" class="astro-mjxwra5r"><span style="--depth: 0;" class="astro-mjxwra5r">Overview</span></a></li><li style="--depth: 0;" class="astro-mjxwra5r"><a href="#act-1-setup" style="--depth: 0;" class="astro-mjxwra5r"><span style="--depth: 0;" class="astro-mjxwra5r">Act 1: Setup</span></a><ul class="astro-mjxwra5r" style="--depth: 1;"><li style="--depth: 1;" class="astro-mjxwra5r"><a href="#the-problem" style="--depth: 1;" class="astro-mjxwra5r"><span style="--depth: 1;" class="astro-mjxwra5r">The problem</span></a></li><li style="--depth: 1;" class="astro-mjxwra5r"><a href="#why-now" style="--depth: 1;" class="astro-mjxwra5r"><span style="--depth: 1;" class="astro-mjxwra5r">Why now</span></a></li><li style="--depth: 1;" class="astro-mjxwra5r"><a href="#stakeholders" style="--depth: 1;" class="astro-mjxwra5r"><span style="--depth: 1;" class="astro-mjxwra5r">Stakeholders</span></a></li><li style="--depth: 1;" class="astro-mjxwra5r"><a href="#users-and-scale" style="--depth: 1;" class="astro-mjxwra5r"><span style="--depth: 1;" class="astro-mjxwra5r">Users and scale</span></a></li><li style="--depth: 1;" class="astro-mjxwra5r"><a href="#scope" style="--depth: 1;" class="astro-mjxwra5r"><span style="--depth: 1;" class="astro-mjxwra5r">Scope</span></a></li><li style="--depth: 1;" class="astro-mjxwra5r"><a href="#vocabulary" style="--depth: 1;" class="astro-mjxwra5r"><span style="--depth: 1;" class="astro-mjxwra5r">Vocabulary</span></a></li></ul></li><li style="--depth: 0;" class="astro-mjxwra5r"><a href="#act-2-confrontation" style="--depth: 0;" class="astro-mjxwra5r"><span style="--depth: 0;" class="astro-mjxwra5r">Act 2: Confrontation</span></a><ul class="astro-mjxwra5r" style="--depth: 1;"><li style="--depth: 1;" class="astro-mjxwra5r"><a href="#constraints" style="--depth: 1;" class="astro-mjxwra5r"><span style="--depth: 1;" class="astro-mjxwra5r">Constraints</span></a></li><li style="--depth: 1;" class="astro-mjxwra5r"><a href="#challenges" style="--depth: 1;" class="astro-mjxwra5r"><span style="--depth: 1;" class="astro-mjxwra5r">Challenges</span></a></li><li style="--depth: 1;" class="astro-mjxwra5r"><a href="#driving-characteristics" style="--depth: 1;" class="astro-mjxwra5r"><span style="--depth: 1;" class="astro-mjxwra5r">Driving characteristics</span></a></li><li style="--depth: 1;" class="astro-mjxwra5r"><a href="#alternatives" style="--depth: 1;" class="astro-mjxwra5r"><span style="--depth: 1;" class="astro-mjxwra5r">Alternatives</span></a></li></ul></li><li style="--depth: 0;" class="astro-mjxwra5r"><a href="#act-3-resolution" style="--depth: 0;" class="astro-mjxwra5r"><span style="--depth: 0;" class="astro-mjxwra5r">Act 3: Resolution</span></a><ul class="astro-mjxwra5r" style="--depth: 1;"><li style="--depth: 1;" class="astro-mjxwra5r"><a href="#the-architecture" style="--depth: 1;" class="astro-mjxwra5r"><span style="--depth: 1;" class="astro-mjxwra5r">The architecture</span></a></li><li style="--depth: 1;" class="astro-mjxwra5r"><a href="#decisions" style="--depth: 1;" class="astro-mjxwra5r"><span style="--depth: 1;" class="astro-mjxwra5r">Decisions</span></a></li><li style="--depth: 1;" class="astro-mjxwra5r"><a href="#how-the-driving-characteristics-are-met" style="--depth: 1;" class="astro-mjxwra5r"><span style="--depth: 1;" class="astro-mjxwra5r">How the driving characteristics are met</span></a></li><li style="--depth: 1;" class="astro-mjxwra5r"><a href="#risks" style="--depth: 1;" class="astro-mjxwra5r"><span style="--depth: 1;" class="astro-mjxwra5r">Risks</span></a></li><li style="--depth: 1;" class="astro-mjxwra5r"><a href="#open-questions" style="--depth: 1;" class="astro-mjxwra5r"><span style="--depth: 1;" class="astro-mjxwra5r">Open questions</span></a></li></ul></li><li style="--depth: 0;" class="astro-mjxwra5r"><a href="#assumptions" style="--depth: 0;" class="astro-mjxwra5r"><span style="--depth: 0;" class="astro-mjxwra5r">Assumptions</span></a></li><li style="--depth: 0;" class="astro-mjxwra5r"><a href="#appendix-expert-panel" style="--depth: 0;" class="astro-mjxwra5r"><span style="--depth: 0;" class="astro-mjxwra5r">Appendix: Expert panel</span></a></li></ul></nav></starlight-toc><script type="module" src="/calendar/pr-preview/pr-791/_astro/TableOfContents.astro_astro_type_script_index_0_lang.BpJaGz7G.js"></script></div></div></div></aside><div class="main-pane astro-odkak3o5"><main data-pagefind-body class="astro-bl77apqj" lang="en" dir="ltr"><div class="content-panel astro-mpjj2v7t"><div class="sl-container astro-mpjj2v7t"><h1 id="_top" class="astro-h2kbc6wx">Calendar architecture narrative</h1></div></div><div class="content-panel astro-mpjj2v7t"><div class="sl-container astro-mpjj2v7t"><div class="sl-markdown-content"><p><strong>System:</strong> Calendar · <strong>Audience:</strong> New contributors, human and agent, who need to know why the system looks the way it does before changing it · <strong>Date:</strong> 2026-11-13 · <strong>Status:</strong> draft · <a href="/calendar/pr-preview/pr-791/slides/calendar/">Slides</a></p>
+<!-- Generated from docs/narratives/calendar/ by the architecture-narrative-builder stitcher. Edit the parts and restitch; just check fails when this file differs from its parts. -->
+<p>Why Calendar is built the way it is: the problem it serves, the forces that shaped it, and the architecture and risks that follow. Read it before changing the system, whether you are a person or an agent.</p>
+<h2 id="act-1-setup">Act 1: Setup</h2>
+<h3 id="the-problem">The problem</h3>
+<p>Calendar has two problems to solve, and its owner treats them as one project.</p>
+<p>The first is a planning problem. One person needs a single place that shows what today and this week hold: the events with fixed times, and the tasks with their deadlines, including tasks that are already overdue. “Today” has to mean today in that person’s own time zone.</p>
+<p>The second is an engineering problem. AI agents can now write and change software, but there is no established practice that makes their output dependable: work that is decided before it is built, checked before it merges, and that improves when something goes wrong. Calendar is where that practice is developed and tested, on a real product with real constraints.</p>
+<p>When the two pull apart, the method wins. The product is the vehicle; a feature is worth building when it exercises the method, and time goes to the method when both cannot be done.</p>
+<p>The outcome the owner wants is a <strong>reusable method</strong>. Success is measured by four signs:</p>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<table><thead><tr><th>Sign</th><th>Measure</th></tr></thead><tbody><tr><td>A skill travels</td><td>A skill folder copied into another repository works without this repository’s tooling.</td></tr><tr><td>The method is adopted</td><td>Another repository adopts the agent guidance, skills and hooks.</td></tr><tr><td>Lessons stick</td><td>Repeated lessons, as counted in dream-weaver reports, fall month over month.</td></tr><tr><td>Agent work merges clean</td><td>The median agent pull request merges after at most 2 maintainer correction rounds.</td></tr></tbody></table>
+<h3 id="why-now">Why now</h3>
+<p>Agentic coding crossed a usefulness threshold in 2026, and the practices that make it dependable do not exist yet. The owner also needs hands-on depth in this way of working now, not later. If nothing is done, agent output stays something to inspect line by line rather than trust, and the gap between what the tools can do and what the owner can do with them widens.</p>
+<h3 id="stakeholders">Stakeholders</h3>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<table><thead><tr><th>Role</th><th>Needs</th><th>Decides</th></tr></thead><tbody><tr><td>Maintainer</td><td>A planner that works, and a method that makes agent work trustworthy</td><td>Scope, which ADRs are accepted, and every merge</td></tr><tr><td>Delivery agents (Claude Code, Codex)</td><td>Clear issues, story cards, ADRs and guidance to work from</td><td>Nothing on their own: they propose designs, implement and report on issues and pull requests for the maintainer to accept</td></tr><tr><td>Reviewer and skeptic agents</td><td>A branch or a finding to examine</td><td>Whether a finding stands: reviewers report findings, skeptics try to refute them before they reach the maintainer</td></tr><tr><td>Public readers</td><td>A method they can inspect and copy</td><td>Whether the method is worth adopting</td></tr></tbody></table>
+<h3 id="users-and-scale">Users and scale</h3>
+<p>The product has one user: the maintainer, signing in with an allow-listed Google account. A staging environment runs on Azure; production is not live yet. With one user, load is not what shapes the product. The method’s users are the agents and the maintainer, every working day.</p>
+<h3 id="scope">Scope</h3>
+<p><strong>In scope:</strong> the today and week views, events, tasks with a date or exact-time deadline, overdue triage, sign-in, and light and dark themes; and around the product, the documentation site, the delivery dashboard and the agent tooling (guidance, skills, hooks and workflows).</p>
+<p><strong>Out of scope:</strong> sharing calendars and inviting attendees, sync with other calendars such as Google or Outlook, and native mobile apps. <strong>Future, not yet planned:</strong> recurring events.</p>
+<h3 id="vocabulary">Vocabulary</h3>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<table><thead><tr><th>Term</th><th>Meaning</th></tr></thead><tbody><tr><td>Event</td><td>Something that happens at a set time: a start and an end, in a time zone.</td></tr><tr><td>Task</td><td>Something to do, optionally with a deadline; it is open until completed.</td></tr><tr><td>Deadline</td><td>When a task is due: either a date with no time, or an exact time.</td></tr><tr><td>Floating date</td><td>A calendar date with no time zone, such as a date-only deadline; it means the same day wherever the owner is.</td></tr><tr><td>Today</td><td>The owner’s current date in the owner’s time zone, as the client states it; the server never decides it.</td></tr><tr><td>Agenda</td><td>What a day or a week holds: its events and the tasks due in it.</td></tr><tr><td>Overdue</td><td>An open task whose deadline is before today.</td></tr><tr><td>Owner</td><td>The signed-in user whose events and tasks they are; every read and write is scoped to one owner.</td></tr><tr><td>Contract</td><td><code>contracts/openapi.json</code>, generated from the API: the only thing a user interface may depend on.</td></tr><tr><td>Generated client</td><td>The TypeScript client generated from the contract and shared by every user interface.</td></tr><tr><td>Read model</td><td>An endpoint shaped for one view (the day or week agenda), read from one consistent snapshot.</td></tr><tr><td>Issue</td><td>A GitHub issue: where work is requested, designed and discussed.</td></tr><tr><td>Story card</td><td>The lasting record of a feature in <code>docs/stories/</code>: scope, acceptance criteria, decisions and how it was built.</td></tr><tr><td>ADR</td><td>Any Decision Record in <code>docs/decisions/</code>: one significant decision, its options and its reasons.</td></tr><tr><td>Slice</td><td>One deliverable piece of a story, with its own issue and pull request.</td></tr><tr><td>Epic</td><td>An issue that groups the slices of a larger outcome.</td></tr><tr><td>PR 0</td><td>The first, docs-only pull request of a story: its card, and any ADRs.</td></tr><tr><td>Worker</td><td>An agent session delivering one or more slices.</td></tr><tr><td>Coordinator</td><td>The agent session that steers the workers of an epic.</td></tr><tr><td>Agent guidance</td><td>The layered instructions agents read: the root <code>AGENTS.md</code> and the area files under it.</td></tr><tr><td>Skill</td><td>A packaged procedure an agent loads for one kind of task, such as drafting an ADR.</td></tr><tr><td>Hook</td><td>A check that runs on an agent’s tool calls and enforces a rule from the guidance.</td></tr><tr><td>Workflow</td><td>A saved script that runs several agents in a fixed pattern, such as review before merge.</td></tr><tr><td>Skeptic</td><td>An agent that tries to refute one finding before it reaches the maintainer.</td></tr><tr><td>Sweep</td><td>A periodic check of records (ADRs, issues) for drift that validation cannot catch.</td></tr><tr><td>Dream-weaver</td><td>The skill that reads recent sessions and turns their lessons into lasting guidance.</td></tr><tr><td>Snapshot</td><td>A daily JSON record of delivery measures that the dashboard renders.</td></tr></tbody></table>
+<pre class="mermaid">flowchart LR
+  maintainer(["Maintainer"])
+  agents(["Delivery, reviewer and skeptic agents"])
+  readers(["Public readers"])
+  calendar["Calendar product"]
+  repo["Repository: code, guidance, records"]
+  google["Google sign-in"]
+  github["GitHub: issues, pull requests, CI"]
+  docs["Documentation site"]
+  maintainer -->|plans the day and week| calendar
+  calendar -->|verifies identity| google
+  maintainer -->|accepts and merges| github
+  agents -->|design, build, review| github
+  github -->|holds| repo
+  repo -->|publishes| docs
+  readers -->|read and copy the method| docs</pre>
+<h2 id="act-2-confrontation">Act 2: Confrontation</h2>
+<h3 id="constraints">Constraints</h3>
+<p><strong>Business.</strong> One maintainer is the whole human team, working in near full-time bursts with gaps between them; their attention is the scarcest resource, because every merge goes through them. Run cost is not tracked: the narrative assumes it stays within a personal budget and never forces a design choice (assumption A1). The project has no external deadline, contract or regulator; the deadline that matters is the field’s, since practices for agents are being invented now.</p>
+<p><strong>Technical.</strong> Two sets of rules bind every change:</p>
+<ul>
+<li><strong>Agent rules.</strong> Automation targets Claude Code first (<a href="/calendar/pr-preview/pr-791/adr/0044/">ADR-0044</a>); hooks enforce the guidance’s invariants (<a href="/calendar/pr-preview/pr-791/adr/0042/">ADR-0042</a>); agents decide nothing without the maintainer’s acceptance.</li>
+<li><strong>Contract rules.</strong> The API contract is generated from the backend and every user interface consumes it (<a href="/calendar/pr-preview/pr-791/adr/0004/">ADR-0004</a>); the client supplies today and its time zone (<a href="/calendar/pr-preview/pr-791/adr/0021/">ADR-0021</a>); every event and task query takes the owner.</li>
+</ul>
+<p>The hosting stack (GitHub, Azure, Google sign-in) and the toolchain pins are choices, not constraints: they have been changed before and can be again.</p>
+<h3 id="challenges">Challenges</h3>
+<ul>
+<li><strong>Agents forget between sessions.</strong> A lesson that is not written into guidance, a skill, a hook or a story card is lost when the session ends. This follows from Act 1’s measure that lessons must stop repeating.</li>
+<li><strong>One human reviewer.</strong> Many agents can work in parallel, but one maintainer reviews and merges, in bursts. Work that waits on review waits for the maintainer’s next burst.</li>
+<li><strong>Time is subtle.</strong> A date-only deadline has no time zone; an event has an exact time; today is the owner’s date in the owner’s zone, and daylight saving moves the day’s length. The same rules must hold in the Rust domain and in the SQL that reads the database.</li>
+<li><strong>Stacks change underneath.</strong> The backend moved from .NET to Rust and the repository tooling from .NET to Deno while features kept shipping. A change of stack is a normal event, not an exception.</li>
+</ul>
+<h3 id="driving-characteristics">Driving characteristics</h3>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<table><thead><tr><th>Characteristic</th><th>Business requirement</th><th>Target</th></tr></thead><tbody><tr><td>Verifiability</td><td>The median agent pull request merges after at most 2 maintainer correction rounds</td><td>At most 2 correction rounds at the median (the outcome); every fix carries a test proven to fail without it, and <code>just check</code> runs what CI runs (the mechanism)</td></tr><tr><td>Delivery speed</td><td>Agents wait on checks every round, so slow CI multiplies across sessions; the maintainer reviews in bursts, so a pull request must be checkable in one sitting</td><td>No CI job slower than its pinned baseline (<a href="/calendar/pr-preview/pr-791/adr/0045/">ADR-0045</a>); the full CI run under 15 minutes at p90</td></tr><tr><td>Correctness of time</td><td>Today has to mean today in the owner’s own time zone; time is the method’s showcase, the hardest correctness problem in the product</td><td>Zero day-boundary defects across daylight-saving and time-zone changes (the outcome); a fixed matrix of zones and transitions passing for the day and week agendas, in domain and SQL forms (the evidence)</td></tr><tr><td>Security and privacy</td><td>Every read and write belongs to one owner, in a public repository</td><td>No owner can read or change another owner’s data, tested per endpoint; no secret or private path reaches the public repository or a post, enforced by hooks</td></tr></tbody></table>
+<p>Correctness of time drives the design although the owner does not yet rely on Calendar every day: it is where the method has to prove it can get subtle rules provably right.</p>
+<p>The threats that matter for security and privacy are leaked secrets and private details, a compromised dependency or GitHub Action, and text in issues, pull requests or files that tries to steer an agent.</p>
+<p>Candidates considered and set aside: <strong>evolvability</strong>, because it follows from verifiability (the stack migrations were safe because of the tests and the contract); <strong>portability</strong>, because it is a property of the agent tooling rather than of the system’s architecture; <strong>cost</strong>, because with one user it never forced a design choice.</p>
+<h3 id="alternatives">Alternatives</h3>
+<p>Each decision below lists what was chosen first, then the alternatives weighed against the driving characteristics. The panel’s disagreements, and how they were settled, follow each table.</p>
+<h4 id="how-user-interfaces-learn-the-api">How user interfaces learn the API</h4>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<table><thead><tr><th>Alternative</th><th>Strengths</th><th>Weaknesses against the driving characteristics</th></tr></thead><tbody><tr><td><strong>OpenAPI generated from the code, typed client generated from it</strong> (chosen)</td><td>A stale contract fails CI, so client and server cannot drift unseen (verifiability)</td><td>A regeneration step in every API change (delivery speed, small)</td></tr><tr><td>Hand-written OpenAPI with generated server stubs</td><td>The contract is designed first</td><td>The document and the code can disagree until a stub is regenerated (verifiability)</td></tr><tr><td>Hand-written TypeScript types and fetch calls</td><td>Nothing to generate</td><td>Drift is found by users, not by CI (verifiability)</td></tr><tr><td>gRPC or GraphQL</td><td>Strong schemas</td><td>Tooling and runtime the rest of the stack does not need; a browser needs a gateway (delivery speed)</td></tr></tbody></table>
+<h4 id="who-decides-what-day-it-is">Who decides what day it is</h4>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<table><thead><tr><th>Alternative</th><th>Strengths</th><th>Weaknesses against the driving characteristics</th></tr></thead><tbody><tr><td><strong>The client sends its local date and IANA zone; the server computes the window</strong> (chosen)</td><td>Uses the zone of the device in hand; every request is a complete, testable description (correctness of time, verifiability)</td><td>Two clients in different zones can see different todays, by design</td></tr><tr><td>The client sends a UTC range</td><td>Simple for the server</td><td>Day rules live in every client, untested against the SQL forms (correctness of time)</td></tr><tr><td>A time zone stored per user</td><td>One place to change</td><td>Wrong while travelling; needs settings the single user does not want (correctness of time, end user)</td></tr><tr><td>A server-defined UTC day</td><td>Simplest</td><td>Wrong for every owner outside UTC (correctness of time)</td></tr></tbody></table>
+<h4 id="how-each-owners-data-stays-theirs">How each owner’s data stays theirs</h4>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<table><thead><tr><th>Alternative</th><th>Strengths</th><th>Weaknesses against the driving characteristics</th></tr></thead><tbody><tr><td><strong>An explicit owner parameter on every query, typed as <code>OwnerId</code>, plus a least-privilege database role</strong> (chosen)</td><td>A query without an owner does not compile; isolation is tested per endpoint (security, verifiability)</td><td>Isolation depends on each query’s filter, not on the database (security)</td></tr><tr><td>A framework-wide query filter</td><td>Isolation by default</td><td>Chosen under .NET (<a href="/calendar/pr-preview/pr-791/adr/0041/">ADR-0041</a>); there is no equivalent in Diesel, so the Rust port replaced it with the explicit parameter, which ADR-0041 had rejected. The record has not caught up yet</td></tr><tr><td>PostgreSQL row-level security</td><td>Defence in depth: the database refuses another owner’s rows</td><td>A session variable per transaction, harder tests and debugging (delivery speed, verifiability)</td></tr></tbody></table>
+<p>The Security expert asked for row-level security as defence in depth; the Delivery speed and Verifiability experts held that the <code>OwnerId</code> type and the per-endpoint ownership tests already make a missing filter hard to write. Not settled: row-level security is an open question.</p>
+<h4 id="which-backend-stack">Which backend stack</h4>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<table><thead><tr><th>Alternative</th><th>Strengths</th><th>Weaknesses against the driving characteristics</th></tr></thead><tbody><tr><td><strong>Rust on axum, replacing the .NET API in place</strong> (<a href="/calendar/pr-preview/pr-791/adr/0051/">ADR-0051</a>) (chosen)</td><td>Learning a new stack on real code is part of the method; strong types and Clippy catch errors before review (verifiability)</td><td>Longer builds and lint in CI (delivery speed)</td></tr><tr><td>Rust beside .NET, moved route by route</td><td>Lower risk per step</td><td>Two backends and two containers for the length of the move (delivery speed, verifiability)</td></tr><tr><td>Stay on .NET</td><td>No migration</td><td>The learning goal is not met (business)</td></tr></tbody></table>
+<p>The Delivery speed expert objected that Rust builds, Clippy and database tests lengthen CI against the 15-minute target. Settled: an accepted cost, held in check by the run-time gate and by running each job only for the paths it checks.</p>
+<h4 id="where-decisions-and-scope-are-recorded">Where decisions and scope are recorded</h4>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<table><thead><tr><th>Alternative</th><th>Strengths</th><th>Weaknesses against the driving characteristics</th></tr></thead><tbody><tr><td><strong>Story cards and ADRs in the repository, with a docs-only first pull request (PR 0) per story</strong> (chosen; <a href="/calendar/pr-preview/pr-791/adr/0000/">ADR-0000</a>, <a href="/calendar/pr-preview/pr-791/adr/0028/">ADR-0028</a>)</td><td>Agents read the same records they change; scope is reviewable before code (verifiability); the records outlive sessions (agents forget)</td><td>PR 0 adds a review round to every story (delivery speed)</td></tr><tr><td>Issues, commit messages and PR descriptions only</td><td>No extra files</td><td>Decisions scatter and agents cannot find them (verifiability)</td></tr><tr><td>An external wiki</td><td>Easy editing</td><td>Not reviewed with the code, not visible to agents in the repository (verifiability)</td></tr></tbody></table>
+<p>The Delivery speed expert objected to the extra round. Settled: PR 0 stays, and delivery pull requests stack on it at once, so nothing waits for acceptance.</p>
+<h4 id="how-agents-are-guided">How agents are guided</h4>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<table><thead><tr><th>Alternative</th><th>Strengths</th><th>Weaknesses against the driving characteristics</th></tr></thead><tbody><tr><td><strong>Layered guidance (a short root <code>AGENTS.md</code>, area files and skills) with hooks that enforce its invariants</strong> (<a href="/calendar/pr-preview/pr-791/adr/0042/">ADR-0042</a>) (chosen)</td><td>Each session loads only what it needs; hooks stop a destructive or leaking action before it happens (verifiability, security)</td><td>Hooks are tooling to maintain, and add a little latency to tool calls</td></tr><tr><td>One long prose file</td><td>Simple</td><td>Costly to load every session and nothing enforces it (verifiability)</td></tr><tr><td>Checks in lint and CI only</td><td>No agent-specific tooling</td><td>Catches a leak after it is pushed, not before (security)</td></tr></tbody></table>
+<h4 id="how-changes-are-reviewed-before-merge">How changes are reviewed before merge</h4>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<table><thead><tr><th>Alternative</th><th>Strengths</th><th>Weaknesses against the driving characteristics</th></tr></thead><tbody><tr><td><strong>Performance and security reviewers, then three skeptics per finding, as a workflow on code pull requests</strong> (chosen)</td><td>Findings reach the maintainer already tested for truth, reproduction and impact (verifiability)</td><td>Time and tokens on every code pull request (delivery speed)</td></tr><tr><td>A single reviewer with no skeptics</td><td>Cheaper</td><td>False positives spend the maintainer’s attention (business)</td></tr><tr><td>Human review only</td><td>No agent cost</td><td>The maintainer becomes the only check, and the bottleneck (delivery speed, verifiability)</td></tr><tr><td>Reviewers as a CI job on every push</td><td>Automatic</td><td>Runs on every push, not just before merge (delivery speed)</td></tr></tbody></table>
+<p>The Delivery speed expert objected to the cost; the Verifiability and Business experts held that it protects the correction-rounds target. Settled: worth it on code pull requests only; docs-only pull requests skip it.</p>
+<h4 id="how-delivery-is-measured">How delivery is measured</h4>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<table><thead><tr><th>Alternative</th><th>Strengths</th><th>Weaknesses against the driving characteristics</th></tr></thead><tbody><tr><td><strong>Path-filtered CI jobs, a run-time gate per job against a pinned baseline, and a dashboard built from daily snapshots</strong> (<a href="/calendar/pr-preview/pr-791/adr/0045/">ADR-0045</a>, <a href="/calendar/pr-preview/pr-791/adr/0046/">ADR-0046</a>, <a href="/calendar/pr-preview/pr-791/adr/0049/">ADR-0049</a>) (chosen)</td><td>A regression in CI time fails a check; skipped jobs cost nothing; the history is public and needs no service (delivery speed)</td><td>Statistics and rules to maintain; a gate can fail falsely</td></tr><tr><td>Run every job on every change</td><td>Simplest</td><td>Every change pays for every check (delivery speed)</td></tr><tr><td>A hosted analytics service</td><td>Rich dashboards</td><td>Another service and its data outside the repository (security, business)</td></tr><tr><td>No timing gate</td><td>No false failures</td><td>Slowdowns are noticed late, after they multiply (delivery speed)</td></tr></tbody></table>
+<h2 id="act-3-resolution">Act 3: Resolution</h2>
+<h3 id="the-architecture">The architecture</h3>
+<p>Calendar is two systems that shape each other: a small product, and the delivery method that builds it.</p>
+<p><strong>The product</strong> is one container on Azure Container Apps. A Rust API on axum serves the React single-page app and the <code>/api</code> endpoints from the same origin, so the browser holds one session cookie after Google sign-in. The API writes the OpenAPI contract when it is built; the TypeScript client every user interface uses is generated from that contract, so a change to the API that the client does not match fails CI. The web app sends the owner’s date and IANA time zone with every agenda request, and the API computes the day or week window from them; the same day rules exist in the Rust domain and in the SQL that reads PostgreSQL, and both are tested against a matrix of zones and daylight-saving transitions. Every event and task query takes an <code>OwnerId</code>, and the API connects as the least-privilege <code>calendar_app</code> role; only the separate migrator, as <code>calendar_migrator</code>, changes the schema. Secrets come from Key Vault through a managed identity. Staging runs today; production is not live.</p>
+<pre class="mermaid">flowchart TB
+  user(["Owner"])
+  subgraph product["Calendar product (one container on Azure Container Apps)"]
+    web["Web app: React SPA, today, week and task views"]
+    api["Calendar API: Rust, axum"]
+  end
+  client["Generated TypeScript client"]
+  contract["contracts/openapi.json"]
+  db[("PostgreSQL: events, tasks, sessions")]
+  migrator["Migrator: applies SQL migrations"]
+  google["Google sign-in"]
+  vault["Key Vault: secrets"]
+  user -->|"browser, session cookie"| web
+  web -->|"same-origin /api, sends today and time zone"| api
+  web -->|imports| client
+  client -->|generated from| contract
+  api -->|writes at build| contract
+  api -->|"every query takes the owner, as calendar_app"| db
+  migrator -->|"as calendar_migrator"| db
+  api -->|verifies identity| google
+  api -->|secrets via managed identity| vault</pre>
+<p><strong>The method</strong> turns an issue into merged, verified work without relying on what any agent remembers. An issue carries the request and the design; PR 0 records the story card and any ADRs; worker agents, each in its own worktree, deliver slices as stacked pull requests, guided by layered agent guidance and skills and held to its rules by hooks. CI runs only the jobs a change can affect and fails a job that is slower than its pinned baseline. Code pull requests pass review before merge, where reviewer agents report findings and skeptic agents try to refute each one. The maintainer accepts and merges. Dream-weaver reads what sessions learned and turns it into guidance, and the delivery dashboard publishes the measures from daily snapshots.</p>
+<pre class="mermaid">flowchart LR
+  issue["Issue: request and design"]
+  card["PR 0: story card and ADRs"]
+  worker["Worker agents, one worktree each"]
+  guidance["Agent guidance, skills and hooks"]
+  ci["CI: path-filtered jobs and run-time gates"]
+  review["Review before merge: reviewers and skeptics"]
+  maintainer(["Maintainer accepts and merges"])
+  lessons["Dream-weaver: lessons into guidance"]
+  dashboard["Delivery dashboard: daily snapshots"]
+  issue --> card --> worker
+  guidance -->|loaded and enforced| worker
+  worker -->|stacked pull requests| ci
+  ci --> review --> maintainer
+  maintainer -->|merged work and transcripts| lessons
+  lessons --> guidance
+  ci --> dashboard</pre>
+<h3 id="decisions">Decisions</h3>
+<h4 id="d1-the-api-contract-is-generated-and-every-user-interface-uses-the-generated-client">D1: The API contract is generated, and every user interface uses the generated client</h4>
+<ul>
+<li><strong>Context:</strong> agents change the API and the web app in separate sessions, and verifiability needs drift between them to fail a check rather than reach the owner.</li>
+<li><strong>Decision:</strong> the API writes <code>contracts/openapi.json</code> at build time; the TypeScript client is generated from it and shared by every user interface; a stale contract fails CI.</li>
+<li><strong>Consequences:</strong> client and server cannot disagree unseen; every API change carries a regeneration step, and generated files are never edited by hand.</li>
+<li><strong>Status:</strong> accepted, <a href="/calendar/pr-preview/pr-791/adr/0004/">ADR-0004</a>.</li>
+<li><strong>Rejected alternative:</strong> hand-written TypeScript types and fetch calls, because drift would be found by the user, not by CI.</li>
+</ul>
+<h4 id="d2-the-client-decides-what-day-it-is">D2: The client decides what day it is</h4>
+<ul>
+<li><strong>Context:</strong> today must mean today in the owner’s zone, and time is the method’s showcase.</li>
+<li><strong>Decision:</strong> the client sends its local date and IANA zone; the server computes the window and never decides the day itself.</li>
+<li><strong>Consequences:</strong> each request fully describes its day and can be tested as data; two devices in different zones see different todays, by design.</li>
+<li><strong>Status:</strong> accepted, <a href="/calendar/pr-preview/pr-791/adr/0021/">ADR-0021</a>.</li>
+<li><strong>Rejected alternative:</strong> a time zone stored per user, because it is wrong while travelling and needs settings the single user does not want.</li>
+</ul>
+<h4 id="d3-every-query-takes-the-owner">D3: Every query takes the owner</h4>
+<ul>
+<li><strong>Context:</strong> each owner’s data must stay theirs, in a public repository whose code anyone can read.</li>
+<li><strong>Decision:</strong> every event and task query takes an <code>OwnerId</code> parameter, so a query without an owner does not compile; the API connects as a role that cannot change the schema; ownership is tested per endpoint.</li>
+<li><strong>Consequences:</strong> isolation is visible in every signature and tested; it still depends on each query’s filter rather than on the database.</li>
+<li><strong>Status:</strong> accepted in practice. The record has drifted: <a href="/calendar/pr-preview/pr-791/adr/0041/">ADR-0041</a> still describes the framework-wide filter used under .NET and rejects the explicit parameter that the Rust port adopted. A superseding record is to be drafted.</li>
+<li><strong>Rejected alternative:</strong> PostgreSQL row-level security, for now, because of its per-transaction session variable and harder tests; whether to add it as defence in depth is an open question.</li>
+</ul>
+<h4 id="d4-the-backend-is-rust-replacing-net-in-place">D4: The backend is Rust, replacing .NET in place</h4>
+<ul>
+<li><strong>Context:</strong> learning a new stack on real code is part of the method, and stacks change underneath as a matter of course.</li>
+<li><strong>Decision:</strong> the API was rewritten on axum and Diesel behind the same contract, in one container, replacing .NET rather than running beside it.</li>
+<li><strong>Consequences:</strong> strong types and Clippy catch errors before review; builds and lint take longer, a cost accepted and held by the run-time gate and path filtering.</li>
+<li><strong>Status:</strong> accepted, <a href="/calendar/pr-preview/pr-791/adr/0051/">ADR-0051</a>.</li>
+<li><strong>Rejected alternative:</strong> moving route by route beside .NET, because two backends and two containers would run for the length of the move.</li>
+</ul>
+<h4 id="d5-story-cards-and-adrs-in-the-repository-are-the-source-of-truth">D5: Story cards and ADRs in the repository are the source of truth</h4>
+<ul>
+<li><strong>Context:</strong> agents forget between sessions, so every decision and scope must live where the next agent will read it.</li>
+<li><strong>Decision:</strong> issues drive the work; a docs-only PR 0 records each story card and its ADRs before code; delivery pull requests stack on PR 0 at once rather than waiting for it.</li>
+<li><strong>Consequences:</strong> scope is reviewable before code and outlives every session; PR 0 adds a review round, which stacking keeps off the critical path.</li>
+<li><strong>Status:</strong> accepted, <a href="/calendar/pr-preview/pr-791/adr/0000/">ADR-0000</a> and <a href="/calendar/pr-preview/pr-791/adr/0028/">ADR-0028</a>.</li>
+<li><strong>Rejected alternative:</strong> issues and pull request descriptions only, because decisions would scatter where agents cannot find them.</li>
+</ul>
+<h4 id="d6-agent-guidance-is-layered-and-its-invariants-are-enforced-by-hooks">D6: Agent guidance is layered and its invariants are enforced by hooks</h4>
+<ul>
+<li><strong>Context:</strong> every session pays to load guidance, and some mistakes (discarding work, leaking private details) must be stopped before they happen.</li>
+<li><strong>Decision:</strong> a short root <code>AGENTS.md</code>, area files and skills loaded when needed; hooks on agent tool calls deny the actions the guidance forbids.</li>
+<li><strong>Consequences:</strong> sessions load less and the worst mistakes are blocked; the hooks are tooling to maintain.</li>
+<li><strong>Status:</strong> accepted, <a href="/calendar/pr-preview/pr-791/adr/0042/">ADR-0042</a>.</li>
+<li><strong>Rejected alternative:</strong> checks in lint and CI only, because they catch a leak after it is pushed.</li>
+</ul>
+<h4 id="d7-code-pull-requests-are-reviewed-by-agents-and-each-finding-is-challenged-before-it-reaches-the-maintainer">D7: Code pull requests are reviewed by agents, and each finding is challenged before it reaches the maintainer</h4>
+<ul>
+<li><strong>Context:</strong> the maintainer is the only human reviewer, and their attention is the scarcest resource.</li>
+<li><strong>Decision:</strong> before merge, a workflow runs the performance and security reviewers, then three skeptics per finding; docs-only pull requests skip it.</li>
+<li><strong>Consequences:</strong> findings arrive already tested for truth, reproduction and impact; every code pull request spends time and tokens on it.</li>
+<li><strong>Status:</strong> accepted, <a href="/calendar/pr-preview/pr-791/stories/0035/">story 0035</a>.</li>
+<li><strong>Rejected alternative:</strong> a single reviewer with no skeptics, because its false positives would spend the maintainer’s attention.</li>
+</ul>
+<h4 id="d8-delivery-speed-is-measured-and-gated">D8: Delivery speed is measured and gated</h4>
+<ul>
+<li><strong>Context:</strong> agents wait on CI every round, so a slowdown multiplies across sessions before anyone notices it.</li>
+<li><strong>Decision:</strong> CI runs each job only for the paths it checks; each job’s run time is gated against a pinned baseline; a dashboard publishes the measures from daily snapshots on a data branch.</li>
+<li><strong>Consequences:</strong> a regression fails a check; the gate’s statistics and rules need maintenance and can fail falsely.</li>
+<li><strong>Status:</strong> accepted, <a href="/calendar/pr-preview/pr-791/adr/0045/">ADR-0045</a>, <a href="/calendar/pr-preview/pr-791/adr/0046/">ADR-0046</a> and <a href="/calendar/pr-preview/pr-791/adr/0049/">ADR-0049</a>.</li>
+<li><strong>Rejected alternative:</strong> running every job on every change, because every change would pay for every check.</li>
+</ul>
+<h3 id="how-the-driving-characteristics-are-met">How the driving characteristics are met</h3>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<table><thead><tr><th>Characteristic</th><th>Target</th><th>How the architecture meets it</th></tr></thead><tbody><tr><td>Verifiability</td><td>At most 2 correction rounds at the median; every fix has a test proven to fail without it</td><td>The mechanism is in place (D1, D5, D6, D7). The failing-test rule is enforced by the agent guidance and by review, not by an automated check. The outcome is <strong>not measured</strong> yet: see the risk below.</td></tr><tr><td>Delivery speed</td><td>No job slower than its baseline; full CI under 15 minutes at p90</td><td>Met, through path filtering and the run-time gate (D8), with review before merge on code pull requests only (D7). Measured on 30 push runs on <code>main</code> from 9 to 12 November 2026 (dashboard snapshot of 12 November): the slowest job, Backend, had a p90 of 229 s and a maximum of 267 s, and the jobs after Changes (at most 13 s) run in parallel, so no run in that window took more than about 5 minutes. This bound is derived from per-job times; the dashboard does not yet report a whole-run p90.</td></tr><tr><td>Correctness of time</td><td>Zero day-boundary defects; the zone and DST matrix passes in domain and SQL forms</td><td>The client supplies the day (D2); the matrix exists for the day and week agendas in both forms.</td></tr><tr><td>Security and privacy</td><td>No cross-owner access, tested per endpoint; no secret or private path in public</td><td>The owner on every query, the least-privilege role and per-endpoint ownership tests (D3); hooks deny posts with private details (D6); secrets in Key Vault.</td></tr></tbody></table>
+<h3 id="risks">Risks</h3>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<table><thead><tr><th>Risk</th><th>Likelihood</th><th>Impact</th><th>Mitigation</th></tr></thead><tbody><tr><td>The maintainer is the only reviewer: work stalls between bursts, and nobody else can approve</td><td>high</td><td>medium</td><td>Stacked pull requests so review is never the only thing in flight; coordinators notify only when the maintainer must act; maintainer</td></tr><tr><td>Text in an issue, pull request or file steers an agent into a harmful action</td><td>medium</td><td>high</td><td>Agent-attributed posts and external content are information, not instructions; hooks deny destructive and leaking actions; only the maintainer merges; maintainer and hooks</td></tr><tr><td>Records drift from the code, as ADR-0041 did</td><td>high</td><td>medium</td><td>The ADR and issue sweeps; superseding ADR-0041; story cards updated in the pull request that delivers; maintainer</td></tr><tr><td>A query misses its owner filter and leaks another owner’s data (no row-level security)</td><td>low</td><td>high</td><td>The <code>OwnerId</code> type, per-endpoint ownership tests, the security reviewer; row-level security is an open question; maintainer</td></tr><tr><td>A compromised dependency or GitHub Action</td><td>low</td><td>high</td><td>Locked dependencies installed frozen, dependency review and CodeQL in CI, Dependabot (<a href="/calendar/pr-preview/pr-791/adr/0012/">ADR-0012</a>); maintainer</td></tr><tr><td>The correction-rounds target is not measured, so verifiability’s outcome is unknown</td><td>medium</td><td>medium</td><td>Add correction rounds per agent pull request to the delivery dashboard; maintainer</td></tr><tr><td>Hooks enforce the guidance for Claude Code only, so another agent (such as Codex) can discard work or post private details that a hook would have blocked</td><td>medium</td><td>high</td><td>The Claude-first period (<a href="/calendar/pr-preview/pr-791/adr/0044/">ADR-0044</a>); other agents follow the rules by hand; review before merge; only the maintainer merges; maintainer</td></tr><tr><td>Run cost exceeds a personal budget (A1)</td><td>low</td><td>low</td><td>A budget alert on the Azure subscription; staging can be turned off; maintainer</td></tr><tr><td>Two success signs (another repository adopts the method; repeated lessons fall month over month) have no owner or date, so their progress is not reviewed</td><td>medium</td><td>low</td><td>Accepted by the maintainer: the signs are watched informally</td></tr></tbody></table>
+<h3 id="open-questions">Open questions</h3>
+<ul>
+<li>Should owner isolation add PostgreSQL row-level security as defence in depth? The maintainer decides; not scheduled.</li>
+<li>How should correction rounds per agent pull request be measured on the dashboard? The maintainer decides; not scheduled.</li>
+<li>A superseding record for ADR-0041, drafted with the <code>adr-draft</code> skill. The maintainer decides when.</li>
+</ul>
+<h2 id="assumptions">Assumptions</h2>
+<p>Each assumption was agreed with the narrator and appears in the risks of Act 3.</p>
+<ul>
+<li><strong>A1:</strong> Azure staging’s run cost stays within a personal budget and never forces an architecture choice. It is plausible because the product has one user and runs in one container with a small database; it would be shown false by a bill above the owner’s budget, or by a decision taken to save cost. Run cost is not tracked today.</li>
+</ul>
+<h2 id="appendix-expert-panel">Appendix: Expert panel</h2>
+<p>The narrative was challenged by a panel of six experts: one per driving characteristic (verifiability, delivery speed, correctness of time, and security and privacy), plus an end-user expert and a business expert. Rebuttals were limited to the pairs whose concerns meet: verifiability conflicts with delivery speed and with the end user; delivery speed conflicts with correctness of time and with security; security conflicts with the end user; the end user conflicts with the business; the remaining related pairs are in synergy.</p>
+<p>For this first narrative the expert agents could not run (they were not available to the session that built it), so the facilitator voiced each expert from its brief, and the narrator settled every disagreement. The independent panel dialogue is still to be verified on a later revision.</p>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<table><thead><tr><th>Expert</th><th>Verdict</th><th>Objections and their outcome</th></tr></thead><tbody><tr><td>Verifiability</td><td>object</td><td>The correction-rounds outcome is not measured: a risk, with a dashboard measure as mitigation. The failing-test rule is enforced by guidance and review, not automation: revised in Act 3.</td></tr><tr><td>Delivery speed</td><td>object</td><td>Rust builds lengthen CI: accepted, held by the run-time gate (Act 2). PR 0 adds a review round: kept, with delivery stacked on it (Act 2). Review before merge costs time: kept for code pull requests only (Act 2). “Met” needed evidence: revised with measured job times (Act 3).</td></tr><tr><td>Correctness of time</td><td>sign-off</td><td>The day rules are supplied by the client and tested in domain and SQL forms against a zone and daylight-saving matrix.</td></tr><tr><td>Security and privacy</td><td>object</td><td>Owner isolation without row-level security: an open question and a risk. Hooks protect Claude Code sessions only: a risk.</td></tr><tr><td>End user</td><td>sign-off</td><td>The single user does not yet rely on Calendar daily, so failures cost little today; correctness of time protects the experience that matters.</td></tr><tr><td>Business</td><td>object</td><td>Two success signs have no owner or date: an accepted risk. Run cost is untracked: assumption A1 and a risk.</td></tr></tbody></table></div><footer class="sl-flex astro-cuju2svu"><div class="meta sl-flex astro-cuju2svu"><a href="https://github.com/mgasca/calendar/tree/main/docs/narratives/calendar" class="sl-flex print:hidden astro-4yqe7b2r"><svg aria-hidden="true" class="astro-4yqe7b2r astro-a5vyvfug" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1.2em;"><path d="M22 7.24a1 1 0 0 0-.29-.71l-4.24-4.24a1 1 0 0 0-1.1-.22 1 1 0 0 0-.32.22l-2.83 2.83L2.29 16.05a1 1 0 0 0-.29.71V21a1 1 0 0 0 1 1h4.24a1 1 0 0 0 .76-.29l10.87-10.93L21.71 8c.1-.1.17-.2.22-.33a1 1 0 0 0 0-.24v-.14l.07-.05ZM6.83 20H4v-2.83l9.93-9.93 2.83 2.83L6.83 20ZM18.17 8.66l-2.83-2.83 1.42-1.41 2.82 2.82-1.41 1.42Z"/></svg>Edit page</a></div><div class="pagination-links print:hidden astro-csvsifkx" dir="ltr"><a href="/calendar/pr-preview/pr-791/narratives/" rel="prev" class="astro-csvsifkx"><svg aria-hidden="true" class="astro-csvsifkx astro-a5vyvfug" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1.5rem;"><path d="M17 11H9.41l3.3-3.29a1.004 1.004 0 1 0-1.42-1.42l-5 5a1 1 0 0 0-.21.33 1 1 0 0 0 0 .76 1 1 0 0 0 .21.33l5 5a1.002 1.002 0 0 0 1.639-.325 1 1 0 0 0-.219-1.095L9.41 13H17a1 1 0 0 0 0-2Z"/></svg><span class="astro-csvsifkx">Previous<br class="astro-csvsifkx"><span class="link-title astro-csvsifkx">All narratives</span></span></a><a href="/calendar/pr-preview/pr-791/dashboard/" rel="next" class="astro-csvsifkx"><svg aria-hidden="true" class="astro-csvsifkx astro-a5vyvfug" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1.5rem;"><path d="M17.92 11.62a1.001 1.001 0 0 0-.21-.33l-5-5a1.003 1.003 0 1 0-1.42 1.42l3.3 3.29H7a1 1 0 0 0 0 2h7.59l-3.3 3.29a1.002 1.002 0 0 0 .325 1.639 1 1 0 0 0 1.095-.219l5-5a1 1 0 0 0 .21-.33 1 1 0 0 0 0-.76Z"/></svg><span class="astro-csvsifkx">Next<br class="astro-csvsifkx"><span class="link-title astro-csvsifkx">Overview</span></span></a></div></footer></div></div></main></div></div></div></div></body></html>

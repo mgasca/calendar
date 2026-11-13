@@ -217,9 +217,10 @@ pub fn meter_provider(exporter: impl PushMetricExporter, resource: Resource) -> 
     .build()
 }
 
-/// The stdout layer's filter: events at INFO and above, never spans, as before telemetry existed.
+/// The stdout layer's filter: events at INFO and above, never spans, as before telemetry existed. The per-request
+/// log goes to OTLP only: on standard output it would add a line per request that nothing reads.
 fn stdout_filter() -> FilterFn<impl Fn(&Metadata<'_>) -> bool> {
-  filter_fn(|metadata| metadata.is_event() && *metadata.level() <= Level::INFO)
+  filter_fn(|metadata| metadata.is_event() && *metadata.level() <= Level::INFO && metadata.target() != http::REQUEST_LOG_TARGET)
 }
 
 /// Targets whose events are not exported as logs: the exporters' own stack, which would otherwise log about
@@ -333,6 +334,58 @@ fn build(config: TelemetryConfig) -> Result<Telemetry, TelemetryError> {
 #[cfg(test)]
 mod tests {
   use super::*;
+
+  #[test]
+  fn the_request_log_is_exported_but_not_printed() {
+    use std::io::Write;
+    use std::sync::{Arc, Mutex};
+
+    #[derive(Clone, Default)]
+    struct Buffer(Arc<Mutex<Vec<u8>>>);
+    impl Write for Buffer {
+      fn write(&mut self, bytes: &[u8]) -> std::io::Result<usize> {
+        self.0.lock().unwrap().extend_from_slice(bytes);
+        Ok(bytes.len())
+      }
+      fn flush(&mut self) -> std::io::Result<()> {
+        Ok(())
+      }
+    }
+    let buffer = Buffer::default();
+    let writer = buffer.clone();
+    let stdout = tracing_subscriber::fmt::layer()
+      .with_writer(move || writer.clone())
+      .with_ansi(false)
+      .with_filter(stdout_filter());
+    tracing::subscriber::with_default(Registry::default().with(stdout), || {
+      tracing::info!(target: http::REQUEST_LOG_TARGET, "request finished");
+      tracing::info!("Now listening on: http://127.0.0.1:5041");
+    });
+    let printed = String::from_utf8(buffer.0.lock().unwrap().clone()).unwrap();
+    assert!(printed.contains("Now listening on"), "{printed}");
+    assert!(!printed.contains("request finished"), "{printed}");
+
+    let request_log = tracing::Metadata::new(
+      "request finished",
+      http::REQUEST_LOG_TARGET,
+      Level::INFO,
+      None,
+      None,
+      None,
+      tracing::field::FieldSet::new(&[], tracing::callsite::Identifier(&CALLSITE)),
+      tracing::metadata::Kind::EVENT,
+    );
+    assert!(is_exported_event(&request_log), "the request log still goes to OTLP");
+  }
+
+  struct Callsite;
+  static CALLSITE: Callsite = Callsite;
+  impl tracing::callsite::Callsite for Callsite {
+    fn set_interest(&self, _: tracing::subscriber::Interest) {}
+    fn metadata(&self) -> &tracing::Metadata<'_> {
+      unreachable!("only the identifier is used")
+    }
+  }
 
   fn config(vars: &[(&str, &str)]) -> Result<TelemetryConfig, TelemetryError> {
     let vars: Vec<(String, String)> = vars.iter().map(|(name, value)| ((*name).to_owned(), (*value).to_owned())).collect();

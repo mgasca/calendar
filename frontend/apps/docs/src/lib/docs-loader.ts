@@ -4,7 +4,6 @@ import { relative, resolve } from 'node:path';
 import type { Loader } from 'astro/loaders';
 import type { Adr, Story } from './adr';
 import {
-  deployment,
   narrativeFileName,
   narrativeStatusCategory,
   parseNarratives,
@@ -34,8 +33,6 @@ import {
 } from './architecture';
 
 const repositoryRoot = new URL('../../../../../', import.meta.url);
-/** The site base, for links to pages the site does not render itself (the narratives' decks). */
-const { base } = deployment(process.env.DOCS_SITE_URL);
 export const decisionsDirectory = new URL('docs/decisions/', repositoryRoot);
 export const storiesDirectory = new URL('docs/stories/', repositoryRoot);
 export const runbooksDirectory = new URL('docs/runbooks/', repositoryRoot);
@@ -247,13 +244,25 @@ function routesOf({
   for (const record of agentThought.records) {
     routes.set(`docs/agent-thoughts/${record.file}`, `agent-thoughts/${record.number}/`);
   }
-  for (const record of narrative.records) {
-    routes.set(`docs/narratives/${record.file}`, `narratives/${record.slug}/`);
-  }
+  for (const [path, route] of narrativeRoutes(narrative.records)) routes.set(path, route);
   for (const page of architecturePages(architecture, { stories: story.records })) {
     routes.set(pagePath(page.id), pageRoute(page.id));
   }
   return routes;
+}
+
+/**
+ * The routes of the narratives and of their decks. A narrative links its deck by the deck's source,
+ * `<system>/slides.md`, which is a part and never a page: the link goes to the deck the build
+ * publishes at `slides/<system>/` (ADR-0060), with the site base like every other route.
+ */
+export function narrativeRoutes(
+  records: { file: string; slug: string; slides?: string | undefined }[],
+) {
+  return records.flatMap(({ file, slug, slides }) => [
+    [`docs/narratives/${file}`, `narratives/${slug}/`] as const,
+    ...(slides ? [[`docs/narratives/${slug}/slides.md`, slides] as const] : []),
+  ]);
 }
 
 /** Links an ADR from a story; parseStories has already rejected numbers without a record. */
@@ -436,7 +445,8 @@ export function docsLoader(): Loader {
                 `**Audience:** ${record.audience}`,
                 `**Date:** ${record.date}`,
                 `**Status:** ${record.status}`,
-                record.slides ? `[Slides](${base}${record.slides})` : '',
+                // The deck's source, which the route map sends to the published deck.
+                record.slides ? `[Slides](${record.slug}/slides.md)` : '',
               ]
                 .filter(Boolean)
                 .join(' · '),

@@ -595,6 +595,20 @@ describe('narrative links', () => {
       rewrite('../narratives/calendar/slides.md', 'docs/decisions/0001-test.md'),
     ).toThrow('Broken document link');
   });
+  it('sends the link to a linked deck source to the published deck, and fails an unlinked one', async () => {
+    const { narrativeRoutes } = await import('./docs-loader');
+    const routes = new Map([
+      ...links,
+      ...narrativeRoutes([
+        { file: 'calendar-narrative.md', slug: 'calendar', slides: 'slides/calendar/' },
+        { file: 'kata-narrative.md', slug: 'kata' },
+      ]),
+    ]);
+    const from = 'docs/narratives/calendar-narrative.md';
+    expect(rewriteLink('calendar/slides.md', base, routes, from)).toBe(`${base}slides/calendar/`);
+    expect(rewriteLink('kata-narrative.md', base, routes, from)).toBe(`${base}narratives/kata/`);
+    expect(() => rewriteLink('kata/slides.md', base, routes, from)).toThrow('Broken document link');
+  });
   it('sends a diagram source to GitHub like other repository files', () => {
     expect(rewrite('calendar/context.mmd', 'docs/narratives/calendar-narrative.md')).toBe(
       'https://github.com/mgasca/calendar/blob/main/docs/narratives/calendar/context.mmd',

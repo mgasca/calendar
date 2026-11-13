@@ -7,13 +7,13 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
  *
  * The daily workflow commits one JSON snapshot per day to the `dashboard-data` branch; the docs
  * build copies that branch's `snapshots/` folder into `.dashboard-data/` (git-ignored) and the pages
- * below are rendered from it at build time, with no client-side call to GitHub. The .NET tool
+ * below are rendered from it at build time, with no client-side call to GitHub. The Deno tool
  * `tools/delivery-dashboard` owns the schema and the privacy rules and checks every snapshot before
  * it is published; this module checks the shape again before rendering, because the branch is
  * outside the pull request flow, and escapes everything it prints.
  */
 
-/** The snapshot schema versions this reader accepts (tools/delivery-dashboard/Snapshot.cs). */
+/** The snapshot schema versions this reader accepts (tools/delivery-dashboard/snapshot.ts). */
 export const oldestVersion = 1;
 export const currentVersion = 3;
 
@@ -117,7 +117,7 @@ export interface FlowStat {
   maxSeconds: number;
 }
 
-/** The flow section (tools/delivery-dashboard/FlowSection.cs): public counts and times, no titles or people. */
+/** The flow section (tools/delivery-dashboard/flow.ts): public counts and times, no titles or people. */
 export interface FlowSection {
   basis: 'measured' | 'inferred';
   minSample: number;
@@ -213,7 +213,7 @@ export class SnapshotError extends Error {
 
 const rootKeys = ['version', 'date', 'generatedAt', 'repository', 'ci'];
 // Sections added after version 1: absent from older files, validated when present.
-// Sections whose pages are delivered by their own slices are accepted as objects here (the .NET rules check them, and
+// Sections whose pages are delivered by their own slices are accepted as objects here (the tool's rules check them, and
 // the privacy scan above covers every string); the page for each replaces this with a full check.
 const optionalRootKeys = ['flow', 'quality', 'agents', 'superseded'];
 const ciKeysV1 = ['workflow', 'basis', 'runs', 'window', 'jobs'];
@@ -228,7 +228,7 @@ const jobKeysV1 = [
 ];
 const verdicts = ['noShift', 'slower', 'faster', 'inconclusive'];
 
-// The privacy rules of tools/delivery-dashboard/SnapshotRules.cs: defence in depth, since the
+// The privacy rules of tools/delivery-dashboard/snapshot-rules.ts: defence in depth, since the
 // branch is written by a workflow, not reviewed in a pull request.
 const privateText: [RegExp, string][] = [
   [
@@ -425,7 +425,7 @@ function checkRoot(check: Checker, root: Record<string, Json>, v2: boolean) {
 
 const flowStatKeys = ['count', 'medianSeconds', 'p90Seconds', 'maxSeconds'];
 
-/** A distribution is present exactly when the sample reaches the minimum, as in the .NET rules. */
+/** A distribution is present exactly when the sample reaches the minimum, as in the tool's rules. */
 function checkFlowStat(
   check: Checker,
   stat: Json,
@@ -602,7 +602,7 @@ const qualityRunKeys = [
 const qualityScopes = ['main', 'pullRequest'];
 const maxRunIds = 50;
 
-/** The quality section's shape; the .NET rules (QualityRules.cs) check the same fields. */
+/** The quality section's shape; the tool's rules (quality-rules.ts) check the same fields. */
 function checkQuality(check: Checker, quality: Json) {
   const path = '$.quality';
   if (!check.keys(quality, path, ['workflow', 'basis', 'sample', 'rule', 'guard', 'scopes']))
@@ -736,7 +736,7 @@ function agentNumbers(check: Checker, value: Json, path: string, keys: string[])
   return numbers;
 }
 
-/** The agents section's shape and sums; the .NET rules (AgentRules.cs) check the same. */
+/** The agents section's shape and sums; the tool's rules (agents.ts) check the same. */
 function checkAgents(check: Checker, agents: Json) {
   const path = '$.agents';
   if (!check.keys(agents, path, ['basis', 'sample', 'activity', 'counts', 'issues'])) return;
@@ -1559,7 +1559,7 @@ const supersededWeekKeys = [
   'controlWaitMedianSeconds',
 ];
 
-/** A number of seconds that is set exactly when `required`, as in the .NET rules (SupersededRules.cs). */
+/** A number of seconds that is set exactly when `required`, as in the tool's rules (superseded.ts). */
 function optionalSeconds(
   check: Checker,
   value: Json,
@@ -1575,7 +1575,7 @@ function optionalSeconds(
   return check.seconds(value, path);
 }
 
-/** The superseded section's shape and sums; the .NET rules check the same. */
+/** The superseded section's shape and sums; the tool's rules (superseded.ts) check the same. */
 function checkSuperseded(check: Checker, section: Json) {
   const path = '$.superseded';
   if (section === null || !check.keys(section, path, ['basis', 'sample', 'weeks'])) return;

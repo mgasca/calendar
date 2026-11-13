@@ -167,12 +167,17 @@ jobs:
           names=$(cargo metadata --no-deps --locked --format-version 1 \
             | jq -r '.packages[] | .name, (.name, .targets[].name | gsub("-"; "_"))' | sort -u)
           find target -name '*.profraw' -delete
+          # Cargo's 16-digit hash follows the name, so a test file named like a dependency (tests/time.rs) cannot also
+          # match that dependency's `time-core-...` entries.
+          hash='[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]'
           find target -mindepth 1 -maxdepth 3 -type d -name .fingerprint | while read -r fingerprint; do
             profile=$(dirname "$fingerprint")
             find "$profile" -maxdepth 1 -type f -delete
             rm -rf "$profile/incremental" "$profile/examples"
             for name in $names; do
-              rm -rf "$profile/.fingerprint/$name-"* "$profile/build/$name-"* "$profile/deps/$name-"* "$profile/deps/lib$name-"*
+              # shellcheck disable=SC2086 # $hash is a glob on purpose
+              rm -rf "$profile/.fingerprint/$name-"$hash "$profile/build/$name-"$hash "$profile/deps/$name-"$hash* \
+                "$profile/deps/lib$name-"$hash*
             done
           done
           du -sh target

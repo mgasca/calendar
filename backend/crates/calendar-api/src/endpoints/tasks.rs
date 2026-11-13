@@ -7,7 +7,7 @@ use axum::extract::State;
 use axum::http::StatusCode;
 use axum::response::{IntoResponse, Response};
 use calendar_domain::error::InvalidOperationError;
-use calendar_domain::tasks::TodoTask;
+use calendar_domain::tasks::{Deadline, TodoTask};
 use calendar_domain::time::DayWindow;
 use calendar_infrastructure::queries::task_list::{DatedView, TaskListView};
 use calendar_infrastructure::tasks::{self, OverdueAction, TaskWrite};
@@ -428,9 +428,9 @@ impl BulkChange {
   fn for_filter(self) -> OverdueAction {
     match self {
       Self::Complete(now) => OverdueAction::Complete(now),
-      Self::SetDueDate(date) => OverdueAction::SetDeadline(TodoTask::for_due_date(date)),
-      Self::SetDueInstant(instant) => OverdueAction::SetDeadline(TodoTask::for_due_instant(instant)),
-      Self::ClearDeadline => OverdueAction::SetDeadline(TodoTask::without_deadline()),
+      Self::SetDueDate(date) => OverdueAction::SetDeadline(Deadline::On(date)),
+      Self::SetDueInstant(instant) => OverdueAction::SetDeadline(Deadline::At(instant)),
+      Self::ClearDeadline => OverdueAction::SetDeadline(Deadline::None),
       Self::Delete => OverdueAction::Delete,
     }
   }

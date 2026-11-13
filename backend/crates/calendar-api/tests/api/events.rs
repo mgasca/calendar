@@ -1,9 +1,7 @@
 //! Ports `Endpoints/EventEndpointsTests.cs` of `Calendar.Api.Tests`: one test per fact, and one per theory
 //! that runs every row of the theory on an app (and database) of its own.
 
-mod common;
-
-use common::*;
+use crate::common::*;
 
 const EVENTS: &str = "/api/events";
 

@@ -161,7 +161,23 @@
   ],
   [
     ".github/workflows/pages.yml",
-    "docs"
+    "docs tooling"
+  ],
+  [
+    ".github/workflows/infra-whatif.yml",
+    "tooling"
+  ],
+  [
+    ".github/workflows/migrate.yml",
+    "tooling"
+  ],
+  [
+    ".github/actions/install-azure-cli/action.yml",
+    "tooling"
+  ],
+  [
+    ".github/workflowsx/x.yml",
+    ""
   ],
   [
     ".github/ci-gate.jq",

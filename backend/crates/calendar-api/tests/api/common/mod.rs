@@ -2,8 +2,7 @@
 //! `TestHostDefaults` and `PostgresFixture` of `Calendar.Api.Tests`).
 //!
 //! ```ignore
-//! mod common;
-//! use common::*;
+//! use crate::common::*;
 //!
 //! #[tokio::test]
 //! async fn a_task_can_be_created() {
@@ -30,8 +29,8 @@
 //! - **Database.** [`TestApp::database`] is the `calendar_testing::TestDatabase`: connect as
 //!   `calendar_migrator` to arrange or inspect rows. [`TestApp::seed`] inserts domain entities directly.
 //!
-//! Each file in `tests/` is its own test binary with its own container; start with `mod common;`.
-#![allow(dead_code, unused_imports, reason = "each test binary uses a different part of the harness")]
+//! The API tests are one binary (`tests/api/main.rs`) with one container; each test module starts with
+//! `use crate::common::*;`.
 
 use std::path::Path;
 use std::sync::{Arc, Mutex};
@@ -156,6 +155,7 @@ pub struct TestAppBuilder {
   clock: Arc<TestClock>,
   authenticator: Option<Arc<dyn Authenticator>>,
   google_endpoints: GoogleEndpoints,
+  meter: opentelemetry::metrics::Meter,
 }
 
 enum DatabaseChoice {
@@ -172,7 +172,15 @@ impl TestAppBuilder {
       clock: Arc::new(TestClock::new(start_time())),
       authenticator: Some(Arc::new(FakeAuthenticator)),
       google_endpoints: GoogleEndpoints::default(),
+      meter: opentelemetry::global::meter("calendar-api-tests"),
     }
+  }
+
+  /// Records the HTTP server metrics with `meter` (the telemetry tests' in-memory one).
+  #[must_use]
+  pub fn meter(mut self, meter: opentelemetry::metrics::Meter) -> Self {
+    self.meter = meter;
+    self
   }
 
   /// Sets a setting by the name the host reads, e.g. `Auth__DevSeedKey` or `Auth__AllowedEmails__0`. A later
@@ -252,6 +260,7 @@ impl TestAppBuilder {
       clock: self.clock.clone(),
       google_endpoints: self.google_endpoints.clone(),
       authenticator: self.authenticator.clone(),
+      meter: self.meter.clone(),
     })
     .expect("the test settings are valid");
     TestApp {
@@ -272,6 +281,7 @@ impl TestAppBuilder {
       clock: self.clock,
       google_endpoints: self.google_endpoints,
       authenticator: self.authenticator,
+      meter: self.meter,
     }) {
       Ok(_) => panic!("the app started"),
       Err(error) => error.to_string(),
@@ -323,6 +333,7 @@ impl TestApp {
       clock: self.clock.clone(),
       authenticator: self.authenticator.clone(),
       google_endpoints: self.google_endpoints.clone(),
+      meter: opentelemetry::global::meter("calendar-api-tests"),
     }
   }
 
@@ -337,6 +348,7 @@ impl TestApp {
   }
 
   /// The router, for a request the client helpers cannot express.
+  #[expect(dead_code, reason = "kept for a request the client helpers cannot express; no test needs it yet")]
   pub fn router(&self) -> Router {
     self.router.clone()
   }

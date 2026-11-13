@@ -4,6 +4,8 @@ date: 2026-11-13
 issue: https://github.com/mgasca/calendar/issues/728
 pr:
   - https://github.com/mgasca/calendar/pull/740
+  - https://github.com/mgasca/calendar/pull/767
+  - https://github.com/mgasca/calendar/pull/769
 adrs: ["0008", "0021", "0027", "0030", "0039", "0058", "0061", "0062", "0063", "0064"]
 ---
 
@@ -126,9 +128,9 @@ Dependencies: #729 first; then #730, #731 and #732 in parallel; #733 when all th
 | Area | Location |
 | --- | --- |
 | E2E suite, fixtures, telemetry helpers, binding check | `frontend/apps/e2e` |
-| E2E stack and recipes | `compose.yaml` profiles and an E2E Compose project, recipes in a `just` module (#730) |
+| E2E stack and recipes | `compose.yaml` profiles `observability` (`lgtm`) and `sign-in-stub` (`oidc-stub`); `e2e.just` (`just e2e up`, `check`, `env`, `ls`, `down`); `just db observability` and `just db sign-in-stub`; [runbook](../runbooks/local-stack-and-e2e.md) (#730) |
 | API telemetry | `backend/crates/calendar-api` (startup in `src/main.rs`, request and database spans) |
-| Stub issuer settings and guard | `backend/crates/calendar-api/src/config.rs`, `src/auth/google.rs` |
+| Stub issuer settings and guard | `backend/crates/calendar-api/src/config.rs` (`GoogleOverrides`, the two refusals), `src/auth/google.rs`, `src/state.rs`; tests in `config.rs`, `google.rs` and `tests/google_overrides_startup.rs` (#730) |
 | Web telemetry | `frontend/apps/web` |
 | Nightly workflow | `.github/workflows/` (#737) |
 | Azure route | `infra/modules/app.bicep`: the Container Apps managed OpenTelemetry agent on the environment sends traces and logs to Application Insights; the app sets `OTEL_SERVICE_NAME=calendar-api` and `OTEL_METRICS_EXPORTER=none` (#738). Where to look: [the Azure infrastructure runbook](../runbooks/azure-infrastructure.md#monitoring-where-to-look) |
@@ -138,12 +140,28 @@ Dependencies: #729 first; then #730, #731 and #732 in parallel; #733 when all th
 
 No endpoint changes expected. New settings: the OpenTelemetry `OTEL_*` variables, and the Development-only Google endpoint and issuer overrides of ADR-0064.
 
+API telemetry (#731) lives in `calendar-api/src/telemetry/`:
+
+- **Switch:** telemetry is on only when `OTEL_EXPORTER_OTLP_ENDPOINT` or a per-signal endpoint is set. `OTEL_EXPORTER_OTLP_PROTOCOL` chooses `grpc` or `http/protobuf`, which is the default. `OTEL_SDK_DISABLED=true` and `OTEL_<SIGNAL>_EXPORTER=none` turn signals off. With no endpoint, no exporter is built, and request spans are disabled at their callsites. Standard output keeps its plain-text format, which shows events only.
+- **Server spans:** a `Router::layer` middleware makes one server span per routed request, named `<METHOD> <route template>`. It is the child of the W3C `traceparent` the request carries. The layer also records the `http.server.request.duration` histogram by method, route template and status. Its count is the request count.
+- **Database spans:** a Diesel `Instrumentation` is set on each pooled connection in `AppState::db()`. It makes one client span per query, named `<operation> <table>`. The span holds `db.query.text` cut before Diesel's `-- binds:`, so bind values are never formatted.
+- **Logs:** an in-repo bridge layer (`logs.rs`) exports INFO and above with the trace and span ids of the entered span. It copies only allow-listed fields. `opentelemetry-appender-tracing` was not used because it copies every field, and an SDK log record cannot drop an attribute afterwards.
+- **Allow-list:** the allow-list is in `allow_list.rs`. A span processor drops every other attribute and all span events before export.
+
 ### Testing
 
 - Browser: the Playwright flow tests, nightly and on demand.
 - Binding: the browser-free check on every pull request.
-- API: `cargo test` for the exporter wiring, `traceparent` extraction, redaction and the stub guard.
+- API: `cargo test` for the exporter wiring, `traceparent` extraction, redaction and the stub guard. `crates/calendar-api/tests/api/telemetry.rs` runs the production pipeline with in-memory exporters and scans every exported span, log and metric for seeded personal data. The unit tests in `src/telemetry*` cover the `OTEL_*` configuration, the statement shape and the allow-list.
 - Web: Vitest for the attribute filter and the no-exporter default.
+
+### Delivered in #730
+
+- **Settings:** `Auth__Google__AuthorizationEndpoint`, `Auth__Google__TokenEndpoint`, `Auth__Google__UserInfoEndpoint`, `Auth__Google__Issuer`; each replaces only its own value. Refused at startup outside `Development` (`GoogleOverrideOutsideDevelopment`) or when not an `http(s)` URL on `localhost`, `127.0.0.1` or `[::1]` (`GoogleOverrideNotLoopback`); the binary test runs `calendar-api` with each override to prove both.
+- **Ports:** a run takes a 55xxx slot k ∈ {2, 3, 5, 6, 7, 8, 9}: 55k00 + 17 OTLP gRPC, 18 OTLP HTTP, 20 Tempo, 30 Grafana, 31 Loki, 32 PostgreSQL, 41 API, 73 web, 80 stub, 90 Prometheus, away from the agent stack's 55041, 55173 and 55432.
+- **Stack settings for the next slices:** the API gets `OTEL_EXPORTER_OTLP_ENDPOINT` (OTLP HTTP), `OTEL_EXPORTER_OTLP_PROTOCOL=http/protobuf`, `OTEL_SERVICE_NAME=calendar-api` and `OTEL_METRIC_EXPORT_INTERVAL=5000` (#731; with #731 merged, a run's API traces, logs with trace ids and `http_server_request_duration_seconds` series reached Tempo, Loki and Prometheus, the metric 4 s after the request); the web app is built with `VITE_OTEL_TRACES_EXPORTER=otlp` and served with `CALENDAR_OTLP_URL` (#732); `just e2e env` gives the harness every URL, the seed key and the allow-listed email (#733).
+- **Measured (WSL2 laptop, Docker Desktop 29.9.2, images present):** the stub was ready 3.9 s after `docker run` and used 173 MiB; containers healthy in 33 to 48 s; `just e2e up` ready in 49 s with cached builds, 111 s with the first build. ADR-0064 had left the stub's start-up unmeasured.
+- **Image pin:** `grafana/otel-lgtm:0.41.0` failed to pull three times with the same layer digest mismatch, so `0.40.0` is pinned; Dependabot can propose the next tag.
 
 ### Lessons learned, known issues and follow-ups
 

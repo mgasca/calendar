@@ -3,7 +3,7 @@ import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { http, HttpResponse } from 'msw';
 
-import { renderApp } from '../../test/render.tsx';
+import { frameFirst, renderApp } from '../../test/render.tsx';
 import { server } from '../../test/server.ts';
 
 type StoredTask = Schemas['TaskResponse'];
@@ -113,6 +113,35 @@ describe('editing a task from the day view', () => {
     await waitFor(() => {
       expect(screen.getByRole('heading', { level: 1 })).toHaveFocus();
     });
+  });
+
+  // #698: the save resolves once the refetched day is in the query cache, but React renders it
+  // later. A frame that came first found the old row, focused its title, and lost focus to
+  // <body> when the row went. `frameFirst` makes that order certain.
+  it('focuses the heading even when the next frame comes before the day renders without the task', async () => {
+    frameFirst();
+    serveTasks([milk]);
+    renderApp(`/day/${DAY}`, { timeZone: 'UTC', locale: 'en-GB' });
+    const user = userEvent.setup();
+
+    await user.click(await screen.findByRole('button', { name: 'Buy milk' }));
+    await screen.findByLabelText('Due date');
+    const dialog = screen.getByRole('dialog', { name: 'Edit task' });
+    await user.clear(within(dialog).getByLabelText('Due date'));
+    await user.type(within(dialog).getByLabelText('Due date'), '2099-10-30');
+    await user.click(within(dialog).getByRole('button', { name: 'Save task' }));
+
+    await screen.findByText('Task saved.');
+    await waitFor(() => {
+      expect(screen.queryByRole('button', { name: 'Buy milk' })).not.toBeInTheDocument();
+    });
+    // Shorter than the test timeout, so a regression reports where focus went.
+    await waitFor(
+      () => {
+        expect(screen.getByRole('heading', { level: 1 })).toHaveFocus();
+      },
+      { timeout: 2000 },
+    );
   });
 
   it('shows a new title and priority in the row and returns focus to the title', async () => {

@@ -1,8 +1,6 @@
 //! Ports `HealthEndpointsTests`.
 
-mod common;
-
-use common::*;
+use crate::common::*;
 
 #[tokio::test]
 async fn get_health_returns_ok() {

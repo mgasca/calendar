@@ -1,5 +1,5 @@
 ---
-subject: "Docs site test:coverage: the docs-loader tests share one sync of the real corpus instead of two, with a guard on the file's corpus reads (issue #752)"
+subject: "Docs site test:coverage: the docs-loader tests share one sync of the real corpus instead of two, with a guard on the corpus reads of the test file (issue #752)"
 harness: "frontend/apps/docs/src/lib/docs-loader.test.ts"
 ---
 

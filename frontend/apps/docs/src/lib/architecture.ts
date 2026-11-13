@@ -1358,7 +1358,11 @@ export function architectureSidebar(flows: { id: string }[]) {
     { slug: 'architecture/containers' },
     { slug: 'architecture/components' },
     { slug: 'architecture/controls' },
-    { label: 'Flows', items: flows.map((flow) => ({ slug: `architecture/flows/${flow.id}` })) },
+    {
+      label: 'Flows',
+      collapsed: true,
+      items: flows.map((flow) => ({ slug: `architecture/flows/${flow.id}` })),
+    },
   ];
 }
 

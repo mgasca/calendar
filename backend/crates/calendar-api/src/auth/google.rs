@@ -190,7 +190,7 @@ pub async fn callback(
   match complete(&state, &origin, &query, &headers).await {
     Ok((principal, return_url)) => match state.sealer().await {
       Ok(sealer) => {
-        let ticket = SessionTicket::issue(&principal, state.now()).seal(&sealer);
+        let ticket = SessionTicket::issue(principal, state.now()).seal(&sealer);
         let session = session::set_cookie(session::SESSION_COOKIE, &ticket, secure, None);
         redirect(&return_url, [clear_flow, session])
       }

@@ -123,7 +123,7 @@ pub async fn authenticate(state: &AppState, parts: &Parts) -> Result<Principal, 
     let sealer = state.sealer().await.map_err(AuthRejection::Failed)?;
     if let Some(ticket) = session::SessionTicket::open(&sealer, cookie, state.now()) {
       // A session without a user id is not a session: it ends here, and the person signs in again (ADR-0041).
-      return ticket.principal().ok_or(AuthRejection::Unauthorized {
+      return ticket.into_principal().ok_or(AuthRejection::Unauthorized {
         clear_session: true,
         secure,
       });

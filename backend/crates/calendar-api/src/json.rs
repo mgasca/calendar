@@ -75,9 +75,10 @@ pub fn object<'a>(value: &'a Value, path: &str, type_name: &str) -> JsonResult<&
   value.as_object().ok_or_else(|| JsonError::conversion(path, type_name))
 }
 
-/// The declared property `key` names, ignoring case, or `None` for an unknown property.
-pub fn property(names: &[&'static str], key: &str) -> Option<&'static str> {
-  names.iter().copied().find(|name| ordinal_ignore_case_eq(name, key))
+/// The declared property `key` names, ignoring case, as its declared name and its tag, or `None` for an unknown
+/// property. The reader matches on the tag, so a declared name without its own arm does not compile.
+pub fn property<'a, P: Copy + 'a>(names: impl IntoIterator<Item = &'a (&'static str, P)>, key: &str) -> Option<(&'static str, P)> {
+  names.into_iter().copied().find(|(name, _)| ordinal_ignore_case_eq(name, key))
 }
 
 /// The path of property `name` of the object at `path`.
@@ -321,8 +322,9 @@ mod tests {
 
   #[test]
   fn property_names_match_ignoring_case() {
-    assert_eq!(property(&["title", "dueDate"], "DUEDATE"), Some("dueDate"));
-    assert_eq!(property(&["title", "dueDate"], "due_date"), None);
+    let names = [("title", 1), ("dueDate", 2)];
+    assert_eq!(property(&names, "DUEDATE"), Some(("dueDate", 2)));
+    assert_eq!(property(&names, "due_date"), None);
   }
 
   #[test]

@@ -12,16 +12,16 @@ Write a **proposed** ADR that a reviewer can approve with confidence. The rating
 - **ADR** (Any Decision Record): a short Markdown file in `docs/decisions` that records one significant decision, the options considered and the reasons for the choice. The "A" means *any*: product, process and tooling decisions qualify, not only architecture.
 - **MADR**: the Markdown ADR format this repo uses. Step 6 lists its sections.
 - **Decision driver**: a criterion that you judge the options against. Drivers are numbered `D1`, `D2`, and so on.
-- **Validator**: the script `check-adr.cs` (see "Bundled tooling"). It checks the ADR format. It does not judge whether the ratings are fair.
+- **Validator**: the script `check-adr.ts` (see "Bundled tooling"). It checks the ADR format. It does not judge whether the ratings are fair.
 - **Superseded**: an old ADR that a newer ADR replaces.
 - **Revisit trigger**: an event that should reopen a deferred decision.
 - **Review PR**: the GitHub pull request that holds the draft until the user approves it.
-- **File-based app**: a single `.cs` file that `dotnet run` compiles and runs without a project file.
+- **Deno script**: a TypeScript entry point run with the skill's own `deno.json` and frozen `deno.lock`.
 
 ## Before you start
 
 - A clone of the repo with a clean working tree, so you can create a branch in step 9.
-- .NET SDK 10.0.300 or later (see "Bundled tooling"), `just`, `git`, and `gh` (the GitHub CLI) signed in to the repo's GitHub account.
+- Deno matching the host repository's `.deno-version` (see "Bundled tooling"), `just`, `git`, and `gh` (the GitHub CLI) signed in to the repo's GitHub account.
 - A clear request from the user: which decision to record, or which ADR to split, revise or supersede.
 - Run all commands from the repo root.
 
@@ -42,9 +42,9 @@ The repo holds the sources of truth. Read them at the start of every run. They w
 - Read the code and configuration that the decision touches, so the context and implementation notes are accurate.
 - Get the next number with one of these commands:
   - `just tools adr --next-number`
-  - `dotnet run .claude/skills/adr-draft/scripts/check-adr/check-adr.cs -- --next-number`
+  - `deno task --config .claude/skills/adr-draft/deno.json check-adr --next-number`
 
-  Success: the command prints the next free number, for example `0042`. If it fails with `Unrecognized directive 'include'`, `dotnet --version` is below 10.0.300. The first run compiles the script and takes about 30 s.
+  Success: the command prints the next free number, for example `0042`. The first run downloads pinned dependencies; later runs use Deno's cache. Check `deno --version` against the host repository's runtime pin if it fails.
 
 ### 2. Scope: one decision per ADR
 
@@ -68,7 +68,7 @@ Do not state versions, support windows, licences or limits from memory. Check th
 
 | Fact | How |
 | --- | --- |
-| NuGet version | `dotnet package search <id> --exact-match --format json` |
+| JSR version | Read the package's registry metadata at `https://jsr.io/@<scope>/<name>/meta.json` |
 | Crate version | `cargo search <crate> --limit 1`, or `cargo info <crate>` (run inside `backend/`) |
 | npm version and peer deps | `npm view <pkg> version peerDependencies` |
 | GitHub Action tags | `git ls-remote --tags --refs https://github.com/<owner>/<repo>.git` |
@@ -141,7 +141,7 @@ There is no index row to add: the docs site derives the decision log from the fi
 ### 8. Validate
 
 ```sh
-dotnet run .claude/skills/adr-draft/scripts/check-adr/check-adr.cs -- --fix-links
+deno task --config .claude/skills/adr-draft/deno.json check-adr --fix-links
 ```
 
 `--fix-links` rewrites bare `ADR-NNNN` mentions into links in the ADR files, so check `git diff` afterwards.
@@ -208,18 +208,17 @@ For user-requested issue-driven handovers, the `issue-handover` skill (`.claude/
 
 ## Bundled tooling
 
-The validator is a .NET 10 file-based app. The skill folder holds everything it needs ([ADR-0017](../../../docs/decisions/0017-dotnet-file-based-apps-for-repo-tooling.md)):
+The validator is TypeScript on Deno. The skill folder holds everything it needs ([ADR-0058](../../../docs/decisions/0058-typescript-on-deno-for-repository-tooling.md)):
 
 ```text
-Directory.Build.props, .editorconfig, NuGet.config   # analyzers, warnings as errors, style, package sources
-scripts/check-adr/check-adr.cs                        # CLI entry point (#! line, so ./check-adr.cs also works)
-scripts/check-adr/AdrValidator.cs                     # per-record and numbering rules; pure logic, unit-tested
-scripts/check-adr/AdrSweepRules.cs                    # adr-sweep checks (M2, M3, M6, M7, J6) and --inventory
-tests/check-adr.tests.cs                              # xUnit v3 tests; #:include the validator logic
-tests/SweepRuleTests.cs                               # tests of the sweep checks, included by check-adr.tests.cs
-tests/fixtures/valid/                                 # minimal valid ADR set that the tests mutate
+deno.json, deno.lock                   # strict types, lint/format/test settings, pinned dependencies
+scripts/check-adr/check-adr.ts         # CLI entry point
+scripts/check-adr/adr-validator.ts     # record/numbering/sweep rules and inventory
+tests/check-adr_test.ts                # original rule cases and inventory checks
+tests/cli_test.ts                      # copied skill and CLI behavior
+tests/fixtures/valid/                  # minimal valid ADR set that the tests mutate
 ```
 
-- **Requirement:** .NET SDK 10.0.300 or later, the first band with `#:include` ([Microsoft Learn](https://learn.microsoft.com/dotnet/core/sdk/file-based-apps)). Older .NET 10 SDKs fail with `Unrecognized directive 'include'` before validating anything. A host repo whose `global.json` pins an older SDK can't run the validator. The first run on a machine compiles for about 30 s. After that, runs take under a second.
-- **Changing a rule:** edit `AdrValidator.cs`, add or adjust an `[InlineData]` case in the tests, then run `just tools test` (tests and whitespace check) and `just tools adr`. Success: both commands finish without errors.
-- **Package versions** in `Directory.Build.props` and the `#:package` directives are pinned exactly. Dependabot (the tool that opens dependency-update PRs) cannot see them (verified, ADR-0017). In this repo, `just tools versions` fails when two tools pin one package at different versions, and `just tools versions --fix` updates the older pins. In other repos, change them by hand.
+- **Requirement:** use the host repository's exact Deno runtime pin (this repository uses `.deno-version`). Copy this whole skill folder, including its config and lockfile, to share it. It imports no repository tooling. From outside a repository, pass `--dir PATH`; `--model` and `--stories` override the optional sibling defaults.
+- **Changing a rule:** edit `adr-validator.ts`, add or adjust a case in the tests, then run `just tools test` and `just tools adr`. In a copied skill, use `deno fmt --check`, `deno lint`, `deno check scripts/check-adr/*.ts tests/*_test.ts`, and `deno task test` from its folder.
+- **Package versions** in `deno.json` are exact and `deno.lock` is committed and frozen. In this repo, `just tools versions` detects different pins for the same JSR/npm package across independent configurations (including executable task dependencies); `--fix` updates older pins and refreshes affected lockfiles. Review and commit both config and lock changes. In other repositories, update pins explicitly with `deno install --frozen=false` and rerun the checks.

@@ -1,0 +1,162 @@
+[
+  [
+    "docs/stories/0038-x.md",
+    "docs adr"
+  ],
+  [
+    "docs/architecture/calendar.architecture.json",
+    "docs adr"
+  ],
+  [
+    "docs/decisions/0001-x.md",
+    "docs tooling"
+  ],
+  [
+    "docs/decisions/0046-x.md",
+    "docs tooling"
+  ],
+  [
+    "docs/storiesx/0038-x.md",
+    "docs"
+  ],
+  [
+    "docs/architecture/README.md",
+    "docs"
+  ],
+  [
+    "frontend/apps/docs/src/lib/adr.ts",
+    "docs"
+  ],
+  [
+    "backend/crates/calendar-api/src/app.rs",
+    "backend image"
+  ],
+  [
+    "backend/crates/calendar-infrastructure/migrations/2026-11-11-000000_session_keys/up.sql",
+    "backend image"
+  ],
+  [
+    "backend/Cargo.lock",
+    "backend image"
+  ],
+  [
+    "backend/crates/calendar-api/Cargo.toml",
+    "backend image"
+  ],
+  [
+    "backend/rust-toolchain.toml",
+    "backend tooling image"
+  ],
+  [
+    "backend/mod.just",
+    "backend tooling image"
+  ],
+  [
+    "contracts/openapi.json",
+    "backend frontend image"
+  ],
+  [
+    "frontend/apps/web/src/main.tsx",
+    "frontend image"
+  ],
+  [
+    "frontend/packages/api-client/src/index.ts",
+    "frontend image"
+  ],
+  [
+    "frontend/packages/theme/src/tokens.css",
+    "docs frontend image"
+  ],
+  [
+    "frontend/packages/theme/package.json",
+    "docs frontend image"
+  ],
+  [
+    "frontend/packages/theme-extra/src/tokens.css",
+    "frontend image"
+  ],
+  [
+    "frontend/packages/theme.css",
+    "frontend image"
+  ],
+  [
+    "frontend/apps/web/src/styles/tokens.css",
+    "frontend image"
+  ],
+  [
+    "frontend/pnpm-lock.yaml",
+    "docs frontend image"
+  ],
+  [
+    "frontend/mod.just",
+    "docs frontend tooling image"
+  ],
+  [
+    "frontend/AGENTS.md",
+    ""
+  ],
+  [
+    "tools/ci-timings/CiTimings.cs",
+    "tooling"
+  ],
+  [
+    ".claude/skills/adr-draft/SKILL.md",
+    "tooling"
+  ],
+  [
+    "infra/main.bicep",
+    "tooling"
+  ],
+  [
+    "docker/postgres/init/01-roles.sh",
+    "tooling image"
+  ],
+  [
+    "justfile",
+    "tooling"
+  ],
+  [
+    "db.just",
+    "tooling"
+  ],
+  [
+    ".just-version",
+    "tooling"
+  ],
+  [
+    "Dockerfile",
+    "image"
+  ],
+  [
+    "image.just",
+    "tooling image"
+  ],
+  [
+    "README.md",
+    ""
+  ],
+  [
+    ".github/dependabot.yml",
+    ""
+  ],
+  [
+    ".github/workflows/pages.yml",
+    "docs"
+  ],
+  [
+    ".github/ci-gate.jq",
+    "tooling"
+  ],
+  [
+    ".github/ci-baseline.json",
+    "tooling"
+  ],
+  [
+    ".github/workflows/ci-trend.yml",
+    "tooling"
+  ],
+  [
+    ".github/pull_request_template.md",
+    "tooling"
+  ]
+]

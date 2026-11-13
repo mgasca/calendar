@@ -229,11 +229,6 @@ impl TodoTask {
     self.completed_at.get_or_insert(now);
   }
 
-  /// Normalizes completion timestamps the same way for entity and set-based updates (to UTC).
-  pub fn normalize_completion_time<Tz: chrono::TimeZone>(completed_at: &DateTime<Tz>) -> DateTime<Utc> {
-    completed_at.with_timezone(&Utc)
-  }
-
   /// Marks the task open again. Idempotent.
   pub fn reopen(&mut self) {
     self.completed_at = None;
@@ -251,11 +246,6 @@ impl TodoTask {
     self.require_open()?;
     (self.due_date, self.due_at) = Self::for_due_instant(due_at);
     Ok(())
-  }
-
-  /// Normalizes deadline instants the same way for entity and set-based updates (to UTC).
-  pub fn normalize_due_at<Tz: chrono::TimeZone>(due_at: &DateTime<Tz>) -> DateTime<Utc> {
-    due_at.with_timezone(&Utc)
   }
 
   /// Returns the mutually exclusive deadline columns for a floating date.

@@ -427,7 +427,7 @@ impl BulkChange {
   /// The set-based form, for a filter target.
   fn for_filter(self) -> OverdueAction {
     match self {
-      Self::Complete(now) => OverdueAction::Complete(TodoTask::normalize_completion_time(&now)),
+      Self::Complete(now) => OverdueAction::Complete(now),
       Self::SetDueDate(date) => OverdueAction::SetDeadline(TodoTask::for_due_date(date)),
       Self::SetDueInstant(instant) => OverdueAction::SetDeadline(TodoTask::for_due_instant(instant)),
       Self::ClearDeadline => OverdueAction::SetDeadline(TodoTask::without_deadline()),

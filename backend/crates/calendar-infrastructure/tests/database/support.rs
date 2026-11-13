@@ -1,4 +1,7 @@
+use std::time::Duration;
+
 use calendar_testing::TestDatabase;
+use tokio::task::JoinHandle;
 use tokio_postgres::Client;
 use tokio_postgres::error::SqlState;
 use tokio_postgres::types::FromSql;
@@ -27,6 +30,33 @@ pub async fn failure(client: &Client, sql: &str) -> (SqlState, Option<String>) {
 /// The first column of the one row `sql` returns, decoded as `T`.
 pub async fn scalar<T: for<'a> FromSql<'a>>(client: &Client, sql: &str) -> T {
   client.query_one(sql, &[]).await.unwrap().get(0)
+}
+
+/// Waits until a session of this database is blocked on a lock, which the race tests take to mean that `task` is
+/// waiting for the competing transaction. Fails instead of waiting forever when `task` finishes first or nothing
+/// blocks within the bound.
+pub async fn wait_until_blocked<T>(admin: &Client, task: &JoinHandle<T>) {
+  const BOUND: Duration = Duration::from_secs(30);
+  let blocked = async {
+    loop {
+      let waiting: i64 = scalar(
+        admin,
+        "SELECT count(*) FROM pg_stat_activity WHERE datname = current_database() AND wait_event_type = 'Lock'",
+      )
+      .await;
+      if waiting > 0 {
+        return;
+      }
+      assert!(
+        !task.is_finished(),
+        "the task finished without waiting for the competing transaction"
+      );
+      tokio::time::sleep(Duration::from_millis(20)).await;
+    }
+  };
+  tokio::time::timeout(BOUND, blocked)
+    .await
+    .unwrap_or_else(|_| panic!("nothing blocked on a lock within {BOUND:?}"));
 }
 
 pub async fn strings(client: &Client, sql: &str) -> Vec<String> {
@@ -90,4 +120,17 @@ pub fn assert_same_schema(actual: &str, expected: &str, context: &str) {
     only_in(actual, expected).join("\n"),
     only_in(expected, actual).join("\n")
   );
+}
+
+#[tokio::test]
+#[should_panic(expected = "the task finished without waiting for the competing transaction")]
+async fn waiting_for_a_lock_fails_when_the_task_finishes_without_blocking() {
+  let database = TestDatabase::migrated().await;
+  let admin = database.admin_client().await;
+  let task = tokio::spawn(async {});
+  while !task.is_finished() {
+    tokio::task::yield_now().await;
+  }
+
+  wait_until_blocked(&admin, &task).await;
 }

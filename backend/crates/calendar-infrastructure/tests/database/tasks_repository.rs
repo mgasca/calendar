@@ -1,8 +1,6 @@
 //! The task repository against a real database: round trips, optimistic concurrency by `xmin`, the bulk
 //! save by ids and the guarded set-based change of the open overdue tasks.
 
-use std::time::Duration;
-
 use calendar_domain::tasks::{Priority, TodoTask};
 use calendar_domain::time::{DayWindow, IanaZone};
 use calendar_infrastructure::tasks::{OverdueAction, TaskWrite};
@@ -10,7 +8,7 @@ use calendar_infrastructure::{Error, RowVersion, tasks};
 use uuid::Uuid;
 
 use crate::repositories::{OWNER, SqlLog, USER_B, date, fixture, seed, sorted, task, task_of, utc};
-use crate::support::{scalar, strings};
+use crate::support::{scalar, strings, wait_until_blocked};
 
 fn today() -> DayWindow {
   DayWindow::create(date(2026, 10, 26), IanaZone::UTC)
@@ -496,20 +494,7 @@ async fn the_filtered_change_reports_a_serialization_failure_as_a_conflict() {
     (conn, result)
   });
   // Wait until the bulk change is blocked on that row, then let the other request win.
-  loop {
-    let waiting: i64 = admin
-      .query_one(
-        "SELECT count(*) FROM pg_stat_activity WHERE datname = current_database() AND wait_event_type = 'Lock'",
-        &[],
-      )
-      .await
-      .unwrap()
-      .get(0);
-    if waiting > 0 {
-      break;
-    }
-    tokio::time::sleep(Duration::from_millis(20)).await;
-  }
+  wait_until_blocked(&admin, &bulk).await;
   racing.commit().await.unwrap();
   let (mut conn, result) = bulk.await.unwrap();
 

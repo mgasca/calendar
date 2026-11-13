@@ -1,0 +1,78 @@
+name: CI
+on:
+  pull_request:
+concurrency:
+  group: >-
+    ${{ github.workflow }}-${{ github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository
+    && github.run_id || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+jobs:
+  changes:
+    name: Changes
+    outputs:
+      backend: ${{ steps.decide.outputs.backend }}
+      frontend: ${{ steps.decide.outputs.frontend }}
+      docs: ${{ steps.decide.outputs.docs }}
+      tooling: ${{ steps.decide.outputs.tooling }}
+      skipped: ${{ steps.decide.outputs.skipped }}
+    steps:
+      - id: decide
+        run: result=$(jq -c -f .github/ci-changes.jq <<< "$input")
+  backend:
+    name: Backend
+    needs: changes
+    if: needs.changes.outputs.backend == 'true'
+    steps:
+      - uses: actions/checkout@v7
+      - run: cargo build --workspace --all-targets --locked
+      - run: cargo fmt --all --check
+  frontend:
+    name: Frontend
+    needs: changes
+    if: needs.changes.outputs.frontend == 'true'
+    steps:
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm -r --filter '!@calendar/docs' typecheck
+      - run: pnpm -r --filter '!@calendar/docs' test:coverage
+      - name: Build the web app
+        run: pnpm --filter @calendar/web exec vite build
+  docs:
+    name: Docs site
+    needs: changes
+    if: needs.changes.outputs.docs == 'true'
+    steps:
+      - run: pnpm --filter @calendar/docs build
+      - run: pnpm --filter @calendar/docs typecheck --noSync
+  tooling:
+    name: Tooling
+    needs: changes
+    if: needs.changes.outputs.tooling == 'true'
+    steps:
+      - uses: actions/setup-dotnet@v6
+        with:
+          dotnet-version: 10.0.x
+          cache: true
+          cache-dependency-path: |
+            tools/**/packages.lock.json
+      - name: Test and lint tooling
+        run: just tools test
+  supersede:
+    name: Cancel superseded runs
+    if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository
+    permissions:
+      actions: write
+    steps:
+      - run: |
+          for id in $ids; do
+            gh run cancel "$id"
+          done
+  result:
+    name: CI result
+    if: ${{ always() }}
+    needs: [changes, backend, frontend, docs, tooling]
+    steps:
+      - run: |
+          jq -e '. as $needs | all(to_entries[]; .value.result == "success"
+            or (.value.result == "skipped" and $needs.changes.outputs[.key] == "false"))' <<< "$NEEDS"
+          gh api "repos/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID/jobs" --jq '.jobs[] | select(.conclusion != "success")
+            | select(.conclusion != "skipped" or (.name | IN($skipped[]) | not))'

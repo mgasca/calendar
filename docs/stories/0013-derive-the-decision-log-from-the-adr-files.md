@@ -46,7 +46,7 @@ The table had stopped carrying information of its own. The documentation site li
 4. **Given** an ADR whose title or status changes without its architecture model entry, **when** the docs build runs, **then** it fails.
    Already enforced by [`architecture.test.ts`](../../frontend/apps/docs/src/lib/architecture.test.ts) (`rejects …` for ADR file, title and status drift) and `corpus.test.ts` on the real model; unchanged by this story.
 5. **Given** `just tools adr`, **when** it runs with no table in `README.md`, **then** it passes, and it still rejects a numbering gap, a stray file and every structural fault.
-   [`check-adr.tests.cs`](../../.claude/skills/adr-draft/tests/check-adr.tests.cs) (`ReadmeWithoutAnIndexTable_IsNotAnAdrAndNotStray`, `NumberingGapAndStrayFiles_AreReported`, `BrokenRule_IsReported`). The validator could not run on the implementing agent's machine (its SDK rejects `#:include`); the CI `Tooling` job is the check.
+   [`check-adr.tests.cs`](../../.claude/skills/adr-draft/tests/check-adr_test.ts) (`ReadmeWithoutAnIndexTable_IsNotAnAdrAndNotStray`, `NumberingGapAndStrayFiles_AreReported`, `BrokenRule_IsReported`). The validator could not run on the implementing agent's machine (its SDK rejects `#:include`); the CI `Tooling` job is the check.
 6. **Given** the change is complete, **when** `just check` runs, **then** it passes.
    CI runs every part of `just check` on the PR. Locally the agent ran the frontend gates (`format:check`, `lint`, `typecheck`, `test`) and `just docs build`; see the implementation notes for what did not run.
 
@@ -91,7 +91,7 @@ No changes.
 
 * [`adr.test.ts`](../../frontend/apps/docs/src/lib/adr.test.ts): the log from the files alone, ordering by number, the normalized `superseded by` status, and eight rejected inputs.
 * [`corpus.test.ts`](../../frontend/apps/docs/src/lib/corpus.test.ts) and [`build.test.ts`](../../frontend/apps/docs/tests/build.test.ts) run against the real `docs/decisions` and the built site, unchanged.
-* [`check-adr.tests.cs`](../../.claude/skills/adr-draft/tests/check-adr.tests.cs): the two index tests were removed and one test added for a `README.md` without a table.
+* [`check-adr.tests.cs`](../../.claude/skills/adr-draft/tests/check-adr_test.ts): the two index tests were removed and one test added for a `README.md` without a table.
 
 ### Lessons learned, known issues and follow-ups
 

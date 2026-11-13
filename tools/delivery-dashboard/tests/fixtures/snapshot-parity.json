@@ -1,0 +1,197 @@
+{
+  "version": 3,
+  "date": "2026-11-09",
+  "generatedAt": "2026-11-09T12:00:00Z",
+  "repository": "mgasca/calendar",
+  "ci": {
+    "workflow": "ci.yml",
+    "basis": "measured",
+    "runs": 2,
+    "window": {
+      "from": "2026-11-09T07:00:00Z",
+      "to": "2026-11-09T11:00:00Z"
+    },
+    "trend": null,
+    "queue": {
+      "runs": 2,
+      "medianSeconds": 1.3,
+      "p90Seconds": 2.8,
+      "maxSeconds": 2.8
+    },
+    "jobs": [
+      {
+        "job": "Backend",
+        "path": "check",
+        "count": 2,
+        "minSeconds": 80,
+        "medianSeconds": 80,
+        "p90Seconds": 83.3,
+        "maxSeconds": 83.3,
+        "baseline": null,
+        "trend": null
+      },
+      {
+        "job": "Docs site",
+        "path": "publication",
+        "count": 2,
+        "minSeconds": 120,
+        "medianSeconds": 120,
+        "p90Seconds": 123.5,
+        "maxSeconds": 123.5,
+        "baseline": null,
+        "trend": null
+      }
+    ]
+  },
+  "flow": {
+    "basis": "measured",
+    "minSample": 5,
+    "window": {
+      "from": "2026-10-10T12:00:00Z",
+      "to": "2026-11-09T12:00:00Z"
+    },
+    "openPullRequests": {
+      "count": 5,
+      "drafts": 1,
+      "age": {
+        "count": 5,
+        "medianSeconds": 10800,
+        "p90Seconds": 18000,
+        "maxSeconds": 18000
+      }
+    },
+    "waitingForReview": {
+      "count": 3,
+      "oldestSeconds": 18000
+    },
+    "leadTime": {
+      "sample": 5,
+      "stat": {
+        "count": 5,
+        "medianSeconds": 993600,
+        "p90Seconds": 1159200,
+        "maxSeconds": 1159200
+      }
+    },
+    "issueToMerge": {
+      "sample": 6,
+      "stat": {
+        "count": 6,
+        "medianSeconds": 1166400,
+        "p90Seconds": 1692000,
+        "maxSeconds": 1692000
+      }
+    },
+    "stacks": {
+      "mergedIntoBase": 1,
+      "open": [
+        {
+          "depth": 5,
+          "pullRequests": [
+            1,
+            2,
+            3,
+            4,
+            5
+          ]
+        }
+      ]
+    },
+    "epics": [
+      {
+        "issue": 22,
+        "total": 2,
+        "done": 1
+      }
+    ]
+  },
+  "agents": {
+    "basis": {
+      "activity": "measured",
+      "counts": "inferred"
+    },
+    "sample": {
+      "scanned": 3,
+      "window": {
+        "from": "2026-11-09T10:00:00Z",
+        "to": "2026-11-09T12:00:00Z"
+      }
+    },
+    "activity": {
+      "issues": 2,
+      "withCounts": 1,
+      "comments": 5,
+      "reviews": 2,
+      "pullRequests": 1
+    },
+    "counts": {
+      "countComments": 2,
+      "malformed": 1,
+      "tasks": 3,
+      "subagents": 3
+    },
+    "issues": [
+      {
+        "issue": 11,
+        "countComments": 0,
+        "malformed": 0,
+        "tasks": null,
+        "subagents": null,
+        "comments": 1,
+        "reviews": 0,
+        "pullRequests": 0
+      },
+      {
+        "issue": 10,
+        "countComments": 2,
+        "malformed": 1,
+        "tasks": 3,
+        "subagents": 3,
+        "comments": 4,
+        "reviews": 2,
+        "pullRequests": 1
+      }
+    ]
+  },
+  "superseded": {
+    "basis": {
+      "detection": "inferred",
+      "timing": "measured"
+    },
+    "sample": {
+      "pairs": 2,
+      "ignored": 1,
+      "controlRuns": 2,
+      "cap": 30,
+      "minPairs": 3,
+      "window": {
+        "from": "2026-11-02T12:00:00Z",
+        "to": "2026-11-09T12:00:00Z"
+      }
+    },
+    "weeks": [
+      {
+        "week": "2026-11-02",
+        "pairs": 1,
+        "waitRuns": 0,
+        "waitMedianSeconds": null,
+        "waitP90Seconds": null,
+        "waitMaxSeconds": null,
+        "pushGapMedianSeconds": 80,
+        "controlRuns": 1,
+        "controlWaitMedianSeconds": 4.8
+      },
+      {
+        "week": "2026-11-09",
+        "pairs": 1,
+        "waitRuns": 1,
+        "waitMedianSeconds": 12.3,
+        "waitP90Seconds": 12.3,
+        "waitMaxSeconds": 12.3,
+        "pushGapMedianSeconds": 100,
+        "controlRuns": 1,
+        "controlWaitMedianSeconds": 3.3
+      }
+    ]
+  }
+}

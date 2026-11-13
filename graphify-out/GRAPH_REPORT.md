@@ -1,23 +1,23 @@
-# Graph Report - adoring-pascal-69c2ce  (2026-11-13)
+# Graph Report - deno-reporting  (2026-11-13)
 
 ## Corpus Check
-- 722 files · ~646,450 words
+- 758 files · ~648,772 words
 - Verdict: corpus is large enough that graph structure adds value.
-- Unclassified: 63 file(s) not represented in the graph (top: (none) 15, .just 9, .css 9)
+- Unclassified: 65 file(s) not represented in the graph (top: (none) 15, .just 9, .css 9)
 
 ## Summary
-- 8905 nodes · 19070 edges · 450 communities (400 shown, 50 thin omitted)
-- Extraction: 93% EXTRACTED · 7% INFERRED · 0% AMBIGUOUS · INFERRED: 1405 edges (avg confidence: 0.83)
+- 7974 nodes · 16633 edges · 448 communities (358 shown, 90 thin omitted)
+- Extraction: 93% EXTRACTED · 7% INFERRED · 0% AMBIGUOUS · INFERRED: 1157 edges (avg confidence: 0.83)
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `d422cabf`
+- Built from commit: `f8a31159`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
 ## Community Hubs (Navigation)
 - Agenda, Time Zones, Theme ADRs
-- shouldly
+- RoleAgreementTests.GrantsAgreeWithLocalScriptAndAppCannotCreateTables
 - DayView.tsx
 - Task Repository and Fixtures
 - CI, Pages and Architecture ADRs
@@ -26,50 +26,44 @@
 - slides/package.json
 - Web Test Harness (MSW)
 - Root AGENTS.md
-- Dashboard Quality Section
 - Owner-Scoped Events and Tasks
 - ciSpeed
-- WorkflowRun
+- timings.ts
 - Rust Backend Guidance and ADRs
 - Docs Site Loader
 - Script.Parse
-- database/migrations.rs
-- ADR-0044 Claude-first agent automation period
-- delivery-guards_test.ts
+- scalar
+- ADR-0042 Layered agent guidance and Claude Code hooks as repo tools
+- delivery-dashboard.ts
 - Docs Dashboard Pages
 - API App and OpenAPI
-- Dashboard Flow Metrics
 - API JSON Results
 - Database Connection Config
 - Azure Platform ADRs
 - Tasks API Tests
 - adr-validator.ts
-- Web Event Forms and Mutations
-- Trend.Evaluate
+- useToggleTask.test.tsx
 - endpoints/tasks.rs
 - Docs Site Package
 - Day Inclusion Rule Tests
-- security-reviewer agent
+- watch.ts
 - ADR-0045 Gate CI job run times with a robust log-normal bound
 - Web Router and Shell
-- SnapshotRules.Validate
-- state.rs
+- Task
+- config.rs
 - Day Agenda Endpoint Tests
 - ref_node_path
 - parse.bench.ts
-- DateTimeOffset
 - ADR Sweep Judge Workflow
 - Web Package Manifest
 - binary.rs
 - Infra What-If Workflow
-- Dashboard Agent Section
 - calendar_event.rs
 - Web Time Grid
 - Migrator Binary
-- src/session_keys.rs
-- Snapshot Rule Keys
+- snapshot-rules.ts
+- FakeAzure
 - Architecture Model Parser
-- Handover Watch GraphQL Query
 - Todo Task Domain
 - adr-sweep-judge.js workflow
 - Docs Astro Config and Palette
@@ -82,42 +76,41 @@
 - Problem Details Errors
 - Week Agenda Endpoint Tests
 - src/auth.rs
-- app.rs
+- state.rs
 - Google Sign-In Flow
 - CalendarEvent
 - narrative-panel.js
 - Sealed Session Cookie
 - Architecture Page Renderer
-- Handover Watch Snapshot
 - Infra Integration Lock File
 - bash-guard.ts
 - User
-- DateTimeOffset
-- TaskForm.tsx
+- SeedPlan.Build
+- EventForm.tsx
 - CI Trend Workflow
 - CodeQL Workflow
 - Migrate Workflow
 - Google Sign-In Tests
 - Todo Task Domain Tests
 - TestDatabase
-- workflow-yaml.ts
+- delivery-guards_test.ts
 - Vite API Proxy
-- authentication.rs
+- quality.ts
 - Agenda Queries
 - Business expert
-- WeekView.test.tsx
+- WeekView.tsx
 - Infra Integration Packages
 - queries/task_list.rs
 - Day Window Tests
 - theme.test.ts
 - postgres.rs
 - styles.test.ts
-- CI Timings Lock File
-- Dashboard Lock File
-- Handover Watch Lock File
+- narrative.ts
+- app.rs
+- flow.ts
 - Seed Dev Lock File
-- hook-runner.ts
-- TestApp
+- legacy-parity_test.ts
+- 0020 Proof runs of the ADR sweep and issue verification workflows
 - Ownership Isolation Tests
 - Run-Calendar Browse Packages
 - DateRangeWindow
@@ -127,44 +120,41 @@
 - theme.ts
 - Infra
 - slides/theme/package.json
-- CiSnapshot.Build
-- tool-versions.ts
+- ref_std_path
 - FakeProbe
-- ADR-0047 Semantic CSS tokens selected by a data-theme attribute
+- Style a web view in both themes (theme guide)
 - Azure OIDC Check Workflow
 - Implementation notes
 - Docker.DotNet Packages
-- Probability.NormalQuantile
-- Retention.Check
-- tests/session_keys.rs
-- CI Gate Tests
+- contracts/tasks.rs
+- TestApp
 - Day Window
 - run-calendar/deno.json
-- Triage.tsx
+- README.md
 - 0061 Commit the graphify knowledge graph
 - tokens.test.ts
 - Dependabot Config
 - .keys
 - 0060 Bring the architecture model back in line with the repo
 - Fact
-- ADR-0012: GitHub Actions CI, security scanning and Dependabot
-- useToggleTask.test.tsx
+- 0058-move-the-backend-from-dotnet-to-rust.md
+- architecture-narrative-builder/deno.json
 - Theme Package Manifest
-- sign_in.rs
-- Dashboard Alerts
+- database/migrations.rs
+- ChainOnlyVerification
 - Infra Test Packages
 - Domain and Database Errors
 - IANA Time Zones
+- Time Zone Alias Tests
 - 0063 Build architecture narratives with an interviewing agent and an expert panel
 - net10.0 (packages.lock.json) #2
 - calendar-migrate/src/main.rs
-- net10.0 (packages.lock.json) #4
-- net10.0 (packages.lock.json) #5
+- Infrastructure.cs
+- read_body
 - net10.0 (packages.lock.json) #6
-- net10.0 (packages.lock.json) #7
+- schema_definition.rs
 - net10.0 (packages.lock.json) #8
 - Publish architecture narratives from docs/narratives, stitched from per-system part files
-- FakeGitHub
 - dream-weaver skill (SKILL.md)
 - wire.rs
 - common
@@ -173,22 +163,22 @@
 - adr-draft skill (SKILL.md)
 - issue-sweep-verify.js
 - review-before-merge.js
-- Scanner
+- shell-command.ts
 - Build narrative decks with Slidev as a frontend workspace app, published with the docs site
 - tls.rs
 - task_list_cursor.rs
-- scripts
+- AgendaTaskItem
 - narrative-panel_test.ts
 - run-calendar/tests/packages.lock.json (packages.lock.json)
 - dashboard.test.ts (dashboard.ts)
 - api-client/package.json (package.json)
 - Microsoft.Extensions.Logging.Abstractions@10.0.0 (packages.l
 - pull-request-link-check.ts
-- ci-timings/tests/packages.lock.json (packages.lock.json)
-- delivery-dashboard/tests/packages.lock.json (packages.lock.j
+- 0062 Install the graphify skill and point agents at the committed graph
+- schema_constraints.rs
 - startupScript.test.ts
 - doctor/tests/packages.lock.json (packages.lock.json)
-- handover-watch/tests/packages.lock.json (packages.lock.json)
+- Architecture narrative builder
 - infra/tests/packages.lock.json (packages.lock.json)
 - seed-dev/tests/packages.lock.json (packages.lock.json)
 - Tree
@@ -197,12 +187,12 @@
 - Microsoft.Testing.Platform@[2.5.2, 3.0.0) (packages.lock.jso #2
 - compilerOptions (tsconfig.base.json)
 - calendar-api/src/main.rs
-- Microsoft.Testing.Platform@[2.5.2, 3.0.0) (packages.lock.jso #4
-- Microsoft.Testing.Platform@[2.5.2, 3.0.0) (packages.lock.jso #5
+- SKILL.md
+- endpoints/agenda.rs
 - steps
 - agent-hooks (Claude Code hooks)
 - Microsoft.Testing.Platform@[2.5.2, 3.0.0) (packages.lock.jso #7
-- Microsoft.Testing.Platform@[2.5.2, 3.0.0) (packages.lock.jso #8
+- BulkChange
 - Microsoft.Testing.Platform@[2.5.2, 3.0.0) (packages.lock.jso #9
 - Microsoft.Testing.Platform@[2.5.2, 3.0.0) (packages.lock.jso #10
 - Microsoft.Testing.Platform@[2.5.2, 3.0.0) (packages.lock.jso #11
@@ -210,26 +200,26 @@
 - tests/date_range_window.rs (date_range_window.rs)
 - delivery-performance-review skill (SKILL.md)
 - tools/deno.json
-- scripts
+- Ledger: System name
 - decks.ts
 - issue-handover skill (SKILL.md)
 - Shouldly (packages.lock.json) #2
 - agenda_bucketing.rs
-- dependencies
+- Act 1: Setup
 - docs (ci.yml)
 - dependency-review.yml
-- ConnectionConfig
-- Shouldly (packages.lock.json) #4
-- Shouldly (packages.lock.json) #5
+- SslMode
+- Act 3: Resolution
+- devSignInHostGuard.test.ts
 - slides/tsconfig.json
 - Shouldly (packages.lock.json) #7
-- Shouldly (packages.lock.json) #8
+- BulkTaskAction
 - Shouldly (packages.lock.json) #9
 - Shouldly (packages.lock.json) #10
 - Shouldly (packages.lock.json) #11
 - Narrative expert
 - run
-- agent-hooks (Claude Code hooks)
+- delivery-dashboard snapshot tool
 - adr-draft/deno.json
 - supersede
 - docs
@@ -240,15 +230,15 @@
 - outputs (ci.yml)
 - Pinned run-time baseline (.github/ci-baseline.json)
 - repo_files.rs
-- net10.0/linux-x64 (packages.lock.json) #4
-- xunit.v3.extensibility.core (packages.lock.json) #4
-- net10.0/linux-x64 (packages.lock.json) #5
-- xunit.v3.extensibility.core (packages.lock.json) #5
+- Characteristic expert
+- End-User expert
+- Act 2: Confrontation
+- permissions
 - result
 - net10.0/linux-x64 (packages.lock.json) #7
 - xunit.v3.extensibility.core (packages.lock.json) #7
-- net10.0/linux-x64 (packages.lock.json) #8
-- xunit.v3.extensibility.core (packages.lock.json) #8
+- experts/README.md
+- 0022 Narrative panel rebuttal part reads
 - net10.0/linux-x64 (packages.lock.json) #9
 - xunit.v3.extensibility.core (packages.lock.json) #9
 - net10.0/linux-x64 (packages.lock.json) #10
@@ -266,6 +256,7 @@
 - Command check (scripted comparison of fenced code lines) (cl
 - env (ci.yml)
 - image (ci.yml)
+- narratives
 - Measuring delivery automation (measurement.md)
 - Example architecture narrative
 - body (feature_request.yml)
@@ -273,20 +264,20 @@
 - dependencies (packages.lock.json)
 - tooling
 - with
-- 01-setup.md
+- school-library/01-setup.md
 - github-screenshots skill (SKILL.md)
 - issue-sweep skill
 - xunit.v3.mtp-v2 (packages.lock.json) #2
 - Calendar architecture narrative
-- xunit.v3.mtp-v2 (packages.lock.json) #4
-- xunit.v3.mtp-v2 (packages.lock.json) #5
-- 02-confrontation.md
+- endpoints/health.rs
+- Panel guide
+- school-library/02-confrontation.md
 - xunit.v3.mtp-v2 (packages.lock.json) #7
-- xunit.v3.mtp-v2 (packages.lock.json) #8
+- templates/slides.md
 - xunit.v3.mtp-v2 (packages.lock.json) #9
 - xunit.v3.mtp-v2 (packages.lock.json) #10
 - xunit.v3.mtp-v2 (packages.lock.json) #11
-- 03-resolution.md
+- school-library/03-resolution.md
 - main.ts
 - calendar/01-setup.md
 - narratives/calendar/ledger.md
@@ -296,7 +287,7 @@
 - narratives-missing-deck/README.md
 - 0059 Run repository tooling on TypeScript and Deno
 - steps (dashboard-snapshot.yml)
-- kata/slides.md
+- narratives-orphan-deck/kata/slides.md
 - database_copy.rs
 - narratives-orphan-deck/README.md
 - Microsoft.DotNet.ILCompiler (packages.lock.json) #2
@@ -304,12 +295,12 @@
 - backend (ci.yml)
 - with (dashboard-snapshot.yml)
 - lib/fixtures/narratives/README.md
-- Microsoft.DotNet.ILCompiler (packages.lock.json) #4
+- deno_cache_test.ts
 - x.md
-- Microsoft.DotNet.ILCompiler (packages.lock.json) #5
+- Handover watch compatibility inventory
 - calendar-infrastructure/src/users.rs
 - Microsoft.DotNet.ILCompiler (packages.lock.json) #7
-- Microsoft.DotNet.ILCompiler (packages.lock.json) #8
+- .claude/CLAUDE.md
 - Microsoft.DotNet.ILCompiler (packages.lock.json) #9
 - Microsoft.DotNet.ILCompiler (packages.lock.json) #10
 - Microsoft.DotNet.ILCompiler (packages.lock.json) #11
@@ -328,62 +319,63 @@
 - env (pages.yml)
 - Testcontainers.PostgreSql (packages.lock.json)
 - calendar/slides.md
-- System.Management (packages.lock.json) #4
-- System.Management (packages.lock.json) #5
+- templates/00-front-matter.md
+- templates/04-assumptions.md
 - narratives-unlinked-deck/README.md
 - System.Management (packages.lock.json) #7
-- System.Management (packages.lock.json) #8
+- 05-panel.md
 - System.Management (packages.lock.json) #9
 - Npgsql (packages.lock.json)
 - Npgsql (packages.lock.json) #2
 - System.Management (packages.lock.json) #10
 - System.Management (packages.lock.json) #11
 - parts-only/01-setup.md
-- schema_definition.rs
+- tests/agenda_agreement.rs
 - css.d.ts
 - xunit.v3.common (packages.lock.json) #2
 - judgeRecord (adr-sweep-judge.js)
 - invalid.architecture.json
 - api-client/tsconfig.json (tsconfig.json)
 - theme/tsconfig.json (tsconfig.json)
-- alert (dashboard-snapshot.yml)
+- alert
 - publish (dashboard-snapshot.yml)
 - on (pages.yml)
 - with (pages.yml)
 - mod.rs
-- xunit.v3.common (packages.lock.json) #4
-- xunit.v3.common (packages.lock.json) #5
+- kata/00-front-matter.md
+- kata/01-setup.md
+- kata/02-confrontation.md
 - xunit.v3.common (packages.lock.json) #7
-- xunit.v3.common (packages.lock.json) #8
+- kata/03-resolution.md
 - xunit.v3.common (packages.lock.json) #9
 - Microsoft.Extensions.Logging.Abstractions (packages.lock.jso
 - Microsoft.Extensions.Logging.Abstractions (packages.lock.jso #2
 - xunit.v3.common (packages.lock.json) #10
 - Microsoft.Extensions.Logging.Abstractions (packages.lock.jso #3
 - xunit.v3.common (packages.lock.json) #11
+- kata/04-assumptions.md
+- kata/ledger.md
 - just tools handover-watch (SKILL.md)
 - setup.ts
 - pnpm-workspace.yaml
-- ordering_matches_original_comparers_across_ties_and_dst
+- tests/agenda_order.rs
 - on (ci.yml)
 - steps (pages.yml)
 - infra/packages.lock.json (packages.lock.json)
 - Microsoft.DotNet.ILCompiler (packages.lock.json) #13
+- fixtures/kata/slides.md
+- mock-gh.ts
 - SonarAnalyzer.CSharp (packages.lock.json) #2
 - StyleCop.Analyzers (packages.lock.json) #2
 - isRotationOnly (adr-sweep-judge.js)
-- run (dashboard-snapshot.yml)
+- ci-timings/tests/fixtures/README.md
+- ci-timings/tests/PORTING.md
 - TypeScript on Deno for repository tooling, replacing .NET file-based apps
 - calendar-infrastructure (Cargo.toml)
+- delivery-dashboard/tests/PORTING.md
 - doctor.sh
-- SonarAnalyzer.CSharp (packages.lock.json) #4
-- StyleCop.Analyzers (packages.lock.json) #4
-- SonarAnalyzer.CSharp (packages.lock.json) #5
-- StyleCop.Analyzers (packages.lock.json) #5
 - SonarAnalyzer.CSharp (packages.lock.json) #7
 - StyleCop.Analyzers (packages.lock.json) #7
-- SonarAnalyzer.CSharp (packages.lock.json) #8
-- StyleCop.Analyzers (packages.lock.json) #8
 - Microsoft.NET.ILLink.Tasks (packages.lock.json) #2
 - StyleCop.Analyzers (packages.lock.json) #9
 - net10.0 (packages.lock.json) #11
@@ -406,24 +398,11 @@
 - default-replaces-and-cleans/case.yaml (case.yaml)
 - Publishing a document's review (publish.md)
 - keep-drafts-leaves-three-files/case.yaml (case.yaml)
-- on (dashboard-snapshot.yml)
 - assemble (pages.yml)
-- EmptyFiles (packages.lock.json) #4
-- Microsoft.ApplicationInsights (packages.lock.json) #4
-- Microsoft.Testing.Platform (packages.lock.json) #4
-- xunit.v3.runner.inproc.console (packages.lock.json) #4
-- EmptyFiles (packages.lock.json) #5
-- Microsoft.ApplicationInsights (packages.lock.json) #5
-- Microsoft.Testing.Platform (packages.lock.json) #5
-- xunit.v3.runner.inproc.console (packages.lock.json) #5
 - EmptyFiles (packages.lock.json) #6
 - Microsoft.ApplicationInsights (packages.lock.json) #6
 - Microsoft.Testing.Platform (packages.lock.json) #7
 - xunit.v3.runner.inproc.console (packages.lock.json) #7
-- EmptyFiles (packages.lock.json) #7
-- Microsoft.ApplicationInsights (packages.lock.json) #7
-- Microsoft.Testing.Platform (packages.lock.json) #8
-- xunit.v3.runner.inproc.console (packages.lock.json) #8
 - EmptyFiles (packages.lock.json) #8
 - Microsoft.Bcl.AsyncInterfaces (packages.lock.json)
 - Microsoft.Extensions.DependencyInjection.Abstractions (packa
@@ -452,19 +431,19 @@
 - SECURITY.md
 - Formatting a tool via scratch project (README.md)
 - 0008 A knowledge graph, an architecture model, and what each one noticed
-- ref_std_assert
+- snapshot.ts
 - adr
 
 ## God Nodes (most connected - your core abstractions)
 1. `TodoTask` - 90 edges
 2. `OwnerId` - 71 edges
 3. `CalendarEvent` - 60 edges
-4. `ADR-0017: .NET 10 file-based apps for all repo tooling` - 57 edges
+4. `ADR-0017: .NET 10 file-based apps for all repo tooling` - 58 edges
 5. `AppState` - 53 edges
 6. `TestApp` - 49 edges
-7. `SnapshotRules` - 48 edges
-8. `fixture()` - 46 edges
-9. `Root AGENTS.md` - 45 edges
+7. `fixture()` - 46 edges
+8. `Root AGENTS.md` - 45 edges
+9. `DateRangeWindow` - 44 edges
 10. `TestDatabase` - 44 edges
 
 ## Surprising Connections (you probably didn't know these)
@@ -483,9 +462,9 @@
 - 1-file cycle: `backend/crates/calendar-infrastructure/src/queries.rs -> backend/crates/calendar-infrastructure/src/queries.rs`
 - 1-file cycle: `backend/crates/calendar-infrastructure/tests/database/repositories.rs -> backend/crates/calendar-infrastructure/tests/database/repositories.rs`
 - 1-file cycle: `backend/crates/calendar-infrastructure/src/queries/task_list.rs -> backend/crates/calendar-infrastructure/src/queries/task_list.rs`
-- 2-file cycle: `backend/crates/calendar-domain/src/error.rs -> backend/crates/calendar-infrastructure/src/error.rs -> backend/crates/calendar-domain/src/error.rs`
 - 2-file cycle: `backend/crates/calendar-api/src/auth/google.rs -> backend/crates/calendar-api/src/state.rs -> backend/crates/calendar-api/src/auth/google.rs`
 - 2-file cycle: `backend/crates/calendar-api/src/auth.rs -> backend/crates/calendar-api/src/state.rs -> backend/crates/calendar-api/src/auth.rs`
+- 2-file cycle: `backend/crates/calendar-domain/src/error.rs -> backend/crates/calendar-infrastructure/src/error.rs -> backend/crates/calendar-domain/src/error.rs`
 - 3-file cycle: `backend/crates/calendar-api/src/auth/google.rs -> backend/crates/calendar-api/src/hosting.rs -> backend/crates/calendar-api/src/state.rs -> backend/crates/calendar-api/src/auth/google.rs`
 - 3-file cycle: `backend/crates/calendar-api/src/auth.rs -> backend/crates/calendar-api/src/state.rs -> backend/crates/calendar-api/src/auth/google.rs -> backend/crates/calendar-api/src/auth.rs`
 - 3-file cycle: `backend/crates/calendar-api/src/auth.rs -> backend/crates/calendar-api/src/hosting.rs -> backend/crates/calendar-api/src/state.rs -> backend/crates/calendar-api/src/auth.rs`
@@ -533,22 +512,22 @@
 - **Story and issue delivery lifecycle (PR 0, stacked delivery, completing PR closes)** — claude_skills_story_draft_skill_pr_0, claude_skills_issue_handover_skill_stacked_delivery_prs, claude_skills_story_draft_skill_completing_a_card, claude_skills_issue_handover_skill_closes_on_completing_pr, claude_skills_story_draft_skill_story_card [INFERRED 0.85]
 - **Delivery performance review eval suite** — claude_skills_delivery_performance_review_evals_bimodal_sample_is_checked_against_a_control_prompt, claude_skills_delivery_performance_review_evals_names_the_mode_but_reports_first_prompt, claude_skills_delivery_performance_review_evals_bimodal_sample_is_checked_against_a_control_graders_01_control_step_before_blame, claude_skills_delivery_performance_review_evals_bimodal_sample_is_checked_against_a_control_graders_02_off_the_critical_path, claude_skills_delivery_performance_review_evals_names_the_mode_but_reports_first_graders_01_asks_before_filing, claude_skills_delivery_performance_review_evals_names_the_mode_but_reports_first_graders_02_ready_to_file, claude_skills_delivery_performance_review_evals_report_mode_is_read_only_graders_01_no_writes_no_dispatch, claude_skills_delivery_performance_review_evals_report_mode_is_read_only_graders_02_critical_path_and_two_lenses [INFERRED 0.95]
 
-## Communities (450 total, 50 thin omitted)
+## Communities (448 total, 90 thin omitted)
 
 ### Community 0 - "Agenda, Time Zones, Theme ADRs"
 Cohesion: 0.04
-Nodes (101): ADR-0002 .NET 10 LTS with Minimal APIs, Domain + Api projects, API serves the built SPA in a single container, ADR-0003 React + Vite + TypeScript SPA for the web UI, TanStack Query for server state, Vite dev proxy for /api (same origin, no CORS), ADR-0004: OpenAPI contract and generated TypeScript client, @calendar/api-client package (schema.gen.ts), Late-bound fetch for MSW interception (+93 more)
+Nodes (90): ADR-0008: Vitest, Testing Library and MSW for frontend tests, React Testing Library in jsdom, renderWithProviders helper (fresh QueryClient), Vitest, ADR-0018: UTC instants plus IANA zone and floating dates using BCL time types, Task DueDate XOR DueAt, ADR-0019: Single-user mode with authentication deferred (superseded by ADR-0027), owner_id retrofit plan (+82 more)
 
-### Community 1 - "shouldly"
-Cohesion: 0.06
-Nodes (14): CiTimings, DeliveryDashboard, DeliveryDashboard.Tests, RunCalendar.Tests, CiTimings.Tests, InfraTool.Integration, InfraTool.Tests, InfraTool (+6 more)
+### Community 1 - "RoleAgreementTests.GrantsAgreeWithLocalScriptAndAppCannotCreateTables"
+Cohesion: 0.15
+Nodes (6): RunCalendar.Tests, InfraTool.Integration, InfraTool.Tests, CalendarDoctor.Tests, SeedDev.Tests, RoleAgreementTests
 
 ### Community 2 - "DayView.tsx"
-Cohesion: 0.08
-Nodes (57): AgendaTask, dateTimeFormat(), dateTimeFormatters, daysBetween(), describeOverdue(), EventStatus, eventStatuses(), formatDate() (+49 more)
+Cohesion: 0.06
+Nodes (73): ConfirmDialog(), ModalDialog(), AgendaTask, browserTimeZone(), dateTimeFormat(), dateTimeFormatters, daysBetween(), describeOverdue() (+65 more)
 
 ### Community 3 - "Task Repository and Fixtures"
-Cohesion: 0.08
+Cohesion: 0.07
 Nodes (64): a_day_is_read_with_the_columns_the_agenda_shows(), a_skipped_date_shows_no_timed_events(), day(), task_titles(), the_agenda_is_read_in_one_read_only_snapshot_with_a_fixed_number_of_queries(), the_overdue_list_is_ordered_limited_and_counted(), a_timed_event_round_trips_with_its_version(), an_all_day_event_round_trips_with_its_version() (+56 more)
 
 ### Community 4 - "CI, Pages and Architecture ADRs"
@@ -556,12 +535,12 @@ Cohesion: 0.04
 Nodes (72): CALM controls, CALM flows, FINOS CALM architecture model, CALM nodes and relationships, Ownership colouring of diagrams, ADR-0000 Use MADR for Any Decision Records, check-adr validator (just tools adr), pnpm workspaces (+64 more)
 
 ### Community 5 - "contracts.rs"
-Cohesion: 0.06
-Nodes (54): AgendaDay, AgendaTasks, AgendaWindow, DayAgendaResponse, WeekAgendaResponse, AuthUserResponse, AllDayEventItem, CreateEventRequest (+46 more)
+Cohesion: 0.13
+Nodes (17): AgendaDay, AgendaTasks, AgendaWindow, DayAgendaResponse, WeekAgendaResponse, AuthUserResponse, AllDayEventItem, CreateEventRequest (+9 more)
 
 ### Community 6 - "ADR-0017: .NET 10 file-based apps for all repo tooling"
 Cohesion: 0.06
-Nodes (34): browse.cs Playwright screenshot driver, ADR-0001 Single repository with per-stack top-level directories, just contracts recipe, ADR-0005: pnpm workspaces for frontend packages, @calendar/* packages linked with workspace:*, ADR-0011: GNU Make as thin top-level task runner (superseded by ADR-0038), GNU Make top-level task runner, make check reproduces CI locally (+26 more)
+Nodes (33): browse.cs Playwright screenshot driver, ADR-0001 Single repository with per-stack top-level directories, ADR-0005: pnpm workspaces for frontend packages, @calendar/* packages linked with workspace:*, NuGet Central Package Management (Directory.Packages.props), Dependabot dependency updates, ADR-0017: .NET 10 file-based apps for all repo tooling, check-adr.cs ADR validator (+25 more)
 
 ### Community 7 - "slides/package.json"
 Cohesion: 0.08
@@ -572,72 +551,64 @@ Cohesion: 0.05
 Nodes (46): RFC-3339, App(), Agenda, agendaFor(), serveAgendas(), serveEvents(), serveTasks(), Task (+38 more)
 
 ### Community 9 - "Root AGENTS.md"
-Cohesion: 0.05
-Nodes (24): Root AGENTS.md, Remembered set layers on main, Remembered set, Repository haiku, ADR-0008: Vitest, Testing Library and MSW for frontend tests, React Testing Library in jsdom, renderWithProviders helper (fresh QueryClient), Vitest (+16 more)
-
-### Community 10 - "Dashboard Quality Section"
-Cohesion: 0.06
-Nodes (25): WorkflowRun, AttemptJob, AttemptRun, GuardDay, GuardSource, JobRate, QualityBasis, QualityCollector (+17 more)
+Cohesion: 0.04
+Nodes (25): Root AGENTS.md, Remembered set layers on main, Remembered set, 25 things to highlight, Repository haiku, xUnit v3, ADR-0011: GNU Make as thin top-level task runner (superseded by ADR-0038), make check reproduces CI locally (+17 more)
 
 ### Community 11 - "Owner-Scoped Events and Tasks"
 Cohesion: 0.07
-Nodes (40): conflict_or_not_found(), delete(), EventFields, EventFields<'a>, EventRow, find(), insert(), NewEvent (+32 more)
+Nodes (39): conflict_or_not_found(), delete(), EventFields, EventFields<'a>, EventRow, find(), insert(), NewEvent (+31 more)
 
 ### Community 12 - "ciSpeed"
 Cohesion: 0.17
 Nodes (21): agentsHistory(), agentsPage(), ciSpeed(), day(), escapeText(), flowPage(), formatDuration(), formatSeconds() (+13 more)
 
-### Community 13 - "WorkflowRun"
-Cohesion: 0.07
-Nodes (16): BackTest, BaselineFile, BaselineIo, BaselineReport, BaselineRuns, Baselines, Exceedance, GateConstants (+8 more)
+### Community 13 - "timings.ts"
+Cohesion: 0.05
+Nodes (100): BackTest, buildBaseline(), buildPath(), derive(), evaluateBaseline(), Exceedance, GateConstants, gateDefaults (+92 more)
 
 ### Community 14 - "Rust Backend Guidance and ADRs"
-Cohesion: 0.04
-Nodes (55): Backend crate layering, Embedded SQL migration directories, Problem details error bodies, TestApp in-process API tests, TestDatabase::migrated per-test database, calendar-api crate, calendar-domain crate, calendar-infrastructure crate (+47 more)
+Cohesion: 0.05
+Nodes (33): Backend crate layering, Embedded SQL migration directories, Problem details error bodies, TestApp in-process API tests, TestDatabase::migrated per-test database, calendar-api crate, calendar-domain crate, calendar-infrastructure crate (+25 more)
 
 ### Community 15 - "Docs Site Loader"
 Cohesion: 0.05
 Nodes (63): ADR-0038, ADR-0060, AgentThought, Benchmark, deployment(), isStringArray(), Narrative, narrativeFileName (+55 more)
 
 ### Community 16 - "Script.Parse"
-Cohesion: 0.27
+Cohesion: 0.22
 Nodes (4): Script, ScriptCommand, ScriptParseTests, RunCalendar
 
-### Community 17 - "database/migrations.rs"
-Cohesion: 0.05
-Nodes (51): app_role_can_connect(), app_role_can_read_and_insert_the_session_key_but_not_change_it(), app_role_can_read_but_not_write_the_migration_history(), app_role_cannot_run_ddl(), app_role_gets_dml_on_tables_the_migrator_creates(), concurrent_first_inserts_of_the_session_key_agree_on_one_row(), session_keys_holds_one_32_byte_key(), a_failing_migration_rolls_everything_back() (+43 more)
+### Community 17 - "scalar"
+Cohesion: 0.15
+Nodes (15): app_role_can_connect(), app_role_can_read_and_insert_the_session_key_but_not_change_it(), app_role_can_read_but_not_write_the_migration_history(), app_role_cannot_run_ddl(), app_role_gets_dml_on_tables_the_migrator_creates(), concurrent_first_inserts_of_the_session_key_agree_on_one_row(), session_keys_holds_one_32_byte_key(), app_role_cannot_change_the_schema() (+7 more)
 
-### Community 18 - "ADR-0044 Claude-first agent automation period"
-Cohesion: 0.03
-Nodes (82): 25 things to highlight, Handover watch (just tools handover-watch), Subagent, Claude Code workflow script, dream-weaver skill, Agent-thoughts conventions, 0013 Handover watch: two GraphQL queries per tick, 0015 Review-before-merge workflow: three skeptics per finding (+74 more)
+### Community 18 - "ADR-0042 Layered agent guidance and Claude Code hooks as repo tools"
+Cohesion: 0.04
+Nodes (55): Handover watch (just tools handover-watch), Subagent, Claude Code workflow script, dream-weaver skill, Agent-thoughts conventions, 0013 Handover watch: two GraphQL queries per tick, ADR-0042 Layered agent guidance and Claude Code hooks as repo tools, Hook policy: deny / ask / inform (+47 more)
 
-### Community 19 - "delivery-guards_test.ts"
-Cohesion: 0.12
-Nodes (23): event(), changesRulesPath, findRoot(), Guard, guards, jobsApiSkipException, loadFiles(), main() (+15 more)
+### Community 19 - "delivery-dashboard.ts"
+Cohesion: 0.09
+Nodes (43): readBaseline(), array(), integer(), JsonObject, object(), parseIssues(), parseJobs(), parseRuns() (+35 more)
 
 ### Community 20 - "Docs Dashboard Pages"
 Cohesion: 0.05
 Nodes (43): ADR-0049, agentActivityKeys, agentCountKeys, AgentIssue, agentIssueKeys, AgentsSection, ciKeysV1, CiSection (+35 more)
 
 ### Community 21 - "API App and OpenAPI"
-Cohesion: 0.05
-Nodes (47): build(), fallback(), openapi_document(), serve(), ApiDoc, Child, child_container(), MediaType (+39 more)
-
-### Community 22 - "Dashboard Flow Metrics"
-Cohesion: 0.08
-Nodes (19): ClosedIssue, Distribution, DurationSection, EpicInput, EpicProgress, FlowAnswer, FlowCollector, FlowMetrics (+11 more)
+Cohesion: 0.07
+Nodes (37): ApiDoc, Child, child_container(), MediaType, PathItem, Response, Schema, Container (+29 more)
 
 ### Community 23 - "API JSON Results"
-Cohesion: 0.09
-Nodes (32): read_event(), read_action(), read_ids(), read_task(), boolean(), child(), date(), date_as() (+24 more)
+Cohesion: 0.15
+Nodes (27): read_event(), read_action(), read_ids(), read_task(), boolean(), child(), date(), date_as() (+19 more)
 
 ### Community 24 - "Database Connection Config"
 Cohesion: 0.07
-Nodes (28): a_later_keyword_wins_and_tuning_keywords_are_ignored(), a_missing_root_certificate_file_is_a_tls_error(), ChainOnlyVerification, client_config(), Tls, ConnectionStringError, Empty, InvalidValue (+20 more)
+Nodes (37): a_later_keyword_wins_and_tuning_keywords_are_ignored(), a_missing_root_certificate_file_is_a_tls_error(), client_config(), connect(), connect_client(), connect_error(), ConnectionConfig, ConnectionError (+29 more)
 
 ### Community 25 - "Azure Platform ADRs"
 Cohesion: 0.06
-Nodes (33): Verified-email allow-list (Auth__AllowedEmails), ADR-0029 Azure Container Apps as the compute platform, Azure Container Registry Basic (UK South), External HTTPS ingress on default azurecontainerapps.io hostname, Replicas min 0, max 1, HTTP-driven scaling, ADR-0031 Azure PostgreSQL Flexible Server with public access and firewall, Separate calendar_app and calendar_migrator roles, Firewall rules for known outbound IPv4 addresses (+25 more)
+Nodes (40): ADR-0029 Azure Container Apps as the compute platform, Azure Container Registry Basic (UK South), External HTTPS ingress on default azurecontainerapps.io hostname, Replicas min 0, max 1, HTTP-driven scaling, ADR-0031 Azure PostgreSQL Flexible Server with public access and firewall, Separate calendar_app and calendar_migrator roles, Firewall rules for known outbound IPv4 addresses, Seven-day point-in-time restore backup (+32 more)
 
 ### Community 26 - "Tasks API Tests"
 Cohesion: 0.08
@@ -647,49 +618,41 @@ Nodes (50): bulk(), BULK, bulk_tasks_applies_actions_and_reports_skipped_and_mis
 Cohesion: 0.16
 Nodes (29): AdrFileResult, adrFiles(), AdrRecord, amendmentDate(), checkFile(), checkModel(), collect(), checkRepository() (+21 more)
 
-### Community 28 - "Web Event Forms and Mutations"
+### Community 28 - "useToggleTask.test.tsx"
 Cohesion: 0.11
-Nodes (38): ApiError, apiError(), problemMessage(), api, AGENDA_KEY, AGENDA_REFETCH_INTERVAL_MS, deadlineInstants(), inFlight (+30 more)
-
-### Community 29 - "Trend.Evaluate"
-Cohesion: 0.09
-Nodes (15): RankTestTests, TrendTests, RankTest, ShiftEstimate, TailProbabilities, Trend, TrendConstants, Default (+7 more)
+Nodes (27): ApiError, apiError(), problemMessage(), api, AGENDA_KEY, AGENDA_REFETCH_INTERVAL_MS, inFlight, TaskPatch (+19 more)
 
 ### Community 30 - "endpoints/tasks.rs"
-Cohesion: 0.10
-Nodes (42): CurrentUser, logout(), apply(), check_shape(), conflict(), create(), delete(), get() (+34 more)
+Cohesion: 0.14
+Nodes (34): CurrentUser, logout(), check_shape(), conflict(), create(), delete(), get(), not_found() (+26 more)
 
 ### Community 31 - "Docs Site Package"
-Cohesion: 0.06
-Nodes (43): dependencies, @astrojs/markdown-remark@^7.3.6, @astrojs/starlight@^0.42.10, @calendar/theme@workspace:*, gray-matter@^4.0.3, mdast-util-to-string@^4.0.0, remark-gfm@^4.0.1, unist-util-visit@^5.2.0 (+35 more)
+Cohesion: 0.05
+Nodes (53): dependencies, @astrojs/markdown-remark@^7.3.6, @astrojs/starlight@^0.42.10, @calendar/theme@workspace:*, gray-matter@^4.0.3, mdast-util-to-string@^4.0.0, remark-gfm@^4.0.1, unist-util-visit@^5.2.0 (+45 more)
 
 ### Community 32 - "Day Inclusion Rule Tests"
 Cohesion: 0.12
 Nodes (48): all_day(), at(), day(), due_at(), due_on(), event_all_day_is_floating_ignores_window_instants(), event_all_day_uses_dates_with_exclusive_end(), event_timed_continuing_into_tomorrow_included() (+40 more)
 
-### Community 33 - "security-reviewer agent"
-Cohesion: 0.14
-Nodes (15): security-reviewer agent, CurrentUser extractor authentication rule, Ownership checklist (ADR-0041), Privacy checklist, Session cookie and CSRF rules, Security severity scale (Critical/High/Medium/Low), skeptic agent, Skeptic lenses (true, reproduces, matters) (+7 more)
+### Community 33 - "watch.ts"
+Cohesion: 0.10
+Nodes (42): attempts, gh(), ghPath(), isTransient(), main(), pr(), withLists(), appendPrs() (+34 more)
 
 ### Community 34 - "ADR-0045 Gate CI job run times with a robust log-normal bound"
-Cohesion: 0.04
-Nodes (73): readDocuments() corpus loader, ci-timings harness, Frontend CI job baseline (median 4:28), documentRoutes() promise cache, Critical path measured from CI result start, 0005 Web test suite: one jsdom per worker and unit-level batching test, Vitest vmThreads pool (not measurable), 0006 Web build step without a second tsc -b (+65 more)
+Cohesion: 0.03
+Nodes (81): readDocuments() corpus loader, ci-timings harness, Frontend CI job baseline (median 4:28), documentRoutes() promise cache, Critical path measured from CI result start, 0005 Web test suite: one jsdom per worker and unit-level batching test, Vitest vmThreads pool (not measurable), 0006 Web build step without a second tsc -b (+73 more)
 
 ### Community 35 - "Web Router and Shell"
 Cohesion: 0.08
-Nodes (39): AppLayout(), onUnauthorized(), InvalidDatePage(), NotFoundPage(), NotificationProvider(), Shown, Harness(), renderNotifications() (+31 more)
+Nodes (38): AppLayout(), onUnauthorized(), InvalidDatePage(), NotFoundPage(), NotificationProvider(), Shown, Harness(), renderNotifications() (+30 more)
 
-### Community 36 - "SnapshotRules.Validate"
-Cohesion: 0.06
-Nodes (8): CountParse, Snapshot, AgentRulesTests, CountCommentTests, SnapshotRulesTests, SnapshotVersionTests, QualityRulesTests, DoctorTests
-
-### Community 37 - "state.rs"
-Cohesion: 0.06
-Nodes (28): a_short_seed_key_is_refused_only_where_it_would_be_used(), ConfigError, SeedKeyTooShort, UnsupportedUrl, DEFAULT_URLS, defaults_are_production_without_database_google_or_seed(), google_needs_both_values_and_blank_counts_as_unset(), GoogleCredentials (+20 more)
+### Community 37 - "config.rs"
+Cohesion: 0.07
+Nodes (22): a_short_seed_key_is_refused_only_where_it_would_be_used(), ConfigError, SeedKeyTooShort, UnsupportedUrl, DEFAULT_URLS, defaults_are_production_without_database_google_or_seed(), google_needs_both_values_and_blank_counts_as_unset(), GoogleCredentials (+14 more)
 
 ### Community 38 - "Day Agenda Endpoint Tests"
-Cohesion: 0.10
-Nodes (44): agenda_reports_notes_without_including_their_text(), all_day(), all_day_events_are_floating_the_same_date_in_every_zone(), all_day_events_are_sorted_by_start_date_then_title_and_not_mixed_with_timed_events(), all_day_events_multi_day_cover_start_through_the_day_before_the_exclusive_end(), all_day_titles(), at(), d() (+36 more)
+Cohesion: 0.09
+Nodes (41): agenda_reports_notes_without_including_their_text(), all_day(), all_day_events_are_floating_the_same_date_in_every_zone(), all_day_events_are_sorted_by_start_date_then_title_and_not_mixed_with_timed_events(), all_day_events_multi_day_cover_start_through_the_day_before_the_exclusive_end(), all_day_titles(), at(), d() (+33 more)
 
 ### Community 39 - "ref_node_path"
 Cohesion: 0.12
@@ -697,19 +660,15 @@ Nodes (18): CommandOutput, onPath(), runCommand(), git(), GitProbe, lines(), max
 
 ### Community 40 - "parse.bench.ts"
 Cohesion: 0.06
-Nodes (28): adrFiles, adrSources, bodies, sources, storySources, withGfm, withoutGfm, remark-parse@^11.0.0 (+20 more)
-
-### Community 41 - "DateTimeOffset"
-Cohesion: 0.05
-Nodes (21): JobTiming, Seconds, Parser, Report, Statistics, StepTiming, Seconds, Summary (+13 more)
+Nodes (31): adrFiles, adrSources, bodies, sources, storySources, withGfm, withoutGfm, remark-parse@^11.0.0 (+23 more)
 
 ### Community 42 - "ADR Sweep Judge Workflow"
 Cohesion: 0.04
 Nodes (43): admitCount, admitted, all, byId, CAP_RECORD, CAP_RUN, caps, CHECKS (+35 more)
 
 ### Community 43 - "Web Package Manifest"
-Cohesion: 0.09
-Nodes (29): devDependencies, jsdom@^31.0.0, msw@^3.0.4, @testing-library/dom@^10.4.2, @testing-library/jest-dom@^7.0.1, @testing-library/react@^16.3.3, @testing-library/user-event@^14.6.8, @types/node@^26.6.6 (+21 more)
+Cohesion: 0.05
+Nodes (49): dependencies, @calendar/api-client@workspace:*, @calendar/theme@workspace:*, react@^19.3.1, react-dom@^19.3.1, @tanstack/react-query@^5.107.1, @tanstack/react-router@^1.170.46, devDependencies (+41 more)
 
 ### Community 44 - "binary.rs"
 Cohesion: 0.47
@@ -719,52 +678,48 @@ Nodes (6): applies_the_chain_prints_it_and_then_finds_nothing_pending(), fails_w
 Cohesion: 0.05
 Nodes (46): env, runs-on, steps, AZURE_ALLOWED_IPS, AZURE_BICEP_USE_BINARY_FROM_PATH, AZURE_DEPLOYER_CLIENT_ID, INFRA_ENVIRONMENT, INFRA_PHASE (+38 more)
 
-### Community 46 - "Dashboard Agent Section"
-Cohesion: 0.10
-Nodes (15): Gh, GhTests, AgentActivityTotals, AgentBasis, AgentCollector, AgentCountTotals, AgentIssue, AgentParser (+7 more)
-
 ### Community 47 - "calendar_event.rs"
 Cohesion: 0.19
 Nodes (33): all_day(), create_all_day_when_end_not_after_start_fails(), create_all_day_with_blank_title_fails(), create_all_day_with_too_long_title_fails(), create_all_day_with_valid_range_sets_properties(), create_location_and_notes_are_capped_at_their_max_lengths(), create_maps_a_legacy_alias_to_the_canonical_zone_id(), create_normalizes_instants_to_utc() (+25 more)
 
 ### Community 48 - "Web Time Grid"
 Cohesion: 0.09
-Nodes (38): Notes(), AllDayBand(), AllDayEvent, formatDates(), AllDayBar, AllDayLayout, BAND_LANE_REM, bandHeight() (+30 more)
+Nodes (37): AllDayBand(), AllDayEvent, formatDates(), AllDayBar, AllDayLayout, BAND_LANE_REM, bandHeight(), DayLayout (+29 more)
 
 ### Community 49 - "Migrator Binary"
-Cohesion: 0.11
-Nodes (21): adopt_ef_history(), ADVISORY_LOCK_KEY, blocking(), EF_MIGRATIONS, embedded(), migrate(), migrate_to(), MigrateError (+13 more)
+Cohesion: 0.13
+Nodes (22): adopt_ef_history(), ADVISORY_LOCK_KEY, blocking(), EF_MIGRATIONS, embedded(), migrate(), migrate_to(), MigrateError (+14 more)
 
-### Community 50 - "src/session_keys.rs"
-Cohesion: 0.22
-Nodes (9): get_or_create(), KEY_LENGTH, SessionKey, stored(), scripts, generate, test, test:coverage (+1 more)
+### Community 50 - "snapshot-rules.ts"
+Cohesion: 0.14
+Nodes (41): validateAgents(), numbers(), validateFlow(), stat(), checkDay(), checkIds(), checkRate(), checkRuns() (+33 more)
+
+### Community 51 - "FakeAzure"
+Cohesion: 0.18
+Nodes (7): FakeAzure, Calls, Existing, FileContents, FilePath, Input, InfraTests
 
 ### Community 52 - "Architecture Model Parser"
 Cohesion: 0.06
-Nodes (58): Adr, Story, adrIds(), AdrReference, architectureSidebar(), checkArchitecture(), checkControls(), Control (+50 more)
-
-### Community 53 - "Handover Watch GraphQL Query"
-Cohesion: 0.13
-Nodes (11): ListKind, CrossReferences, IssueComments, PrComments, Reviews, ReviewThreads, ThreadComments, PendingPage (+3 more)
+Nodes (57): Adr, Story, adrIds(), AdrReference, architectureSidebar(), checkArchitecture(), checkControls(), Control (+49 more)
 
 ### Community 54 - "Todo Task Domain"
-Cohesion: 0.12
-Nodes (8): InvalidOperationError, Deadline, Priority, High, Low, Medium, TodoTask, TodoTaskRecord
+Cohesion: 0.11
+Nodes (9): InvalidOperationError, Deadline, Priority, High, Low, Medium, TodoTask, TodoTaskRecord (+1 more)
 
 ### Community 55 - "adr-sweep-judge.js workflow"
 Cohesion: 0.15
 Nodes (15): adr-sweep-judge.js workflow, Agent caps: 12 per record, 40 per run, check-adr mechanical rules and --inventory, issue-sweep-verify.js workflow, sweep-judge agent (Sonnet, read-only), sweep-skeptic agent (Haiku, true/matters lenses), ADR sweep report 2026-11-09T0844Z (by hand, Codex baseline), Finding J3 0008: Playwright deferral trigger has arrived (+7 more)
 
 ### Community 56 - "Docs Astro Config and Palette"
-Cohesion: 0.07
-Nodes (32): firstAgentThought, { flows }, mermaidNoAutoStart, palettes, { site, base }, ADR-0039, ADR-0059, astro@^7.4.7 (+24 more)
+Cohesion: 0.08
+Nodes (29): firstAgentThought, { flows }, mermaidNoAutoStart, palettes, { site, base }, ADR-0039, ADR-0059, astro@^7.4.7 (+21 more)
 
 ### Community 57 - "Request Parsing and Auth Endpoints"
-Cohesion: 0.09
-Nodes (14): HealthResponse, get_day(), get_week(), window(), get_health(), created(), JSON, json() (+6 more)
+Cohesion: 0.13
+Nodes (8): created(), JSON, json(), parse_route_guid(), query_names_ignore_case_and_repeated_values_are_joined(), QueryParams, route_guids_come_in_the_dotnet_forms(), typed_query_values_fail_the_binding_when_malformed()
 
 ### Community 58 - "database/agenda_agreement.rs"
-Cohesion: 0.12
+Cohesion: 0.13
 Nodes (23): all_day_event_covers(), event_occurs_on(), is_due_on(), is_due_today(), is_included_in_day(), is_overdue(), is_overdue_on(), timed_event_overlaps() (+15 more)
 
 ### Community 59 - "CALM Architecture Model"
@@ -776,36 +731,36 @@ Cohesion: 0.07
 Nodes (39): ADR-0026, devDependencies, eslint@^9.39.5, eslint-config-prettier@^10.1.8, @eslint/js@^9.39.5, eslint-plugin-jsx-a11y@^6.10.2, eslint-plugin-react-hooks@^7.1.1, eslint-plugin-react-refresh@^0.5.7 (+31 more)
 
 ### Community 61 - "SPA Hosting Middleware"
-Cohesion: 0.11
+Cohesion: 0.09
 Nodes (19): api_paths_are_matched_by_segment_ignoring_case(), api_paths_are_normalized_for_routing(), cache_rules_of_static_files(), cookies_are_secure_outside_development(), extensions_and_loopback_hosts(), has_extension(), https_redirect(), is_api_path() (+11 more)
 
 ### Community 62 - "API Test Builders and Clock"
-Cohesion: 0.14
-Nodes (5): router(), FakeAuthenticator, TestClient, TestResponse, list()
+Cohesion: 0.13
+Nodes (4): escape(), TestClient, TestResponse, list()
 
 ### Community 63 - "Problem Details Errors"
-Cohesion: 0.07
-Nodes (13): SESSION_COOKIE, me(), ApiError, Internal, Problem, a_bare_status_has_the_standard_type_and_title(), binding_failures_forbid_caching(), defaults() (+5 more)
+Cohesion: 0.09
+Nodes (11): ApiError, Internal, Problem, a_bare_status_has_the_standard_type_and_title(), binding_failures_forbid_caching(), defaults(), members_are_in_the_dotnet_order(), Problem (+3 more)
 
 ### Community 64 - "Week Agenda Endpoint Tests"
-Cohesion: 0.11
-Nodes (29): all_day(), all_day_events_are_returned_once_per_week_ordered_by_start_date_then_title_then_id(), all_day_titles(), at(), d(), done(), event_titles(), events_are_placed_on_each_day_they_touch_with_day_relative_flags_and_ordered_by_start_then_title() (+21 more)
+Cohesion: 0.12
+Nodes (30): utc(), all_day(), all_day_events_are_returned_once_per_week_ordered_by_start_date_then_title_then_id(), all_day_titles(), at(), d(), done(), event_titles() (+22 more)
 
 ### Community 65 - "src/auth.rs"
-Cohesion: 0.09
-Nodes (15): authenticate(), AuthOutcome, Anonymous, Authenticated, Forbidden, AuthRejection, Failed, Forbidden (+7 more)
+Cohesion: 0.13
+Nodes (9): authenticate(), AuthOutcome, Anonymous, Authenticated, Forbidden, AuthRejection, Failed, Forbidden (+1 more)
 
-### Community 66 - "app.rs"
-Cohesion: 0.09
-Nodes (8): Authenticator, Clock, SystemClock, DbConnection, Inner, random_key(), DeniesEveryone, PgPool
+### Community 66 - "state.rs"
+Cohesion: 0.11
+Nodes (6): Clock, SystemClock, DbConnection, Inner, random_key(), PgPool
 
 ### Community 67 - "Google Sign-In Flow"
-Cohesion: 0.09
-Nodes (31): attach_user(), callback(), CALLBACK_PATH, check_id_token(), complete(), exchange_code(), FAILURE_REDIRECT, fetch_user() (+23 more)
+Cohesion: 0.07
+Nodes (37): authenticate(), exactly_one_matching_key_is_needed(), HEADER, NO_ALLOWED_EMAIL_MESSAGE, presents_key(), attach_user(), callback(), CALLBACK_PATH (+29 more)
 
 ### Community 68 - "CalendarEvent"
-Cohesion: 0.10
-Nodes (15): ArgumentError, CalendarEvent, CalendarEventRecord, EventSchedule, AllDay, Timed, require_owner(), MAX_LOCATION_LENGTH (+7 more)
+Cohesion: 0.09
+Nodes (18): apply(), new_event(), shape_checked(), ArgumentError, CalendarEvent, CalendarEventRecord, EventSchedule, AllDay (+10 more)
 
 ### Community 69 - "narrative-panel.js"
 Cohesion: 0.08
@@ -816,12 +771,8 @@ Cohesion: 0.10
 Nodes (14): a_ticket_opens_under_its_key_until_it_expires(), a_ticket_without_a_user_id_signs_nobody_in(), clear_cookie(), cookie_value(), cookies_are_read_and_written(), FORMAT_VERSION, NONCE_LENGTH, principal() (+6 more)
 
 ### Community 71 - "Architecture Page Renderer"
-Cohesion: 0.18
-Nodes (9): architecturePages(), classDefs(), mermaidId(), mermaidText(), Renderer, renderValue(), shape(), shortLabel() (+1 more)
-
-### Community 72 - "Handover Watch Snapshot"
-Cohesion: 0.14
-Nodes (9): Fetch, PullRequest, Association, Author, Snapshot, HasPending, Items, PullRequests (+1 more)
+Cohesion: 0.17
+Nodes (10): architecturePages(), classDefs(), mermaidId(), mermaidText(), Renderer, renderValue(), scalarList(), shape() (+2 more)
 
 ### Community 73 - "Infra Integration Lock File"
 Cohesion: 0.07
@@ -835,17 +786,17 @@ Nodes (17): evaluateBash(), fieldFile(), ghPost(), git(), GitCall, hasFlag(), pa
 Cohesion: 0.17
 Nodes (4): User, .LEGACY_OWNER_ID, UserRecord, trim_to_option()
 
-### Community 76 - "DateTimeOffset"
+### Community 76 - "SeedPlan.Build"
 Cohesion: 0.09
 Nodes (8): SeedDev, Created, EventSeed, SeedAuthentication, SeedJson, SeedPlan, TaskSeed, SeedPlanTests
 
-### Community 77 - "TaskForm.tsx"
-Cohesion: 0.17
-Nodes (21): ADR-0043, Field(), FieldControlProps, Errors, focusFirstInvalid(), withoutError(), EditTask(), fromTask() (+13 more)
+### Community 77 - "EventForm.tsx"
+Cohesion: 0.10
+Nodes (41): ADR-0043, Field(), FieldControlProps, Errors, focusFirstInvalid(), withoutError(), deadlineInstants(), defaults() (+33 more)
 
 ### Community 78 - "CI Trend Workflow"
 Cohesion: 0.06
-Nodes (35): concurrency, cancel-in-progress, group, run, env, DOTNET_CLI_TELEMETRY_OPTOUT, DOTNET_NOLOGO, GH_TOKEN (+27 more)
+Nodes (31): concurrency, cancel-in-progress, group, run, GH_TOKEN, jobs, trend, name (+23 more)
 
 ### Community 79 - "CodeQL Workflow"
 Cohesion: 0.06
@@ -856,7 +807,7 @@ Cohesion: 0.06
 Nodes (35): concurrency, cancel-in-progress, group, INFRA_ENVIRONMENT, description, options, required, type (+27 more)
 
 ### Community 81 - "Google Sign-In Tests"
-Cohesion: 0.12
+Cohesion: 0.13
 Nodes (19): a_callback_that_does_not_belong_to_the_flow_is_denied(), a_return_url_that_is_not_local_becomes_the_root(), an_allow_listed_person_is_signed_in_and_gets_their_user_row(), assert_denied(), begin(), behind_the_proxy_the_redirect_uri_is_https_and_cookies_are_secure(), CLIENT_ID, CLIENT_SECRET (+11 more)
 
 ### Community 82 - "Todo Task Domain Tests"
@@ -864,30 +815,30 @@ Cohesion: 0.14
 Nodes (27): closed_message(), complete_after_reopen_records_new_time(), complete_sets_completed_at_in_utc(), complete_when_already_completed_keeps_first_completion_time(), create(), create_reports_the_first_broken_rule_in_a_fixed_order(), create_sets_the_owner_and_rejects_an_empty_one(), create_title_length_is_capped_at_two_hundred_after_trim() (+19 more)
 
 ### Community 83 - "TestDatabase"
-Cohesion: 0.11
-Nodes (7): admin_password(), app_password(), copy_when_idle(), database_acl(), migrator_password(), parse(), TestDatabase
+Cohesion: 0.12
+Nodes (6): admin_password(), copy_when_idle(), database_acl(), migrator_password(), parse(), TestDatabase
 
-### Community 84 - "workflow-yaml.ts"
-Cohesion: 0.11
-Nodes (15): changesJob(), ciResultNeedsAll(), docsSiteJob(), justRecipe(), parallelToolTests(), singleWebTypecheck(), supersededRuns(), convert() (+7 more)
+### Community 84 - "delivery-guards_test.ts"
+Cohesion: 0.07
+Nodes (38): event(), changesJob(), changesRulesPath, ciResultNeedsAll(), docsSiteJob(), findRoot(), Guard, guards (+30 more)
 
 ### Community 85 - "Vite API Proxy"
-Cohesion: 0.09
-Nodes (21): apiProxy(), DEFAULT_API_URL, devSignInHostGuard(), Env, isLoopback(), isSameOriginRequest(), LOOPBACK_HOSTS, LOOPBACK_LISTEN_HOSTS (+13 more)
+Cohesion: 0.12
+Nodes (15): apiProxy(), DEFAULT_API_URL, isLoopback(), isSameOriginRequest(), LOOPBACK_HOSTS, LOOPBACK_LISTEN_HOSTS, MINIMUM_SEED_KEY_LENGTH, OWN_FETCH_SITES (+7 more)
 
-### Community 86 - "authentication.rs"
-Cohesion: 0.25
-Nodes (5): anonymous_bulk_and_delete_routes_return_unauthorized(), anonymous_routes_return_unauthorized(), cross_origin_request_has_no_cors_headers(), host(), public_routes_are_accessible()
+### Community 86 - "quality.ts"
+Cohesion: 0.09
+Nodes (40): groupBy(), attempt(), AttemptJob, buildQuality(), buildScope(), classifyQuality(), collectQuality(), GuardDay (+32 more)
 
 ### Community 87 - "Agenda Queries"
-Cohesion: 0.14
-Nodes (18): AgendaRows, AgendaTaskRow, AgendaTaskTuple, AllDayEventRow, OverdueRows, OverdueTuple, read(), read_overdue() (+10 more)
+Cohesion: 0.15
+Nodes (19): AgendaRows, AgendaTaskRow, AgendaTaskTuple, AllDayEventRow, OverdueRows, OverdueTuple, read(), read_overdue() (+11 more)
 
 ### Community 88 - "Business expert"
-Cohesion: 0.07
-Nodes (23): Business expert, Concern, Evidence, Pushback, Standing question, Tensions, Voice, Characteristic expert (+15 more)
+Cohesion: 0.29
+Nodes (7): Business expert, Concern, Evidence, Pushback, Standing question, Tensions, Voice
 
-### Community 89 - "WeekView.test.tsx"
+### Community 89 - "WeekView.tsx"
 Cohesion: 0.08
 Nodes (43): TaskToggleError(), WeekLink(), EditEvent(), patchWeekTasks(), useWeekAgenda(), WeekAgenda, weekKey(), isTypingTarget() (+35 more)
 
@@ -896,16 +847,16 @@ Cohesion: 0.06
 Nodes (34): contentHash, resolved, type, net10.0, contentHash, resolved, type, contentHash (+26 more)
 
 ### Community 91 - "queries/task_list.rs"
-Cohesion: 0.19
-Nodes (17): completed(), dated(), DatedView, for_view(), is_open_overdue(), key_of(), local_due_date!, no_deadline() (+9 more)
+Cohesion: 0.16
+Nodes (16): completed(), dated(), DatedView, for_view(), is_open_overdue(), key_of(), local_due_date!, no_deadline() (+8 more)
 
 ### Community 92 - "Day Window Tests"
 Cohesion: 0.18
 Nodes (26): contains_is_half_open(), create_ambiguous_midnight_starts_at_first_occurrence(), create_consecutive_days_tile_in_every_zone_across_years(), create_consecutive_days_tile_without_gaps_across_dst_change(), create_date_skipped_entirely_is_empty_at_the_transition(), create_east_of_utc_starts_on_previous_utc_day(), create_gap_starting_at_midnight_starts_at_transition(), create_in_utc_matches_calendar_day() (+18 more)
 
 ### Community 93 - "theme.test.ts"
-Cohesion: 0.20
-Nodes (12): options, bindThemeControls(), darkQuery(), readChoice(), resolveTheme(), saveChoice(), ADR-0047, original (+4 more)
+Cohesion: 0.19
+Nodes (13): options, bindThemeControls(), darkQuery(), readChoice(), resolveTheme(), saveChoice(), ADR-0047, original (+5 more)
 
 ### Community 94 - "postgres.rs"
 Cohesion: 0.11
@@ -915,29 +866,29 @@ Nodes (10): ADMIN_USER, EMPTY_TEMPLATE, MAX_DATABASES, MIGRATED_DATABASE, MIGRAT
 Cohesion: 0.20
 Nodes (9): allFiles, cssByPath, cssFiles, sourceFiles, SRC, stripComments(), tokens, tokensPath (+1 more)
 
-### Community 96 - "CI Timings Lock File"
-Cohesion: 0.07
-Nodes (32): dependencies, net10.0, net10.0/linux-x64, runtime.linux-x64.Microsoft.DotNet.ILCompiler@10.0.15, runtime.linux-x64.Microsoft.DotNet.ILCompiler, contentHash, dependencies, requested (+24 more)
+### Community 96 - "narrative.ts"
+Cohesion: 0.10
+Nodes (29): generatedNote(), hasParts(), inlineDiagrams(), isSystemName(), normalise(), outputName(), panelPart, PartFiles (+21 more)
 
-### Community 97 - "Dashboard Lock File"
-Cohesion: 0.07
-Nodes (32): dependencies, net10.0, net10.0/linux-x64, runtime.linux-x64.Microsoft.DotNet.ILCompiler@10.0.15, runtime.linux-x64.Microsoft.DotNet.ILCompiler, contentHash, dependencies, requested (+24 more)
+### Community 97 - "app.rs"
+Cohesion: 0.09
+Nodes (13): build(), fallback(), openapi_document(), router(), serve(), SESSION_COOKIE, me(), AppOptions (+5 more)
 
-### Community 98 - "Handover Watch Lock File"
-Cohesion: 0.07
-Nodes (32): dependencies, net10.0, net10.0/linux-x64, runtime.linux-x64.Microsoft.DotNet.ILCompiler@10.0.15, runtime.linux-x64.Microsoft.DotNet.ILCompiler, contentHash, dependencies, requested (+24 more)
+### Community 98 - "flow.ts"
+Cohesion: 0.11
+Nodes (27): start(), GhRunner, AgentsSection, buildFlow(), closedIssues(), collectFlow(), distribute(), Distribution (+19 more)
 
 ### Community 99 - "Seed Dev Lock File"
 Cohesion: 0.07
 Nodes (32): dependencies, net10.0, net10.0/linux-x64, runtime.linux-x64.Microsoft.DotNet.ILCompiler@10.0.15, runtime.linux-x64.Microsoft.DotNet.ILCompiler, contentHash, dependencies, requested (+24 more)
 
-### Community 100 - "hook-runner.ts"
+### Community 100 - "legacy-parity_test.ts"
 Cohesion: 0.17
 Nodes (19): ADR-0042, describeFormat(), evaluateContract(), evaluateEdit(), runHook(), subcommands, context(), HookInput (+11 more)
 
-### Community 101 - "TestApp"
-Cohesion: 0.18
-Nodes (3): escape(), TestApp, list()
+### Community 101 - "0020 Proof runs of the ADR sweep and issue verification workflows"
+Cohesion: 0.09
+Nodes (24): 0015 Review-before-merge workflow: three skeptics per finding, 0018 Agent cap and a dying reviewer in review-before-merge, Agent cap with severity-first order per reviewer, Failed reviewer status 'returned nothing', 0020 Proof runs of the ADR sweep and issue verification workflows, ADR sweep run cap (40 agents) and per-record cap (12), ADR sweep rotation repeated same records within a day (#625), Agent cost proxies from count comments (+16 more)
 
 ### Community 102 - "Ownership Isolation Tests"
 Cohesion: 0.14
@@ -952,44 +903,36 @@ Cohesion: 0.14
 Nodes (10): add_days(), build_events(), build_task(), build_tasks(), each_day_of_the_week_equals_the_day_agenda(), edge_points(), scenarios!, text() (+2 more)
 
 ### Community 105 - "ADR-0027 Google OIDC with a BFF cookie session"
-Cohesion: 0.06
-Nodes (38): Google sign-in setup, ADR-0016: Docker Compose for local databases and Testcontainers for tests, Test that calendar_app cannot run DDL, ADR-0027 Google OIDC with a BFF cookie session, Future bearer scheme for native/CLI clients, Google OpenID Connect authorization code flow, Trusted forwarded headers from configured proxies, Development-only seed key (X-Dev-Seed-Key) (+30 more)
+Cohesion: 0.05
+Nodes (46): Google sign-in setup, ADR-0026 Client-side routing with TanStack Router, createAppRouter (frontend/apps/web/src/router.tsx), Date params validated in params.parse, throwing notFound(), HostingTests.SpaRoutingAndCacheHeaders, ESLint only-throw-error allows NotFoundError and Redirect, SPA deep-link hosting requirements, ADR-0027 Google OIDC with a BFF cookie session (+38 more)
 
 ### Community 106 - "Events API Tests"
 Cohesion: 0.15
-Nodes (20): create(), create_all_day_event_round_trips(), create_event_end_without_offset_names_the_end_field(), create_event_instant_without_explicit_offset_returns_400_naming_the_field(), create_event_invalid_returns_400_validation_problem(), create_timed_event_round_trips_and_normalizes_to_utc(), delete_event_removes_it_from_the_resource_and_the_agenda(), event_count() (+12 more)
+Nodes (19): create(), create_event_end_without_offset_names_the_end_field(), create_event_instant_without_explicit_offset_returns_400_naming_the_field(), create_event_invalid_returns_400_validation_problem(), create_timed_event_round_trips_and_normalizes_to_utc(), delete_event_removes_it_from_the_resource_and_the_agenda(), event_count(), event_uri() (+11 more)
 
 ### Community 107 - "Compose PostgreSQL"
 Cohesion: 0.07
 Nodes (27): create_host_path, CALENDAR_APP_PASSWORD, CALENDAR_MIGRATOR_PASSWORD, POSTGRES_DB, POSTGRES_PASSWORD, POSTGRES_USER, interval, retries (+19 more)
 
 ### Community 108 - "theme.ts"
-Cohesion: 0.21
-Nodes (15): applyTheme(), DARK_QUERY, darkQuery(), readChoice(), resolveTheme(), saveChoice(), Listener, original (+7 more)
-
-### Community 109 - "Infra"
-Cohesion: 0.06
-Nodes (22): BaselineSampler, BaselineSamplerTests, FakeGh, JobsCalls, Infra, AzureProcess, IAzureProcess, RoleAgreementTests (+14 more)
+Cohesion: 0.22
+Nodes (14): applyTheme(), DARK_QUERY, darkQuery(), readChoice(), resolveTheme(), saveChoice(), Listener, original (+6 more)
 
 ### Community 110 - "slides/theme/package.json"
 Cohesion: 0.12
 Nodes (16): favicon, fonts, description, engines, slidev, mono, provider, sans (+8 more)
 
-### Community 111 - "CiSnapshot.Build"
-Cohesion: 0.08
-Nodes (14): AgentsJson, FlowJson, QualityJson, CiSection, CiSnapshot, JobBaselineStat, JobStat, JobTrend (+6 more)
-
-### Community 112 - "tool-versions.ts"
-Cohesion: 0.22
+### Community 112 - "ref_std_path"
+Cohesion: 0.20
 Nodes (14): drifts(), fixture(), write(), compareVersions(), findDrift(), findPins(), fix(), main() (+6 more)
 
 ### Community 113 - "FakeProbe"
 Cohesion: 0.15
 Nodes (3): PullRequest, PullRequestText, FakeProbe
 
-### Community 114 - "ADR-0047 Semantic CSS tokens selected by a data-theme attribute"
-Cohesion: 0.07
-Nodes (41): ADR-0047 Semantic CSS tokens selected by a data-theme attribute, @calendar/theme shared workspace package (frontend/packages/theme/), Vitest guard test against colour literals outside the token file, Theme module plus inline start-up script in index.html, Single token file holding every palette value, ADR-0048 Self-host theme fonts from Fontsource packages, Fontsource variable-font npm packages bundled by Vite, Fraunces (Paper & Sage heading serif) (+33 more)
+### Community 114 - "Style a web view in both themes (theme guide)"
+Cohesion: 0.16
+Nodes (11): Fontsource variable-font npm packages bundled by Vite, Fraunces (Paper & Sage heading serif), Plus Jakarta Sans (Midnight Studio headings and body), Committed Cargo.lock with --locked everywhere, Style a web view in both themes (theme guide), Themes: Paper & Sage (light) and Midnight Studio (dark), Semantic --color-* tokens in @calendar/theme tokens.css, Shared classes in components.css (.panel, .items, .badge, ...) (+3 more)
 
 ### Community 115 - "Azure OIDC Check Workflow"
 Cohesion: 0.09
@@ -1003,33 +946,25 @@ Nodes (19): 0058 Move the backend from .NET to Rust to learn the stack and its p
 Cohesion: 0.07
 Nodes (27): Docker.DotNet.Enhanced.Handler.Abstractions, Docker.DotNet.Enhanced.Handler.Abstractions@4.3.3, contentHash, dependencies, resolved, type, contentHash, dependencies (+19 more)
 
-### Community 118 - "Probability.NormalQuantile"
-Cohesion: 0.27
-Nodes (3): Z, Probability, ProbabilityTests
+### Community 118 - "contracts/tasks.rs"
+Cohesion: 0.17
+Nodes (18): BulkTaskItemResult, BulkTaskRequest, .TYPE_NAME, BulkTaskResponse, CreateTaskRequest, .TYPE_NAME, DEFAULT_PRIORITY, default_priority() (+10 more)
 
-### Community 119 - "Retention.Check"
-Cohesion: 0.25
-Nodes (3): Retention, Verdict, RetentionTests
-
-### Community 120 - "tests/session_keys.rs"
-Cohesion: 0.47
-Nodes (9): a_cookie_sealed_with_another_databases_key_is_rejected(), a_protected_payload_survives_another_instance(), a_session_cookie_sealed_by_one_instance_signs_in_at_another(), a_tampered_cookie_is_rejected(), an_expired_cookie_is_rejected(), host(), stored_keys(), the_key_is_stored_in_postgres_and_visible_to_another_instance() (+1 more)
-
-### Community 121 - "CI Gate Tests"
-Cohesion: 0.26
-Nodes (3): GateRun, GateTests, GatePath
+### Community 120 - "TestApp"
+Cohesion: 0.22
+Nodes (11): TestApp, a_cookie_sealed_with_another_databases_key_is_rejected(), a_protected_payload_survives_another_instance(), a_session_cookie_sealed_by_one_instance_signs_in_at_another(), a_tampered_cookie_is_rejected(), an_expired_cookie_is_rejected(), host(), stored_keys() (+3 more)
 
 ### Community 122 - "Day Window"
-Cohesion: 0.22
+Cohesion: 0.18
 Nodes (8): DayWindow, find_transition(), local_date(), offset_seconds(), SAMPLE_STEP_SECONDS, SEARCH_AFTER_SECONDS, SEARCH_BEFORE_SECONDS, start_of_day()
 
 ### Community 123 - "run-calendar/deno.json"
 Cohesion: 0.08
 Nodes (24): compilerOptions, noUncheckedIndexedAccess, strict, fmt, exclude, include, lineWidth, imports (+16 more)
 
-### Community 124 - "Triage.tsx"
-Cohesion: 0.20
-Nodes (12): ConfirmDialog(), ModalDialog(), browserTimeZone(), batchIds(), BULK_ID_LIMIT, BulkActionError, BulkOutcome, PostBatch (+4 more)
+### Community 124 - "README.md"
+Cohesion: 0.11
+Nodes (15): Runbooks README, Runbook order front-matter field, Story 0029: Preserve independent perspectives on our work, Agent thoughts collection (docs/agent-thoughts), Report 0001: Repository purpose and value, Story 0031: Open the docs site on why the repository exists, Docs site root redirects to first agent thought, Agent thoughts index validation (parseAgentThoughts) (+7 more)
 
 ### Community 125 - "0061 Commit the graphify knowledge graph"
 Cohesion: 0.12
@@ -1052,28 +987,24 @@ Cohesion: 0.12
 Nodes (16): 0060 Bring the architecture model back in line with the repo, Acceptance criteria, Agreed scope, Any Decision Records, Background, Design decisions, Implementation notes, Lessons learned, known issues and follow-ups (+8 more)
 
 ### Community 130 - "Fact"
-Cohesion: 0.05
-Nodes (26): ScriptSplitTests, HandoverWatch.Tests, ParserTests, AlertEvaluationTests, Footer, Report, SeenRecord, Watch (+18 more)
+Cohesion: 0.12
+Nodes (8): ScriptSplitTests, DatabaseTests, FakeAzure, Calls, FailDelete, Input, OverrideSecret, RuleList
 
-### Community 131 - "ADR-0012: GitHub Actions CI, security scanning and Dependabot"
-Cohesion: 0.05
-Nodes (34): 0022 Narrative panel rebuttal part reads, Insights, Reconsideration, Results, What differed from the plan, ADR-0006: NuGet Central Package Management with lock files and source mapping, NuGet Central Package Management (Directory.Packages.props), CentralPackageTransitivePinningEnabled (+26 more)
+### Community 131 - "0058-move-the-backend-from-dotnet-to-rust.md"
+Cohesion: 0.04
+Nodes (59): ADR-0002 .NET 10 LTS with Minimal APIs, Domain + Api projects, API serves the built SPA in a single container, ADR-0003 React + Vite + TypeScript SPA for the web UI, TanStack Query for server state, Vite dev proxy for /api (same origin, no CORS), ADR-0004: OpenAPI contract and generated TypeScript client, @calendar/api-client package (schema.gen.ts), just contracts recipe (+51 more)
 
-### Community 132 - "useToggleTask.test.tsx"
-Cohesion: 0.13
-Nodes (14): Board, board(), BOARD_KEY, OTHER_AGENDA_KEY, patchBoard(), setup(), TASKS_KEY, UNRELATED_KEY (+6 more)
+### Community 132 - "architecture-narrative-builder/deno.json"
+Cohesion: 0.09
+Nodes (22): compilerOptions, noUncheckedIndexedAccess, strict, fmt, exclude, include, lineWidth, imports (+14 more)
 
 ### Community 133 - "Theme Package Manifest"
 Cohesion: 0.11
 Nodes (22): dependencies, @fontsource-variable/fraunces@5.3.0, @fontsource-variable/plus-jakarta-sans@5.3.0, devDependencies, @types/node@^26.6.6, typescript@~6.0.3, vitest@^5.1.0, exports (+14 more)
 
-### Community 134 - "sign_in.rs"
-Cohesion: 0.31
-Nodes (6): attach_user_adds_the_user_id_for_a_new_person(), attach_user_fails_the_sign_in_when_google_sent_no_subject(), attach_user_lets_the_first_allow_listed_email_claim_the_legacy_owner(), FIRST, host(), user_row()
-
-### Community 135 - "Dashboard Alerts"
-Cohesion: 0.19
-Nodes (6): AlertAction, Alerts, AlertThresholds, Default, Breach, AlertActionTests
+### Community 134 - "database/migrations.rs"
+Cohesion: 0.16
+Nodes (16): a_failing_migration_rolls_everything_back(), a_fresh_database_runs_the_whole_chain(), ALL_MIGRATIONS, an_ef_database_at_an_older_migration_is_refused_and_left_alone(), an_ef_database_with_an_unknown_migration_is_refused(), an_ef_migrated_database_is_adopted_and_keeps_its_rows(), DIESEL_VERSIONS, EF_HISTORY (+8 more)
 
 ### Community 136 - "Infra Test Packages"
 Cohesion: 0.09
@@ -1084,8 +1015,12 @@ Cohesion: 0.14
 Nodes (14): DomainError, Argument, InvalidOperation, database_error(), Error, Conflict, Database, Domain (+6 more)
 
 ### Community 138 - "IANA Time Zones"
-Cohesion: 0.16
+Cohesion: 0.17
 Nodes (9): find_iana(), IanaZone, .UTC, is_valid_iana_id(), is_well_formed(), MAX_ID_LENGTH, NOT_ZONES, try_find_iana() (+1 more)
+
+### Community 139 - "Time Zone Alias Tests"
+Cohesion: 0.10
+Nodes (3): canonical(), CANONICAL, canonical_finds_every_alias_and_is_case_sensitive()
 
 ### Community 140 - "0063 Build architecture narratives with an interviewing agent and an expert panel"
 Cohesion: 0.12
@@ -1096,24 +1031,20 @@ Cohesion: 0.09
 Nodes (22): net10.0, contentHash, resolved, type, contentHash, requested, resolved, type (+14 more)
 
 ### Community 142 - "calendar-migrate/src/main.rs"
-Cohesion: 0.35
-Nodes (9): MigrationReport, CONNECTION_VARIABLE, describe(), describes_a_run_that_adopted_and_applied(), describes_a_run_with_nothing_pending(), fails_clearly_on_a_bad_connection_string_without_echoing_it(), fails_clearly_without_the_variable(), main() (+1 more)
+Cohesion: 0.36
+Nodes (8): CONNECTION_VARIABLE, describe(), describes_a_run_that_adopted_and_applied(), describes_a_run_with_nothing_pending(), fails_clearly_on_a_bad_connection_string_without_echoing_it(), fails_clearly_without_the_variable(), main(), run()
 
-### Community 143 - "net10.0 (packages.lock.json) #4"
-Cohesion: 0.09
-Nodes (22): net10.0, contentHash, resolved, type, contentHash, requested, resolved, type (+14 more)
-
-### Community 144 - "net10.0 (packages.lock.json) #5"
-Cohesion: 0.09
-Nodes (22): net10.0, contentHash, resolved, type, contentHash, requested, resolved, type (+14 more)
+### Community 144 - "read_body"
+Cohesion: 0.14
+Nodes (5): has_json_content_type(), json_content_types(), JsonBody<T>, read_body(), syntax_message()
 
 ### Community 145 - "net10.0 (packages.lock.json) #6"
 Cohesion: 0.09
 Nodes (22): net10.0, contentHash, resolved, type, contentHash, requested, resolved, type (+14 more)
 
-### Community 146 - "net10.0 (packages.lock.json) #7"
-Cohesion: 0.09
-Nodes (22): net10.0, contentHash, resolved, type, contentHash, requested, resolved, type (+14 more)
+### Community 146 - "schema_definition.rs"
+Cohesion: 0.13
+Nodes (8): BEFORE_OWNERSHIP, LEGACY_OWNER_ID, pre_existing_rows_are_backfilled_to_the_unclaimed_legacy_owner(), EventRow, schema_rs_declares_exactly_the_columns_of_each_table(), TaskRow, UserRow, strings()
 
 ### Community 147 - "net10.0 (packages.lock.json) #8"
 Cohesion: 0.09
@@ -1123,17 +1054,17 @@ Nodes (22): net10.0, contentHash, resolved, type, contentHash, requested, resolv
 Cohesion: 0.13
 Nodes (15): Confirmation, Consequences, Considered Options, Context and Problem Statement, Decision Drivers, Decision Outcome, docs/narratives with per-system part files and a Deno stitcher that has a drift check, Layout (+7 more)
 
-### Community 149 - "FakeGitHub"
-Cohesion: 0.16
-Nodes (4): CountComments, Gh, GraphQlRequest, References
-
 ### Community 150 - "dream-weaver skill (SKILL.md)"
 Cohesion: 0.13
 Nodes (21): ADR-0042 agent hooks, Grader: Not covered section and review cost, Not covered section and review cost line, Grader: no public or git writes, Grader: coverage and watermark, Eval prompt: last 24 hours of sessions, Dream weaver report template, Comparison with the previous run (+13 more)
 
 ### Community 151 - "wire.rs"
-Cohesion: 0.18
+Cohesion: 0.20
 Nodes (14): dates_are_iso_only(), digits(), format_instant(), fractions_round_to_one_hundred_nanoseconds(), instant(), instant_opt(), instants_are_written_like_system_text_json(), instants_need_an_explicit_offset() (+6 more)
+
+### Community 152 - "common"
+Cohesion: 0.07
+Nodes (8): anonymous_bulk_and_delete_routes_return_unauthorized(), anonymous_routes_return_unauthorized(), cross_origin_request_has_no_cors_headers(), host(), public_routes_are_accessible(), DeniesEveryone, a_task_is_created_read_listed_and_completed_at_the_clocks_time(), SEED_KEY
 
 ### Community 153 - "session_and_seed.rs"
 Cohesion: 0.17
@@ -1144,8 +1075,8 @@ Cohesion: 0.26
 Nodes (16): a_blank_email_is_a_domain_error(), a_new_person_gets_a_row_and_signs_in_again_to_the_same_row(), a_seed_created_row_is_claimed_by_the_real_sign_in_which_fills_in_the_subject(), another_subject_with_a_claimed_email_does_not_take_over_the_row(), concurrent_first_sign_ins_converge_on_one_row(), count_users(), directory_fixture(), FIRST (+8 more)
 
 ### Community 155 - "adr-draft skill (SKILL.md)"
-Cohesion: 0.13
-Nodes (16): adr-draft skill, Architecture model metadata.adrs entry, check-adr.cs validator, Decision drivers (D1..Dn), File-based app (.NET 10, ADR-0017), --inventory JSON output, MADR format, Driver x option star-rating table (+8 more)
+Cohesion: 0.07
+Nodes (31): security-reviewer agent, CurrentUser extractor authentication rule, Ownership checklist (ADR-0041), Privacy checklist, Session cookie and CSRF rules, Security severity scale (Critical/High/Medium/Low), skeptic agent, Skeptic lenses (true, reproduces, matters) (+23 more)
 
 ### Community 156 - "issue-sweep-verify.js"
 Cohesion: 0.10
@@ -1155,7 +1086,7 @@ Nodes (20): admitted, agents, candidates, CLASSES, handOff, invalid, ADR-0017, A
 Cohesion: 0.10
 Nodes (18): budget, confirmed, done, failed, FINDINGS, ADR-0017, ADR-0044, LENSES (+10 more)
 
-### Community 158 - "Scanner"
+### Community 158 - "shell-command.ts"
 Cohesion: 0.22
 Nodes (7): Heredoc, Parsed, Scanner, split(), tokenize(), unwrap(), wrappers
 
@@ -1171,9 +1102,9 @@ Nodes (8): a_server_without_tls_is_refused_by_require_and_accepted_by_prefer(), 
 Cohesion: 0.18
 Nodes (11): a_cursor_round_trips_for_its_view_only(), encode(), incomplete_and_malformed_cursors_are_refused(), key(), TaskListViewKind, Completed, NoDeadline, Overdue (+3 more)
 
-### Community 162 - "scripts"
-Cohesion: 0.20
-Nodes (10): scripts, bench, build, dev, preview, test, test:coverage, typecheck (+2 more)
+### Community 162 - "AgendaTaskItem"
+Cohesion: 0.23
+Nodes (9): AgendaTaskItem, AgendaSnapshot, AgendaSnapshotDay, bucket(), OVERDUE_LIMIT, read(), all_day_events(), due_tasks() (+1 more)
 
 ### Community 163 - "narrative-panel_test.ts"
 Cohesion: 0.18
@@ -1188,8 +1119,8 @@ Cohesion: 0.12
 Nodes (15): DashboardData, dashboardEntries(), dashboardId(), DashboardPage, dashboardPages, dashboardSidebar(), history(), readDashboardData() (+7 more)
 
 ### Community 166 - "api-client/package.json (package.json)"
-Cohesion: 0.13
-Nodes (19): dependencies, openapi-fetch@^0.17.0, devDependencies, openapi-typescript@^7.13.0, @types/node@^26.6.6, typescript@~6.0.3, vitest@^5.1.0, @vitest/coverage-v8@^5.1.0 (+11 more)
+Cohesion: 0.08
+Nodes (28): get_or_create(), KEY_LENGTH, SessionKey, stored(), dependencies, openapi-fetch@^0.17.0, devDependencies, openapi-typescript@^7.13.0 (+20 more)
 
 ### Community 167 - "Microsoft.Extensions.Logging.Abstractions@10.0.0 (packages.l"
 Cohesion: 0.10
@@ -1199,25 +1130,25 @@ Nodes (20): BouncyCastle.Cryptography, BouncyCastle.Cryptography@2.7.0, Microsof
 Cohesion: 0.29
 Nodes (6): bodyFile(), canonical(), describe(), missing(), numbers(), optionsWithValue
 
-### Community 169 - "ci-timings/tests/packages.lock.json (packages.lock.json)"
-Cohesion: 0.13
-Nodes (19): Microsoft.Testing.Extensions.Telemetry@2.5.2, Microsoft.Testing.Extensions.TrxReport.Abstractions@2.5.2, Microsoft.Testing.Platform.MSBuild@2.5.2, xunit.v3.extensibility.core@[4.0.3], xunit.v3.runner.common@[4.0.3], xunit.v3.runner.inproc.console@[4.0.3], Microsoft.Testing.Extensions.Telemetry, Microsoft.Testing.Extensions.TrxReport.Abstractions (+11 more)
+### Community 169 - "0062 Install the graphify skill and point agents at the committed graph"
+Cohesion: 0.12
+Nodes (16): 0062 Install the graphify skill and point agents at the committed graph, Acceptance criteria, Agreed scope, Any Decision Records, API, Background, Design decisions, Implementation notes (+8 more)
 
-### Community 170 - "delivery-dashboard/tests/packages.lock.json (packages.lock.j"
-Cohesion: 0.13
-Nodes (19): Microsoft.Testing.Extensions.Telemetry@2.5.2, Microsoft.Testing.Extensions.TrxReport.Abstractions@2.5.2, Microsoft.Testing.Platform.MSBuild@2.5.2, xunit.v3.extensibility.core@[4.0.3], xunit.v3.runner.common@[4.0.3], xunit.v3.runner.inproc.console@[4.0.3], Microsoft.Testing.Extensions.Telemetry, Microsoft.Testing.Extensions.TrxReport.Abstractions (+11 more)
+### Community 170 - "schema_constraints.rs"
+Cohesion: 0.26
+Nodes (12): event_date_span_is_a_partial_gist_indexed_generated_range_only_for_all_day_events(), event_span_is_a_gist_indexed_generated_range_only_for_timed_events(), event_violating_the_shape_rules_is_rejected(), events_owner_is_indexed(), generated_ranges_and_xmin_cannot_be_written(), index_definition(), insert_timed_and_all_day_event(), open_task_due_index_excludes_completed_and_undated_tasks() (+4 more)
 
 ### Community 171 - "startupScript.test.ts"
-Cohesion: 0.22
-Nodes (8): runStartupScript(), inline(), Web app index.html, Theme startup script (pre-paint), inlineScript, original, page, runStartupScript()
+Cohesion: 0.20
+Nodes (9): runStartupScript(), devSignInHostGuard(), inline(), Web app index.html, Theme startup script (pre-paint), inlineScript, original, page (+1 more)
 
 ### Community 172 - "doctor/tests/packages.lock.json (packages.lock.json)"
 Cohesion: 0.13
 Nodes (19): Microsoft.Testing.Extensions.Telemetry@2.5.2, Microsoft.Testing.Extensions.TrxReport.Abstractions@2.5.2, Microsoft.Testing.Platform.MSBuild@2.5.2, xunit.v3.extensibility.core@[4.0.3], xunit.v3.runner.common@[4.0.3], xunit.v3.runner.inproc.console@[4.0.3], Microsoft.Testing.Extensions.Telemetry, Microsoft.Testing.Extensions.TrxReport.Abstractions (+11 more)
 
-### Community 173 - "handover-watch/tests/packages.lock.json (packages.lock.json)"
-Cohesion: 0.13
-Nodes (19): Microsoft.Testing.Extensions.Telemetry@2.5.2, Microsoft.Testing.Extensions.TrxReport.Abstractions@2.5.2, Microsoft.Testing.Platform.MSBuild@2.5.2, xunit.v3.extensibility.core@[4.0.3], xunit.v3.runner.common@[4.0.3], xunit.v3.runner.inproc.console@[4.0.3], Microsoft.Testing.Extensions.Telemetry, Microsoft.Testing.Extensions.TrxReport.Abstractions (+11 more)
+### Community 173 - "Architecture narrative builder"
+Cohesion: 0.15
+Nodes (13): Act 1: Setup, Act 2: Confrontation, Act 3: Resolution, Architecture narrative builder, Driving characteristics, Inputs, Quality checks before stitching, Resume first (+5 more)
 
 ### Community 174 - "infra/tests/packages.lock.json (packages.lock.json)"
 Cohesion: 0.13
@@ -1228,7 +1159,7 @@ Cohesion: 0.13
 Nodes (19): Microsoft.Testing.Extensions.Telemetry@2.5.2, Microsoft.Testing.Extensions.TrxReport.Abstractions@2.5.2, Microsoft.Testing.Platform.MSBuild@2.5.2, xunit.v3.extensibility.core@[4.0.3], xunit.v3.runner.common@[4.0.3], xunit.v3.runner.inproc.console@[4.0.3], Microsoft.Testing.Extensions.Telemetry, Microsoft.Testing.Extensions.TrxReport.Abstractions (+11 more)
 
 ### Community 177 - "calendar-api/src/validation.rs (validation.rs)"
-Cohesion: 0.23
+Cohesion: 0.21
 Nodes (6): dates_and_zones_are_required_and_checked(), domain_errors_map_to_api_fields(), errors_keep_field_order_and_group_messages(), FieldErrors, MAX_DATE, MIN_DATE
 
 ### Community 178 - "outputs"
@@ -1247,13 +1178,13 @@ Nodes (18): compilerOptions, allowImportingTsExtensions, erasableSyntaxOnly, exa
 Cohesion: 0.43
 Nodes (4): main(), run(), shutdown_signal(), write_openapi()
 
-### Community 182 - "Microsoft.Testing.Platform@[2.5.2, 3.0.0) (packages.lock.jso #4"
-Cohesion: 0.11
-Nodes (19): Microsoft.ApplicationInsights@2.23.0, Microsoft.Testing.Platform@[2.5.2, 3.0.0), Microsoft.ApplicationInsights, Microsoft.Testing.Platform, contentHash, dependencies, resolved, type (+11 more)
+### Community 182 - "SKILL.md"
+Cohesion: 0.17
+Nodes (7): Act 1: Setup, Act 2: Confrontation, Act 3: Resolution, Act guide, Between acts: driving characteristics, Characteristics catalogue, Narrowing questions
 
-### Community 183 - "Microsoft.Testing.Platform@[2.5.2, 3.0.0) (packages.lock.jso #5"
-Cohesion: 0.11
-Nodes (19): Microsoft.ApplicationInsights@2.23.0, Microsoft.Testing.Platform@[2.5.2, 3.0.0), Microsoft.ApplicationInsights, Microsoft.Testing.Platform, contentHash, dependencies, resolved, type (+11 more)
+### Community 183 - "endpoints/agenda.rs"
+Cohesion: 0.36
+Nodes (3): get_day(), get_week(), window()
 
 ### Community 184 - "steps"
 Cohesion: 0.22
@@ -1267,9 +1198,9 @@ Nodes (8): agent-hooks (Claude Code hooks), Delivery PR rule (Closes/Fixes/Resol
 Cohesion: 0.11
 Nodes (19): Microsoft.ApplicationInsights@2.23.0, Microsoft.Testing.Platform@[2.5.2, 3.0.0), Microsoft.ApplicationInsights, Microsoft.Testing.Platform, contentHash, dependencies, resolved, type (+11 more)
 
-### Community 187 - "Microsoft.Testing.Platform@[2.5.2, 3.0.0) (packages.lock.jso #8"
-Cohesion: 0.11
-Nodes (19): Microsoft.ApplicationInsights@2.23.0, Microsoft.Testing.Platform@[2.5.2, 3.0.0), Microsoft.ApplicationInsights, Microsoft.Testing.Platform, contentHash, dependencies, resolved, type (+11 more)
+### Community 187 - "BulkChange"
+Cohesion: 0.31
+Nodes (6): BulkChange, ClearDeadline, Complete, Delete, SetDueDate, SetDueInstant
 
 ### Community 188 - "Microsoft.Testing.Platform@[2.5.2, 3.0.0) (packages.lock.jso #9"
 Cohesion: 0.11
@@ -1299,9 +1230,9 @@ Nodes (26): delivery-performance-reviewer agent, performance-reviewer agent, Per
 Cohesion: 0.08
 Nodes (23): compilerOptions, noUncheckedIndexedAccess, strict, fmt, exclude, include, lineWidth, imports (+15 more)
 
-### Community 195 - "scripts"
-Cohesion: 0.25
-Nodes (8): scripts, build, dev, preview, test, test:coverage, test:watch, typecheck
+### Community 195 - "Ledger: System name"
+Cohesion: 0.20
+Nodes (10): Assumptions, Contradictions, Driving characteristics, Gaps, Ledger: System name, Options, Panel, Progress (+2 more)
 
 ### Community 196 - "decks.ts"
 Cohesion: 0.15
@@ -1316,12 +1247,12 @@ Cohesion: 0.12
 Nodes (17): DiffEngine@11.3.0, EmptyFiles@4.4.0, System.Management@6.0.1, contentHash, dependencies, resolved, type, DiffEngine (+9 more)
 
 ### Community 199 - "agenda_bucketing.rs"
-Cohesion: 0.25
+Cohesion: 0.23
 Nodes (6): add_days(), indexed_buckets_match_per_day_filtering(), indexed_buckets_match_per_day_filtering_apia_skipped_date(), indexed_buckets_match_per_day_filtering_new_york_fall_back(), indexed_buckets_match_per_day_filtering_new_york_spring_forward(), SeededRandom
 
-### Community 200 - "dependencies"
-Cohesion: 0.20
-Nodes (10): dependencies, @calendar/api-client@workspace:*, @calendar/theme@workspace:*, react@^19.3.1, react-dom@^19.3.1, @tanstack/react-query@^5.107.1, @tanstack/react-router@^1.170.46, @calendar/theme (+2 more)
+### Community 200 - "Act 1: Setup"
+Cohesion: 0.25
+Nodes (7): Act 1: Setup, Scope, Stakeholders, The problem, Users and scale, Vocabulary, Why now
 
 ### Community 201 - "docs (ci.yml)"
 Cohesion: 0.12
@@ -1331,17 +1262,17 @@ Nodes (17): defaults, run, defaults, if, name, needs, runs-on, timeout-minutes (
 Cohesion: 0.12
 Nodes (16): jobs, review, name, on, pull_request, permissions, contents, pull-requests (+8 more)
 
-### Community 203 - "ConnectionConfig"
-Cohesion: 0.09
-Nodes (18): connect(), connect_client(), connect_error(), ConnectionConfig, ConnectionError, Connect, ConnectionString, create_pool() (+10 more)
+### Community 203 - "SslMode"
+Cohesion: 0.29
+Nodes (7): SslMode, Allow, Disable, Prefer, Require, VerifyCa, VerifyFull
 
-### Community 204 - "Shouldly (packages.lock.json) #4"
-Cohesion: 0.12
-Nodes (17): DiffEngine@11.3.0, EmptyFiles@4.4.0, System.Management@6.0.1, contentHash, dependencies, resolved, type, DiffEngine (+9 more)
+### Community 204 - "Act 3: Resolution"
+Cohesion: 0.25
+Nodes (7): Act 3: Resolution, D1: Decision title, Decisions, How the driving characteristics are met, Open questions, Risks, The architecture
 
-### Community 205 - "Shouldly (packages.lock.json) #5"
-Cohesion: 0.12
-Nodes (17): DiffEngine@11.3.0, EmptyFiles@4.4.0, System.Management@6.0.1, contentHash, dependencies, resolved, type, DiffEngine (+9 more)
+### Community 205 - "devSignInHostGuard.test.ts"
+Cohesion: 0.25
+Nodes (5): Env, Host, LOOPBACK, NON_LOOPBACK, SIGNED_IN
 
 ### Community 206 - "slides/tsconfig.json"
 Cohesion: 0.29
@@ -1351,9 +1282,9 @@ Nodes (6): compilerOptions, types, exclude, extends, include, ../../tsconfig.bas
 Cohesion: 0.12
 Nodes (17): DiffEngine@11.3.0, EmptyFiles@4.4.0, System.Management@6.0.1, contentHash, dependencies, resolved, type, DiffEngine (+9 more)
 
-### Community 208 - "Shouldly (packages.lock.json) #8"
-Cohesion: 0.12
-Nodes (17): DiffEngine@11.3.0, EmptyFiles@4.4.0, System.Management@6.0.1, contentHash, dependencies, resolved, type, DiffEngine (+9 more)
+### Community 208 - "BulkTaskAction"
+Cohesion: 0.29
+Nodes (7): BulkTaskAction, ClearDeadline, Complete, Delete, .NAMES, SetDueDate, SetDueInstant
 
 ### Community 209 - "Shouldly (packages.lock.json) #9"
 Cohesion: 0.12
@@ -1375,9 +1306,9 @@ Nodes (5): Answer, Ground rules, Narrative expert, Phases, Rebuttal
 Cohesion: 0.47
 Nodes (6): steps, steps, name, run, uses, steps
 
-### Community 214 - "agent-hooks (Claude Code hooks)"
-Cohesion: 0.13
-Nodes (12): gh-pages storage branch, GitHub Pages publishing (Publish docs site workflow), Infrastructure tooling README, --allow-ip / AZURE_ALLOWED_IPS firewall ranges, AZURE_DEPLOYER_CLIENT_ID deployment identity, Foundation then full deployment phases, Infra previews dispatched from main, just infra secret-init (ops vault password) (+4 more)
+### Community 214 - "delivery-dashboard snapshot tool"
+Cohesion: 0.15
+Nodes (10): Infrastructure tooling README, --allow-ip / AZURE_ALLOWED_IPS firewall ranges, AZURE_DEPLOYER_CLIENT_ID deployment identity, Foundation then full deployment phases, Infra previews dispatched from main, just infra secret-init (ops vault password), Dashboard agents section (GitHub-only proxies), dashboard-snapshot.yml workflow (dashboard-data branch) (+2 more)
 
 ### Community 215 - "adr-draft/deno.json"
 Cohesion: 0.09
@@ -1408,32 +1339,32 @@ Cohesion: 0.14
 Nodes (10): currentScript, deploy(), headSha, Reply, Request, status(), stepEnv(), stepScript() (+2 more)
 
 ### Community 222 - "outputs (ci.yml)"
-Cohesion: 0.14
-Nodes (14): name, outputs, permissions, runs-on, timeout-minutes, changes, adr, backend (+6 more)
+Cohesion: 0.13
+Nodes (15): name, outputs, permissions, runs-on, timeout-minutes, changes, adr, backend (+7 more)
 
 ### Community 223 - "Pinned run-time baseline (.github/ci-baseline.json)"
 Cohesion: 0.38
 Nodes (7): Pinned run-time baseline (.github/ci-baseline.json), CI run-time gate (.github/ci-gate.jq), CI result job, ci-timings tool, CI trend check (ci-trend.yml, Mann-Whitney), delivery-guards mechanism guards, tool_dirs test discovery (tools/mod.just)
 
 ### Community 224 - "repo_files.rs"
-Cohesion: 0.43
-Nodes (6): find(), finds_the_role_script_and_the_compose_file(), parse_postgres_image(), parses_only_a_postgres_image_line(), postgres_image(), reads_the_image_pinned_in_compose_yaml()
+Cohesion: 0.29
+Nodes (7): app_password(), find(), finds_the_role_script_and_the_compose_file(), parse_postgres_image(), parses_only_a_postgres_image_line(), postgres_image(), reads_the_image_pinned_in_compose_yaml()
 
-### Community 225 - "net10.0/linux-x64 (packages.lock.json) #4"
-Cohesion: 0.16
-Nodes (16): dependencies, net10.0/linux-x64, contentHash, resolved, type, Microsoft.Win32.Registry, runtime.linux-x64.Microsoft.DotNet.ILCompiler, System.Security.AccessControl (+8 more)
+### Community 225 - "Characteristic expert"
+Cohesion: 0.29
+Nodes (7): Characteristic expert, Concern, Evidence, Pushback, Standing question, Tensions, Voice
 
-### Community 226 - "xunit.v3.extensibility.core (packages.lock.json) #4"
-Cohesion: 0.12
-Nodes (16): Microsoft.Win32.Registry@[5.0.0], System.Security.AccessControl@[6.0.1], xunit.v3.common@[4.0.3], Microsoft.Win32.Registry, System.Security.AccessControl, xunit.v3.common, xunit.v3.extensibility.core, xunit.v3.runner.common (+8 more)
+### Community 226 - "End-User expert"
+Cohesion: 0.29
+Nodes (7): Concern, End-User expert, Evidence, Pushback, Standing question, Tensions, Voice
 
-### Community 227 - "net10.0/linux-x64 (packages.lock.json) #5"
-Cohesion: 0.16
-Nodes (16): dependencies, net10.0/linux-x64, contentHash, resolved, type, Microsoft.Win32.Registry, runtime.linux-x64.Microsoft.DotNet.ILCompiler, System.Security.AccessControl (+8 more)
+### Community 227 - "Act 2: Confrontation"
+Cohesion: 0.29
+Nodes (6): Act 2: Confrontation, Alternatives, Challenges, Constraints, Decision to make, Driving characteristics
 
-### Community 228 - "xunit.v3.extensibility.core (packages.lock.json) #5"
-Cohesion: 0.12
-Nodes (16): Microsoft.Win32.Registry@[5.0.0], System.Security.AccessControl@[6.0.1], xunit.v3.common@[4.0.3], Microsoft.Win32.Registry, System.Security.AccessControl, xunit.v3.common, xunit.v3.extensibility.core, xunit.v3.runner.common (+8 more)
+### Community 228 - "permissions"
+Cohesion: 0.33
+Nodes (7): permissions, actions, contents, issues, pull-requests, permissions, permissions
 
 ### Community 229 - "result"
 Cohesion: 0.40
@@ -1447,13 +1378,9 @@ Nodes (16): dependencies, net10.0/linux-x64, contentHash, resolved, type, Micros
 Cohesion: 0.12
 Nodes (16): Microsoft.Win32.Registry@[5.0.0], System.Security.AccessControl@[6.0.1], xunit.v3.common@[4.0.3], Microsoft.Win32.Registry, System.Security.AccessControl, xunit.v3.common, xunit.v3.extensibility.core, xunit.v3.runner.common (+8 more)
 
-### Community 233 - "net10.0/linux-x64 (packages.lock.json) #8"
-Cohesion: 0.16
-Nodes (16): dependencies, net10.0/linux-x64, contentHash, resolved, type, Microsoft.Win32.Registry, runtime.linux-x64.Microsoft.DotNet.ILCompiler, System.Security.AccessControl (+8 more)
-
-### Community 234 - "xunit.v3.extensibility.core (packages.lock.json) #8"
-Cohesion: 0.12
-Nodes (16): Microsoft.Win32.Registry@[5.0.0], System.Security.AccessControl@[6.0.1], xunit.v3.common@[4.0.3], Microsoft.Win32.Registry, System.Security.AccessControl, xunit.v3.common, xunit.v3.extensibility.core, xunit.v3.runner.common (+8 more)
+### Community 234 - "0022 Narrative panel rebuttal part reads"
+Cohesion: 0.33
+Nodes (5): 0022 Narrative panel rebuttal part reads, Insights, Reconsideration, Results, What differed from the plan
 
 ### Community 235 - "net10.0/linux-x64 (packages.lock.json) #9"
 Cohesion: 0.16
@@ -1492,16 +1419,16 @@ Cohesion: 0.13
 Nodes (14): concurrency, cancel-in-progress, group, env, DOTNET_CLI_TELEMETRY_OPTOUT, DOTNET_NOLOGO, jobs, tooling (+6 more)
 
 ### Community 245 - "steps (ci.yml)"
-Cohesion: 0.34
-Nodes (15): steps, steps, steps, steps, steps, steps, steps, id (+7 more)
+Cohesion: 0.33
+Nodes (16): steps, steps, steps, steps, steps, steps, steps, steps (+8 more)
 
 ### Community 246 - "with (ci.yml)"
 Cohesion: 0.12
 Nodes (16): with, cache, cache-dependency-path, deno-version-file, global-json-file, if-no-files-found, just-version, key (+8 more)
 
 ### Community 247 - "user.rs"
-Cohesion: 0.21
-Nodes (7): create_and_sign_in_with_a_blank_email_fail_and_change_nothing(), create_normalizes_the_email_and_stamps_the_sign_in(), now(), restore_rebuilds_the_legacy_placeholder_and_a_sign_in_claims_it(), sign_in_fills_in_a_missing_subject_and_keeps_profile_values_that_are_not_given(), sign_in_keeps_an_existing_subject_and_blank_profile_values_keep_the_current_ones(), sign_in_with_another_subject_fails()
+Cohesion: 0.12
+Nodes (13): attach_user_adds_the_user_id_for_a_new_person(), attach_user_fails_the_sign_in_when_google_sent_no_subject(), attach_user_lets_the_first_allow_listed_email_claim_the_legacy_owner(), FIRST, host(), user_row(), create_and_sign_in_with_a_blank_email_fail_and_change_nothing(), create_normalizes_the_email_and_stamps_the_sign_in() (+5 more)
 
 ### Community 248 - "frontend"
 Cohesion: 0.50
@@ -1522,6 +1449,10 @@ Nodes (14): BASE_SHA, CHANGED_FILES, ConnectionStrings__Calendar, DOCS_SITE_URL,
 ### Community 252 - "image (ci.yml)"
 Cohesion: 0.14
 Nodes (14): POSTGRES_DB, POSTGRES_PASSWORD, if, name, needs, runs-on, services, timeout-minutes (+6 more)
+
+### Community 253 - "narratives"
+Cohesion: 0.33
+Nodes (6): narratives, if, name, needs, runs-on, timeout-minutes
 
 ### Community 254 - "Measuring delivery automation (measurement.md)"
 Cohesion: 0.18
@@ -1563,21 +1494,17 @@ Nodes (11): review-before-merge workflow (.claude/workflows/review-before-merge.
 Cohesion: 0.17
 Nodes (12): xunit.analyzers@2.3.0, xunit.v3.assert@[4.0.3], xunit.v3.core.mtp-v2@[4.0.3], xunit.analyzers, xunit.v3.assert, xunit.v3.core.mtp-v2, xunit.v3.mtp-v2, contentHash (+4 more)
 
-### Community 266 - "xunit.v3.mtp-v2 (packages.lock.json) #4"
-Cohesion: 0.17
-Nodes (12): xunit.analyzers@2.3.0, xunit.v3.assert@[4.0.3], xunit.v3.core.mtp-v2@[4.0.3], xunit.analyzers, xunit.v3.assert, xunit.v3.core.mtp-v2, xunit.v3.mtp-v2, contentHash (+4 more)
-
-### Community 267 - "xunit.v3.mtp-v2 (packages.lock.json) #5"
-Cohesion: 0.17
-Nodes (12): xunit.analyzers@2.3.0, xunit.v3.assert@[4.0.3], xunit.v3.core.mtp-v2@[4.0.3], xunit.analyzers, xunit.v3.assert, xunit.v3.core.mtp-v2, xunit.v3.mtp-v2, contentHash (+4 more)
+### Community 267 - "Panel guide"
+Cohesion: 0.40
+Nodes (5): Building the arguments, Naming the panel, Panel guide, Proposing the synergy/conflict map, Using the results
 
 ### Community 269 - "xunit.v3.mtp-v2 (packages.lock.json) #7"
 Cohesion: 0.17
 Nodes (12): xunit.analyzers@2.3.0, xunit.v3.assert@[4.0.3], xunit.v3.core.mtp-v2@[4.0.3], xunit.analyzers, xunit.v3.assert, xunit.v3.core.mtp-v2, xunit.v3.mtp-v2, contentHash (+4 more)
 
-### Community 270 - "xunit.v3.mtp-v2 (packages.lock.json) #8"
-Cohesion: 0.17
-Nodes (12): xunit.analyzers@2.3.0, xunit.v3.assert@[4.0.3], xunit.v3.core.mtp-v2@[4.0.3], xunit.analyzers, xunit.v3.assert, xunit.v3.core.mtp-v2, xunit.v3.mtp-v2, contentHash (+4 more)
+### Community 270 - "templates/slides.md"
+Cohesion: 0.40
+Nodes (4): Act 1: Setup, Act 2: Confrontation, Act 3: Resolution, System name
 
 ### Community 271 - "xunit.v3.mtp-v2 (packages.lock.json) #9"
 Cohesion: 0.17
@@ -1592,8 +1519,8 @@ Cohesion: 0.17
 Nodes (12): xunit.analyzers@2.3.0, xunit.v3.assert@[4.0.3], xunit.v3.core.mtp-v2@[4.0.3], xunit.analyzers, xunit.v3.assert, xunit.v3.core.mtp-v2, xunit.v3.mtp-v2, contentHash (+4 more)
 
 ### Community 279 - "dashboard-snapshot.yml"
-Cohesion: 0.18
-Nodes (10): concurrency, cancel-in-progress, group, env, DATA_BRANCH, DOTNET_CLI_TELEMETRY_OPTOUT, DOTNET_NOLOGO, jobs (+2 more)
+Cohesion: 0.15
+Nodes (12): concurrency, cancel-in-progress, group, env, DATA_BRANCH, jobs, name, on (+4 more)
 
 ### Community 282 - "0059 Run repository tooling on TypeScript and Deno"
 Cohesion: 0.11
@@ -1620,26 +1547,14 @@ Cohesion: 0.22
 Nodes (9): env, if, name, needs, runs-on, timeout-minutes, CARGO_INCREMENTAL, CARGO_TERM_COLOR (+1 more)
 
 ### Community 290 - "with (dashboard-snapshot.yml)"
-Cohesion: 0.22
-Nodes (9): with, cache, cache-dependency-path, global-json-file, if-no-files-found, name, path, persist-credentials (+1 more)
-
-### Community 292 - "Microsoft.DotNet.ILCompiler (packages.lock.json) #4"
-Cohesion: 0.31
-Nodes (9): runtime.linux-x64.Microsoft.DotNet.ILCompiler@10.0.15, runtime.linux-x64.Microsoft.DotNet.ILCompiler, contentHash, dependencies, requested, resolved, type, Microsoft.DotNet.ILCompiler (+1 more)
-
-### Community 294 - "Microsoft.DotNet.ILCompiler (packages.lock.json) #5"
-Cohesion: 0.31
-Nodes (9): runtime.linux-x64.Microsoft.DotNet.ILCompiler@10.0.15, runtime.linux-x64.Microsoft.DotNet.ILCompiler, contentHash, dependencies, requested, resolved, type, Microsoft.DotNet.ILCompiler (+1 more)
+Cohesion: 0.25
+Nodes (8): with, cache, deno-version-file, if-no-files-found, name, path, persist-credentials, retention-days
 
 ### Community 295 - "calendar-infrastructure/src/users.rs"
-Cohesion: 0.27
+Cohesion: 0.30
 Nodes (6): find(), find_for_sign_in(), first(), resolve(), SignIn, UserRow
 
 ### Community 296 - "Microsoft.DotNet.ILCompiler (packages.lock.json) #7"
-Cohesion: 0.31
-Nodes (9): runtime.linux-x64.Microsoft.DotNet.ILCompiler@10.0.15, runtime.linux-x64.Microsoft.DotNet.ILCompiler, contentHash, dependencies, requested, resolved, type, Microsoft.DotNet.ILCompiler (+1 more)
-
-### Community 297 - "Microsoft.DotNet.ILCompiler (packages.lock.json) #8"
 Cohesion: 0.31
 Nodes (9): runtime.linux-x64.Microsoft.DotNet.ILCompiler@10.0.15, runtime.linux-x64.Microsoft.DotNet.ILCompiler, contentHash, dependencies, requested, resolved, type, Microsoft.DotNet.ILCompiler (+1 more)
 
@@ -1672,8 +1587,8 @@ Cohesion: 0.25
 Nodes (7): compilerOptions, lib, tsBuildInfoFile, types, extends, include, ../../tsconfig.base.json
 
 ### Community 308 - "snapshot (dashboard-snapshot.yml)"
-Cohesion: 0.25
-Nodes (8): snapshot, actions, pull-requests, name, outputs, permissions, runs-on, timeout-minutes
+Cohesion: 0.40
+Nodes (5): snapshot, name, outputs, runs-on, timeout-minutes
 
 ### Community 309 - "pages.yml"
 Cohesion: 0.25
@@ -1699,19 +1614,7 @@ Nodes (8): ARTIFACT_ID, BUILD_VERSION, MODE, PR_NUMBER, SITE_URL, SNAPSHOT, SOUR
 Cohesion: 0.25
 Nodes (8): Testcontainers, Testcontainers@4.16.0, Testcontainers.PostgreSql, contentHash, dependencies, requested, resolved, type
 
-### Community 316 - "System.Management (packages.lock.json) #4"
-Cohesion: 0.36
-Nodes (8): System.CodeDom@6.0.0, System.CodeDom, System.Management, System.Management, contentHash, dependencies, resolved, type
-
-### Community 317 - "System.Management (packages.lock.json) #5"
-Cohesion: 0.36
-Nodes (8): System.CodeDom@6.0.0, System.CodeDom, System.Management, System.Management, contentHash, dependencies, resolved, type
-
 ### Community 319 - "System.Management (packages.lock.json) #7"
-Cohesion: 0.36
-Nodes (8): System.CodeDom@6.0.0, System.CodeDom, System.Management, System.Management, contentHash, dependencies, resolved, type
-
-### Community 320 - "System.Management (packages.lock.json) #8"
 Cohesion: 0.36
 Nodes (8): System.CodeDom@6.0.0, System.CodeDom, System.Management, System.Management, contentHash, dependencies, resolved, type
 
@@ -1735,7 +1638,7 @@ Nodes (8): System.CodeDom@6.0.0, System.CodeDom, System.Management, System.Manag
 Cohesion: 0.36
 Nodes (8): System.CodeDom@6.0.0, System.CodeDom, System.Management, System.Management, contentHash, dependencies, resolved, type
 
-### Community 327 - "schema_definition.rs"
+### Community 327 - "tests/agenda_agreement.rs"
 Cohesion: 0.31
 Nodes (8): add_days(), api_selects_exactly_what_day_inclusion_selects(), build_events(), build_task(), build_tasks(), edge_points(), scenarios!, sorted()
 
@@ -1759,13 +1662,13 @@ Nodes (6): compilerOptions, lib, types, extends, include, ../../tsconfig.base.js
 Cohesion: 0.29
 Nodes (6): compilerOptions, lib, types, extends, include, ../../tsconfig.base.json
 
-### Community 334 - "alert (dashboard-snapshot.yml)"
-Cohesion: 0.29
-Nodes (7): name, needs, permissions, runs-on, timeout-minutes, alert, issues
+### Community 334 - "alert"
+Cohesion: 0.20
+Nodes (10): defaults, name, needs, runs-on, timeout-minutes, run, alert, defaults (+2 more)
 
 ### Community 335 - "publish (dashboard-snapshot.yml)"
-Cohesion: 0.29
-Nodes (7): publish, contents, name, needs, permissions, runs-on, timeout-minutes
+Cohesion: 0.40
+Nodes (5): publish, name, needs, runs-on, timeout-minutes
 
 ### Community 336 - "on (pages.yml)"
 Cohesion: 0.29
@@ -1777,21 +1680,9 @@ Nodes (7): with, github-token, name, path, ref, run-id, script
 
 ### Community 338 - "mod.rs"
 Cohesion: 0.06
-Nodes (19): GoogleEndpoints, DatabaseChoice, Fresh, None, Shared, date(), OWNER, seed_users() (+11 more)
-
-### Community 340 - "xunit.v3.common (packages.lock.json) #4"
-Cohesion: 0.29
-Nodes (7): Microsoft.Bcl.AsyncInterfaces@6.0.0, Microsoft.Bcl.AsyncInterfaces, xunit.v3.common, contentHash, dependencies, resolved, type
-
-### Community 341 - "xunit.v3.common (packages.lock.json) #5"
-Cohesion: 0.29
-Nodes (7): Microsoft.Bcl.AsyncInterfaces@6.0.0, Microsoft.Bcl.AsyncInterfaces, xunit.v3.common, contentHash, dependencies, resolved, type
+Nodes (24): Authenticator, GoogleEndpoints, completed_task(), DatabaseChoice, Fresh, None, Shared, date() (+16 more)
 
 ### Community 343 - "xunit.v3.common (packages.lock.json) #7"
-Cohesion: 0.29
-Nodes (7): Microsoft.Bcl.AsyncInterfaces@6.0.0, Microsoft.Bcl.AsyncInterfaces, xunit.v3.common, contentHash, dependencies, resolved, type
-
-### Community 344 - "xunit.v3.common (packages.lock.json) #8"
 Cohesion: 0.29
 Nodes (7): Microsoft.Bcl.AsyncInterfaces@6.0.0, Microsoft.Bcl.AsyncInterfaces, xunit.v3.common, contentHash, dependencies, resolved, type
 
@@ -1827,9 +1718,9 @@ Nodes (4): Agent footer, just tools handover-watch, /loop 5m watch in delivering
 Cohesion: 0.25
 Nodes (7): engineStrict, overrides, dompurify@<3.4.17, image-size@<2.0.3, katex@>=0.11.0 <0.18.2, minimatch@>=7.0.0 <11.0.1, packages
 
-### Community 356 - "ordering_matches_original_comparers_across_ties_and_dst"
-Cohesion: 0.52
-Nodes (3): ordered(), ordering_matches_original_comparers_across_ties_and_dst(), SeededRandom
+### Community 356 - "tests/agenda_order.rs"
+Cohesion: 0.24
+Nodes (9): first_difference(), ordered(), ordering_matches_original_comparers_across_ties_and_dst(), ordinal_ignore_case(), original_all_day(), original_due(), original_timed(), rank() (+1 more)
 
 ### Community 357 - "on (ci.yml)"
 Cohesion: 0.33
@@ -1859,10 +1750,6 @@ Nodes (5): StyleCop.Analyzers, contentHash, requested, resolved, type
 Cohesion: 0.40
 Nodes (5): best(), isLeft(), isRotationOnly(), kept, records
 
-### Community 367 - "run (dashboard-snapshot.yml)"
-Cohesion: 0.40
-Nodes (5): defaults, run, defaults, shell, defaults
-
 ### Community 368 - "TypeScript on Deno for repository tooling, replacing .NET file-based apps"
 Cohesion: 0.14
 Nodes (14): Confirmation, Consequences, Considered Options, Context and Problem Statement, Decision Drivers, Decision Outcome, Delivery and language boundaries, Keep .NET file-based apps (+6 more)
@@ -1875,35 +1762,11 @@ Nodes (5): calendar-api, calendar-domain, calendar-infrastructure, calendar-migr
 Cohesion: 0.60
 Nodes (3): fail(), ok(), doctor.sh script
 
-### Community 373 - "SonarAnalyzer.CSharp (packages.lock.json) #4"
-Cohesion: 0.40
-Nodes (5): SonarAnalyzer.CSharp, contentHash, requested, resolved, type
-
-### Community 374 - "StyleCop.Analyzers (packages.lock.json) #4"
-Cohesion: 0.40
-Nodes (5): StyleCop.Analyzers, contentHash, requested, resolved, type
-
-### Community 375 - "SonarAnalyzer.CSharp (packages.lock.json) #5"
-Cohesion: 0.40
-Nodes (5): SonarAnalyzer.CSharp, contentHash, requested, resolved, type
-
-### Community 376 - "StyleCop.Analyzers (packages.lock.json) #5"
-Cohesion: 0.40
-Nodes (5): StyleCop.Analyzers, contentHash, requested, resolved, type
-
 ### Community 381 - "SonarAnalyzer.CSharp (packages.lock.json) #7"
 Cohesion: 0.40
 Nodes (5): SonarAnalyzer.CSharp, contentHash, requested, resolved, type
 
 ### Community 382 - "StyleCop.Analyzers (packages.lock.json) #7"
-Cohesion: 0.40
-Nodes (5): StyleCop.Analyzers, contentHash, requested, resolved, type
-
-### Community 383 - "SonarAnalyzer.CSharp (packages.lock.json) #8"
-Cohesion: 0.40
-Nodes (5): SonarAnalyzer.CSharp, contentHash, requested, resolved, type
-
-### Community 384 - "StyleCop.Analyzers (packages.lock.json) #8"
 Cohesion: 0.40
 Nodes (5): StyleCop.Analyzers, contentHash, requested, resolved, type
 
@@ -1995,45 +1858,9 @@ Nodes (4): Grader: no push on dry run, Publishing a document's review, Link chec
 Cohesion: 0.50
 Nodes (3): expected_outcome, name, schema_version
 
-### Community 413 - "on (dashboard-snapshot.yml)"
-Cohesion: 0.50
-Nodes (4): on, schedule, workflow_dispatch, cron
-
 ### Community 414 - "assemble (pages.yml)"
 Cohesion: 0.50
 Nodes (4): if, runs-on, timeout-minutes, assemble
-
-### Community 420 - "EmptyFiles (packages.lock.json) #4"
-Cohesion: 0.50
-Nodes (4): contentHash, resolved, type, EmptyFiles
-
-### Community 421 - "Microsoft.ApplicationInsights (packages.lock.json) #4"
-Cohesion: 0.50
-Nodes (4): contentHash, resolved, type, Microsoft.ApplicationInsights
-
-### Community 422 - "Microsoft.Testing.Platform (packages.lock.json) #4"
-Cohesion: 0.50
-Nodes (4): contentHash, resolved, type, Microsoft.Testing.Platform
-
-### Community 423 - "xunit.v3.runner.inproc.console (packages.lock.json) #4"
-Cohesion: 0.50
-Nodes (4): xunit.v3.runner.inproc.console, contentHash, resolved, type
-
-### Community 424 - "EmptyFiles (packages.lock.json) #5"
-Cohesion: 0.50
-Nodes (4): contentHash, resolved, type, EmptyFiles
-
-### Community 425 - "Microsoft.ApplicationInsights (packages.lock.json) #5"
-Cohesion: 0.50
-Nodes (4): contentHash, resolved, type, Microsoft.ApplicationInsights
-
-### Community 426 - "Microsoft.Testing.Platform (packages.lock.json) #5"
-Cohesion: 0.50
-Nodes (4): contentHash, resolved, type, Microsoft.Testing.Platform
-
-### Community 427 - "xunit.v3.runner.inproc.console (packages.lock.json) #5"
-Cohesion: 0.50
-Nodes (4): xunit.v3.runner.inproc.console, contentHash, resolved, type
 
 ### Community 431 - "EmptyFiles (packages.lock.json) #6"
 Cohesion: 0.50
@@ -2048,22 +1875,6 @@ Cohesion: 0.50
 Nodes (4): contentHash, resolved, type, Microsoft.Testing.Platform
 
 ### Community 434 - "xunit.v3.runner.inproc.console (packages.lock.json) #7"
-Cohesion: 0.50
-Nodes (4): xunit.v3.runner.inproc.console, contentHash, resolved, type
-
-### Community 435 - "EmptyFiles (packages.lock.json) #7"
-Cohesion: 0.50
-Nodes (4): contentHash, resolved, type, EmptyFiles
-
-### Community 436 - "Microsoft.ApplicationInsights (packages.lock.json) #7"
-Cohesion: 0.50
-Nodes (4): contentHash, resolved, type, Microsoft.ApplicationInsights
-
-### Community 437 - "Microsoft.Testing.Platform (packages.lock.json) #8"
-Cohesion: 0.50
-Nodes (4): contentHash, resolved, type, Microsoft.Testing.Platform
-
-### Community 438 - "xunit.v3.runner.inproc.console (packages.lock.json) #8"
 Cohesion: 0.50
 Nodes (4): xunit.v3.runner.inproc.console, contentHash, resolved, type
 
@@ -2127,9 +1938,9 @@ Nodes (3): global.json exact SDK pin, Package pin agreement (just tools versions
 Cohesion: 0.20
 Nodes (10): 0008 A knowledge graph, an architecture model, and what each one noticed, Building the graph, CALM: the architecture written as data, Checking the model against the repository, graphify: the repository as a graph, The drift was in the sentences, Two tools, briefly, Warming up: two questions, two different kinds of answer (+2 more)
 
-### Community 483 - "ref_std_assert"
-Cohesion: 0.13
-Nodes (4): Step, Workflow, pin, root
+### Community 483 - "snapshot.ts"
+Cohesion: 0.06
+Nodes (53): BaselineFile, measurePair(), pairRuns(), SupersededPair, AgentIssue, agentQuery, buildAgents(), collectAgents() (+45 more)
 
 ### Community 486 - "adr"
 Cohesion: 0.33
@@ -2142,23 +1953,23 @@ Nodes (6): if, name, needs, runs-on, timeout-minutes, adr
   tools/README.md · relation: cites
 
 ## Knowledge Gaps
-- **350 isolated node(s):** `ADR-0060`, `Total`, `ADR-0042`, `ADR-0047`, `ADR-0047` (+345 more)
-  These have ≤1 connection - possible missing edges or undocumented components. (Counts symbols only; 2909 node(s) total have ≤1 connection when file, concept and rationale nodes are included.)
-- **50 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
+- **321 isolated node(s):** `ADR-0059`, `ADR-0059`, `ADR-0042`, `ADR-0047`, `ADR-0047` (+316 more)
+  These have ≤1 connection - possible missing edges or undocumented components. (Counts symbols only; 2837 node(s) total have ≤1 connection when file, concept and rationale nodes are included.)
+- **90 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
 
 ## Suggested Questions
 _Questions this graph is uniquely positioned to answer:_
 
-- **Why does `jobs` connect `jobs (ci.yml)` to `backend (ci.yml)`, `result (ci.yml)`, `adr`, `docs (ci.yml)`, `image (ci.yml)`, `outputs (ci.yml)`?**
-  _High betweenness centrality (0.050) - this node is a cross-community bridge._
+- **Why does `ADR-0045 Gate CI job run times with a robust log-normal bound` connect `ADR-0045 Gate CI job run times with a robust log-normal bound` to `Agenda, Time Zones, Theme ADRs`, `0058-move-the-backend-from-dotnet-to-rust.md`, `CI, Pages and Architecture ADRs`, `ADR-0017: .NET 10 file-based apps for all repo tooling`, `README.md`, `Pinned run-time baseline (.github/ci-baseline.json)`?**
+  _High betweenness centrality (0.108) - this node is a cross-community bridge._
 - **Are the 13 inferred relationships involving `TodoTask` (e.g. with `build_task()` and `build_tasks()`) actually correct?**
   _`TodoTask` has 13 INFERRED edges - model-reasoned connections that need verification._
-- **What connects `ADR-0060`, `Total`, `ADR-0042` to the rest of the system?**
-  _350 weakly-connected nodes found - possible documentation gaps or missing edges._
+- **What connects `ADR-0059`, `ADR-0059`, `ADR-0042` to the rest of the system?**
+  _321 weakly-connected nodes found - possible documentation gaps or missing edges._
 - **Should `Agenda, Time Zones, Theme ADRs` be split into smaller, more focused modules?**
-  _Cohesion score 0.03657945736434109 - nodes in this community are weakly interconnected._
-- **Why does `ci-timings harness` connect `ADR-0045 Gate CI job run times with a robust log-normal bound` to `shouldly`?**
-  _High betweenness centrality (0.048) - this node is a cross-community bridge._
+  _Cohesion score 0.04108723135271808 - nodes in this community are weakly interconnected._
+- **Why does `ci-timings harness` connect `ADR-0045 Gate CI job run times with a robust log-normal bound` to `timings.ts`?**
+  _High betweenness centrality (0.091) - this node is a cross-community bridge._
 
 ### Low-confidence Hints
 _AMBIGUOUS edges — the extractor was unsure. Verify before acting on these._

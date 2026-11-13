@@ -1,0 +1,35 @@
+#320 · PRs #360 open, #361 merged, #362 closed · 10 new
+=== pr-state:360:open · PR #360 · mgasca · OWNER · 2026-11-06T10:00:00Z
+https://github.com/o/r/pull/360
+=== pr-state:362:closed · PR #362 · mgasca · OWNER · 2026-11-06T11:00:00Z
+https://github.com/o/r/pull/362
+=== review:5802100000 · PR #361 · mgasca · agent-footer: no · CHANGES_REQUESTED · 2026-11-06T14:00:00Z
+https://github.com/o/r/pull/361#pullrequestreview-5802100000
+  Split it.
+=== review-comment:4493903475 · PR #361 · mgasca · OWNER · agent-footer: no · 2026-11-06T15:08:07Z · tools/handover-watch/HandoverWatch.cs:42
+https://github.com/o/r/pull/361#discussion_r4493903475
+  Why not a set?
+=== review-comment:4493926579 · PR #361 · mgasca · OWNER · agent-footer: yes · 2026-11-06T15:10:18Z · A.md · reply-to review-comment:4493903475
+https://github.com/o/r/pull/361#discussion_r4493926579
+  Because order matters.
+
+  🤖 Generated with [Claude Code](https://claude.com/claude-code)
+=== review:5802200000 · PR #361 · mgasca · OWNER · agent-footer: no · APPROVED · 2026-11-06T15:30:00Z
+https://github.com/o/r/pull/361#pullrequestreview-5802200000
+=== issue-comment:6689158337 · #320 · mgasca · agent-footer: yes · 2026-11-06T15:56:49Z
+https://github.com/o/r/issues/320#issuecomment-6689158337
+  Design for #320.
+
+  🤖 Generated with [Claude Code](https://claude.com/claude-code)
+=== pr-state:361:merged · PR #361 · mgasca · OWNER · 2026-11-06T16:00:14Z
+https://github.com/o/r/pull/361
+=== issue-comment:6689200000 · #320 · mgasca · agent-footer: no · 2026-11-06T16:10:00Z
+https://github.com/o/r/issues/320#issuecomment-6689200000
+  > Design for #320.
+  >
+  > 🤖 Generated with [Claude Code](https://claude.com/claude-code)
+
+  Approved, go ahead.
+=== pr-comment:6689300000 · PR #361 · calendar-preview[bot] (bot) · NONE · agent-footer: no · 2026-11-06T16:20:00Z
+https://github.com/o/r/pull/361#issuecomment-6689300000
+  Preview ready.

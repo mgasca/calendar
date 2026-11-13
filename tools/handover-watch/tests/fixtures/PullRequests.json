@@ -1,0 +1,61 @@
+{ "data": { "repository": {
+  "pr360": {
+    "id": "PR_360", "number": 360, "state": "OPEN", "createdAt": "2026-11-06T10:00:00Z", "closedAt": null, "mergedAt": null,
+    "url": "https://github.com/o/r/pull/360", "body": "Adds the tool.\r\n\r\nCloses #320\r\nRefs #318",
+    "authorAssociation": "OWNER", "author": { "__typename": "User", "login": "mgasca" },
+    "comments": { "pageInfo": { "hasNextPage": false, "endCursor": null }, "nodes": [] },
+    "reviews": { "pageInfo": { "hasNextPage": false, "endCursor": null }, "nodes": [] },
+    "reviewThreads": { "pageInfo": { "hasNextPage": false, "endCursor": null }, "nodes": [] } },
+  "pr361": {
+    "id": "PR_361", "number": 361, "state": "MERGED", "createdAt": "2026-11-06T10:30:00Z",
+    "closedAt": "2026-11-06T16:00:14Z", "mergedAt": "2026-11-06T16:00:14Z",
+    "url": "https://github.com/o/r/pull/361", "body": "refs #318, #320",
+    "authorAssociation": "OWNER", "author": { "__typename": "User", "login": "mgasca" },
+    "comments": { "pageInfo": { "hasNextPage": false, "endCursor": "Y1" }, "nodes": [
+      { "fullDatabaseId": "6689300000", "authorAssociation": "NONE", "author": { "__typename": "Bot", "login": "calendar-preview" },
+        "createdAt": "2026-11-06T16:20:00Z", "url": "https://github.com/o/r/pull/361#issuecomment-6689300000",
+        "body": "Preview ready." }
+    ] },
+    "reviews": { "pageInfo": { "hasNextPage": false, "endCursor": "UjU" }, "nodes": [
+      { "fullDatabaseId": "5802140128", "author": { "__typename": "User", "login": "mgasca" }, "state": "COMMENTED",
+        "body": "", "submittedAt": "2026-11-06T15:08:07Z",
+        "url": "https://github.com/o/r/pull/361#pullrequestreview-5802140128" },
+      { "fullDatabaseId": "5802168888", "author": { "__typename": "User", "login": "mgasca" }, "state": "COMMENTED",
+        "body": null, "submittedAt": "2026-11-06T15:10:18Z",
+        "url": "https://github.com/o/r/pull/361#pullrequestreview-5802168888" },
+      { "fullDatabaseId": "5802200000", "authorAssociation": "OWNER", "author": { "__typename": "User", "login": "mgasca" },
+        "state": "APPROVED",
+        "body": "", "submittedAt": "2026-11-06T15:30:00Z",
+        "url": "https://github.com/o/r/pull/361#pullrequestreview-5802200000" },
+      { "fullDatabaseId": "5802100000", "author": { "__typename": "User", "login": "mgasca" }, "state": "CHANGES_REQUESTED",
+        "body": "Split it.", "submittedAt": "2026-11-06T14:00:00Z",
+        "url": "https://github.com/o/r/pull/361#pullrequestreview-5802100000" },
+      { "fullDatabaseId": "5802300000", "author": { "__typename": "User", "login": "mgasca" }, "state": "PENDING",
+        "body": "draft", "submittedAt": null,
+        "url": "https://github.com/o/r/pull/361#pullrequestreview-5802300000" }
+    ] },
+    "reviewThreads": { "pageInfo": { "hasNextPage": false, "endCursor": "VDI" }, "nodes": [
+      { "id": "PRRT_1", "comments": { "pageInfo": { "hasNextPage": false, "endCursor": "QzE" }, "nodes": [
+        { "fullDatabaseId": "4493903475", "authorAssociation": "OWNER", "author": { "__typename": "User", "login": "mgasca" },
+          "state": "SUBMITTED",
+          "createdAt": "2026-11-06T15:08:07Z", "url": "https://github.com/o/r/pull/361#discussion_r4493903475",
+          "path": "tools/handover-watch/HandoverWatch.cs", "line": 42, "originalLine": 40, "replyTo": null,
+          "body": "Why not a set?" }
+      ] } },
+      { "id": "PRRT_2", "comments": { "pageInfo": { "hasNextPage": false, "endCursor": "QzI" }, "nodes": [
+        { "fullDatabaseId": "4493926579", "authorAssociation": "OWNER", "author": { "__typename": "User", "login": "mgasca" },
+          "state": "SUBMITTED",
+          "createdAt": "2026-11-06T15:10:18Z", "url": "https://github.com/o/r/pull/361#discussion_r4493926579",
+          "path": "A.md", "line": null, "originalLine": null, "replyTo": { "fullDatabaseId": "4493903475" },
+          "body": "Because order matters.\n\n🤖 Generated with [Claude Code](https://claude.com/claude-code)" },
+        { "fullDatabaseId": "4493990000", "author": { "__typename": "User", "login": "mgasca" }, "state": "PENDING",
+          "createdAt": "2026-11-06T15:20:00Z", "url": "https://github.com/o/r/pull/361#discussion_r4493990000",
+          "path": "A.md", "line": 3, "originalLine": 3, "replyTo": { "fullDatabaseId": "4493903475" },
+          "body": "A draft reply nobody else can see." }
+      ] } }
+    ] } },
+  "pr362": {
+    "id": "PR_362", "number": 362, "state": "CLOSED", "createdAt": "2026-11-06T10:40:00Z",
+    "closedAt": "2026-11-06T11:00:00Z", "mergedAt": null, "url": "https://github.com/o/r/pull/362", "body": "Refs: #320",
+    "authorAssociation": "OWNER", "author": { "__typename": "User", "login": "mgasca" } }
+} } }

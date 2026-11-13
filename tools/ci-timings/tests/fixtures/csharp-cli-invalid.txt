@@ -1,0 +1,2 @@
+unknown argument: --runs
+usage: ci-timings [--workflow FILE] [--runs N] [--repo OWNER/NAME] [--branch NAME] [--created RANGE] [--job NAME]... [--superseded] [--baseline --created RANGE [--holdout RANGE] [--out FILE] [--record FILE] [--min-runs N] [--alpha A] [--floor S] [--margin R]] [--trend [--out FILE] [--issue]]

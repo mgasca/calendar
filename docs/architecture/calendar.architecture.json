@@ -21,7 +21,7 @@
       "containers": {
         "title": "Containers and deployment",
         "description": "The parts that run, where they run and how they connect: the single container image in the Container Apps environment of a per-environment resource group, the database, the migrator, the tooling around them and the documentation site.",
-        "nodes": ["user", "operator", "google-identity", "web-app", "api-client", "theme-package", "openapi-contract", "calendar-api", "calendar-container", "container-apps-environment", "calendar-db", "db-migrator", "infra-tool", "github-actions", "container-registry", "azure-key-vault-app", "azure-key-vault-ops", "log-analytics", "azure-resource-group", "decision-log", "docs-site", "github-pages", "delivery-dashboard-tool", "dashboard-data-branch"]
+        "nodes": ["user", "operator", "google-identity", "web-app", "api-client", "theme-package", "openapi-contract", "calendar-api", "calendar-container", "container-apps-environment", "calendar-db", "db-migrator", "infra-tool", "github-actions", "container-registry", "azure-key-vault-app", "azure-key-vault-ops", "log-analytics", "azure-resource-group", "decision-log", "docs-site", "narrative-decks", "github-pages", "delivery-dashboard-tool", "dashboard-data-branch"]
       }
     },
     "adrs": [
@@ -868,7 +868,8 @@
         { "unique-id": "story-files", "path": "docs/stories/NNNN-*.md" },
         { "unique-id": "runbook-files", "path": "docs/runbooks/*.md" },
         { "unique-id": "benchmark-files", "path": "docs/benchmarks/NNNN-*.md" },
-        { "unique-id": "narrative-files", "path": "docs/narratives/<system>-narrative.md" }
+        { "unique-id": "narrative-files", "path": "docs/narratives/<system>-narrative.md" },
+        { "unique-id": "deck-files", "path": "docs/narratives/<system>/slides.md" }
       ],
       "metadata": { "adrs": ["ADR-0000", "ADR-0028"], "validation": "just tools adr; frontend/apps/docs tests fail on broken links, anchors, unknown or duplicate ADRs, unlisted stories, runbooks or benchmarks, titles that differ from their index or a missing benchmark harness" }
     },
@@ -883,6 +884,16 @@
         { "unique-id": "dashboard-pages-url", "url": "https://mgasca.github.io/calendar/dashboard/" }
       ],
       "metadata": { "adrs": ["ADR-0022", "ADR-0023", "ADR-0025", "ADR-0028", "ADR-0049", "ADR-0059"], "stories": ["0053", "0063"], "source": "frontend/apps/docs", "build": "just docs build (DOCS_SITE_URL sets site and base; it first copies the dashboard-data branch into the git-ignored .dashboard-data/)" }
+    },
+    {
+      "unique-id": "narrative-decks",
+      "node-type": "webclient",
+      "name": "Narrative decks (Slidev)",
+      "description": "Slidev workspace app (frontend/apps/slides) that builds each narrative's deck, docs/narratives/<system>/slides.md, into a static presentation with the Calendar theme tokens and self-hosted fonts, Mermaid rendered by Slidev. The docs site build builds every deck into the site at slides/<system>/, so decks publish with the site and its previews; a narrative links its deck exactly when one exists. No PDF export.",
+      "interfaces": [
+        { "unique-id": "deck-url", "url": "https://mgasca.github.io/calendar/slides/<system>/" }
+      ],
+      "metadata": { "adrs": ["ADR-0060", "ADR-0047"], "stories": ["0063"], "source": "frontend/apps/slides", "build": "just docs slides <system> (one deck at the root path); just docs build (every deck, inside the site)" }
     },
     {
       "unique-id": "github-pages",
@@ -902,7 +913,7 @@
       "relationship-type": {
         "composed-of": {
           "container": "calendar-system",
-          "nodes": ["web-app", "api-client", "theme-package", "openapi-contract", "calendar-api", "calendar-db", "db-migrator", "infra-tool", "decision-log", "docs-site", "delivery-dashboard-tool", "dashboard-data-branch"]
+          "nodes": ["web-app", "api-client", "theme-package", "openapi-contract", "calendar-api", "calendar-db", "db-migrator", "infra-tool", "decision-log", "docs-site", "narrative-decks", "delivery-dashboard-tool", "dashboard-data-branch"]
         }
       },
       "metadata": { "adrs": ["ADR-0001"] }
@@ -1201,6 +1212,39 @@
       "metadata": { "adrs": ["ADR-0023", "ADR-0025"], "safeguards": "The publisher never runs PR code; it validates the source run, revision and PR state and rejects fork-origin inputs" }
     },
     {
+      "unique-id": "docs-site-builds-narrative-decks",
+      "description": "Builds every linked deck into the site at slides/<system>/ with",
+      "relationship-type": {
+        "connects": {
+          "source": { "node": "docs-site", "interfaces": ["docs-site-url"] },
+          "destination": { "node": "narrative-decks", "interfaces": ["deck-url"] }
+        }
+      },
+      "metadata": { "adrs": ["ADR-0060"], "binding": "the docs app's build script runs the slides app's build" }
+    },
+    {
+      "unique-id": "narrative-decks-built-from-deck-files",
+      "description": "Is built from each narrative's slides.md in",
+      "relationship-type": {
+        "connects": {
+          "source": { "node": "narrative-decks", "interfaces": ["deck-url"] },
+          "destination": { "node": "decision-log", "interfaces": ["deck-files"] }
+        }
+      },
+      "metadata": { "adrs": ["ADR-0059", "ADR-0060"] }
+    },
+    {
+      "unique-id": "narrative-decks-use-theme",
+      "description": "Applies the same theme tokens and fonts through a Slidev theme adapter, from",
+      "relationship-type": {
+        "connects": {
+          "source": { "node": "narrative-decks" },
+          "destination": { "node": "theme-package", "interfaces": ["theme-package-exports"] }
+        }
+      },
+      "metadata": { "adrs": ["ADR-0047", "ADR-0060"], "binding": "pnpm workspace:* dependency" }
+    },
+    {
       "unique-id": "docs-site-built-from-decision-log",
       "description": "Is built from the ADR files, the stories, the runbooks, the benchmark records, the stitched narratives and their README indexes in",
       "relationship-type": {
@@ -1283,7 +1327,7 @@
     {
       "unique-id": "docs-site-on-github-pages",
       "description": "Is hosted on",
-      "relationship-type": { "deployed-in": { "container": "github-pages", "nodes": ["docs-site"] } },
+      "relationship-type": { "deployed-in": { "container": "github-pages", "nodes": ["docs-site", "narrative-decks"] } },
       "metadata": { "adrs": ["ADR-0023", "ADR-0025"] }
     },
     {

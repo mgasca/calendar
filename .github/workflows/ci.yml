@@ -173,8 +173,9 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: pnpm format:check
       - run: pnpm lint
-      - run: pnpm -r --filter '!@calendar/docs' typecheck
-      - run: pnpm -r --filter '!@calendar/docs' test:coverage
+      # The docs site and the narrative decks it builds (@calendar/slides) are checked in the Docs site job.
+      - run: pnpm -r --filter '!@calendar/docs' --filter '!@calendar/slides' typecheck
+      - run: pnpm -r --filter '!@calendar/docs' --filter '!@calendar/slides' test:coverage
       # The typecheck step above has just run the web app's `tsc -b`, so the build here is only the bundler;
       # `pnpm build` (and `just frontend build`) still type-check first.
       - name: Build the web app
@@ -236,11 +237,17 @@ jobs:
       - name: Format and lint the docs site
         if: needs.changes.outputs.frontend != 'true'
         run: |
-          pnpm exec prettier --check apps/docs
-          pnpm exec eslint apps/docs --max-warnings=0
+          pnpm exec prettier --check apps/docs apps/slides
+          pnpm exec eslint apps/docs apps/slides --max-warnings=0
       - name: Architecture model conforms to the CALM schema
         run: pnpm --filter @calendar/docs validate:architecture
       - run: pnpm --filter @calendar/docs test:coverage
+      # Deck discovery, the deck base and a real Slidev build of the fixture deck (ADR-0060). The app is plain
+      # TypeScript, so `tsc` checks it; the Docs site's own typecheck is `astro check --noSync` further down.
+      - name: Test and type-check the narrative decks
+        run: |
+          pnpm --filter @calendar/slides exec tsc --noEmit
+          pnpm --filter @calendar/slides test
       - name: Build docs site at the root path
         run: pnpm --filter @calendar/docs build
       # `astro check` syncs the content before it reports diagnostics; the build above has just done

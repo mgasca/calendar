@@ -4,6 +4,9 @@ date: 2026-11-13
 issue: https://github.com/mgasca/calendar/issues/705
 pr:
   - https://github.com/mgasca/calendar/pull/713
+  - https://github.com/mgasca/calendar/pull/716
+  - https://github.com/mgasca/calendar/pull/718
+  - https://github.com/mgasca/calendar/pull/720
 adrs: ["0042", "0044", "0058", "0059", "0060"]
 ---
 
@@ -119,7 +122,10 @@ No changes.
 
 ### Lessons learned, known issues and follow-ups
 
-To be completed on delivery.
+To be completed on delivery. So far:
+
+* **Panel rebuttals re-read only cited parts** (#708, #716): a review finding said each rebuttal re-read every part. Measured in [benchmark 0022](../benchmarks/0022-narrative-panel-rebuttal-part-reads.md): 2 rebuttal part reads before and 0 after; tokens were unchanged within noise on the small fixture. To be re-measured at the first real Act 3 review (#711).
+* **Deferred: the `narrative-expert` agent type has not yet run end to end.** The session that built #716 started before the agent file existed, so its proof runs used `general-purpose` agents on Sonnet with the agent body prepended. The first workflow call in #709 or #711 proves the registration, its `tools` and its `model: sonnet` (maintainer decision on #716).
 
 ## User guide
 

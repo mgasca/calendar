@@ -54,27 +54,45 @@ describe('published documentation links', () => {
   it('resolves every internal link and anchor, and leaves no repository Markdown links', async () => {
     const files = await pages('dist');
     expect(files.length).toBeGreaterThan(0);
+    // Every page repeats the sidebar, so the ~49,000 links hold only ~2,100 distinct hrefs.
+    // Collect them, with the first page that uses each, and check each href once: a check
+    // per occurrence ran close to Vitest's 5 s timeout on a loaded machine (#721).
+    const linkedFrom = new Map<string, string>();
     for (const file of files) {
       const html = await readFile(file, 'utf8');
       for (const [, href = ''] of html.matchAll(/href="([^"]*)"/g)) {
-        // Absolute links leave the site; GitHub links to repository Markdown are expected.
-        if (/^(?:[a-z][a-z\d+.-]*:|\/\/|#)/i.test(href)) continue;
-        expect(href, file).not.toMatch(/\.md(?:[?#]|$)/);
-        if (!href.startsWith(base)) continue;
-        // Starlight's default icon link; the site does not ship a favicon yet.
-        if (href === `${base}favicon.svg`) continue;
-        const target = builtFile(href);
-        expect(target, `${file} -> ${href}`).toBeDefined();
-        const fragment = href.split('#')[1];
-        // Reading the page fails if it is missing, so no separate existence check is needed.
-        if (fragment && target?.endsWith('.html')) {
-          const targetHtml = await readFile(target, 'utf8');
-          expect(targetHtml, `${file} -> ${href}`).toContain(`id="${fragment}"`);
-        } else {
-          await stat(target ?? '');
-        }
+        if (!linkedFrom.has(href)) linkedFrom.set(href, file);
       }
     }
+    const targetPages = new Map<string, string>();
+    let fileChecks = 0;
+    for (const [href, file] of linkedFrom) {
+      // Absolute links leave the site; GitHub links to repository Markdown are expected.
+      if (/^(?:[a-z][a-z\d+.-]*:|\/\/|#)/i.test(href)) continue;
+      expect(href, file).not.toMatch(/\.md(?:[?#]|$)/);
+      if (!href.startsWith(base)) continue;
+      // Starlight's default icon link; the site does not ship a favicon yet.
+      if (href === `${base}favicon.svg`) continue;
+      const target = builtFile(href);
+      expect(target, `${file} -> ${href}`).toBeDefined();
+      const fragment = href.split('#')[1];
+      // Reading the page fails if it is missing, so no separate existence check is needed.
+      if (fragment && target?.endsWith('.html')) {
+        let targetHtml = targetPages.get(target);
+        if (targetHtml === undefined) {
+          fileChecks += 1;
+          targetHtml = await readFile(target, 'utf8');
+          targetPages.set(target, targetHtml);
+        }
+        expect(targetHtml, `${file} -> ${href}`).toContain(`id="${fragment}"`);
+      } else {
+        fileChecks += 1;
+        await stat(target ?? '');
+      }
+    }
+    // Guards the cost: at most one file check per distinct href, never one per link.
+    expect(fileChecks).toBeGreaterThan(0);
+    expect(fileChecks).toBeLessThanOrEqual(linkedFrom.size);
   });
 });
 
@@ -357,7 +375,12 @@ describe('published narratives (ADR-0059)', () => {
       const html = await readFile(`dist/narratives/${record.slug}/index.html`, 'utf8');
       expect(html).toContain(`<strong>System:</strong> ${record.system}`);
       expect(html).toContain(`<strong>Status:</strong> ${record.status}`);
-      if (record.slides) expect(html).toContain(`href="${base}${record.slides}"`);
+      if (record.slides) {
+        // The deck was built into the site for this base (ADR-0060); the link check above follows the link.
+        expect(html).toContain(`href="${base}${record.slides}"`);
+        const deck = await readFile(`dist/${record.slides}index.html`, 'utf8');
+        expect(deck).toContain(`${base}${record.slides}assets/`);
+      }
     }
     // Part directories are never published: the only pages under narratives/ are the routes above.
     const published = (await pages('dist/narratives')).sort();
@@ -366,6 +389,18 @@ describe('published narratives (ADR-0059)', () => {
         .map((path) => join(path))
         .sort(),
     );
+  });
+});
+
+describe('published decks (ADR-0060)', () => {
+  it('publishes a deck under slides/ for exactly the narratives that link one', async () => {
+    const { records } = await readNarratives();
+    const linked = records.flatMap((record) => (record.slides ? [record.slug] : [])).sort();
+    const built = await readdir('dist/slides').then(
+      (names) => names.sort(),
+      () => [],
+    );
+    expect(built).toEqual(linked);
   });
 });
 

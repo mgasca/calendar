@@ -38,6 +38,7 @@ def adr_inputs: ["docs/architecture/calendar.architecture.json"];
 
 # Docs site: its suite tests the publisher, .github/workflows/pages.yml (pages-workflow.test.ts), and it builds from the
 # shared theme package, so that one named directory is an input too (ADR-0025, third amendment; story 0046, issue #518).
+# Its build also builds the narrative decks with frontend/apps/slides, which publish inside the site (ADR-0060).
 # The trailing slash keeps look-alike directories out. No other frontend/packages/ directory and nothing under
 # frontend/apps/web/ makes a run build the docs site by itself.
 def docs_theme_package: "frontend/packages/theme/";
@@ -48,7 +49,7 @@ def narrative_inputs: ["docs/narratives/", ".claude/skills/architecture-narrativ
 
 # Whether the file at `.` is an input of job `$job`.
 def needs($job):
-  if $job == "docs" then under(["docs/", "frontend/apps/docs/", docs_theme_package]) or frontend_root or . == ".github/workflows/pages.yml"
+  if $job == "docs" then under(["docs/", "frontend/apps/docs/", "frontend/apps/slides/", docs_theme_package]) or frontend_root or . == ".github/workflows/pages.yml"
   elif $job == "backend" then under(["backend/", "contracts/"])
   elif $job == "frontend" then under(["frontend/apps/web/", "frontend/packages/", "contracts/"]) or frontend_root
   elif $job == "tooling" then

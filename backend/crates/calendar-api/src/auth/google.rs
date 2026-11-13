@@ -9,6 +9,9 @@
 //!
 //! The ID token arrives straight from Google's token endpoint over TLS, which OpenID Connect Core 3.1.3.7
 //! accepts in place of checking its signature, so no JWKS is fetched.
+//!
+//! In Development only, the endpoints and the accepted issuer can point at a stub provider on a loopback
+//! address (`config::GoogleOverrides`, ADR-0064); the settings refuse every other use at startup.
 
 use axum::extract::State;
 use axum::http::header::{LOCATION, SET_COOKIE};
@@ -25,7 +28,7 @@ use subtle::ConstantTimeEq;
 
 use super::Principal;
 use super::session::{self, SessionTicket};
-use crate::config::GoogleCredentials;
+use crate::config::{GoogleCredentials, GoogleOverrides};
 use crate::endpoints::request::QueryParams;
 use crate::error::ApiError;
 use crate::hosting::RequestOrigin;
@@ -47,7 +50,8 @@ const SIGN_IN_LIFETIME: TimeDelta = TimeDelta::minutes(15);
 const SCOPE: &str = "openid profile email";
 const ISSUERS: [&str; 2] = ["https://accounts.google.com", "accounts.google.com"];
 
-/// Where Google's OAuth 2.0 endpoints are. Tests point them at a local fake.
+/// Where Google's OAuth 2.0 endpoints are. Tests point them at a local fake; in Development the settings can
+/// point them at a stub provider ([`GoogleEndpoints::overridden_by`]).
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct GoogleEndpoints {
   /// The authorization endpoint the browser is sent to.
@@ -65,6 +69,28 @@ impl Default for GoogleEndpoints {
       token: "https://oauth2.googleapis.com/token".to_owned(),
       user_info: "https://www.googleapis.com/oauth2/v3/userinfo".to_owned(),
     }
+  }
+}
+
+impl GoogleEndpoints {
+  /// These endpoints with each one the settings override replaced. The settings have already refused
+  /// overrides outside Development or off loopback.
+  #[must_use]
+  pub fn overridden_by(self, overrides: &GoogleOverrides) -> Self {
+    let pick = |value: &Option<String>, current: String| value.as_deref().map_or(current, |value| value.trim().to_owned());
+    Self {
+      authorize: pick(&overrides.authorization_endpoint, self.authorize),
+      token: pick(&overrides.token_endpoint, self.token),
+      user_info: pick(&overrides.user_info_endpoint, self.user_info),
+    }
+  }
+}
+
+/// Whether `issuer` is accepted in an ID token: the overriding issuer when one is set, Google's otherwise.
+fn is_accepted_issuer(issuer: &str, overrides: &GoogleOverrides) -> bool {
+  match overrides.issuer.as_deref() {
+    Some(expected) => issuer == expected.trim(),
+    None => ISSUERS.contains(&issuer),
   }
 }
 
@@ -230,7 +256,13 @@ async fn complete(
   }
 
   let tokens = exchange_code(state, credentials, &redirect_uri(origin), &code, &flow.verifier).await?;
-  let subject = check_id_token(&tokens.id_token, credentials, &flow.nonce, state.now())?;
+  let subject = check_id_token(
+    &tokens.id_token,
+    credentials,
+    &state.settings().google_overrides,
+    &flow.nonce,
+    state.now(),
+  )?;
   let user = fetch_user(state, &tokens.access_token).await?;
   if user.sub.as_deref() != Some(subject.as_str()) {
     return Err("the userinfo subject is not the ID token's".to_owned());
@@ -281,7 +313,13 @@ async fn exchange_code(
 }
 
 /// Checks the claims of the ID token (audience, issuer, expiry, nonce) and returns its subject.
-fn check_id_token(id_token: &str, credentials: &GoogleCredentials, nonce: &str, now: DateTime<Utc>) -> Result<String, String> {
+fn check_id_token(
+  id_token: &str,
+  credentials: &GoogleCredentials,
+  overrides: &GoogleOverrides,
+  nonce: &str,
+  now: DateTime<Utc>,
+) -> Result<String, String> {
   let payload = id_token.split('.').nth(1).ok_or("the ID token is not a JWT")?;
   let claims: Value = URL_SAFE_NO_PAD
     .decode(payload.trim_end_matches('='))
@@ -297,8 +335,8 @@ fn check_id_token(id_token: &str, credentials: &GoogleCredentials, nonce: &str, 
   if !audience_matches {
     return Err("the ID token is for another client".to_owned());
   }
-  if !claims["iss"].as_str().is_some_and(|issuer| ISSUERS.contains(&issuer)) {
-    return Err("the ID token is not from Google".to_owned());
+  if !claims["iss"].as_str().is_some_and(|issuer| is_accepted_issuer(issuer, overrides)) {
+    return Err("the ID token is not from the expected issuer".to_owned());
   }
   if claims["exp"].as_i64().is_none_or(|expiry| now.timestamp() >= expiry) {
     return Err("the ID token has expired".to_owned());
@@ -447,12 +485,15 @@ mod tests {
     let nonce = uuid::Uuid::new_v4().to_string();
     let nonce = nonce.as_str();
     let good = json!({"aud": "client", "iss": "https://accounts.google.com", "exp": now.timestamp() + 60, "nonce": nonce, "sub": "s"});
-    assert_eq!(check_id_token(&token(&good), &credentials, nonce, now), Ok("s".to_owned()));
+    assert_eq!(
+      check_id_token(&token(&good), &credentials, &GoogleOverrides::default(), nonce, now),
+      Ok("s".to_owned())
+    );
 
     let with = |name: &str, value: Value| {
       let mut claims = good.clone();
       claims[name] = value;
-      check_id_token(&token(&claims), &credentials, nonce, now)
+      check_id_token(&token(&claims), &credentials, &GoogleOverrides::default(), nonce, now)
     };
     assert_eq!(with("aud", json!(["other", "client"])), Ok("s".to_owned()));
     assert_eq!(with("iss", json!("accounts.google.com")), Ok("s".to_owned()));
@@ -461,7 +502,45 @@ mod tests {
     assert!(with("exp", json!(now.timestamp())).is_err());
     assert!(with("nonce", json!("other")).is_err());
     assert!(with("sub", json!(" ")).is_err());
-    assert!(check_id_token("not-a-jwt", &credentials, nonce, now).is_err());
+    assert!(check_id_token("not-a-jwt", &credentials, &GoogleOverrides::default(), nonce, now).is_err());
+  }
+
+  #[test]
+  fn an_overriding_issuer_is_the_only_one_accepted() {
+    let credentials = GoogleCredentials {
+      client_id: "client".to_owned(),
+      client_secret: "secret".to_owned(),
+    };
+    let overrides = GoogleOverrides {
+      issuer: Some("http://127.0.0.1:55280/google".to_owned()),
+      ..GoogleOverrides::default()
+    };
+    let now = Utc.with_ymd_and_hms(2026, 11, 13, 15, 0, 0).unwrap();
+    let nonce = uuid::Uuid::new_v4().to_string();
+    let check = |issuer: &str| {
+      let claims = json!({"aud": "client", "iss": issuer, "exp": now.timestamp() + 60, "nonce": nonce, "sub": "s"});
+      check_id_token(&token(&claims), &credentials, &overrides, &nonce, now)
+    };
+    assert_eq!(check("http://127.0.0.1:55280/google"), Ok("s".to_owned()));
+    assert!(check("https://accounts.google.com").is_err());
+    assert!(check("accounts.google.com").is_err());
+    assert!(check("http://127.0.0.1:55280/other").is_err());
+  }
+
+  #[test]
+  fn endpoint_overrides_replace_only_their_own_endpoint() {
+    let overrides = GoogleOverrides {
+      token_endpoint: Some(" http://127.0.0.1:55280/google/token ".to_owned()),
+      ..GoogleOverrides::default()
+    };
+    let endpoints = GoogleEndpoints::default().overridden_by(&overrides);
+    assert_eq!(endpoints.token, "http://127.0.0.1:55280/google/token");
+    assert_eq!(endpoints.authorize, GoogleEndpoints::default().authorize);
+    assert_eq!(endpoints.user_info, GoogleEndpoints::default().user_info);
+    assert_eq!(
+      GoogleEndpoints::default().overridden_by(&GoogleOverrides::default()),
+      GoogleEndpoints::default()
+    );
   }
 
   #[test]

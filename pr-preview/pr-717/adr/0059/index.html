@@ -156,7 +156,7 @@
 <h3 id="confirmation">Confirmation</h3>
 <ul>
 <li>The docs-site tests and build validate narrative front matter and fail on links to unpublished documents, as they do for the other folders.</li>
-<li>The stitcher’s <code>--check</code>, run by <code>just check</code> and the CI job that runs the tooling tests, fails on drift; its own tests cover ordering, diagram inclusion, the excluded files and the check.</li>
+<li>The stitcher’s <code>--check</code>, run by <code>just check</code>, by the Tooling CI job and, for a change that runs no Tooling job, by a small Narratives job of its own, fails on drift; its own tests cover ordering, diagram inclusion, the excluded files and the check.</li>
 </ul>
 <h2 id="pros-and-cons-of-the-options">Pros and Cons of the Options</h2>
 <h3 id="docsnarratives-with-per-system-part-files-and-a-deno-stitcher-that-has-a-drift-check">docs/narratives with per-system part files and a Deno stitcher that has a drift check</h3>

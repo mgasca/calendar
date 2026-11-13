@@ -3,6 +3,7 @@ system: Calendar
 audience: New contributors, human and agent, who need to know why the system looks the way it does before changing it
 date: 2026-11-13
 status: draft
+slides: slides/calendar/
 ---
 
 <!-- Generated from docs/narratives/calendar/ by the architecture-narrative-builder stitcher. Edit the parts and restitch; just check fails when this file differs from its parts. -->

@@ -55,6 +55,14 @@ Never published or stitched. The interview resumes from this file.
 | --- | --- | --- | --- | --- |
 | questions | date | n | none | New gaps S9, S10 |
 
+## Accepted check failures
+
+A failed quality check stitches only when the user accepts it explicitly.
+
+| Check | What failed | Accepted | The user's words |
+| --- | --- | --- | --- |
+| 6 | Act 3 uses "term", not in the vocabulary | date | "Quote" |
+
 ## Options
 
 Mode: build / keep-parts. Panel appendix: yes / no.

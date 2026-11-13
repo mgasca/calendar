@@ -1,0 +1,8 @@
+schema_version: "1.1"
+name: build-removes-parts
+expected_outcome: |
+  Every act is confirmed and the ledger says mode build. Asked to finish, the
+  skill runs the quality checks, then stitches with --remove-parts: only
+  docs/narratives/ticket-kata-narrative.md remains, with no generated-file
+  note, and the docs/narratives/ticket-kata/ directory with its parts and
+  ledger is gone.

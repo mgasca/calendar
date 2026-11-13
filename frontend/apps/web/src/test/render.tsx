@@ -7,7 +7,7 @@ import {
 } from '@tanstack/react-router';
 import { act, render, type RenderOptions } from '@testing-library/react';
 import type { ReactElement } from 'react';
-import { expect, vi } from 'vitest';
+import { expect, onTestFinished, vi } from 'vitest';
 
 import { App } from '../App.tsx';
 import { createQueryClient } from '../queryClient.ts';
@@ -77,6 +77,22 @@ export async function settle(queryClient: QueryClient) {
       expect(queryClient.isFetching()).toBe(0);
     });
     await new Promise((resolve) => setTimeout(resolve, 0));
+  });
+}
+
+/**
+ * Runs `requestAnimationFrame` callbacks at once until the test ends, so a frame always comes
+ * before React renders the data a mutation has just refetched. Focus chosen on such a frame sees
+ * the old rows (#698): tests of focus after a save that removes a row use this to make the race
+ * certain.
+ */
+export function frameFirst() {
+  const frame = vi.spyOn(window, 'requestAnimationFrame').mockImplementation((callback) => {
+    callback(performance.now());
+    return 0;
+  });
+  onTestFinished(() => {
+    frame.mockRestore();
   });
 }
 

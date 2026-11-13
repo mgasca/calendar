@@ -2,7 +2,7 @@ import { fireEvent, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { http, HttpResponse } from 'msw';
 
-import { renderWithProviders } from '../../test/render.tsx';
+import { frameFirst, renderWithProviders } from '../../test/render.tsx';
 import { server } from '../../test/server.ts';
 import { TaskForm } from './TaskForm.tsx';
 import { deadlineInstants } from '../agenda/deadline.ts';
@@ -400,4 +400,59 @@ it('opens a task from its title in My tasks, saves it and shows the new title (s
 
   expect(await screen.findByRole('button', { name: 'Plan summer holiday' })).toBeInTheDocument();
   expect(screen.getByRole('checkbox', { name: 'Plan summer holiday' })).toBeInTheDocument();
+});
+
+// #698: a frame that came before the refetched list rendered found the old title, focused it, and
+// lost focus to <body> when the row went.
+it('moves focus to the My tasks heading when a save moves the task out of the view', async () => {
+  frameFirst();
+  let task: {
+    id: string;
+    title: string;
+    priority: string;
+    notes: null;
+    isCompleted: boolean;
+    version: number;
+    dueDate?: string;
+  } = {
+    id: '1',
+    title: 'Plan holiday',
+    priority: 'high',
+    notes: null,
+    isCompleted: false,
+    version: 1,
+  };
+  server.use(
+    http.get('/api/tasks', ({ request }) => {
+      const view = new URL(request.url).searchParams.get('view');
+      const shown = view === 'no-deadline' && !task.dueDate;
+      return HttpResponse.json({ items: shown ? [task] : [], nextCursor: null });
+    }),
+    http.get('/api/tasks/1', () => HttpResponse.json(task)),
+    http.put('/api/tasks/1', async ({ request }) => {
+      const body = (await request.json()) as { dueDate?: string };
+      task = { ...task, ...(body.dueDate && { dueDate: body.dueDate }), version: 2 };
+      return HttpResponse.json(task);
+    }),
+  );
+  renderWithProviders(<TaskList />);
+  const user = userEvent.setup();
+  await user.click(screen.getByRole('button', { name: 'No deadline' }));
+  await user.click(await screen.findByRole('button', { name: 'Plan holiday' }));
+  const dialog = await screen.findByRole('dialog', { name: 'Edit task' });
+  await user.selectOptions(await within(dialog).findByLabelText('Deadline'), 'date');
+  await user.type(within(dialog).getByLabelText('Due date'), '2099-10-30');
+  await user.click(within(dialog).getByRole('button', { name: 'Save task' }));
+
+  await waitFor(() => {
+    expect(screen.queryByRole('button', { name: 'Plan holiday' })).not.toBeInTheDocument();
+  });
+  expect(task.dueDate).toBe('2099-10-30');
+  // Shorter than the test timeout, so a regression reports where focus went.
+  await waitFor(
+    () => {
+      expect(screen.getByRole('heading', { name: 'My tasks' })).toHaveFocus();
+    },
+    { timeout: 2000 },
+  );
 });

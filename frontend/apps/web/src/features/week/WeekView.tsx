@@ -3,6 +3,7 @@ import { useCallback, useMemo, useRef, useState } from 'react';
 
 import { ApiError } from '../../api/apiError.ts';
 import { useNotify } from '../../components/notify.ts';
+import { useAfterRender } from '../../components/useAfterRender.ts';
 import { browserTimeZone, type AgendaTask } from '../agenda/dayTime.ts';
 import { TaskToggleError } from '../agenda/TaskItem.tsx';
 import { useToday } from '../agenda/useNow.ts';
@@ -49,6 +50,7 @@ export function WeekView({ weekStart, timeZone: zoneOverride, locale }: WeekView
   const [editing, setEditing] = useState<{ id: string; date: string }>();
   const opener = useRef<HTMLElement | null>(null);
   const notify = useNotify();
+  const afterRender = useAfterRender();
   const openEvent = useCallback<OpenEvent>(
     (id, date, button) => {
       opener.current = button;
@@ -166,7 +168,8 @@ export function WeekView({ weekStart, timeZone: zoneOverride, locale }: WeekView
             setEditingTask(undefined);
             if (saved) notify({ message: 'Task saved.' });
             // A task moved out of the week has left the list, so focus falls back to the heading.
-            requestAnimationFrame(() => {
+            // Decided after the render, not on the next frame, which can still see the old row (#698).
+            afterRender(() => {
               focusAfterEdit(document.getElementById(taskTitleId(id)));
             });
           }}
@@ -184,8 +187,8 @@ export function WeekView({ weekStart, timeZone: zoneOverride, locale }: WeekView
             if (result)
               notify({ message: `${result.title} ${result.deleted ? 'deleted' : 'saved'}.` });
             // After a delete, or a save that moved the event out of this list, its title button is
-            // gone and focus falls back to the week heading.
-            requestAnimationFrame(() => {
+            // gone and focus falls back to the week heading. Decided after the render (#698).
+            afterRender(() => {
               focusAfterEdit(result?.deleted ? null : returnTo);
             });
           }}

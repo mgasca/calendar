@@ -10,6 +10,7 @@ import {
   type FieldErrors,
   type StoredEvent,
 } from './eventForm.ts';
+import { traceAction } from '../../telemetry/action.ts';
 
 /** A failed update or delete: `status` tells a stale version (409) or a missing event (404) apart. */
 export class EditEventError extends Error {
@@ -30,7 +31,9 @@ export const eventKey = (id: string) => ['event', id] as const;
 export const eventQuery = (id: string) => ({
   queryKey: eventKey(id),
   queryFn: async ({ signal }: { signal: AbortSignal }) => {
-    const result = await api.GET('/api/events/{id}', { params: { path: { id } }, signal });
+    const result = await traceAction('ui.event.open', () =>
+      api.GET('/api/events/{id}', { params: { path: { id } }, signal }),
+    );
     if (!result.data) throw apiError(result, 'Couldn’t load the event.');
     return result.data;
   },
@@ -65,10 +68,12 @@ export function useUpdateEvent(timeZone: string) {
       version: StoredEvent['version'];
       values: EventValues;
     }) => {
-      const { data, error, response } = await api.PUT('/api/events/{id}', {
-        params: { path: { id } },
-        body: { ...requestBody(values, timeZone), version },
-      });
+      const { data, error, response } = await traceAction('ui.event.update', () =>
+        api.PUT('/api/events/{id}', {
+          params: { path: { id } },
+          body: { ...requestBody(values, timeZone), version },
+        }),
+      );
       if (!data)
         throw new EditEventError(
           response.status,
@@ -89,7 +94,9 @@ export function useDeleteEvent() {
   const refresh = useRefresh();
   return useMutation({
     mutationFn: async (id: string) => {
-      const { response } = await api.DELETE('/api/events/{id}', { params: { path: { id } } });
+      const { response } = await traceAction('ui.event.delete', () =>
+        api.DELETE('/api/events/{id}', { params: { path: { id } } }),
+      );
       if (!response.ok)
         throw new EditEventError(response.status, {
           form: 'Couldn’t delete the event. Try again.',

@@ -136,6 +136,8 @@ export default defineConfig({
         './src/styles/theme-content.css',
         './src/styles/docs.css',
       ],
+      // Every group but Agent thoughts starts collapsed (#714); Starlight still opens the group
+      // that holds the current page.
       sidebar: [
         {
           label: 'Agent thoughts',
@@ -144,15 +146,17 @@ export default defineConfig({
             { autogenerate: { directory: '../../../docs/agent-thoughts' } },
           ],
         },
-        { label: 'Architecture', items: architectureSidebar(flows) },
+        { label: 'Architecture', collapsed: true, items: architectureSidebar(flows) },
         // One entry per page of src/lib/dashboard.ts, so a new dashboard page needs no change here.
-        { label: 'Delivery dashboard', items: dashboardSidebar() },
+        { label: 'Delivery dashboard', collapsed: true, items: dashboardSidebar() },
         {
           label: 'Any decision records',
+          collapsed: true,
           items: [{ autogenerate: { directory: '../../../docs/decisions' } }],
         },
         {
           label: 'User stories',
+          collapsed: true,
           items: [
             { slug: 'stories', label: 'All stories' },
             { autogenerate: { directory: '../../../docs/stories' } },
@@ -160,6 +164,7 @@ export default defineConfig({
         },
         {
           label: 'Runbooks',
+          collapsed: true,
           items: [
             { slug: 'runbooks', label: 'All runbooks' },
             { autogenerate: { directory: '../../../docs/runbooks' } },
@@ -167,6 +172,7 @@ export default defineConfig({
         },
         {
           label: 'Benchmarks',
+          collapsed: true,
           items: [
             { slug: 'benchmarks', label: 'All benchmarks' },
             { autogenerate: { directory: '../../../docs/benchmarks' } },

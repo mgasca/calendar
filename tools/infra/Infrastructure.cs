@@ -487,8 +487,12 @@ public static partial class Infra
     }
   }
 
+  // The preview goes to a public job summary. A connection string (Application Insights) or a shared key (the Log
+  // Analytics workspace) would let anyone write to the environment's telemetry, so they are redacted too.
   private static bool IsSensitiveName(string name) =>
     name.Contains("secret", StringComparison.OrdinalIgnoreCase)
+    || name.Contains("connectionstring", StringComparison.OrdinalIgnoreCase)
+    || name.Contains("sharedkey", StringComparison.OrdinalIgnoreCase)
     || name.Contains("password", StringComparison.OrdinalIgnoreCase)
     || name.Contains("credential", StringComparison.OrdinalIgnoreCase)
     || name.Contains("token", StringComparison.OrdinalIgnoreCase);

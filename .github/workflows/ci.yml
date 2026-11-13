@@ -104,6 +104,25 @@ jobs:
       LLVM_COV_VERSION: 0.9.1
     steps:
       - uses: actions/checkout@v7
+      # The PostgreSQL image the database tests start (ADR-0016), pulled in the background so the download overlaps the
+      # toolchain, the cache restore and the build instead of landing in the first database test (#777). The tag comes
+      # from compose.yaml by calendar-testing's rule (repo_files.rs: the first `image: postgres:<tag>` line), so there is
+      # no second pin. The pull writes to files, so this step returns at once; "Wait for the PostgreSQL image" reports.
+      - name: Start pulling the PostgreSQL image
+        run: |
+          pull="$RUNNER_TEMP/postgres-pull"
+          image=$(sed -n 's/^[[:space:]]*image:[[:space:]]*\(postgres:[^[:space:]]\{1,\}\)[[:space:]]*$/\1/p' ../compose.yaml | head -n 1)
+          echo "$image" > "$pull.image"
+          if [ -z "$image" ]; then
+            echo "no postgres image in compose.yaml" > "$pull.log"
+            echo 1 > "$pull.status"
+            exit 0
+          fi
+          echo "Pulling $image"
+          # `|| status=$?`: the step's shell exits on the first failing command, and so would the background group,
+          # before writing the status the wait step reads.
+          { status=0; docker pull "$image" > "$pull.log" 2>&1 || status=$?; echo "$status" > "$pull.status.tmp"
+            mv "$pull.status.tmp" "$pull.status"; } > /dev/null 2>&1 &
       # The toolchain pinned in backend/rust-toolchain.toml, with rustfmt and clippy. Runners ship rustup; naming the
       # channel keeps the install independent of rustup's own defaults.
       - name: Install the pinned Rust toolchain
@@ -148,6 +167,16 @@ jobs:
           rustup component add llvm-tools-preview
           curl -LsSf "https://github.com/taiki-e/cargo-llvm-cov/releases/download/v${LLVM_COV_VERSION}/cargo-llvm-cov-x86_64-unknown-linux-gnu.tar.gz" \
             | tar xzf - -C "$HOME/.cargo/bin"
+      # A failed pull is reported, not fatal: Testcontainers then pulls the image in the test step, as it would without
+      # the step above.
+      - name: Wait for the PostgreSQL image
+        run: |
+          pull="$RUNNER_TEMP/postgres-pull"
+          for _ in $(seq 120); do [ -f "$pull.status" ] && break; sleep 1; done
+          cat "$pull.log" 2>/dev/null || true
+          if [ "$(cat "$pull.status" 2>/dev/null)" != 0 ]; then
+            echo "::warning::The PostgreSQL image '$(cat "$pull.image")' was not pulled ahead of the tests; the first database test pulls it instead."
+          fi
       - name: Test with coverage
         run: |
           mkdir -p TestResults

@@ -1,0 +1,8 @@
+schema_version: "1.1"
+name: resume-skips-confirmed-act
+expected_outcome: |
+  The ledger marks Act 1 confirmed and the driving characteristics open. The
+  skill reads the ledger first, shows a short recap of where the interview
+  stands, and its first questions are about the driving characteristics (or
+  Act 2), with concrete options drawn from Act 1. It re-asks nothing that
+  Act 1 already answers and does not rewrite 01-setup.md.

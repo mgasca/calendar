@@ -90,7 +90,7 @@ Checked by reading the file. The site no longer reads it at all, and no test ass
 <li><strong>Given</strong> an ADR whose title or status changes without its architecture model entry, <strong>when</strong> the docs build runs, <strong>then</strong> it fails.
 Already enforced by <a href="https://github.com/mgasca/calendar/blob/main/frontend/apps/docs/src/lib/architecture.test.ts"><code>architecture.test.ts</code></a> (<code>rejects …</code> for ADR file, title and status drift) and <code>corpus.test.ts</code> on the real model; unchanged by this story.</li>
 <li><strong>Given</strong> <code>just tools adr</code>, <strong>when</strong> it runs with no table in <code>README.md</code>, <strong>then</strong> it passes, and it still rejects a numbering gap, a stray file and every structural fault.
-<a href="https://github.com/mgasca/calendar/blob/main/.claude/skills/adr-draft/tests/check-adr.tests.cs"><code>check-adr.tests.cs</code></a> (<code>ReadmeWithoutAnIndexTable_IsNotAnAdrAndNotStray</code>, <code>NumberingGapAndStrayFiles_AreReported</code>, <code>BrokenRule_IsReported</code>). The validator could not run on the implementing agent’s machine (its SDK rejects <code>#:include</code>); the CI <code>Tooling</code> job is the check.</li>
+<a href="https://github.com/mgasca/calendar/blob/main/.claude/skills/adr-draft/tests/check-adr_test.ts"><code>check-adr.tests.cs</code></a> (<code>ReadmeWithoutAnIndexTable_IsNotAnAdrAndNotStray</code>, <code>NumberingGapAndStrayFiles_AreReported</code>, <code>BrokenRule_IsReported</code>). The validator could not run on the implementing agent’s machine (its SDK rejects <code>#:include</code>); the CI <code>Tooling</code> job is the check.</li>
 <li><strong>Given</strong> the change is complete, <strong>when</strong> <code>just check</code> runs, <strong>then</strong> it passes.
 CI runs every part of <code>just check</code> on the PR. Locally the agent ran the frontend gates (<code>format:check</code>, <code>lint</code>, <code>typecheck</code>, <code>test</code>) and <code>just docs build</code>; see the implementation notes for what did not run.</li>
 </ol>
@@ -181,7 +181,7 @@ CI runs every part of <code>just check</code> on the PR. Locally the agent ran t
 <ul>
 <li><a href="https://github.com/mgasca/calendar/blob/main/frontend/apps/docs/src/lib/adr.test.ts"><code>adr.test.ts</code></a>: the log from the files alone, ordering by number, the normalized <code>superseded by</code> status, and eight rejected inputs.</li>
 <li><a href="https://github.com/mgasca/calendar/blob/main/frontend/apps/docs/src/lib/corpus.test.ts"><code>corpus.test.ts</code></a> and <a href="https://github.com/mgasca/calendar/blob/main/frontend/apps/docs/tests/build.test.ts"><code>build.test.ts</code></a> run against the real <code>docs/decisions</code> and the built site, unchanged.</li>
-<li><a href="https://github.com/mgasca/calendar/blob/main/.claude/skills/adr-draft/tests/check-adr.tests.cs"><code>check-adr.tests.cs</code></a>: the two index tests were removed and one test added for a <code>README.md</code> without a table.</li>
+<li><a href="https://github.com/mgasca/calendar/blob/main/.claude/skills/adr-draft/tests/check-adr_test.ts"><code>check-adr.tests.cs</code></a>: the two index tests were removed and one test added for a <code>README.md</code> without a table.</li>
 </ul>
 <h3 id="lessons-learned-known-issues-and-follow-ups">Lessons learned, known issues and follow-ups</h3>
 <ul>

@@ -127,6 +127,7 @@ Delivered after the card ([#485](https://github.com/mgasca/calendar/pull/485)) i
 * **A replaced dialog element.** The loading dialog and the form's dialog are different elements, so a test that holds the first one and waits for the form inside it never finds it; the tests wait for the form's **Title** field and then take the dialog.
 * **Week view and My tasks:** opening a task from them is not in this story; the row keeps the old label there. Follow-up: [#500](https://github.com/mgasca/calendar/issues/500).
 * **Completed tasks** can be edited and stay completed, as proposed in PR 0.
+* **Focus after a move raced the refetch ([#698](https://github.com/mgasca/calendar/issues/698)).** The save resolves once the refetched day is in the query cache, but TanStack Query hands it to React on a later `setTimeout(0)`. The `requestAnimationFrame` that chose the focus target could run first: it found the moved task's old title, focused it, and focus fell to `<body>` when the row went. In CI the move-to-tomorrow test then timed out at 5 s. Focus is now chosen in an effect after the render that closes the dialog (`useAfterRender` in `components/`), and that render already shows the refetched day. The regression test runs the frame at once, so it fails on the old code every time. Before the fix, a probe that delayed the notifications failed 32 of 180 runs; after it, 0 of 120. The week view, My tasks and event dialogs still pick their focus target on the next frame.
 
 ## User guide
 

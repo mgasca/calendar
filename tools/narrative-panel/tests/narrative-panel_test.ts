@@ -197,6 +197,28 @@ Deno.test("every brief file has the six fields, and each can be overridden", asy
   );
 });
 
+// The agent definition and the workflow prompt instruct the same expert; they must not drift apart (#726).
+Deno.test("the agent file names the workflow's rating scale and every brief override", async () => {
+  const agent = await Deno.readTextFile(
+    fromFileUrl(new URL("../../../.claude/agents/narrative-expert.md", import.meta.url)),
+  );
+  const source = await Deno.readTextFile(SCRIPT);
+
+  const scale = "from 0 (does not meet) to 3 (fully meets) in half steps";
+  assert(source.includes(scale), "the workflow's alternatives prompt states the scale");
+  assert(agent.includes(scale), "the agent states the same scale as the workflow");
+
+  const declared = source.match(/^const BRIEF_FIELDS = \[([^\]]*)\]/m);
+  assertExists(declared, "the workflow declares BRIEF_FIELDS");
+  const fields = [...declared[1]!.matchAll(/'([a-z]+)'/g)].map((m) => m[1]!);
+  assertEquals(fields.length > 0, true);
+  const listed = agent.match(/field overrides \(([^)]*)\)/);
+  assertExists(listed, "the agent lists the prompt's field overrides");
+  const named = listed[1]!.split(",").map((s) => s.trim());
+  const agentName = (f: string) => (f === "question" ? "standing question" : f);
+  assertEquals(named, fields.map(agentName), "the agent lists every BRIEF_FIELDS entry, in order");
+});
+
 Deno.test("the alternatives phase lists the alternatives and uses the verdict schema", async () => {
   const args = {
     ...PANEL,

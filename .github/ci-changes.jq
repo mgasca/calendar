@@ -10,7 +10,7 @@
 
 # The filtered jobs: id in ci.yml -> job name.
 def jobs:
-  {backend: "Backend", frontend: "Frontend", docs: "Docs site", tooling: "Tooling", adr: "ADR conventions", image: "Container image"};
+  {backend: "Backend", frontend: "Frontend", docs: "Docs site", tooling: "Tooling", adr: "ADR conventions", narratives: "Narratives", image: "Container image"};
 
 # A change to the rules themselves runs everything, so the new rules are checked by every job they could skip.
 def rules_files: [".github/workflows/ci.yml", ".github/ci-changes.jq"];
@@ -42,15 +42,20 @@ def adr_inputs: ["docs/architecture/calendar.architecture.json"];
 # frontend/apps/web/ makes a run build the docs site by itself.
 def docs_theme_package: "frontend/packages/theme/";
 
+# Narratives: the stitcher's drift check alone (ADR-0059, story 0063, #717). It reads the narratives and their parts, and
+# runs the stitcher from the skill folder, so a change to either, or to the pinned Deno, runs it.
+def narrative_inputs: ["docs/narratives/", ".claude/skills/architecture-narrative-builder/"];
+
 # Whether the file at `.` is an input of job `$job`.
 def needs($job):
   if $job == "docs" then under(["docs/", "frontend/apps/docs/", docs_theme_package]) or frontend_root or . == ".github/workflows/pages.yml"
   elif $job == "backend" then under(["backend/", "contracts/"])
   elif $job == "frontend" then under(["frontend/apps/web/", "frontend/packages/", "contracts/"]) or frontend_root
   elif $job == "tooling" then
-    under(["tools/", ".claude/", "infra/", "docker/", "just/", "docs/decisions/", "docs/narratives/"]) or just_files or backend_toolchain
+    under(["tools/", ".claude/", "infra/", "docker/", "just/", "docs/decisions/"]) or just_files or backend_toolchain
       or . == ".deno-version" or IN(tooling_github[])
   elif $job == "adr" then under(["docs/decisions/", "docs/stories/"]) or IN(adr_inputs[])
+  elif $job == "narratives" then under(narrative_inputs) or . == ".deno-version"
   elif $job == "image" then
     under(["backend/", "frontend/apps/web/", "frontend/packages/", "contracts/", "docker/"]) or frontend_root
       or IN("Dockerfile", ".dockerignore", "image.just")
@@ -67,5 +72,9 @@ def filtered: (.event | IN("pull_request", "merge_group")) and .complete == true
    end)
 # ADR conventions runs the check that Tooling's `just tools adr` step runs, so a pull request or merge group runs it only
 # when Tooling does not. A push or dispatch runs it as well, so ADR-0045 has push runs on main to baseline it (issue #572).
-| (if $run.event | IN("pull_request", "merge_group") then .adr = (.adr and (.tooling | not)) else . end)
+# Narratives likewise: Tooling runs `just tools narratives --check` as a step, so a pull request or merge group runs the
+# Narratives job only when Tooling does not (#717).
+| (if $run.event | IN("pull_request", "merge_group")
+   then .adr = (.adr and (.tooling | not)) | .narratives = (.narratives and (.tooling | not))
+   else . end)
 | . + {skipped: [to_entries[] | select(.value == false) | .key as $job | jobs[$job]]}

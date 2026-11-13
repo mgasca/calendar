@@ -64,7 +64,7 @@ Chosen option: "`docs/narratives/` with per-system part files and a Deno stitche
 ### Confirmation
 
 * The docs-site tests and build validate narrative front matter and fail on links to unpublished documents, as they do for the other folders.
-* The stitcher's `--check`, run by `just check` and the CI job that runs the tooling tests, fails on drift; its own tests cover ordering, diagram inclusion, the excluded files and the check.
+* The stitcher's `--check`, run by `just check`, by the Tooling CI job and, for a change that runs no Tooling job, by a small Narratives job of its own, fails on drift; its own tests cover ordering, diagram inclusion, the excluded files and the check.
 
 ## Pros and Cons of the Options
 

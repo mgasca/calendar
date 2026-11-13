@@ -44,6 +44,7 @@ jobs:
       docs: ${{ steps.decide.outputs.docs }}
       tooling: ${{ steps.decide.outputs.tooling }}
       adr: ${{ steps.decide.outputs.adr }}
+      narratives: ${{ steps.decide.outputs.narratives }}
       image: ${{ steps.decide.outputs.image }}
       skipped: ${{ steps.decide.outputs.skipped }}
     steps:
@@ -356,6 +357,26 @@ jobs:
       - name: ADRs follow conventions
         run: deno run --config .claude/skills/adr-draft/deno.json --frozen --no-prompt --allow-read --allow-run=git .claude/skills/adr-draft/scripts/check-adr/check-adr.ts
 
+  # The narratives drift check alone (ADR-0059, story 0063, #717), for a change to docs/narratives/ that runs no Tooling
+  # job: it restitches every narrative with parts and fails when the published file differs, in about a second. As for
+  # ADR conventions, a pull request or merge group never runs it together with Tooling, whose step runs the same check;
+  # pushes and dispatches run both, so ADR-0045 can baseline it from main.
+  narratives:
+    name: Narratives
+    needs: changes
+    if: needs.changes.outputs.narratives == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v7
+      - uses: denoland/setup-deno@22d081ff2d3a40755e97629de92e3bcbfa7cf2ed # v2.0.5
+        with:
+          deno-version-file: .deno-version
+          cache: true
+      # The same command as `just tools narratives --check`, without installing just.
+      - name: Narratives match their parts
+        run: deno run --config .claude/skills/architecture-narrative-builder/deno.json --frozen --no-prompt --allow-read .claude/skills/architecture-narrative-builder/scripts/stitch/stitch.ts --check
+
   image:
     name: Container image
     needs: changes
@@ -439,7 +460,7 @@ jobs:
   result:
     name: CI result
     if: ${{ always() }}
-    needs: [changes, backend, frontend, docs, tooling, adr, image]
+    needs: [changes, backend, frontend, docs, tooling, adr, narratives, image]
     runs-on: ubuntu-latest
     # actions: read lets the steps below read this run's jobs from the API; contents: read checks out .github/ only,
     # for the run-time gate and its baseline from the commit under test.

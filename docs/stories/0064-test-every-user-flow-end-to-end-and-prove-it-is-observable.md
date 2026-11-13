@@ -4,6 +4,7 @@ date: 2026-11-13
 issue: https://github.com/mgasca/calendar/issues/728
 pr:
   - https://github.com/mgasca/calendar/pull/740
+  - https://github.com/mgasca/calendar/pull/765
   - https://github.com/mgasca/calendar/pull/767
   - https://github.com/mgasca/calendar/pull/769
 adrs: ["0008", "0021", "0027", "0030", "0039", "0058", "0061", "0062", "0063", "0064"]
@@ -131,7 +132,7 @@ Dependencies: #729 first; then #730, #731 and #732 in parallel; #733 when all th
 | E2E stack and recipes | `compose.yaml` profiles `observability` (`lgtm`) and `sign-in-stub` (`oidc-stub`); `e2e.just` (`just e2e up`, `check`, `env`, `ls`, `down`); `just db observability` and `just db sign-in-stub`; [runbook](../runbooks/local-stack-and-e2e.md) (#730) |
 | API telemetry | `backend/crates/calendar-api` (startup in `src/main.rs`, request and database spans) |
 | Stub issuer settings and guard | `backend/crates/calendar-api/src/config.rs` (`GoogleOverrides`, the two refusals), `src/auth/google.rs`, `src/state.rs`; tests in `config.rs`, `google.rs` and `tests/google_overrides_startup.rs` (#730) |
-| Web telemetry | `frontend/apps/web` |
+| Web telemetry | `frontend/apps/web`: `src/telemetry/` (`action.ts` with `traceAction`, always bundled; `sdk.ts`, loaded by `main.tsx` only in a `VITE_OTEL_TRACES_EXPORTER=otlp` build; `attributes.ts` and `allowListExporter.ts`, the allow-list); `dev/otlpProxy.ts` and `vite.config.ts` (the `/otlp/v1/traces` proxy) (#732) |
 | Nightly workflow | `.github/workflows/` (#737) |
 | Azure route | `infra/modules/app.bicep`: the Container Apps managed OpenTelemetry agent on the environment sends traces and logs to Application Insights; the app sets `OTEL_SERVICE_NAME=calendar-api` and `OTEL_METRICS_EXPORTER=none` (#738). Where to look: [the Azure infrastructure runbook](../runbooks/azure-infrastructure.md#monitoring-where-to-look) |
 | Model | `docs/architecture/calendar.architecture.json` (nodes `e2e-suite`, `lgtm`, `oidc-stub`; the `observability` control; flow test links) |
@@ -146,6 +147,7 @@ API telemetry (#731) lives in `calendar-api/src/telemetry/`:
 - **Server spans:** a `Router::layer` middleware makes one server span per routed request, named `<METHOD> <route template>`. It is the child of the W3C `traceparent` the request carries. The layer also records the `http.server.request.duration` histogram by method, route template and status. Its count is the request count.
 - **Database spans:** a Diesel `Instrumentation` is set on each pooled connection in `AppState::db()`. It makes one client span per query, named `<operation> <table>`. The span holds `db.query.text` cut before Diesel's `-- binds:`, so bind values are never formatted.
 - **Logs:** an in-repo bridge layer (`logs.rs`) exports INFO and above with the trace and span ids of the entered span. It copies only allow-listed fields. `opentelemetry-appender-tracing` was not used because it copies every field, and an SDK log record cannot drop an attribute afterwards.
+- **Request log:** the server-span middleware emits one INFO event, `request finished`, inside each traced request's span, with only the method, route template and status. It is the record that carries a successful flow's trace id into Loki; without it, only failures were logged (found while designing #733). Health probes are not logged, and with telemetry off nothing changes.
 - **Allow-list:** the allow-list is in `allow_list.rs`. A span processor drops every other attribute and all span events before export.
 
 ### Testing
@@ -153,7 +155,16 @@ API telemetry (#731) lives in `calendar-api/src/telemetry/`:
 - Browser: the Playwright flow tests, nightly and on demand.
 - Binding: the browser-free check on every pull request.
 - API: `cargo test` for the exporter wiring, `traceparent` extraction, redaction and the stub guard. `crates/calendar-api/tests/api/telemetry.rs` runs the production pipeline with in-memory exporters and scans every exported span, log and metric for seeded personal data. The unit tests in `src/telemetry*` cover the `OTEL_*` configuration, the statement shape and the allow-list.
-- Web: Vitest for the attribute filter and the no-exporter default.
+- Web: Vitest. `src/telemetry/telemetry.test.tsx` runs the real SDK with an in-memory exporter, the real API client and MSW: a save's action span, fetch span and the `traceparent` the API receives share one trace, every bulk batch stays in that trace, nothing outside `/api` gets the header, no planted personal data is exported, and no tracer is registered when telemetry is off. `src/telemetry/attributes.test.ts` covers the allow-list rules, and `dev/otlpProxy.test.ts` runs `vite dev` and `vite preview` against a fake collector.
+
+### Delivered in #732
+
+- **Switch:** web telemetry is built in only with `VITE_OTEL_TRACES_EXPORTER=otlp`. Without it, Vite drops the dynamic import and emits no OpenTelemetry chunk, so the fetch instrumentation does not run and no `traceparent` is sent. Azure builds don't set it.
+- **Spans:** `traceAction` wraps the API call of each flow step in a user-action span (`ui.day.load`, `ui.week.load`, `ui.event.create`, `ui.event.open`, `ui.event.update`, `ui.event.delete`, `ui.task.create`, `ui.task.open`, `ui.task.update`, `ui.task.complete`, `ui.task.reopen`, `ui.triage.load`, `ui.tasks.bulk`). Its child fetch span is named `<METHOD> <route template>`, like the API's server span. `sign-in-flow` has no action span: sign-in and the callback are full-page navigations. Service name `calendar-web`.
+- **Privacy:** every span is copied before export with only allow-listed names, attributes and values (checked by shape), and without status messages or links. The `/otlp` proxy forwards only `/otlp/v1/traces`, to `${CALENDAR_OTLP_URL:-http://localhost:4318}/v1/traces`, and removes `Cookie` and `Authorization`.
+- **Measured bundle size** (`vite build`, total JS, gzip -9 per file, against `main` 132e31be4): switch off +507 B raw, +143 B gzip; switch on +71,945 B raw, +25,660 B gzip, with a 69.96 kB `sdk` chunk.
+- **Versions:** `@opentelemetry/instrumentation-fetch` and `exporter-trace-otlp-http` ~0.301.1, not ADR-0062's 0.301.2, which was inside pnpm's minimum release age; `sdk-trace`, `core` and `resources` 3.1.1; `api` 1.10.0.
+- **Not verified in #732:** a browser run against LGTM and the real API; #733's flow tests cover it.
 
 ### Delivered in #730
 
@@ -166,7 +177,8 @@ API telemetry (#731) lives in `calendar-api/src/telemetry/`:
 ### Lessons learned, known issues and follow-ups
 
 - Browser OpenTelemetry is marked experimental upstream, and the Rust traces signal is beta; ADR-0062 records the versions checked.
-- **Follow-up:** web telemetry in Azure stays off in this story (`traceparent` is still sent), as the maintainer chose on #729 on 2026-11-13; turning it on is a later decision (ADR-0062).
+- **Follow-up:** web telemetry in Azure stays off in this story, as the maintainer chose on #729 on 2026-11-13; turning it on is a later decision (ADR-0062). With the switch off the fetch instrumentation is not loaded, so Azure requests carry no `traceparent` either (#732).
+- **Follow-up:** `@opentelemetry/instrumentation-fetch` is deprecated upstream in favour of the experimental `@opentelemetry/browser-instrumentation`; `sdk.ts` keeps it with an ESLint exception, and the move is #768.
 
 ## User guide
 

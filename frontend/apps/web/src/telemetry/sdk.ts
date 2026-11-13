@@ -65,7 +65,7 @@ export function startTelemetry({
   trace.setGlobalTracerProvider(provider);
 
   // Deprecated upstream in favour of the experimental `@opentelemetry/browser-instrumentation`
-  // (0.x, different telemetry). ADR-0062 names this package; moving is a question on #732.
+  // (0.x, different telemetry). ADR-0062 names this package; the move is #768.
   // eslint-disable-next-line @typescript-eslint/no-deprecated -- see the comment above
   const instrumentation = new FetchInstrumentation({
     // Only same-origin `/api` requests get a span and a `traceparent`: not `/otlp`, fonts or any

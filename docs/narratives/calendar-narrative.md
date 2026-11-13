@@ -3,391 +3,368 @@ system: Calendar
 audience: New contributors, human and agent, who need to know why the system looks the way it does before changing it
 date: 2026-11-13
 status: draft
-slides: slides/calendar/
 ---
 
 <!-- Generated from docs/narratives/calendar/ by the architecture-narrative-builder stitcher. Edit the parts and restitch; just check fails when this file differs from its parts. -->
 
 # Calendar architecture narrative
 
-Why Calendar is built the way it is: the problem it serves, the forces that shaped it, and the architecture and risks that follow. Read it before changing the system, whether you are a person or an agent.
+Why Calendar is built the way it is: the problem it exists to solve, the forces that shaped it, and the architecture, decisions and risks that follow. Read it before you change the system, whether you are a person or an agent.
 
 ## Act 1: Setup
 
 ### The problem
 
-Calendar has two problems to solve, and its owner treats them as one project.
+Software written by AI coding agents cannot yet be trusted without close human checking. Calendar exists to develop and test the practices that make agent delivery dependable: the method. The planning application (one place to see the events and tasks of today and of the week) is the vehicle: a real product, small enough for one person to own, on which the method is exercised and its results recorded.
 
-The first is a planning problem. One person needs a single place that shows what today and this week hold: the events with fixed times, and the tasks with their deadlines, including tasks that are already overdue. "Today" has to mean today in that person's own time zone.
+The maintainer wants three outcomes:
 
-The second is an engineering problem. AI agents can now write and change software, but there is no established practice that makes their output dependable: work that is decided before it is built, checked before it merges, and that improves when something goes wrong. Calendar is where that practice is developed and tested, on a real product with real constraints.
+* **A reusable method others adopt.** The guidance, skills and hooks, copied together into another repository, work there; another repository adopts them, the maintainer reuses the method in the next project, and public readers engage with it.
+* **Fewer corrections.** The median pull request written by a delivery agent merges after at most 2 correction rounds.
+* **Personal depth** in agentic engineering, gained by doing the work.
 
-When the two pull apart, the method wins. The product is the vehicle; a feature is worth building when it exercises the method, and time goes to the method when both cannot be done.
-
-The outcome the owner wants is a **reusable method**. Success is measured by four signs:
-
-| Sign | Measure |
-| --- | --- |
-| A skill travels | A skill folder copied into another repository works without this repository's tooling. |
-| The method is adopted | Another repository adopts the agent guidance, skills and hooks. |
-| Lessons stick | Repeated lessons, as counted in dream-weaver reports, fall month over month. |
-| Agent work merges clean | The median agent pull request merges after at most 2 maintainer correction rounds. |
+A planning application relied on every day is not one of the outcomes.
 
 ### Why now
 
-Agentic coding crossed a usefulness threshold in 2026, and the practices that make it dependable do not exist yet. The owner also needs hands-on depth in this way of working now, not later. If nothing is done, agent output stays something to inspect line by line rather than trust, and the gap between what the tools can do and what the owner can do with them widens.
+Coding agents became capable enough to deliver real changes, but the practices that make their output dependable are missing. If nothing is done, agent output stays something to distrust and recheck by hand, and the maintainer's own skill gap widens while the practice moves on. No team or employer need drives the work.
 
 ### Stakeholders
 
+Agents propose; the maintainer decides.
+
 | Role | Needs | Decides |
 | --- | --- | --- |
-| Maintainer | A planner that works, and a method that makes agent work trustworthy | Scope, which ADRs are accepted, and every merge |
-| Delivery agents (Claude Code, Codex) | Clear issues, story cards, ADRs and guidance to work from | Nothing on their own: they propose designs, implement and report on issues and pull requests for the maintainer to accept |
-| Reviewer and skeptic agents | A branch or a finding to examine | Whether a finding stands: reviewers report findings, skeptics try to refute them before they reach the maintainer |
-| Public readers | A method they can inspect and copy | Whether the method is worth adopting |
+| Maintainer | A method that produces changes worth merging with few correction rounds | Scope, the acceptance of every ADR, and the authorization of every merge |
+| Delivery agent | Guidance, skills and hooks that say what to do and what is forbidden; records that outlive a session | Nothing: it designs, implements and posts on issues, and proposes |
+| Reviewer and skeptic | A branch to review and findings to test | Nothing: they report findings and try to refute them before merge |
+| Public reader | Evidence that the method works, and pieces that can be lifted out | Whether to copy the method, and which pieces |
 
 ### Users and scale
 
-The product has one user: the maintainer, signing in with an allow-listed Google account. A staging environment runs on Azure; production is not live yet. With one user, load is not what shapes the product. The method's users are the agents and the maintainer, every working day.
+The application has one user, the maintainer, who signs in with one allow-listed Google account and uses it occasionally, to prove features rather than to plan every day. It runs locally only: the Azure infrastructure is defined in the repository but not deployed.
 
 ### Scope
 
-**In scope:** the today and week views, events, tasks with a date or exact-time deadline, overdue triage, sign-in, and light and dark themes; and around the product, the documentation site, the delivery dashboard and the agent tooling (guidance, skills, hooks and workflows).
+In scope: the today and week views, events, tasks with a date or exact-time deadline, overdue triage, Google sign-in and the light and dark themes; and around the application, the docs site, the delivery dashboard and the agent tooling.
 
-**Out of scope:** sharing calendars and inviting attendees, sync with other calendars such as Google or Outlook, and native mobile apps. **Future, not yet planned:** recurring events.
+Out of scope: sharing and invitations, sync with other calendars, and native mobile apps. Recurring events are a possible future with no plan.
 
 ### Vocabulary
 
 | Term | Meaning |
 | --- | --- |
-| Event | Something that happens at a set time: a start and an end, in a time zone. |
-| Task | Something to do, optionally with a deadline; it is open until completed. |
-| Deadline | When a task is due: either a date with no time, or an exact time. |
-| Floating date | A calendar date with no time zone, such as a date-only deadline; it means the same day wherever the owner is. |
-| Today | The owner's current date in the owner's time zone, as the client states it; the server never decides it. |
-| Agenda | What a day or a week holds: its events and the tasks due in it. |
-| Overdue | An open task whose deadline is before today. |
-| Owner | The signed-in user whose events and tasks they are; every read and write is scoped to one owner. |
-| Contract | `contracts/openapi.json`, generated from the API: the only thing a user interface may depend on. |
-| Generated client | The TypeScript client generated from the contract and shared by every user interface. |
-| Read model | An endpoint shaped for one view (the day or week agenda), read from one consistent snapshot. |
-| Issue | A GitHub issue: where work is requested, designed and discussed. |
-| Story card | The lasting record of a feature in `docs/stories/`: scope, acceptance criteria, decisions and how it was built. |
-| ADR | Any Decision Record in `docs/decisions/`: one significant decision, its options and its reasons. |
-| Slice | One deliverable piece of a story, with its own issue and pull request. |
-| Epic | An issue that groups the slices of a larger outcome. |
-| PR 0 | The first, docs-only pull request of a story: its card, and any ADRs. |
-| Worker | An agent session delivering one or more slices. |
-| Coordinator | The agent session that steers the workers of an epic. |
-| Agent guidance | The layered instructions agents read: the root `AGENTS.md` and the area files under it. |
-| Skill | A packaged procedure an agent loads for one kind of task, such as drafting an ADR. |
-| Hook | A check that runs on an agent's tool calls and enforces a rule from the guidance. |
-| Workflow | A saved script that runs several agents in a fixed pattern, such as review before merge. |
-| Skeptic | An agent that tries to refute one finding before it reaches the maintainer. |
-| Sweep | A periodic check of records (ADRs, issues) for drift that validation cannot catch. |
-| Dream-weaver | The skill that reads recent sessions and turns their lessons into lasting guidance. |
-| Snapshot | A daily JSON record of delivery measures that the dashboard renders. |
+| Method | The guidance, skills, hooks and records that make agent delivery dependable |
+| Maintainer | The repository's owner and only user |
+| Delivery agent | An AI coding agent that designs and implements a change |
+| Reviewer | An agent that reviews a branch for performance or security |
+| Skeptic | An agent that tries to refute one review finding |
+| Correction round | One maintainer request for changes on a delivery agent's pull request before it merges |
+| ADR | A decision record in `docs/decisions` |
+| Story card | The durable record of a story in `docs/stories` |
+| Skill | A packaged procedure an agent follows |
+| Harness | The program that runs an agent, such as Claude Code |
+| Hook | A check the harness runs on an agent's actions |
+| Bundle | The guidance, skills and hooks copied together into another repository |
+| Baseline | The pinned run time a CI job is compared against |
+| Event | A calendar entry with a time span or a whole day |
+| Task | A todo with an optional date or exact-time deadline |
+| Overdue | Said of a task whose deadline has passed and that is not completed |
+| Day agenda, week agenda | The events and tasks of one day or one week, read as one snapshot |
+| Today | The date and time zone the client supplies; the server never decides it |
+| Owner | The signed-in account that events and tasks belong to |
+| Contract | `contracts/openapi.json`, generated from the API and consumed by every UI |
 
 ```mermaid
 flowchart LR
-  maintainer(["Maintainer"])
-  agents(["Delivery, reviewer and skeptic agents"])
-  readers(["Public readers"])
-  calendar["Calendar product"]
-  repo["Repository: code, guidance, records"]
-  google["Google sign-in"]
-  github["GitHub: issues, pull requests, CI"]
-  docs["Documentation site"]
-  maintainer -->|plans the day and week| calendar
-  calendar -->|verifies identity| google
-  maintainer -->|accepts and merges| github
-  agents -->|design, build, review| github
-  github -->|holds| repo
-  repo -->|publishes| docs
-  readers -->|read and copy the method| docs
+    maintainer([Maintainer])
+    agents([Delivery agents, reviewers and skeptics])
+    readers([Public readers])
+    subgraph repo[Calendar repository]
+        app[Calendar application<br/>web UI, API, PostgreSQL]
+        method[Method<br/>guidance, skills, hooks, ADRs, story cards]
+        site[Docs site]
+    end
+    google[Google sign-in]
+    github[GitHub<br/>issues, pull requests, CI, Pages]
+    maintainer -->|plans the day and week| app
+    maintainer -->|sets scope, accepts ADRs, authorizes merges| github
+    agents -->|follow| method
+    agents -->|propose changes as pull requests| github
+    app -->|signs the owner in with| google
+    github -->|checks and publishes| repo
+    readers -->|read the evidence, lift pieces| site
 ```
 
 ## Act 2: Confrontation
 
 ### Constraints
 
-**Business.** One maintainer is the whole human team, working in near full-time bursts with gaps between them; their attention is the scarcest resource, because every merge goes through them. Run cost is not tracked: the narrative assumes it stays within a personal budget and never forces a design choice (assumption A1). The project has no external deadline, contract or regulator; the deadline that matters is the field's, since practices for agents are being invented now.
+Business:
 
-**Technical.** Two sets of rules bind every change:
+* One maintainer, working in near full-time bursts with gaps. If time runs short, the method stays the priority and the application freezes.
+* No employer, deadline, contract or regulator.
 
-* **Agent rules.** Automation targets Claude Code first ([ADR-0044](../decisions/0044-claude-first-agent-automation.md)); hooks enforce the guidance's invariants ([ADR-0042](../decisions/0042-layered-agent-guidance-and-hooks.md)); agents decide nothing without the maintainer's acceptance.
-* **Contract rules.** The API contract is generated from the backend and every user interface consumes it ([ADR-0004](../decisions/0004-openapi-contract-and-generated-client.md)); the client supplies today and its time zone ([ADR-0021](../decisions/0021-client-supplied-date-and-time-zone-define-the-day.md)); every event and task query takes the owner.
+Technical, binding on any solution:
 
-The hosting stack (GitHub, Azure, Google sign-in) and the toolchain pins are choices, not constraints: they have been changed before and can be again.
+* **Agent rules.** Agents propose and never decide. Automation is written for Claude Code first ([ADR-0044](../decisions/0044-claude-first-agent-automation.md)) while the guidance stays readable by any agent. A hook stops a forbidden action before it happens.
+* **Contract rules.** The contract is generated from the API and every UI consumes it. The client supplies Today. Every query for an event or a task takes the owner.
+
+Not binding: the platform (GitHub, a public repository, Linux or WSL, Docker) and the stack with its version pins are choices, open to change; the backend has already moved from .NET to Rust.
+
+Given up on purpose, because the only user is the maintainer and nothing is deployed: availability and operations, accessibility beyond readable contrast in both themes, and small screens.
 
 ### Challenges
 
-* **Agents forget between sessions.** A lesson that is not written into guidance, a skill, a hook or a story card is lost when the session ends. This follows from Act 1's measure that lessons must stop repeating.
-* **One human reviewer.** Many agents can work in parallel, but one maintainer reviews and merges, in bursts. Work that waits on review waits for the maintainer's next burst.
-* **Time is subtle.** A date-only deadline has no time zone; an event has an exact time; today is the owner's date in the owner's zone, and daylight saving moves the day's length. The same rules must hold in the Rust domain and in the SQL that reads the database.
-* **Stacks change underneath.** The backend moved from .NET to Rust and the repository tooling from .NET to Deno while features kept shipping. A change of stack is a normal event, not an exception.
+* **Agents forget.** A delivery agent keeps nothing between sessions, so whatever it must know has to live in guidance, records or a hook.
+* **One human decides.** The maintainer is the only reviewer and decider, and works in bursts. Every correction round spends the scarcest resource.
+* **Time is subtle.** Day boundaries, time zones and daylight-saving changes are easy to get wrong in ways tests miss, and each rule exists in two forms: in the domain and in SQL.
+* **The method must leave.** Practices proven here must work, as a bundle of guidance, skills and hooks, in a repository that shares none of this one's stack.
 
 ### Driving characteristics
 
 | Characteristic | Business requirement | Target |
 | --- | --- | --- |
-| Verifiability | The median agent pull request merges after at most 2 maintainer correction rounds | At most 2 correction rounds at the median (the outcome); every fix carries a test proven to fail without it, and `just check` runs what CI runs (the mechanism) |
-| Delivery speed | Agents wait on checks every round, so slow CI multiplies across sessions; the maintainer reviews in bursts, so a pull request must be checkable in one sitting | No CI job slower than its pinned baseline ([ADR-0045](../decisions/0045-run-time-regression-gates-for-ci-jobs.md)); the full CI run under 15 minutes at p90 |
-| Correctness of time | Today has to mean today in the owner's own time zone; time is the method's showcase, the hardest correctness problem in the product | Zero day-boundary defects across daylight-saving and time-zone changes (the outcome); a fixed matrix of zones and transitions passing for the day and week agendas, in domain and SQL forms (the evidence) |
-| Security and privacy | Every read and write belongs to one owner, in a public repository | No owner can read or change another owner's data, tested per endpoint; no secret or private path reaches the public repository or a post, enforced by hooks |
+| Verifiability | Fewer corrections: an agent's change is proven right by checks before the maintainer reads it | The median pull request written by a delivery agent merges after at most 2 correction rounds |
+| Auditability | Public readers need evidence that the method works; agents propose and the maintainer decides | Every merged pull request links an issue or story card, and every significant decision has an ADR the maintainer accepted before its pull request merged |
+| Portability of the method | A reusable method others adopt | The bundle of guidance, skills and hooks runs in another repository after only the edits its documentation lists |
+| Delivery speed | One maintainer decides everything while agents wait on checks | No CI job slower than its pinned baseline, and full CI under 5 minutes at p90 |
+| Correctness of time | Today is the date and time zone the client supplies | No event or task on the wrong day; a fixed matrix of time zones and daylight-saving transitions passes for the day agenda and week agenda, in the domain rules and in their SQL forms |
 
-Correctness of time drives the design although the owner does not yet rely on Calendar every day: it is where the method has to prove it can get subtle rules provably right.
+Where the targets stand: correction rounds are not measured yet (the counting rule is that any maintainer comment or review that forces a new push counts, and a fix for CI alone does not; the first baseline is the last 30 merged pull requests by delivery agents). The links and the ADR acceptance hold by convention only, because the maintainer authorizes every merge. Full CI was last measured before the Rust backend, at a median of 1:38 and a p90 of 2:07 over 40 pull request runs ([benchmark 0016](../benchmarks/0016-ci-jobs-by-changed-paths.md)); reviewer and skeptic runs happen outside CI. A missed target becomes an issue, its fix carries a test that fails without it, and the lesson goes into guidance, a skill or a hook.
 
-The threats that matter for security and privacy are leaked secrets and private details, a compromised dependency or GitHub Action, and text in issues, pull requests or files that tries to steer an agent.
+Time correctness drives the design although the application is used only occasionally: it is the hardest correctness problem in the vehicle, so it is where the method is proven.
 
-Candidates considered and set aside: **evolvability**, because it follows from verifiability (the stack migrations were safe because of the tests and the contract); **portability**, because it is a property of the agent tooling rather than of the system's architecture; **cost**, because with one user it never forced a design choice.
+Candidates considered and set aside: security and privacy (with one user and nothing deployed it is hygiene, not a force on the design), evolvability (not a characteristic whose absence fails the project) and cost (nothing is deployed, so run cost forces nothing).
 
 ### Alternatives
 
-Each decision below lists what was chosen first, then the alternatives weighed against the driving characteristics. The panel's disagreements, and how they were settled, follow each table.
-
-#### How user interfaces learn the API
+#### How agents learn and are held to the rules
 
 | Alternative | Strengths | Weaknesses against the driving characteristics |
 | --- | --- | --- |
-| **OpenAPI generated from the code, typed client generated from it** (chosen) | A stale contract fails CI, so client and server cannot drift unseen (verifiability) | A regeneration step in every API change (delivery speed, small) |
-| Hand-written OpenAPI with generated server stubs | The contract is designed first | The document and the code can disagree until a stub is regenerated (verifiability) |
-| Hand-written TypeScript types and fetch calls | Nothing to generate | Drift is found by users, not by CI (verifiability) |
-| gRPC or GraphQL | Strong schemas | Tooling and runtime the rest of the stack does not need; a browser needs a gateway (delivery speed) |
+| Layered guidance (root and per-area files, skills) with hooks | Little text loaded in every session; a hook stops a forbidden action before it happens | Hooks run only under Claude Code, which narrows portability; more pieces for an adopter to take |
+| Prose only in one root file | Simplest to copy; any agent reads it | Nothing is enforced, so the same mistakes return as correction rounds; the file grows with every lesson |
+| Layered guidance with checks in lint and CI only | Works for every harness | A mistake is found after the work is done, at the cost of a CI round; a destructive local action is never stopped |
 
-#### Who decides what day it is
+Trade-off, verifiability against portability: hooks cut correction rounds but tie the bundle to Claude Code and to this repository's paths. The panel suggested making each hook a thin wrapper over a check that CI also runs. The maintainer accepts the trade-off as it stands: the edits an adopter makes to each hook are a known cost.
 
-| Alternative | Strengths | Weaknesses against the driving characteristics |
-| --- | --- | --- |
-| **The client sends its local date and IANA zone; the server computes the window** (chosen) | Uses the zone of the device in hand; every request is a complete, testable description (correctness of time, verifiability) | Two clients in different zones can see different todays, by design |
-| The client sends a UTC range | Simple for the server | Day rules live in every client, untested against the SQL forms (correctness of time) |
-| A time zone stored per user | One place to change | Wrong while travelling; needs settings the single user does not want (correctness of time, end user) |
-| A server-defined UTC day | Simplest | Wrong for every owner outside UTC (correctness of time) |
-
-#### How each owner's data stays theirs
+#### Which agent harness the automation targets
 
 | Alternative | Strengths | Weaknesses against the driving characteristics |
 | --- | --- | --- |
-| **An explicit owner parameter on every query, typed as `OwnerId`, plus a least-privilege database role** (chosen) | A query without an owner does not compile; isolation is tested per endpoint (security, verifiability) | Isolation depends on each query's filter, not on the database (security) |
-| A framework-wide query filter | Isolation by default | Chosen under .NET ([ADR-0041](../decisions/0041-per-user-data-ownership.md)); there is no equivalent in Diesel, so the Rust port replaced it with the explicit parameter, which ADR-0041 had rejected. The record has not caught up yet |
-| PostgreSQL row-level security | Defence in depth: the database refuses another owner's rows | A session variable per transaction, harder tests and debugging (delivery speed, verifiability) |
+| Claude Code first for automation; guidance neutral | Uses native hooks, skills and workflows; no twin of each automation to keep in step | An adopter on another harness follows the guidance by hand |
+| Full neutrality: a hand-followable twin of every automation | Portable to any harness | Twice the text to maintain and verify; twins drift |
+| A neutral automation layer of recipes and tools with an adapter per harness | Portable automation | An extra layer to build and test before any adopter exists |
 
-The Security expert asked for row-level security as defence in depth; the Delivery speed and Verifiability experts held that the `OwnerId` type and the per-endpoint ownership tests already make a missing filter hard to write. Not settled: row-level security is an open question.
+Trade-off: the neutral layer is the strongest design for portability and the weakest use of the maintainer's time before any adopter exists. Adoption is therefore claimed for Claude Code adopters only.
 
-#### Which backend stack
-
-| Alternative | Strengths | Weaknesses against the driving characteristics |
-| --- | --- | --- |
-| **Rust on axum, replacing the .NET API in place** ([ADR-0051](../decisions/0051-rust-backend-on-axum-and-tokio.md)) (chosen) | Learning a new stack on real code is part of the method; strong types and Clippy catch errors before review (verifiability) | Longer builds and lint in CI (delivery speed) |
-| Rust beside .NET, moved route by route | Lower risk per step | Two backends and two containers for the length of the move (delivery speed, verifiability) |
-| Stay on .NET | No migration | The learning goal is not met (business) |
-
-The Delivery speed expert objected that Rust builds, Clippy and database tests lengthen CI against the 15-minute target. Settled: an accepted cost, held in check by the run-time gate and by running each job only for the paths it checks.
-
-#### Where decisions and scope are recorded
+#### Where decisions and stories are recorded
 
 | Alternative | Strengths | Weaknesses against the driving characteristics |
 | --- | --- | --- |
-| **Story cards and ADRs in the repository, with a docs-only first pull request (PR 0) per story** (chosen; [ADR-0000](../decisions/0000-use-markdown-architectural-decision-records.md), [ADR-0028](../decisions/0028-publish-user-stories-on-the-documentation-site.md)) | Agents read the same records they change; scope is reviewable before code (verifiability); the records outlive sessions (agents forget) | PR 0 adds a review round to every story (delivery speed) |
-| Issues, commit messages and PR descriptions only | No extra files | Decisions scatter and agents cannot find them (verifiability) |
-| An external wiki | Easy editing | Not reviewed with the code, not visible to agents in the repository (verifiability) |
+| ADRs and story cards as Markdown in the repository, published on the docs site | Records sit beside the code, are validated by tools, change in the same pull request and are public evidence | A card before delivery and an ADR acceptance add steps; an adopter takes the conventions too |
+| No formal records: commit messages, pull request descriptions, README | No extra steps | An agent in a new session cannot find why; a reader has no evidence trail |
+| An external wiki | Easy to edit | Outside the review and the checks; drifts from the code; not copied with the bundle |
 
-The Delivery speed expert objected to the extra round. Settled: PR 0 stays, and delivery pull requests stack on it at once, so nothing waits for acceptance.
+Trade-off, auditability against portability: the record conventions are what the auditability target requires, and they add to what an adopter takes on. The direction is a minimal record kit in the bundle (the ADR and story card conventions with their validators), with the docs site and the architecture model optional. It is not built yet.
 
-#### How agents are guided
-
-| Alternative | Strengths | Weaknesses against the driving characteristics |
-| --- | --- | --- |
-| **Layered guidance (a short root `AGENTS.md`, area files and skills) with hooks that enforce its invariants** ([ADR-0042](../decisions/0042-layered-agent-guidance-and-hooks.md)) (chosen) | Each session loads only what it needs; hooks stop a destructive or leaking action before it happens (verifiability, security) | Hooks are tooling to maintain, and add a little latency to tool calls |
-| One long prose file | Simple | Costly to load every session and nothing enforces it (verifiability) |
-| Checks in lint and CI only | No agent-specific tooling | Catches a leak after it is pushed, not before (security) |
-
-#### How changes are reviewed before merge
+#### How the UI and the API agree
 
 | Alternative | Strengths | Weaknesses against the driving characteristics |
 | --- | --- | --- |
-| **Performance and security reviewers, then three skeptics per finding, as a workflow on code pull requests** (chosen) | Findings reach the maintainer already tested for truth, reproduction and impact (verifiability) | Time and tokens on every code pull request (delivery speed) |
-| A single reviewer with no skeptics | Cheaper | False positives spend the maintainer's attention (business) |
-| Human review only | No agent cost | The maintainer becomes the only check, and the bottleneck (delivery speed, verifiability) |
-| Reviewers as a CI job on every push | Automatic | Runs on every push, not just before merge (delivery speed) |
+| A contract generated from the API and committed, with a generated typed client | A stale contract fails CI; a breaking change shows as a type error in every consumer | The contract follows the code rather than leading it |
+| A hand-written contract with generated server stubs | The design is reviewed first | A second source to keep true; drift is found late |
+| No contract: hand-written types and fetch calls | Nothing to generate | Nothing verifies that the two sides agree |
 
-The Delivery speed expert objected to the cost; the Verifiability and Business experts held that it protects the correction-rounds target. Settled: worth it on code pull requests only; docs-only pull requests skip it.
-
-#### How delivery is measured
+#### Who defines the day
 
 | Alternative | Strengths | Weaknesses against the driving characteristics |
 | --- | --- | --- |
-| **Path-filtered CI jobs, a run-time gate per job against a pinned baseline, and a dashboard built from daily snapshots** ([ADR-0045](../decisions/0045-run-time-regression-gates-for-ci-jobs.md), [ADR-0046](../decisions/0046-run-ci-jobs-only-for-the-paths-they-check.md), [ADR-0049](../decisions/0049-build-the-delivery-dashboard-from-daily-snapshots-on-the-docs-site.md)) (chosen) | A regression in CI time fails a check; skipped jobs cost nothing; the history is public and needs no service (delivery speed) | Statistics and rules to maintain; a gate can fail falsely |
-| Run every job on every change | Simplest | Every change pays for every check (delivery speed) |
-| A hosted analytics service | Rich dashboards | Another service and its data outside the repository (security, business) |
-| No timing gate | No false failures | Slowdowns are noticed late, after they multiply (delivery speed) |
+| The client sends its local date and time zone; the server computes the window | The day is the user's wall-clock day; daylight-saving logic exists once, on the server, with tests | The client is trusted to send a truthful zone; the API's zone data and PostgreSQL's are updated separately |
+| The client sends a UTC range | Simple for the server | Each client redoes the daylight-saving logic; whole-day items lose their local date |
+| A time zone stored per user | Safe input | Wrong when the user travels; needs a setting before first use |
+| The server's UTC day | Nothing to send | The wrong day for most zones |
+
+#### How CI time is kept in check
+
+| Alternative | Strengths | Weaknesses against the driving characteristics |
+| --- | --- | --- |
+| A run-time gate per job against a pinned baseline, with jobs run only for the paths they check | A regression fails the run that caused it; unaffected jobs do not run | Baselines must be re-pinned; a small regression under the margin passes; a skipped job is a check not run |
+| No timing gate: benchmark records only | No false failures | Slowdowns accumulate unnoticed until someone measures |
+| Every job on every change, with a fixed ceiling | Simple; everything is always checked | Waiting on jobs a change cannot affect; a ceiling catches only gross regressions |
+
+Trade-off, delivery speed against verifiability and correctness of time: this was the panel's closest call. A job skipped for its paths is a check not run, for example when time-zone data or an image changes with no code path. The maintainer keeps path-scoped jobs and accepts the risk; the CI result job tells a skip by design from a missing job ([ADR-0046](../decisions/0046-run-ci-jobs-only-for-the-paths-they-check.md)).
+
+#### How a change is reviewed before merge
+
+| Alternative | Strengths | Weaknesses against the driving characteristics |
+| --- | --- | --- |
+| Reviewer agents on request, with a skeptic trying to refute each finding | Findings reach the maintainer already tested; false ones are dropped | Adds waiting time and token cost; runs only when asked |
+| Maintainer review only | No waiting on agents | Every missed defect becomes a correction round |
+| Reviewers without skeptics | Faster | Unrefuted findings include false ones, which waste the maintainer's attention |
+| Review in CI on every pull request | Never forgotten | Lengthens every run and costs tokens on changes that do not need it |
+
+Trade-off, verifiability against delivery speed: reviewers and skeptics add waiting outside CI, which the 5-minute target does not count.
 
 ## Act 3: Resolution
 
 ### The architecture
 
-Calendar is two systems that shape each other: a small product, and the delivery method that builds it.
+Calendar has two architectures that answer the same problem: the application, and the method that delivers it.
 
-**The product** is one container on Azure Container Apps. A Rust API on axum serves the React single-page app and the `/api` endpoints from the same origin, so the browser holds one session cookie after Google sign-in. The API writes the OpenAPI contract when it is built; the TypeScript client every user interface uses is generated from that contract, so a change to the API that the client does not match fails CI. The web app sends the owner's date and IANA time zone with every agenda request, and the API computes the day or week window from them; the same day rules exist in the Rust domain and in the SQL that reads PostgreSQL, and both are tested against a matrix of zones and daylight-saving transitions. Every event and task query takes an `OwnerId`, and the API connects as the least-privilege `calendar_app` role; only the separate migrator, as `calendar_migrator`, changes the schema. Secrets come from Key Vault through a managed identity. Staging runs today; production is not live.
+**The application** is small on purpose. The web UI calls the API through a typed client generated from the contract, and the API reads and writes PostgreSQL. The web UI sends Today, its local date and time zone, with every agenda request; the API computes the day's window and returns the day agenda or week agenda as one snapshot. The API signs the owner in with Google, and every query for an event or a task takes the owner. It runs locally only.
 
 ```mermaid
 flowchart TB
-  user(["Owner"])
-  subgraph product["Calendar product (one container on Azure Container Apps)"]
-    web["Web app: React SPA, today, week and task views"]
-    api["Calendar API: Rust, axum"]
-  end
-  client["Generated TypeScript client"]
-  contract["contracts/openapi.json"]
-  db[("PostgreSQL: events, tasks, sessions")]
-  migrator["Migrator: applies SQL migrations"]
-  google["Google sign-in"]
-  vault["Key Vault: secrets"]
-  user -->|"browser, session cookie"| web
-  web -->|"same-origin /api, sends today and time zone"| api
-  web -->|imports| client
-  client -->|generated from| contract
-  api -->|writes at build| contract
-  api -->|"every query takes the owner, as calendar_app"| db
-  migrator -->|"as calendar_migrator"| db
-  api -->|verifies identity| google
-  api -->|secrets via managed identity| vault
+    maintainer([Maintainer])
+    subgraph app[Calendar application]
+        web[Web UI<br/>React, generated typed client]
+        api[API<br/>Rust, axum]
+        db[(PostgreSQL)]
+    end
+    contract[[Contract<br/>contracts/openapi.json]]
+    google[Google sign-in]
+    maintainer -->|"Today: local date and time zone"| web
+    web -->|"day agenda, week agenda, events, tasks"| api
+    api -->|"every query takes the owner"| db
+    api -->|signs the owner in with| google
+    api -.->|generates| contract
+    contract -.->|generates the client of| web
 ```
 
-**The method** turns an issue into merged, verified work without relying on what any agent remembers. An issue carries the request and the design; PR 0 records the story card and any ADRs; worker agents, each in its own worktree, deliver slices as stacked pull requests, guided by layered agent guidance and skills and held to its rules by hooks. CI runs only the jobs a change can affect and fails a job that is slower than its pinned baseline. Code pull requests pass review before merge, where reviewer agents report findings and skeptic agents try to refute each one. The maintainer accepts and merges. Dream-weaver reads what sessions learned and turns it into guidance, and the delivery dashboard publishes the measures from daily snapshots.
+**The method** is a loop around every change. An issue becomes a story card; a significant decision becomes an ADR that the maintainer accepts. A delivery agent makes the change under layered guidance, skills and hooks. CI checks it, running only the jobs for the paths it touches and failing a job that runs slower than its baseline. On request, reviewers examine the branch and a skeptic tries to refute each finding. The maintainer authorizes the merge or asks for a correction round. A missed target becomes an issue, and its lesson goes back into guidance, a skill or a hook.
 
 ```mermaid
 flowchart LR
-  issue["Issue: request and design"]
-  card["PR 0: story card and ADRs"]
-  worker["Worker agents, one worktree each"]
-  guidance["Agent guidance, skills and hooks"]
-  ci["CI: path-filtered jobs and run-time gates"]
-  review["Review before merge: reviewers and skeptics"]
-  maintainer(["Maintainer accepts and merges"])
-  lessons["Dream-weaver: lessons into guidance"]
-  dashboard["Delivery dashboard: daily snapshots"]
-  issue --> card --> worker
-  guidance -->|loaded and enforced| worker
-  worker -->|stacked pull requests| ci
-  ci --> review --> maintainer
-  maintainer -->|merged work and transcripts| lessons
-  lessons --> guidance
-  ci --> dashboard
+    issue[Issue] --> card[Story card]
+    card --> adr[ADR<br/>accepted by the maintainer]
+    adr --> change[Change by a delivery agent<br/>guidance, skills, hooks]
+    change --> ci[CI<br/>path-scoped jobs, run-time gates]
+    change --> review[Reviewers and skeptics<br/>on request]
+    ci --> merge{Maintainer<br/>authorizes the merge}
+    review --> merge
+    merge -->|correction round| change
+    merge --> main[main and the docs site]
+    main -->|lesson from a miss| guidance[Guidance, skill or hook]
+    guidance --> change
 ```
 
 ### Decisions
 
-#### D1: The API contract is generated, and every user interface uses the generated client
+#### D1: Layered guidance with hooks
 
-- **Context:** agents change the API and the web app in separate sessions, and verifiability needs drift between them to fail a check rather than reach the owner.
-- **Decision:** the API writes `contracts/openapi.json` at build time; the TypeScript client is generated from it and shared by every user interface; a stale contract fails CI.
-- **Consequences:** client and server cannot disagree unseen; every API change carries a regeneration step, and generated files are never edited by hand.
-- **Status:** accepted, [ADR-0004](../decisions/0004-openapi-contract-and-generated-client.md).
-- **Rejected alternative:** hand-written TypeScript types and fetch calls, because drift would be found by the user, not by CI.
+- **Context:** agents forget between sessions, and every repeated mistake is a correction round for the one human who decides.
+- **Decision:** guidance in layers (a root file, one file per area, skills loaded when needed) and hooks that stop a forbidden action before it happens.
+- **Consequences:** little text is loaded in every session, and a lesson can be enforced instead of restated. Hooks run only under Claude Code and name this repository's paths, so an adopter edits each one; the maintainer accepts that cost.
+- **Status:** accepted ([ADR-0042](../decisions/0042-layered-agent-guidance-and-hooks.md)).
+- **Rejected alternative:** prose only in one root file, because nothing is enforced and the file grows with every lesson; checks in lint and CI only, because a mistake is found after the work is done and a destructive local action is never stopped.
 
-#### D2: The client decides what day it is
+#### D2: Claude Code first for automation
 
-- **Context:** today must mean today in the owner's zone, and time is the method's showcase.
-- **Decision:** the client sends its local date and IANA zone; the server computes the window and never decides the day itself.
-- **Consequences:** each request fully describes its day and can be tested as data; two devices in different zones see different todays, by design.
-- **Status:** accepted, [ADR-0021](../decisions/0021-client-supplied-date-and-time-zone-define-the-day.md).
-- **Rejected alternative:** a time zone stored per user, because it is wrong while travelling and needs settings the single user does not want.
+- **Context:** the method must leave as a bundle, but one maintainer cannot keep every automation in two forms.
+- **Decision:** new automation may target Claude Code only; the guidance files stay readable by any agent; the decision has a revisit trigger.
+- **Consequences:** native hooks, skills and workflows, with no twins to drift. Only the guidance is neutral: the adoption claim covers Claude Code users only, and an agent on another harness follows the guidance by hand, without the hooks.
+- **Status:** accepted ([ADR-0044](../decisions/0044-claude-first-agent-automation.md)).
+- **Rejected alternative:** a hand-followable twin of every automation, because twins double the text and drift; a neutral automation layer with an adapter per harness, because it is an extra layer to build before any adopter exists.
 
-#### D3: Every query takes the owner
+#### D3: ADRs and story cards in the repository
 
-- **Context:** each owner's data must stay theirs, in a public repository whose code anyone can read.
-- **Decision:** every event and task query takes an `OwnerId` parameter, so a query without an owner does not compile; the API connects as a role that cannot change the schema; ownership is tested per endpoint.
-- **Consequences:** isolation is visible in every signature and tested; it still depends on each query's filter rather than on the database.
-- **Status:** accepted in practice. The record has drifted: [ADR-0041](../decisions/0041-per-user-data-ownership.md) still describes the framework-wide filter used under .NET and rejects the explicit parameter that the Rust port adopted. A superseding record is to be drafted.
-- **Rejected alternative:** PostgreSQL row-level security, for now, because of its per-transaction session variable and harder tests; whether to add it as defence in depth is an open question.
+- **Context:** public readers need evidence, an agent in a new session needs the reasons, and agents propose while the maintainer decides.
+- **Decision:** every significant decision is an ADR and every story a story card, as Markdown in the repository, validated by tools and published on the docs site. The story card is the source of truth for a story.
+- **Consequences:** records change in the same pull request as the code and are public. A card before delivery and an ADR acceptance add steps, and an adopter takes the conventions too.
+- **Status:** accepted ([ADR-0000](../decisions/0000-use-markdown-architectural-decision-records.md), [ADR-0028](../decisions/0028-publish-user-stories-on-the-documentation-site.md)).
+- **Rejected alternative:** no formal records, because a new session cannot find why and a reader has no trail; an external wiki, because it sits outside the review and the checks and is not copied with the bundle.
 
-#### D4: The backend is Rust, replacing .NET in place
+#### D4: A contract generated from the API
 
-- **Context:** learning a new stack on real code is part of the method, and stacks change underneath as a matter of course.
-- **Decision:** the API was rewritten on axum and Diesel behind the same contract, in one container, replacing .NET rather than running beside it.
-- **Consequences:** strong types and Clippy catch errors before review; builds and lint take longer, a cost accepted and held by the run-time gate and path filtering.
-- **Status:** accepted, [ADR-0051](../decisions/0051-rust-backend-on-axum-and-tokio.md).
-- **Rejected alternative:** moving route by route beside .NET, because two backends and two containers would run for the length of the move.
+- **Context:** a change by a delivery agent must be proven right by checks before the maintainer reads it.
+- **Decision:** the API generates the contract, which is committed; the web UI's typed client is generated from it.
+- **Consequences:** a stale contract fails CI and a breaking change is a type error in every consumer. The contract follows the code rather than leading it.
+- **Status:** accepted ([ADR-0004](../decisions/0004-openapi-contract-and-generated-client.md)).
+- **Rejected alternative:** a hand-written contract with generated server stubs, because a second source drifts and the drift is found late; no contract, because nothing verifies that the two sides agree.
 
-#### D5: Story cards and ADRs in the repository are the source of truth
+#### D5: The client defines the day
 
-- **Context:** agents forget between sessions, so every decision and scope must live where the next agent will read it.
-- **Decision:** issues drive the work; a docs-only PR 0 records each story card and its ADRs before code; delivery pull requests stack on PR 0 at once rather than waiting for it.
-- **Consequences:** scope is reviewable before code and outlives every session; PR 0 adds a review round, which stacking keeps off the critical path.
-- **Status:** accepted, [ADR-0000](../decisions/0000-use-markdown-architectural-decision-records.md) and [ADR-0028](../decisions/0028-publish-user-stories-on-the-documentation-site.md).
-- **Rejected alternative:** issues and pull request descriptions only, because decisions would scatter where agents cannot find them.
+- **Context:** time is subtle, and it is where the method is proven.
+- **Decision:** the client sends its local date and time zone; the API computes the window once and applies the same inclusion rules to the day agenda and the week agenda. The server never decides what day it is. A missing or invalid date or zone is rejected.
+- **Consequences:** the day is the user's wall-clock day, and the daylight-saving logic exists once, with tests; domain tests check that the SQL forms agree with the domain rules. The client is trusted to send a truthful zone, and the API's time-zone data and PostgreSQL's are updated separately.
+- **Status:** accepted ([ADR-0021](../decisions/0021-client-supplied-date-and-time-zone-define-the-day.md), [ADR-0024](../decisions/0024-week-agenda-endpoint-on-range-based-internals.md), [ADR-0057](../decisions/0057-chrono-time-types-for-the-rust-backend.md)).
+- **Rejected alternative:** a UTC range from the client, because each client redoes the daylight-saving logic and whole-day items lose their local date; a stored time zone, because it is wrong when the user travels; the server's UTC day, because it is the wrong day for most zones.
 
-#### D6: Agent guidance is layered and its invariants are enforced by hooks
+#### D6: Run-time gates and path-scoped jobs in CI
 
-- **Context:** every session pays to load guidance, and some mistakes (discarding work, leaking private details) must be stopped before they happen.
-- **Decision:** a short root `AGENTS.md`, area files and skills loaded when needed; hooks on agent tool calls deny the actions the guidance forbids.
-- **Consequences:** sessions load less and the worst mistakes are blocked; the hooks are tooling to maintain.
-- **Status:** accepted, [ADR-0042](../decisions/0042-layered-agent-guidance-and-hooks.md).
-- **Rejected alternative:** checks in lint and CI only, because they catch a leak after it is pushed.
+- **Context:** agents wait on checks in every round, and the maintainer's attention is the scarce resource.
+- **Decision:** each CI job is gated against a pinned run-time baseline, and a job runs only for the paths it checks; a CI result job runs on every change and tells a skip by design from a missing job.
+- **Consequences:** a regression fails the run that caused it, and unaffected jobs cost nothing. A skipped job is a check not run, baselines must be re-pinned, and a regression smaller than the margin passes. A gate per job does not bound the total: full CI can grow while every job passes. The maintainer accepts the risk of a wrong skip.
+- **Status:** accepted ([ADR-0045](../decisions/0045-run-time-regression-gates-for-ci-jobs.md), [ADR-0046](../decisions/0046-run-ci-jobs-only-for-the-paths-they-check.md)).
+- **Rejected alternative:** no gate, because slowdowns accumulate unnoticed; every job on every change with a fixed ceiling, because of the waiting on jobs a change cannot affect. The panel rated this last one almost level with the decision.
 
-#### D7: Code pull requests are reviewed by agents, and each finding is challenged before it reaches the maintainer
+#### D7: Review before merge, with a skeptic per finding
 
-- **Context:** the maintainer is the only human reviewer, and their attention is the scarcest resource.
-- **Decision:** before merge, a workflow runs the performance and security reviewers, then three skeptics per finding; docs-only pull requests skip it.
-- **Consequences:** findings arrive already tested for truth, reproduction and impact; every code pull request spends time and tokens on it.
-- **Status:** accepted, [story 0035](../stories/0035-review-before-merge-with-a-workflow-and-a-skeptic-per-finding.md).
-- **Rejected alternative:** a single reviewer with no skeptics, because its false positives would spend the maintainer's attention.
-
-#### D8: Delivery speed is measured and gated
-
-- **Context:** agents wait on CI every round, so a slowdown multiplies across sessions before anyone notices it.
-- **Decision:** CI runs each job only for the paths it checks; each job's run time is gated against a pinned baseline; a dashboard publishes the measures from daily snapshots on a data branch.
-- **Consequences:** a regression fails a check; the gate's statistics and rules need maintenance and can fail falsely.
-- **Status:** accepted, [ADR-0045](../decisions/0045-run-time-regression-gates-for-ci-jobs.md), [ADR-0046](../decisions/0046-run-ci-jobs-only-for-the-paths-they-check.md) and [ADR-0049](../decisions/0049-build-the-delivery-dashboard-from-daily-snapshots-on-the-docs-site.md).
-- **Rejected alternative:** running every job on every change, because every change would pay for every check.
+- **Context:** every defect the maintainer finds is a correction round; every false finding wastes the same attention.
+- **Decision:** on request, reviewers examine a branch for performance and for security, and a skeptic tries to refute each finding before it reaches the maintainer.
+- **Consequences:** findings arrive already tested and refuted ones stay visible. The review adds waiting and token cost outside CI. It runs only when asked, so it proves nothing on a pull request where nobody asked.
+- **Status:** implemented, with no ADR, which is a known exception to the auditability target ([story 0035](../stories/0035-review-before-merge-with-a-workflow-and-a-skeptic-per-finding.md)).
+- **Rejected alternative:** maintainer review only, because every missed defect becomes a correction round; reviewers without skeptics, because false findings reach the maintainer; review in CI on every pull request, because it lengthens every run and costs tokens on changes that do not need it.
 
 ### How the driving characteristics are met
 
 | Characteristic | Target | How the architecture meets it |
 | --- | --- | --- |
-| Verifiability | At most 2 correction rounds at the median; every fix has a test proven to fail without it | The mechanism is in place (D1, D5, D6, D7). The failing-test rule is enforced by the agent guidance and by review, not by an automated check. The outcome is **not measured** yet: see the risk below. |
-| Delivery speed | No job slower than its baseline; full CI under 15 minutes at p90 | Met, through path filtering and the run-time gate (D8), with review before merge on code pull requests only (D7). Measured on 30 push runs on `main` from 9 to 12 November 2026 (dashboard snapshot of 12 November): the slowest job, Backend, had a p90 of 229 s and a maximum of 267 s, and the jobs after Changes (at most 13 s) run in parallel, so no run in that window took more than about 5 minutes. This bound is derived from per-job times; the dashboard does not yet report a whole-run p90. |
-| Correctness of time | Zero day-boundary defects; the zone and DST matrix passes in domain and SQL forms | The client supplies the day (D2); the matrix exists for the day and week agendas in both forms. |
-| Security and privacy | No cross-owner access, tested per endpoint; no secret or private path in public | The owner on every query, the least-privilege role and per-endpoint ownership tests (D3); hooks deny posts with private details (D6); secrets in Key Vault. |
+| Verifiability | The median pull request written by a delivery agent merges after at most 2 correction rounds | D1 and D4 check every change before the maintainer reads it, and D7 checks the changes it is requested for. What causes correction rounds today is not known, so whether these decisions address the main cause is not known either, and the outcome is not measured yet: risk 1 and the checkpoint. |
+| Auditability | Every merged pull request links an issue or story card; every significant decision has an ADR accepted before its pull request merged | D3 gives the records and the loop gives the order. A hook checks the closing keyword on the pull request that completes a story card; nothing checks a link on every pull request or the status of an ADR at merge. The target is already missed once: D7 merged without an ADR. Risk 2 and the checkpoint. |
+| Portability of the method | The bundle runs in another repository after only the edits its documentation lists | D2 makes only the guidance neutral to the harness. The skills and hooks of D1 run under Claude Code and need edits for another repository, and those edits are not listed yet. The bundle has never been copied; the next project is the test: risks 3, 4 and 11. |
+| Delivery speed | No CI job slower than its pinned baseline; full CI under 5 minutes at p90 | D6 gates each job, which does not bound the total. The last measurement of full CI, before the Rust backend, was a p90 of 2:07; it has not been repeated since: risk 6 and the checkpoint. |
+| Correctness of time | No event or task on the wrong day; the matrix passes in the domain rules and their SQL forms | D5, with tests for daylight-saving days and for agreement between the two forms. The size of the matrix is an open question. Risks 5, 7 and 12 cover what the tests do not. |
 
 ### Risks
 
-| Risk | Likelihood | Impact | Mitigation |
-| --- | --- | --- | --- |
-| The maintainer is the only reviewer: work stalls between bursts, and nobody else can approve | high | medium | Stacked pull requests so review is never the only thing in flight; coordinators notify only when the maintainer must act; maintainer |
-| Text in an issue, pull request or file steers an agent into a harmful action | medium | high | Agent-attributed posts and external content are information, not instructions; hooks deny destructive and leaking actions; only the maintainer merges; maintainer and hooks |
-| Records drift from the code, as ADR-0041 did | high | medium | The ADR and issue sweeps; superseding ADR-0041; story cards updated in the pull request that delivers; maintainer |
-| A query misses its owner filter and leaks another owner's data (no row-level security) | low | high | The `OwnerId` type, per-endpoint ownership tests, the security reviewer; row-level security is an open question; maintainer |
-| A compromised dependency or GitHub Action | low | high | Locked dependencies installed frozen, dependency review and CodeQL in CI, Dependabot ([ADR-0012](../decisions/0012-ci-and-dependency-updates.md)); maintainer |
-| The correction-rounds target is not measured, so verifiability's outcome is unknown | medium | medium | Add correction rounds per agent pull request to the delivery dashboard; maintainer |
-| Hooks enforce the guidance for Claude Code only, so another agent (such as Codex) can discard work or post private details that a hook would have blocked | medium | high | The Claude-first period ([ADR-0044](../decisions/0044-claude-first-agent-automation.md)); other agents follow the rules by hand; review before merge; only the maintainer merges; maintainer |
-| Run cost exceeds a personal budget (A1) | low | low | A budget alert on the Azure subscription; staging can be turned off; maintainer |
-| Two success signs (another repository adopts the method; repeated lessons fall month over month) have no owner or date, so their progress is not reviewed | medium | low | Accepted by the maintainer: the signs are watched informally |
+| # | Risk | Likelihood | Impact | Mitigation |
+| --- | --- | --- | --- | --- |
+| 1 | Correction rounds are not measured, so the main target cannot be shown met or missed | high | high | The checkpoint, owned by the maintainer |
+| 2 | A pull request merges without a link, or with an ADR still proposed, because both hold by convention only | medium | medium | The maintainer authorizes every merge; the ADR and issue sweeps find drift afterwards; the checkpoint measures the link rate; a check is an open question |
+| 3 | Hooks and workflows run only under Claude Code, so a change in that harness or an adopter on another one loses the enforcement | medium | high | The guidance stays readable by any agent; ADR-0044 has a revisit trigger |
+| 4 | The bundle has never been copied into another repository, and the record kit is not built, so portability is unproven | high | high | The maintainer's reuse of the bundle in the next project is the test; every edit made there is listed. Nothing verifies it before that |
+| 5 | A job skipped for its paths hides a regression, for example a change of time-zone data or of an image | low | high | The CI result job tells a skip by design from a missing job; accepted by the maintainer |
+| 6 | Full CI has not been measured since the Rust backend and may already exceed 5 minutes at p90 | medium | medium | The checkpoint; a p90 above 5 minutes opens a `performance` issue before any baseline is re-pinned |
+| 7 | The API's time-zone data and PostgreSQL's diverge, so a domain rule and its SQL form disagree | low | medium | The agreement tests; update both together |
+| 8 | The wait for reviewers and skeptics, outside CI, grows unmeasured, or the review is not requested | medium | medium | Measure it with the CI figures; the handover asks for the review before a merge |
+| 9 | The maintainer's time stops, and with it every decision | medium | high | The method comes first and the application freezes; the records are public and complete enough to resume from |
+| 10 | No public reader engages or adopts, so the first outcome is never observed | high | medium | The maintainer's reuse in the next project is the adoption that can be controlled |
+| 11 | What the bundle needs (the tools' runtimes, the task runner, the version pins) is not documented for an adopter, so the edits its documentation lists are incomplete | high | medium | List the prerequisites when the minimal record kit is decided; the next project shows what was missed |
+| 12 | A wrong client clock, a Today gone stale across midnight or a zone the API does not know gives the wrong day view with no signal | medium | medium | The API rejects an invalid zone; the web UI recomputes Today at local midnight and on focus ([ADR-0021](../decisions/0021-client-supplied-date-and-time-zone-define-the-day.md)); a truthful client is otherwise trusted |
+
+#### The checkpoint
+
+Before the next story card opens, the maintainer samples the last 30 merged pull requests by delivery agents once, for the median of correction rounds and for the share that link an issue or story card, and measures the p90 of full CI. A median above 2 or a p90 above 5 minutes opens an issue before any other work starts, and its lesson goes into guidance, a skill or a hook. The sample is repeated every 30 merged pull requests by delivery agents.
 
 ### Open questions
 
-- Should owner isolation add PostgreSQL row-level security as defence in depth? The maintainer decides; not scheduled.
-- How should correction rounds per agent pull request be measured on the dashboard? The maintainer decides; not scheduled.
-- A superseding record for ADR-0041, drafted with the `adr-draft` skill. The maintainer decides when.
+The maintainer decides each of these when it next blocks work; none has a date.
+
+- Should a CI check fail a pull request without an issue or story card link, and stop a proposed ADR from merging?
+- Which records form the minimal record kit of the bundle, with the docs site and the architecture model optional?
+- Does review before merge deserve an ADR of its own?
+- How large is the time matrix (zones, daylight-saving transitions, kinds of event and task, day agenda and week agenda), and should the time tests run on every change instead of only for their paths?
+- What counts as the bundle running in another repository: which prerequisites, how many edits, and which task proves it?
+- What makes a decision significant enough to need an ADR?
+- What does the method cost: the wait and the tokens for each reviewed pull request, and the maintainer's minutes for each correction round?
 
 ## Assumptions
 
-Each assumption was agreed with the narrator and appears in the risks of Act 3.
-
-- **A1:** Azure staging's run cost stays within a personal budget and never forces an architecture choice. It is plausible because the product has one user and runs in one container with a small database; it would be shown false by a bill above the owner's budget, or by a decision taken to save cost. Run cost is not tracked today.
+No assumption was needed: the maintainer answered every question of the interview, and what is unknown is stated as a risk or an open question in Act 3.
 
 ## Appendix: Expert panel
 
-The narrative was challenged by a panel of six experts: one per driving characteristic (verifiability, delivery speed, correctness of time, and security and privacy), plus an end-user expert and a business expert. Rebuttals were limited to the pairs whose concerns meet: verifiability conflicts with delivery speed and with the end user; delivery speed conflicts with correctness of time and with security; security conflicts with the end user; the end user conflicts with the business; the remaining related pairs are in synergy.
-
-For this first narrative the expert agents could not run (they were not available to the session that built it), so the facilitator voiced each expert from its brief, and the narrator settled every disagreement. The independent panel dialogue is still to be verified on a later revision.
+The narrative was reviewed by a panel of expert agents, one per driving characteristic plus an end-user and a business expert. The panel asked questions after Act 1, rated the 23 alternatives of Act 2 and reviewed Act 3. In Act 2 the chosen alternative had the highest average rating for every decision; the closest was CI time, where path-scoped jobs with run-time gates scored 2.1 of 3 against 2.0 for every job on every change.
 
 | Expert | Verdict | Objections and their outcome |
 | --- | --- | --- |
-| Verifiability | object | The correction-rounds outcome is not measured: a risk, with a dashboard measure as mitigation. The failing-test rule is enforced by guidance and review, not automation: revised in Act 3. |
-| Delivery speed | object | Rust builds lengthen CI: accepted, held by the run-time gate (Act 2). PR 0 adds a review round: kept, with delivery stacked on it (Act 2). Review before merge costs time: kept for code pull requests only (Act 2). "Met" needed evidence: revised with measured job times (Act 3). |
-| Correctness of time | sign-off | The day rules are supplied by the client and tested in domain and SQL forms against a zone and daylight-saving matrix. |
-| Security and privacy | object | Owner isolation without row-level security: an open question and a risk. Hooks protect Claude Code sessions only: a risk. |
-| End user | sign-off | The single user does not yet rely on Calendar daily, so failures cost little today; correctness of time protects the experience that matters. |
-| Business | object | Two success signs have no owner or date: an accepted risk. Run cost is untracked: assumption A1 and a risk. |
+| Verifiability | object | The decisions are credited with proving a change, without evidence of what causes correction rounds, and review is optional: revision (characteristics table, D7). The baseline is a single count with no source, repeat or response: revision (the checkpoint; risk 1 impact raised to high). Nobody notices a missed target: revision (the checkpoint). |
+| Auditability | object | "Nothing enforces" ignored the hook on the completing pull request, and the likelihood had no figure: revision (characteristics table; the checkpoint measures the link rate). D7 merged without an ADR and "significant" is undefined: revision (known exception) and open question. The status of ADR-0057: checked, accepted, no change. |
+| Portability of the method | object | D2 was credited with making the bundle portable: revision (characteristics table, D2). The portability test has no pass criterion: open question. The bundle's prerequisites are undocumented: risk 11. |
+| Delivery speed | object | A missed ceiling was rated low impact, with re-pinning as the mitigation: revision (risk 6 impact raised to medium; the checkpoint). Per-job gates cannot bound total CI time: revision (D6, characteristics table). The wait for reviewers has no metric: open question (the cost of the method). |
+| Correctness of time | object | The matrix is not sized: open question. Time tests can be skipped by design: open question. Divergence of time-zone data rated low likelihood: declined by the maintainer, the rating stands (risk 7). No risk for a wrong clock, a stale Today or an unknown zone: risk 12. |
+| End user | sign-off | None. |
+| Business | object | No risk had a checkpoint: revision (the checkpoint, tied to the next story card). The limit to Claude Code was not tied to adoption: revision (D2). The cost of the method is not sized: open question. |

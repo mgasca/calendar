@@ -9,7 +9,6 @@ import {
   sweepFirewall,
   withFirewall,
 } from "../database.ts";
-import { maskSecret } from "../common.ts";
 import type { Azure } from "../process.ts";
 class FakeAzure implements Azure {
   calls: string[][] = [];
@@ -179,26 +178,14 @@ Deno.test("creation rechecks role and secret", async () => {
     confirmCreationState(() => Promise.resolve(false), () => Promise.resolve("changed"), "same")
   );
 });
-Deno.test("mask commands escape secrets without other output", () => {
-  const previous = Deno.env.get("GITHUB_ACTIONS");
-  Deno.env.set("GITHUB_ACTIONS", "true");
-  try {
-    const output: string[] = [];
-    maskSecret((line) => output.push(line), "secret%\r\nvalue");
-    assertEquals(output, ["::add-mask::secret%25%0D%0Avalue"]);
-  } finally {
-    if (previous === undefined) Deno.env.delete("GITHUB_ACTIONS");
-    else Deno.env.set("GITHUB_ACTIONS", previous);
-  }
-});
-Deno.test("stored and read secrets only appear in masks", async () => {
+Deno.test("stored and read secrets never reach output even in GitHub Actions", async () => {
   const previous = Deno.env.get("GITHUB_ACTIONS");
   Deno.env.set("GITHUB_ACTIONS", "true");
   try {
     const output: string[] = [];
     const az = new FakeAzure();
     await storeSecret(az, "ops", "password", "secret-value", (line) => output.push(line));
-    assertEquals(output, ["::add-mask::secret-value", "::add-mask::secret-value"]);
+    assertEquals(output, []);
     assert(!az.calls.flat().includes("secret-value"));
   } finally {
     if (previous === undefined) Deno.env.delete("GITHUB_ACTIONS");

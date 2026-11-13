@@ -1,7 +1,6 @@
 import { isIP } from "node:net";
 import type { Azure } from "./process.ts";
 import {
-  maskSecret,
   passwordName,
   randomPassword,
   resourceName,
@@ -91,7 +90,6 @@ export async function run(
         throw new Error("Password already exists; coordinated manual rotation is required.");
       }
       const password = randomPassword();
-      maskSecret(output, password);
       await az.runWithInput(
         password,
         "keyvault",

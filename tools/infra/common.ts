@@ -72,11 +72,6 @@ export async function secretNames(az: Azure, vault: string, appOnly: boolean): P
     ),
   ].sort();
 }
-export function maskSecret(output: Write, value: string): void {
-  if (Deno.env.get("GITHUB_ACTIONS") === "true") {
-    output("::add-mask::" + value.replaceAll("%", "%25").replaceAll("\r", "%0D").replaceAll("\n", "%0A"));
-  }
-}
 export function randomPassword(): string {
   return "Aa1!" + btoa(String.fromCharCode(...crypto.getRandomValues(new Uint8Array(48))));
 }

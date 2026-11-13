@@ -6,7 +6,6 @@ import type { Azure } from "./process.ts";
 import { execute } from "./process.ts";
 import {
   concurrent,
-  maskSecret,
   passwordName,
   randomPassword,
   resourceName,
@@ -85,7 +84,7 @@ export function connectionString(host: string, role: string, password: string): 
     quote(password)
   };SSL Mode=VerifyFull`;
 }
-export async function readSecret(az: Azure, vault: string, name: string, output: Write): Promise<string> {
+export async function readSecret(az: Azure, vault: string, name: string, _output: Write): Promise<string> {
   const value = await az.run(
     "keyvault",
     "secret",
@@ -99,7 +98,6 @@ export async function readSecret(az: Azure, vault: string, name: string, output:
     "-o",
     "tsv",
   );
-  maskSecret(output, value);
   return value;
 }
 export async function storeSecret(
@@ -109,7 +107,6 @@ export async function storeSecret(
   value: string,
   output: Write = () => {},
 ): Promise<void> {
-  maskSecret(output, value);
   await az.runWithInput(
     value,
     "keyvault",
@@ -133,7 +130,6 @@ export async function storeNewSecret(
   value: string,
   output: Write,
 ): Promise<void> {
-  maskSecret(output, value);
   if ((await secretNames(az, vault, false)).some((n) => n.toLowerCase() === name.toLowerCase())) {
     throw new Error(concurrent);
   }
@@ -361,7 +357,6 @@ async function ensureRole(
     },
     () => readSecret(az, vault, secret, output),
     async (password) => {
-      maskSecret(output, connectionString(host, role, password));
       try {
         await withClient(host, role, password, signal, () => Promise.resolve());
         return true;
@@ -412,7 +407,6 @@ export async function databaseCommand(args: string[], az: Azure, output: Write, 
     await withFirewall(az, group, server, ip, async () => {
       const password = await readSecret(az, ops, "calendar-migrator-password", output);
       const connection = connectionString(await serverHost(az, group, server), "calendar_migrator", password);
-      maskSecret(output, connection);
       if (env === "production") {
         output(`Production restore point (UTC): ${new Date().toISOString().replace("Z", "0000+00:00")}`);
       }
@@ -431,7 +425,6 @@ export async function databaseCommand(args: string[], az: Azure, output: Write, 
     const host = await serverHost(az, group, server);
     const admin = await readSecret(az, ops, passwordName, output);
     const appVault = await vaultName(az, env, "appKeyVaultName");
-    maskSecret(output, connectionString(host, "calendaradmin", admin));
     await withClient(host, "calendaradmin", admin, signal, async (client) => {
       const names = await secretNames(az, ops, false);
       await ensureRole(az, client, host, ops, names, "calendar_migrator", "calendar-migrator-password", output, signal);
@@ -447,7 +440,6 @@ export async function databaseCommand(args: string[], az: Azure, output: Write, 
         signal,
       );
       const expected = connectionString(host, "calendar_app", app);
-      maskSecret(output, expected);
       if ((await secretNames(az, appVault, false)).some((n) => n.toLowerCase() === "calendar-connection-string")) {
         checkConnectionSecret(await readSecret(az, appVault, "calendar-connection-string", output), expected);
       } else await storeNewSecret(az, appVault, "calendar-connection-string", expected, output);

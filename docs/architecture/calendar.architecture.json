@@ -119,7 +119,7 @@
       { "id": "0044", "title": "Edit a task from the Today view", "status": "implemented", "url": "https://mgasca.github.io/calendar/stories/0044/" },
       { "id": "0046", "title": "Apply the Calendar light and dark themes to the published docs site", "status": "implemented", "url": "https://mgasca.github.io/calendar/stories/0046/" },
       { "id": "0053", "title": "Show how fast and how smoothly changes reach main", "status": "implemented", "url": "https://mgasca.github.io/calendar/stories/0053/" },
-      { "id": "0059", "title": "Run repository tooling on TypeScript and Deno", "status": "planned", "url": "https://mgasca.github.io/calendar/stories/0059/" },
+      { "id": "0059", "title": "Run repository tooling on TypeScript and Deno", "status": "in-progress", "url": "https://mgasca.github.io/calendar/stories/0059/" },
       { "id": "0063", "title": "Build architecture narratives with an interviewing agent and an expert panel", "status": "planned", "url": "https://mgasca.github.io/calendar/stories/0063/" },
       { "id": "XXXX", "title": "Create events and tasks from the week view", "status": "planned", "url": "https://mgasca.github.io/calendar/stories/create-events-and-tasks-from-week-view/" }
     ]

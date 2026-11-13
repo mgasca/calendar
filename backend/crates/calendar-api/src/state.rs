@@ -105,12 +105,14 @@ impl AppState {
       ),
       None => None,
     };
+    // Development-only, loopback-only overrides (ADR-0064); `validate` above refused any other.
+    let google_endpoints = options.google_endpoints.overridden_by(&options.settings.google_overrides);
     Ok(Self(Arc::new(Inner {
       settings: options.settings,
       clock: options.clock,
       pool,
       session_key: OnceCell::new(),
-      google_endpoints: options.google_endpoints,
+      google_endpoints,
       authenticator: options.authenticator,
       http,
       http_metrics: HttpMetrics::new(&options.meter),

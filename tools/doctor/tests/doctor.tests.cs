@@ -27,7 +27,8 @@ public sealed class DoctorTests : IDisposable
     WriteExecutable("cc", "exit 0");
     WriteExecutable("node", "echo v24.0.0");
     WriteExecutable("pnpm", "exit 0");
-    WriteExecutable("docker", "exit 0");
+    WriteExecutable("docker", "[ \"$1\" = compose ] && echo v2.40.0; exit 0");
+    WriteExecutable("curl", "echo 'curl 8.0.0 (fake)'");
     WriteExecutable("just", "echo just 99.0.0");
     WriteExecutable("gh", "echo 'gh version 2.0.0 (fake)'");
     WriteExecutable("jq", "echo jq-1.7");
@@ -88,6 +89,31 @@ public sealed class DoctorTests : IDisposable
     code.ShouldNotBe(0);
     text.ShouldContain($"{tool} not found");
     text.ShouldContain(hint);
+  }
+
+  [Theory]
+  [InlineData("", false, "the Docker Compose plugin (docker compose) is not available")]
+  [InlineData("echo v2.19.1", false, "Docker Compose 2.19.1, but just db and just e2e want 2.20.0 or newer")]
+  [InlineData("echo 2.20.0", true, "Docker Compose 2.20.0")]
+  [InlineData("echo v5.6.1", true, "Docker Compose 5.6.1")]
+  public async Task DockerComposeNeedsProfilesAndWaitTimeout(string compose, bool success, string expected)
+  {
+    WriteExecutable("docker", string.IsNullOrEmpty(compose)
+      ? "[ \"$1\" = compose ] && exit 1; exit 0"
+      : $"[ \"$1\" = compose ] && {compose}; exit 0");
+    (var code, var text) = await RunDoctor(infra: false);
+    (code == 0).ShouldBe(success);
+    text.ShouldContain(expected);
+  }
+
+  [Fact]
+  public async Task MissingCurlFailsWithInstallHint()
+  {
+    File.Delete(Path.Combine(_bin, "curl"));
+    (var code, var text) = await RunDoctor(infra: false);
+    code.ShouldNotBe(0);
+    text.ShouldContain("curl not found");
+    text.ShouldContain("Install curl");
   }
 
   [Fact]

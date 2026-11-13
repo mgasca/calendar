@@ -2,6 +2,10 @@
 //! Vault need no change: `ConnectionStrings__Calendar`, `Auth__Google__ClientId`, `Auth__Google__ClientSecret`,
 //! `Auth__AllowedEmails__N`, `Auth__DevSeedKey`, `ASPNETCORE_ENVIRONMENT` and `ASPNETCORE_URLS`.
 //! Names are matched ignoring case, as .NET configuration keys are.
+//!
+//! `Auth__Google__AuthorizationEndpoint`, `Auth__Google__TokenEndpoint`, `Auth__Google__UserInfoEndpoint` and
+//! `Auth__Google__Issuer` point sign-in at a stub OpenID Connect provider (ADR-0064). They are honoured only in
+//! Development and only for loopback URLs: any other use stops the API at startup.
 
 use std::collections::BTreeMap;
 use std::net::{IpAddr, Ipv4Addr, Ipv6Addr, SocketAddr};
@@ -24,6 +28,57 @@ pub enum ConfigError {
   /// An entry of `ASPNETCORE_URLS` is not `http://host:port`.
   #[error("ASPNETCORE_URLS entry '{0}' is not supported: expected http://host:port")]
   UnsupportedUrl(String),
+  /// A Google endpoint or issuer override is set outside Development (ADR-0064).
+  #[error("{0} points sign-in away from Google and is honoured only when ASPNETCORE_ENVIRONMENT is Development.")]
+  GoogleOverrideOutsideDevelopment(&'static str),
+  /// A Google endpoint or issuer override is not an `http(s)` URL on a loopback host (ADR-0064).
+  #[error("{0} must be an http(s) URL on localhost, 127.0.0.1 or [::1].")]
+  GoogleOverrideNotLoopback(&'static str),
+}
+
+/// Development-only replacements for Google's endpoints and issuer, which point sign-in at a stub provider on
+/// this machine (ADR-0064). Each set value replaces only its own field.
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub struct GoogleOverrides {
+  /// `Auth__Google__AuthorizationEndpoint`.
+  pub authorization_endpoint: Option<String>,
+  /// `Auth__Google__TokenEndpoint`.
+  pub token_endpoint: Option<String>,
+  /// `Auth__Google__UserInfoEndpoint`.
+  pub user_info_endpoint: Option<String>,
+  /// `Auth__Google__Issuer`: the only issuer accepted in the ID token when set.
+  pub issuer: Option<String>,
+}
+
+impl GoogleOverrides {
+  /// The set overrides with their setting names, in a fixed order.
+  pub fn entries(&self) -> impl Iterator<Item = (&'static str, &str)> {
+    [
+      ("Auth__Google__AuthorizationEndpoint", &self.authorization_endpoint),
+      ("Auth__Google__TokenEndpoint", &self.token_endpoint),
+      ("Auth__Google__UserInfoEndpoint", &self.user_info_endpoint),
+      ("Auth__Google__Issuer", &self.issuer),
+    ]
+    .into_iter()
+    .filter_map(|(name, value)| value.as_deref().map(|value| (name, value)))
+  }
+
+  /// Whether any override is set.
+  pub fn any(&self) -> bool {
+    self.entries().next().is_some()
+  }
+}
+
+/// Whether `value` is an `http` or `https` URL whose host is exactly `localhost`, `127.0.0.1` or `::1`.
+fn is_loopback_url(value: &str) -> bool {
+  let Ok(url) = reqwest::Url::parse(value.trim()) else {
+    return false;
+  };
+  if !matches!(url.scheme(), "http" | "https") || !url.username().is_empty() || url.password().is_some() {
+    return false;
+  }
+  // The parser lower-cases domains and normalises IP addresses, so `127.1` is `127.0.0.1` here.
+  matches!(url.host_str(), Some("localhost" | "127.0.0.1" | "[::1]"))
 }
 
 /// The Google OAuth client the API signs people in with.
@@ -65,6 +120,8 @@ pub struct Settings {
   /// `ASPNETCORE_HTTPS_PORT`: the port plain-HTTP requests are redirected to outside Development. Without it
   /// there is no redirect, as in ASP.NET Core when it cannot tell the HTTPS port.
   pub https_port: Option<u16>,
+  /// The Development-only Google endpoint and issuer overrides (ADR-0064).
+  pub google_overrides: GoogleOverrides,
 }
 
 impl std::fmt::Debug for Settings {
@@ -78,6 +135,7 @@ impl std::fmt::Debug for Settings {
       .field("urls", &self.urls)
       .field("web_root", &self.web_root)
       .field("https_port", &self.https_port)
+      .field("google_overrides", &self.google_overrides)
       .finish()
   }
 }
@@ -128,6 +186,12 @@ impl Settings {
       urls: non_blank("ASPNETCORE_URLS").unwrap_or_else(|| DEFAULT_URLS.to_owned()),
       web_root: non_blank("ASPNETCORE_WEBROOT").map_or_else(|| PathBuf::from("wwwroot"), PathBuf::from),
       https_port: non_blank("ASPNETCORE_HTTPS_PORT").and_then(|port| port.trim().parse().ok()),
+      google_overrides: GoogleOverrides {
+        authorization_endpoint: non_blank("Auth__Google__AuthorizationEndpoint"),
+        token_endpoint: non_blank("Auth__Google__TokenEndpoint"),
+        user_info_endpoint: non_blank("Auth__Google__UserInfoEndpoint"),
+        issuer: non_blank("Auth__Google__Issuer"),
+      },
     }
   }
 
@@ -150,6 +214,14 @@ impl Settings {
         .is_some_and(|key| utf16_len(key) < MINIMUM_SEED_KEY_LENGTH)
     {
       return Err(ConfigError::SeedKeyTooShort);
+    }
+    for (name, value) in self.google_overrides.entries() {
+      if !self.is_development() {
+        return Err(ConfigError::GoogleOverrideOutsideDevelopment(name));
+      }
+      if !is_loopback_url(value) {
+        return Err(ConfigError::GoogleOverrideNotLoopback(name));
+      }
     }
     self.listen_addresses().map(|_| ())
   }
@@ -294,5 +366,111 @@ mod tests {
     );
     assert!(matches!(with("https://localhost:5001"), Err(ConfigError::UnsupportedUrl(_))));
     assert!(matches!(with("http://example.com:80"), Err(ConfigError::UnsupportedUrl(_))));
+  }
+
+  const OVERRIDES: [&str; 4] = [
+    "Auth__Google__AuthorizationEndpoint",
+    "Auth__Google__TokenEndpoint",
+    "Auth__Google__UserInfoEndpoint",
+    "Auth__Google__Issuer",
+  ];
+
+  fn with_override(environment: &str, name: &str, value: &str) -> Settings {
+    Settings::from_vars([("ASPNETCORE_ENVIRONMENT", environment), (name, value)])
+  }
+
+  #[test]
+  fn without_google_overrides_google_is_used_everywhere() {
+    for environment in ["Production", "Staging", "Development"] {
+      let settings = Settings::from_vars([("ASPNETCORE_ENVIRONMENT", environment), ("Auth__Google__Issuer", " ")]);
+      assert_eq!(settings.google_overrides, GoogleOverrides::default());
+      assert!(!settings.google_overrides.any());
+      assert_eq!(settings.validate(), Ok(()));
+    }
+  }
+
+  #[test]
+  fn google_overrides_are_read_ignoring_case() {
+    let settings = Settings::from_vars([
+      ("ASPNETCORE_ENVIRONMENT", "Development"),
+      ("AUTH__GOOGLE__AUTHORIZATIONENDPOINT", "http://127.0.0.1:55280/google/authorize"),
+      ("auth__google__tokenendpoint", "http://localhost:55280/google/token"),
+      ("Auth__Google__UserInfoEndpoint", "http://[::1]:55280/google/userinfo"),
+      ("Auth__Google__Issuer", "http://127.0.0.1:55280/google"),
+    ]);
+    assert_eq!(
+      settings.google_overrides,
+      GoogleOverrides {
+        authorization_endpoint: Some("http://127.0.0.1:55280/google/authorize".to_owned()),
+        token_endpoint: Some("http://localhost:55280/google/token".to_owned()),
+        user_info_endpoint: Some("http://[::1]:55280/google/userinfo".to_owned()),
+        issuer: Some("http://127.0.0.1:55280/google".to_owned()),
+      }
+    );
+    assert_eq!(settings.validate(), Ok(()));
+  }
+
+  #[test]
+  fn a_google_override_outside_development_is_refused() {
+    for name in OVERRIDES {
+      for environment in ["Production", "Staging", "Test", "Developmen"] {
+        assert_eq!(
+          with_override(environment, name, "http://127.0.0.1:55280/google").validate(),
+          Err(ConfigError::GoogleOverrideOutsideDevelopment(name)),
+          "{name} in {environment}"
+        );
+      }
+      // No environment at all is Production.
+      assert_eq!(
+        Settings::from_vars([(name, "http://127.0.0.1:55280/google")]).validate(),
+        Err(ConfigError::GoogleOverrideOutsideDevelopment(name))
+      );
+    }
+  }
+
+  #[test]
+  fn a_google_override_on_a_non_loopback_host_is_refused_even_in_development() {
+    for name in OVERRIDES {
+      for value in [
+        "https://accounts.google.com",
+        "https://oauth2.googleapis.com/token",
+        "http://stub.example.com:8080/google",
+        "http://10.0.0.5:8080/google",
+        "http://127.0.0.2:8080/google",
+        "http://0.0.0.0:8080/google",
+        "http://localhost.example.com/google",
+        "http://user@localhost:8080/google",
+        "ftp://127.0.0.1/google",
+        "127.0.0.1:8080/google",
+        "/google",
+        "not a url",
+      ] {
+        assert_eq!(
+          with_override("Development", name, value).validate(),
+          Err(ConfigError::GoogleOverrideNotLoopback(name)),
+          "{name} = {value}"
+        );
+      }
+      for value in [
+        "http://localhost:8080/google",
+        "HTTP://LOCALHOST/google",
+        "https://127.0.0.1/google",
+        "http://[::1]:8080",
+      ] {
+        assert_eq!(with_override("development", name, value).validate(), Ok(()), "{name} = {value}");
+      }
+    }
+  }
+
+  #[test]
+  fn the_refusals_name_the_setting() {
+    assert_eq!(
+      ConfigError::GoogleOverrideOutsideDevelopment("Auth__Google__Issuer").to_string(),
+      "Auth__Google__Issuer points sign-in away from Google and is honoured only when ASPNETCORE_ENVIRONMENT is Development."
+    );
+    assert_eq!(
+      ConfigError::GoogleOverrideNotLoopback("Auth__Google__TokenEndpoint").to_string(),
+      "Auth__Google__TokenEndpoint must be an http(s) URL on localhost, 127.0.0.1 or [::1]."
+    );
   }
 }

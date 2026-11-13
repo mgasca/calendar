@@ -83,13 +83,32 @@ else
   fail "pnpm not on PATH and corepack not available" "Install Node $want_node (bundles Corepack), then run 'corepack enable pnpm'"
 fi
 
-# Docker: needed for the local database (just db up) and the Testcontainers-based tests (ADR-0016).
+# Docker: needed for the local database (just db up), the Testcontainers-based tests and the end-to-end stack
+# (ADR-0063).
 if ! command -v docker >/dev/null 2>&1; then
   fail "docker not found" "Install Docker Engine (or Docker Desktop with WSL integration): https://docs.docker.com/engine/install/"
 elif ! docker info >/dev/null 2>&1; then
   fail "docker is installed but the daemon is not reachable" "Start Docker (e.g. 'sudo service docker start', or start Docker Desktop) and make sure your user may access the socket"
 else
   ok "Docker $(docker version --format '{{.Server.Version}}' 2>/dev/null) (daemon reachable)"
+fi
+
+# Docker Compose v2.20 or newer: profiles and `up --wait --wait-timeout`, which just db and just e2e use (ADR-0063).
+want_compose="2.20.0"
+have_compose="$(docker compose version --short 2>/dev/null | tr -d '[:space:]v' || true)"
+if [ -z "$have_compose" ]; then
+  fail "the Docker Compose plugin (docker compose) is not available" "Install the Compose plugin $want_compose or newer: https://docs.docker.com/compose/install/linux/ (Docker Desktop includes it)"
+elif [ "$(printf '%s\n%s\n' "$want_compose" "$have_compose" | sort -V | head -n 1)" = "$want_compose" ]; then
+  ok "Docker Compose $have_compose (just db, just e2e want $want_compose or newer)"
+else
+  fail "Docker Compose $have_compose, but just db and just e2e want $want_compose or newer" "Update the Compose plugin: https://docs.docker.com/compose/install/linux/"
+fi
+
+# curl: the end-to-end stack's health waits and checks (just e2e up, just e2e check).
+if ! command -v curl >/dev/null 2>&1; then
+  fail "curl not found" "Install curl, e.g. 'sudo apt install curl': just e2e waits for and checks its services with it"
+else
+  ok "curl $(curl --version 2>/dev/null | sed -n '1s/^curl \([^ ]*\).*/\1/p')"
 fi
 
 # just: the task runner (ADR-0038). The minimum version is in .just-version.

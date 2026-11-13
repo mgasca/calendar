@@ -56,6 +56,10 @@ Create a Google OAuth web application client and configure its authorized redire
 
 Set `Auth__Google__ClientId`, `Auth__Google__ClientSecret` and indexed entries such as `Auth__AllowedEmails__0` in the untracked `.env` for local development, then export them into the API process (`just backend dev` loads `.env` for you; restart it after editing); use deployment secrets for production. Add only the verified Google emails permitted to access the calendar. Keep the client secret out of version control. Use HTTPS in production and configure trusted forwarded headers when behind a proxy so redirects and secure cookies use the public origin.
 
+### A stub provider instead of Google (Development only)
+
+Four optional settings point sign-in at a stub OpenID Connect provider ([ADR-0064](../docs/decisions/0064-stub-oidc-provider-for-sign-in-tests.md)), such as the one `just db sign-in-stub` and `just e2e up` start: `Auth__Google__AuthorizationEndpoint`, `Auth__Google__TokenEndpoint`, `Auth__Google__UserInfoEndpoint` and `Auth__Google__Issuer` (the only ID-token issuer then accepted). Each replaces only its own value; unset, Google's are used. The API refuses to start when any of them is set and `ASPNETCORE_ENVIRONMENT` is not `Development`, or when one is not an `http(s)` URL on `localhost`, `127.0.0.1` or `[::1]`. Never set them in `infra/`, a parameter file or Key Vault.
+
 To use the web app without an OAuth client, see [signing in without Google](../frontend/README.md#sign-in-without-google). For what sign-in protects and its limits, see [Authentication and limitations](../README.md#authentication-and-limitations).
 
 ## Production environment configuration

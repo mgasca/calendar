@@ -288,13 +288,16 @@ fn child_container(parent: Container, key: &str) -> Container {
 mod tests {
   use super::*;
 
-  /// The committed contract is this document, byte for byte. When this fails after a deliberate change to an
-  /// endpoint or a contract type, regenerate it: `cargo run -p calendar-api -- --openapi ../contracts/openapi.json`
-  /// (then the TypeScript client, `just contracts`).
+  /// The committed contract is this document, byte for byte, as `calendar-api --openapi` writes it. CI has no
+  /// other contract check (#778). When this fails after a deliberate change to an endpoint or a contract type,
+  /// run `just contracts` (the document, then the TypeScript client) and commit the result.
   #[test]
   fn the_committed_contract_is_the_generated_document() {
     let committed = include_str!("../../../../contracts/openapi.json");
-    assert!(to_json(&document()) == committed, "contracts/openapi.json is stale: regenerate it");
+    assert!(
+      to_json(&document()) == committed,
+      "contracts/openapi.json is stale. Run 'just contracts' and commit the result."
+    );
   }
 
   #[test]

@@ -313,7 +313,7 @@ What the telemetry may contain:
 - log messages and severities;
 - trace and span IDs.
 
-It never contains emails, names, titles, locations, notes, query-string values, cookies or tokens. An attribute allow-list in the API enforces this, and `backend/crates/calendar-api/tests/telemetry.rs` tests it.
+It never contains emails, names, titles, locations, notes, query-string values, cookies or tokens. An attribute allow-list in the API enforces this, and `backend/crates/calendar-api/tests/api/telemetry.rs` tests it.
 
 ### Check telemetry in staging (owner)
 

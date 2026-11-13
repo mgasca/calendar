@@ -1,0 +1,12 @@
+Sample: 2 successful runs of `ci.yml` in o/r, 2026-11-06 20:04Z to 2026-11-06 20:05Z (events: push, workflow_dispatch).
+
+| Job | n | min | median | p90 | max |
+| --- | --: | --: | --: | --: | --: |
+| Backend | 2 | 1:20 | 1:20 | 1:22 | 1:22 |
+| Frontend | 2 | 0:40 | 0:40 | 0:42 | 0:42 |
+
+Steps of `Frontend`:
+
+| Step | n | min s | median s | p90 s | max s | mean s |
+| --- | --: | --: | --: | --: | --: | --: |
+| 2. Run pnpm lint | 2 | 16 | 16 | 16 | 16 | 16.4 |

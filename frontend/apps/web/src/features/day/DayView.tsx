@@ -18,6 +18,7 @@ import {
 } from '../agenda/dayTime.ts';
 import { ApiError } from '../../api/apiError.ts';
 import { useNotify } from '../../components/notify.ts';
+import { useAfterRender } from '../../components/useAfterRender.ts';
 import { EditEvent } from '../events/EditEvent.tsx';
 import { EditTask } from '../tasks/EditTask.tsx';
 import { Notes } from '../agenda/Notes.tsx';
@@ -60,6 +61,7 @@ export function DayView({ date, timeZone: zoneOverride, locale }: DayViewProps) 
   const [editing, setEditing] = useState<string>();
   const [editingTask, setEditingTask] = useState<string>();
   const notify = useNotify();
+  const afterRender = useAfterRender();
   const openTask = (task: AgendaTask) => {
     setEditingTask(task.id);
   };
@@ -161,7 +163,8 @@ export function DayView({ date, timeZone: zoneOverride, locale }: DayViewProps) 
             setEditingTask(undefined);
             if (saved) notify({ message: 'Task saved.' });
             // A task moved to another day has left the list, so focus falls back to the heading.
-            requestAnimationFrame(() => {
+            // Decided after the render, not on the next frame, which can still see the old row (#698).
+            afterRender(() => {
               focusTitleOrHeading(taskTitleId(id));
             });
           }}
@@ -177,8 +180,9 @@ export function DayView({ date, timeZone: zoneOverride, locale }: DayViewProps) 
             setEditing(undefined);
             if (result)
               notify({ message: `${result.title} ${result.deleted ? 'deleted' : 'saved'}.` });
-            // After a delete the row is gone, so focus moves to the day's heading.
-            requestAnimationFrame(() => {
+            // After a delete, or a save that moved the event to another day, the row is gone and
+            // focus moves to the day's heading. Decided after the render (#698).
+            afterRender(() => {
               focusTitleOrHeading(result?.deleted ? undefined : eventTitleId(id));
             });
           }}

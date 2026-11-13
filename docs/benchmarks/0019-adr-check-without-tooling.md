@@ -1,6 +1,6 @@
 ---
 subject: "CI runner time of a story-card-only pull request, before and after the ADR conventions job (issue #572)"
-harness: "tools/ci-timings/ci-timings.cs"
+harness: "tools/ci-timings/ci-timings.ts"
 ---
 
 # 0019 Story-card-only pull requests run the ADR check, not the Tooling job

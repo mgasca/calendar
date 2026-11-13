@@ -1,6 +1,6 @@
 ---
 subject: "The Frontend CI job: job and step durations before the fixes of #272"
-harness: "tools/ci-timings/ci-timings.cs"
+harness: "tools/ci-timings/ci-timings.ts"
 ---
 
 # 0002 The Frontend CI job before the fixes of #272

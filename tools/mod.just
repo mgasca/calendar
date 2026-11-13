@@ -73,17 +73,17 @@ versions *args:
 # Sample a workflow's job and step durations from GitHub (e.g. just tools ci-timings --job Frontend)
 [positional-arguments]
 ci-timings *args:
-    dotnet run tools/ci-timings/ci-timings.cs -- "$@"
+    deno run --config tools/deno.json --frozen --no-prompt --allow-read --allow-write --allow-run --allow-env tools/ci-timings/ci-timings.ts "$@"
 
 # Print new comments, reviews and PR states on an issue and its delivery PRs since the last run (e.g. just tools handover-watch 320)
 [positional-arguments]
 handover-watch *args:
-    dotnet run tools/handover-watch/handover-watch.cs -- "$@"
+    deno run --config tools/deno.json --frozen --no-prompt --allow-read --allow-write --allow-run --allow-env tools/handover-watch/handover-watch.ts "$@"
 
 # Take a delivery-dashboard snapshot, or check snapshot files (e.g. just tools delivery-dashboard snapshot --runs 5, or check FILE)
 [positional-arguments]
 delivery-dashboard *args:
-    dotnet run tools/delivery-dashboard/delivery-dashboard.cs -- "$@"
+    deno run --config tools/deno.json --frozen --no-prompt --allow-read --allow-write --allow-run --allow-env tools/delivery-dashboard/delivery-dashboard.ts "$@"
 
 # Validate ADRs in docs/decisions (e.g. just tools adr --fix-links)
 [positional-arguments]

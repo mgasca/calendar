@@ -1,21 +1,15 @@
 flowchart TB
-  user(["Owner"])
-  subgraph product["Calendar product (one container on Azure Container Apps)"]
-    web["Web app: React SPA, today, week and task views"]
-    api["Calendar API: Rust, axum"]
-  end
-  client["Generated TypeScript client"]
-  contract["contracts/openapi.json"]
-  db[("PostgreSQL: events, tasks, sessions")]
-  migrator["Migrator: applies SQL migrations"]
-  google["Google sign-in"]
-  vault["Key Vault: secrets"]
-  user -->|"browser, session cookie"| web
-  web -->|"same-origin /api, sends today and time zone"| api
-  web -->|imports| client
-  client -->|generated from| contract
-  api -->|writes at build| contract
-  api -->|"every query takes the owner, as calendar_app"| db
-  migrator -->|"as calendar_migrator"| db
-  api -->|verifies identity| google
-  api -->|secrets via managed identity| vault
+    maintainer([Maintainer])
+    subgraph app[Calendar application]
+        web[Web UI<br/>React, generated typed client]
+        api[API<br/>Rust, axum]
+        db[(PostgreSQL)]
+    end
+    contract[[Contract<br/>contracts/openapi.json]]
+    google[Google sign-in]
+    maintainer -->|"Today: local date and time zone"| web
+    web -->|"day agenda, week agenda, events, tasks"| api
+    api -->|"every query takes the owner"| db
+    api -->|signs the owner in with| google
+    api -.->|generates| contract
+    contract -.->|generates the client of| web

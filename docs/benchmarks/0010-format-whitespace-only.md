@@ -1,6 +1,6 @@
 ---
 subject: "The Backend format check runs whitespace only (#350)"
-harness: "tools/ci-timings/ci-timings.cs"
+harness: "tools/ci-timings/ci-timings.ts"
 ---
 
 # 0010 The Backend format check runs whitespace only

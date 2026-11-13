@@ -95,7 +95,11 @@
         "supersedes": "ADR-0018", "file": "docs/decisions/0057-chrono-time-types-for-the-rust-backend.md", "url": "https://mgasca.github.io/calendar/adr/0057/" },
       { "id": "ADR-0058", "title": "TypeScript on Deno for repository tooling, replacing .NET file-based apps", "status": "accepted", "file": "docs/decisions/0058-typescript-on-deno-for-repository-tooling.md", "url": "https://mgasca.github.io/calendar/adr/0058/", "note": "Accepted policy; delivery is staged in story 0059. Existing component descriptions remain until each implementation switches." },
       { "id": "ADR-0059", "title": "Publish architecture narratives from docs/narratives, stitched from per-system part files", "status": "proposed", "file": "docs/decisions/0059-publish-architecture-narratives-stitched-from-part-files.md", "url": "https://mgasca.github.io/calendar/adr/0059/" },
-      { "id": "ADR-0060", "title": "Build narrative decks with Slidev as a frontend workspace app, published with the docs site", "status": "proposed", "file": "docs/decisions/0060-build-narrative-decks-with-slidev.md", "url": "https://mgasca.github.io/calendar/adr/0060/" }
+      { "id": "ADR-0060", "title": "Build narrative decks with Slidev as a frontend workspace app, published with the docs site", "status": "proposed", "file": "docs/decisions/0060-build-narrative-decks-with-slidev.md", "url": "https://mgasca.github.io/calendar/adr/0060/" },
+      { "id": "ADR-0061", "title": "End-to-end UI tests with Playwright Test in frontend/apps/e2e, bound to the architecture flows", "status": "proposed", "file": "docs/decisions/0061-end-to-end-ui-tests-with-playwright-test-bound-to-the-architecture-flows.md", "url": "https://mgasca.github.io/calendar/adr/0061/" },
+      { "id": "ADR-0062", "title": "OpenTelemetry over OTLP from the API and the web app, with Grafana LGTM locally and Application Insights in Azure", "status": "proposed", "file": "docs/decisions/0062-opentelemetry-over-otlp-with-grafana-lgtm-locally-and-application-insights-in-azure.md", "url": "https://mgasca.github.io/calendar/adr/0062/" },
+      { "id": "ADR-0063", "title": "Docker Compose with opt-in profiles and per-run projects for local backing services, instead of Aspire", "status": "proposed", "file": "docs/decisions/0063-docker-compose-profiles-for-local-backing-services-instead-of-aspire.md", "url": "https://mgasca.github.io/calendar/adr/0063/" },
+      { "id": "ADR-0064", "title": "Stub OIDC provider for sign-in tests, reached only through Development-only loopback settings", "status": "proposed", "file": "docs/decisions/0064-stub-oidc-provider-for-sign-in-tests.md", "url": "https://mgasca.github.io/calendar/adr/0064/" }
     ],
     "stories": [
       { "id": "0001", "title": "Today view", "status": "implemented", "url": "https://mgasca.github.io/calendar/stories/0001/" },
@@ -121,6 +125,7 @@
       { "id": "0053", "title": "Show how fast and how smoothly changes reach main", "status": "implemented", "url": "https://mgasca.github.io/calendar/stories/0053/" },
       { "id": "0059", "title": "Run repository tooling on TypeScript and Deno", "status": "planned", "url": "https://mgasca.github.io/calendar/stories/0059/" },
       { "id": "0063", "title": "Build architecture narratives with an interviewing agent and an expert panel", "status": "planned", "url": "https://mgasca.github.io/calendar/stories/0063/" },
+      { "id": "0064", "title": "Test every user flow end to end and prove it is observable", "status": "planned", "url": "https://mgasca.github.io/calendar/stories/0064/" },
       { "id": "XXXX", "title": "Create events and tasks from the week view", "status": "planned", "url": "https://mgasca.github.io/calendar/stories/create-events-and-tasks-from-week-view/" }
     ]
   },
@@ -524,7 +529,7 @@
           ]
         },
         "observability": {
-          "description": "The container exposes /api/health for startup, liveness and readiness probes; console logs and probe results go to the Log Analytics workspace, and Application Insights is provisioned in the same workspace.",
+          "description": "The container exposes /api/health for startup, liveness and readiness probes; console logs and probe results go to the Log Analytics workspace, and Application Insights is provisioned in the same workspace. Decided, not yet delivered (ADR-0062, story 0064): the API and the web app emit OpenTelemetry over OTLP to Grafana LGTM locally and in E2E and, for the API, to Application Insights in Azure, under an attribute allow-list that keeps personal data out; every end-to-end flow test asserts its trace, logs, metrics and the absence of personal data.",
           "requirements": [
             {
               "requirement-url": "https://raw.githubusercontent.com/mgasca/calendar/main/docs/architecture/controls/observability.requirement.json",
@@ -540,7 +545,32 @@
                 "telemetry": "Application Insights appi-calendar-<suffix> (workspace-based) is provisioned, but the container app is given no connection string and the API sends it no telemetry; the API's logs reach Log Analytics through the container's standard output",
                 "audit-logs": ["Key Vault AuditEvent diagnostics for the app and ops vaults"],
                 "structured-logging": "tracing with tracing-subscriber's formatter at INFO, written to standard output",
-                "adrs": ["https://mgasca.github.io/calendar/adr/0029/", "https://mgasca.github.io/calendar/adr/0032/"]
+                "telemetry-decision": {
+                  "status": "decided, not delivered (ADR-0062 proposed; epic #728)",
+                  "standard": "OpenTelemetry over OTLP, configured only by OTEL_* variables; no exporter when no endpoint is set",
+                  "signals": [
+                    "API: one server span per request named '<METHOD> <route template>', W3C traceparent extracted, one span per database query named '<operation> <table>', logs bridged from tracing with trace and span ids (stdout logging stays), HTTP server request count and duration by method, route template and status (#731)",
+                    "Web app: one span per user action of a flow and fetch spans that send traceparent to /api, exported to the same-origin /otlp path the Vite server forwards, development and E2E only (#732)"
+                  ],
+                  "destinations": {
+                    "local": "grafana/otel-lgtm, opt-in (Compose profile observability)",
+                    "e2e": "grafana/otel-lgtm in each throwaway stack",
+                    "azure": "API traces and logs to Application Insights appi-calendar-<suffix> through the Container Apps managed OpenTelemetry agent; request metrics from Container Apps platform metrics; web telemetry not exported (#738)"
+                  },
+                  "privacy": {
+                    "allowed-attributes": ["service name and version", "route template", "HTTP method", "status code", "durations", "database system, operation and table", "error kind and message template", "opaque ids (trace, span, event or task UUID)"],
+                    "never": ["email addresses", "display names", "event or task titles", "locations", "notes", "query-string values (date and timeZone included)", "raw URLs with a query", "request or response bodies", "cookies", "Authorization headers", "OAuth codes and tokens", "enduser.* attributes", "database bind values"],
+                    "enforcement": "An attribute filter in each SDK drops anything not allow-listed before export; a unit test per stack proves it"
+                  },
+                  "e2e-assertions": [
+                    "One trace per flow: browser span, API span(s) and database span(s) share one trace id with the flow's expected span names",
+                    "Correlated logs: Loki holds the API's log records for the flow, carrying that trace id",
+                    "Request metrics: Prometheus has the HTTP request count and duration series for the routes the flow hit",
+                    "No personal data: none of the test's seeded values, the signed-in email, the session cookie or a token appears in spans, logs or metric labels"
+                  ],
+                  "alerts-and-budgets": "Not part of this control's decision; issue #80"
+                },
+                "adrs": ["https://mgasca.github.io/calendar/adr/0029/", "https://mgasca.github.io/calendar/adr/0032/", "https://mgasca.github.io/calendar/adr/0062/"]
               }
             }
           ]
@@ -904,6 +934,37 @@
         { "unique-id": "pages-origin", "url": "https://mgasca.github.io/calendar/" }
       ],
       "metadata": { "ownership": "platform", "adrs": ["ADR-0023", "ADR-0025"] }
+    },
+    {
+      "unique-id": "e2e-suite",
+      "node-type": "service",
+      "name": "End-to-end flow tests (Playwright Test)",
+      "description": "Planned (story 0064). Playwright Test workspace package (frontend/apps/e2e) that drives the built web app in Chromium against its own throwaway stack (PostgreSQL, API, LGTM, stub OIDC provider), one test per user-facing flow, each tagged @flow:<unique-id>. A flow is user-facing when a transition uses user-uses-web-app; a browser-free binding check fails on an uncovered or unknown flow on every pull request. Each test also asserts the flow's trace, correlated logs, request metrics and the absence of personal data in the LGTM stack. Runs nightly and on demand, never in a deployed environment.",
+      "interfaces": [
+        { "unique-id": "e2e-flow-tags", "tag-format": "@flow:<unique-id>", "binding": "user-facing flows (a transition on user-uses-web-app) ⇄ tagged tests, with a pending list that ends empty" }
+      ],
+      "metadata": { "ownership": "ours", "adrs": ["ADR-0061", "ADR-0062", "ADR-0063", "ADR-0008"], "stories": ["0064"], "source": "frontend/apps/e2e (planned)", "delivery": "epic #728: harness #733, flows #734 to #736, nightly workflow #737" }
+    },
+    {
+      "unique-id": "lgtm",
+      "node-type": "system",
+      "name": "Grafana LGTM (local and E2E only)",
+      "description": "Planned (story 0064). The grafana/otel-lgtm container (OpenTelemetry Collector, Tempo, Loki, Prometheus, Pyroscope, Grafana), bound to loopback: opt-in for development under the Compose profile observability, and part of every E2E stack, where the flow tests query it. A development and test tool only; it never runs in Azure.",
+      "interfaces": [
+        { "unique-id": "lgtm-otlp", "protocol": "OTLP", "ports": { "grpc": 4317, "http": 4318 }, "bind": "127.0.0.1" },
+        { "unique-id": "lgtm-query", "description": "Grafana and the Tempo, Loki and Prometheus query APIs", "port": 3000, "bind": "127.0.0.1" }
+      ],
+      "metadata": { "ownership": "external", "adrs": ["ADR-0062", "ADR-0063"], "stories": ["0064"], "environments": ["local (opt-in)", "E2E"], "delivery": "#730" }
+    },
+    {
+      "unique-id": "oidc-stub",
+      "node-type": "system",
+      "name": "Stub OIDC provider (local and E2E only)",
+      "description": "Planned (story 0064). navikt/mock-oauth2-server standing in for Google in the E2E stack (and, opt-in, in development under the Compose profile sign-in-stub): authorization code with PKCE, token and userinfo endpoints, and an interactive login page where the test chooses email and email_verified. The API reaches it only through the Development-only, loopback-only Auth__Google__* endpoint and issuer overrides, and refuses to start with them anywhere else; never in infra/.",
+      "interfaces": [
+        { "unique-id": "oidc-stub-issuer", "url": "http://127.0.0.1:<port>/google", "protocol": "OpenID Connect authorization code" }
+      ],
+      "metadata": { "ownership": "external", "adrs": ["ADR-0064", "ADR-0063", "ADR-0027"], "stories": ["0064", "0005"], "environments": ["local (opt-in)", "E2E"], "delivery": "#730; used by #736 and possibly #104" }
     }
   ],
   "relationships": [
@@ -923,6 +984,78 @@
       "description": "Signs in and plans the day and week with",
       "relationship-type": { "interacts": { "actor": "user", "nodes": ["web-app"] } },
       "metadata": { "stories": ["0001", "0002", "0003", "0004", "0005", "0006", "0007"] }
+    },
+    {
+      "unique-id": "e2e-suite-drives-web-app",
+      "description": "Drives each user-facing flow in Chromium, in its own throwaway stack, through",
+      "relationship-type": {
+        "connects": {
+          "source": { "node": "e2e-suite", "interfaces": ["e2e-flow-tags"] },
+          "destination": { "node": "web-app", "interfaces": ["web-app-origin"] }
+        }
+      },
+      "protocol": "HTTP",
+      "metadata": { "adrs": ["ADR-0061", "ADR-0063"], "stories": ["0064"], "delivery": "planned (#733)" }
+    },
+    {
+      "unique-id": "e2e-suite-queries-telemetry",
+      "description": "Asserts each flow's trace, correlated logs, request metrics and the absence of personal data by querying",
+      "relationship-type": {
+        "connects": {
+          "source": { "node": "e2e-suite", "interfaces": ["e2e-flow-tags"] },
+          "destination": { "node": "lgtm", "interfaces": ["lgtm-query"] }
+        }
+      },
+      "protocol": "HTTP",
+      "metadata": { "adrs": ["ADR-0061", "ADR-0062"], "stories": ["0064"], "delivery": "planned (#733)" }
+    },
+    {
+      "unique-id": "api-exports-telemetry",
+      "description": "Exports request and database spans, trace-correlated logs and request metrics over OTLP, when OTEL_EXPORTER_OTLP_ENDPOINT is set, to",
+      "relationship-type": {
+        "connects": {
+          "source": { "node": "calendar-api", "interfaces": ["api-http"] },
+          "destination": { "node": "lgtm", "interfaces": ["lgtm-otlp"] }
+        }
+      },
+      "protocol": "HTTP",
+      "metadata": { "adrs": ["ADR-0062"], "stories": ["0064"], "delivery": "planned (#731); in Azure the same export goes to Application Insights through the Container Apps managed OpenTelemetry agent (#738)" }
+    },
+    {
+      "unique-id": "web-app-exports-telemetry",
+      "description": "Exports user-action and fetch spans (sending traceparent to /api) through the same-origin /otlp path that the Vite server forwards, development and E2E only, to",
+      "relationship-type": {
+        "connects": {
+          "source": { "node": "web-app", "interfaces": ["web-app-origin"] },
+          "destination": { "node": "lgtm", "interfaces": ["lgtm-otlp"] }
+        }
+      },
+      "protocol": "HTTP",
+      "metadata": { "adrs": ["ADR-0062"], "stories": ["0064"], "delivery": "planned (#732); not exported in Azure" }
+    },
+    {
+      "unique-id": "browser-redirects-to-oidc-stub",
+      "description": "In the E2E stack only, is redirected to the stub's login page instead of Google, and back to the API callback with an authorization code",
+      "relationship-type": {
+        "connects": {
+          "source": { "node": "web-app", "interfaces": ["web-app-origin"] },
+          "destination": { "node": "oidc-stub", "interfaces": ["oidc-stub-issuer"] }
+        }
+      },
+      "protocol": "HTTP",
+      "metadata": { "adrs": ["ADR-0064", "ADR-0027"], "stories": ["0064"], "delivery": "planned (#730, #736)" }
+    },
+    {
+      "unique-id": "api-exchanges-code-with-oidc-stub",
+      "description": "As Development on loopback only, redeems the code and reads the claims from",
+      "relationship-type": {
+        "connects": {
+          "source": { "node": "calendar-api", "interfaces": ["api-auth"] },
+          "destination": { "node": "oidc-stub", "interfaces": ["oidc-stub-issuer"] }
+        }
+      },
+      "protocol": "HTTP",
+      "metadata": { "adrs": ["ADR-0064"], "stories": ["0064"], "delivery": "planned (#730)" }
     },
     {
       "unique-id": "operator-operates-platform",

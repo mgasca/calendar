@@ -7,6 +7,8 @@ pr:
   - https://github.com/mgasca/calendar/pull/716
   - https://github.com/mgasca/calendar/pull/718
   - https://github.com/mgasca/calendar/pull/720
+  - https://github.com/mgasca/calendar/pull/717
+  - https://github.com/mgasca/calendar/pull/719
 adrs: ["0042", "0044", "0058", "0059", "0060"]
 ---
 
@@ -100,7 +102,7 @@ The slices follow the dependency map on epic #705. This card and both ADRs come 
 | Area | Location |
 | --- | --- |
 | The skill | `.claude/skills/architecture-narrative-builder/SKILL.md` and `references/` |
-| Stitcher | `.claude/skills/architecture-narrative-builder/` Deno script, configuration, lockfile and tests |
+| Stitcher | `.claude/skills/architecture-narrative-builder/scripts/stitch/` (`just tools narratives`), with the skill's own `deno.json`, frozen `deno.lock` and `tests/` |
 | Expert agent | `.claude/agents/narrative-expert.md` |
 | Panel workflow | `.claude/workflows/narrative-panel.js` |
 | Narratives | `docs/narratives/<system>-narrative.md`, parts in `docs/narratives/<system>/` |
@@ -115,7 +117,7 @@ No changes.
 
 ### Testing
 
-* Stitcher: Deno tests for part order, diagram inclusion, excluded files, the generated-file note and `--check` failing on drift; discovered by `just tools test`.
+* Stitcher: Deno tests for part order, diagram inclusion, excluded files, the generated-file note and `--check` failing on drift; discovered by `just tools test`. The drift check runs in `just check`, in the Tooling job, and in a small Deno-only Narratives job for a change that runs no Tooling job. The template test stitches `references/templates/` and checks the front-matter keys and the single H1 that the docs site accepts.
 * Docs site: loader and build tests for narrative discovery, skipped part directories, front-matter validation and the deck link.
 * Decks: CI builds every deck in the docs-site job.
 * Skill and panel: evals for the modes and the quality checks; criteria 1 to 6 describe agent behaviour and are checked by the evals and the first real run.
@@ -125,7 +127,10 @@ No changes.
 To be completed on delivery. So far:
 
 * **Panel rebuttals re-read only cited parts** (#708, #716): a review finding said each rebuttal re-read every part. Measured in [benchmark 0022](../benchmarks/0022-narrative-panel-rebuttal-part-reads.md): 2 rebuttal part reads before and 0 after; tokens were unchanged within noise on the small fixture. To be re-measured at the first real Act 3 review (#711).
-* **Deferred: the `narrative-expert` agent type has not yet run end to end.** The session that built #716 started before the agent file existed, so its proof runs used `general-purpose` agents on Sonnet with the agent body prepended. The first workflow call in #709 or #711 proves the registration, its `tools` and its `model: sonnet` (maintainer decision on #716).
+* **The drift check has its own small CI job** (#707, decided on #717): a narrative-only change ran the whole Tooling job (.NET suites, the PostgreSQL integration test) for a check that takes about a second, a finding confirmed by the review-before-merge skeptics. The Narratives job mirrors ADR conventions (#572): it runs for `docs/narratives/` and the skill folder, a pull request or merge group skips it when Tooling runs the same step, and pushes run both. Its first run on `main` took 8 s. It has no run-time baseline yet, so the ADR-0045 gate only warns about it until the next baseline update.
+* **#709 was delivered through #717.** #719 was merged into #717's branch, which closes nothing, so #717 carried `Closes #707` and `Closes #709`. Review history for the skill slice is on #719.
+* **The skill was aligned with the slices that merged after it** (#717): the panel guide uses #708's six brief fields (`tensions` included) and #727's 0-to-3 ratings, and the slides mode writes `slides.md` without `theme`, `fonts` or `favicon` and sets the `slides` link in the same change, as #710's build requires. An end-to-end check on the merged tree stitched the templates, built the site (22 tests) and built the deck with `just docs slides`.
+* **Deferred: the `narrative-expert` agent type has not yet run end to end.** The session that built #716 started before the agent file existed, so its proof runs used `general-purpose` agents on Sonnet with the agent body prepended. The first workflow call in #709 or #711 proves the registration, its `tools` and its `model: sonnet` (maintainer decision on #716). #709 (delivered in #717) shipped the skill without a live interview, so the first real call is #711's.
 
 ## User guide
 

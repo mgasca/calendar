@@ -1,6 +1,6 @@
 ---
 subject: "The web build step of the Frontend job without the repeated tsc -b (#276)"
-harness: "tools/ci-timings/ci-timings.cs"
+harness: "tools/ci-timings/ci-timings.ts"
 ---
 
 # 0006 The web build step without a second tsc -b

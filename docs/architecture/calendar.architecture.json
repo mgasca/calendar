@@ -1202,14 +1202,14 @@
     },
     {
       "unique-id": "docs-site-built-from-decision-log",
-      "description": "Is built from the ADR files, the stories, the runbooks, the benchmark records and their README indexes in",
+      "description": "Is built from the ADR files, the stories, the runbooks, the benchmark records, the stitched narratives and their README indexes in",
       "relationship-type": {
         "connects": {
           "source": { "node": "docs-site", "interfaces": ["docs-site-url"] },
-          "destination": { "node": "decision-log", "interfaces": ["adr-files", "story-files", "runbook-files", "benchmark-files"] }
+          "destination": { "node": "decision-log", "interfaces": ["adr-files", "story-files", "runbook-files", "benchmark-files", "narrative-files"] }
         }
       },
-      "metadata": { "adrs": ["ADR-0022", "ADR-0023", "ADR-0028"] }
+      "metadata": { "adrs": ["ADR-0022", "ADR-0023", "ADR-0028", "ADR-0059"] }
     },
     {
       "unique-id": "container-apps-pulls-image",

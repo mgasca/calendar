@@ -5291,6 +5291,12 @@
     "ast_hash": "47d485c516517fce383bdcd89594decc",
     "semantic_hash": ""
   },
+  "tools/infra/tests/migration_cli_test.ts": {
+    "mtime": 1794598219.6084828,
+    "seen": 1794598257.6208327,
+    "ast_hash": "a5ae396c53a501ebfc92e331c9c723de",
+    "semantic_hash": ""
+  },
   "frontend/pnpm-lock.yaml": {
     "mtime": 1794596232.1506033,
     "seen": 1794596279.015516,

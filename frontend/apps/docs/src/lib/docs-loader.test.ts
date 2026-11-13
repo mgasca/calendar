@@ -52,6 +52,7 @@ describe('narratives (ADR-0059)', () => {
     const { index, records } = await readNarratives(fixtures);
     expect(index).toContain('Fixture conventions page.');
     // calendar/ holds parts and stray-narrative.md/ is a directory: neither is read as a narrative.
+    // ticket-kata/ holds only a deck, so its stitched file is not generated from parts.
     expect(records.map((record) => record.file)).toEqual([
       'calendar-narrative.md',
       'ticket-kata-narrative.md',

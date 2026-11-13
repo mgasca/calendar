@@ -1,4 +1,4 @@
-import { access, readdir, readFile, stat } from 'node:fs/promises';
+import { access, readdir, readFile } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 import { relative, resolve } from 'node:path';
 import type { Loader } from 'astro/loaders';
@@ -112,14 +112,19 @@ export async function readAgentThoughts() {
  * ledger, diagrams, slides) are skipped; a narrative whose parts are kept is edited through them.
  * The collection may be empty, but its conventions page must exist.
  */
+/** A narrative part that the stitcher joins, `00-front-matter.md` to `05-panel.md` (ADR-0059). */
+const partFileName = /^0[0-5]-[a-z0-9-]+\.md$/;
+
 export async function readNarratives(directory: URL = narrativesDirectory) {
   const sources = await readSources(directory, narrativeFileName);
   const index = await readFile(new URL('README.md', directory), 'utf8');
   const records = await Promise.all(
     parseNarratives(sources).map(async (record) => ({
       ...record,
-      hasParts: await stat(new URL(`${record.slug}/`, directory)).then(
-        (entry) => entry.isDirectory(),
+      // Kept parts are the act files 00 to 05; after a build without keep-parts the directory may
+      // still hold slides.md and its diagrams, and then the stitched file is what to edit.
+      hasParts: await readdir(new URL(`${record.slug}/`, directory)).then(
+        (names) => names.some((name) => partFileName.test(name)),
         () => false,
       ),
     })),

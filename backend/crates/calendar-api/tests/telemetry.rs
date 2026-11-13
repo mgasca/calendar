@@ -359,3 +359,27 @@ async fn fields_off_the_allow_list_are_dropped_and_the_scan_finds_what_gets_thro
   assert_eq!(leaks(&exported, &[EVENT_TITLE, EMAIL, EVENT_NOTES]), Vec::<&str>::new());
   assert_eq!(leaks(&exported, &[TASK_TITLE]), vec![TASK_TITLE], "the scan finds a planted value");
 }
+
+#[tokio::test]
+async fn a_caller_cannot_switch_off_tracing_with_an_unsampled_traceparent() {
+  let capture = Capture::start();
+  let app = TestApp::builder().meter(capture.meter()).start().await;
+
+  let response = app
+    .client()
+    .header("traceparent", "00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-00")
+    .get("/api/agenda/day?date=2026-10-26&timeZone=UTC")
+    .await;
+  assert_eq!(response.status, StatusCode::OK);
+
+  let spans = capture.spans();
+  let server = spans
+    .iter()
+    .find(|span| span.span_kind == SpanKind::Server)
+    .unwrap_or_else(|| panic!("the request is traced whatever the caller's sampled flag: {spans:#?}"));
+  assert_eq!(server.span_context.trace_id(), trace_id(), "the caller's trace is still joined");
+  assert!(
+    spans.iter().any(|span| span.span_kind == SpanKind::Client),
+    "its database spans are recorded too"
+  );
+}

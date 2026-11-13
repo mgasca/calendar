@@ -23,7 +23,7 @@ use opentelemetry::trace::TracerProvider as _;
 use opentelemetry_sdk::Resource;
 use opentelemetry_sdk::logs::{BatchLogProcessor, LogExporter, SdkLoggerProvider, SimpleLogProcessor};
 use opentelemetry_sdk::metrics::{PeriodicReader, SdkMeterProvider, exporter::PushMetricExporter};
-use opentelemetry_sdk::trace::{BatchSpanProcessor, SdkTracerProvider, SimpleSpanProcessor, SpanExporter};
+use opentelemetry_sdk::trace::{BatchSpanProcessor, Sampler, SdkTracerProvider, SimpleSpanProcessor, SpanExporter};
 use tracing::{Level, Metadata, Subscriber};
 use tracing_subscriber::filter::{FilterFn, filter_fn};
 use tracing_subscriber::layer::SubscriberExt;
@@ -186,8 +186,12 @@ pub fn resource() -> Resource {
 }
 
 /// A tracer provider whose spans pass the allow-list on their way to `exporter`.
+///
+/// Every request is sampled. The default sampler, `ParentBased(AlwaysOn)`, would let any caller switch off the
+/// tracing of its own requests by sending a `traceparent` whose sampled flag is `00`; the caller's trace id is
+/// still joined, but its flag no longer decides. At this API's traffic, sampling everything costs little.
 pub fn tracer_provider(exporter: impl SpanExporter + 'static, delivery: Delivery, resource: Resource) -> SdkTracerProvider {
-  let builder = SdkTracerProvider::builder().with_resource(resource);
+  let builder = SdkTracerProvider::builder().with_resource(resource).with_sampler(Sampler::AlwaysOn);
   match delivery {
     Delivery::Batch => builder.with_span_processor(AllowListSpanProcessor::new(BatchSpanProcessor::builder(exporter).build())),
     Delivery::Immediate => builder.with_span_processor(AllowListSpanProcessor::new(SimpleSpanProcessor::new(exporter))),

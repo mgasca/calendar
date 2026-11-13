@@ -1,0 +1,183 @@
+name: E2E flows
+
+# The end-to-end flow tests of ADR-0061 (story 0064, #737): nightly on main, and on demand, every Playwright test in
+# frontend/apps/e2e (each tagged with its CALM flow) runs in Chromium against a throwaway stack (`just e2e up`,
+# ADR-0063: PostgreSQL, Grafana LGTM, the stub OpenID Connect provider, the API and the built web app). It never runs
+# for a pull request, so it fails no PR and is not part of `CI result` (ADR-0046); the browser-free flow binding check
+# runs with the frontend tests on every PR. The HTML report, traces, failure screenshots and the stack's logs are
+# uploaded; a failure on main comments on one issue. Its job durations feed ADR-0045's trend check (ci-trend.yml,
+# against .github/e2e-baseline.json once 30 nightly runs have pinned it).
+on:
+  schedule:
+    - cron: "17 3 * * *"
+  workflow_dispatch:
+  # TEMPORARY (#737): a real run before merge, since workflow_dispatch only reaches workflows on main. Removed before
+  # review.
+  pull_request:
+    paths: [.github/workflows/e2e.yml]
+
+permissions: {}
+
+concurrency:
+  group: e2e
+  cancel-in-progress: false
+
+jobs:
+  e2e:
+    # The trend check and its baseline know the job by this name.
+    name: E2E flows
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    permissions:
+      contents: read
+    defaults:
+      run:
+        shell: bash
+    env:
+      CARGO_TERM_COLOR: always
+      CARGO_INCREMENTAL: 0
+      # As in CI's Backend job: file and line tables only, which keeps the cached target directory small (#776).
+      CARGO_PROFILE_DEV_DEBUG: line-tables-only
+      # The recipes call `corepack pnpm`, which then uses the packageManager pin in frontend/package.json.
+      COREPACK_ENABLE_DOWNLOAD_PROMPT: 0
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      # The toolchain pinned in backend/rust-toolchain.toml. Runners ship rustup; naming the channel keeps the install
+      # independent of rustup's own defaults.
+      - name: Install the pinned Rust toolchain
+        id: toolchain
+        working-directory: backend
+        run: |
+          channel=$(sed -n 's/^channel *= *"\(.*\)"/\1/p' rust-toolchain.toml)
+          rustup toolchain install "$channel" --profile minimal --no-self-update
+          echo "channel=$channel" >> "$GITHUB_OUTPUT"
+          cargo --version
+      # The registry and the debug build of the API and the migrator. Not the Backend job's cache: that one is built
+      # with coverage instrumentation and Clippy, so none of it matches this plain build. Saved only on a miss.
+      - name: Cache the Rust build
+        uses: actions/cache@v6
+        with:
+          path: |
+            ~/.cargo/registry/index
+            ~/.cargo/registry/cache
+            ~/.cargo/git/db
+            backend/target
+          key: >-
+            e2e-${{ runner.os }}-rust-${{ steps.toolchain.outputs.channel }}-debug-${{ env.CARGO_PROFILE_DEV_DEBUG }}-${{
+            hashFiles('backend/Cargo.toml', 'backend/crates/*/Cargo.toml', 'backend/Cargo.lock') }}
+          restore-keys: >-
+            e2e-${{ runner.os }}-rust-${{ steps.toolchain.outputs.channel }}-debug-${{ env.CARGO_PROFILE_DEV_DEBUG }}-
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: frontend/.node-version
+      - name: Find the pnpm store
+        id: pnpm
+        working-directory: frontend
+        run: |
+          corepack pnpm --version
+          echo "store=$(corepack pnpm store path --silent)" >> "$GITHUB_OUTPUT"
+      - name: Cache the pnpm store
+        uses: actions/cache@v6
+        with:
+          path: ${{ steps.pnpm.outputs.store }}
+          key: e2e-${{ runner.os }}-pnpm-${{ hashFiles('frontend/pnpm-lock.yaml') }}
+          restore-keys: e2e-${{ runner.os }}-pnpm-
+      - name: Install the frontend packages
+        working-directory: frontend
+        run: corepack pnpm install --frozen-lockfile
+      - name: Read the pinned versions of just and Playwright
+        id: versions
+        run: |
+          echo "just=$(tr -d '[:space:]v' < .just-version)" >> "$GITHUB_OUTPUT"
+          echo "playwright=$(cd frontend/apps/e2e && corepack pnpm exec playwright --version | awk '{print $2}')" >> "$GITHUB_OUTPUT"
+      - uses: extractions/setup-just@53165ef7e734c5c07cb06b3c8e7b647c5aa16db3 # v4.0.0
+        with:
+          just-version: ${{ steps.versions.outputs.just }}
+      # Chromium is downloaded once per Playwright release; its system libraries come from apt on every run, which the
+      # cache cannot hold.
+      - name: Cache Playwright's Chromium
+        uses: actions/cache@v6
+        with:
+          path: ~/.cache/ms-playwright
+          key: e2e-${{ runner.os }}-playwright-${{ steps.versions.outputs.playwright }}-chromium
+      - name: Install Chromium and its system libraries
+        working-directory: frontend/apps/e2e
+        run: corepack pnpm exec playwright install --with-deps chromium
+      # `just e2e test` would remove the stack, and its logs with it, before they could be uploaded, so the run is its
+      # three parts: up, the suite, and (always) down.
+      - name: Start the throwaway stack
+        id: up
+        run: |
+          just e2e up
+          echo "project=$(just e2e env | sed -n 's/^CALENDAR_E2E_PROJECT=//p')" >> "$GITHUB_OUTPUT"
+      - name: Run every flow test
+        timeout-minutes: 20
+        env:
+          PROJECT: ${{ steps.up.outputs.project }}
+        run: just e2e test-on "$PROJECT"
+      # The report shows each failure's message (the telemetry assertion that failed) and links its trace and
+      # screenshot. The data is synthetic (run-id titles, e2e-user@example.com). stack.env, which holds the run's seed
+      # key, is not uploaded.
+      - name: Upload the Playwright report
+        if: ${{ !cancelled() && steps.up.outcome == 'success' }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: e2e-report
+          path: frontend/apps/e2e/playwright-report
+          if-no-files-found: warn
+          retention-days: 14
+      - name: Upload the traces and failure screenshots
+        if: ${{ !cancelled() && steps.up.outcome == 'success' }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: e2e-test-results
+          path: frontend/apps/e2e/test-results
+          if-no-files-found: ignore
+          retention-days: 14
+      - name: Upload the stack's logs
+        if: ${{ !cancelled() && steps.up.outcome == 'success' }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: e2e-stack-logs
+          path: .plan/e2e/${{ steps.up.outputs.project }}/logs
+          if-no-files-found: warn
+          retention-days: 14
+      - name: Stop the stack
+        if: always()
+        run: just e2e down
+
+  # One issue for nightly failures, as the trend check and the dashboard alerts do: it comments on the open issue with
+  # this title, or opens it, and a person closes it. Only for runs on main; it can write issues and checks nothing out.
+  alert:
+    name: Report a failure on main
+    needs: e2e
+    if: ${{ failure() && github.ref == 'refs/heads/main' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      issues: write
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - name: Comment on the failure issue, or open it
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TITLE: "E2E flows: the nightly run failed on main"
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          EVENT: ${{ github.event_name }}
+          SHA: ${{ github.sha }}
+        run: |
+          body=$(printf '%s\n' \
+            "The \`E2E flows\` run on \`main\` at \`${SHA:0:9}\` (${EVENT}) failed: $RUN_URL" '' \
+            "Its artifacts, kept 14 days: \`e2e-report\` (the Playwright HTML report, with each failure's message), \`e2e-test-results\` (traces and failure screenshots; open a trace with \`corepack pnpm exec playwright show-trace <file>\` in \`frontend/apps/e2e\`) and \`e2e-stack-logs\` (API, web and container logs)." '' \
+            "Posted by \`.github/workflows/e2e.yml\`. This is the only issue for nightly E2E failures: it is updated while runs fail and closed by a person.")
+          number=$(gh issue list --repo "$GITHUB_REPOSITORY" --state open --label bug --limit 100 --json number,title \
+            --jq '[.[] | select(.title == env.TITLE) | .number] | min // empty')
+          if [ -n "$number" ]; then
+            gh issue comment "$number" --repo "$GITHUB_REPOSITORY" --body "$body"
+          else
+            gh issue create --repo "$GITHUB_REPOSITORY" --title "$TITLE" --label bug --body "$body"
+          fi

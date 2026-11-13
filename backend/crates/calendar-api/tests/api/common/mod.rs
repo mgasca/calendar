@@ -2,8 +2,7 @@
 //! `TestHostDefaults` and `PostgresFixture` of `Calendar.Api.Tests`).
 //!
 //! ```ignore
-//! mod common;
-//! use common::*;
+//! use crate::common::*;
 //!
 //! #[tokio::test]
 //! async fn a_task_can_be_created() {
@@ -30,8 +29,8 @@
 //! - **Database.** [`TestApp::database`] is the `calendar_testing::TestDatabase`: connect as
 //!   `calendar_migrator` to arrange or inspect rows. [`TestApp::seed`] inserts domain entities directly.
 //!
-//! Each file in `tests/` is its own test binary with its own container; start with `mod common;`.
-#![allow(dead_code, unused_imports, reason = "each test binary uses a different part of the harness")]
+//! The API tests are one binary (`tests/api/main.rs`) with one container; each test module starts with
+//! `use crate::common::*;`.
 
 use std::path::Path;
 use std::sync::{Arc, Mutex};
@@ -349,6 +348,7 @@ impl TestApp {
   }
 
   /// The router, for a request the client helpers cannot express.
+  #[expect(dead_code, reason = "kept for a request the client helpers cannot express; no test needs it yet")]
   pub fn router(&self) -> Router {
     self.router.clone()
   }

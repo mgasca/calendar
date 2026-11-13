@@ -2,9 +2,7 @@
 //! checks, and `DatabaseConnectivityTests`. The full port of the .NET endpoint tests lives in the files
 //! beside this one.
 
-mod common;
-
-use common::*;
+use crate::common::*;
 use diesel_async::RunQueryDsl;
 
 const SEED_KEY: &str = "12345678901234567890123456789012";

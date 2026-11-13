@@ -5,9 +5,7 @@
 //! `SerializationAndDeadlockErrors_AreRecognizedThroughDbUpdateException` is ported beside the function it
 //! tests, in `calendar-infrastructure/src/error.rs`.
 
-mod common;
-
-use common::*;
+use crate::common::*;
 
 const TASKS: &str = "/api/tasks";
 const BULK: &str = "/api/tasks/bulk";

@@ -2,12 +2,10 @@
 //! (story 0017, ADR-0041): every endpoint sees only the signed-in user's rows, and another user's id answers
 //! as if it did not exist. `app.client()` acts as user A; `app.client_as(USER_B)` as user B.
 
-mod common;
-
+use crate::common::*;
 use calendar_domain::time::{DateRangeWindow, IanaZone};
 use calendar_infrastructure::queries::task_list::TaskListView;
 use calendar_infrastructure::{Error, OwnerId, agenda, events, tasks};
-use common::*;
 
 const ZONE: &str = "UTC";
 const BULK: &str = "/api/tasks/bulk";

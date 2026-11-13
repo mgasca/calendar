@@ -3,13 +3,11 @@
 //! ordinary, DST, skipped-midnight and skipped-date days, and compares the API's answer with the domain
 //! predicates evaluated in memory.
 
-mod common;
-
+use crate::common::*;
 use calendar_domain::agenda::day_inclusion;
 use calendar_domain::time::{DayWindow, time_zones};
 use calendar_infrastructure::{OwnerId, events, tasks};
 use chrono::Days;
-use common::*;
 
 fn add_days(date: NaiveDate, days: i64) -> NaiveDate {
   if days >= 0 {

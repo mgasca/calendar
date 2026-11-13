@@ -1,11 +1,9 @@
 //! Ports `Endpoints/AuthenticationTests`: every route needs a signed-in user except health, the contract and
 //! the sign-in routes (ADR-0027), and the pure allow-list and return-URL rules.
 
-mod common;
-
+use crate::common::*;
 use calendar_api::auth::google::local_return_url;
 use calendar_api::config::is_allowed;
-use common::*;
 
 /// The application as production builds it (only a session cookie signs a request in), in Development and
 /// without a database, like the bare `WebApplicationFactory<Program>` of the .NET tests.

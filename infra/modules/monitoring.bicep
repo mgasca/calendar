@@ -16,3 +16,6 @@ resource insights 'Microsoft.Insights/components@2020-02-02' = {
 }
 output workspaceId string = workspace.id
 output workspaceCustomerId string = workspace.properties.customerId
+// The name, never the connection string: modules that need the string read the component as `existing`, so it stays
+// out of deployment outputs and history.
+output insightsName string = insights.name

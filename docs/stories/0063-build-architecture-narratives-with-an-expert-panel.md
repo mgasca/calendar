@@ -1,5 +1,5 @@
 ---
-status: planned
+status: in-progress
 date: 2026-11-13
 issue: https://github.com/mgasca/calendar/issues/705
 pr:
@@ -7,6 +7,13 @@ pr:
   - https://github.com/mgasca/calendar/pull/716
   - https://github.com/mgasca/calendar/pull/718
   - https://github.com/mgasca/calendar/pull/720
+  - https://github.com/mgasca/calendar/pull/717
+  - https://github.com/mgasca/calendar/pull/719
+  - https://github.com/mgasca/calendar/pull/727
+  - https://github.com/mgasca/calendar/pull/744
+  - https://github.com/mgasca/calendar/pull/748
+  - https://github.com/mgasca/calendar/pull/749
+  - https://github.com/mgasca/calendar/pull/754
 adrs: ["0042", "0044", "0058", "0059", "0060"]
 ---
 
@@ -100,7 +107,7 @@ The slices follow the dependency map on epic #705. This card and both ADRs come 
 | Area | Location |
 | --- | --- |
 | The skill | `.claude/skills/architecture-narrative-builder/SKILL.md` and `references/` |
-| Stitcher | `.claude/skills/architecture-narrative-builder/` Deno script, configuration, lockfile and tests |
+| Stitcher | `.claude/skills/architecture-narrative-builder/scripts/stitch/` (`just tools narratives`), with the skill's own `deno.json`, frozen `deno.lock` and `tests/` |
 | Expert agent | `.claude/agents/narrative-expert.md` |
 | Panel workflow | `.claude/workflows/narrative-panel.js` |
 | Narratives | `docs/narratives/<system>-narrative.md`, parts in `docs/narratives/<system>/` |
@@ -115,7 +122,7 @@ No changes.
 
 ### Testing
 
-* Stitcher: Deno tests for part order, diagram inclusion, excluded files, the generated-file note and `--check` failing on drift; discovered by `just tools test`.
+* Stitcher: Deno tests for part order, diagram inclusion, excluded files, the generated-file note and `--check` failing on drift; discovered by `just tools test`. The drift check runs in `just check`, in the Tooling job, and in a small Deno-only Narratives job for a change that runs no Tooling job. The template test stitches `references/templates/` and checks the front-matter keys and the single H1 that the docs site accepts.
 * Docs site: loader and build tests for narrative discovery, skipped part directories, front-matter validation and the deck link.
 * Decks: CI builds every deck in the docs-site job.
 * Skill and panel: evals for the modes and the quality checks; criteria 1 to 6 describe agent behaviour and are checked by the evals and the first real run.
@@ -125,7 +132,38 @@ No changes.
 To be completed on delivery. So far:
 
 * **Panel rebuttals re-read only cited parts** (#708, #716): a review finding said each rebuttal re-read every part. Measured in [benchmark 0022](../benchmarks/0022-narrative-panel-rebuttal-part-reads.md): 2 rebuttal part reads before and 0 after; tokens were unchanged within noise on the small fixture. To be re-measured at the first real Act 3 review (#711).
-* **Deferred: the `narrative-expert` agent type has not yet run end to end.** The session that built #716 started before the agent file existed, so its proof runs used `general-purpose` agents on Sonnet with the agent body prepended. The first workflow call in #709 or #711 proves the registration, its `tools` and its `model: sonnet` (maintainer decision on #716).
+* **The drift check has its own small CI job** (#707, decided on #717): a narrative-only change ran the whole Tooling job (.NET suites, the PostgreSQL integration test) for a check that takes about a second, a finding confirmed by the review-before-merge skeptics. The Narratives job mirrors ADR conventions (#572): it runs for `docs/narratives/` and the skill folder, a pull request or merge group skips it when Tooling runs the same step, and pushes run both. Its first run on `main` took 8 s. It has no run-time baseline yet, so the ADR-0045 gate only warns about it until the next baseline update.
+* **#709 was delivered through #717.** #719 was merged into #717's branch, which closes nothing, so #717 carried `Closes #707` and `Closes #709`. Review history for the skill slice is on #719.
+* **The skill was aligned with the slices that merged after it** (#717): the panel guide uses #708's six brief fields (`tensions` included) and #727's 0-to-3 ratings, and the slides mode writes `slides.md` without `theme`, `fonts` or `favicon` and sets the `slides` link in the same change, as #710's build requires. An end-to-end check on the merged tree stitched the templates, built the site (22 tests) and built the deck with `just docs slides`.
+* **Still deferred: the `narrative-expert` agent type has not run end to end.** In #711 the agent type was not available to the session at all, before or after a restart: worktree sessions register custom agents from the main checkout, which was behind `main` (#747). The first `questions` round failed before any expert started, and the workflow reported each expert as `returned nothing` without the reason. The maintainer chose the skill's fallback, in which the facilitator voices each expert from its brief. The real panel, its routing along the map and the benchmark 0022 re-measurement move to run 2 (#753), from a clean `main`.
+
+#### First real run: the Calendar narrative (#711)
+
+The skill was run with the maintainer as the interviewee, in keep-parts mode with the panel appendix. The result is [the Calendar narrative](../narratives/calendar-narrative.md), with parts in `docs/narratives/calendar/` and a twelve-slide deck. At the maintainer's request, each act was reviewed as its own stacked pull request (#744, #748, #749) instead of being confirmed in chat. That was for this run only; the skill is unchanged. What the run showed:
+
+* **Partial narratives fail the drift check.** The stitcher requires every act, so the act pull requests fail the Narratives check until Act 3 lands, and the stack merges down. The maintainer kept the stitcher as it is.
+* **Links in a part are copied verbatim.** They must be written relative to the stitched file (`../decisions/…`), not to the part, and the skill and templates do not say so.
+* **The interview found a drifted record.** [ADR-0041](../decisions/0041-per-user-data-ownership.md) still describes the .NET framework filter, while the Rust backend uses the explicit owner parameter that the ADR rejected. The narrative states what the code does, and a superseding record is an open question.
+* **Evidence was measured where it could be.** Delivery speed was bounded from the 2026-11-12 dashboard snapshot. The verifiability outcome (correction rounds) is not measured, and the narrative says so.
+
+#### Evals
+
+Five cases are in `.claude/skills/architecture-narrative-builder/evals/`, built on a small ticketing-kata fixture. `claude plugin eval` was not installed, so each case ran as a scenario, as story 0033 did. A fresh Sonnet agent got only the skill and the case prompt, never the graders, in a scratch root. Its result was graded by hand against the graders and the files it left. Results are posted on #711.
+
+| Case | Result |
+| --- | --- |
+| [stitch-only-restitches-edited-part](../../.claude/skills/architecture-narrative-builder/evals/stitch-only-restitches-edited-part/case.yaml) | 4/4 on the corrected fixture |
+| [quality-check-failure-blocks-stitch](../../.claude/skills/architecture-narrative-builder/evals/quality-check-failure-blocks-stitch/case.yaml) | 3/3 |
+| [resume-skips-confirmed-act](../../.claude/skills/architecture-narrative-builder/evals/resume-skips-confirmed-act/case.yaml) | 2/3: it read the ledger first and re-asked nothing, but 2 of its 4 questions had no concrete options |
+| [slides-mode-links-deck](../../.claude/skills/architecture-narrative-builder/evals/slides-mode-links-deck/case.yaml) | 3/3 |
+| [build-removes-parts](../../.claude/skills/architecture-narrative-builder/evals/build-removes-parts/case.yaml) | 3/3 on the corrected fixture |
+| [quality-check-minor-failure-blocks-stitch](../../.claude/skills/architecture-narrative-builder/evals/quality-check-minor-failure-blocks-stitch/case.yaml) | 4/4 in two runs (#762); the skill before the fix scored 3/4 in two runs, missing the offer to accept the failure |
+
+The first runs of stitch-only and build were invalid, because the fixture itself was inconsistent. In each, the agent correctly refused to stitch and asked. The fixture had an Act 2 edit that contradicted the Cost requirement, no panel record, terms its vocabulary did not define, and two names for one component. The fixture was fixed and both cases were rerun. The runs also showed three gaps in the skill, recorded on #711 for follow-up:
+
+* **Panel never ran.** Quality check 4 does not say what to do when no panel round was run.
+* **Slides mode.** It does not say whether the quality checks must be reported in that mode.
+* **Stitched despite a failed check.** One stitch-only rerun stitched even though check 6 failed and it was asking about it, although the skill says a failed check goes back to the user as a question. Fixed in #762: any failed check, however minor, now blocks the stitch until the user answers or explicitly accepts the failure, which the ledger records. The case `quality-check-minor-failure-blocks-stitch` covers a single undefined term in a restitch the user calls trivial. Its control runs on the skill before the fix also refused to stitch, so the original slip did not reproduce in two runs; what only the fix produces is the offer to accept the failure.
 
 ## User guide
 

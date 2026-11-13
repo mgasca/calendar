@@ -54,6 +54,7 @@ module app 'modules/app.bicep' = if (deployDatabaseAndApp) {
     tags: tags
     workspaceId: monitoring.outputs.workspaceId
     workspaceCustomerId: monitoring.outputs.workspaceCustomerId
+    insightsName: monitoring.outputs.insightsName
     registryLoginServer: foundation.outputs.registryLoginServer
     identityId: foundation.outputs.identityId
     vaultUri: foundation.outputs.appVaultUri

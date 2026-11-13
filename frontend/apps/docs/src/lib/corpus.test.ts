@@ -74,6 +74,7 @@ describe('repository runbooks and benchmarks', () => {
       'azure-database.md',
       'web-theme-and-styling.md',
       'delivery-dashboard.md',
+      'local-stack-and-e2e.md',
     ]);
     for (const record of records) {
       expect(record.body, record.file).toMatch(/^## Before you start$/m);

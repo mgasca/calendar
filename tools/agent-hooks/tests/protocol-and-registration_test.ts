@@ -154,3 +154,17 @@ Deno.test("CLI arguments, valid JSON stdout and malformed-input exits with the a
   assertEquals(deny.code, 0);
   assertEquals(JSON.parse(deny.stdout).hookSpecificOutput.permissionDecision, "deny");
 });
+
+Deno.test("prototype-named commands do not hide a subsequent dirty restore", async () => {
+  const probe = new FakeProbe();
+  probe.dirty.add("/repo/AGENTS.md");
+  for (const name of ["constructor", "toString", "__proto__"]) {
+    const result = await runHook(
+      "pre-bash",
+      JSON.stringify({ cwd: "/repo", tool_input: { command: `${name} -x; git restore AGENTS.md` } }),
+      probe,
+      "2.9.8",
+    );
+    assertEquals(JSON.parse(result.stdout!).hookSpecificOutput.permissionDecision, "deny");
+  }
+});

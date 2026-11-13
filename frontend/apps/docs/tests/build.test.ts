@@ -1,9 +1,30 @@
 import { access, readFile, readdir, stat } from 'node:fs/promises';
 import { join } from 'node:path';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { deployment, runbookSlug, storySlug } from '../src/lib/adr';
 import { architecturePages, pageRoute } from '../src/lib/architecture';
-import { readAgentThoughts, readDocuments, readNarratives } from '../src/lib/docs-loader';
+import {
+  decisionsDirectory,
+  readAgentThoughts,
+  readDocuments as readCorpus,
+  readNarratives,
+} from '../src/lib/docs-loader';
+
+// Counts the listings of docs/decisions, the first step of every corpus read, so the last test can
+// guard that this file reads the corpus once (#755).
+const decisionListings = vi.hoisted(() => ({ count: 0 }));
+vi.mock('node:fs/promises', async (importOriginal) => {
+  const fs = await importOriginal<typeof import('node:fs/promises')>();
+  const readdir = (async (path: Parameters<typeof fs.readdir>[0], ...rest: unknown[]) => {
+    if (String(path) === decisionsDirectory.href) decisionListings.count += 1;
+    return (fs.readdir as (...args: unknown[]) => Promise<unknown>)(path, ...rest);
+  }) as typeof fs.readdir;
+  return { ...fs, readdir, default: { ...fs, readdir } };
+});
+
+// Each corpus read parses every document under docs/ (about 2.5 s); the tests share one (#755).
+let corpus: ReturnType<typeof readCorpus> | undefined;
+const readDocuments = () => (corpus ??= readCorpus());
 
 const { base } = deployment(process.env.DOCS_SITE_URL);
 
@@ -476,5 +497,12 @@ describe('script-free theme fallback (story 0046, #534)', () => {
       }
       expect(tag, file).not.toContain('data-theme');
     }
+  });
+});
+
+// Last in the file, so it sees every read the tests above made.
+describe('verification cost (#755)', () => {
+  it('reads the documentation corpus at most once', () => {
+    expect(decisionListings.count).toBeLessThanOrEqual(1);
   });
 });

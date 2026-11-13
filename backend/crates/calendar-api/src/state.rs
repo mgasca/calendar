@@ -5,8 +5,9 @@ use std::sync::Arc;
 use calendar_infrastructure::connection::{self, ConnectionConfig, ConnectionStringError, PgPool};
 use calendar_infrastructure::session_keys;
 use chrono::{DateTime, Utc};
-use diesel_async::AsyncPgConnection;
 use diesel_async::pooled_connection::deadpool::Object;
+use diesel_async::{AsyncConnection, AsyncPgConnection};
+use opentelemetry::metrics::Meter;
 use tokio::sync::OnceCell;
 
 use crate::auth::Authenticator;
@@ -15,6 +16,8 @@ use crate::auth::session::Sealer;
 use crate::clock::{Clock, SystemClock};
 use crate::config::{ConfigError, Settings};
 use crate::error::ApiError;
+use crate::telemetry::db::DatabaseSpans;
+use crate::telemetry::http::HttpMetrics;
 
 /// A pooled database connection, connected as the least-privilege `calendar_app` role (ADR-0052).
 pub type DbConnection = Object<AsyncPgConnection>;
@@ -29,6 +32,9 @@ pub struct AppOptions {
   pub google_endpoints: GoogleEndpoints,
   /// A test-only replacement for cookie authentication (see [`Authenticator`]); `None` in production.
   pub authenticator: Option<Arc<dyn Authenticator>>,
+  /// Where the HTTP server metrics go: the global meter provider's meter in production (a no-op one when no
+  /// OTLP endpoint is configured), an in-memory one in the telemetry tests.
+  pub meter: Meter,
 }
 
 impl AppOptions {
@@ -39,6 +45,7 @@ impl AppOptions {
       clock: Arc::new(SystemClock),
       google_endpoints: GoogleEndpoints::default(),
       authenticator: None,
+      meter: opentelemetry::global::meter(crate::telemetry::SCOPE),
     }
   }
 }
@@ -68,6 +75,7 @@ struct Inner {
   google_endpoints: GoogleEndpoints,
   authenticator: Option<Arc<dyn Authenticator>>,
   http: Option<reqwest::Client>,
+  http_metrics: HttpMetrics,
 }
 
 /// The shared state of the application: cheap to clone.
@@ -97,14 +105,17 @@ impl AppState {
       ),
       None => None,
     };
+    // Development-only, loopback-only overrides (ADR-0064); `validate` above refused any other.
+    let google_endpoints = options.google_endpoints.overridden_by(&options.settings.google_overrides);
     Ok(Self(Arc::new(Inner {
       settings: options.settings,
       clock: options.clock,
       pool,
       session_key: OnceCell::new(),
-      google_endpoints: options.google_endpoints,
+      google_endpoints,
       authenticator: options.authenticator,
       http,
+      http_metrics: HttpMetrics::new(&options.meter),
     })))
   }
 
@@ -130,10 +141,13 @@ impl AppState {
       .pool
       .as_ref()
       .ok_or_else(|| ApiError::internal("ConnectionStrings__Calendar is not set, so this host has no database"))?;
-    pool
+    let mut connection = pool
       .get()
       .await
-      .map_err(|error| ApiError::internal(format!("no database connection: {error}")))
+      .map_err(|error| ApiError::internal(format!("no database connection: {error}")))?;
+    // A span per query, children of this request's span; they cost nothing when no telemetry is exported.
+    connection.set_instrumentation(DatabaseSpans::default());
+    Ok(connection)
   }
 
   /// Seals and opens the session and sign-in cookies.
@@ -172,6 +186,11 @@ impl AppState {
   /// The HTTP client for calls to Google; `None` when Google sign-in is not configured.
   pub fn http(&self) -> Option<&reqwest::Client> {
     self.0.http.as_ref()
+  }
+
+  /// The HTTP server metrics.
+  pub fn http_metrics(&self) -> &HttpMetrics {
+    &self.0.http_metrics
   }
 }
 

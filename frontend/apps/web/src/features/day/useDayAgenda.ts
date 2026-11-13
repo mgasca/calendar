@@ -6,6 +6,7 @@ import { api } from '../../api/client.ts';
 import { AGENDA_KEY, AGENDA_REFETCH_INTERVAL_MS } from '../agenda/agendaQuery.ts';
 import type { AgendaTask } from '../agenda/dayTime.ts';
 import type { TaskPatch } from '../agenda/useToggleTask.ts';
+import { traceAction } from '../../telemetry/action.ts';
 
 type DayAgenda = Schemas['DayAgendaResponse'];
 
@@ -35,10 +36,9 @@ export function useDayAgenda(date: string, timeZone: string) {
   return useQuery({
     queryKey: agendaKey(date, timeZone),
     queryFn: async ({ signal }) => {
-      const { data, error, response } = await api.GET('/api/agenda/day', {
-        params: { query: { date, timeZone } },
-        signal,
-      });
+      const { data, error, response } = await traceAction('ui.day.load', () =>
+        api.GET('/api/agenda/day', { params: { query: { date, timeZone } }, signal }),
+      );
       if (!data) {
         throw apiError(
           { response, error },

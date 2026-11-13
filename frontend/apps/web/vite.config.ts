@@ -2,6 +2,7 @@ import react from '@vitejs/plugin-react';
 import { defineConfig } from 'vitest/config';
 
 import { apiProxy, devSignInHostGuard } from './dev/apiProxy.ts';
+import { OTLP_PROXY_KEY, otlpProxy } from './dev/otlpProxy.ts';
 
 export default defineConfig({
   // The guard refuses --host and other non-loopback hosts under `just frontend dev-signed-in` (#242).
@@ -10,6 +11,9 @@ export default defineConfig({
     proxy: {
       // Adds the API's seed key only under `just frontend dev-signed-in` (story 0021).
       '/api': apiProxy(process.env),
+      // The browser's OpenTelemetry export, forwarded to the collector (ADR-0062, #732). `vite preview`
+      // inherits `server.proxy`, so the built app in the E2E stack gets the same route.
+      [OTLP_PROXY_KEY]: otlpProxy(process.env),
     },
   },
   test: {

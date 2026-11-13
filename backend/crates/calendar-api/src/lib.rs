@@ -22,6 +22,7 @@ pub mod json;
 pub mod openapi;
 pub mod problem;
 pub mod state;
+pub mod telemetry;
 pub mod text;
 pub mod validation;
 pub mod wire;

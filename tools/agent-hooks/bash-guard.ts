@@ -177,9 +177,10 @@ export async function evaluateBash(command: string, cwd: string, probe: RepoProb
     else if (s.tokens[0]! === "gh") verdict = ghPost(s, sources);
     else {
       const touches = s.tokens[0]! === "just"
-        ? /(?:^| )db(?: |::)(?:(?:do|run) (?:\S+ )*)?(?:up|down|reset|migrate|psql)(?: |$)/.test(
-          s.tokens.slice(1).join(" "),
-        )
+        ? /(?:^| )db(?: |::)(?:(?:do|run) (?:\S+ )*)?(?:up|down|reset|migrate|psql|observability|sign-in-stub)(?: |$)/
+          .test(
+            s.tokens.slice(1).join(" "),
+          )
         : s.tokens[0]! === "docker" && s.tokens[1]! === "compose";
       if (touches && probe.isLinkedWorktree(s.cwd)) {
         verdict = {

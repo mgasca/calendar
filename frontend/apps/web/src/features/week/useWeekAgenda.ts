@@ -6,6 +6,7 @@ import { api } from '../../api/client.ts';
 import { AGENDA_KEY, AGENDA_REFETCH_INTERVAL_MS } from '../agenda/agendaQuery.ts';
 import type { AgendaTask } from '../agenda/dayTime.ts';
 import type { TaskPatch } from '../agenda/useToggleTask.ts';
+import { traceAction } from '../../telemetry/action.ts';
 
 export type WeekAgenda = Schemas['WeekAgendaResponse'];
 
@@ -29,10 +30,12 @@ export function useWeekAgenda(weekStart: string, timeZone: string, today: string
   return useQuery({
     queryKey: weekKey(weekStart, timeZone, today),
     queryFn: async ({ signal }) => {
-      const { data, error, response } = await api.GET('/api/agenda/week', {
-        params: { query: { date: weekStart, timeZone, today } },
-        signal,
-      });
+      const { data, error, response } = await traceAction('ui.week.load', () =>
+        api.GET('/api/agenda/week', {
+          params: { query: { date: weekStart, timeZone, today } },
+          signal,
+        }),
+      );
       if (!data) {
         throw apiError({ response, error }, `Loading the week failed: ${String(response.status)}`);
       }

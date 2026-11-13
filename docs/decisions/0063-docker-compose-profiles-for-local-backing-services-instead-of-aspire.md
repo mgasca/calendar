@@ -1,5 +1,5 @@
 ---
-status: proposed
+status: accepted
 date: 2026-11-13
 decision-makers: mgasca, Claude (AI assistant)
 ---
@@ -105,7 +105,7 @@ Chosen option: "Docker Compose with opt-in profiles and per-run projects", becau
 
 ## More Information
 
-* **Supersedes** [ADR-0016](0016-local-database-provisioning.md) once accepted. [ADR-0016](0016-local-database-provisioning.md)'s test half still stands and is restated under Conventions: Testcontainers for tests, with the image tag read from `compose.yaml`.
+* **Supersedes** [ADR-0016](0016-local-database-provisioning.md). [ADR-0016](0016-local-database-provisioning.md)'s test half still stands and is restated under Conventions: Testcontainers for tests, with the image tag read from `compose.yaml`.
 * **Versions and sources at the time of writing (2026-11-13):**
   * Aspire v13.6.5 (MIT). aspire.dev "What's new in Aspire 13.4": TypeScript AppHosts generally available.
   * `CommunityToolkit.Aspire.Hosting.Rust` in toolkit v13.6.1; its README shows C# usage only.

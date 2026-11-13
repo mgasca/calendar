@@ -5,3 +5,7 @@ pnpm-lock.yaml
 
 **/.astro
 **/.dashboard-data
+
+# Playwright output of the end-to-end suite (git-ignored)
+**/playwright-report
+**/test-results

@@ -9,7 +9,7 @@ Never published or stitched. The interview resumes from this file.
 | Act 1: Setup | confirmed 2026-11-13 (approved on #744) |
 | Driving characteristics | confirmed 2026-11-13 |
 | Act 2: Confrontation | drafted 2026-11-13; review in its stacked pull request |
-| Act 3: Resolution | open |
+| Act 3: Resolution | drafted 2026-11-13; review in its stacked pull request |
 
 ## Inputs (2026-11-13)
 
@@ -36,6 +36,13 @@ Never published or stitched. The interview resumes from this file.
 | C4 | 2 | Characteristics | closed | The four driving characteristics, with requirements and targets. |
 | C5 | 2 | Alternatives | closed | Eight decisions; alternatives from the ADRs (material) and, for review before merge, from the maintainer. |
 | C6 | 2 | Panel verdicts | closed (fallback) | Owner scoping: RLS open question. Rust CI cost: accepted, gated. Review before merge: code PRs only. PR 0: kept, stack at once. |
+
+| R1 | 3 | Architecture | closed | Product container view (containers.mmd) and the method loop (method.mmd). |
+| R2 | 3 | Decisions | closed | D1 to D8 as inline ADR summaries with links; D3 flags the ADR-0041 drift. |
+| R3 | 3 | Characteristics met | closed | Verifiability outcome not measured (risk); delivery speed met, measured from the 2026-11-12 snapshot; time matrix exists in both forms; security per D3 and D6. |
+| R4 | 3 | Risks | closed | Eight risks; ratings proposed by the facilitator, to be confirmed in review. |
+| R5 | 3 | Panel review | closed (fallback) | Four objections settled: hooks-only-Claude risk; measured CI evidence; failing-test rule wording; success signs without dates accepted. |
+| R6 | 3 | Open questions | closed | Row-level security; correction-rounds measure; superseding ADR-0041. |
 
 ## Contradictions
 
@@ -99,6 +106,7 @@ Never published or stitched. The interview resumes from this file.
 | --- | --- | --- | --- | --- |
 | questions | 2026-11-13 | 0 | all six | Nothing: the session that ran it started before `narrative-expert` merged, so the agent type was not registered and every agent failed before starting (the workflow's result did not say why). Restart did not help (#747). Maintainer chose the skill's fallback: the facilitator asked the experts' standing questions. |
 | alternatives | 2026-11-13 | fallback | n/a | Facilitator voiced each expert from its brief; four conflicts settled with the maintainer (C6). |
+| review | 2026-11-13 | fallback | n/a | Verifiability, delivery speed, security and business objected; time and end user signed off; outcomes in R5 and 05-panel.md. |
 
 ## Open questions
 
@@ -111,6 +119,7 @@ Never published or stitched. The interview resumes from this file.
 * The stitcher requires every act; per-act review PRs fail the Narratives check until Act 3 (stacked PRs, merged down; no skill change).
 * `narrative-expert` unavailable in worktree sessions: agents load from the main checkout (#747); the workflow hides failure reasons.
 * Part links are copied verbatim, so they must be relative to the stitched file (`../decisions/`), not to the part; the skill and templates do not say so.
+* The stitcher includes `05-panel.md` whenever it exists; the skill's "stitched only when asked" is implemented by writing the part or not.
 * ADR-0041 has drifted: the Rust backend uses the explicit owner parameter it rejected; superseding ADR offered.
 
 ## Options

@@ -330,7 +330,7 @@
 <ul>
 <li>Browser: the Playwright flow tests, nightly and on demand.</li>
 <li>Binding: the browser-free check on every pull request.</li>
-<li>API: <code>cargo test</code> for the exporter wiring, <code>traceparent</code> extraction, redaction and the stub guard. <code>crates/calendar-api/tests/telemetry.rs</code> runs the production pipeline with in-memory exporters and scans every exported span, log and metric for seeded personal data. The unit tests in <code>src/telemetry*</code> cover the <code>OTEL_*</code> configuration, the statement shape and the allow-list.</li>
+<li>API: <code>cargo test</code> for the exporter wiring, <code>traceparent</code> extraction, redaction and the stub guard. <code>crates/calendar-api/tests/api/telemetry.rs</code> runs the production pipeline with in-memory exporters and scans every exported span, log and metric for seeded personal data. The unit tests in <code>src/telemetry*</code> cover the <code>OTEL_*</code> configuration, the statement shape and the allow-list.</li>
 <li>Web: Vitest for the attribute filter and the no-exporter default.</li>
 </ul>
 <h3 id="delivered-in-730">Delivered in #730</h3>

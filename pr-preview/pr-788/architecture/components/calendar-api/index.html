@@ -321,7 +321,7 @@
 <li><strong>session-claim</strong>: The users.id travels in the sealed session ticket; a ticket without one is rejected with 401 and the cookie cleared (calendar-api/src/auth.rs, ADR-0056), so sessions issued before ADR-0041 end once</li>
 <li><strong>cross-user-response</strong>: 404 for GET/PUT/DELETE /api/events/{id}, GET/PUT/complete/reopen/DELETE /api/tasks/{id}; notFound outcome in POST /api/tasks/bulk by ids; filter-based bulk actions and agenda counts only ever cover the caller’s rows</li>
 <li><strong>client-supplied-user</strong>: false</li>
-<li><strong>tests</strong>: backend/crates/calendar-api/tests/ownership.rs (two users, every endpoint), backend/crates/calendar-infrastructure/tests/database/user_directory.rs (lookup order, legacy claim), backend/crates/calendar-infrastructure/tests/database/ownership_migration.rs (backfill), backend/crates/calendar-api/tests/session_and_seed.rs (old cookie, seed scheme), backend/crates/calendar-infrastructure/tests/database/schema_definition.rs (owner columns, keys, indexes)</li>
+<li><strong>tests</strong>: backend/crates/calendar-api/tests/api/ownership.rs (two users, every endpoint), backend/crates/calendar-infrastructure/tests/database/user_directory.rs (lookup order, legacy claim), backend/crates/calendar-infrastructure/tests/database/ownership_migration.rs (backfill), backend/crates/calendar-api/tests/api/session_and_seed.rs (old cookie, seed scheme), backend/crates/calendar-infrastructure/tests/database/schema_definition.rs (owner columns, keys, indexes)</li>
 <li><strong>adrs</strong>: <a href="https://mgasca.github.io/calendar/adr/0041/">https://mgasca.github.io/calendar/adr/0041/</a></li>
 </ul>
 <h3 id="time-correctness">time-correctness</h3>

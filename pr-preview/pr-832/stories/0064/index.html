@@ -324,7 +324,7 @@
 <li><strong>Server spans:</strong> a <code>Router::layer</code> middleware makes one server span per routed request, named <code>&#x3C;METHOD> &#x3C;route template></code>. It is the child of the W3C <code>traceparent</code> the request carries. The layer also records the <code>http.server.request.duration</code> histogram by method, route template and status. Its count is the request count.</li>
 <li><strong>Database spans:</strong> a Diesel <code>Instrumentation</code> is set on each pooled connection in <code>AppState::db()</code>. It makes one client span per query, named <code>&#x3C;operation> &#x3C;table></code>. The span holds <code>db.query.text</code> cut before Diesel’s <code>-- binds:</code>, so bind values are never formatted.</li>
 <li><strong>Logs:</strong> an in-repo bridge layer (<code>logs.rs</code>) exports INFO and above with the trace and span ids of the entered span. It copies only allow-listed fields. <code>opentelemetry-appender-tracing</code> was not used because it copies every field, and an SDK log record cannot drop an attribute afterwards.</li>
-<li><strong>Request log:</strong> the server-span middleware emits one INFO event, <code>request finished</code>, inside each traced request’s span, with only the method, route template and status. It is the record that carries a successful flow’s trace id into Loki; without it, only failures were logged (found while designing #733). Health probes are not logged, and with telemetry off nothing changes.</li>
+<li><strong>Request log:</strong> the server-span middleware emits one INFO event, <code>request finished</code>, inside each traced request’s span, with only the method, route template and status. It is the record that carries a successful flow’s trace id into Loki; without it, only failures were logged (found while designing #733). It goes to OTLP only: its target (<code>telemetry::http::request_log</code>) is left out of standard output, so the console gets no line per request. Health probes are not logged, and with telemetry off nothing changes.</li>
 <li><strong>Allow-list:</strong> the allow-list is in <code>allow_list.rs</code>. A span processor drops every other attribute and all span events before export.</li>
 </ul>
 <h3 id="testing">Testing</h3>
@@ -377,7 +377,12 @@
 <li><strong>Request log (#797):</strong> designing the logs assertion showed that a successful request logged nothing. #798 adds the <code>request finished</code> record (see “API” above).</li>
 <li><strong>Measured</strong> (WSL2 laptop, images present, API build cached):
 <ul>
-<li><code>just e2e test</code> ready in 40 s, and the view-today test took 57 s, most of it waiting for metrics (60 s export interval; #793 shortens it in E2E).</li>
+<li>Before #793, <code>just e2e test</code> was ready in 40 s, and the view-today test took 57 s, most of it waiting for metrics (60 s export interval).</li>
+<li>With #793’s 5 s interval, on <code>main</code> with #798, the test took 7.3 s (the stack was ready in 99 s, because the API had to rebuild after the merge).</li>
+</ul>
+</li>
+<li><strong>Scan limit:</strong> a scan stops with an error when Loki returns its 5,000-record limit, rather than quietly scanning part of the logs (review note on #832).
+<ul>
 <li>Negative control: against an API without #798, the test passed the trace assertion and failed with “API log records with trace id … not found within 90 s”.</li>
 </ul>
 </li>

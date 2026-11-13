@@ -61,12 +61,14 @@ services:
       - "127.0.0.1:${CALENDAR_TEMPO_PORT:-3200}:3200"
       - "127.0.0.1:${CALENDAR_PROMETHEUS_PORT:-9090}:9090"
     healthcheck:
-      # The image's own check (Grafana, Loki, Tempo, Prometheus and the collector), polled faster than its 30 s.
+      # The image's own check (Grafana, Loki, Tempo, Prometheus and the collector): every 3 s while starting, so
+      # `up --wait` returns soon after it is ready, then every 30 s like the image's own setting.
       test: ["CMD", "/otel-lgtm/docker/healthcheck.sh"]
-      interval: 3s
-      timeout: 5s
-      retries: 60
+      interval: 30s
+      start_interval: 3s
       start_period: 120s
+      timeout: 5s
+      retries: 3
 
   # Stub OpenID Connect provider standing in for Google (ADR-0064), for development and end-to-end runs only. The
   # issuer is the first path segment: http://127.0.0.1:<port>/google. The API reaches it only through the
@@ -81,10 +83,11 @@ services:
       JSON_CONFIG: '{"interactiveLogin": true, "httpServer": "NettyWrapper"}'
     healthcheck:
       test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:8080/google/.well-known/openid-configuration"]
-      interval: 2s
-      timeout: 3s
-      retries: 30
+      interval: 30s
+      start_interval: 2s
       start_period: 30s
+      timeout: 3s
+      retries: 3
 
 volumes:
   calendar-pgdata:

@@ -124,7 +124,7 @@ up:
 env project="":
     #!/usr/bin/env bash
     set -euo pipefail
-    project="{{ project }}"
+    project={{ quote(project) }}
     if [[ -z $project ]]; then
         project=$(ls -1t "{{ state_root }}" 2>/dev/null | grep '^calendar-e2e-' | head -n 1 || true)
         [[ -n $project ]] || { echo "No end-to-end run in this checkout: start one with 'just e2e up'." >&2; exit 1; }
@@ -192,7 +192,7 @@ down project="":
     set -euo pipefail
     shopt -s nullglob
     projects=()
-    if [[ -n "{{ project }}" ]]; then projects=("{{ project }}"); else
+    if [[ -n {{ quote(project) }} ]]; then projects=({{ quote(project) }}); else
         for file in {{ state_root }}/calendar-e2e-*/stack.env; do projects+=("$(basename "$(dirname "$file")")"); done
     fi
     [[ ${#projects[@]} -gt 0 ]] || { echo "No end-to-end run in this checkout."; exit 0; }

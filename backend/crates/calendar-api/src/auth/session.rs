@@ -7,6 +7,7 @@ use axum::http::header::COOKIE;
 use axum::http::{HeaderMap, HeaderValue};
 use base64::Engine;
 use base64::engine::general_purpose::URL_SAFE_NO_PAD;
+use calendar_infrastructure::OwnerId;
 use chacha20poly1305::aead::{Aead, KeyInit, Payload};
 use chacha20poly1305::{Key, XChaCha20Poly1305, XNonce};
 use chrono::{DateTime, TimeDelta, Utc};
@@ -104,7 +105,7 @@ impl SessionTicket {
   /// A ticket for `principal`, signed in at `now`.
   pub fn issue(principal: &Principal, now: DateTime<Utc>) -> Self {
     Self {
-      user_id: Some(principal.user_id),
+      user_id: Some(principal.owner.0),
       name: principal.name.clone(),
       email: principal.email.clone(),
       picture: principal.picture.clone(),
@@ -128,7 +129,7 @@ impl SessionTicket {
   /// The person the ticket signs in, or `None` when it carries no user id.
   pub fn principal(&self) -> Option<Principal> {
     Some(Principal {
-      user_id: self.user_id?,
+      owner: OwnerId(self.user_id?),
       name: self.name.clone(),
       email: self.email.clone(),
       picture: self.picture.clone(),
@@ -172,7 +173,7 @@ mod tests {
 
   fn principal() -> Principal {
     Principal {
-      user_id: Uuid::from_u128(7),
+      owner: OwnerId(Uuid::from_u128(7)),
       name: Some("Someone".to_owned()),
       email: Some("someone@example.com".to_owned()),
       picture: None,

@@ -5,6 +5,7 @@
 //! Development with `Auth__DevSeedKey` set, and the API refuses to start with a key shorter than 32 characters.
 
 use axum::http::HeaderMap;
+use calendar_infrastructure::OwnerId;
 use calendar_infrastructure::users::{self, SignIn};
 use subtle::ConstantTimeEq;
 
@@ -52,7 +53,7 @@ pub async fn authenticate(state: &AppState, headers: &HeaderMap) -> Result<Optio
   };
   match users::resolve(&mut connection, state.now(), &sign_in, Some(email)).await {
     Ok(user) => Ok(Some(Principal {
-      user_id: user.id(),
+      owner: OwnerId(user.id()),
       name: Some("dev-seed".to_owned()),
       email: user.email().map(str::to_owned),
       picture: None,

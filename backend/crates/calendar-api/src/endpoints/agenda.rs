@@ -4,7 +4,6 @@
 use axum::extract::State;
 use axum::response::Response;
 use calendar_domain::time::{DateRangeWindow, DayWindow};
-use calendar_infrastructure::OwnerId;
 use chrono::{DateTime, Utc};
 
 use super::agenda_builder;
@@ -43,7 +42,7 @@ pub async fn get_day(CurrentUser(user): CurrentUser, State(state): State<AppStat
   let range = DateRangeWindow::create(day, 1, zone).map_err(ApiError::internal)?;
   let as_of = range.days().first().copied();
   let mut connection = state.db().await?;
-  let mut snapshot = agenda_builder::read(&mut connection, OwnerId(user.user_id), &range, as_of.as_ref()).await?;
+  let mut snapshot = agenda_builder::read(&mut connection, user.owner, &range, as_of.as_ref()).await?;
   let only = snapshot
     .days
     .pop()
@@ -96,7 +95,7 @@ pub async fn get_week(CurrentUser(user): CurrentUser, State(state): State<AppSta
   // week that is wholly in the past has no overdue list (ADR-0024).
   let overdue_as_of = (today < week.end_date()).then(|| DayWindow::create(today, zone));
   let mut connection = state.db().await?;
-  let snapshot = agenda_builder::read(&mut connection, OwnerId(user.user_id), &week, overdue_as_of.as_ref()).await?;
+  let snapshot = agenda_builder::read(&mut connection, user.owner, &week, overdue_as_of.as_ref()).await?;
 
   request::ok(&WeekAgendaResponse {
     week_start: week.start_date(),

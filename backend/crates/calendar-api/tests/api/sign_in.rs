@@ -40,7 +40,7 @@ async fn attach_user_adds_the_user_id_for_a_new_person() {
   .expect("the sign-in succeeds");
 
   assert_eq!(
-    user_row(&app, principal.user_id).await,
+    user_row(&app, principal.owner.0).await,
     [
       Some("sub-new".to_owned()),
       Some("new@example.com".to_owned()),
@@ -68,7 +68,7 @@ async fn attach_user_lets_the_first_allow_listed_email_claim_the_legacy_owner() 
     .await
     .expect("the sign-in succeeds");
 
-  assert_eq!(principal.user_id, User::LEGACY_OWNER_ID);
+  assert_eq!(principal.owner.0, User::LEGACY_OWNER_ID);
   let [subject, email, ..] = user_row(&app, User::LEGACY_OWNER_ID).await;
   assert_eq!(subject.as_deref(), Some("sub-first"));
   assert_eq!(email.as_deref(), Some(FIRST));

@@ -19,6 +19,7 @@ use axum::http::{HeaderValue, StatusCode};
 use axum::response::{IntoResponse, Response};
 use base64::Engine;
 use base64::engine::general_purpose::URL_SAFE_NO_PAD;
+use calendar_infrastructure::OwnerId;
 use calendar_infrastructure::users::{self, SignIn};
 use chrono::{DateTime, TimeDelta, Utc};
 use serde::{Deserialize, Serialize};
@@ -444,7 +445,7 @@ pub async fn attach_user(
     .await
     .map_err(|error| SignInError::Directory(error.to_string()))?;
   Ok(Principal {
-    user_id: user.id(),
+    owner: OwnerId(user.id()),
     name: name.map(str::to_owned),
     email: Some(email.to_owned()),
     picture: picture.map(str::to_owned),

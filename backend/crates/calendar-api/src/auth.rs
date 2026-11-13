@@ -14,7 +14,7 @@ use axum::http::header::SET_COOKIE;
 use axum::http::request::Parts;
 use axum::http::{HeaderMap, StatusCode};
 use axum::response::{IntoResponse, Response};
-use uuid::Uuid;
+use calendar_infrastructure::OwnerId;
 
 use crate::error::ApiError;
 use crate::hosting::RequestOrigin;
@@ -24,8 +24,9 @@ use crate::state::AppState;
 /// The signed-in person of a request.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Principal {
-  /// Their `users.id`: the owner of every row the request reads or writes (ADR-0041).
-  pub user_id: Uuid,
+  /// Their `users.id`: the owner of every row the request reads or writes (ADR-0041). Typed once here, at
+  /// the authentication boundary, so a handler cannot pass another UUID (a path id, say) as the owner.
+  pub owner: OwnerId,
   /// Their display name, if the identity provider gave one.
   pub name: Option<String>,
   /// Their email.

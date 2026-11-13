@@ -62,7 +62,7 @@ pub async fn create(
     return Err(errors.into_problem().into());
   }
   let created = match TodoTask::create(
-    user.user_id,
+    user.owner.0,
     request.title.as_deref().unwrap_or_default(),
     request.due_date,
     request.due_at,
@@ -77,7 +77,7 @@ pub async fn create(
   };
 
   let mut connection = state.db().await?;
-  let version = tasks::insert(&mut connection, OwnerId(user.user_id), &created).await?;
+  let version = tasks::insert(&mut connection, user.owner, &created).await?;
   let location = format!("{}/api/tasks/{}", origin.base_url(), created.id());
   request::created(&location, &TaskResponse::from_task(&created, version.0))
 }
@@ -155,7 +155,7 @@ pub async fn list(CurrentUser(user): CurrentUser, State(state): State<AppState>,
     }
   };
 
-  let owner = OwnerId(user.user_id);
+  let owner = user.owner;
   let mut connection = state.db().await?;
   let page = tasks::list_page(&mut connection, owner, &list_view, after.as_ref(), page_size.unsigned_abs()).await?;
   let total = match (kind, after, dated) {
@@ -188,7 +188,7 @@ pub async fn list(CurrentUser(user): CurrentUser, State(state): State<AppState>,
 )]
 pub async fn get(RouteId(id): RouteId, CurrentUser(user): CurrentUser, State(state): State<AppState>) -> Result<Response, ApiError> {
   let mut connection = state.db().await?;
-  match tasks::find(&mut connection, OwnerId(user.user_id), id).await? {
+  match tasks::find(&mut connection, user.owner, id).await? {
     Some(found) => request::ok(&TaskResponse::from_task(&found.entity, found.version.0)),
     None => Err(not_found().into()),
   }
@@ -223,7 +223,7 @@ pub async fn update(
     return Err(errors.into_problem().into());
   }
 
-  let owner = OwnerId(user.user_id);
+  let owner = user.owner;
   let mut connection = state.db().await?;
   let Some(found) = tasks::find(&mut connection, owner, id).await? else {
     return Err(not_found().into());
@@ -262,7 +262,7 @@ pub async fn update(
   )
 )]
 pub async fn delete(RouteId(id): RouteId, CurrentUser(user): CurrentUser, State(state): State<AppState>) -> Result<Response, ApiError> {
-  let owner = OwnerId(user.user_id);
+  let owner = user.owner;
   let mut connection = state.db().await?;
   let Some(found) = tasks::find(&mut connection, owner, id).await? else {
     return Err(not_found().into());
@@ -294,7 +294,7 @@ pub async fn bulk(
   State(state): State<AppState>,
   JsonBody(request): JsonBody<BulkTaskRequest>,
 ) -> Result<Response, ApiError> {
-  let owner = OwnerId(user.user_id);
+  let owner = user.owner;
   let action = request.action;
   let mut errors = FieldErrors::new();
   errors.require(action.is_some(), "action", "Action is not supported.");
@@ -524,7 +524,7 @@ async fn apply_to_ids(
 )]
 pub async fn complete(RouteId(id): RouteId, CurrentUser(user): CurrentUser, State(state): State<AppState>) -> Result<Response, ApiError> {
   let now = state.now();
-  change(&state, OwnerId(user.user_id), id, |task| task.complete(now)).await
+  change(&state, user.owner, id, |task| task.complete(now)).await
 }
 
 // Reopens a task; reopening an open task changes nothing.
@@ -541,7 +541,7 @@ pub async fn complete(RouteId(id): RouteId, CurrentUser(user): CurrentUser, Stat
   )
 )]
 pub async fn reopen(RouteId(id): RouteId, CurrentUser(user): CurrentUser, State(state): State<AppState>) -> Result<Response, ApiError> {
-  change(&state, OwnerId(user.user_id), id, TodoTask::reopen).await
+  change(&state, user.owner, id, TodoTask::reopen).await
 }
 
 /// Loads, applies an idempotent change and saves only when something changed.

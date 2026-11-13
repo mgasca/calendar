@@ -19,4 +19,4 @@ Every brief has the same six fields. The facilitator may override any of them pe
 - **Pushback**: what it challenges on sight.
 - **Tensions**: where its concern most often pulls against the other experts', so the rebuttal argues trade-offs rather than positions.
 
-Keep briefs short: the agent reads one per run, at every phase.
+Keep briefs concise: the agent reads one per run, at every phase.

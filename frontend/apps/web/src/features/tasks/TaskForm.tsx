@@ -19,6 +19,7 @@ import {
   type TaskValues,
 } from './taskForm.ts';
 import { taskKey, taskQuery } from './useEditTask.ts';
+import { traceAction } from '../../telemetry/action.ts';
 
 const CHANGED_ELSEWHERE =
   'This task was changed elsewhere. The latest version is shown; check it and save again.';
@@ -88,11 +89,13 @@ export function TaskForm({
       const body = requestBody(values, candidates);
       const { data, error, response } =
         task && version !== undefined
-          ? await api.PUT('/api/tasks/{id}', {
-              params: { path: { id: task.id } },
-              body: { ...body, version },
-            })
-          : await api.POST('/api/tasks', { body });
+          ? await traceAction('ui.task.update', () =>
+              api.PUT('/api/tasks/{id}', {
+                params: { path: { id: task.id } },
+                body: { ...body, version },
+              }),
+            )
+          : await traceAction('ui.task.create', () => api.POST('/api/tasks', { body }));
       if (!data)
         throw new SaveTaskError(
           response.status === 400

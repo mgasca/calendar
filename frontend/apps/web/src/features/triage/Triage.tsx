@@ -15,6 +15,7 @@ import { deadlineInstants } from '../agenda/deadline.ts';
 import { apiError } from '../../api/apiError.ts';
 import { useToday } from '../agenda/useNow.ts';
 import { BULK_ID_LIMIT, BulkActionError, submitInBatches } from './bulkBatches.ts';
+import { traceAction } from '../../telemetry/action.ts';
 
 type Action = 'complete' | 'setDueDate' | 'setDueInstant' | 'clearDeadline' | 'delete';
 
@@ -32,17 +33,19 @@ export function Triage({ bulkIdLimit = BULK_ID_LIMIT }: TriageProps = {}) {
     queryKey: key,
     initialPageParam: undefined as string | undefined,
     queryFn: async ({ signal, pageParam }) => {
-      const { data, error, response } = await api.GET('/api/tasks', {
-        signal,
-        params: {
-          query: {
-            view: 'overdue',
-            today,
-            timeZone: zone,
-            ...(pageParam && { cursor: pageParam }),
+      const { data, error, response } = await traceAction('ui.triage.load', () =>
+        api.GET('/api/tasks', {
+          signal,
+          params: {
+            query: {
+              view: 'overdue',
+              today,
+              timeZone: zone,
+              ...(pageParam && { cursor: pageParam }),
+            },
           },
-        },
-      });
+        }),
+      );
       if (!data) throw apiError({ response, error }, 'Couldn’t load overdue tasks.');
       return data;
     },
@@ -76,20 +79,35 @@ export function Triage({ bulkIdLimit = BULK_ID_LIMIT }: TriageProps = {}) {
         ...(dueAt && { dueAt }),
       };
       if (all) {
-        const { data, response } = await api.POST('/api/tasks/bulk', {
-          body: {
-            ...payload,
-            filter: { view: 'overdue', today, timeZone: zone, expectedTotal: total },
+        return traceAction(
+          'ui.tasks.bulk',
+          async () => {
+            const { data, response } = await api.POST('/api/tasks/bulk', {
+              body: {
+                ...payload,
+                filter: { view: 'overdue', today, timeZone: zone, expectedTotal: total },
+              },
+            });
+            if (!data) throw new BulkActionError(response.status, 0);
+            return data;
           },
-        });
-        if (!data) throw new BulkActionError(response.status, 0);
-        return data;
+          { 'app.bulk.action': kind, 'app.bulk.batches': 1 },
+        );
       }
 
-      return submitInBatches(
-        selected,
-        (ids) => api.POST('/api/tasks/bulk', { body: { ...payload, ids } }),
-        bulkIdLimit,
+      // One span over every batch; `within` puts each batch's request in it.
+      return traceAction(
+        'ui.tasks.bulk',
+        (within) =>
+          submitInBatches(
+            selected,
+            (ids) => within(() => api.POST('/api/tasks/bulk', { body: { ...payload, ids } })),
+            bulkIdLimit,
+          ),
+        {
+          'app.bulk.action': kind,
+          'app.bulk.batches': Math.ceil(selected.length / bulkIdLimit),
+        },
       );
     },
     onSuccess: (result) => {

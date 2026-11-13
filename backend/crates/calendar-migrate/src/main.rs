@@ -27,8 +27,9 @@ async fn run(connection_string: Option<&str>) -> Result<MigrationReport, String>
     .filter(|value| !value.trim().is_empty())
     .ok_or_else(|| format!("{CONNECTION_VARIABLE} is not set. Set it to the calendar_migrator connection string."))?;
   let config = ConnectionConfig::parse(connection_string).map_err(|e| format!("{CONNECTION_VARIABLE}: {e}"))?;
-  let connection = connection::connect(&config).await.map_err(|e| e.to_string())?;
-  migrations::migrate(connection).await.map_err(|e| e.to_string())
+  // The messages name the failed step; the causes carry the server's words, so print the whole chain.
+  let connection = connection::connect(&config).await.map_err(|e| connection::error_chain(&e))?;
+  migrations::migrate(connection).await.map_err(|e| connection::error_chain(&e))
 }
 
 fn describe(report: &MigrationReport) -> String {

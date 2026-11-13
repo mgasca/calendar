@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "astro dev",
-    "build": "astro build",
+    "build": "astro build && pnpm --filter @calendar/slides build --out ../docs/dist/slides",
     "preview": "astro preview",
     "typecheck": "astro check",
     "test": "vitest run src",

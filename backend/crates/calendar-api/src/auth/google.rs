@@ -349,7 +349,7 @@ fn check_id_token(
   }
   claims["sub"]
     .as_str()
-    .filter(|subject| !is_blank(Some(subject)))
+    .filter(|subject| !is_blank(subject))
     .map(str::to_owned)
     .ok_or_else(|| "the ID token has no subject".to_owned())
 }
@@ -432,7 +432,7 @@ pub async fn attach_user(
   name: Option<&str>,
   picture: Option<&str>,
 ) -> Result<Principal, SignInError> {
-  let subject = subject.filter(|subject| !is_blank(Some(subject))).ok_or(SignInError::NoSubject)?;
+  let subject = subject.filter(|subject| !is_blank(subject)).ok_or(SignInError::NoSubject)?;
   let mut connection = state.db().await.map_err(|error| SignInError::Directory(error.to_string()))?;
   let sign_in = SignIn {
     email,

@@ -152,7 +152,7 @@ API telemetry (#731) lives in `calendar-api/src/telemetry/`:
 
 - Browser: the Playwright flow tests, nightly and on demand.
 - Binding: the browser-free check on every pull request.
-- API: `cargo test` for the exporter wiring, `traceparent` extraction, redaction and the stub guard. `crates/calendar-api/tests/telemetry.rs` runs the production pipeline with in-memory exporters and scans every exported span, log and metric for seeded personal data. The unit tests in `src/telemetry*` cover the `OTEL_*` configuration, the statement shape and the allow-list.
+- API: `cargo test` for the exporter wiring, `traceparent` extraction, redaction and the stub guard. `crates/calendar-api/tests/api/telemetry.rs` runs the production pipeline with in-memory exporters and scans every exported span, log and metric for seeded personal data. The unit tests in `src/telemetry*` cover the `OTEL_*` configuration, the statement shape and the allow-list.
 - Web: Vitest for the attribute filter and the no-exporter default.
 
 ### Delivered in #730

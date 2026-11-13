@@ -1,9 +1,7 @@
 //! Ports `Endpoints/WeekAgendaEndpointsTests.cs`: `GET /api/agenda/week`.
 
-mod common;
-
+use crate::common::*;
 use chrono::{Datelike, Days, Weekday};
-use common::*;
 
 const NEW_YORK: &str = "America/New_York";
 

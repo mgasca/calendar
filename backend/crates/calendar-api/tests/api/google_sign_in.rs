@@ -3,18 +3,16 @@
 //! injectable, so the whole flow runs: redirect with `state`, PKCE and `nonce`, callback, code exchange,
 //! allow-list, user row and session cookie.
 
-mod common;
-
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
 
+use crate::common::*;
 use axum::extract::State;
 use axum::routing::{get, post};
 use axum::{Form, Json, Router};
 use base64::Engine;
 use base64::engine::general_purpose::URL_SAFE_NO_PAD;
 use calendar_api::auth::google::{CALLBACK_PATH, FAILURE_REDIRECT, GoogleEndpoints, SIGN_IN_COOKIE};
-use common::*;
 use sha2::{Digest, Sha256};
 
 const CLIENT_ID: &str = "test-client";

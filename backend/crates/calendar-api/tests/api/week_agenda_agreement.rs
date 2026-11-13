@@ -2,11 +2,9 @@
 //! on and around every day edge of a week, in ordinary, DST, skipped-midnight and skipped-date weeks,
 //! `days[i]` of the week equals the day agenda for `weekStart + i`, item for item and in the same order.
 
-mod common;
-
+use crate::common::*;
 use calendar_domain::time::{DateRangeWindow, time_zones};
 use chrono::Days;
-use common::*;
 
 fn add_days(date: NaiveDate, days: i64) -> NaiveDate {
   if days >= 0 {

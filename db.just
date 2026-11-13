@@ -67,7 +67,7 @@ migrate:
 # Seed a running API with a sample day (e.g. just db seed --date 2026-01-01 --time-zone UTC --api-url URL; additive)
 [positional-arguments]
 seed *args:
-    dotnet run tools/seed-dev/seed-dev.cs -- "$@"
+    deno run --config tools/deno.json --frozen --no-prompt --allow-env --allow-net tools/seed-dev/seed-dev.ts "$@"
 
 # Open psql on the local database as calendar_migrator
 psql:

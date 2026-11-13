@@ -664,7 +664,7 @@
       "interfaces": [
         { "unique-id": "migrator-command", "commands": ["just db migrate", "just infra migrate <env>", ".github/workflows/migrate.yml (workflow_dispatch, environment input)"] }
       ],
-      "metadata": { "adrs": ["ADR-0052", "ADR-0031", "ADR-0034"], "source": "tools/infra/Database.cs, backend/crates/calendar-migrate, backend/crates/calendar-infrastructure/migrations" }
+      "metadata": { "adrs": ["ADR-0052", "ADR-0031", "ADR-0034"], "source": "tools/infra/database.ts, backend/crates/calendar-migrate, backend/crates/calendar-infrastructure/migrations" }
     },
     {
       "unique-id": "infra-tool",
@@ -846,7 +846,7 @@
       "interfaces": [
         { "unique-id": "ops-vault-uri", "url": "https://kv-ops-<suffix>.vault.azure.net/" }
       ],
-      "metadata": { "ownership": "platform", "adrs": ["ADR-0032", "ADR-0035"], "source": "infra/modules/foundation.bicep, tools/infra/Database.cs" }
+      "metadata": { "ownership": "platform", "adrs": ["ADR-0032", "ADR-0035"], "source": "infra/modules/foundation.bicep, tools/infra/database.ts" }
     },
     {
       "unique-id": "log-analytics",

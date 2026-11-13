@@ -1,9 +1,10 @@
 //! A run of consecutive local days.
 
+use std::num::NonZeroUsize;
+
 use chrono::{DateTime, Datelike, Days, NaiveDate, Utc};
 
 use super::{DayWindow, IanaZone};
-use crate::error::ArgumentError;
 
 /// Consecutive local calendar days in a time zone, from [`start_date`](Self::start_date) up to (not including)
 /// [`end_date`](Self::end_date), each as its [`DayWindow`]. The whole range is the half-open UTC interval
@@ -21,34 +22,36 @@ pub struct DateRangeWindow {
 
 impl DateRangeWindow {
   /// Days in an ISO week.
-  pub const DAYS_IN_WEEK: usize = 7;
+  pub const DAYS_IN_WEEK: NonZeroUsize = NonZeroUsize::new(7).unwrap();
 
-  /// Builds the `day_count` consecutive days from `start_date` in `zone`. Fails (parameter `dayCount`) when
-  /// `day_count` is zero.
+  /// Builds the `day_count` consecutive days from `start_date` in `zone`. The count is never zero, so a range
+  /// is never empty.
   ///
   /// # Panics
   ///
   /// When the range reaches the limits of the dates `chrono` can represent (see [`DayWindow::create`]).
-  pub fn create(start_date: NaiveDate, day_count: usize, zone: IanaZone) -> Result<Self, ArgumentError> {
-    if day_count < 1 {
-      return Err(ArgumentError::new(
-        "dayCount",
-        format!("dayCount ('{day_count}') must be greater than or equal to '1'."),
-      ));
-    }
-
+  pub fn create(start_date: NaiveDate, day_count: NonZeroUsize, zone: IanaZone) -> Self {
     let days = start_date
       .iter_days()
-      .take(day_count)
+      .take(day_count.get())
       .map(|date| DayWindow::create(date, zone))
       .collect::<Vec<_>>();
-    assert!(days.len() == day_count, "the range runs past the last supported date");
-    Ok(Self { zone, days })
+    assert!(days.len() == day_count.get(), "the range runs past the last supported date");
+    Self { zone, days }
+  }
+
+  /// The one local day `date` in `zone`.
+  ///
+  /// # Panics
+  ///
+  /// When `date` is at the limits of the dates `chrono` can represent (see [`DayWindow::create`]).
+  pub fn single_day(date: NaiveDate, zone: IanaZone) -> Self {
+    Self::create(date, NonZeroUsize::MIN, zone)
   }
 
   /// The ISO week (Monday to Sunday) that contains `any_date`, in `zone`.
   pub fn iso_week(any_date: NaiveDate, zone: IanaZone) -> Self {
-    Self::create(Self::iso_week_start(any_date), Self::DAYS_IN_WEEK, zone).expect("a week has at least one day")
+    Self::create(Self::iso_week_start(any_date), Self::DAYS_IN_WEEK, zone)
   }
 
   /// The Monday of the ISO week that contains `date`.

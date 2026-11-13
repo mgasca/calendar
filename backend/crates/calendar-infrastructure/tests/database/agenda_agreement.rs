@@ -127,7 +127,7 @@ async fn the_agenda_selects_exactly_what_day_inclusion_selects() {
     let context = format!("{date_text} {zone_id}");
     let date: NaiveDate = date_text.parse().unwrap();
     let zone = time_zones::find_iana(zone_id).unwrap();
-    let range = DateRangeWindow::create(date, 1, zone).unwrap();
+    let range = DateRangeWindow::single_day(date, zone);
     let window = range.days()[0];
     let events = day_events(date, zone_id, &window);
     let tasks = day_tasks(date, &window);
@@ -280,7 +280,7 @@ async fn a_week_selects_exactly_what_its_days_select() {
     let mut union = (BTreeSet::new(), BTreeSet::new(), BTreeSet::new());
     let mut days_with_events = 0;
     for (i, window) in range.days().iter().enumerate() {
-      let day_range = DateRangeWindow::create(window.date(), 1, zone).unwrap();
+      let day_range = DateRangeWindow::single_day(window.date(), zone);
       let day = agenda::read(&mut f.conn, OWNER, &day_range, Some(window), 20).await.unwrap();
       let on_day = format!("{context}, {}", window.date());
 

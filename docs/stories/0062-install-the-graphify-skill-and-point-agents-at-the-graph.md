@@ -4,6 +4,7 @@ date: 2026-11-13
 issue: https://github.com/mgasca/calendar/issues/702
 pr:
   - https://github.com/mgasca/calendar/pull/703
+  - https://github.com/mgasca/calendar/pull/704
 adrs: []
 ---
 
@@ -13,7 +14,7 @@ adrs: []
 
 > As the maintainer, I need the graphify skill, its hooks and a short rule for agents to live in the repository, so that every checkout, worktree and agent session can refresh and query the committed knowledge graph the same way, without a per-machine install of the skill.
 
-Tracked in issue #702. Card in [#703](https://github.com/mgasca/calendar/pull/703); the skill, hooks and guidance are delivered in the pull request stacked on it.
+Tracked in issue #702. Card in [#703](https://github.com/mgasca/calendar/pull/703); the skill, hooks and guidance are delivered in [#704](https://github.com/mgasca/calendar/pull/704), stacked on it.
 
 ## Background
 

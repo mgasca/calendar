@@ -54,8 +54,9 @@ describe('published documentation links', () => {
   it('resolves every internal link and anchor, and leaves no repository Markdown links', async () => {
     const files = await pages('dist');
     expect(files.length).toBeGreaterThan(0);
-    // Every page repeats the sidebar, so the ~49,000 links hold only ~2,100 distinct hrefs. Collect them, with the first page that uses each, and check each href once:
-    // a check per occurrence ran close to Vitest's 5 s timeout on a loaded machine (#721).
+    // Every page repeats the sidebar, so the ~49,000 links hold only ~2,100 distinct hrefs.
+    // Collect them, with the first page that uses each, and check each href once: a check
+    // per occurrence ran close to Vitest's 5 s timeout on a loaded machine (#721).
     const linkedFrom = new Map<string, string>();
     for (const file of files) {
       const html = await readFile(file, 'utf8');

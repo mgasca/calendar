@@ -12,7 +12,7 @@ async fn app_role_can_connect() {
 
   let client = database.app_client().await;
 
-  assert_eq!(scalar(&client, "SELECT current_user::text").await, "calendar_app");
+  assert_eq!(scalar::<String>(&client, "SELECT current_user::text").await, "calendar_app");
 }
 
 #[tokio::test]
@@ -61,7 +61,7 @@ async fn app_role_can_read_but_not_write_the_migration_history() {
   let app = database.app_client().await;
 
   assert_eq!(
-    scalar(&app, "SELECT max(version)::text FROM __diesel_schema_migrations").await,
+    scalar::<String>(&app, "SELECT max(version)::text FROM __diesel_schema_migrations").await,
     "20261111000000"
   );
   for sql in [
@@ -84,7 +84,7 @@ async fn app_role_can_read_and_insert_the_session_key_but_not_change_it() {
   assert_eq!(app.execute(insert, &[]).await.unwrap(), 1);
   assert_eq!(app.execute(insert, &[]).await.unwrap(), 0, "a second replica's insert is a no-op");
   assert_eq!(
-    scalar(&app, "SELECT encode(key_material, 'hex') FROM session_keys").await,
+    scalar::<String>(&app, "SELECT encode(key_material, 'hex') FROM session_keys").await,
     "ab".repeat(32)
   );
 
@@ -129,7 +129,7 @@ async fn concurrent_first_inserts_of_the_session_key_agree_on_one_row() {
         .unwrap();
       (
         inserted,
-        scalar(&client, "SELECT encode(key_material, 'hex') FROM session_keys").await,
+        scalar::<String>(&client, "SELECT encode(key_material, 'hex') FROM session_keys").await,
       )
     }));
   }

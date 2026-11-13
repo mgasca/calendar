@@ -6,7 +6,7 @@ use tokio_postgres::error::SqlState;
 use crate::support::{failure, insert_user, scalar, strings};
 
 async fn index_definition(client: &tokio_postgres::Client, table: &str, index: &str) -> String {
-  scalar(
+  scalar::<String>(
     client,
     &format!("SELECT indexdef FROM pg_indexes WHERE tablename = '{table}' AND indexname = '{index}'"),
   )
@@ -77,14 +77,14 @@ async fn owner_id_is_a_non_null_foreign_key_to_users() {
   let client = database.migrator_client().await;
 
   for (table, constraint) in [("events", "fk_events_owner"), ("tasks", "fk_tasks_owner")] {
-    let nullable = scalar(
+    let nullable = scalar::<String>(
       &client,
       &format!("SELECT is_nullable::text FROM information_schema.columns WHERE table_name = '{table}' AND column_name = 'owner_id'"),
     )
     .await;
     assert_eq!(nullable, "NO");
 
-    let definition = scalar(
+    let definition = scalar::<String>(
       &client,
       &format!("SELECT pg_get_constraintdef(oid) FROM pg_constraint WHERE conname = '{constraint}'"),
     )

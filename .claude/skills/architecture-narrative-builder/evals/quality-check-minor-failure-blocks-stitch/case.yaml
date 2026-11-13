@@ -1,0 +1,9 @@
+schema_version: "1.1"
+name: quality-check-minor-failure-blocks-stitch
+expected_outcome: |
+  Act 3 uses the term "drop pool", which Act 1's vocabulary does not define,
+  and the prompt calls the edit trivial. In stitch-only mode the skill still
+  reports quality check 6 (vocabulary) as failed, names "drop pool", and asks
+  the user to define it, replace it or accept the failure. It does not stitch:
+  no docs/narratives/ticket-kata-narrative.md is written, and the skill does
+  not define or reword the term itself.

@@ -198,7 +198,7 @@
 <li><strong>fails-on</strong>: pull_request, merge_group</li>
 <li><strong>reports-on</strong>: push, workflow_dispatch, any run on a provisional path</li>
 <li><strong>remedy</strong>: Re-run all jobs; Re-run failed jobs repeats only CI result on the same durations</li>
-<li><strong>tests</strong>: tools/ci-timings/tests/GateTests.cs runs the committed jq program against canned jobs API responses, and checks that ci.yml runs that file</li>
+<li><strong>tests</strong>: tools/ci-timings/tests/gate_test.ts runs the committed jq program against canned jobs API responses, and checks that ci.yml runs that file</li>
 <li><strong>critical-path-cost</strong>: CI result +3 s: median 6 s (n = 11) with the gate against 3 s (n = 23) without, measured in #395; the comparison itself takes 0 s, the rest is the sparse checkout and its post step. Accepted by the maintainer on 2026-11-07</li>
 </ul>
 </li>
@@ -211,7 +211,7 @@
 <li><strong>significance</strong>: 0.002</li>
 <li><strong>minimum-effect</strong>: Hodges-Lehmann shift of at least max(10 s, 5 % of the baseline median)</li>
 <li><strong>output</strong>: Opens, or comments on, the one open performance issue titled ‘CI run-time trend: …’; never fails a run</li>
-<li><strong>tests</strong>: tools/ci-timings/tests/TrendTests.cs, on constructed histories</li>
+<li><strong>tests</strong>: tools/ci-timings/tests/trend_test.ts, on constructed histories</li>
 </ul>
 </li>
 <li><strong>mechanism-guards</strong>:

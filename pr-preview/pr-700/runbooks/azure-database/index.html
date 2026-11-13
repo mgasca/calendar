@@ -150,7 +150,7 @@
 <p>Azure makes <code>azure_pg_admin</code> the owner of the <code>public</code> schema. The administrator may then be unable to revoke <code>CREATE</code> from <code>PUBLIC</code> (the group that contains every role). PostgreSQL reports <code>permission denied for schema public</code> or <code>must be owner of schema public</code>. Inspect the failure as administrator.</p>
 <p>An <strong>unverified fallback</strong> is to run <code>ALTER SCHEMA public OWNER TO calendar_migrator;</code> as administrator. It changes who owns the schema, Azure may not allow it, and the owner must approve it first. If it succeeds, rerun initialization and repeat both checks.</p>
 <h3 id="local-integration-test">Local integration test</h3>
-<p>To check the role grants without Azure, start Docker and run <code>dotnet run tools/infra/integration/database.cs</code> from the repository root. It compares the tool’s grants with the local initialization script and tests access for the migrator, the app and a role with no privileges. It does not replace the live checks.</p>
+<p>To check the role grants without Azure, start Docker and run <code>just infra integration</code> from the repository root. It compares the tool’s grants with the local initialization script and tests access for the migrator, the app and a role with no privileges. It does not replace the live checks.</p>
 <h2 id="initialization-recovery">Initialization recovery</h2>
 <p>The ops vault is the source of truth for <code>calendar-migrator-password</code> and <code>calendar-app-password</code>. For each role, initialization does this:</p>
 

@@ -19,5 +19,6 @@ mod session_keys;
 mod sign_in;
 mod smoke;
 mod tasks;
+mod telemetry;
 mod week_agenda_agreement;
 mod week_agenda_endpoints;

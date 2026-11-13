@@ -219,8 +219,8 @@ async fn an_allow_listed_person_is_signed_in_and_gets_their_user_row() {
   let client = app.database().migrator_client().await;
   let row = client
     .query_one(
-      "SELECT u.google_subject, u.email, u.display_name, u.picture_url FROM users u JOIN tasks t ON t.owner_id = u.id WHERE t.id = $1::text::uuid",
-      &[&task.id.to_string()],
+      "SELECT u.google_subject, u.email, u.display_name, u.picture_url FROM users u JOIN tasks t ON t.owner_id = u.id WHERE t.id = $1",
+      &[&task.id],
     )
     .await
     .unwrap();

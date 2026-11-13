@@ -3,7 +3,7 @@ import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { http, HttpResponse } from 'msw';
 
-import { renderApp } from '../../test/render.tsx';
+import { frameFirst, renderApp } from '../../test/render.tsx';
 import { server } from '../../test/server.ts';
 import { fromEvent } from './eventForm.ts';
 
@@ -29,8 +29,9 @@ function timed(overrides: Partial<StoredEvent> = {}): StoredEvent {
 }
 
 /**
- * A tiny event store behind MSW: the day agenda lists every stored event, and `PUT` and `DELETE`
- * behave like the API, including the version check. `respond` overrides one write's answer.
+ * A tiny event store behind MSW: the day agenda lists every stored event except timed ones moved
+ * to a later day, and `PUT` and `DELETE` behave like the API, including the version check.
+ * `respond` overrides one write's answer.
  */
 function serveStore(initial: StoredEvent[]) {
   const store = new Map(initial.map((e) => [e.id, e]));
@@ -54,7 +55,7 @@ function serveStore(initial: StoredEvent[]) {
             endDate: e.endDate ?? '',
           })),
         events: events
-          .filter((e) => !e.allDay)
+          .filter((e) => !e.allDay && (e.start ?? '') < at('00:00', '2099-10-30'))
           .map((e) => ({
             id: e.id,
             title: e.title,
@@ -304,6 +305,30 @@ describe('editing an event from the day view', () => {
     );
     await user.click(within(dialog).getByRole('button', { name: 'Close' }));
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+  });
+
+  // #698: a frame that came before the refetched day rendered found the old row, focused its
+  // title, and lost focus to <body> when the row went.
+  it('moves focus to the day heading when a save moves the event to another day', async () => {
+    frameFirst();
+    serveStore([timed()]);
+    const { user, dialog } = await openEvent('Dentist');
+
+    await user.clear(within(dialog).getByLabelText('Start'));
+    await user.type(within(dialog).getByLabelText('Start'), '2099-10-30T15:00');
+    await user.click(within(dialog).getByRole('button', { name: 'Save event' }));
+
+    expect(await screen.findByText('Dentist saved.')).toBeInTheDocument();
+    await waitFor(() => {
+      expect(screen.queryByRole('button', { name: 'Dentist' })).not.toBeInTheDocument();
+    });
+    // Shorter than the test timeout, so a regression reports where focus went.
+    await waitFor(
+      () => {
+        expect(screen.getByRole('heading', { level: 1 })).toHaveFocus();
+      },
+      { timeout: 2000 },
+    );
   });
 });
 

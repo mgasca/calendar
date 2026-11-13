@@ -85,6 +85,7 @@ up:
         && VITE_OTEL_TRACES_EXPORTER=otlp corepack pnpm exec vite build --outDir "$dir/web" --emptyOutDir) \
         > "$dir/logs/web-build.log" 2>&1 || fail "the web app did not build"
 
+    # Metrics are pushed every 5 s instead of the SDK's 60 s, so a flow test finds its request metrics quickly.
     # The API runs as Development (seed key and the stub overrides need it) with a clean environment, so no
     # setting from .env or the shell (a real Google client, another seed key) reaches it. setsid gives each
     # process its own group, which `down` stops as a whole.
@@ -103,6 +104,7 @@ up:
         OTEL_EXPORTER_OTLP_ENDPOINT="$CALENDAR_E2E_OTLP_HTTP_URL" \
         OTEL_EXPORTER_OTLP_PROTOCOL=http/protobuf \
         OTEL_SERVICE_NAME=calendar-api \
+        OTEL_METRIC_EXPORT_INTERVAL=5000 \
         backend/target/debug/calendar-api > "$dir/logs/api.log" 2>&1 < /dev/null &
     echo "CALENDAR_E2E_API_PID=$!" >> "$dir/stack.env"
     # vite preview serves the build and proxies /api (and /otlp, #732) like vite dev. CALENDAR_DEV_SIGN_IN stays

@@ -50,7 +50,7 @@ The API refuses to start when an override is set outside `Development`, or names
 | Offset | Service |
 | --- | --- |
 | 17 | OTLP gRPC |
-| 18 | OTLP HTTP (the API's `OTEL_EXPORTER_OTLP_ENDPOINT`, the web app's `CALENDAR_OTLP_URL`) |
+| 18 | OTLP HTTP (the API's `OTEL_EXPORTER_OTLP_ENDPOINT`, the web app's `CALENDAR_OTLP_URL`); the API pushes metrics every 5 s here (`OTEL_METRIC_EXPORT_INTERVAL`) |
 | 20 | Tempo |
 | 30 | Grafana |
 | 31 | Loki |

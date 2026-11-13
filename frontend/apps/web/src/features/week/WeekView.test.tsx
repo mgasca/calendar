@@ -5,7 +5,7 @@ import userEvent from '@testing-library/user-event';
 import { http, HttpResponse } from 'msw';
 import { Profiler } from 'react';
 
-import { eventually, renderApp, renderInRouter, settle } from '../../test/render.tsx';
+import { eventually, frameFirst, renderApp, renderInRouter, settle } from '../../test/render.tsx';
 import { server } from '../../test/server.ts';
 import { emptyWeek, madridMidnight, TEST_ZONE as ZONE } from '../../test/weekAgenda.ts';
 import { agendaKey } from '../day/useDayAgenda.ts';
@@ -1027,6 +1027,54 @@ describe('editing from the week (story 0047)', () => {
     );
     await waitFor(() => expect(weekHeading()).toHaveFocus());
   });
+
+  // #698: a frame that came before the refetched week rendered found the old title still
+  // connected, focused it, and lost focus to <body> when the row went.
+  it('moves focus to the heading when a save moves the event out of the week', async () => {
+    frameFirst();
+    let moved = false;
+    server.use(
+      http.get('*/api/events/:id', ({ params }) =>
+        HttpResponse.json(stored(String(params.id), 'Design review')),
+      ),
+      http.put('*/api/events/:id', ({ params }) => {
+        moved = true;
+        return HttpResponse.json(
+          stored(String(params.id), 'Design review', {
+            start: new Date('2026-11-04T11:00:00+01:00').toISOString(),
+            end: new Date('2026-11-04T12:00:00+01:00').toISOString(),
+            version: 5,
+          }),
+        );
+      }),
+    );
+    serveWeeks((date, today) => {
+      if (date !== THIS_WEEK) return emptyWeek(date, today);
+      const week = busyWeek();
+      if (moved) {
+        for (const day of week.days) {
+          day.events = day.events.filter((event) => event.title !== 'Design review');
+        }
+      }
+      return week;
+    });
+    renderApp('/week/2026-10-26');
+    const user = userEvent.setup();
+
+    await user.click(await screen.findByRole('button', { name: 'Design review' }));
+    const dialog = await screen.findByRole('dialog', { name: 'Edit event' });
+    const start = await within(dialog).findByLabelText('Start');
+    await user.clear(start);
+    await user.type(start, '2026-11-04T11:00');
+    await user.click(within(dialog).getByRole('button', { name: 'Save event' }));
+
+    expect(await screen.findByText('Design review saved.')).toBeInTheDocument();
+    await waitFor(() =>
+      expect(screen.queryByRole('button', { name: 'Design review' })).not.toBeInTheDocument(),
+    );
+    // Shorter than the test timeout, so a regression reports where focus went.
+    await waitFor(() => expect(weekHeading()).toHaveFocus(), { timeout: 2000 });
+  });
 });
 
 describe('editing a task from the week (story 0048)', () => {
@@ -1090,5 +1138,45 @@ describe('editing a task from the week (story 0048)', () => {
 
     expect(await screen.findByText('Task saved.')).toBeInTheDocument();
     expect(saved).toMatchObject({ title: 'File expenses', version: 2 });
+  });
+
+  // #698: a frame that came before the refetched week rendered found the old title, focused it,
+  // and lost focus to <body> when the row went.
+  it('moves focus to the heading when a save moves the task out of the week', async () => {
+    frameFirst();
+    let moved = false;
+    server.use(
+      http.get('*/api/tasks/:id', ({ params }) => HttpResponse.json(stored(String(params.id)))),
+      http.put('*/api/tasks/:id', ({ params }) => {
+        moved = true;
+        return HttpResponse.json(stored(String(params.id), { dueDate: '2026-11-03', version: 3 }));
+      }),
+    );
+    serveWeeks((date, today) => {
+      if (date !== THIS_WEEK) return emptyWeek(date, today);
+      const week = busyWeek();
+      if (moved) {
+        for (const day of week.days) {
+          day.tasks = day.tasks.filter((t) => t.title !== 'Call bank');
+        }
+      }
+      return week;
+    });
+    renderApp('/week/2026-10-26');
+    const user = userEvent.setup();
+
+    await user.click(await screen.findByRole('button', { name: 'Call bank' }));
+    const dialog = await screen.findByRole('dialog', { name: 'Edit task' });
+    const due = await within(dialog).findByLabelText('Due date');
+    await user.clear(due);
+    await user.type(due, '2026-11-03');
+    await user.click(within(dialog).getByRole('button', { name: 'Save task' }));
+
+    expect(await screen.findByText('Task saved.')).toBeInTheDocument();
+    await waitFor(() =>
+      expect(screen.queryByRole('button', { name: 'Call bank' })).not.toBeInTheDocument(),
+    );
+    // Shorter than the test timeout, so a regression reports where focus went.
+    await waitFor(() => expect(weekHeading()).toHaveFocus(), { timeout: 2000 });
   });
 });

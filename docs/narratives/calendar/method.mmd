@@ -1,17 +1,12 @@
 flowchart LR
-  issue["Issue: request and design"]
-  card["PR 0: story card and ADRs"]
-  worker["Worker agents, one worktree each"]
-  guidance["Agent guidance, skills and hooks"]
-  ci["CI: path-filtered jobs and run-time gates"]
-  review["Review before merge: reviewers and skeptics"]
-  maintainer(["Maintainer accepts and merges"])
-  lessons["Dream-weaver: lessons into guidance"]
-  dashboard["Delivery dashboard: daily snapshots"]
-  issue --> card --> worker
-  guidance -->|loaded and enforced| worker
-  worker -->|stacked pull requests| ci
-  ci --> review --> maintainer
-  maintainer -->|merged work and transcripts| lessons
-  lessons --> guidance
-  ci --> dashboard
+    issue[Issue] --> card[Story card]
+    card --> adr[ADR<br/>accepted by the maintainer]
+    adr --> change[Change by a delivery agent<br/>guidance, skills, hooks]
+    change --> ci[CI<br/>path-scoped jobs, run-time gates]
+    change --> review[Reviewers and skeptics<br/>on request]
+    ci --> merge{Maintainer<br/>authorizes the merge}
+    review --> merge
+    merge -->|correction round| change
+    merge --> main[main and the docs site]
+    main -->|lesson from a miss| guidance[Guidance, skill or hook]
+    guidance --> change

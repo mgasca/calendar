@@ -95,6 +95,10 @@ jobs:
       CARGO_TERM_COLOR: always
       # CI builds from scratch or from the cache below, so incremental compilation only adds to the cache.
       CARGO_INCREMENTAL: 0
+      # File and line tables only, for panics and backtraces; coverage comes from instrumentation, not debug info. Full
+      # debug info made the cached dependencies and every test binary several times larger (#776). The test profile
+      # inherits dev, so Clippy, the instrumented build and the contract build still share one setting.
+      CARGO_PROFILE_DEV_DEBUG: line-tables-only
     steps:
       - uses: actions/checkout@v7
       # The toolchain pinned in backend/rust-toolchain.toml, with rustfmt and clippy. Runners ship rustup; naming the
@@ -107,16 +111,19 @@ jobs:
           echo "channel=$channel" >> "$GITHUB_OUTPUT"
           cargo --version
       # The registry and the compiled dependencies, per toolchain and lock file; an older cache of the same toolchain
-      # is a starting point when the lock file changed.
-      - uses: actions/cache@v6
+      # is a starting point when the lock file changed. It is saved at the end of the job, after the prune, and only
+      # holds dependencies (`deps` in the key, so no older cache with the workspace's own artifacts is restored).
+      - name: Restore the dependency cache
+        id: cache
+        uses: actions/cache/restore@v6
         with:
           path: |
             ~/.cargo/registry/index
             ~/.cargo/registry/cache
             ~/.cargo/git/db
             backend/target
-          key: backend-${{ runner.os }}-rust-${{ steps.toolchain.outputs.channel }}-${{ hashFiles('backend/Cargo.lock') }}
-          restore-keys: backend-${{ runner.os }}-rust-${{ steps.toolchain.outputs.channel }}-
+          key: backend-${{ runner.os }}-rust-${{ steps.toolchain.outputs.channel }}-deps-${{ hashFiles('backend/Cargo.lock') }}
+          restore-keys: backend-${{ runner.os }}-rust-${{ steps.toolchain.outputs.channel }}-deps-
       - run: cargo fetch --locked
       # Clippy denies every warning; the workspace lints in Cargo.toml set the levels.
       - run: cargo clippy --workspace --all-targets --locked -- -D warnings
@@ -148,6 +155,37 @@ jobs:
           name: backend-test-results
           path: backend/TestResults
           if-no-files-found: ignore
+      # Cache only what pays: the workspace's own crates are rebuilt on every run (the checkout gives their sources a
+      # new mtime), so their artifacts, incremental data and llvm-cov's profiles are dropped before the save. They were
+      # most of the 2 GB that every run restored (#776). Cargo names a package's fingerprint and build directories
+      # after the package and its outputs in deps/ after each target, with `-` as `_`; the names come from cargo
+      # metadata, so a new crate or test file needs no edit here. Saved, like before, only when the job succeeded.
+      - name: Keep only the dependencies in the cache
+        if: steps.cache.outputs.cache-hit != 'true'
+        run: |
+          du -sh target
+          names=$(cargo metadata --no-deps --locked --format-version 1 \
+            | jq -r '.packages[] | .name, (.name, .targets[].name | gsub("-"; "_"))' | sort -u)
+          find target -name '*.profraw' -delete
+          find target -mindepth 1 -maxdepth 3 -type d -name .fingerprint | while read -r fingerprint; do
+            profile=$(dirname "$fingerprint")
+            find "$profile" -maxdepth 1 -type f -delete
+            rm -rf "$profile/incremental" "$profile/examples"
+            for name in $names; do
+              rm -rf "$profile/.fingerprint/$name-"* "$profile/build/$name-"* "$profile/deps/$name-"* "$profile/deps/lib$name-"*
+            done
+          done
+          du -sh target
+      - name: Save the dependency cache
+        if: steps.cache.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v6
+        with:
+          path: |
+            ~/.cargo/registry/index
+            ~/.cargo/registry/cache
+            ~/.cargo/git/db
+            backend/target
+          key: ${{ steps.cache.outputs.cache-primary-key }}
 
   # The web app and the API client. Format and lint cover the whole workspace, docs sources included;
   # the docs site's own checks, tests and builds run in the Docs site job beside this one (#274).

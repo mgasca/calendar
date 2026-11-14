@@ -87,10 +87,13 @@ function parallelToolTests(files: RepoFiles): string[] {
   const errors: string[] = [],
     test = justRecipe(files.toolsJustfile, "test"),
     jobs = test?.map((l) => /xargs\s+(?:\S+\s+)*?-P\s*"?\$\{TOOLS_TEST_JOBS:-(\d+)\}"?/.exec(l)).find(Boolean);
-  if (!jobs) errors.push('tools/mod.just `test` does not run the test apps with `xargs -P "${TOOLS_TEST_JOBS:-N}"`.');
-  else if (Number(jobs[1]) <= 1) {
+  if (!jobs) {
+    errors.push('tools/mod.just `test` does not run the Deno configurations with `xargs -P "${TOOLS_TEST_JOBS:-N}"`.');
+  } else if (Number(jobs[1]) <= 1) {
     errors.push(
-      `tools/mod.just \`test\` defaults TOOLS_TEST_JOBS to ${jobs[1]}: the test apps would run one at a time.`,
+      `tools/mod.just \`test\` defaults TOOLS_TEST_JOBS to ${
+        jobs[1]
+      }: the Deno configurations would run one at a time.`,
     );
   }
   const workflow = Workflow.parse(files.workflow);
@@ -102,30 +105,25 @@ function parallelToolTests(files: RepoFiles): string[] {
   for (const job of workflow.jobs) {
     for (const step of job.steps) {
       for (const m of Workflow.run(step).matchAll(/\bTOOLS_TEST_JOBS=(\d+)/g)) {
-        if (Number(m[1]) <= 1) errors.push(`a step runs with \`${m[0]}\`: the test apps would run one at a time.`);
+        if (Number(m[1]) <= 1) {
+          errors.push(`a step runs with \`${m[0]}\`: the Deno configurations would run one at a time.`);
+        }
       }
     }
   }
   const tooling = workflow.jobs.find((j) => j.steps.some((s) => Workflow.run(s).includes("just tools test")));
   if (!tooling) return [...errors, "no job runs `just tools test`."];
-  const setup = tooling.steps.find((s) => (s.text("uses") ?? "").startsWith("actions/setup-dotnet")),
-    settings = setup?.map("with");
-  // During coexistence the original NuGet cache remains guarded. Once .NET is removed, Deno cache must replace it.
-  const denoCache = tooling.steps.some((s) =>
-    (s.text("uses") ?? "").startsWith("actions/cache") && (s.map("with")?.text("key") ?? "").includes("deno") &&
-    (s.map("with")?.text("key") ?? "").includes("deno.lock")
-  );
-  if (
-    setup
-      ? settings?.text("cache") !== "true" || !(settings?.text("cache-dependency-path") ?? "").includes("tools/")
-      : !denoCache
-  ) {
-    errors.push(
-      setup
-        ? `the \`${tooling.name}\` job's setup-dotnet step has no NuGet cache keyed on the tools' packages.lock.json files.`
-        : `the \`${tooling.name}\` job has no Deno cache keyed on the tools' deno.lock files.`,
-    );
-  }
+  // setup-deno's cache is keyed on every deno.lock unless cache-hash replaces the key; an actions/cache step must name it.
+  const denoCache = tooling.steps.some((s) => {
+    const uses = s.text("uses") ?? "", settings = s.map("with");
+    if (uses.startsWith("denoland/setup-deno")) {
+      const hash = settings?.text("cache-hash");
+      return settings?.text("cache") === "true" && (hash == null || hash.includes("deno.lock"));
+    }
+    const key = settings?.text("key") ?? "";
+    return uses.startsWith("actions/cache") && key.includes("deno") && key.includes("deno.lock");
+  });
+  if (!denoCache) errors.push(`the \`${tooling.name}\` job has no Deno cache keyed on the tools' deno.lock files.`);
   return errors;
 }
 function ciResultNeedsAll(files: RepoFiles): string[] {
@@ -261,7 +259,7 @@ export const guards: Guard[] = [
     fix: "#351",
     record: "0011",
     mechanism:
-      "just tools test runs the test apps TOOLS_TEST_JOBS at a time (default above 1), with a dependency cache in the Tooling job.",
+      "just tools test checks the Deno configurations TOOLS_TEST_JOBS at a time (default above 1), with a Deno cache keyed on deno.lock in the Tooling job.",
     check: parallelToolTests,
   },
   {

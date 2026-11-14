@@ -1,7 +1,7 @@
 {
   "recommendations": [
     "rust-lang.rust-analyzer",
-    "ms-dotnettools.csdevkit",
+    "denoland.vscode-deno",
     "editorconfig.editorconfig",
     "dbaeumer.vscode-eslint",
     "esbenp.prettier-vscode",

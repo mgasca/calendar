@@ -8,8 +8,8 @@ export const meta = {
   ],
 }
 
-// Claude Code only: a Workflow tool script (ADR-0044 Claude-first period; ADR-0017's exception for
-// scripts whose language the harness dictates). Story 0063, issue #708. Invoking the skill is the
+// Claude Code only: a Workflow tool script (ADR-0044 Claude-first period; ADR-0058's allowance for
+// platform-required JavaScript). Story 0063, issue #708. Invoking the skill is the
 // workflow opt-in; the skill's facilitator turns the result into AskUserQuestion batches and never
 // shows it raw. The script never writes files or posts.
 //

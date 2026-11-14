@@ -8,8 +8,8 @@ export const meta = {
 }
 
 // Claude Code only: a Workflow tool script (ADR-0044 Claude-first period and its amendment of
-// 2026-11-08, which lets the two sweeps use workflows while keeping a by-hand path; ADR-0017's
-// exception for scripts whose language the harness dictates). Story 0051. Other harnesses re-check
+// 2026-11-08, which lets the two sweeps use workflows while keeping a by-hand path; ADR-0058's
+// allowance for platform-required JavaScript). Story 0051. Other harnesses re-check
 // each candidate by hand against the same two questions, as .claude/skills/issue-sweep/SKILL.md says.
 //
 // The check before the issue sweep's hand-off. The session classifies every delta issue inline;

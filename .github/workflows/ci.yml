@@ -20,10 +20,6 @@ concurrency:
     && github.run_id || github.ref }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
-env:
-  DOTNET_NOLOGO: true
-  DOTNET_CLI_TELEMETRY_OPTOUT: true
-
 jobs:
   # Decides which jobs this run needs from the files it changes (ADR-0046, story 0038). Pull requests and merge groups
   # run only the jobs whose inputs they change; pushes and dispatches run every job, and so does a run whose file list
@@ -391,15 +387,6 @@ jobs:
         with:
           deno-version-file: .deno-version
           cache: true
-      # The SDK pinned in the repo-root global.json, which the tool lock files match (ADR-0017, #645). The NuGet cache holds the tools'
-      # #:package pins, which the first test app otherwise downloads on every run (#351, record 0011).
-      - uses: actions/setup-dotnet@v6
-        with:
-          global-json-file: global.json
-          cache: true
-          cache-dependency-path: |
-            tools/**/packages.lock.json
-            .claude/skills/**/packages.lock.json
       - name: Ensure shellcheck
         run: command -v shellcheck || (sudo apt-get update -q && sudo apt-get install -yq shellcheck)
       - name: Read the pinned just version

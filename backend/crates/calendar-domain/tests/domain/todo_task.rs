@@ -274,12 +274,16 @@ fn create_reports_the_first_broken_rule_in_a_fixed_order() {
 #[test]
 fn priority_round_trips_its_wire_form_and_is_case_sensitive() {
   for priority in [Priority::Low, Priority::Medium, Priority::High] {
-    assert_eq!(Priority::parse(priority.as_str()), Some(priority));
+    assert_eq!(priority.as_str().parse(), Ok(priority));
   }
 
   assert_eq!(Priority::default(), Priority::Medium);
-  assert_eq!(Priority::parse("High"), None);
-  assert_eq!(Priority::parse(" low"), None);
+  for text in ["High", " low", ""] {
+    assert_eq!(
+      text.parse::<Priority>(),
+      Err(ArgumentError::new("priority", "Priority must be low, medium or high."))
+    );
+  }
 }
 
 #[test]

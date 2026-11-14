@@ -1,5 +1,7 @@
 //! To-do tasks.
 
+use std::str::FromStr;
+
 use chrono::{DateTime, NaiveDate, Utc};
 use uuid::Uuid;
 
@@ -63,17 +65,22 @@ pub enum Priority {
   High,
 }
 
-impl Priority {
-  /// Parses the stored and wire form: exactly `low`, `medium` or `high` (case-sensitive).
-  pub fn parse(value: &str) -> Option<Self> {
+/// Parses the stored and wire form: exactly `low`, `medium` or `high` (case-sensitive).
+impl FromStr for Priority {
+  type Err = ArgumentError;
+
+  /// Errors with `priority` for any other text.
+  fn from_str(value: &str) -> Result<Self, ArgumentError> {
     match value {
-      "low" => Some(Self::Low),
-      "medium" => Some(Self::Medium),
-      "high" => Some(Self::High),
-      _ => None,
+      "low" => Ok(Self::Low),
+      "medium" => Ok(Self::Medium),
+      "high" => Ok(Self::High),
+      _ => Err(ArgumentError::new("priority", "Priority must be low, medium or high.")),
     }
   }
+}
 
+impl Priority {
   /// The stored and wire form: `low`, `medium` or `high`.
   pub fn as_str(self) -> &'static str {
     match self {
@@ -137,9 +144,7 @@ impl TodoTask {
     let title = validation::normalize_title(title, "title")?;
     let deadline = Deadline::from_parts(due_date, due_at)?;
 
-    let Some(priority) = Priority::parse(priority) else {
-      return Err(ArgumentError::new("priority", "Priority must be low, medium or high."));
-    };
+    let priority: Priority = priority.parse()?;
 
     let notes = validation::normalize_optional(notes, MAX_NOTES_LENGTH, "notes")?;
 

@@ -125,7 +125,7 @@ type OverdueTuple = (
 );
 
 fn task_row((id, title, priority, has_notes, due_date, due_at, completed_at): AgendaTaskTuple) -> Result<AgendaTaskRow, Error> {
-  let priority = Priority::parse(&priority).ok_or(Error::InvalidRow {
+  let priority = priority.parse::<Priority>().map_err(|_| Error::InvalidRow {
     entity: "task",
     reason: "the priority is not low, medium or high",
   })?;

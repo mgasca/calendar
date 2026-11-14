@@ -4,6 +4,7 @@ import { Workflow, YamlScalar } from "./workflow-yaml.ts";
 export interface RepoFiles {
   workflow: string;
   toolsJustfile: string;
+  codeqlWorkflow: string;
 }
 export interface Guard {
   id: string;
@@ -13,6 +14,7 @@ export interface Guard {
   check(files: RepoFiles): string[];
 }
 export const workflowPath = ".github/workflows/ci.yml", changesRulesPath = ".github/ci-changes.jq";
+export const codeqlWorkflowPath = ".github/workflows/codeql.yml", codeqlLanguagesPath = ".github/codeql-languages.jq";
 export const needsSkipException = '.value.result == "skipped" and $needs.changes.outputs[.key] == "false"';
 export const jobsApiSkipException = 'select(.conclusion != "skipped" or (.name | IN($skipped[]) | not))';
 const sameRepository = [
@@ -23,6 +25,7 @@ export function loadFiles(root: string): RepoFiles {
   return {
     workflow: Deno.readTextFileSync(join(root, workflowPath)),
     toolsJustfile: Deno.readTextFileSync(join(root, "tools/mod.just")),
+    codeqlWorkflow: Deno.readTextFileSync(join(root, codeqlWorkflowPath)),
   };
 }
 export function justRecipe(text: string, recipe: string): string[] | null {
@@ -247,6 +250,40 @@ function changesJob(files: RepoFiles): string[] {
   }
   return errors;
 }
+function codeqlRustGate(files: RepoFiles): string[] {
+  const workflow = Workflow.parse(files.codeqlWorkflow),
+    gate = workflow.jobNamed("CodeQL languages"),
+    errors: string[] = [];
+  if (!gate) return ["codeql.yml has no job named `CodeQL languages`."];
+  const condition = gate.body.text("if");
+  if (condition !== null) {
+    errors.push(
+      `\`CodeQL languages\` runs only \`if: ${condition}\`; it must run on every event, or no language is analysed.`,
+    );
+  }
+  for (const rules of [changesRulesPath, codeqlLanguagesPath]) {
+    if (!gate.steps.some((s) => Workflow.run(s).includes(`jq -c -f ${rules}`))) {
+      errors.push(`\`CodeQL languages\` does not run \`jq -c -f ${rules}\`, the rules the tests check.`);
+    }
+  }
+  if (!gate.body.map("outputs")?.text("exclude")) errors.push("`CodeQL languages` has no `exclude` output.");
+  const analyze = workflow.jobs.find((j) => j.name.startsWith("Analyze"));
+  if (!analyze) return [...errors, "codeql.yml has no Analyze job."];
+  if (!analyze.body.list("needs").some((n) => n instanceof YamlScalar && n.value === gate.id)) {
+    errors.push(`\`${analyze.name}\` does not need \`${gate.id}\`, so it cannot read which languages to leave out.`);
+  }
+  if (analyze.body.text("if") !== null) {
+    errors.push(`\`${analyze.name}\` must run on every event; only its matrix is filtered.`);
+  }
+  const matrix = analyze.body.map("strategy")?.map("matrix"),
+    languages = (matrix?.list("language") ?? []).map((n) => (n as YamlScalar).value),
+    expected = `\${{ fromJSON(needs.${gate.id}.outputs.exclude) }}`;
+  if (!languages.includes("rust")) errors.push(`\`${analyze.name}\` has no \`rust\` entry in its \`language\` matrix.`);
+  if (matrix?.text("exclude") !== expected) {
+    errors.push(`\`${analyze.name}\`'s matrix must \`exclude: ${expected}\` and nothing else.`);
+  }
+  return errors;
+}
 export const guards: Guard[] = [
   {
     id: "superseded-runs",
@@ -295,6 +332,14 @@ export const guards: Guard[] = [
     mechanism:
       "A Changes job runs .github/ci-changes.jq on every run, and each other job but CI result and Cancel superseded runs needs it and runs only when its own output is true.",
     check: changesJob,
+  },
+  {
+    id: "codeql-rust-gate",
+    fix: "#882",
+    record: "0026",
+    mechanism:
+      "A CodeQL languages job runs .github/ci-changes.jq and .github/codeql-languages.jq on every run, and the Analyze matrix excludes rust only when that job says no Rust input changed.",
+    check: codeqlRustGate,
   },
 ];
 export function runGuard(guard: Guard, files: RepoFiles): string[] {

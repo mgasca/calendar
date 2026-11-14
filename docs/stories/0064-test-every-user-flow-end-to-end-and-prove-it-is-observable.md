@@ -155,7 +155,7 @@ API telemetry (#731) lives in `calendar-api/src/telemetry/`:
 ### Testing
 
 - Browser: the Playwright flow tests, nightly and on demand.
-- Binding: the browser-free check on every pull request.
+- Binding: the browser-free check, in CI on every pull request that changes the e2e package or the model: in the Frontend job, or in the Flow binding job when only the model changed (#902).
 - API: `cargo test` for the exporter wiring, `traceparent` extraction, redaction and the stub guard. `crates/calendar-api/tests/api/telemetry.rs` runs the production pipeline with in-memory exporters and scans every exported span, log and metric for seeded personal data. The unit tests in `src/telemetry*` cover the `OTEL_*` configuration, the statement shape and the allow-list.
 - Web: Vitest. `src/telemetry/telemetry.test.tsx` runs the real SDK with an in-memory exporter, the real API client and MSW: a save's action span, fetch span and the `traceparent` the API receives share one trace, every bulk batch stays in that trace, nothing outside `/api` gets the header, no planted personal data is exported, and no tracer is registered when telemetry is off. `src/telemetry/attributes.test.ts` covers the allow-list rules, and `dev/otlpProxy.test.ts` runs `vite dev` and `vite preview` against a fake collector.
 
@@ -191,7 +191,7 @@ API telemetry (#731) lives in `calendar-api/src/telemetry/`:
   - Prometheus: `http_server_request_duration_seconds_count` grows by the requests made, and the `_bucket` series exist.
   - `Observer.expectFlow` makes the four assertions.
 - **Scanner** (`personal-data.ts`): it runs over every string of the trace, every API and web log record since the test began (lines and labels), and every label of the API's and web app's series. It looks for the registered values (case-insensitive) and for any email address, JWT, bearer token or cookie header. A finding names the signal and the place, never the value.
-- **Binding** (`src/binding/`): `bindingProblems` reads the model and `playwright test --list --reporter=json`. It runs as a Vitest test in `just frontend test`, so it needs no browser and runs on every pull request. Covered flows are linked by `metadata["e2e-test"]` in the model (`view-today-flow` now), and `pending-flows.json` holds the other six with their issues.
+- **Binding** (`src/binding/`): `bindingProblems` reads the model and `playwright test --list --reporter=json`. It runs as a Vitest test in `just frontend test`, so it needs no browser; in CI it runs in the Frontend job, or in the small Flow binding job for a model-only change. Until #902 it ran in no CI job: Frontend tests with `test:coverage`, which the package lacked, and the filter skipped Frontend for changes to the package or the model alone. Covered flows are linked by `metadata["e2e-test"]` in the model (`view-today-flow` now), and `pending-flows.json` holds the other six with their issues.
 - **Recipes:** `just e2e test` (`up`, the suite, then `down` whatever the result) and `just e2e test-on <project>`. When the run-calendar skill's `~/.cache/calendar-chromium-libs` exists, the recipes add it to `LD_LIBRARY_PATH`.
 - **Request log (#797):** designing the logs assertion showed that a successful request logged nothing. #798 adds the `request finished` record (see "API" above).
 - **Measured** (WSL2 laptop, images present, API build cached):

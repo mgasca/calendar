@@ -34,12 +34,16 @@ export async function queryLogs(
   return streamsOf(await getJson(url));
 }
 
-/** The API's log records that carry `traceId`, once Loki has at least one. */
+/**
+ * The API's log records that carry `traceId`, once Loki has at least one, and a record with each of `messages`
+ * (`'request finished'`, `'Google sign-in failed'`) among them.
+ */
 export async function waitForTraceLogs(
   lokiUrl: string,
   traceId: string,
   since: Date,
   options?: PollOptions,
+  messages: readonly string[] = [],
 ): Promise<LogStream[]> {
   return poll(
     `API log records with trace id ${traceId} in Loki`,
@@ -49,10 +53,12 @@ export async function waitForTraceLogs(
         `{service_name="calendar-api"} | trace_id="${traceId}"`,
         since,
       );
-      const count = streams.reduce((total, stream) => total + stream.lines.length, 0);
-      return count > 0
+      const lines = streams.flatMap((stream) => stream.lines);
+      const missing = messages.filter((message) => !lines.includes(message));
+      if (lines.length === 0) return { done: false, reason: 'no record carries the trace id' };
+      return missing.length === 0
         ? { done: true, value: streams }
-        : { done: false, reason: 'no record carries the trace id' };
+        : { done: false, reason: `no record '${missing.join("', '")}' carries the trace id` };
     },
     options,
   );

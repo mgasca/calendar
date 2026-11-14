@@ -1,8 +1,17 @@
 import { describe, expect, it } from 'vitest';
 
 import { completeScan, streamsOf } from './loki.ts';
+import { FatalPollError, poll } from './poll.ts';
 import { PersonalData, fromLogs, fromSeries, fromSpans, report, scan } from './personal-data.ts';
-import { api, flattenTrace, traceIdOf, traceProblems, web } from './tempo.ts';
+import {
+  api,
+  apiRootTraces,
+  flattenTrace,
+  searchResults,
+  traceIdOf,
+  traceProblems,
+  web,
+} from './tempo.ts';
 
 const b64 = (hex: string) => Buffer.from(hex, 'hex').toString('base64');
 const attribute = (key: string, value: string | number) => ({
@@ -252,5 +261,87 @@ describe('completeScan', () => {
 
   it('refuses streams that reach the limit, where Loki may have cut records off', () => {
     expect(() => completeScan([stream(3), stream(2)], 5)).toThrow(/scan would be incomplete/);
+  });
+});
+
+describe('finding the trace a navigation started (sign-in-flow)', () => {
+  // The shape of Tempo's GET /api/search answer on the E2E stack.
+  const answer = {
+    traces: [
+      {
+        traceID: '2cdb7b9bf8a65fd531f676a00beb20a9',
+        rootServiceName: 'calendar-api',
+        rootTraceName: 'GET /api/auth/callback/google',
+        startTimeUnixNano: '1794612859311665643',
+      },
+      {
+        traceID: '7db49167b582cedc06ad96cfcbfc1437',
+        rootServiceName: 'calendar-api',
+        rootTraceName: 'GET /api/auth/login',
+        startTimeUnixNano: '1794612858000000000',
+      },
+      {
+        traceID: '0f0e0d0c0b0a09080706050403020100',
+        rootServiceName: 'calendar-api',
+        rootTraceName: 'GET /api/auth/callback/google',
+        startTimeUnixNano: '1794612000000000000',
+      },
+    ],
+  };
+
+  it('reads the search answer, start times in milliseconds', () => {
+    const [first] = searchResults(answer);
+    expect(first).toEqual({
+      traceId: '2cdb7b9bf8a65fd531f676a00beb20a9',
+      rootService: 'calendar-api',
+      rootName: 'GET /api/auth/callback/google',
+      startedAt: 1794612859311,
+    });
+  });
+
+  it('keeps only the API roots of that name started since the test began', () => {
+    const since = new Date(1794612850000);
+    const found = apiRootTraces(searchResults(answer), 'GET /api/auth/callback/google', since);
+    expect(found.map((trace) => trace.traceId)).toEqual(['2cdb7b9bf8a65fd531f676a00beb20a9']);
+    expect(
+      apiRootTraces(searchResults(answer), 'GET /api/auth/callback/google', new Date(0)),
+    ).toHaveLength(2);
+  });
+
+  it('stops waiting at once on a fatal error, such as two traces where one is expected', async () => {
+    let attempts = 0;
+    const waiting = poll(
+      'A trace',
+      () => {
+        attempts++;
+        throw new FatalPollError('2 traces since the test began; expected exactly one');
+      },
+      { timeoutMs: 10_000, intervalMs: 10 },
+    );
+    await expect(waiting).rejects.toThrow(
+      'A trace: 2 traces since the test began; expected exactly one',
+    );
+    expect(attempts).toBe(1);
+  });
+
+  it('fails the scan on a sign-in secret in a log line, naming it but not repeating it', () => {
+    const personalData = new PersonalData();
+    const cookie = 'CfDJ8sealed-session-ticket-planted';
+    const code = 'McZO5X6y1RjqWEtwo5h-planted-code';
+    personalData.add('the session cookie', cookie);
+    personalData.add('the authorization code', code);
+    const findings = scan(
+      fromLogs([
+        { labels: { service_name: 'calendar-api' }, lines: [`request finished ${cookie}`] },
+        { labels: { service_name: 'calendar-api', code }, lines: ['request finished'] },
+      ]),
+      personalData,
+    );
+    expect(findings.map((finding) => finding.matched)).toEqual([
+      'the session cookie',
+      'the authorization code',
+    ]);
+    expect(report(findings)).not.toContain(cookie);
+    expect(report(findings)).not.toContain(code);
   });
 });

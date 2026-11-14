@@ -1551,7 +1551,7 @@
           ]
         }
       },
-      "metadata": { "story": "0005", "adrs": ["ADR-0027", "ADR-0030", "ADR-0041"], "not-automated": "The real Google round trip, the denial redirect and the cookie/proxy settings are verified manually" }
+      "metadata": { "story": "0005", "adrs": ["ADR-0027", "ADR-0030", "ADR-0041"], "e2e-test": "frontend/apps/e2e/tests/sign-in-flow.spec.ts", "not-automated": "The round trip with the real Google and the cookie and proxy settings behind HTTPS are verified manually; the end-to-end test signs in through the stub provider (ADR-0064)" }
     },
     {
       "unique-id": "view-today-flow",

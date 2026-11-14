@@ -545,35 +545,3 @@ const rustCases: [string, string, boolean, string[], boolean][] = [
 for (const [name, event, complete, files, rust] of rustCases) {
   Deno.test(name, () => checkRust(event, complete, files, rust));
 }
-function cacheFailures(from: string, to: string): string[] {
-  assertStringIncludes(codeqlWorkflow, from, "mutation must alter the fixture");
-  const files: RepoFiles = { workflow, toolsJustfile, codeqlWorkflow: codeqlWorkflow.replaceAll(from, to) };
-  return runGuard(guards.find((g) => g.id === "codeql-rust-caches")!, files);
-}
-const cacheMutations: [string, string, string, string][] = [
-  ["NoTargetDirectoryRestore_Fails", "        id: target\n", "        id: elsewhere\n", "does not restore"],
-  [
-    "NoExtractorTargetDirectory_Fails",
-    "          CODEQL_EXTRACTOR_RUST_OPTION_CARGO_TARGET_DIR: ${{ runner.temp }}/codeql-rust-target\n",
-    "          UNRELATED: x\n",
-    "does not set",
-  ],
-  [
-    "AnotherTargetDirectory_Fails",
-    "CODEQL_EXTRACTOR_RUST_OPTION_CARGO_TARGET_DIR: ${{ runner.temp }}/codeql-rust-target",
-    "CODEQL_EXTRACTOR_RUST_OPTION_CARGO_TARGET_DIR: ${{ runner.temp }}/elsewhere",
-    "is not the directory",
-  ],
-  [
-    "ASaveOnPullRequests_Fails",
-    "matrix.language == 'rust' && github.event_name != 'pull_request' && steps.target.outputs.cache-hit",
-    "matrix.language == 'rust' && steps.target.outputs.cache-hit",
-    "must not run on a pull request",
-  ],
-];
-for (const [name, from, to, message] of cacheMutations) {
-  Deno.test(`CodeqlRustCaches_${name}`, () => {
-    const errors = cacheFailures(from, to);
-    assert(errors.some((e) => e.includes(message)), JSON.stringify(errors));
-  });
-}

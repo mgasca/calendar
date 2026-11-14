@@ -58,23 +58,16 @@ pub async fn create(
 ) -> Result<Response, ApiError> {
   let mut errors = FieldErrors::new();
   errors.check_date(request.due_date, "dueDate");
-  if errors.any() {
-    return Err(errors.into_problem().into());
-  }
-  let created = match TodoTask::create(
+  errors.into_result()?;
+  let created = TodoTask::create(
     user.owner.0,
     request.title.as_deref().unwrap_or_default(),
     request.due_date,
     request.due_at,
     request.priority.as_deref().unwrap_or_default(),
     request.notes.as_deref(),
-  ) {
-    Ok(created) => created,
-    Err(error) => {
-      errors.add_domain_error(&error);
-      return Err(errors.into_problem().into());
-    }
-  };
+  )
+  .map_err(FieldErrors::from_domain)?;
 
   let mut connection = state.db().await?;
   let version = tasks::insert(&mut connection, user.owner, &created).await?;
@@ -113,10 +106,7 @@ pub async fn list(CurrentUser(user): CurrentUser, State(state): State<AppState>,
     view: list_view,
     after,
     page_size,
-  } = match check_list(view.as_deref(), today, time_zone.as_deref(), limit, cursor.as_deref()) {
-    Ok(list) => list,
-    Err(errors) => return Err(errors.into_problem().into()),
-  };
+  } = check_list(view.as_deref(), today, time_zone.as_deref(), limit, cursor.as_deref())?;
 
   let owner = user.owner;
   let mut connection = state.db().await?;
@@ -248,9 +238,7 @@ pub async fn update(
 ) -> Result<Response, ApiError> {
   let mut errors = FieldErrors::new();
   errors.check_date(request.due_date, "dueDate");
-  if errors.any() {
-    return Err(errors.into_problem().into());
-  }
+  errors.into_result()?;
 
   let owner = user.owner;
   let mut connection = state.db().await?;
@@ -259,16 +247,15 @@ pub async fn update(
   };
 
   let mut changed = found.entity.clone();
-  if let Err(error) = changed.update(
-    request.title.as_deref().unwrap_or_default(),
-    request.due_date,
-    request.due_at,
-    request.priority.as_deref().unwrap_or_default(),
-    request.notes.as_deref(),
-  ) {
-    errors.add_domain_error(&error);
-    return Err(errors.into_problem().into());
-  }
+  changed
+    .update(
+      request.title.as_deref().unwrap_or_default(),
+      request.due_date,
+      request.due_at,
+      request.priority.as_deref().unwrap_or_default(),
+      request.notes.as_deref(),
+    )
+    .map_err(FieldErrors::from_domain)?;
 
   match tasks::update(&mut connection, owner, &found, &changed, RowVersion(request.version)).await {
     Ok(version) => request::ok(&TaskResponse::from_task(&changed, version.0)),
@@ -324,10 +311,7 @@ pub async fn bulk(
   JsonBody(request): JsonBody<BulkTaskRequest>,
 ) -> Result<Response, ApiError> {
   let owner = user.owner;
-  let (change, target) = match check_bulk(&request, state.now()) {
-    Ok(checked) => checked,
-    Err(errors) => return Err(errors.into_problem().into()),
-  };
+  let (change, target) = check_bulk(&request, state.now())?;
 
   match target {
     BulkTarget::Filter { window, expected_total } => {

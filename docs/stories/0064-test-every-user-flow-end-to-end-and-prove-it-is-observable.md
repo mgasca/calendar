@@ -209,13 +209,15 @@ API telemetry (#731) lives in `calendar-api/src/telemetry/`:
   - `just e2e up`, `just e2e test-on <project>`, then `just e2e down` whatever the result. It does not use `just e2e test`, which would remove the stack's logs before they are uploaded.
 - **Artifacts**, kept 14 days: `e2e-report` (the HTML report, which shows each failure's message, so the telemetry assertion that failed), `e2e-test-results` (traces and failure screenshots) and `e2e-stack-logs` (API, web, compose and build logs). `stack.env` is not uploaded, because it holds the run's seed key.
 - **Permissions:** none at the top; the test job reads contents, and the alert job only writes issues and checks nothing out.
-- **A failure is visible:** on `main`, a failed run comments on the one open `bug` issue titled "E2E flows: the nightly run failed on main", or opens it, with the run link. A person closes it.
+- **A failure is visible:** on `main`, a failed run comments on the one open `bug` issue titled "E2E flows: the nightly run failed on main", or opens it, with the run link. A person closes it. The maintainer chose this on #737 (option C, 2026-11-14), with a dashboard section as follow-up #892. Proved once before merge: a temporary commit failed a flow and let the alert run for #876 ([run 43583755717](https://github.com/mgasca/calendar/actions/runs/43583755717)); it opened #898, which was closed as the proof.
 - **Run time (ADR-0045):** `tools/ci-timings` now reads scheduled runs on `main` too, and names the workflow and baseline file in its report. `ci-trend.yml` has a second step for `e2e.yml` against `.github/e2e-baseline.json`, which reports "no baseline yet" until the file exists. `ci.yml`'s report is unchanged, byte for byte (the parity fixtures).
 - **New flows need no workflow change:** the job runs every test in `frontend/apps/e2e/tests`.
+- **Verified:** run [43528677152](https://github.com/mgasca/calendar/actions/runs/43528677152) passed in 200 s on a cold cache (stack ready in 130 s, `view-today-flow` 3.5 s). Run [43529239198](https://github.com/mgasca/calendar/actions/runs/43529239198) failed on a deliberately wrong span name; the report, `trace.zip`, the screenshot and the stack logs were uploaded, and the message named the missing span. Both came from a temporary `pull_request` trigger on #876, removed before review.
+- **Follow-up (#892):** an E2E section on the delivery dashboard.
 
 ### Lessons learned, known issues and follow-ups
 
-- **Follow-up:** pin `.github/e2e-baseline.json` (`just tools ci-timings --workflow e2e.yml --baseline --created <range> --out .github/e2e-baseline.json --record <record>`) once 30 successful nightly runs exist, about a month after #737 merges; until then the trend check concludes nothing about this workflow.
+- **Follow-up (#893):** pin `.github/e2e-baseline.json` (`just tools ci-timings --workflow e2e.yml --baseline --created <range> --out .github/e2e-baseline.json --record <record>`) once 30 successful nightly runs exist, about a month after #737 merges; until then the trend check concludes nothing about this workflow. The maintainer chose this input change without an ADR-0045 amendment (#737, option A, 2026-11-14).
 - **Known issue:** when `just e2e up` itself fails (a migration or a build), the recipe removes the run, logs included, so only its error message reaches the job log.
 
 - Browser OpenTelemetry is marked experimental upstream, and the Rust traces signal is beta; ADR-0062 records the versions checked.

@@ -73,7 +73,8 @@ async fn a_cookie_session_is_accepted_only_with_a_user_id() {
       // Rejected and signed out: the browser stops presenting the stale cookie.
       let cookies = response.set_cookies();
       assert_eq!(cookies.len(), 1, "{cookies:?}");
-      assert!(cookies[0].contains("expires="), "{cookies:?}");
+      let cleared = response.set_cookie(SESSION_COOKIE).expect("the session cookie is cleared");
+      assert!(cleared.has("expires"), "{cleared:?}");
     }
   }
 }

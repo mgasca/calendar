@@ -250,19 +250,16 @@ async fn without_the_test_authenticator_only_a_session_with_a_user_id_signs_in()
     .get("/api/auth/me")
     .await;
   assert_eq!(rejected.status, StatusCode::UNAUTHORIZED);
-  let cleared = rejected.set_cookies();
-  assert_eq!(cleared.len(), 1);
-  assert!(
-    cleared[0].starts_with(&format!("{SESSION_COOKIE}=;")) && cleared[0].contains("expires="),
-    "{cleared:?}"
-  );
+  assert_eq!(rejected.set_cookies().len(), 1, "{:?}", rejected.set_cookies());
+  let cleared = rejected.set_cookie(SESSION_COOKIE).expect("the session cookie is cleared");
+  assert!(cleared.value().is_empty() && cleared.has("expires"), "{cleared:?}");
 
   let logout = signed_in.post("/api/auth/logout").await;
   assert_eq!(logout.status, StatusCode::NO_CONTENT);
-  let cookie = logout.set_cookies().join("").to_lowercase();
+  let cookie = logout.set_cookie(SESSION_COOKIE).expect("the session cookie is cleared");
   assert!(
-    cookie.contains("expires=") && cookie.contains("httponly") && cookie.contains("samesite=lax"),
-    "{cookie}"
+    cookie.has("expires") && cookie.has("httponly") && cookie.has("samesite=lax"),
+    "{cookie:?}"
   );
 }
 

@@ -1,0 +1,21 @@
+{
+  "name": "@calendar/e2e",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "typecheck": "tsc -b",
+    "test": "vitest run",
+    "e2e": "playwright test",
+    "list": "playwright test --list --reporter=json"
+  },
+  "dependencies": {
+    "@calendar/api-client": "workspace:*"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.65.0",
+    "@types/node": "^26.6.6",
+    "typescript": "~6.0.3",
+    "vitest": "^5.1.0"
+  }
+}

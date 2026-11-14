@@ -54,13 +54,10 @@ async fn a_fresh_database_runs_the_whole_chain() {
   let client = database.migrator_client().await;
   assert_eq!(strings(&client, DIESEL_VERSIONS).await.len(), ALL_MIGRATIONS.len());
   assert_eq!(
-    scalar(&client, "SELECT to_regclass('public.session_keys')::text").await,
+    scalar::<String>(&client, "SELECT to_regclass('public.session_keys')::text").await,
     "session_keys"
   );
-  assert_eq!(
-    scalar(&client, "SELECT (to_regclass('public.data_protection_keys') IS NULL)::text").await,
-    "true"
-  );
+  assert!(scalar::<bool>(&client, "SELECT to_regclass('public.data_protection_keys') IS NULL").await);
   assert_eq!(
     migrations::pending(database.migrator_connection().await).await.unwrap(),
     Vec::<String>::new()
@@ -132,11 +129,8 @@ async fn an_ef_migrated_database_is_adopted_and_keeps_its_rows() {
       "20261111000000"
     ]
   );
-  assert_eq!(
-    scalar(&client, "SELECT (to_regclass('public.data_protection_keys') IS NULL)::text").await,
-    "true"
-  );
-  assert_eq!(scalar(&client, "SELECT count(*)::text FROM session_keys").await, "0");
+  assert!(scalar::<bool>(&client, "SELECT to_regclass('public.data_protection_keys') IS NULL").await);
+  assert_eq!(scalar::<i64>(&client, "SELECT count(*) FROM session_keys").await, 0);
   // The EF Core history is kept as it was, as a record.
   assert_eq!(
     strings(&client, "SELECT migration_id::text FROM \"__EFMigrationsHistory\" ORDER BY 1").await,
@@ -158,7 +152,7 @@ async fn an_ef_migrated_database_is_adopted_and_keeps_its_rows() {
 
   // The app role works on the adopted database, and a second run finds nothing to do.
   let app = database.app_client().await;
-  assert_eq!(scalar(&app, "SELECT count(*)::text FROM tasks").await, "1");
+  assert_eq!(scalar::<i64>(&app, "SELECT count(*) FROM tasks").await, 1);
   assert_eq!(database.migrate().await.unwrap(), migrations::MigrationReport::default());
 }
 
@@ -191,10 +185,7 @@ async fn an_ef_database_with_an_unknown_migration_is_refused() {
 
   assert!(matches!(error, MigrateError::UnexpectedEfHistory { .. }), "{error:?}");
   let client = database.migrator_client().await;
-  assert_eq!(
-    scalar(&client, "SELECT (to_regclass('public.__diesel_schema_migrations') IS NULL)::text").await,
-    "true"
-  );
+  assert!(scalar::<bool>(&client, "SELECT to_regclass('public.__diesel_schema_migrations') IS NULL").await);
 }
 
 #[tokio::test]
@@ -227,10 +218,7 @@ async fn a_failing_migration_rolls_everything_back() {
     matches!(&error, MigrateError::Migration { name, .. } if name == "2026-11-11-000000_session_keys"),
     "{error:?}"
   );
-  assert_eq!(
-    scalar(&client, "SELECT (to_regclass('public.session_keys') IS NULL)::text").await,
-    "true"
-  );
+  assert!(scalar::<bool>(&client, "SELECT to_regclass('public.session_keys') IS NULL").await);
   assert_eq!(strings(&client, DIESEL_VERSIONS).await.len(), EF_MIGRATIONS.len());
 }
 

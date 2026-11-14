@@ -30,9 +30,17 @@ public sealed class DoctorTests : IDisposable
     WriteExecutable("docker", "[ \"$1\" = compose ] && echo v2.40.0; exit 0");
     WriteExecutable("curl", "echo 'curl 8.0.0 (fake)'");
     WriteExecutable("just", "echo just 99.0.0");
-    WriteExecutable("gh", "echo 'gh version 2.0.0 (fake)'");
+    WriteExecutable("gh", Gh(StackInstalled));
     WriteExecutable("jq", "echo jq-1.7");
+    WriteExecutable("git", "echo 'git version 2.36.0'");
   }
+
+  /// <summary>The extension list as `gh extension list` prints it: name, repository and version, tab-separated.</summary>
+  private const string StackInstalled = "printf 'gh stack\\tgithub/gh-stack\\tv0.3.0\\n'";
+
+  /// <summary>A fake gh whose `extension list` runs the given command; other arguments print the version.</summary>
+  private static string Gh(string extensionList) =>
+    $"if [ \"$1\" = extension ]; then {extensionList}; else echo 'gh version 2.0.0 (fake)'; fi";
 
   private void WriteExecutable(string name, string body)
   {
@@ -89,6 +97,74 @@ public sealed class DoctorTests : IDisposable
     code.ShouldNotBe(0);
     text.ShouldContain($"{tool} not found");
     text.ShouldContain(hint);
+  }
+
+  [Fact]
+  public async Task InstalledGhStackPassesWithItsVersion()
+  {
+    WriteExecutable("gh", Gh("printf 'gh copilot\\tgithub/gh-copilot\\tv1.0.0\\n'; " + StackInstalled));
+    (var code, var text) = await RunDoctor(infra: false);
+    code.ShouldBe(0, text);
+    text.ShouldContain("gh-stack v0.3.0");
+  }
+
+  [Theory]
+  [InlineData("exit 0")]
+  [InlineData("printf 'gh copilot\\tgithub/gh-copilot\\tv1.0.0\\n'")]
+  // Another owner's extension of the same name is not the one the guidance uses.
+  [InlineData("printf 'gh stack\\tsomeone/gh-stack\\tv9.0.0\\n'")]
+  public async Task MissingGhStackFailsWithInstallHint(string extensionList)
+  {
+    WriteExecutable("gh", Gh(extensionList));
+    (var code, var text) = await RunDoctor(infra: false);
+    code.ShouldNotBe(0);
+    text.ShouldContain("gh-stack not installed: creating, rebasing and merging native stacked PRs needs it");
+    text.ShouldContain("gh stack init/add/submit/link");
+    text.ShouldContain("→ gh extension install github/gh-stack");
+    text.ShouldContain("Found 1 problem(s)");
+  }
+
+  [Fact]
+  public async Task GhThatCannotListExtensionsIsTooOldForGhStack()
+  {
+    WriteExecutable("gh", Gh("echo 'unknown command \"extension\" for \"gh\"' >&2; exit 1"));
+    (var code, var text) = await RunDoctor(infra: false);
+    code.ShouldNotBe(0);
+    text.ShouldContain("gh cannot list extensions; gh-stack needs gh 2.0 or newer");
+    text.ShouldContain("Update the GitHub CLI");
+  }
+
+  [Fact]
+  public async Task MissingGhReportsOnlyGhAndSkipsTheGhStackCheck()
+  {
+    File.Delete(Path.Combine(_bin, "gh"));
+    (var code, var text) = await RunDoctor(infra: false);
+    code.ShouldNotBe(0);
+    text.ShouldContain("gh not found");
+    text.ShouldNotContain("gh-stack not installed");
+    text.ShouldNotContain("gh cannot list extensions");
+    text.ShouldContain("Found 1 problem(s)");
+  }
+
+  [Theory]
+  [InlineData(null, false, "git not found")]
+  [InlineData("echo 'git version 2.34.1'", false, "git '2.34.1', but gh-stack wants 2.36.0 or newer")]
+  [InlineData("exit 1", false, "git 'unavailable', but gh-stack wants 2.36.0 or newer")]
+  [InlineData("echo 'git version 2.36.0'", true, "git 2.36.0 (gh-stack wants 2.36.0 or newer)")]
+  [InlineData("echo 'git version 2.53.0'", true, "git 2.53.0 (gh-stack wants 2.36.0 or newer)")]
+  public async Task GitNeedsTheVersionGhStackRequires(string? git, bool success, string expected)
+  {
+    if (git is null)
+    {
+      File.Delete(Path.Combine(_bin, "git"));
+    }
+    else
+    {
+      WriteExecutable("git", git);
+    }
+    (var code, var text) = await RunDoctor(infra: false);
+    (code == 0).ShouldBe(success, text);
+    text.ShouldContain(expected);
   }
 
   [Theory]

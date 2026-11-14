@@ -106,7 +106,7 @@ An **unverified fallback** is to run `ALTER SCHEMA public OWNER TO calendar_migr
 
 ### Local integration test
 
-To check the role grants without Azure, start Docker and run `dotnet run tools/infra/integration/database.cs` from the repository root. It compares the tool's grants with the local initialization script and tests access for the migrator, the app and a role with no privileges. It does not replace the live checks.
+To check the role grants without Azure, start Docker and run `just infra integration` from the repository root. It compares the tool's grants with the local initialization script and tests access for the migrator, the app and a role with no privileges. It does not replace the live checks.
 
 ## Initialization recovery
 

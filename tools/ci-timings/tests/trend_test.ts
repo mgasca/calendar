@@ -160,3 +160,32 @@ Deno.test("TheTrendWorkflow_HasLeastPermissions_AndRunsTheTrendModeWithIssues", 
   assertStringIncludes(workflow, 'tools/ci-timings/ci-timings.ts --trend --issue --repo "$GITHUB_REPOSITORY"');
   assertStringIncludes(workflow, "shell: bash");
 });
+Deno.test("RecentRuns_KeepScheduledRunsOnMain_SoTheNightlyE2eWorkflowIsInTheTrend", () => {
+  const listed = [
+    run(1, "schedule"),
+    run(2, "schedule"),
+    run(3, "schedule", "failure"),
+    run(4, "schedule", "success", "x"),
+  ];
+  listed.push(run(5, "workflow_dispatch"));
+  const pinned = buildBaseline("e2e.yml", "r.md", 1, gateDefaults, []);
+  assertEquals(recentRuns(pinned, listed, trendDefaults).map((r) => r.id), [1, 2]);
+});
+Deno.test("Report_NamesTheWorkflowAndTheBaselineFileItRead", () => {
+  const pinned = buildBaseline("e2e.yml", "r.md", 30, gateDefaults, sampled(history(30), undefined, 1)),
+    report = trendReport(
+      evaluateTrend(pinned, later(recent(20, 0)), trendDefaults),
+      pinned,
+      trendDefaults,
+      ".github/e2e-baseline.json",
+    );
+  assertStringIncludes(report, "scheduled runs of `e2e.yml` on `main`");
+  assertStringIncludes(report, "against `.github/e2e-baseline.json` (r.md)");
+});
+Deno.test("TheTrendWorkflow_AlsoChecksTheE2eWorkflowAgainstItsOwnBaseline", async () => {
+  const workflow = await Deno.readTextFile(new URL("../../../.github/workflows/ci-trend.yml", import.meta.url));
+  assertStringIncludes(
+    workflow,
+    'tools/ci-timings/ci-timings.ts --trend --issue --workflow e2e.yml --out .github/e2e-baseline.json --repo "$GITHUB_REPOSITORY"',
+  );
+});

@@ -17,8 +17,8 @@ async fn user_row(app: &TestApp, id: Uuid) -> [Option<String>; 4] {
   let client = app.database().migrator_client().await;
   let row = client
     .query_one(
-      "SELECT google_subject, email, display_name, picture_url FROM users WHERE id = $1::text::uuid",
-      &[&id.to_string()],
+      "SELECT google_subject, email, display_name, picture_url FROM users WHERE id = $1",
+      &[&id],
     )
     .await
     .expect("exactly one users row has the id");
@@ -57,10 +57,7 @@ async fn attach_user_lets_the_first_allow_listed_email_claim_the_legacy_owner() 
     .database()
     .migrator_client()
     .await
-    .execute(
-      "INSERT INTO users (id, created_at) VALUES ($1::text::uuid, now())",
-      &[&User::LEGACY_OWNER_ID.to_string()],
-    )
+    .execute("INSERT INTO users (id, created_at) VALUES ($1, now())", &[&User::LEGACY_OWNER_ID])
     .await
     .unwrap();
 

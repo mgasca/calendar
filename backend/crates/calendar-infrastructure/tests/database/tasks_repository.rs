@@ -481,10 +481,7 @@ async fn the_filtered_change_reports_a_serialization_failure_as_a_conflict() {
   // Another request has changed one of the tasks and not committed yet.
   let racing = other.transaction().await.unwrap();
   racing
-    .execute(
-      "UPDATE tasks SET title = 'renamed' WHERE id = $1::text::uuid",
-      &[&overdue[0].id().to_string()],
-    )
+    .execute("UPDATE tasks SET title = 'renamed' WHERE id = $1", &[&overdue[0].id()])
     .await
     .unwrap();
 

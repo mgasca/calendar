@@ -7,6 +7,7 @@ use std::sync::{Arc, Mutex};
 use crate::common::*;
 use calendar_api::auth::dev_seed::{self, NO_ALLOWED_EMAIL_MESSAGE};
 use calendar_domain::users::User;
+use tokio_postgres::types::ToSql;
 
 const SEED_KEY: &str = "12345678901234567890123456789012";
 const FIRST_ALLOWED: &str = "Owner@Example.com";
@@ -35,20 +36,20 @@ fn seed_client(app: &TestApp, key: Option<&str>) -> TestClient {
 async fn user_with_email(app: &TestApp, email: &str) -> (Uuid, Option<String>) {
   let client = app.database().migrator_client().await;
   let row = client
-    .query_one("SELECT id::text, google_subject FROM users WHERE email = $1", &[&email])
+    .query_one("SELECT id, google_subject FROM users WHERE email = $1", &[&email])
     .await
     .expect("exactly one user has the email");
-  (row.get::<_, String>(0).parse().unwrap(), row.get(1))
+  (row.get(0), row.get(1))
 }
 
 /// The owner of the one task matching `condition`, whoever it is.
-async fn task_owner(app: &TestApp, condition: &str, value: &str) -> Uuid {
+async fn task_owner(app: &TestApp, condition: &str, value: &(dyn ToSql + Sync)) -> Uuid {
   let client = app.database().migrator_client().await;
   let row = client
-    .query_one(&format!("SELECT owner_id::text FROM tasks WHERE {condition}"), &[&value])
+    .query_one(&format!("SELECT owner_id FROM tasks WHERE {condition}"), &[value])
     .await
     .expect("exactly one task matches");
-  row.get::<_, String>(0).parse().unwrap()
+  row.get(0)
 }
 
 #[tokio::test]
@@ -163,14 +164,14 @@ async fn the_seed_scheme_still_works_after_the_owner_has_signed_in_for_real() {
     .await
     .execute(
       "INSERT INTO users (id, google_subject, email, display_name, created_at, last_signed_in_at) \
-       VALUES ($1::text::uuid, $2, $3, $4, $5::text::timestamptz, $6::text::timestamptz)",
+       VALUES ($1, $2, $3, $4, $5, $6)",
       &[
-        &owner.id().to_string(),
+        &owner.id(),
         &owner.google_subject(),
         &owner.email(),
         &owner.display_name(),
-        &owner.created_at().to_rfc3339(),
-        &owner.last_signed_in_at().map(|at| at.to_rfc3339()),
+        &owner.created_at(),
+        &owner.last_signed_in_at(),
       ],
     )
     .await
@@ -184,7 +185,7 @@ async fn the_seed_scheme_still_works_after_the_owner_has_signed_in_for_real() {
   let (id, subject) = user_with_email(&app, "owner@example.com").await;
   assert_eq!(id, owner.id());
   assert_eq!(subject.as_deref(), Some("sub-owner"));
-  assert_eq!(task_owner(&app, "title = $1", "seeded later").await, id);
+  assert_eq!(task_owner(&app, "title = $1", &"seeded later").await, id);
 }
 
 #[tokio::test]
@@ -194,10 +195,7 @@ async fn seeded_rows_belong_to_the_first_allow_listed_email_who_also_claims_the_
     .database()
     .migrator_client()
     .await
-    .execute(
-      "INSERT INTO users (id, created_at) VALUES ($1::text::uuid, now())",
-      &[&User::LEGACY_OWNER_ID.to_string()],
-    )
+    .execute("INSERT INTO users (id, created_at) VALUES ($1, now())", &[&User::LEGACY_OWNER_ID])
     .await
     .unwrap();
   app
@@ -212,10 +210,7 @@ async fn seeded_rows_belong_to_the_first_allow_listed_email_who_also_claims_the_
   let (owner_id, subject) = user_with_email(&app, "owner@example.com").await;
   assert_eq!(owner_id, User::LEGACY_OWNER_ID);
   assert_eq!(subject, None);
-  assert_eq!(
-    task_owner(&app, "id = $1::text::uuid", &seeded_id.to_string()).await,
-    User::LEGACY_OWNER_ID
-  );
+  assert_eq!(task_owner(&app, "id = $1", &seeded_id).await, User::LEGACY_OWNER_ID);
 
   // The seed sees the pre-ownership rows as its own.
   let list = client.get("/api/tasks?view=no-deadline").await;

@@ -10,7 +10,8 @@
 
 # The filtered jobs: id in ci.yml -> job name.
 def jobs:
-  {backend: "Backend", frontend: "Frontend", docs: "Docs site", tooling: "Tooling", adr: "ADR conventions", narratives: "Narratives", image: "Container image"};
+  {backend: "Backend", frontend: "Frontend", docs: "Docs site", tooling: "Tooling", adr: "ADR conventions",
+    narratives: "Narratives", binding: "Flow binding", image: "Container image"};
 
 # A change to the rules themselves runs everything, so the new rules are checked by every job they could skip.
 def rules_files: [".github/workflows/ci.yml", ".github/ci-changes.jq"];
@@ -40,11 +41,15 @@ def tooling_github_dirs: [".github/workflows/", ".github/actions/"];
 # They run only ADR conventions, not the whole Tooling job, which a sub-second check does not justify (issue #572).
 def adr_inputs: ["docs/architecture/calendar.architecture.json"];
 
-# Frontend: files outside frontend/ that its tests read (#902). The flow binding check (ADR-0061,
-# frontend/apps/e2e/src/binding/binding.test.ts) reads the architecture model, which also runs ADR conventions; the dev
-# proxy test (frontend/apps/web/dev/apiProxy.test.ts) checks its settings against .env.example. The rest of docs/ is read
-# only by the docs site and the decks, which the Frontend job leaves to the Docs site job.
-def frontend_inputs: ["docs/architecture/calendar.architecture.json", ".env.example"];
+# Frontend: files outside frontend/ that its tests read (#902): the dev proxy test (frontend/apps/web/dev/apiProxy.test.ts)
+# checks its settings against .env.example. The rest of docs/ is read only by the docs site and the decks, which the
+# Frontend job leaves to the Docs site job.
+def frontend_inputs: [".env.example"];
+
+# Flow binding: the e2e package's browser-free tests alone (ADR-0061, #902), for a change to the architecture model that
+# runs no Frontend job. The binding check (frontend/apps/e2e/src/binding/binding.test.ts) reads the model, the package
+# and the workspace files that install it; the Frontend job runs the same tests, so a change to those runs Frontend.
+def binding_inputs: ["docs/architecture/calendar.architecture.json"];
 
 # Docs site: its suite tests the publisher, .github/workflows/pages.yml (pages-workflow.test.ts), and it builds from the
 # shared theme package, so that one named directory is an input too (ADR-0025, third amendment; story 0046, issue #518).
@@ -68,6 +73,7 @@ def needs($job):
       or backend_toolchain or . == ".deno-version" or IN(tooling_github[])
   elif $job == "adr" then under(["docs/decisions/", "docs/stories/"]) or IN(adr_inputs[])
   elif $job == "narratives" then under(narrative_inputs) or . == ".deno-version"
+  elif $job == "binding" then under(["frontend/apps/e2e/"]) or frontend_root or IN(binding_inputs[])
   elif $job == "image" then
     under(["backend/", "frontend/apps/web/", "frontend/packages/", "contracts/", "docker/"]) or frontend_root
       or IN("Dockerfile", ".dockerignore", "image.just")
@@ -86,7 +92,10 @@ def filtered: (.event | IN("pull_request", "merge_group")) and .complete == true
 # when Tooling does not. A push or dispatch runs it as well, so ADR-0045 has push runs on main to baseline it (issue #572).
 # Narratives likewise: Tooling runs `just tools narratives --check` as a step, so a pull request or merge group runs the
 # Narratives job only when Tooling does not (#717).
+# Flow binding likewise: the Frontend job runs the e2e package's tests, so a pull request or merge group runs Flow binding
+# only when Frontend does not (#902).
 | (if $run.event | IN("pull_request", "merge_group")
    then .adr = (.adr and (.tooling | not)) | .narratives = (.narratives and (.tooling | not))
+     | .binding = (.binding and (.frontend | not))
    else . end)
 | . + {skipped: [to_entries[] | select(.value == false) | .key as $job | jobs[$job]]}

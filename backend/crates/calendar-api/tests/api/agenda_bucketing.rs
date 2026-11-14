@@ -43,7 +43,7 @@ impl SeededRandom {
 fn indexed_buckets_match_per_day_filtering(zone_id: &str, year: i32, month: u32, day: u32) {
   let zone = time_zones::find_iana(zone_id).expect("a valid zone");
   let start_date = NaiveDate::from_ymd_opt(year, month, day).expect("a valid date");
-  let range = DateRangeWindow::create(start_date, 7, zone).expect("a valid range");
+  let range = DateRangeWindow::create(start_date, DateRangeWindow::DAYS_IN_WEEK, zone);
   let mut random = SeededRandom(55);
   let tick = TimeDelta::nanoseconds(100);
   let mut instants: Vec<DateTime<Utc>> = range

@@ -2,6 +2,8 @@
 //! `users` row of a signed-in identity (ADR-0041). Users are not scoped to an owner: sign-in looks them up
 //! before there is one.
 
+#![allow(clippy::ref_option_ref, reason = "the AsChangeset derive borrows the Option<&str> fields")]
+
 use calendar_domain::users::{User, UserRecord};
 use chrono::{DateTime, Utc};
 use diesel::pg::Pg;
@@ -12,8 +14,9 @@ use uuid::Uuid;
 use crate::error::Error;
 use crate::schema::users;
 
-#[derive(Queryable, Selectable, Insertable, AsChangeset)]
-#[diesel(table_name = users, check_for_backend(Pg), treat_none_as_null = true)]
+/// A whole `users` row, the shape every read here returns.
+#[derive(Queryable, Selectable)]
+#[diesel(table_name = users, check_for_backend(Pg))]
 struct UserRow {
   id: Uuid,
   google_subject: Option<String>,
@@ -24,30 +27,61 @@ struct UserRow {
   last_signed_in_at: Option<DateTime<Utc>>,
 }
 
-impl UserRow {
-  fn of(user: &User) -> Self {
-    let record = user.clone().into_record();
+impl From<UserRow> for User {
+  fn from(row: UserRow) -> Self {
+    User::restore(UserRecord {
+      id: row.id,
+      google_subject: row.google_subject,
+      email: row.email,
+      display_name: row.display_name,
+      picture_url: row.picture_url,
+      created_at: row.created_at,
+      last_signed_in_at: row.last_signed_in_at,
+    })
+  }
+}
+
+/// The columns an insert writes: the ones a sign-in may change, plus the id and the creation time.
+#[derive(Insertable)]
+#[diesel(table_name = users)]
+struct NewUser<'a> {
+  id: Uuid,
+  created_at: DateTime<Utc>,
+  #[diesel(embed)]
+  changes: UserChanges<'a>,
+}
+
+impl<'a> NewUser<'a> {
+  fn of(user: &'a User) -> Self {
     Self {
-      id: record.id,
-      google_subject: record.google_subject,
-      email: record.email,
-      display_name: record.display_name,
-      picture_url: record.picture_url,
-      created_at: record.created_at,
-      last_signed_in_at: record.last_signed_in_at,
+      id: user.id(),
+      created_at: user.created_at(),
+      changes: UserChanges::of(user),
     }
   }
+}
 
-  fn into_user(self) -> User {
-    User::restore(UserRecord {
-      id: self.id,
-      google_subject: self.google_subject,
-      email: self.email,
-      display_name: self.display_name,
-      picture_url: self.picture_url,
-      created_at: self.created_at,
-      last_signed_in_at: self.last_signed_in_at,
-    })
+/// The columns a sign-in may change: never the id or the creation time. Also `Insertable`, to embed in
+/// [`NewUser`].
+#[derive(Insertable, AsChangeset)]
+#[diesel(table_name = users, treat_none_as_null = true)]
+struct UserChanges<'a> {
+  google_subject: Option<&'a str>,
+  email: Option<&'a str>,
+  display_name: Option<&'a str>,
+  picture_url: Option<&'a str>,
+  last_signed_in_at: Option<DateTime<Utc>>,
+}
+
+impl<'a> UserChanges<'a> {
+  fn of(user: &'a User) -> Self {
+    Self {
+      google_subject: user.google_subject(),
+      email: user.email(),
+      display_name: user.display_name(),
+      picture_url: user.picture_url(),
+      last_signed_in_at: user.last_signed_in_at(),
+    }
   }
 }
 
@@ -95,13 +129,13 @@ pub async fn resolve(
     let (user, written) = match found {
       None => {
         let user = User::create(now, &email, sign_in.google_subject, sign_in.display_name, sign_in.picture_url)?;
-        let written = diesel::insert_into(users::table).values(UserRow::of(&user)).execute(conn).await;
+        let written = diesel::insert_into(users::table).values(NewUser::of(&user)).execute(conn).await;
         (user, written)
       }
       Some(mut user) => {
         user.sign_in(now, &email, sign_in.google_subject, sign_in.display_name, sign_in.picture_url)?;
         let written = diesel::update(users::table.find(user.id()))
-          .set(UserRow::of(&user))
+          .set(UserChanges::of(&user))
           .execute(conn)
           .await;
         (user, written)
@@ -126,7 +160,7 @@ pub async fn find(conn: &mut AsyncPgConnection, id: Uuid) -> Result<Option<User>
     .first::<UserRow>(conn)
     .await
     .optional()?;
-  Ok(row.map(UserRow::into_user))
+  Ok(row.map(User::from))
 }
 
 async fn find_for_sign_in(
@@ -155,7 +189,7 @@ async fn find_for_sign_in(
     row = first(conn, placeholder.into_boxed()).await?;
   }
 
-  Ok(row.map(UserRow::into_user))
+  Ok(row.map(User::from))
 }
 
 async fn first(conn: &mut AsyncPgConnection, query: users::BoxedQuery<'_, Pg>) -> Result<Option<UserRow>, Error> {

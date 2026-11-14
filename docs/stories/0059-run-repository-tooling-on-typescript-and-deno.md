@@ -1,9 +1,14 @@
 ---
-status: planned
+status: in-progress
 date: 2026-11-11
 issue: https://github.com/mgasca/calendar/issues/679
 pr:
   - https://github.com/mgasca/calendar/pull/686
+  - https://github.com/mgasca/calendar/pull/687
+  - https://github.com/mgasca/calendar/pull/697
+  - https://github.com/mgasca/calendar/pull/699
+  - https://github.com/mgasca/calendar/pull/701
+  - https://github.com/mgasca/calendar/pull/700
 adrs: ["0058", "0038", "0042", "0044", "0045"]
 ---
 
@@ -38,7 +43,7 @@ Story [0058](0058-move-the-backend-from-dotnet-to-rust.md) moved the backend to 
 
 ### Dependencies
 
-The migration follows the Rust backend delivery in story [0058](0058-move-the-backend-from-dotnet-to-rust.md). Coordinate infrastructure-tool files with [PR #128](https://github.com/mgasca/calendar/pull/128) before porting them. The superseded .NET upgrade story [0056](0056-bump-dotnet-sdk-to-11.md) and [issue #657](https://github.com/mgasca/calendar/issues/657) are reconciled in final removal, without claiming that upgrade shipped.
+The migration follows the Rust backend delivery in story [0058](0058-move-the-backend-from-dotnet-to-rust.md). The maintainer deferred [PR #128](https://github.com/mgasca/calendar/pull/128): runtime tooling ports current-main behavior and excludes that PR's diagnostics/retry scope. The superseded .NET upgrade story [0056](0056-bump-dotnet-sdk-to-11.md) and [issue #657](https://github.com/mgasca/calendar/issues/657) are reconciled in final removal, without claiming that upgrade shipped.
 
 ### Acceptance criteria
 
@@ -71,14 +76,14 @@ The migration follows the Rust backend delivery in story [0058](0058-move-the-ba
 
 ## Implementation notes
 
-*Planned. This section is completed as the story is built.*
+*In progress. Foundation, validation and the hook port are delivered. Reporting, runtime tools, the hook follow-up and final .NET removal remain unfinished.*
 
 ### Where things live
 
 | Area | Location |
 | --- | --- |
 | Repo-wide tools and configuration | `tools/` |
-| Self-contained scripted skills | `.claude/skills/adr-draft/`, `.claude/skills/run-calendar/` |
+| Self-contained scripted skills | `.claude/skills/adr-draft/`, `.claude/skills/run-calendar/`, and the later `.claude/skills/architecture-narrative-builder/` addition from story [0063](0063-build-architecture-narratives-with-an-expert-panel.md) |
 | Workflow callers and hook registration | `.github/workflows/`, `.claude/settings.json` |
 | Runtime pin and command entry points | `.deno-version`, `justfile`, module recipes |
 
@@ -86,11 +91,11 @@ The migration follows the Rust backend delivery in story [0058](0058-move-the-ba
 
 | Slice | Child issue | Result |
 | --- | --- | --- |
-| Foundation | [#680](https://github.com/mgasca/calendar/issues/680) | Exact runtime pin, configs/locks, coexisting checks, doctor and npm Playwright feasibility proof. |
-| Validation | [#681](https://github.com/mgasca/calendar/issues/681) | ADR validator/sweep rules, delivery guards and dependency consistency checker, with callers. |
+| Foundation | [#680](https://github.com/mgasca/calendar/issues/680) | Delivered in [#687](https://github.com/mgasca/calendar/pull/687): exact Deno 2.9.8 pin, independent configs/locks, coexisting checks, doctor and npm Playwright feasibility proof. Cold-cache correction delivered in [#697](https://github.com/mgasca/calendar/pull/697). |
+| Validation | [#681](https://github.com/mgasca/calendar/issues/681) | Delivered in [#699](https://github.com/mgasca/calendar/pull/699): ADR validator/sweep rules, delivery guards and dependency consistency checker, with callers. |
 | Reporting | [#682](https://github.com/mgasca/calendar/issues/682) | CI timings/baseline/trend, handover watch and delivery dashboard, with scheduled workflows. |
-| Runtime tools | [#683](https://github.com/mgasca/calendar/issues/683) | Development seed, infrastructure/database commands and skill browser driver, with callers. |
-| Agent hooks | [#684](https://github.com/mgasca/calendar/issues/684) | Port protections and atomically switch registrations; replace C# notices and warmup. |
+| Runtime tools | [#683](https://github.com/mgasca/calendar/issues/683) | [#700](https://github.com/mgasca/calendar/pull/700) ports development seed, infrastructure/database commands and the standalone browser driver with their callers; review, delivery and verification on main remain pending. |
+| Agent hooks | [#684](https://github.com/mgasca/calendar/issues/684) | Port and registrations delivered in [#701](https://github.com/mgasca/calendar/pull/701), including Deno formatting guidance/session reporting. Prototype-named command correction [#741](https://github.com/mgasca/calendar/issues/741) remains a final-verification gate. |
 | Removal | [#685](https://github.com/mgasca/calendar/issues/685) | Remove .NET infrastructure and verify the no-.NET environment and delivery on main. |
 
 Foundation precedes ports; final removal follows all ports. Reporting and hooks touch shared documentation/callers and must coordinate ownership. The epic holds the current dependency map and PR state.
@@ -101,11 +106,16 @@ No product API changes. Tool CLI arguments, output schemas, persisted state and 
 
 ### Testing
 
-Port every case and fixture to Deno tests. Check rounding/statistics, YAML interpretation, pagination and IDs, privacy rules, hook decisions, subprocess failure/timeout cleanup and browser parsing. Run scripted skills from an external temporary directory. Test doctor with absent, wrong and correct runtimes. Check every affected workflow and run final checks without .NET. Record exact revisions and distinguish local, CI and skipped integration coverage.
+Migration verification retains existing cases and fixtures, compares deterministic old/new outputs, checks copied scripted skills, and records exact revisions and local versus CI coverage. Actual Calendar browser/database behavior and the final no-.NET environment remain pending in #683 and #685.
+
+* **Foundation:** local checks before delivery passed 1,076 C# and five Deno cases. The runtime diagnostics are in [doctor_test.ts](../../tools/doctor/tests/doctor_test.ts); the real and copied-skill [Playwright fixture test](../../.claude/skills/run-calendar/integration/playwright_test.ts) passed. That browser test uses a disposable fixture API, not the actual Calendar application. The native-stack merge `363c64844` passed Tooling/Docs but failed an ADR cache post-step; [#696](https://github.com/mgasca/calendar/issues/696) was corrected by #697. At `cfcc989a1`, Tooling/ADR conventions passed initially and [CI attempt 2](https://github.com/mgasca/calendar/actions/runs/43311330115) passed after retrying a separate frontend timeout tracked in [#698](https://github.com/mgasca/calendar/issues/698); [publication](https://github.com/mgasca/calendar/actions/runs/43397047598) succeeded on the same revision.
+* **Validation:** the original 54 ADR, 125 guard and 10 dependency-check cases passed before retirement. On reviewed head `504c383c5`, full tooling checks passed 202 Deno and 887 remaining C# cases, strict types, lint and formatting; shellcheck was unavailable locally and ran in CI. Full-repository validator output matched the old tool; inventory added Deno command tokens, and guard descriptions now name a dependency cache. The [copied-skill CLI test](../../.claude/skills/adr-draft/tests/cli_test.ts) and [dependency lock-refresh tests](../../tools/tool-versions/tests/tool-versions_test.ts) passed. The local docs corpus passed 296 tests; default five-second publication-link verification timed out even with one worker, while a 30-second diagnostic override passed all 18 artifact checks. Delivered revision `59b35598f` passed [main CI](https://github.com/mgasca/calendar/actions/runs/43398454583), including the normal Docs site, Tooling, ADR conventions and CI result checks.
+* **Hooks:** before removal, the original suite passed 318 cases. The [coverage map](../../tools/agent-hooks/tests/fixtures/README.md) records 558 captured calls/probe states and the two approved runtime-specific output replacements. Reviewed head `d95b7dbf8` passed full tooling checks with 735 Deno cases and remaining C# suites; shellcheck was unavailable locally. The dirty-worktree timeout regression found in review was corrected with a slow-process test. Delivered revision `8adf38f4f` passed [main CI](https://github.com/mgasca/calendar/actions/runs/43410784745), including Tooling, Docs site and CI result. Subsequently identified #741 is still open; this evidence does not claim that correction or final hook acceptance is complete.
+* **Runtime draft:** on the #700 cutover tree, the Deno role-grants integration matched the local initialization script in disposable PostgreSQL, and the former C# agreement test passed separately. Synthetic old/new infrastructure previews, migration calls, failure cleanup and connection-string examples matched; secret-derived output is intentionally removed. A task-owned TLS database verified a trusted hostname, rejected an untrusted certificate and a mismatched hostname; regression controls failed with either safeguard removed. Seed and browser outputs matched their saved C# oracles against a throwaway Calendar stack, and the copied browser skill passed its Deno and Chromium fixture tests outside the repository. These are local results; no live Azure operation was run. Final CI and review for #700 remain pending.
 
 ### Lessons learned, known issues and follow-ups
 
-No implementation or performance improvement is claimed by this card PR. Capture the pre-migration timing baseline before replacing tools and the post-migration measurements at completion. Runtime browser compatibility is a foundation feasibility check rather than an assumed result.
+The foundation recorded single local samples of 14.90 seconds before migration and 20.49 seconds during coexistence (#687); these are measured observations, not a reliable performance comparison or schedule estimate. Post-migration measurements are still owed. Cold-cache behavior needed a dedicated correction (#696/#697), and green cache-hit runs alone did not prove it. Final verification must include the actual application browser/database flow, #741's correction, all Deno skill configurations (including later additions), and an environment without .NET before marking the story implemented.
 
 ## User guide
 

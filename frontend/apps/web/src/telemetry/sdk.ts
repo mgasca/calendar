@@ -8,7 +8,14 @@
  * - Spans leave through the same-origin `/otlp` path, which `vite dev` and `vite preview` forward
  *   to the collector (`dev/otlpProxy.ts`); every span is reduced to the allow-list first.
  */
-import { context, propagation, SpanStatusCode, trace } from '@opentelemetry/api';
+import {
+  context,
+  propagation,
+  SpanStatusCode,
+  trace,
+  type Attributes,
+  type Span,
+} from '@opentelemetry/api';
 import { W3CTraceContextPropagator } from '@opentelemetry/core';
 import { OTLPTraceExporter } from '@opentelemetry/exporter-trace-otlp-http';
 import { FetchInstrumentation } from '@opentelemetry/instrumentation-fetch';
@@ -24,6 +31,18 @@ import {
 import { setActionTracer, type ActionTracer } from './action.ts';
 import { AllowListSpanExporter } from './allowListExporter.ts';
 import { routeTemplate } from './attributes.ts';
+
+const ATTR_URL_FULL = 'url.full';
+const ATTR_HTTP_REQUEST_METHOD = 'http.request.method';
+
+/**
+ * The attributes a span was started with. The SDK's spans are readable spans, though the API's `Span` type
+ * does not say so; any other span gives none.
+ */
+function startAttributes(span: Span): Attributes {
+  const { attributes } = span as Partial<{ attributes: Attributes }>;
+  return attributes ?? {};
+}
 
 export const SERVICE_NAME = 'calendar-web';
 
@@ -72,11 +91,17 @@ export function startTelemetry({
     // other origin. No cross-origin URL is listed for propagation.
     ignoreUrls: [new RegExp(`^(?!${escapeRegExp(origin)}/api/)`)],
     ignoreNetworkEvents: true,
+    // A `fetch(url, init)` call hands the hook its `init`, not the URL (#879), so the URL and method then come
+    // from the attributes the instrumentation started the span with.
     requestHook: (span, request) => {
-      if (!(request instanceof Request)) return;
-      const template = routeTemplate(request.url);
+      const started = startAttributes(span);
+      const url = request instanceof Request ? request.url : started[ATTR_URL_FULL];
+      const method =
+        request instanceof Request ? request.method : started[ATTR_HTTP_REQUEST_METHOD];
+      if (typeof url !== 'string' || typeof method !== 'string') return;
+      const template = routeTemplate(url);
       if (!template) return;
-      span.updateName(`${request.method.toUpperCase()} ${template}`);
+      span.updateName(`${method.toUpperCase()} ${template}`);
       span.setAttribute('url.template', template);
     },
   });

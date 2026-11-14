@@ -8,11 +8,6 @@ use calendar_domain::agenda::day_inclusion;
 use calendar_domain::time::{DayWindow, time_zones};
 use calendar_infrastructure::{OwnerId, events, tasks};
 
-fn sorted(mut ids: Vec<Uuid>) -> Vec<Uuid> {
-  ids.sort_unstable();
-  ids
-}
-
 /// Instants on and around both edges (whole seconds: PostgreSQL keeps microseconds).
 fn edge_points(window: &DayWindow) -> Vec<DateTime<Utc>> {
   let (start, end) = (window.start(), window.end());
@@ -71,7 +66,8 @@ fn build_tasks(date: NaiveDate, window: &DayWindow) -> Vec<TodoTask> {
   let mut built = Vec::new();
   for completed_at in completions {
     for offset in -2..=2_i64 {
-      built.push(build_task(
+      built.push(task_with(
+        OWNER,
         &format!("date {offset}"),
         Some(date + TimeDelta::days(offset)),
         None,
@@ -80,7 +76,8 @@ fn build_tasks(date: NaiveDate, window: &DayWindow) -> Vec<TodoTask> {
     }
 
     for due_at in &points {
-      built.push(build_task(
+      built.push(task_with(
+        OWNER,
         &format!("at {}", due_at.to_rfc3339()),
         None,
         Some(*due_at),
@@ -88,17 +85,9 @@ fn build_tasks(date: NaiveDate, window: &DayWindow) -> Vec<TodoTask> {
       ));
     }
 
-    built.push(build_task("undated", None, None, completed_at));
+    built.push(task_with(OWNER, "undated", None, None, completed_at));
   }
 
-  built
-}
-
-fn build_task(title: &str, due_date: Option<NaiveDate>, due_at: Option<DateTime<Utc>>, completed_at: Option<DateTime<Utc>>) -> TodoTask {
-  let mut built = task(title, due_date, due_at);
-  if let Some(at) = completed_at {
-    built.complete(at);
-  }
   built
 }
 
@@ -183,18 +172,8 @@ async fn api_selects_exactly_what_day_inclusion_selects(date_text: &str, zone_id
   assert_ne!(agenda.tasks.overdue, Vec::new());
 }
 
-macro_rules! scenarios {
-  ($($name:ident: $date:literal, $zone:literal;)*) => {
-    $(
-      #[tokio::test]
-      async fn $name() {
-        api_selects_exactly_what_day_inclusion_selects($date, $zone).await;
-      }
-    )*
-  };
-}
-
 scenarios! {
+  api_selects_exactly_what_day_inclusion_selects;
   api_selects_exactly_what_day_inclusion_selects_utc: "2026-10-26", "UTC";
   api_selects_exactly_what_day_inclusion_selects_kolkata: "2026-10-26", "Asia/Kolkata";
   api_selects_exactly_what_day_inclusion_selects_new_york_fall_back: "2026-11-01", "America/New_York";

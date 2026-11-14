@@ -11,10 +11,7 @@ use uuid::Uuid;
 pub async fn insert_user(client: &Client) -> Uuid {
   let id = Uuid::new_v4();
   client
-    .execute(
-      "INSERT INTO users (id, created_at) VALUES ($1::text::uuid, now())",
-      &[&id.to_string()],
-    )
+    .execute("INSERT INTO users (id, created_at) VALUES ($1, now())", &[&id])
     .await
     .unwrap();
   id

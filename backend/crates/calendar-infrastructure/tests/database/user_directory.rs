@@ -26,7 +26,7 @@ async fn directory_fixture() -> Fixture {
   f.database
     .migrator_client()
     .await
-    .execute("DELETE FROM users WHERE id = $1::text::uuid", &[&User::LEGACY_OWNER_ID.to_string()])
+    .execute("DELETE FROM users WHERE id = $1", &[&User::LEGACY_OWNER_ID])
     .await
     .unwrap();
   f
@@ -36,10 +36,7 @@ async fn insert_legacy_placeholder(database: &TestDatabase) {
   database
     .migrator_client()
     .await
-    .execute(
-      "INSERT INTO users (id, created_at) VALUES ($1::text::uuid, now())",
-      &[&User::LEGACY_OWNER_ID.to_string()],
-    )
+    .execute("INSERT INTO users (id, created_at) VALUES ($1, now())", &[&User::LEGACY_OWNER_ID])
     .await
     .unwrap();
 }
@@ -133,8 +130,8 @@ async fn concurrent_first_sign_ins_converge_on_one_row() {
     let racing = other.transaction().await.unwrap();
     racing
       .execute(
-        "INSERT INTO users (id, google_subject, email, created_at) VALUES ($1::text::uuid, $2, 'race@example.com', now())",
-        &[&interposed.to_string(), &subject_of_the_row_that_won],
+        "INSERT INTO users (id, google_subject, email, created_at) VALUES ($1, $2, 'race@example.com', now())",
+        &[&interposed, &subject_of_the_row_that_won],
       )
       .await
       .unwrap();

@@ -42,6 +42,9 @@ pub struct MigrationReport {
 }
 
 /// Why migrating failed. The transaction was rolled back, so the database is as it was.
+///
+/// The message names the step; the cause is the [`source`](std::error::Error::source), so render the whole
+/// chain with [`error_chain`](crate::connection::error_chain) wherever the error becomes text.
 #[derive(Debug, thiserror::Error)]
 pub enum MigrateError {
   #[error(
@@ -54,14 +57,18 @@ pub enum MigrateError {
     expected: String,
     last: &'static str,
   },
-  #[error("migration '{name}' failed: {reason}")]
-  Migration { name: String, reason: String },
+  #[error("migration '{name}' failed")]
+  Migration {
+    name: String,
+    #[source]
+    source: Box<dyn std::error::Error + Send + Sync>,
+  },
   #[error("no migration has the version '{0}'")]
   UnknownVersion(String),
-  #[error("database error while migrating: {0}")]
+  #[error("database error while migrating")]
   Database(#[from] diesel::result::Error),
-  #[error("the migration task did not finish: {0}")]
-  Task(String),
+  #[error("the migration task did not finish")]
+  Task(#[from] tokio::task::JoinError),
 }
 
 /// Brings the database to the latest migration, in one transaction.
@@ -93,7 +100,7 @@ pub async fn pending(connection: AsyncPgConnection) -> Result<Vec<String>, Migra
     }
     let pending = wrapper
       .pending_migrations(MIGRATIONS)
-      .map_err(|e| migration_error("(listing)", e.as_ref()))?;
+      .map_err(|e| migration_error("(listing)", e))?;
     Ok(pending.iter().map(|m| m.name().to_string()).collect())
   })
   .await
@@ -105,9 +112,7 @@ where
   T: Send + 'static,
   F: FnOnce(&mut Wrapper) -> Result<T, MigrateError> + Send + 'static,
 {
-  tokio::task::spawn_blocking(move || work(&mut Wrapper::from(connection)))
-    .await
-    .map_err(|e| MigrateError::Task(e.to_string()))?
+  tokio::task::spawn_blocking(move || work(&mut Wrapper::from(connection))).await?
 }
 
 fn run(connection: &mut Wrapper, up_to: Option<&str>) -> Result<MigrationReport, MigrateError> {
@@ -131,15 +136,13 @@ fn run(connection: &mut Wrapper, up_to: Option<&str>) -> Result<MigrationReport,
 
     let pending = connection
       .pending_migrations(MIGRATIONS)
-      .map_err(|e| migration_error("(listing)", e.as_ref()))?;
+      .map_err(|e| migration_error("(listing)", e))?;
     for migration in pending {
       let name = migration.name().to_string();
       if up_to.is_some_and(|last| migration.name().version().to_string().as_str() > last) {
         break;
       }
-      connection
-        .run_migration(&migration)
-        .map_err(|e| migration_error(&name, e.as_ref()))?;
+      connection.run_migration(&migration).map_err(|e| migration_error(&name, e))?;
       report.applied.push(name);
     }
     Ok(report)
@@ -191,15 +194,15 @@ fn relation_exists(connection: &mut Wrapper, qualified_name: &str) -> Result<boo
 
 /// The embedded migrations, oldest first.
 fn embedded() -> Result<Vec<Box<dyn Migration<Pg>>>, MigrateError> {
-  let mut migrations = MigrationSource::<Pg>::migrations(&MIGRATIONS).map_err(|e| migration_error("(embedded)", e.as_ref()))?;
+  let mut migrations = MigrationSource::<Pg>::migrations(&MIGRATIONS).map_err(|e| migration_error("(embedded)", e))?;
   migrations.sort_by_key(|m| m.name().version().to_string());
   Ok(migrations)
 }
 
-fn migration_error(name: &str, error: &(dyn std::error::Error + Send + Sync)) -> MigrateError {
+fn migration_error(name: &str, source: Box<dyn std::error::Error + Send + Sync>) -> MigrateError {
   MigrateError::Migration {
     name: name.to_owned(),
-    reason: error.to_string(),
+    source,
   }
 }
 

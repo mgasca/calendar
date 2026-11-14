@@ -92,10 +92,7 @@ async fn tasks_by_title(app: &TestApp) -> Vec<(String, bool)> {
 async fn is_completed(app: &TestApp, id: Uuid) -> bool {
   let client = app.database().migrator_client().await;
   client
-    .query_one(
-      "SELECT completed_at IS NOT NULL FROM tasks WHERE id = $1::text::uuid",
-      &[&id.to_string()],
-    )
+    .query_one("SELECT completed_at IS NOT NULL FROM tasks WHERE id = $1", &[&id])
     .await
     .expect("the task exists exactly once")
     .get(0)

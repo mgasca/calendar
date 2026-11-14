@@ -5,6 +5,7 @@
 
 use crate::common::*;
 use calendar_api::telemetry::{self, Delivery, Telemetry};
+use opentelemetry::logs::AnyValue;
 use opentelemetry::metrics::{Meter, MeterProvider as _};
 use opentelemetry::trace::{SpanId, SpanKind, Status, TraceId};
 use opentelemetry_sdk::logs::in_memory_exporter::LogDataWithResource;
@@ -19,6 +20,26 @@ const TRACEPARENT: &str = "00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-
 
 /// What the app exports during a test, read from in-memory exporters. The subscriber is this thread's
 /// default while the capture lives (Tokio tests run on one thread).
+/// One data point of the HTTP server request duration histogram.
+#[derive(Debug, PartialEq)]
+struct RequestPoint {
+  method: String,
+  route: Option<String>,
+  status: i64,
+  count: u64,
+}
+
+impl RequestPoint {
+  fn get(route: Option<&str>, status: i64, count: u64) -> Self {
+    Self {
+      method: "GET".to_owned(),
+      route: route.map(str::to_owned),
+      status,
+      count,
+    }
+  }
+}
+
 struct Capture {
   spans: InMemorySpanExporter,
   logs: InMemoryLogExporter,
@@ -74,8 +95,8 @@ impl Capture {
     format!("{:#?}\n{:#?}\n{metrics:#?}", self.spans(), self.logs())
   }
 
-  /// The HTTP server duration data points as `(method, route, status, count)`.
-  fn request_metrics(&self) -> Vec<(String, Option<String>, i64, u64)> {
+  /// The HTTP server duration data points.
+  fn request_metrics(&self) -> Vec<RequestPoint> {
     use opentelemetry_sdk::metrics::data::{AggregatedMetrics, MetricData};
     let meter_provider = self.telemetry.meter_provider.as_ref().expect("metrics are captured");
     meter_provider.force_flush().expect("the metrics are collected");
@@ -89,18 +110,18 @@ impl Capture {
           };
           for point in histogram.data_points() {
             let attribute = |key: &str| point.attributes().find(|kv| kv.key.as_str() == key).map(|kv| kv.value.clone());
-            points.push((
-              attribute("http.request.method")
+            points.push(RequestPoint {
+              method: attribute("http.request.method")
                 .expect("every point has a method")
                 .as_str()
                 .into_owned(),
-              attribute("http.route").map(|route| route.as_str().into_owned()),
-              match attribute("http.response.status_code") {
+              route: attribute("http.route").map(|route| route.as_str().into_owned()),
+              status: match attribute("http.response.status_code") {
                 Some(opentelemetry::Value::I64(status)) => status,
                 other => panic!("the status code is an integer: {other:?}"),
               },
-              point.count(),
-            ));
+              count: point.count(),
+            });
           }
         }
       }
@@ -115,6 +136,11 @@ fn attribute(span: &SpanData, key: &str) -> Option<String> {
     .iter()
     .find(|kv| kv.key.as_str() == key)
     .map(|kv| kv.value.as_str().into_owned())
+}
+
+/// Whether the record's body is a string containing `text` (the crate's log bridge sets only string bodies).
+fn body_contains(log: &LogDataWithResource, text: &str) -> bool {
+  matches!(log.record.body(), Some(AnyValue::String(body)) if body.as_str().contains(text))
 }
 
 fn trace_id() -> TraceId {
@@ -204,12 +230,7 @@ async fn a_failed_request_exports_its_error_log_with_the_trace_id_and_without_th
   let logs = capture.logs();
   let failed = logs
     .iter()
-    .find(|log| {
-      log
-        .record
-        .body()
-        .is_some_and(|body| format!("{body:?}").contains("the request failed"))
-    })
+    .find(|log| body_contains(log, "the request failed"))
     .unwrap_or_else(|| panic!("the failure is logged: {logs:#?}"));
   assert_eq!(failed.record.severity_number(), Some(opentelemetry::logs::Severity::Error));
   let context = failed.record.trace_context().expect("the record carries the trace context");
@@ -241,15 +262,7 @@ async fn a_successful_request_exports_one_log_record_with_its_trace_id_and_only_
   assert_eq!(response.status, StatusCode::OK);
 
   let logs = capture.logs();
-  let finished: Vec<_> = logs
-    .iter()
-    .filter(|log| {
-      log
-        .record
-        .body()
-        .is_some_and(|body| format!("{body:?}").contains("request finished"))
-    })
-    .collect();
+  let finished: Vec<_> = logs.iter().filter(|log| body_contains(log, "request finished")).collect();
   assert_eq!(finished.len(), 1, "one record per request: {logs:#?}");
   let record = &finished[0].record;
   assert_eq!(record.severity_number(), Some(opentelemetry::logs::Severity::Info));
@@ -269,17 +282,11 @@ async fn a_successful_request_exports_one_log_record_with_its_trace_id_and_only_
   assert_eq!(
     attributes,
     [
-      (
-        "http.request.method".to_owned(),
-        format!("{:?}", opentelemetry::logs::AnyValue::from("GET".to_owned()))
-      ),
-      (
-        "http.response.status_code".to_owned(),
-        format!("{:?}", opentelemetry::logs::AnyValue::Int(200))
-      ),
+      ("http.request.method".to_owned(), format!("{:?}", AnyValue::from("GET".to_owned()))),
+      ("http.response.status_code".to_owned(), format!("{:?}", AnyValue::Int(200))),
       (
         "http.route".to_owned(),
-        format!("{:?}", opentelemetry::logs::AnyValue::from("/api/agenda/day".to_owned()))
+        format!("{:?}", AnyValue::from("/api/agenda/day".to_owned()))
       ),
     ],
     "only the method, route template and status: {record:#?}"
@@ -294,13 +301,7 @@ async fn health_probes_are_not_logged() {
   app.client().get("/api/health").await;
 
   let logs = capture.logs();
-  assert!(
-    !logs.iter().any(|log| log
-      .record
-      .body()
-      .is_some_and(|body| format!("{body:?}").contains("request finished"))),
-    "{logs:#?}"
-  );
+  assert!(!logs.iter().any(|log| body_contains(log, "request finished")), "{logs:#?}");
 }
 
 #[tokio::test]
@@ -315,16 +316,10 @@ async fn requests_are_counted_and_timed_by_method_route_template_and_status() {
   app.client().get("/api/nothing-here?x=1").await;
 
   let points = capture.request_metrics();
-  assert!(
-    points.contains(&("GET".to_owned(), Some("/api/agenda/day".to_owned()), 200, 2)),
-    "{points:#?}"
-  );
-  assert!(
-    points.contains(&("GET".to_owned(), Some("/api/tasks/{id}".to_owned()), 404, 1)),
-    "{points:#?}"
-  );
+  assert!(points.contains(&RequestPoint::get(Some("/api/agenda/day"), 200, 2)), "{points:#?}");
+  assert!(points.contains(&RequestPoint::get(Some("/api/tasks/{id}"), 404, 1)), "{points:#?}");
   // No route matched: no route attribute, never the raw path.
-  assert!(points.contains(&("GET".to_owned(), None, 404, 1)), "{points:#?}");
+  assert!(points.contains(&RequestPoint::get(None, 404, 1)), "{points:#?}");
 }
 
 /// Values a flow puts in requests, rows and cookies; none may reach telemetry.
@@ -346,11 +341,9 @@ async fn no_span_log_or_metric_carries_personal_data_query_values_or_the_session
   let capture = Capture::start();
   let app = TestApp::builder().real_authentication().meter(capture.meter()).start().await;
   let ticket = SessionTicket {
-    user_id: Some(USER_A),
     name: Some(NAME.to_owned()),
     email: Some(EMAIL.to_owned()),
-    picture: None,
-    expires_at: app.clock.now() + TimeDelta::hours(8),
+    ..app.ticket_for(Some(USER_A))
   };
   let cookie = app.session_cookie(&ticket).await;
   let client = app.client().cookie(&cookie).header("traceparent", TRACEPARENT);
@@ -469,8 +462,5 @@ async fn health_probes_are_counted_but_not_traced() {
   let spans = capture.spans();
   assert!(spans.is_empty(), "no span for a health probe: {spans:#?}");
   let points = capture.request_metrics();
-  assert!(
-    points.contains(&("GET".to_owned(), Some("/api/health".to_owned()), 200, 1)),
-    "{points:#?}"
-  );
+  assert!(points.contains(&RequestPoint::get(Some("/api/health"), 200, 1)), "{points:#?}");
 }

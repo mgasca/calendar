@@ -3,65 +3,12 @@
 use crate::common::*;
 use chrono::{Datelike, Days, Weekday};
 
-const NEW_YORK: &str = "America/New_York";
-
 // The week of Monday 2026-10-26 in New York ends with the fall-back day, Sunday 2026-11-01 (25 hours).
 const MONDAY: &str = "2026-10-26";
 const WEDNESDAY: &str = "2026-10-28";
 
-fn d(text: &str) -> NaiveDate {
-  text.parse().expect("a valid date")
-}
-
-fn timed(title: &str, start: DateTime<Utc>, end: DateTime<Utc>) -> CalendarEvent {
-  CalendarEvent::create(OWNER, title, start, end, NEW_YORK, None, None).expect("a valid event")
-}
-
-fn all_day(title: &str, start: &str, end: &str) -> CalendarEvent {
-  CalendarEvent::create_all_day(OWNER, title, d(start), d(end), None, None).expect("a valid event")
-}
-
-fn on(title: &str, due_date: &str) -> TodoTask {
-  task(title, Some(d(due_date)), None)
-}
-
-fn at(title: &str, due_at: DateTime<Utc>) -> TodoTask {
-  task(title, None, Some(due_at))
-}
-
-fn with_priority(title: &str, due_date: Option<&str>, due_at: Option<DateTime<Utc>>, priority: &str) -> TodoTask {
-  TodoTask::create(OWNER, title, due_date.map(d), due_at, priority, None).expect("a valid task")
-}
-
-fn done(title: &str, due_date: &str, completed_at: DateTime<Utc>) -> TodoTask {
-  completed_task(title, Some(d(due_date)), completed_at, None)
-}
-
-fn event_titles(events: &[TimedEventItem]) -> Vec<&str> {
-  events.iter().map(|event| event.title.as_str()).collect()
-}
-
-fn all_day_titles(events: &[AllDayEventItem]) -> Vec<&str> {
-  events.iter().map(|event| event.title.as_str()).collect()
-}
-
-fn task_titles(tasks: &[AgendaTaskItem]) -> Vec<&str> {
-  tasks.iter().map(|task| task.title.as_str()).collect()
-}
-
 fn titles_and_completion(tasks: &[AgendaTaskItem]) -> Vec<(&str, bool)> {
   tasks.iter().map(|task| (task.title.as_str(), task.is_completed)).collect()
-}
-
-fn sorted_keys(value: &Value) -> Vec<&str> {
-  let mut keys: Vec<&str> = value.as_object().expect("a JSON object").keys().map(String::as_str).collect();
-  keys.sort_unstable();
-  keys
-}
-
-fn sorted(mut names: Vec<&str>) -> Vec<&str> {
-  names.sort_unstable();
-  names
 }
 
 // ---- request validation ----
@@ -87,9 +34,7 @@ async fn get_week_agenda_invalid_input_returns_400_validation_problem() {
 
     assert_eq!(response.status, StatusCode::BAD_REQUEST, "{query}");
     assert_eq!(response.media_type(), Some("application/problem+json"), "{query}");
-    let body = response.value();
-    let errors = body["errors"].as_object().unwrap_or_else(|| panic!("{query}: no errors in {body}"));
-    assert!(errors.contains_key(field), "{query}: {errors:?}");
+    assert!(response.has_error(field), "{query}: {}", response.value());
   }
 }
 
@@ -284,7 +229,7 @@ async fn events_are_placed_on_each_day_they_touch_with_day_relative_flags_and_or
   assert_eq!(tuesday.title, "overnight Tue-Wed");
   assert_eq!((tuesday.starts_before_day, tuesday.ends_after_day), (false, true));
 
-  assert_eq!(event_titles(&week.days[2].events), ["overnight Tue-Wed", "Alpha", "beta"]);
+  assert_eq!(titles(&week.days[2].events), ["overnight Tue-Wed", "Alpha", "beta"]);
   assert_eq!(
     (week.days[2].events[0].starts_before_day, week.days[2].events[0].ends_after_day),
     (true, false)
@@ -296,7 +241,7 @@ async fn events_are_placed_on_each_day_they_touch_with_day_relative_flags_and_or
   );
 
   assert_eq!(week.days[3].events, Vec::new());
-  assert_eq!(event_titles(&week.days[6].events), ["into next week"]);
+  assert_eq!(titles(&week.days[6].events), ["into next week"]);
   assert!(
     !week
       .days
@@ -332,15 +277,15 @@ async fn all_day_events_are_returned_once_per_week_ordered_by_start_date_then_ti
   let mut twins = vec![twin_a.id(), twin_b.id()];
   twins.sort_unstable();
   assert_eq!(
-    sorted(all_day_titles(&week.all_day_events)),
+    sorted(titles(&week.all_day_events)),
     sorted(vec!["trip from last week", "conference", "Twin", "twin", "into next week"])
   );
-  assert_eq!(all_day_titles(&week.all_day_events[..2]), ["trip from last week", "conference"]);
+  assert_eq!(titles(&week.all_day_events[..2]), ["trip from last week", "conference"]);
   let twin_ids: Vec<Uuid> = week.all_day_events[2..4].iter().map(|event| event.id).collect();
   assert_eq!(twin_ids, twins);
   assert_eq!(week.all_day_events.last().expect("a last event").title, "into next week");
   assert_eq!(week.all_day_events[0].start_date, d("2026-10-24"));
-  assert_eq!(event_titles(&week.days[1].events), ["timed"]);
+  assert_eq!(titles(&week.days[1].events), ["timed"]);
 }
 
 // ---- tasks per day ----
@@ -366,12 +311,12 @@ async fn tasks_are_listed_on_their_due_day_timed_first_by_instant_then_date_only
 
   let week = app.get_week_agenda(WEDNESDAY, NEW_YORK, WEDNESDAY).await;
 
-  assert_eq!(task_titles(&week.days[0].tasks), ["first instant"]);
-  assert_eq!(task_titles(&week.days[2].tasks), ["early", "late", "Alpha", "zeta"]);
+  assert_eq!(titles(&week.days[0].tasks), ["first instant"]);
+  assert_eq!(titles(&week.days[2].tasks), ["early", "late", "Alpha", "zeta"]);
   let alphas: Vec<&AgendaTaskItem> = week.days[2].tasks.iter().filter(|task| task.title == "Alpha").collect();
   assert_eq!(alphas.len(), 1);
   assert!(alphas[0].is_completed);
-  assert_eq!(task_titles(&week.days[6].tasks), ["late Sunday EST"]);
+  assert_eq!(titles(&week.days[6].tasks), ["late Sunday EST"]);
   assert_eq!(week.days.iter().map(|day| day.tasks.len()).sum::<usize>(), 6);
 }
 
@@ -443,7 +388,7 @@ async fn overdue_in_the_current_week_has_only_tasks_due_before_monday_and_never_
 
   let overdue = week.overdue.as_ref().expect("an overdue list");
   assert_eq!(
-    task_titles(overdue),
+    titles(overdue),
     ["last week, open", "timed Sunday night, open", "last week, done today"]
   );
   let done_today: Vec<&AgendaTaskItem> = overdue.iter().filter(|task| task.title == "last week, done today").collect();
@@ -451,8 +396,8 @@ async fn overdue_in_the_current_week_has_only_tasks_due_before_monday_and_never_
   assert!(done_today[0].is_completed);
   let in_days: Vec<Uuid> = week.days.iter().flat_map(|day| &day.tasks).map(|task| task.id).collect();
   assert!(!overdue.iter().any(|task| in_days.contains(&task.id)));
-  assert_eq!(task_titles(&week.days[0].tasks), ["Monday first instant, open", "Monday, open"]);
-  assert_eq!(task_titles(&week.days[1].tasks), ["Tuesday, open"]);
+  assert_eq!(titles(&week.days[0].tasks), ["Monday first instant, open", "Monday, open"]);
+  assert_eq!(titles(&week.days[1].tasks), ["Tuesday, open"]);
 }
 
 #[tokio::test]
@@ -475,12 +420,9 @@ async fn tasks_in_week_days_and_overdue_use_priority_after_deadline() {
 
   let week = app.get_week_agenda(WEDNESDAY, NEW_YORK, WEDNESDAY).await;
 
+  assert_eq!(titles(week.overdue.as_ref().expect("an overdue list")), ["older low", "old high"]);
   assert_eq!(
-    task_titles(week.overdue.as_ref().expect("an overdue list")),
-    ["older low", "old high"]
-  );
-  assert_eq!(
-    task_titles(&week.days[0].tasks),
+    titles(&week.days[0].tasks),
     [
       "same instant high a",
       "same instant high z",
@@ -515,7 +457,7 @@ async fn overdue_in_a_future_week_is_the_full_overdue_list_as_of_today() {
 
   assert_eq!(week.week_start, d("2026-11-02"));
   assert_eq!(
-    task_titles(week.overdue.as_ref().expect("an overdue list")),
+    titles(week.overdue.as_ref().expect("an overdue list")),
     [
       "last week, open",
       "this Monday, open",
@@ -523,7 +465,7 @@ async fn overdue_in_a_future_week_is_the_full_overdue_list_as_of_today() {
       "this Monday, done today",
     ]
   );
-  assert_eq!(task_titles(&week.days[1].tasks), ["in the week"]);
+  assert_eq!(titles(&week.days[1].tasks), ["in the week"]);
 }
 
 #[tokio::test]

@@ -4,20 +4,14 @@
 //! suite gives with another offset are converted the way a caller would.
 
 use calendar_domain::error::{ArgumentError, InvalidOperationError};
-use calendar_domain::tasks::{Priority, TodoTask, TodoTaskRecord};
-use chrono::{DateTime, FixedOffset, NaiveDate, TimeDelta, TimeZone, Utc};
+use calendar_domain::tasks::{Deadline, Priority, TodoTask, TodoTaskRecord};
+use chrono::{DateTime, FixedOffset, TimeDelta, TimeZone, Utc};
 use uuid::Uuid;
 
-fn owner() -> Uuid {
-  Uuid::from_u128(0x0a0b_0c0d_0e0f_4a1b_8c2d_3e4f_5a6b_7c8d)
-}
+use crate::support::{date, owner};
 
 fn now() -> DateTime<Utc> {
   Utc.with_ymd_and_hms(2026, 10, 26, 12, 0, 0).unwrap()
-}
-
-fn date(year: i32, month: u32, day: u32) -> NaiveDate {
-  NaiveDate::from_ymd_opt(year, month, day).unwrap()
 }
 
 fn with_offset(hours: i32, year: i32, month: u32, day: u32, hour: u32) -> DateTime<FixedOffset> {
@@ -274,19 +268,40 @@ fn create_reports_the_first_broken_rule_in_a_fixed_order() {
 #[test]
 fn priority_round_trips_its_wire_form_and_is_case_sensitive() {
   for priority in [Priority::Low, Priority::Medium, Priority::High] {
-    assert_eq!(Priority::parse(priority.as_str()), Some(priority));
+    assert_eq!(priority.as_str().parse(), Ok(priority));
   }
 
   assert_eq!(Priority::default(), Priority::Medium);
-  assert_eq!(Priority::parse("High"), None);
-  assert_eq!(Priority::parse(" low"), None);
+  for text in ["High", " low", ""] {
+    assert_eq!(
+      text.parse::<Priority>(),
+      Err(ArgumentError::new("priority", "Priority must be low, medium or high."))
+    );
+  }
 }
 
 #[test]
-fn deadline_column_helpers_are_mutually_exclusive() {
-  assert_eq!(TodoTask::for_due_date(date(2026, 10, 27)), (Some(date(2026, 10, 27)), None));
-  assert_eq!(TodoTask::for_due_instant(now()), (None, Some(now())));
-  assert_eq!(TodoTask::without_deadline(), (None, None));
+fn deadline_parts_are_mutually_exclusive() {
+  assert_eq!(Deadline::from_parts(None, None), Ok(Deadline::None));
+  assert_eq!(
+    Deadline::from_parts(Some(date(2026, 10, 27)), None),
+    Ok(Deadline::On(date(2026, 10, 27)))
+  );
+  assert_eq!(Deadline::from_parts(None, Some(now())), Ok(Deadline::At(now())));
+  assert_eq!(
+    Deadline::from_parts(Some(date(2026, 10, 27)), Some(now())),
+    Err(ArgumentError::new(
+      "dueAt",
+      "A task can have a due date or a due instant, not both."
+    ))
+  );
+
+  assert_eq!(Deadline::default(), Deadline::None);
+  assert_eq!((Deadline::None.due_date(), Deadline::None.due_at()), (None, None));
+  let on = Deadline::On(date(2026, 10, 27));
+  assert_eq!((on.due_date(), on.due_at()), (Some(date(2026, 10, 27)), None));
+  let at = Deadline::At(now());
+  assert_eq!((at.due_date(), at.due_at()), (None, Some(now())));
 }
 
 #[test]
@@ -297,8 +312,7 @@ fn restore_and_into_record_round_trip_without_validation() {
     title: "Stored".to_owned(),
     priority: Priority::High,
     notes: Some("n".to_owned()),
-    due_date: None,
-    due_at: Some(now()),
+    deadline: Deadline::At(now()),
     completed_at: Some(now() + TimeDelta::hours(1)),
   };
 

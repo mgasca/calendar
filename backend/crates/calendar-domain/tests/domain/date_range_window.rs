@@ -5,23 +5,13 @@
 
 use std::num::NonZeroUsize;
 
-use calendar_domain::time::{DateRangeWindow, DayWindow, IanaZone, time_zones};
-use chrono::{DateTime, Datelike, Days, NaiveDate, TimeDelta, TimeZone, Utc, Weekday};
+use calendar_domain::time::{DateRangeWindow, DayWindow, IanaZone};
+use chrono::{Datelike, Days, NaiveDate, TimeDelta, Weekday};
 
-fn date(year: i32, month: u32, day: u32) -> NaiveDate {
-  NaiveDate::from_ymd_opt(year, month, day).unwrap()
-}
+use crate::support::{date, utc, zone};
 
 fn day_count(count: usize) -> NonZeroUsize {
   NonZeroUsize::new(count).unwrap()
-}
-
-fn utc(year: i32, month: u32, day: u32, hour: u32, minute: u32) -> DateTime<Utc> {
-  Utc.with_ymd_and_hms(year, month, day, hour, minute, 0).unwrap()
-}
-
-fn zone(id: &str) -> IanaZone {
-  time_zones::find_iana(id).unwrap()
 }
 
 fn should_tile(range: &DateRangeWindow) {

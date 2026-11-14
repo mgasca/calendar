@@ -27,9 +27,10 @@ pub fn ordinal_ignore_case_eq(a: &str, b: &str) -> bool {
   ordinal_ignore_case_cmp(a, b) == Ordering::Equal
 }
 
-/// Whether `value` is `null`, empty or only white space, like `string.IsNullOrWhiteSpace`.
-pub fn is_blank(value: Option<&str>) -> bool {
-  value.is_none_or(|text| text.chars().all(char::is_whitespace))
+/// Whether `value` is empty or only white space. For an optional value, `value.is_none_or(is_blank)` is
+/// `string.IsNullOrWhiteSpace`.
+pub fn is_blank(value: &str) -> bool {
+  value.chars().all(char::is_whitespace)
 }
 
 /// The length `string.Length` reports: UTF-16 code units.
@@ -55,9 +56,9 @@ mod tests {
 
   #[test]
   fn blank_is_none_empty_or_white_space() {
-    assert!(is_blank(None));
-    assert!(is_blank(Some("")));
-    assert!(is_blank(Some(" \t\u{a0}")));
-    assert!(!is_blank(Some(" x ")));
+    assert!(None.is_none_or(is_blank));
+    assert!(is_blank(""));
+    assert!(is_blank(" \t\u{a0}"));
+    assert!(!is_blank(" x "));
   }
 }

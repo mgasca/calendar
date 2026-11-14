@@ -29,8 +29,15 @@
 //! - **Database.** [`TestApp::database`] is the `calendar_testing::TestDatabase`: connect as
 //!   `calendar_migrator` to arrange or inspect rows. [`TestApp::seed`] inserts domain entities directly.
 //!
+//! - **Fixtures.** Builders, projections and generators that several modules use (the agenda builders,
+//!   [`titles`], [`SeededRandom`], [`scenarios!`], [`spa_root`]) live in `fixtures.rs`; add one there rather
+//!   than copying it into a module.
+//!
 //! The API tests are one binary (`tests/api/main.rs`) with one container; each test module starts with
 //! `use crate::common::*;`.
+
+mod fixtures;
+pub use fixtures::*;
 
 use std::path::Path;
 use std::sync::{Arc, Mutex};
@@ -369,6 +376,18 @@ impl TestApp {
     self.client().header(USER_HEADER, &user.to_string())
   }
 
+  /// A session ticket for `user` (`None`: one without a user id) named "Someone", valid for eight hours from
+  /// the test clock's now. Vary a field with struct update syntax: `SessionTicket { name, ..app.ticket_for(..) }`.
+  pub fn ticket_for(&self, user: Option<Uuid>) -> SessionTicket {
+    SessionTicket {
+      user_id: user,
+      name: Some("Someone".to_owned()),
+      email: Some("someone@example.com".to_owned()),
+      picture: None,
+      expires_at: self.clock.now() + TimeDelta::hours(8),
+    }
+  }
+
   /// A `Cookie` header value holding a session cookie for `ticket`, sealed with this app's key.
   pub async fn session_cookie(&self, ticket: &SessionTicket) -> String {
     let sealer = self.state.sealer().await.expect("the session key is available");
@@ -423,21 +442,34 @@ pub fn escape(value: &str) -> String {
     .collect()
 }
 
+/// A task of `owner` with medium priority and no notes, completed at `completed_at` when it is `Some`.
+pub fn task_with(
+  owner: Uuid,
+  title: &str,
+  due_date: Option<NaiveDate>,
+  due_at: Option<DateTime<Utc>>,
+  completed_at: Option<DateTime<Utc>>,
+) -> TodoTask {
+  let mut task = TodoTask::create(owner, title, due_date, due_at, "medium", None).expect("a valid task");
+  if let Some(completed_at) = completed_at {
+    task.complete(completed_at);
+  }
+  task
+}
+
 /// An open task of [`OWNER`] with medium priority and no notes.
 pub fn task(title: &str, due_date: Option<NaiveDate>, due_at: Option<DateTime<Utc>>) -> TodoTask {
-  task_of(OWNER, title, due_date, due_at)
+  task_with(OWNER, title, due_date, due_at, None)
 }
 
 /// An open task of `owner` with medium priority and no notes.
 pub fn task_of(owner: Uuid, title: &str, due_date: Option<NaiveDate>, due_at: Option<DateTime<Utc>>) -> TodoTask {
-  TodoTask::create(owner, title, due_date, due_at, "medium", None).expect("a valid task")
+  task_with(owner, title, due_date, due_at, None)
 }
 
 /// A task of [`OWNER`] completed at `completed_at`.
 pub fn completed_task(title: &str, due_date: Option<NaiveDate>, completed_at: DateTime<Utc>, due_at: Option<DateTime<Utc>>) -> TodoTask {
-  let mut task = task(title, due_date, due_at);
-  task.complete(completed_at);
-  task
+  task_with(OWNER, title, due_date, due_at, Some(completed_at))
 }
 
 /// Sends requests into the app. Cheap to clone; [`TestClient::header`] adds a header to every request.
@@ -598,6 +630,11 @@ impl TestResponse {
     self.value()["errors"][field]
       .as_array()
       .map_or_default(|messages| messages.iter().filter_map(|message| message.as_str().map(str::to_owned)).collect())
+  }
+
+  /// Whether a validation problem's `errors` names `field`.
+  pub fn has_error(&self, field: &str) -> bool {
+    self.value()["errors"].get(field).is_some()
   }
 
   /// The `title` of a problem response.

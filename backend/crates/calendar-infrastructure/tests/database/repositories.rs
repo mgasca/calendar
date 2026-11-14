@@ -33,8 +33,8 @@ pub async fn fixture() -> Fixture {
     .migrator_client()
     .await
     .execute(
-      "INSERT INTO users (id, email, created_at) VALUES ($1::text::uuid, $2, now()), ($3::text::uuid, $4, now())",
-      &[&USER_A.0.to_string(), &USER_A_EMAIL, &USER_B.0.to_string(), &USER_B_EMAIL],
+      "INSERT INTO users (id, email, created_at) VALUES ($1, $2, now()), ($3, $4, now())",
+      &[&USER_A.0, &USER_A_EMAIL, &USER_B.0, &USER_B_EMAIL],
     )
     .await
     .unwrap();

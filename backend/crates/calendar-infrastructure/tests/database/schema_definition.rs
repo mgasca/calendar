@@ -5,51 +5,61 @@ use std::ops::Bound;
 
 use calendar_infrastructure::schema::{RowVersion, events, session_keys, tasks, users};
 use calendar_testing::TestDatabase;
-use chrono::{DateTime, NaiveDate, TimeZone, Utc};
+use chrono::{DateTime, NaiveDate, Utc};
 use diesel::prelude::*;
 use diesel_async::RunQueryDsl;
 use uuid::Uuid;
 
+use crate::repositories::{date, utc};
 use crate::support::strings;
 
-type EventRow = (
-  Uuid,
-  String,
-  Option<String>,
-  Option<String>,
-  bool,
-  Option<DateTime<Utc>>,
-  Option<DateTime<Utc>>,
-  Option<String>,
-  Option<NaiveDate>,
-  Option<NaiveDate>,
-  Option<(Bound<DateTime<Utc>>, Bound<DateTime<Utc>>)>,
-  Option<(Bound<NaiveDate>, Bound<NaiveDate>)>,
-  Uuid,
-  RowVersion,
-);
+/// A PostgreSQL range as Diesel loads it: the lower and the upper bound.
+type Range<T> = (Bound<T>, Bound<T>);
 
-type TaskRow = (
-  Uuid,
-  String,
-  Option<NaiveDate>,
-  Option<DateTime<Utc>>,
-  Option<DateTime<Utc>>,
-  Option<String>,
-  String,
-  Uuid,
-  RowVersion,
-);
+/// `events::all_columns`, loaded by position: the field order is the column order of `schema.rs`.
+#[derive(Queryable, Debug, PartialEq)]
+struct EventRow {
+  id: Uuid,
+  title: String,
+  location: Option<String>,
+  notes: Option<String>,
+  is_all_day: bool,
+  starts_at: Option<DateTime<Utc>>,
+  ends_at: Option<DateTime<Utc>>,
+  time_zone_id: Option<String>,
+  start_date: Option<NaiveDate>,
+  end_date: Option<NaiveDate>,
+  span: Option<Range<DateTime<Utc>>>,
+  date_span: Option<Range<NaiveDate>>,
+  owner_id: Uuid,
+  version: RowVersion,
+}
 
-type UserRow = (
-  Uuid,
-  Option<String>,
-  Option<String>,
-  Option<String>,
-  Option<String>,
-  DateTime<Utc>,
-  Option<DateTime<Utc>>,
-);
+/// `tasks::all_columns`, loaded by position.
+#[derive(Queryable, Debug, PartialEq)]
+struct TaskRow {
+  id: Uuid,
+  title: String,
+  due_date: Option<NaiveDate>,
+  due_at: Option<DateTime<Utc>>,
+  completed_at: Option<DateTime<Utc>>,
+  notes: Option<String>,
+  priority: String,
+  owner_id: Uuid,
+  version: RowVersion,
+}
+
+/// `users::all_columns`, loaded by position.
+#[derive(Queryable, Debug, PartialEq)]
+struct UserRow {
+  id: Uuid,
+  google_subject: Option<String>,
+  email: Option<String>,
+  display_name: Option<String>,
+  picture_url: Option<String>,
+  created_at: DateTime<Utc>,
+  last_signed_in_at: Option<DateTime<Utc>>,
+}
 
 #[tokio::test]
 async fn schema_rs_declares_exactly_the_columns_of_each_table() {
@@ -92,15 +102,9 @@ async fn every_declared_column_loads_with_its_rust_type() {
   let database = TestDatabase::migrated().await;
   let mut app = database.app_connection().await;
   let owner = Uuid::new_v4();
-  let created = Utc.with_ymd_and_hms(2026, 11, 1, 8, 0, 0).unwrap();
-  let (start, end) = (
-    Utc.with_ymd_and_hms(2026, 10, 26, 10, 0, 0).unwrap(),
-    Utc.with_ymd_and_hms(2026, 10, 26, 11, 0, 0).unwrap(),
-  );
-  let (first_day, day_after) = (
-    NaiveDate::from_ymd_opt(2026, 10, 26).unwrap(),
-    NaiveDate::from_ymd_opt(2026, 10, 28).unwrap(),
-  );
+  let created = utc(2026, 11, 1, 8, 0);
+  let (start, end) = (utc(2026, 10, 26, 10, 0), utc(2026, 10, 26, 11, 0));
+  let (first_day, day_after) = (date(2026, 10, 26), date(2026, 10, 28));
 
   diesel::insert_into(users::table)
     .values((
@@ -153,20 +157,31 @@ async fn every_declared_column_loads_with_its_rust_type() {
     .unwrap();
 
   let user: UserRow = users::table.find(owner).first(&mut app).await.unwrap();
-  assert_eq!(user, (owner, None, Some("ana@example.com".to_owned()), None, None, created, None));
+  assert_eq!(
+    user,
+    UserRow {
+      id: owner,
+      google_subject: None,
+      email: Some("ana@example.com".to_owned()),
+      display_name: None,
+      picture_url: None,
+      created_at: created,
+      last_signed_in_at: None,
+    }
+  );
 
   let event: EventRow = events::table.find(timed).select(events::all_columns).first(&mut app).await.unwrap();
   assert_eq!(
-    (event.5, event.6, event.7.as_deref()),
+    (event.starts_at, event.ends_at, event.time_zone_id.as_deref()),
     (Some(start), Some(end), Some("Europe/Lisbon"))
   );
   assert_eq!(
-    event.10,
+    event.span,
     Some((Bound::Included(start), Bound::Excluded(end))),
     "span is the half-open instant range"
   );
-  assert_eq!(event.11, None);
-  assert_eq!(event.12, owner);
+  assert_eq!(event.date_span, None);
+  assert_eq!(event.owner_id, owner);
 
   let event: EventRow = events::table
     .find(all_day)
@@ -174,28 +189,32 @@ async fn every_declared_column_loads_with_its_rust_type() {
     .first(&mut app)
     .await
     .unwrap();
-  assert_eq!((event.2.as_deref(), event.3.as_deref(), event.4), (Some("Lisbon"), Some("n"), true));
-  assert_eq!((event.8, event.9), (Some(first_day), Some(day_after)));
-  assert_eq!(event.10, None);
   assert_eq!(
-    event.11,
+    (event.location.as_deref(), event.notes.as_deref(), event.is_all_day),
+    (Some("Lisbon"), Some("n"), true)
+  );
+  assert_eq!((event.start_date, event.end_date), (Some(first_day), Some(day_after)));
+  assert_eq!(event.span, None);
+  assert_eq!(
+    event.date_span,
     Some((Bound::Included(first_day), Bound::Excluded(day_after))),
     "date_span is the half-open date range"
   );
 
   let loaded: TaskRow = tasks::table.find(task).select(tasks::all_columns).first(&mut app).await.unwrap();
   assert_eq!(
-    (
-      loaded.0,
-      loaded.1.as_str(),
-      loaded.2,
-      loaded.3,
-      loaded.4,
-      loaded.5,
-      loaded.6.as_str(),
-      loaded.7
-    ),
-    (task, "t", None, Some(start), None, None, "medium", owner)
+    loaded,
+    TaskRow {
+      id: task,
+      title: "t".to_owned(),
+      due_date: None,
+      due_at: Some(start),
+      completed_at: None,
+      notes: None,
+      priority: "medium".to_owned(),
+      owner_id: owner,
+      version: loaded.version,
+    }
   );
 
   // The range columns filter with the operators the agenda uses.
@@ -207,11 +226,7 @@ async fn every_declared_column_loads_with_its_rust_type() {
     .unwrap();
   assert_eq!(overlapping, [timed]);
   let containing: Vec<Uuid> = events::table
-    .filter(
-      events::date_span
-        .assume_not_null()
-        .contains(NaiveDate::from_ymd_opt(2026, 10, 27).unwrap()),
-    )
+    .filter(events::date_span.assume_not_null().contains(date(2026, 10, 27)))
     .select(events::id)
     .load(&mut app)
     .await

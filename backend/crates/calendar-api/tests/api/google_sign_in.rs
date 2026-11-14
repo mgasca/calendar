@@ -7,6 +7,7 @@ use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
 
 use crate::common::*;
+use crate::sign_in::UserRow;
 use axum::extract::State;
 use axum::routing::{get, post};
 use axum::{Form, Json, Router};
@@ -137,19 +138,23 @@ fn assert_secure_http_only_lax(response: &TestResponse, name: &str) {
   }
 }
 
-/// `GET /api/auth/login`, as a browser would: returns the authorization parameters and the sign-in cookie,
-/// and tells the fake what Google would remember.
-async fn begin(app: &TestApp, google: &Shared, return_url: &str) -> (HashMap<String, String>, String) {
-  begin_with(app, &app.client(), google, return_url).await.0
+/// What `GET /api/auth/login` hands the browser.
+struct SignInStart {
+  /// The query parameters of the redirect to Google's authorization endpoint.
+  parameters: HashMap<String, String>,
+  /// The sign-in cookie (name and value).
+  cookie: String,
+  /// The login response itself.
+  login: TestResponse,
 }
 
-/// [`begin`] through `client`; also returns the login response.
-async fn begin_with(
-  app: &TestApp,
-  client: &TestClient,
-  google: &Shared,
-  return_url: &str,
-) -> ((HashMap<String, String>, String), TestResponse) {
+/// `GET /api/auth/login`, as a browser would; tells the fake what Google would remember.
+async fn begin(app: &TestApp, google: &Shared, return_url: &str) -> SignInStart {
+  begin_with(app, &app.client(), google, return_url).await
+}
+
+/// [`begin`] through `client`.
+async fn begin_with(app: &TestApp, client: &TestClient, google: &Shared, return_url: &str) -> SignInStart {
   let login = client.get(&format!("/api/auth/login?returnUrl={}", escape(return_url))).await;
   assert_eq!(login.status, StatusCode::FOUND);
   let location = login.header("location").unwrap().to_owned();
@@ -159,7 +164,7 @@ async fn begin_with(
   let mut google = google.lock().unwrap();
   google.nonce.clone_from(&parameters["nonce"]);
   google.code_challenge.clone_from(&parameters["code_challenge"]);
-  ((parameters, cookie), login)
+  SignInStart { parameters, cookie, login }
 }
 
 async fn finish(app: &TestApp, cookie: &str, query: &str) -> TestResponse {
@@ -170,7 +175,7 @@ async fn finish(app: &TestApp, cookie: &str, query: &str) -> TestResponse {
 async fn an_allow_listed_person_is_signed_in_and_gets_their_user_row() {
   let (app, google) = start(person("sub-1", "Second@Example.com")).await;
 
-  let (parameters, cookie) = begin(&app, &google, "/day/2026-10-29?x=1").await;
+  let SignInStart { parameters, cookie, .. } = begin(&app, &google, "/day/2026-10-29?x=1").await;
   assert_eq!(parameters["client_id"], CLIENT_ID);
   assert_eq!(parameters["response_type"], "code");
   assert_eq!(parameters["scope"], "openid profile email");
@@ -219,21 +224,19 @@ async fn an_allow_listed_person_is_signed_in_and_gets_their_user_row() {
   let client = app.database().migrator_client().await;
   let row = client
     .query_one(
-      "SELECT u.google_subject, u.email, u.display_name, u.picture_url FROM users u JOIN tasks t ON t.owner_id = u.id WHERE t.id = $1::text::uuid",
-      &[&task.id.to_string()],
+      "SELECT u.google_subject, u.email, u.display_name, u.picture_url FROM users u JOIN tasks t ON t.owner_id = u.id WHERE t.id = $1",
+      &[&task.id],
     )
     .await
     .unwrap();
-  let columns: Vec<Option<String>> = (0..4).map(|index| row.get(index)).collect();
   assert_eq!(
-    columns,
-    [
+    UserRow::from(&row),
+    UserRow::new(
       Some("sub-1"),
       Some("second@example.com"),
       Some("A Person"),
       Some("https://pic/person")
-    ]
-    .map(|value| value.map(str::to_owned))
+    )
   );
 
   // The session lasts eight hours from sign-in.
@@ -244,7 +247,7 @@ async fn an_allow_listed_person_is_signed_in_and_gets_their_user_row() {
 #[tokio::test]
 async fn a_return_url_that_is_not_local_becomes_the_root() {
   let (app, google) = start(person("sub-1", "first@example.com")).await;
-  let (parameters, cookie) = begin(&app, &google, "https://evil.test/").await;
+  let SignInStart { parameters, cookie, .. } = begin(&app, &google, "https://evil.test/").await;
   let callback = finish(&app, &cookie, &format!("code={CODE}&state={}", parameters["state"])).await;
   assert_eq!(callback.header("location"), Some("/"));
   assert!(cookie_named(&callback, SESSION_COOKIE).is_some());
@@ -285,7 +288,7 @@ async fn people_who_are_not_allow_listed_or_not_verified_are_denied() {
     json!({"sub": "sub-1", "email_verified": true}),
   ] {
     let (app, google) = start(claims).await;
-    let (parameters, cookie) = begin(&app, &google, "/").await;
+    let SignInStart { parameters, cookie, .. } = begin(&app, &google, "/").await;
     let callback = finish(&app, &cookie, &format!("code={CODE}&state={}", parameters["state"])).await;
     assert_denied(&app, &callback).await;
   }
@@ -294,7 +297,7 @@ async fn people_who_are_not_allow_listed_or_not_verified_are_denied() {
 #[tokio::test]
 async fn a_callback_that_does_not_belong_to_the_flow_is_denied() {
   let (app, google) = start(person("sub-1", "first@example.com")).await;
-  let (parameters, cookie) = begin(&app, &google, "/").await;
+  let SignInStart { parameters, cookie, .. } = begin(&app, &google, "/").await;
   let state = &parameters["state"];
 
   // Another state, no state, no cookie, Google's own error, a code Google refuses, an expired flow.
@@ -342,7 +345,7 @@ async fn outside_development_behind_the_proxy_the_whole_sign_in_is_https_and_eve
     .header("x-forwarded-host", "spoofed.example, calendar.example");
   let public_redirect_uri = format!("https://calendar.example{CALLBACK_PATH}");
 
-  let ((parameters, cookie), login) = begin_with(&app, &proxied, &google, "/day/2026-10-29").await;
+  let SignInStart { parameters, cookie, login } = begin_with(&app, &proxied, &google, "/day/2026-10-29").await;
   assert_eq!(parameters["redirect_uri"], public_redirect_uri);
   assert_secure_http_only_lax(&login, SIGN_IN_COOKIE);
 
@@ -370,7 +373,7 @@ async fn outside_development_behind_the_proxy_the_whole_sign_in_is_https_and_eve
 async fn outside_development_cookies_are_secure_even_over_plain_http() {
   let (app, google) = start_in("Production", person("sub-1", "first@example.com")).await;
 
-  let ((parameters, _cookie), login) = begin_with(&app, &app.client(), &google, "/").await;
+  let SignInStart { parameters, login, .. } = begin_with(&app, &app.client(), &google, "/").await;
 
   assert_eq!(parameters["redirect_uri"], format!("http://{TEST_HOST}{CALLBACK_PATH}"));
   assert_secure_http_only_lax(&login, SIGN_IN_COOKIE);

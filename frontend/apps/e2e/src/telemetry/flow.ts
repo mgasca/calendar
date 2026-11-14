@@ -10,12 +10,17 @@ import {
   type PersonalData,
 } from './personal-data.ts';
 import { requestCounts, seriesLabels, waitForRequestMetrics, type RouteHit } from './prometheus.ts';
-import { waitForTrace, type FlatSpan, type TraceExpectation } from './tempo.ts';
+import { findRootTrace, waitForTrace, type FlatSpan, type TraceExpectation } from './tempo.ts';
 
 /** One user action's trace: the trace id the browser sent with its API call, and what the trace must hold. */
 export interface ActionTrace extends TraceExpectation {
   /** The trace id the browser sent with the action's API call (`traceIdOf`, or `flowRequest`'s `traceId`). */
   readonly traceId: string;
+  /**
+   * Log messages that must be among the API's records carrying this trace id (`'Google sign-in failed'`, say);
+   * any record will do when omitted.
+   */
+  readonly logs?: readonly string[];
 }
 
 /** What a flow test proves about its telemetry (ADR-0062, "End-to-end assertions"). */
@@ -68,7 +73,13 @@ export class Observer {
     const traces: FlatSpan[][] = [];
     for (const action of actions) {
       traces.push(await waitForTrace(this.stack.tempoUrl, action.traceId, action, this.poll));
-      await waitForTraceLogs(this.stack.lokiUrl, action.traceId, this.since, this.poll);
+      await waitForTraceLogs(
+        this.stack.lokiUrl,
+        action.traceId,
+        this.since,
+        this.poll,
+        action.logs,
+      );
     }
     const [spans = [], ...rest] = traces;
     await waitForRequestMetrics(this.stack.prometheusUrl, flow.routes, flow.before, this.poll);
@@ -84,5 +95,13 @@ export class Observer {
       throw new Error(`Personal data in the flow's telemetry:\n${report(findings)}`);
     }
     return { spans, traces: rest };
+  }
+
+  /**
+   * The trace a full-page navigation to an API route started, found by its root server span `name`
+   * (`findRootTrace`): the sign-in redirects carry no `traceparent`, so the API starts their traces.
+   */
+  rootTrace(name: string): Promise<string> {
+    return findRootTrace(this.stack.tempoUrl, name, this.since, this.poll);
   }
 }

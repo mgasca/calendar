@@ -10,6 +10,8 @@ pr:
   - https://github.com/mgasca/calendar/pull/798
   - https://github.com/mgasca/calendar/pull/832
   - https://github.com/mgasca/calendar/pull/877
+  - https://github.com/mgasca/calendar/pull/899
+  - https://github.com/mgasca/calendar/pull/903
 adrs: ["0008", "0021", "0027", "0030", "0039", "0058", "0061", "0062", "0063", "0064"]
 ---
 
@@ -221,6 +223,19 @@ API telemetry (#731) lives in `calendar-api/src/telemetry/`:
 - **`add-event-flow`** (`tests/add-event-flow.spec.ts`, day 2026-04-07): adds a timed and an all-day event from the day page through the dialog, and checks the focus, the confirmation, the exclusive `endDate` of an all-day event and the agenda's refetch. Each save is its own `ui.event.create` trace down to `INSERT events`.
 - **`edit-event-flow`** (`tests/edit-event-flow.spec.ts`, day 2026-04-09): opens an event, changes it "elsewhere" through the API, and saves. The 409 reloads the latest version into the form, and the API's server span records the 409. Saving again succeeds. The test then deletes another event after the in-dialog confirmation, after first checking that **Keep event** sends nothing. Six traces in all: open, conflict, reload, save, open, delete.
 - **Harness, reusable by #735 and #736:** `expectFlow({ …, traces })` asserts several user actions' traces in one flow; `flowRequest(page, method, routeTemplate)` gives a request and its trace id; `seed.updateEvent` writes as the same user outside the browser and registers its texts.
+
+### Delivered in #736
+
+- **`sign-in-flow`** (`tests/sign-in-flow.spec.ts`, days 2026-05-19 and 2026-05-20), signed out (`signedIn: false`), through the stub provider's interactive login (ADR-0064):
+  - **allow-listed:** a deep link to `/day/<date>` routes to `/signin?returnTo=…`. "Sign in with Google" goes through the stub's `/authorize` form, where the test types the subject (`subject-<email>`, the same as `just e2e check`) and the claims `email` and `email_verified`. The callback lands back on the deep link with the session cookie, and the event seeded for that day shows.
+  - **not allow-listed:** the same steps end at `/signin?error=access_denied`, with the alert and with neither the session cookie nor the sign-in cookie.
+- **Trace shape.** Login and callback are full-page navigations without a `traceparent`, so each is a trace the API starts. The test finds each by its root server span through Tempo's search (`observe.rootTrace`), which requires exactly one since the test began:
+  - `GET /api/auth/login`: the server span;
+  - `GET /api/auth/callback/google`: the server span with `users` queries under it on the allowed path; on the denied path, the server span alone, plus a `Google sign-in failed` log record (`logs` on a trace of `expectFlow`);
+  - after landing: the browser's `GET /api/auth/me` fetch → the API's server span.
+- **Personal-data scan:** the email, the subject, the authorization code, `state`, `nonce` and `code_challenge`, the sealed sign-in cookie and the session cookie are registered. The ID token never passes through the browser, so the scanner's JWT pattern and its registered claims cover it.
+- **Fix found on the way:** the web app named the spans of `fetch(url, init)` calls by their method only (`GET` for `/api/auth/me`). The fix is #879, in #899.
+- The binding check's pending list now has only #735's flows.
 
 ### Lessons learned, known issues and follow-ups
 

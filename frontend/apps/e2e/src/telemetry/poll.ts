@@ -4,6 +4,11 @@ export interface PollOptions {
   readonly intervalMs?: number;
 }
 
+/** An error `poll` does not retry: waiting longer cannot fix it (two traces where one is expected, say). */
+export class FatalPollError extends Error {
+  override name = 'FatalPollError';
+}
+
 /**
  * Calls `attempt` until it returns a result or the time is up. `attempt` returns `{ done: false, reason }`
  * while the signal is not there yet; the last reason is the error, so a failure says what was missing.
@@ -21,6 +26,7 @@ export async function poll<T>(
       if (result.done) return result.value;
       reason = result.reason;
     } catch (error) {
+      if (error instanceof FatalPollError) throw new Error(`${what}: ${error.message}`);
       reason = error instanceof Error ? error.message : String(error);
     }
     if (Date.now() >= deadline) {

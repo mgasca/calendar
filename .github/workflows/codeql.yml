@@ -17,8 +17,51 @@ concurrency:
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
+  # A pull request that changes no Rust input skips the rust analysis (issue #882, ADR-0046 amendment of 2026-11-14).
+  # The Rust input set is CI's Backend set: this job runs the same rules as CI's Changes job, then
+  # .github/codeql-languages.jq. A push, the schedule and a dispatch analyse every language.
+  languages:
+    name: CodeQL languages
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    # Listing a pull request's files needs pull-requests: read.
+    permissions:
+      contents: read
+      pull-requests: read
+    outputs:
+      exclude: ${{ steps.decide.outputs.exclude }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          sparse-checkout: .github
+      - name: Decide which languages this run analyses
+        id: decide
+        env:
+          GH_TOKEN: ${{ github.token }}
+          EVENT: ${{ github.event_name }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          CHANGED_FILES: ${{ github.event.pull_request.changed_files }}
+        run: |
+          # The same input as CI's Changes job: each changed file and the old path of a rename, and whether the listing
+          # holds as many files as the pull request changes.
+          if [ "$EVENT" = pull_request ]; then
+            listing=$(gh api --paginate "repos/$GITHUB_REPOSITORY/pulls/$PR_NUMBER/files?per_page=100" \
+              --jq '.[] | [.filename, .previous_filename]')
+            input=$(jq -sc --arg event "$EVENT" --argjson changed "$CHANGED_FILES" \
+              '{event: $event, complete: (length == $changed), files: [.[][] | strings]}' <<< "$listing")
+          else
+            input=$(jq -nc --arg event "$EVENT" '{event: $event, complete: true, files: []}')
+          fi
+          changes=$(jq -c -f .github/ci-changes.jq <<< "$input")
+          result=$(jq -c -f .github/codeql-languages.jq --argjson changes "$changes" <<< "$input")
+          echo "exclude=$(jq -c .exclude <<< "$result")" >> "$GITHUB_OUTPUT"
+          jq -r '"\(.files | length) changed file(s), listing complete: \(.complete)"' <<< "$input"
+          jq -r '"rust: \(if .rust then "analysed" else "skipped, no Rust input changed" end)"' <<< "$result" \
+            | tee -a "$GITHUB_STEP_SUMMARY"
+
   analyze:
     name: Analyze (${{ matrix.language }})
+    needs: languages
     runs-on: ubuntu-latest
     timeout-minutes: 30
     permissions:
@@ -28,23 +71,21 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        include:
+        language:
           # The repo tools (tools/, .claude/skills/) are .NET file-based apps with no project to build (ADR-0017).
-          - language: csharp
-            build-mode: none
+          - csharp
           # The backend (backend/crates).
-          - language: rust
-            build-mode: none
-          - language: javascript-typescript
-            build-mode: none
-          - language: actions
-            build-mode: none
+          - rust
+          - javascript-typescript
+          - actions
+        exclude: ${{ fromJSON(needs.languages.outputs.exclude) }}
     steps:
       - uses: actions/checkout@v7
       - uses: github/codeql-action/init@v4
         with:
           languages: ${{ matrix.language }}
-          build-mode: ${{ matrix.build-mode }}
+          # No language here needs a build (ADR-0017, ADR-0051).
+          build-mode: none
           queries: security-extended
       - uses: github/codeql-action/analyze@v4
         with:

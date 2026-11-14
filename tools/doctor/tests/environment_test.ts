@@ -10,8 +10,18 @@ const azurePin = azurePins.match(/^AZURE_CLI_VERSION=(.+)$/m)?.[1];
 const bicepPin = azurePins.match(/^BICEP_VERSION=(.+)$/m)?.[1];
 if (!azurePin || !bicepPin) throw new Error("Azure version manifest has missing pins");
 
-// Ports every case of the retired doctor.tests.cs except its three .NET SDK cases, which the no-.NET cases below
-// replace (#685). doctor_test.ts covers a missing, wrong, correct and broken Deno.
+// Ports every case of the retired doctor.tests.cs, including the gh-stack and git cases of #887, except its three
+// .NET SDK cases, which the no-.NET cases below replace (#685). doctor_test.ts covers a missing, wrong, correct and
+// broken Deno.
+
+// The extension list as `gh extension list` prints it: name, repository and version, tab-separated.
+const stackInstalled = "printf 'gh stack\\tgithub/gh-stack\\tv0.3.0\\n'";
+const otherExtension = "printf 'gh copilot\\tgithub/gh-copilot\\tv1.0.0\\n'";
+
+/** A fake gh whose `extension list` runs the given command; other arguments print the version. */
+function gh(extensionList: string): string {
+  return `if [ "$1" = extension ]; then ${extensionList}; else echo 'gh version 2.0.0 (fake)'; fi`;
+}
 async function withCommands(run: (bin: string) => Promise<void>): Promise<void> {
   const bin = await Deno.makeTempDir({ prefix: "doctor-environment-" });
   try {
@@ -28,8 +38,9 @@ async function withCommands(run: (bin: string) => Promise<void>): Promise<void> 
       docker: '[ "$1" = compose ] && echo v2.40.0; exit 0',
       curl: "echo 'curl 8.0.0 (fake)'",
       just: "echo just 99.0.0",
-      gh: "echo 'gh version 2.0.0 (fake)'",
+      gh: gh(stackInstalled),
       jq: "echo jq-1.7",
+      git: "echo 'git version 2.36.0'",
     };
     for (const [name, body] of Object.entries(commands)) await executable(bin, name, body);
     await run(bin);
@@ -100,6 +111,81 @@ for (
       assertEquals(result.code, 1);
       assertStringIncludes(result.text, expected);
       assertStringIncludes(result.text, hint);
+    });
+  });
+}
+
+Deno.test("doctor passes an installed gh-stack with its version", async () => {
+  await withCommands(async (bin) => {
+    await executable(bin, "gh", gh(`${otherExtension}; ${stackInstalled}`));
+    const result = await doctor(bin);
+    assertEquals(result.code, 0, result.text);
+    assertStringIncludes(result.text, "gh-stack v0.3.0");
+  });
+});
+
+for (
+  const [label, list] of [
+    ["an empty extension list", "exit 0"],
+    ["only another extension", otherExtension],
+    // Another owner's extension of the same name is not the one the guidance uses.
+    ["another owner's gh-stack", "printf 'gh stack\\tsomeone/gh-stack\\tv9.0.0\\n'"],
+  ] as const
+) {
+  Deno.test(`doctor reports a missing gh-stack with an installation hint: ${label}`, async () => {
+    await withCommands(async (bin) => {
+      await executable(bin, "gh", gh(list));
+      const result = await doctor(bin);
+      assertEquals(result.code, 1, result.text);
+      assertStringIncludes(
+        result.text,
+        "gh-stack not installed: creating, rebasing and merging native stacked PRs needs it",
+      );
+      assertStringIncludes(result.text, "gh stack init/add/submit/link");
+      assertStringIncludes(result.text, "→ gh extension install github/gh-stack");
+      assertStringIncludes(result.text, "Found 1 problem(s)");
+    });
+  });
+}
+
+Deno.test("doctor reports a gh that cannot list extensions as too old for gh-stack", async () => {
+  await withCommands(async (bin) => {
+    await executable(bin, "gh", gh(`echo 'unknown command "extension" for "gh"' >&2; exit 1`));
+    const result = await doctor(bin);
+    assertEquals(result.code, 1, result.text);
+    assertStringIncludes(result.text, "gh cannot list extensions; gh-stack needs gh 2.0 or newer");
+    assertStringIncludes(result.text, "Update the GitHub CLI");
+  });
+});
+
+Deno.test("doctor without gh reports only gh and skips the gh-stack check", async () => {
+  await withCommands(async (bin) => {
+    await Deno.remove(`${bin}/gh`);
+    const result = await doctor(bin);
+    assertEquals(result.code, 1, result.text);
+    assertStringIncludes(result.text, "gh not found");
+    assertEquals(result.text.includes("gh-stack not installed"), false, result.text);
+    assertEquals(result.text.includes("gh cannot list extensions"), false, result.text);
+    assertStringIncludes(result.text, "Found 1 problem(s)");
+  });
+});
+
+for (
+  const [git, success, expected] of [
+    [null, false, "git not found"],
+    ["echo 'git version 2.34.1'", false, "git '2.34.1', but gh-stack wants 2.36.0 or newer"],
+    ["exit 1", false, "git 'unavailable', but gh-stack wants 2.36.0 or newer"],
+    ["echo 'git version 2.36.0'", true, "git 2.36.0 (gh-stack wants 2.36.0 or newer)"],
+    ["echo 'git version 2.53.0'", true, "git 2.53.0 (gh-stack wants 2.36.0 or newer)"],
+  ] as const
+) {
+  Deno.test(`doctor needs the git version gh-stack requires: ${git ?? "no git"}`, async () => {
+    await withCommands(async (bin) => {
+      if (git === null) await Deno.remove(`${bin}/git`);
+      else await executable(bin, "git", git);
+      const result = await doctor(bin);
+      assertEquals(result.code === 0, success, result.text);
+      assertStringIncludes(result.text, expected);
     });
   });
 }

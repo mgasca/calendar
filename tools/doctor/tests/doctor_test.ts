@@ -20,8 +20,10 @@ async function doctor(deno: string | null): Promise<{ code: number; output: stri
       docker: `[ "$1" = compose ] && echo v2.40.0; exit 0`,
       curl: "echo 'curl 8.0.0 (fake)'",
       just: "echo just 99.0.0",
-      gh: "echo 'gh version 2.0.0 (fake)'",
+      gh:
+        `if [ "$1" = extension ]; then printf 'gh stack\\tgithub/gh-stack\\tv0.3.0\\n'; else echo 'gh version 2.0.0 (fake)'; fi`,
       jq: "echo jq-1.7",
+      git: "echo 'git version 2.36.0'",
     };
     if (deno !== null) commands.deno = deno;
     for (const [command, body] of Object.entries(commands)) {

@@ -1,6 +1,7 @@
 import {
   type BackTest,
   type BaselineFile,
+  type CarriedPath,
   type GateConstants,
   type JobBaseline,
   type PathBaseline,
@@ -13,8 +14,17 @@ export function utc(at: number): string {
 export function minute(at: number): string {
   return utc(at).slice(0, 16).replace("T", " ") + "Z";
 }
+function constantsJson(c: GateConstants) {
+  return {
+    alpha: c.alpha,
+    jobs: c.jobs,
+    z: roundEven(normalQuantile(1 - c.alpha / c.jobs), 4),
+    floorSeconds: c.floorSeconds,
+    relativeMargin: c.relativeMargin,
+  };
+}
 export function writeBaseline(file: BaselineFile): string {
-  const c = file.constants;
+  const carried = Object.entries(file.carried ?? {}).sort(([a], [b]) => ordinal(a, b));
   const paths = Object.fromEntries(
     Object.values(file.paths).sort((a, b) => ordinal(a.path, b.path)).map((path) => {
       const first = path.runs[0], last = path.runs.at(-1);
@@ -58,13 +68,14 @@ export function writeBaseline(file: BaselineFile): string {
       method:
         "threshold = ceil(max(exp(logMedian + z * 1.4826 * logMad), median + max(floorSeconds, relativeMargin * median))); z = NormalQuantile(1 - alpha / jobs); nearest-rank statistics of each job's start-to-end seconds (ADR 0045)",
       minRuns: file.minRuns,
-      constants: {
-        alpha: c.alpha,
-        jobs: c.jobs,
-        z: roundEven(normalQuantile(1 - c.alpha / c.jobs), 4),
-        floorSeconds: c.floorSeconds,
-        relativeMargin: c.relativeMargin,
-      },
+      constants: constantsJson(file.constants),
+      ...(carried.length
+        ? {
+          carried: Object.fromEntries(
+            carried.map(([name, entry]) => [name, { record: entry.record, constants: constantsJson(entry.constants) }]),
+          ),
+        }
+        : {}),
       paths,
     },
     null,
@@ -75,14 +86,24 @@ function number(value: unknown): number {
   if (typeof value !== "number") throw new Error("expected number");
   return value;
 }
-export function readBaseline(json: string): BaselineFile {
-  const root = object(JSON.parse(json)), c = object(root.constants);
-  const constants: GateConstants = {
+function readConstants(value: unknown): GateConstants {
+  const c = object(value);
+  return {
     alpha: number(c.alpha),
     jobs: integer(c.jobs),
     floorSeconds: number(c.floorSeconds),
     relativeMargin: number(c.relativeMargin),
   };
+}
+export function readBaseline(json: string): BaselineFile {
+  const root = object(JSON.parse(json)), constants = readConstants(root.constants);
+  const carried: Record<string, CarriedPath> = {};
+  if (root.carried !== undefined) {
+    for (const [name, value] of Object.entries(object(root.carried)).sort(([a], [b]) => ordinal(a, b))) {
+      const entry = object(value);
+      carried[name] = { record: text(entry, "record"), constants: readConstants(entry.constants) };
+    }
+  }
   const paths: Record<string, PathBaseline> = {};
   for (const [name, value] of Object.entries(object(root.paths)).sort(([a], [b]) => ordinal(a, b))) {
     const p = object(value), jobs: Record<string, JobBaseline> = {};
@@ -121,6 +142,7 @@ export function readBaseline(json: string): BaselineFile {
     minRuns: integer(root.minRuns),
     constants,
     paths,
+    ...(Object.keys(carried).length ? { carried } : {}),
   };
 }
 export function baselineTable(file: BaselineFile): string {

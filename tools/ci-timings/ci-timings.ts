@@ -2,12 +2,15 @@
 /** Sample Actions durations, pin/back-test baselines, and report exact rank-test trends. */
 import { gh } from "./gh.ts";
 import {
+  type BaselineFile,
+  baselinePaths,
   buildBaseline,
   evaluateBaseline,
   type GateConstants,
   gateDefaults,
   isMain,
   isSuccessful,
+  rebuildPath,
   sampleBaseline,
   type SampledRun,
   samples,
@@ -37,7 +40,7 @@ import {
 } from "./timings.ts";
 import { evaluateTrend, issueAction, issueLabel, issueTitle, recentRuns, trendDefaults, trendReport } from "./trend.ts";
 export const usage =
-  "usage: ci-timings [--workflow FILE] [--runs N] [--repo OWNER/NAME] [--branch NAME] [--created RANGE] [--job NAME]... [--superseded] [--baseline --created RANGE [--holdout RANGE] [--out FILE] [--record FILE] [--min-runs N] [--alpha A] [--floor S] [--margin R]] [--trend [--out FILE] [--issue]]";
+  "usage: ci-timings [--workflow FILE] [--runs N] [--repo OWNER/NAME] [--branch NAME] [--created RANGE] [--job NAME]... [--superseded] [--baseline --created RANGE [--path NAME] [--holdout RANGE] [--out FILE] [--record FILE] [--min-runs N] [--alpha A] [--floor S] [--margin R]] [--trend [--out FILE] [--issue]]";
 export interface Options {
   workflow: string;
   runs: number;
@@ -49,6 +52,8 @@ export interface Options {
   trend: boolean;
   issue: boolean;
   holdout?: string;
+  path?: string;
+  tunedConstants: boolean;
   output: string;
   record: string;
   minRuns: number;
@@ -65,6 +70,7 @@ export function parseOptions(
     baseline: false,
     trend: false,
     issue: false,
+    tunedConstants: false,
     output: ".github/ci-baseline.json",
     record: "docs/benchmarks/0017-ci-baseline-with-changes.md",
     minRuns: 30,
@@ -102,6 +108,9 @@ export function parseOptions(
       case "--holdout":
         options.holdout = value;
         break;
+      case "--path":
+        options.path = value;
+        break;
       case "--out":
         options.output = value;
         break;
@@ -119,14 +128,17 @@ export function parseOptions(
       case "--alpha":
         if (!decimal(value)) return { error: arg };
         options.constants.alpha = Number(value);
+        options.tunedConstants = true;
         break;
       case "--floor":
         if (!decimal(value)) return { error: arg };
         options.constants.floorSeconds = Number(value);
+        options.tunedConstants = true;
         break;
       case "--margin":
         if (!decimal(value)) return { error: arg };
         options.constants.relativeMargin = Number(value);
+        options.tunedConstants = true;
         break;
       default:
         return { error: arg };
@@ -223,13 +235,51 @@ export async function main(args: readonly string[]): Promise<number> {
       console.error("--baseline needs --created RANGE, the baseline window");
       return 2;
     }
+    let existing: BaselineFile | undefined;
+    if (o.path !== undefined) {
+      if (!(baselinePaths as readonly string[]).includes(o.path)) {
+        console.error(`--path must be ${baselinePaths.join(" or ")}, not ${o.path}`);
+        return 2;
+      }
+      if (o.tunedConstants) {
+        console.error(
+          "--path keeps the constants of the existing baseline; rebuild every path to change --alpha, --floor or --margin",
+        );
+        return 2;
+      }
+      try {
+        existing = readBaseline(await Deno.readTextFile(o.output));
+      } catch (error) {
+        console.error(
+          `--path needs the existing baseline ${o.output}: ${error instanceof Error ? error.message : error}`,
+        );
+        return 2;
+      }
+      if (existing.workflow !== o.workflow) {
+        console.error(`--path: ${o.output} is the baseline of ${existing.workflow}, not ${o.workflow}`);
+        return 2;
+      }
+    }
     const repo = await repoName(),
-      window = await sampleBaseline(gh, repo, o.workflow, o.created, isMain),
-      file = buildBaseline(o.workflow, o.record, o.minRuns, o.constants, window);
+      window = await sampleBaseline(gh, repo, o.workflow, o.created, isMain);
+    let file: BaselineFile;
+    try {
+      file = existing === undefined
+        ? buildBaseline(o.workflow, o.record, o.minRuns, o.constants, window)
+        : rebuildPath(existing, o.path!, o.record, o.minRuns, window);
+    } catch (error) {
+      console.error(error instanceof Error ? error.message : String(error));
+      return 1;
+    }
     await Deno.writeTextFile(o.output, writeBaseline(file));
+    const kept = Object.keys(file.carried ?? {});
     let output =
-      `Baseline: ${window.length} successful runs of \`${o.workflow}\` on \`main\` in ${repo} created ${o.created}, written to \`${o.output}\`.\n\n` +
-      baselineWindow(file) + "\n" + baselineTable(file);
+      `Baseline: ${window.length} successful runs of \`${o.workflow}\` on \`main\` in ${repo} created ${o.created}, written to \`${o.output}\`` +
+      (o.path === undefined ? "" : `; only the ${o.path} path was rebuilt`) +
+      (kept.length
+        ? `, and ${kept.map((name) => `${name} is kept from ${file.carried![name]!.record}`).join(", ")}`
+        : "") +
+      ".\n\n" + baselineWindow(file) + "\n" + baselineTable(file);
     if (o.holdout !== undefined) {
       const held = await sampleBaseline(
         gh,

@@ -333,7 +333,7 @@ for (const yaml of ["a: [1", "a:\n  b: 1\n c: 2", "a: 1\n---\nb: 2", ""]) {
     assertThrows(() => parseYaml(yaml));
   });
 }
-const allJobs = ["backend", "frontend", "docs", "tooling", "adr", "narratives", "image"];
+const allJobs = ["backend", "frontend", "docs", "tooling", "adr", "narratives", "binding", "image"];
 async function runRules(event: string, complete: boolean, files: string[]): Promise<Record<string, unknown>> {
   const process = new Deno.Command("jq", {
     args: ["-c", "-f", join(root, changesRulesPath)],
@@ -400,7 +400,26 @@ const combinedCases: [string, string, boolean, string[], string][] = [
   ["TheModelWithAnAdr_RunsToolingInsteadOfTheAdrCheck", "pull_request", true, [
     "docs/architecture/calendar.architecture.json",
     "docs/decisions/0046-x.md",
-  ], "docs tooling"],
+  ], "docs tooling binding"],
+  ["AModelChangeWithABackendChange_RunsTheBindingJobBesideTheOthers", "merge_group", true, [
+    "docs/architecture/calendar.architecture.json",
+    "backend/crates/a/src/lib.rs",
+  ], "backend docs adr binding image"],
+  ["TheModelWithAWebChange_RunsFrontendInsteadOfTheBindingJob", "pull_request", true, [
+    "docs/architecture/calendar.architecture.json",
+    "frontend/apps/web/src/main.tsx",
+  ], "docs frontend adr image"],
+  // #877's file set: a flow test, the model linking it and the story card (#902).
+  ["AFlowTestWithTheModelAndItsCard_RunsTheFrontendBindingCheck", "pull_request", true, [
+    "frontend/apps/e2e/tests/add-event-flow.spec.ts",
+    "frontend/apps/e2e/pending-flows.json",
+    "docs/architecture/calendar.architecture.json",
+    "docs/stories/0064-x.md",
+  ], "docs frontend adr"],
+  ["AnE2eOnlyChange_RunsNeitherTheDocsSiteNorTheImage", "pull_request", true, [
+    "frontend/apps/e2e/src/binding/check.ts",
+    "frontend/apps/e2e/README.md",
+  ], "frontend"],
   ["ACardWithABackendChange_RunsTheAdrCheckBesideTheOthers", "merge_group", true, [
     "docs/stories/0038-x.md",
     "backend/crates/a/src/lib.rs",
@@ -430,6 +449,24 @@ const combinedCases: [string, string, boolean, string[], string][] = [
 for (const [name, event, complete, files, jobs] of combinedCases) {
   Deno.test(name, () => checkRules(event, complete, files, jobs));
 }
+// The Frontend job tests with `pnpm -r ... test:coverage`, which skips a package without that script, so the flow binding
+// check of ADR-0061 runs in CI only while @calendar/e2e defines it (#902).
+Deno.test("TheFrontendJobsTestStep_ReachesTheFlowBindingCheck", () => {
+  const steps = Workflow.parse(loadFiles(root).workflow).jobNamed("Frontend")!.steps;
+  const test = steps.map((s) => s.text("run") ?? "").find((run) => run.includes(" test:coverage"));
+  assert(test, "the Frontend job has a step that runs test:coverage");
+  assert(test.startsWith("pnpm -r ") && !test.includes("@calendar/e2e"), `the step reaches every package: ${test}`);
+  const e2e = JSON.parse(Deno.readTextFileSync(join(root, "frontend/apps/e2e/package.json")));
+  assertEquals(e2e.name, "@calendar/e2e");
+  assertStringIncludes(e2e.scripts?.["test:coverage"] ?? "", "vitest run");
+});
+// A change to the model alone runs Flow binding instead of Frontend, so that job must run the same tests (#902).
+Deno.test("TheFlowBindingJob_RunsTheE2ePackagesTests", () => {
+  const steps = Workflow.parse(loadFiles(root).workflow).jobNamed("Flow binding")!.steps;
+  const runs = steps.map((s) => s.text("run") ?? "");
+  assert(runs.includes("pnpm install --frozen-lockfile --filter '@calendar/e2e...'"), runs.join("\n"));
+  assert(runs.includes("pnpm --filter @calendar/e2e test"), runs.join("\n"));
+});
 Deno.test("ThePublicationArtifact_IsBuiltOnlyForMainAndSameRepositoryPullRequests", () => {
   const steps = Workflow.parse(loadFiles(root).workflow).jobNamed("Docs site")!.steps;
   const configure = steps.find((s) => s.text("name") === "Read GitHub Pages configuration")!;
@@ -450,6 +487,7 @@ Deno.test("SkippedNames_AreTheJobNamesInCi", async () => {
     "Tooling",
     "ADR conventions",
     "Narratives",
+    "Flow binding",
     "Container image",
   ]);
   const workflow = Workflow.parse(loadFiles(root).workflow);

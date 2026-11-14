@@ -58,14 +58,34 @@ jobs:
       - name: Count the restored crates
         if: matrix.language == 'rust'
         run: find ~/.cargo/registry/cache -name '*.crate' 2>/dev/null | wc -l | xargs echo "crates in the registry cache:"
+      # Experiment (#883 branch 3): a persistent cargo target directory for the extractor's build scripts.
+      - name: Restore the extractor target directory
+        id: target
+        if: matrix.language == 'rust'
+        uses: actions/cache/restore@v6
+        with:
+          path: ${{ runner.temp }}/codeql-rust-target
+          key: codeql-rust-target-${{ runner.os }}-${{ hashFiles('backend/Cargo.lock') }}
+          restore-keys: codeql-rust-target-${{ runner.os }}-
       - uses: github/codeql-action/init@v4
         with:
           languages: ${{ matrix.language }}
           build-mode: ${{ matrix.build-mode }}
           queries: security-extended
       - uses: github/codeql-action/analyze@v4
+        env:
+          CODEQL_EXTRACTOR_RUST_OPTION_CARGO_TARGET_DIR: ${{ runner.temp }}/codeql-rust-target
         with:
           category: /language:${{ matrix.language }}
+      - name: Report what the extractor built
+        if: always() && matrix.language == 'rust'
+        run: |
+          t="${{ runner.temp }}/codeql-rust-target"
+          du -sh "$t" 2>/dev/null || echo "no target dir at $t"
+          find "$t" -maxdepth 3 -type d -path '*/build/*' 2>/dev/null | wc -l | xargs echo "build-script output dirs:"
+          find "$t" -maxdepth 4 -name '*.so' 2>/dev/null | wc -l | xargs echo "proc-macro libraries:"
+          ls "$t" 2>/dev/null || true
+          du -sh /home/runner/work/_temp/codeql_databases/rust/working 2>/dev/null || true
       - name: Save the cargo registry
         if: matrix.language == 'rust' && github.event_name != 'pull_request' && steps.registry.outputs.cache-hit != 'true'
         uses: actions/cache/save@v6
@@ -75,3 +95,9 @@ jobs:
             ~/.cargo/registry/cache
             ~/.cargo/git/db
           key: ${{ steps.registry.outputs.cache-primary-key }}
+      - name: Save the extractor target directory
+        if: matrix.language == 'rust' && github.event_name != 'pull_request' && steps.target.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v6
+        with:
+          path: ${{ runner.temp }}/codeql-rust-target
+          key: ${{ steps.target.outputs.cache-primary-key }}

@@ -19,6 +19,7 @@ use axum::http::{HeaderValue, StatusCode};
 use axum::response::{IntoResponse, Response};
 use base64::Engine;
 use base64::engine::general_purpose::URL_SAFE_NO_PAD;
+use calendar_infrastructure::OwnerId;
 use calendar_infrastructure::users::{self, SignIn};
 use chrono::{DateTime, TimeDelta, Utc};
 use serde::{Deserialize, Serialize};
@@ -189,7 +190,7 @@ pub async fn callback(
   match complete(&state, &origin, &query, &headers).await {
     Ok((principal, return_url)) => match state.sealer().await {
       Ok(sealer) => {
-        let ticket = SessionTicket::issue(&principal, state.now()).seal(&sealer);
+        let ticket = SessionTicket::issue(principal, state.now()).seal(&sealer);
         let session = session::set_cookie(session::SESSION_COOKIE, &ticket, secure, None);
         redirect(&return_url, [clear_flow, session])
       }
@@ -222,37 +223,85 @@ fn redirect_uri(origin: &RequestOrigin) -> String {
   format!("{}://{}{CALLBACK_PATH}", origin.scheme, origin.host)
 }
 
-/// Runs the callback; the error is the reason for the log.
+/// Why the callback does not sign the person in: the reason for the log. The person only ever sees
+/// [`FAILURE_REDIRECT`].
+#[derive(Debug, thiserror::Error)]
+enum CallbackError {
+  #[error("Google sign-in is not configured")]
+  NotConfigured,
+  #[error("Google answered with the error '{0}'")]
+  ProviderError(String),
+  #[error("the callback carries no code")]
+  NoCode,
+  #[error("the callback carries no state")]
+  NoState,
+  #[error("the sign-in cookie is missing")]
+  NoFlowCookie,
+  #[error("the session key is unavailable: {0}")]
+  SessionKey(String),
+  #[error("the sign-in cookie cannot be opened")]
+  UnreadableFlowCookie,
+  #[error("the sign-in took too long")]
+  FlowExpired,
+  #[error("the state does not match the sign-in cookie")]
+  StateMismatch,
+  #[error("the token request failed: {0}")]
+  TokenRequest(String),
+  #[error("the token endpoint answered {0}")]
+  TokenStatus(reqwest::StatusCode),
+  #[error("the token response holds no access token and ID token")]
+  TokenBody,
+  #[error("the ID token is not a JWT")]
+  NotAJwt,
+  #[error("the ID token's claims cannot be read")]
+  UnreadableClaims,
+  #[error("the ID token is for another client")]
+  WrongAudience,
+  #[error("the ID token is not from the expected issuer")]
+  WrongIssuer,
+  #[error("the ID token has expired")]
+  Expired,
+  #[error("the ID token's nonce does not match the sign-in cookie")]
+  NonceMismatch,
+  #[error("the ID token has no subject")]
+  NoSubject,
+  #[error("the userinfo request failed: {0}")]
+  UserInfoRequest(String),
+  #[error("the userinfo endpoint answered {0}")]
+  UserInfoStatus(reqwest::StatusCode),
+  #[error("the userinfo response is not JSON")]
+  UserInfoBody,
+  #[error("the userinfo subject is not the ID token's")]
+  SubjectMismatch,
+  #[error(transparent)]
+  SignIn(#[from] SignInError),
+}
+
+/// Runs the callback.
 async fn complete(
   state: &AppState,
   origin: &RequestOrigin,
   query: &QueryParams,
   headers: &axum::http::HeaderMap,
-) -> Result<(Principal, String), String> {
-  let credentials = state.settings().google.as_ref().ok_or("Google sign-in is not configured")?;
+) -> Result<(Principal, String), CallbackError> {
+  let credentials = state.settings().google.as_ref().ok_or(CallbackError::NotConfigured)?;
   if let Some(error) = query.get("error") {
-    return Err(format!("Google answered with the error '{error}'"));
+    return Err(CallbackError::ProviderError(error));
   }
-  let code = query
-    .get("code")
-    .filter(|code| !code.is_empty())
-    .ok_or("the callback carries no code")?;
-  let returned_state = query.get("state").ok_or("the callback carries no state")?;
+  let code = query.get("code").filter(|code| !code.is_empty()).ok_or(CallbackError::NoCode)?;
+  let returned_state = query.get("state").ok_or(CallbackError::NoState)?;
 
-  let cookie = session::cookie_value(headers, SIGN_IN_COOKIE).ok_or("the sign-in cookie is missing")?;
-  let sealer = state
-    .sealer()
-    .await
-    .map_err(|error| format!("the session key is unavailable: {error}"))?;
+  let cookie = session::cookie_value(headers, SIGN_IN_COOKIE).ok_or(CallbackError::NoFlowCookie)?;
+  let sealer = state.sealer().await.map_err(|error| CallbackError::SessionKey(error.to_string()))?;
   let flow: SignInState = sealer
     .open(SIGN_IN_PURPOSE, cookie)
     .and_then(|json| serde_json::from_slice(&json).ok())
-    .ok_or("the sign-in cookie cannot be opened")?;
+    .ok_or(CallbackError::UnreadableFlowCookie)?;
   if state.now() >= flow.expires_at {
-    return Err("the sign-in took too long".to_owned());
+    return Err(CallbackError::FlowExpired);
   }
   if !bool::from(flow.state.as_bytes().ct_eq(returned_state.as_bytes())) {
-    return Err("the state does not match the sign-in cookie".to_owned());
+    return Err(CallbackError::StateMismatch);
   }
 
   let tokens = exchange_code(state, credentials, &redirect_uri(origin), &code, &flow.verifier).await?;
@@ -265,10 +314,10 @@ async fn complete(
   )?;
   let user = fetch_user(state, &tokens.access_token).await?;
   if user.sub.as_deref() != Some(subject.as_str()) {
-    return Err("the userinfo subject is not the ID token's".to_owned());
+    return Err(CallbackError::SubjectMismatch);
   }
 
-  let principal = sign_in(state, &user).await.map_err(|error| error.to_string())?;
+  let principal = sign_in(state, &user).await?;
   Ok((principal, flow.return_url))
 }
 
@@ -284,7 +333,7 @@ async fn exchange_code(
   redirect_uri: &str,
   code: &str,
   verifier: &str,
-) -> Result<TokenResponse, String> {
+) -> Result<TokenResponse, CallbackError> {
   let form = form_urlencoded::Serializer::new(String::new())
     .append_pair("grant_type", "authorization_code")
     .append_pair("code", code)
@@ -295,21 +344,18 @@ async fn exchange_code(
     .finish();
   let response = state
     .http()
-    .ok_or("Google sign-in is not configured")?
+    .ok_or(CallbackError::NotConfigured)?
     .post(&state.google_endpoints().token)
     .header(reqwest::header::CONTENT_TYPE, "application/x-www-form-urlencoded")
     .header(reqwest::header::ACCEPT, "application/json")
     .body(form)
     .send()
     .await
-    .map_err(|error| format!("the token request failed: {}", error.without_url()))?;
+    .map_err(|error| CallbackError::TokenRequest(error.without_url().to_string()))?;
   if !response.status().is_success() {
-    return Err(format!("the token endpoint answered {}", response.status()));
+    return Err(CallbackError::TokenStatus(response.status()));
   }
-  response
-    .json()
-    .await
-    .map_err(|_| "the token response holds no access token and ID token".to_owned())
+  response.json().await.map_err(|_| CallbackError::TokenBody)
 }
 
 /// Checks the claims of the ID token (audience, issuer, expiry, nonce) and returns its subject.
@@ -319,13 +365,13 @@ fn check_id_token(
   overrides: &GoogleOverrides,
   nonce: &str,
   now: DateTime<Utc>,
-) -> Result<String, String> {
-  let payload = id_token.split('.').nth(1).ok_or("the ID token is not a JWT")?;
+) -> Result<String, CallbackError> {
+  let payload = id_token.split('.').nth(1).ok_or(CallbackError::NotAJwt)?;
   let claims: Value = URL_SAFE_NO_PAD
     .decode(payload.trim_end_matches('='))
     .ok()
     .and_then(|json| serde_json::from_slice(&json).ok())
-    .ok_or("the ID token's claims cannot be read")?;
+    .ok_or(CallbackError::UnreadableClaims)?;
 
   let audience_matches = match &claims["aud"] {
     Value::String(audience) => *audience == credentials.client_id,
@@ -333,25 +379,25 @@ fn check_id_token(
     _ => false,
   };
   if !audience_matches {
-    return Err("the ID token is for another client".to_owned());
+    return Err(CallbackError::WrongAudience);
   }
   if !claims["iss"].as_str().is_some_and(|issuer| is_accepted_issuer(issuer, overrides)) {
-    return Err("the ID token is not from the expected issuer".to_owned());
+    return Err(CallbackError::WrongIssuer);
   }
   if claims["exp"].as_i64().is_none_or(|expiry| now.timestamp() >= expiry) {
-    return Err("the ID token has expired".to_owned());
+    return Err(CallbackError::Expired);
   }
   if !claims["nonce"]
     .as_str()
     .is_some_and(|value| bool::from(value.as_bytes().ct_eq(nonce.as_bytes())))
   {
-    return Err("the ID token's nonce does not match the sign-in cookie".to_owned());
+    return Err(CallbackError::NonceMismatch);
   }
   claims["sub"]
     .as_str()
     .filter(|subject| !is_blank(subject))
     .map(str::to_owned)
-    .ok_or_else(|| "the ID token has no subject".to_owned())
+    .ok_or(CallbackError::NoSubject)
 }
 
 /// The claims Google's userinfo endpoint returns about the person signing in.
@@ -383,20 +429,20 @@ impl GoogleUser {
   }
 }
 
-async fn fetch_user(state: &AppState, access_token: &str) -> Result<GoogleUser, String> {
+async fn fetch_user(state: &AppState, access_token: &str) -> Result<GoogleUser, CallbackError> {
   let response = state
     .http()
-    .ok_or("Google sign-in is not configured")?
+    .ok_or(CallbackError::NotConfigured)?
     .get(&state.google_endpoints().user_info)
     .bearer_auth(access_token)
     .header(reqwest::header::ACCEPT, "application/json")
     .send()
     .await
-    .map_err(|error| format!("the userinfo request failed: {}", error.without_url()))?;
+    .map_err(|error| CallbackError::UserInfoRequest(error.without_url().to_string()))?;
   if !response.status().is_success() {
-    return Err(format!("the userinfo endpoint answered {}", response.status()));
+    return Err(CallbackError::UserInfoStatus(response.status()));
   }
-  let claims: Value = response.json().await.map_err(|_| "the userinfo response is not JSON".to_owned())?;
+  let claims: Value = response.json().await.map_err(|_| CallbackError::UserInfoBody)?;
   Ok(GoogleUser::from_claims(&claims))
 }
 
@@ -444,7 +490,7 @@ pub async fn attach_user(
     .await
     .map_err(|error| SignInError::Directory(error.to_string()))?;
   Ok(Principal {
-    user_id: user.id(),
+    owner: OwnerId(user.id()),
     name: name.map(str::to_owned),
     email: Some(email.to_owned()),
     picture: picture.map(str::to_owned),
@@ -486,8 +532,8 @@ mod tests {
     let nonce = nonce.as_str();
     let good = json!({"aud": "client", "iss": "https://accounts.google.com", "exp": now.timestamp() + 60, "nonce": nonce, "sub": "s"});
     assert_eq!(
-      check_id_token(&token(&good), &credentials, &GoogleOverrides::default(), nonce, now),
-      Ok("s".to_owned())
+      check_id_token(&token(&good), &credentials, &GoogleOverrides::default(), nonce, now).unwrap(),
+      "s"
     );
 
     let with = |name: &str, value: Value| {
@@ -495,14 +541,21 @@ mod tests {
       claims[name] = value;
       check_id_token(&token(&claims), &credentials, &GoogleOverrides::default(), nonce, now)
     };
-    assert_eq!(with("aud", json!(["other", "client"])), Ok("s".to_owned()));
-    assert_eq!(with("iss", json!("accounts.google.com")), Ok("s".to_owned()));
-    assert!(with("aud", json!("other")).is_err());
-    assert!(with("iss", json!("https://evil.test")).is_err());
-    assert!(with("exp", json!(now.timestamp())).is_err());
-    assert!(with("nonce", json!("other")).is_err());
-    assert!(with("sub", json!(" ")).is_err());
-    assert!(check_id_token("not-a-jwt", &credentials, &GoogleOverrides::default(), nonce, now).is_err());
+    assert_eq!(with("aud", json!(["other", "client"])).unwrap(), "s");
+    assert_eq!(with("iss", json!("accounts.google.com")).unwrap(), "s");
+    assert!(matches!(with("aud", json!("other")), Err(CallbackError::WrongAudience)));
+    assert!(matches!(with("iss", json!("https://evil.test")), Err(CallbackError::WrongIssuer)));
+    assert!(matches!(with("exp", json!(now.timestamp())), Err(CallbackError::Expired)));
+    assert!(matches!(with("nonce", json!("other")), Err(CallbackError::NonceMismatch)));
+    assert!(matches!(with("sub", json!(" ")), Err(CallbackError::NoSubject)));
+    assert!(matches!(
+      check_id_token("not-a-jwt", &credentials, &GoogleOverrides::default(), nonce, now),
+      Err(CallbackError::NotAJwt)
+    ));
+    assert!(matches!(
+      check_id_token("e30.!.signature", &credentials, &GoogleOverrides::default(), nonce, now),
+      Err(CallbackError::UnreadableClaims)
+    ));
   }
 
   #[test]
@@ -521,10 +574,10 @@ mod tests {
       let claims = json!({"aud": "client", "iss": issuer, "exp": now.timestamp() + 60, "nonce": nonce, "sub": "s"});
       check_id_token(&token(&claims), &credentials, &overrides, &nonce, now)
     };
-    assert_eq!(check("http://127.0.0.1:55280/google"), Ok("s".to_owned()));
-    assert!(check("https://accounts.google.com").is_err());
-    assert!(check("accounts.google.com").is_err());
-    assert!(check("http://127.0.0.1:55280/other").is_err());
+    assert_eq!(check("http://127.0.0.1:55280/google").unwrap(), "s");
+    assert!(matches!(check("https://accounts.google.com"), Err(CallbackError::WrongIssuer)));
+    assert!(matches!(check("accounts.google.com"), Err(CallbackError::WrongIssuer)));
+    assert!(matches!(check("http://127.0.0.1:55280/other"), Err(CallbackError::WrongIssuer)));
   }
 
   #[test]

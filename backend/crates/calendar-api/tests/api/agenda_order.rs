@@ -2,49 +2,16 @@
 //! #54). The reference orders below are a copy of the comparers as they were before short-circuiting: every
 //! key is computed on every comparison and the first difference wins.
 //!
-//! The .NET test drew from `new Random(54)`; this one draws from a fixed-seed generator of its own, so the
-//! items differ but the run is as repeatable.
+//! The .NET test drew from `new Random(54)`; this one draws from the shared fixed-seed generator
+//! (`common::SeededRandom`), so the items differ but the run is as repeatable.
 
 use std::cmp::Ordering;
 
+use crate::common::{SeededRandom, date, utc};
 use calendar_api::contracts::{AgendaTaskItem, AllDayEventItem, TimedEventItem};
 use calendar_api::endpoints::agenda_order;
-use chrono::{DateTime, Days, NaiveDate, TimeDelta, TimeZone, Utc};
+use chrono::{Days, TimeDelta};
 use uuid::Uuid;
-
-/// `SplitMix64`: a small deterministic generator, seeded like `new Random(seed)`.
-struct SeededRandom(u64);
-
-impl SeededRandom {
-  fn next_u64(&mut self) -> u64 {
-    self.0 = self.0.wrapping_add(0x9E37_79B9_7F4A_7C15);
-    let mut z = self.0;
-    z = (z ^ (z >> 30)).wrapping_mul(0xBF58_476D_1CE4_E5B9);
-    z = (z ^ (z >> 27)).wrapping_mul(0x94D0_49BB_1331_11EB);
-    z ^ (z >> 31)
-  }
-
-  /// A value in `0..bound` (`Random.Next(bound)`).
-  fn below(&mut self, bound: u64) -> u64 {
-    self.next_u64() % bound
-  }
-
-  fn pick<'a, T>(&mut self, items: &'a [T]) -> &'a T {
-    let index = usize::try_from(self.below(items.len() as u64)).expect("an index");
-    &items[index]
-  }
-}
-
-fn date(year: i32, month: u32, day: u32) -> NaiveDate {
-  NaiveDate::from_ymd_opt(year, month, day).expect("a valid date")
-}
-
-fn utc(year: i32, month: u32, day: u32, hour: u32, minute: u32) -> DateTime<Utc> {
-  Utc
-    .with_ymd_and_hms(year, month, day, hour, minute, 0)
-    .single()
-    .expect("a valid instant")
-}
 
 /// `StringComparer.OrdinalIgnoreCase.Compare` for the ASCII titles of this test.
 fn ordinal_ignore_case(a: &str, b: &str) -> Ordering {

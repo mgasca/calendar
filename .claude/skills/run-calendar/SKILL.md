@@ -7,11 +7,11 @@ description: Run, start, launch and drive the Calendar app (API + web UI) locall
 
 The agent path is a throwaway stack on its own ports (PostgreSQL 55432, API 55041, Vite 55173), signed in through
 the API's development seed key, and driven by
-`.claude/skills/run-calendar/scripts/browse/browse.cs`: a .NET file-based Playwright driver (ADR-0017) that reads
+`.claude/skills/run-calendar/scripts/browse/browse.ts`: a Deno Playwright driver (ADR-0058) that reads
 commands on stdin and writes screenshots to `/tmp/calendar-shots/`. Use `curl` with the same key for the API.
 
 All paths are relative to the repo root. Each block below was run as written on Ubuntu 26.04 (WSL2), Node 24, with
-podman behind the `docker` command and the driver blocks with .NET SDK 10.0.403. The backend blocks (migrations, API,
+podman behind the `docker` command. The backend blocks (migrations, API,
 `curl`) were run again with Docker after the backend moved to Rust (Cargo, the toolchain in `backend/rust-toolchain.toml`).
 
 ## Prerequisites (once per machine)
@@ -22,23 +22,10 @@ Toolchain as in the README (`./tools/doctor/doctor.sh`), then dependencies:
 just backend restore && just frontend install
 ```
 
-The driver uses `#:include`, which .NET SDK 10.0.1xx rejects (`Unrecognized directive 'include'`), and 10.0.1xx is
-what Ubuntu's `dotnet-sdk-10.0` package installs. Check `dotnet --version` in the shell that runs the driver: under
-WSL, the Windows SDK in `C:\Program Files\dotnet` doesn't count. If it starts with `10.0.1`, install a newer SDK next
-to it, without sudo, and put it first on `PATH` (add the `export` to `~/.bashrc` to keep it):
+Install Deno 2.9.8 (the repository's `.deno-version` pin), then download Chromium for the driver:
 
 ```bash
-curl -fsSL https://dot.net/v1/dotnet-install.sh | bash -s -- --version 10.0.403 --install-dir ~/.dotnet
-```
-
-```bash
-export DOTNET_ROOT="$HOME/.dotnet" PATH="$HOME/.dotnet:$PATH"
-```
-
-Download Chromium for the driver (the first run also builds the driver, about a minute):
-
-```bash
-dotnet run .claude/skills/run-calendar/scripts/browse/browse.cs -- --install
+deno run --config .claude/skills/run-calendar/deno.json --frozen --no-prompt --allow-read --allow-write --allow-run --allow-env --allow-sys --allow-net .claude/skills/run-calendar/scripts/browse/browse.ts --install
 ```
 
 Chromium needs `libnss3`, `libnspr4` and `libasound2t64`. Without sudo, extract them into the cache folder the driver
@@ -105,10 +92,10 @@ Each line prints `201`.
 ## Drive the UI
 
 Pipe a script to the driver. It stops at the first failing command, prints the error and saves
-`/tmp/calendar-shots/failure.png`. A cached run takes about 2 s; the first after an edit to `browse.cs` rebuilds it.
+`/tmp/calendar-shots/failure.png`.
 
 ```bash
-dotnet run .claude/skills/run-calendar/scripts/browse/browse.cs <<'EOF'
+deno run --config .claude/skills/run-calendar/deno.json --frozen --no-prompt --allow-read --allow-write --allow-run --allow-env --allow-sys --allow-net .claude/skills/run-calendar/scripts/browse/browse.ts <<'EOF'
 nav /
 click role=button[name="Add task"]
 fill label=Title Book the dentist
@@ -150,7 +137,7 @@ last argument. Options: `--base-url`, `--time-zone` (default `UTC`; the client d
 The week grid scrolls itself to the current time, so morning events can be outside a screenshot. Scroll it first:
 
 ```bash
-dotnet run .claude/skills/run-calendar/scripts/browse/browse.cs <<'EOF'
+deno run --config .claude/skills/run-calendar/deno.json --frozen --no-prompt --allow-read --allow-write --allow-run --allow-env --allow-sys --allow-net .claude/skills/run-calendar/scripts/browse/browse.ts <<'EOF'
 nav /week
 wait-for data-testid=week-scroll
 eval document.querySelector('[data-testid="week-scroll"]').scrollTop = 8 * 48
@@ -204,10 +191,10 @@ The driver's own tests cover script parsing only, so they need neither Chromium 
 `Tooling` job run them:
 
 ```bash
-dotnet run .claude/skills/run-calendar/tests/browse.tests.cs
+deno task --config .claude/skills/run-calendar/deno.json test
 ```
 
-Observed: 20 tests pass.
+The browser integration fixture is opt-in: `deno task --config .claude/skills/run-calendar/deno.json test-browser`.
 
 ## Gotchas
 
@@ -224,11 +211,6 @@ Observed: 20 tests pass.
 - **Why not `just db up`:** `compose.yaml` pins the project name `calendar`, so every worktree shares one container
   and volume (`calendar_calendar-pgdata`) with the human's checkout. The agent database is a separate `--rm`
   container on 55432, and the agent ports stay clear of `just backend dev` (5041) and `just frontend dev` (5173).
-- **`#:include` needs a newer SDK than 10.0.1xx.** On 10.0.1xx the driver, its tests, `just db seed`, `just tools adr`
-  and `just tools test` all fail with `Unrecognized directive 'include'`; see Prerequisites. Seeding above uses `curl`,
-  which works with any SDK.
-- **File-based apps default to `PublishAot`**, which disables reflection-based JSON; Playwright then fails with
-  `Reflection-based serialization has been disabled`. The driver sets `#:property PublishAot=false`.
 - **`label=` is not a Playwright selector engine** (`Unknown engine "label"`); the driver maps it to `GetByLabel`.
   The match is a substring because each field sits inside its `<label>`, so a select's label text also holds its
   options ("Priority Low Medium High") and an exact match finds nothing.

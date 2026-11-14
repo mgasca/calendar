@@ -322,7 +322,10 @@ impl Server {
     loop {
       match connection::connect_client(&config).await {
         Ok(client) => return client,
-        Err(error) if attempt >= 50 => panic!("the test PostgreSQL does not accept connections: {error}"),
+        Err(error) if attempt >= 50 => panic!(
+          "the test PostgreSQL does not accept connections: {}",
+          connection::error_chain(&error)
+        ),
         Err(_) => {
           attempt += 1;
           tokio::time::sleep(Duration::from_millis(200)).await;

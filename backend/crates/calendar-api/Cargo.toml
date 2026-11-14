@@ -41,7 +41,7 @@ uuid = { workspace = true, features = ["serde", "v4"] }
 calendar-testing.workspace = true
 opentelemetry_sdk = { workspace = true, features = ["testing"] }
 tempfile.workspace = true
-tokio-postgres.workspace = true
+tokio-postgres = { workspace = true, features = ["with-uuid-1", "with-chrono-0_4"] }
 
 [lints]
 workspace = true

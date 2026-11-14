@@ -1,7 +1,7 @@
 //! The SSL modes against a PostgreSQL that serves TLS with a certificate from a private authority, the shape of
 //! the Azure connection (`SSL Mode=VerifyFull`). A container of its own: the shared one serves no TLS.
 
-use calendar_infrastructure::connection::{self, ConnectionConfig, ConnectionError};
+use calendar_infrastructure::connection::{self, ConnectSource, ConnectionConfig, ConnectionError};
 use rcgen::{BasicConstraints, CertificateParams, DnType, IsCa, Issuer, KeyPair, KeyUsagePurpose};
 use testcontainers_modules::postgres::Postgres;
 use testcontainers_modules::testcontainers::runners::AsyncRunner;
@@ -51,13 +51,24 @@ async fn connect(connection_string: &str) -> Result<tokio_postgres::Client, Conn
   let mut attempt = 0;
   loop {
     match connection::connect_client(&config).await {
-      Err(ConnectionError::Connect { reason, .. }) if attempt < 50 && (reason.contains("refused") || reason.contains("starting up")) => {
+      Err(ConnectionError::Connect {
+        source: ConnectSource::Postgres(error),
+        ..
+      }) if attempt < 50 && not_ready_yet(&error) => {
         attempt += 1;
         tokio::time::sleep(std::time::Duration::from_millis(200)).await;
       }
       result => return result,
     }
   }
+}
+
+/// A refused connection (the server is not listening yet) or SQLSTATE 57P03 (`the database system is starting up`).
+fn not_ready_yet(error: &tokio_postgres::Error) -> bool {
+  let refused = std::error::Error::source(error)
+    .and_then(|cause| cause.downcast_ref::<std::io::Error>())
+    .is_some_and(|io| io.kind() == std::io::ErrorKind::ConnectionRefused);
+  refused || error.code() == Some(&tokio_postgres::error::SqlState::CANNOT_CONNECT_NOW)
 }
 
 async fn session_uses_tls(client: &tokio_postgres::Client) -> bool {
@@ -103,7 +114,8 @@ async fn ssl_modes_encrypt_and_verify_as_named() {
   let error = connect(&format!("{by_address};SSL Mode=VerifyFull;Root Certificate={authority_file}"))
     .await
     .unwrap_err();
-  assert!(error.to_string().contains("not valid for name"), "{error}");
+  let message = connection::error_chain(&error);
+  assert!(message.contains("not valid for name"), "{message}");
   let client = connect(&format!("{by_address};SSL Mode=VerifyCA;Root Certificate={authority_file}"))
     .await
     .unwrap();
@@ -112,7 +124,8 @@ async fn ssl_modes_encrypt_and_verify_as_named() {
   // Without the private root, the system's roots do not vouch for this server, under either verifying mode.
   for mode in ["VerifyFull", "VerifyCA"] {
     let error = connect(&format!("{by_name};SSL Mode={mode}")).await.unwrap_err();
-    assert!(error.to_string().contains("invalid peer certificate"), "{mode}: {error}");
+    let message = connection::error_chain(&error);
+    assert!(message.contains("invalid peer certificate"), "{mode}: {message}");
   }
 
   // Require and Prefer (the default) encrypt without verifying; Disable does not encrypt.
@@ -150,7 +163,7 @@ async fn a_wrong_password_reports_the_server_message_without_the_password() {
     .app_connection_string()
     .replace(database.app_password(), "not-the-password");
 
-  let error = connect(&wrong).await.unwrap_err().to_string();
+  let error = connection::error_chain(&connect(&wrong).await.unwrap_err());
 
   assert!(error.contains("password authentication failed"), "{error}");
   assert!(error.contains("as calendar_app"), "{error}");

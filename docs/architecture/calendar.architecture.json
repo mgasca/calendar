@@ -123,7 +123,7 @@
       { "id": "0044", "title": "Edit a task from the Today view", "status": "implemented", "url": "https://mgasca.github.io/calendar/stories/0044/" },
       { "id": "0046", "title": "Apply the Calendar light and dark themes to the published docs site", "status": "implemented", "url": "https://mgasca.github.io/calendar/stories/0046/" },
       { "id": "0053", "title": "Show how fast and how smoothly changes reach main", "status": "implemented", "url": "https://mgasca.github.io/calendar/stories/0053/" },
-      { "id": "0059", "title": "Run repository tooling on TypeScript and Deno", "status": "planned", "url": "https://mgasca.github.io/calendar/stories/0059/" },
+      { "id": "0059", "title": "Run repository tooling on TypeScript and Deno", "status": "in-progress", "url": "https://mgasca.github.io/calendar/stories/0059/" },
       { "id": "0063", "title": "Build architecture narratives with an interviewing agent and an expert panel", "status": "in-progress", "url": "https://mgasca.github.io/calendar/stories/0063/" },
       { "id": "0064", "title": "Test every user flow end to end and prove it is observable", "status": "planned", "url": "https://mgasca.github.io/calendar/stories/0064/" },
       { "id": "XXXX", "title": "Create events and tasks from the week view", "status": "planned", "url": "https://mgasca.github.io/calendar/stories/create-events-and-tasks-from-week-view/" }
@@ -664,7 +664,7 @@
       "interfaces": [
         { "unique-id": "migrator-command", "commands": ["just db migrate", "just infra migrate <env>", ".github/workflows/migrate.yml (workflow_dispatch, environment input)"] }
       ],
-      "metadata": { "adrs": ["ADR-0052", "ADR-0031", "ADR-0034"], "source": "tools/infra/Database.cs, backend/crates/calendar-migrate, backend/crates/calendar-infrastructure/migrations" }
+      "metadata": { "adrs": ["ADR-0052", "ADR-0031", "ADR-0034"], "source": "tools/infra/database.ts, backend/crates/calendar-migrate, backend/crates/calendar-infrastructure/migrations" }
     },
     {
       "unique-id": "infra-tool",
@@ -846,7 +846,7 @@
       "interfaces": [
         { "unique-id": "ops-vault-uri", "url": "https://kv-ops-<suffix>.vault.azure.net/" }
       ],
-      "metadata": { "ownership": "platform", "adrs": ["ADR-0032", "ADR-0035"], "source": "infra/modules/foundation.bicep, tools/infra/Database.cs" }
+      "metadata": { "ownership": "platform", "adrs": ["ADR-0032", "ADR-0035"], "source": "infra/modules/foundation.bicep, tools/infra/database.ts" }
     },
     {
       "unique-id": "log-analytics",

@@ -36,9 +36,10 @@ struct TaskRow {
 
 impl TaskRow {
   fn into_versioned(self) -> Result<Versioned<TodoTask>, Error> {
-    let priority = Priority::parse(&self.priority).ok_or(Error::InvalidRow {
+    let priority = stored_priority(&self.priority)?;
+    let deadline = Deadline::from_parts(self.due_date, self.due_at).map_err(|_| Error::InvalidRow {
       entity: "task",
-      reason: "the priority is not low, medium or high",
+      reason: "both the due date and the due instant are set",
     })?;
     Ok(Versioned {
       entity: TodoTask::restore(TodoTaskRecord {
@@ -47,13 +48,21 @@ impl TaskRow {
         title: self.title,
         priority,
         notes: self.notes,
-        due_date: self.due_date,
-        due_at: self.due_at,
+        deadline,
         completed_at: self.completed_at,
       }),
       version: self.xmin,
     })
   }
+}
+
+/// The priority of a stored task row: its `priority` column, or [`Error::InvalidRow`] for text that is not
+/// one. Every read of a task row maps the column through here.
+pub(crate) fn stored_priority(text: &str) -> Result<Priority, Error> {
+  text.parse().map_err(|_| Error::InvalidRow {
+    entity: "task",
+    reason: "the priority is not low, medium or high",
+  })
 }
 
 /// The columns an insert writes. `xmin` is the database's.
@@ -62,18 +71,15 @@ impl TaskRow {
 struct NewTask<'a> {
   id: Uuid,
   owner_id: Uuid,
-  title: &'a str,
-  priority: &'a str,
-  notes: Option<&'a str>,
-  due_date: Option<NaiveDate>,
-  due_at: Option<DateTime<Utc>>,
-  completed_at: Option<DateTime<Utc>>,
+  #[diesel(embed)]
+  fields: TaskFields<'a>,
 }
 
-/// The columns an update may change: never the id, the owner or `xmin`.
-#[derive(AsChangeset)]
+/// The columns an insert writes after the id and owner, and the ones an update may change: never the id, the
+/// owner or `xmin`. An update writes every column, so a deadline of one kind clears the other kind's column.
+#[derive(Insertable, AsChangeset)]
 #[diesel(table_name = tasks, treat_none_as_null = true)]
-struct TaskChanges<'a> {
+struct TaskFields<'a> {
   title: &'a str,
   priority: &'a str,
   notes: Option<&'a str>,
@@ -82,14 +88,15 @@ struct TaskChanges<'a> {
   completed_at: Option<DateTime<Utc>>,
 }
 
-impl<'a> TaskChanges<'a> {
+impl<'a> TaskFields<'a> {
   fn of(task: &'a TodoTask) -> Self {
+    let deadline = task.deadline();
     Self {
       title: task.title(),
       priority: task.priority().as_str(),
       notes: task.notes(),
-      due_date: task.due_date(),
-      due_at: task.due_at(),
+      due_date: deadline.due_date(),
+      due_at: deadline.due_at(),
       completed_at: task.completed_at(),
     }
   }
@@ -111,12 +118,7 @@ pub async fn insert(conn: &mut AsyncPgConnection, owner: OwnerId, task: &TodoTas
     .values(NewTask {
       id: task.id(),
       owner_id: owner.0,
-      title: task.title(),
-      priority: task.priority().as_str(),
-      notes: task.notes(),
-      due_date: task.due_date(),
-      due_at: task.due_at(),
-      completed_at: task.completed_at(),
+      fields: TaskFields::of(task),
     })
     .returning(tasks::xmin)
     .get_result(conn)
@@ -281,10 +283,10 @@ pub async fn count_open_overdue(conn: &mut AsyncPgConnection, owner: OwnerId, to
 /// What a bulk-by-filter does to every open overdue task.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum OverdueAction {
-  /// Complete them at this instant (pass `TodoTask::normalize_completion_time(now)`).
+  /// Complete them at this instant.
   Complete(DateTime<Utc>),
-  /// Give them this deadline (`TodoTask::for_due_date`, `for_due_instant` or `without_deadline`). Tasks that
-  /// already have exactly it are not written and not counted.
+  /// Give them this deadline ([`Deadline::None`] clears it). Tasks that already have exactly it are not
+  /// written and not counted.
   SetDeadline(Deadline),
   /// Delete them.
   Delete,
@@ -321,7 +323,8 @@ pub async fn apply_to_open_overdue(
         .filter(is_open_overdue(date, start));
       let applied = match action {
         OverdueAction::Complete(at) => diesel::update(overdue).set(tasks::completed_at.eq(Some(at))).execute(conn).await?,
-        OverdueAction::SetDeadline((due_date, due_at)) => {
+        OverdueAction::SetDeadline(deadline) => {
+          let (due_date, due_at) = (deadline.due_date(), deadline.due_at());
           // Only rows whose deadline differs: `IS DISTINCT FROM` is the null-aware `<>`.
           diesel::update(overdue)
             .filter(
@@ -357,7 +360,7 @@ async fn update_row(
       .filter(tasks::id.eq(task.id()))
       .filter(tasks::xmin.eq(expected)),
   )
-  .set(TaskChanges::of(task))
+  .set(TaskFields::of(task))
   .returning(tasks::xmin)
   .get_result(conn)
   .await

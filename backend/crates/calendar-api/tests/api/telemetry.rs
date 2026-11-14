@@ -19,6 +19,26 @@ const TRACEPARENT: &str = "00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-
 
 /// What the app exports during a test, read from in-memory exporters. The subscriber is this thread's
 /// default while the capture lives (Tokio tests run on one thread).
+/// One data point of the HTTP server request duration histogram.
+#[derive(Debug, PartialEq)]
+struct RequestPoint {
+  method: String,
+  route: Option<String>,
+  status: i64,
+  count: u64,
+}
+
+impl RequestPoint {
+  fn get(route: Option<&str>, status: i64, count: u64) -> Self {
+    Self {
+      method: "GET".to_owned(),
+      route: route.map(str::to_owned),
+      status,
+      count,
+    }
+  }
+}
+
 struct Capture {
   spans: InMemorySpanExporter,
   logs: InMemoryLogExporter,
@@ -74,8 +94,8 @@ impl Capture {
     format!("{:#?}\n{:#?}\n{metrics:#?}", self.spans(), self.logs())
   }
 
-  /// The HTTP server duration data points as `(method, route, status, count)`.
-  fn request_metrics(&self) -> Vec<(String, Option<String>, i64, u64)> {
+  /// The HTTP server duration data points.
+  fn request_metrics(&self) -> Vec<RequestPoint> {
     use opentelemetry_sdk::metrics::data::{AggregatedMetrics, MetricData};
     let meter_provider = self.telemetry.meter_provider.as_ref().expect("metrics are captured");
     meter_provider.force_flush().expect("the metrics are collected");
@@ -89,18 +109,18 @@ impl Capture {
           };
           for point in histogram.data_points() {
             let attribute = |key: &str| point.attributes().find(|kv| kv.key.as_str() == key).map(|kv| kv.value.clone());
-            points.push((
-              attribute("http.request.method")
+            points.push(RequestPoint {
+              method: attribute("http.request.method")
                 .expect("every point has a method")
                 .as_str()
                 .into_owned(),
-              attribute("http.route").map(|route| route.as_str().into_owned()),
-              match attribute("http.response.status_code") {
+              route: attribute("http.route").map(|route| route.as_str().into_owned()),
+              status: match attribute("http.response.status_code") {
                 Some(opentelemetry::Value::I64(status)) => status,
                 other => panic!("the status code is an integer: {other:?}"),
               },
-              point.count(),
-            ));
+              count: point.count(),
+            });
           }
         }
       }
@@ -315,16 +335,10 @@ async fn requests_are_counted_and_timed_by_method_route_template_and_status() {
   app.client().get("/api/nothing-here?x=1").await;
 
   let points = capture.request_metrics();
-  assert!(
-    points.contains(&("GET".to_owned(), Some("/api/agenda/day".to_owned()), 200, 2)),
-    "{points:#?}"
-  );
-  assert!(
-    points.contains(&("GET".to_owned(), Some("/api/tasks/{id}".to_owned()), 404, 1)),
-    "{points:#?}"
-  );
+  assert!(points.contains(&RequestPoint::get(Some("/api/agenda/day"), 200, 2)), "{points:#?}");
+  assert!(points.contains(&RequestPoint::get(Some("/api/tasks/{id}"), 404, 1)), "{points:#?}");
   // No route matched: no route attribute, never the raw path.
-  assert!(points.contains(&("GET".to_owned(), None, 404, 1)), "{points:#?}");
+  assert!(points.contains(&RequestPoint::get(None, 404, 1)), "{points:#?}");
 }
 
 /// Values a flow puts in requests, rows and cookies; none may reach telemetry.
@@ -469,8 +483,5 @@ async fn health_probes_are_counted_but_not_traced() {
   let spans = capture.spans();
   assert!(spans.is_empty(), "no span for a health probe: {spans:#?}");
   let points = capture.request_metrics();
-  assert!(
-    points.contains(&("GET".to_owned(), Some("/api/health".to_owned()), 200, 1)),
-    "{points:#?}"
-  );
+  assert!(points.contains(&RequestPoint::get(Some("/api/health"), 200, 1)), "{points:#?}");
 }

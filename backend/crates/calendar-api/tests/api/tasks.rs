@@ -100,8 +100,8 @@ async fn read_task_and_xmin(app: &TestApp, id: Uuid) -> StoredTask {
   let row = client
     .query_one(
       "SELECT title::text, priority::text, notes::text, completed_at::text, due_date::text, due_at::text, xmin::text \
-       FROM tasks WHERE id = $1::text::uuid",
-      &[&id.to_string()],
+       FROM tasks WHERE id = $1",
+      &[&id],
     )
     .await
     .expect("the task exists exactly once");

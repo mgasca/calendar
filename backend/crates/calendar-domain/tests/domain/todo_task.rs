@@ -4,7 +4,7 @@
 //! suite gives with another offset are converted the way a caller would.
 
 use calendar_domain::error::{ArgumentError, InvalidOperationError};
-use calendar_domain::tasks::{Priority, TodoTask, TodoTaskRecord};
+use calendar_domain::tasks::{Deadline, Priority, TodoTask, TodoTaskRecord};
 use chrono::{DateTime, FixedOffset, NaiveDate, TimeDelta, TimeZone, Utc};
 use uuid::Uuid;
 
@@ -66,7 +66,7 @@ fn create_with_due_date_sets_due_date() {
 
 #[test]
 fn create_with_due_at_normalizes_to_utc() {
-  let due_at = TodoTask::normalize_due_at(&with_offset(-4, 2026, 10, 26, 9));
+  let due_at = with_offset(-4, 2026, 10, 26, 9).with_timezone(&Utc);
   let task = TodoTask::create(owner(), "A", None, Some(due_at), "medium", None).unwrap();
 
   assert_eq!(task.due_at(), Some(Utc.with_ymd_and_hms(2026, 10, 26, 13, 0, 0).unwrap()));
@@ -124,7 +124,7 @@ fn create_with_invalid_priority_fails() {
 fn complete_sets_completed_at_in_utc() {
   let mut task = create("A").unwrap();
 
-  task.complete(TodoTask::normalize_completion_time(&with_offset(-4, 2026, 10, 26, 8)));
+  task.complete(with_offset(-4, 2026, 10, 26, 8).with_timezone(&Utc));
 
   assert!(task.is_completed());
   assert_eq!(task.completed_at(), Some(now()));
@@ -168,7 +168,7 @@ fn deadline_changes_replace_or_clear_open_task_deadline() {
   let mut task = TodoTask::create(owner(), "A", Some(date(2026, 10, 25)), None, "medium", None).unwrap();
   let due_at = with_offset(-4, 2026, 10, 26, 9);
 
-  task.set_due_at(TodoTask::normalize_due_at(&due_at)).unwrap();
+  task.set_due_at(due_at.with_timezone(&Utc)).unwrap();
   assert_eq!(task.due_date(), None);
   assert_eq!(task.due_at(), Some(now() + TimeDelta::hours(1)));
   task.set_due_date(date(2026, 10, 27)).unwrap();
@@ -199,7 +199,7 @@ fn update_replaces_the_editable_fields_and_keeps_id_owner_and_completion() {
 
   let due_at = now().with_timezone(&FixedOffset::east_opt(2 * 3600).unwrap());
   task
-    .update(" Buy oat milk ", None, Some(TodoTask::normalize_due_at(&due_at)), "high", None)
+    .update(" Buy oat milk ", None, Some(due_at.with_timezone(&Utc)), "high", None)
     .unwrap();
 
   assert_eq!(task.id(), id);
@@ -274,20 +274,40 @@ fn create_reports_the_first_broken_rule_in_a_fixed_order() {
 #[test]
 fn priority_round_trips_its_wire_form_and_is_case_sensitive() {
   for priority in [Priority::Low, Priority::Medium, Priority::High] {
-    assert_eq!(Priority::parse(priority.as_str()), Some(priority));
+    assert_eq!(priority.as_str().parse(), Ok(priority));
   }
 
   assert_eq!(Priority::default(), Priority::Medium);
-  assert_eq!(Priority::parse("High"), None);
-  assert_eq!(Priority::parse(" low"), None);
+  for text in ["High", " low", ""] {
+    assert_eq!(
+      text.parse::<Priority>(),
+      Err(ArgumentError::new("priority", "Priority must be low, medium or high."))
+    );
+  }
 }
 
 #[test]
-fn deadline_column_helpers_are_mutually_exclusive() {
-  assert_eq!(TodoTask::for_due_date(date(2026, 10, 27)), (Some(date(2026, 10, 27)), None));
-  assert_eq!(TodoTask::for_due_instant(now()), (None, Some(now())));
-  assert_eq!(TodoTask::without_deadline(), (None, None));
-  assert_eq!(TodoTask::normalize_completion_time(&with_offset(-4, 2026, 10, 26, 8)), now());
+fn deadline_parts_are_mutually_exclusive() {
+  assert_eq!(Deadline::from_parts(None, None), Ok(Deadline::None));
+  assert_eq!(
+    Deadline::from_parts(Some(date(2026, 10, 27)), None),
+    Ok(Deadline::On(date(2026, 10, 27)))
+  );
+  assert_eq!(Deadline::from_parts(None, Some(now())), Ok(Deadline::At(now())));
+  assert_eq!(
+    Deadline::from_parts(Some(date(2026, 10, 27)), Some(now())),
+    Err(ArgumentError::new(
+      "dueAt",
+      "A task can have a due date or a due instant, not both."
+    ))
+  );
+
+  assert_eq!(Deadline::default(), Deadline::None);
+  assert_eq!((Deadline::None.due_date(), Deadline::None.due_at()), (None, None));
+  let on = Deadline::On(date(2026, 10, 27));
+  assert_eq!((on.due_date(), on.due_at()), (Some(date(2026, 10, 27)), None));
+  let at = Deadline::At(now());
+  assert_eq!((at.due_date(), at.due_at()), (None, Some(now())));
 }
 
 #[test]
@@ -298,8 +318,7 @@ fn restore_and_into_record_round_trip_without_validation() {
     title: "Stored".to_owned(),
     priority: Priority::High,
     notes: Some("n".to_owned()),
-    due_date: None,
-    due_at: Some(now()),
+    deadline: Deadline::At(now()),
     completed_at: Some(now() + TimeDelta::hours(1)),
   };
 

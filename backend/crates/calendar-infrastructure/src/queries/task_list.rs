@@ -79,8 +79,8 @@ pub fn for_view<'a, ST>(tasks: Tasks<'a, ST>, view: &TaskListView, after: Option
   match view {
     TaskListView::Completed => completed(tasks, after),
     TaskListView::NoDeadline => no_deadline(tasks, after),
-    TaskListView::Upcoming(dated) => self::dated(tasks, false, dated, after),
-    TaskListView::Overdue(dated) => self::dated(tasks, true, dated, after),
+    TaskListView::Upcoming(dated) => self::dated(open_upcoming_for(tasks, &dated.today), dated, after),
+    TaskListView::Overdue(dated) => self::dated(open_overdue_for(tasks, &dated.today), dated, after),
   }
 }
 
@@ -128,18 +128,18 @@ fn no_deadline<'a, ST>(tasks: Tasks<'a, ST>, after: Option<&TaskListKey>) -> Tas
   tasks.order(tasks::id.asc())
 }
 
-fn dated<'a, ST>(tasks: Tasks<'a, ST>, overdue: bool, view: &DatedView, after: Option<&TaskListKey>) -> Tasks<'a, ST> {
-  let (date, start) = (view.today.date(), view.today.start());
+/// Open tasks due today or later: the upcoming view's rows.
+fn open_upcoming_for<'a, ST>(tasks: Tasks<'a, ST>, today: &DayWindow) -> Tasks<'a, ST> {
+  tasks.filter(
+    tasks::completed_at
+      .is_null()
+      .and(tasks::due_date.ge(today.date()).or(tasks::due_at.ge(today.start()))),
+  )
+}
+
+/// Seeks `tasks`, already filtered to one dated view's rows, past `after`, and orders them by local due date.
+fn dated<'a, ST>(mut tasks: Tasks<'a, ST>, view: &DatedView, after: Option<&TaskListKey>) -> Tasks<'a, ST> {
   let zone = view.zone.id();
-  let mut tasks = if overdue {
-    open_overdue_for(tasks, &view.today)
-  } else {
-    tasks.filter(
-      tasks::completed_at
-        .is_null()
-        .and(tasks::due_date.ge(date).or(tasks::due_at.ge(start))),
-    )
-  };
 
   // The seek predicate, expanded by hand around the nullable keys: date-only tasks (no instant) follow timed
   // ones on the same local date.

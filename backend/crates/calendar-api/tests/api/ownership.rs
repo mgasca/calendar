@@ -92,10 +92,7 @@ async fn tasks_by_title(app: &TestApp) -> Vec<(String, bool)> {
 async fn is_completed(app: &TestApp, id: Uuid) -> bool {
   let client = app.database().migrator_client().await;
   client
-    .query_one(
-      "SELECT completed_at IS NOT NULL FROM tasks WHERE id = $1::text::uuid",
-      &[&id.to_string()],
-    )
+    .query_one("SELECT completed_at IS NOT NULL FROM tasks WHERE id = $1", &[&id])
     .await
     .expect("the task exists exactly once")
     .get(0)
@@ -354,7 +351,7 @@ async fn a_call_for_a_user_sees_only_that_users_rows_and_one_for_nobody_sees_not
     )
     .await;
   let mut connection = app.state().db().await.expect("the API connects");
-  let range = DateRangeWindow::create(today(), 1, IanaZone::UTC).expect("a one-day range");
+  let range = DateRangeWindow::single_day(today(), IanaZone::UTC);
 
   let as_a = OwnerId(USER_A);
   let page = tasks::list_page(&mut connection, as_a, &TaskListView::NoDeadline, None, 200)

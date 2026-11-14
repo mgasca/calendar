@@ -140,7 +140,7 @@ impl Authenticator for FakeAuthenticator {
       _ => USER_A,
     };
     AuthOutcome::Authenticated(Principal {
-      user_id: user,
+      owner: OwnerId(user),
       name: Some("Test".to_owned()),
       email: Some(if user == USER_B { USER_B_EMAIL } else { USER_A_EMAIL }.to_owned()),
       picture: None,
@@ -588,8 +588,7 @@ impl TestResponse {
   pub fn errors(&self, field: &str) -> Vec<String> {
     self.value()["errors"][field]
       .as_array()
-      .map(|messages| messages.iter().filter_map(|message| message.as_str().map(str::to_owned)).collect())
-      .unwrap_or_default()
+      .map_or_default(|messages| messages.iter().filter_map(|message| message.as_str().map(str::to_owned)).collect())
   }
 
   /// The `title` of a problem response.

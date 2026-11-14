@@ -1,13 +1,57 @@
 //! To-do tasks.
 
+use std::str::FromStr;
+
 use chrono::{DateTime, NaiveDate, Utc};
 use uuid::Uuid;
 
 use crate::error::{ArgumentError, InvalidOperationError};
 use crate::validation::{self, MAX_NOTES_LENGTH};
 
-/// The mutually exclusive deadline columns of a task: `(due_date, due_at)`, at most one of them set.
-pub type Deadline = (Option<NaiveDate>, Option<DateTime<Utc>>);
+/// The deadline of a task: none, a floating due date (date only) or a due instant, never both.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
+pub enum Deadline {
+  /// No deadline: the task is undated.
+  #[default]
+  None,
+  /// Due on a floating date, the same in every zone.
+  On(NaiveDate),
+  /// Due at an instant.
+  At(DateTime<Utc>),
+}
+
+impl Deadline {
+  /// The deadline of a due date and a due instant given separately, as a request or a row holds them.
+  ///
+  /// Errors with `dueAt` when both are given.
+  pub fn from_parts(due_date: Option<NaiveDate>, due_at: Option<DateTime<Utc>>) -> Result<Self, ArgumentError> {
+    match (due_date, due_at) {
+      (None, None) => Ok(Self::None),
+      (Some(date), None) => Ok(Self::On(date)),
+      (None, Some(at)) => Ok(Self::At(at)),
+      (Some(_), Some(_)) => Err(ArgumentError::new(
+        "dueAt",
+        "A task can have a due date or a due instant, not both.",
+      )),
+    }
+  }
+
+  /// The floating due date, when the deadline is one.
+  pub fn due_date(self) -> Option<NaiveDate> {
+    match self {
+      Self::On(date) => Some(date),
+      Self::None | Self::At(_) => None,
+    }
+  }
+
+  /// The due instant, when the deadline is one.
+  pub fn due_at(self) -> Option<DateTime<Utc>> {
+    match self {
+      Self::At(at) => Some(at),
+      Self::None | Self::On(_) => None,
+    }
+  }
+}
 
 /// Priority level of a task.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
@@ -21,17 +65,22 @@ pub enum Priority {
   High,
 }
 
-impl Priority {
-  /// Parses the stored and wire form: exactly `low`, `medium` or `high` (case-sensitive).
-  pub fn parse(value: &str) -> Option<Self> {
+/// Parses the stored and wire form: exactly `low`, `medium` or `high` (case-sensitive).
+impl FromStr for Priority {
+  type Err = ArgumentError;
+
+  /// Errors with `priority` for any other text.
+  fn from_str(value: &str) -> Result<Self, ArgumentError> {
     match value {
-      "low" => Some(Self::Low),
-      "medium" => Some(Self::Medium),
-      "high" => Some(Self::High),
-      _ => None,
+      "low" => Ok(Self::Low),
+      "medium" => Ok(Self::Medium),
+      "high" => Ok(Self::High),
+      _ => Err(ArgumentError::new("priority", "Priority must be low, medium or high.")),
     }
   }
+}
 
+impl Priority {
   /// The stored and wire form: `low`, `medium` or `high`.
   pub fn as_str(self) -> &'static str {
     match self {
@@ -55,16 +104,14 @@ pub struct TodoTaskRecord {
   pub priority: Priority,
   /// Optional notes.
   pub notes: Option<String>,
-  /// Floating due date; mutually exclusive with `due_at`.
-  pub due_date: Option<NaiveDate>,
-  /// Due instant; mutually exclusive with `due_date`.
-  pub due_at: Option<DateTime<Utc>>,
+  /// The deadline, if any.
+  pub deadline: Deadline,
   /// When the task was completed; `None` while open.
   pub completed_at: Option<DateTime<Utc>>,
 }
 
-/// A to-do item with an optional due value: a floating due date (date only) **or** a due instant, never both.
-/// Tasks with neither are undated.
+/// A to-do item with an optional [`Deadline`]: a floating due date (date only) **or** a due instant, never
+/// both. Tasks with neither are undated.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct TodoTask {
   id: Uuid,
@@ -72,8 +119,7 @@ pub struct TodoTask {
   title: String,
   priority: Priority,
   notes: Option<String>,
-  due_date: Option<NaiveDate>,
-  due_at: Option<DateTime<Utc>>,
+  deadline: Deadline,
   completed_at: Option<DateTime<Utc>>,
 }
 
@@ -96,16 +142,9 @@ impl TodoTask {
     }
 
     let title = validation::normalize_title(title, "title")?;
-    if due_date.is_some() && due_at.is_some() {
-      return Err(ArgumentError::new(
-        "dueAt",
-        "A task can have a due date or a due instant, not both.",
-      ));
-    }
+    let deadline = Deadline::from_parts(due_date, due_at)?;
 
-    let Some(priority) = Priority::parse(priority) else {
-      return Err(ArgumentError::new("priority", "Priority must be low, medium or high."));
-    };
+    let priority: Priority = priority.parse()?;
 
     let notes = validation::normalize_optional(notes, MAX_NOTES_LENGTH, "notes")?;
 
@@ -115,8 +154,7 @@ impl TodoTask {
       title,
       priority,
       notes,
-      due_date,
-      due_at,
+      deadline,
       completed_at: None,
     })
   }
@@ -129,8 +167,7 @@ impl TodoTask {
       title,
       priority,
       notes,
-      due_date,
-      due_at,
+      deadline,
       completed_at,
     } = record;
     Self {
@@ -139,8 +176,7 @@ impl TodoTask {
       title,
       priority,
       notes,
-      due_date,
-      due_at,
+      deadline,
       completed_at,
     }
   }
@@ -153,8 +189,7 @@ impl TodoTask {
       title: self.title,
       priority: self.priority,
       notes: self.notes,
-      due_date: self.due_date,
-      due_at: self.due_at,
+      deadline: self.deadline,
       completed_at: self.completed_at,
     }
   }
@@ -184,14 +219,19 @@ impl TodoTask {
     self.notes.as_deref()
   }
 
+  /// The deadline, if any.
+  pub fn deadline(&self) -> Deadline {
+    self.deadline
+  }
+
   /// Floating due date (no zone); mutually exclusive with [`due_at`](Self::due_at).
   pub fn due_date(&self) -> Option<NaiveDate> {
-    self.due_date
+    self.deadline.due_date()
   }
 
   /// Due instant; mutually exclusive with [`due_date`](Self::due_date).
   pub fn due_at(&self) -> Option<DateTime<Utc>> {
-    self.due_at
+    self.deadline.due_at()
   }
 
   /// When the task was first completed; `None` while open.
@@ -219,19 +259,13 @@ impl TodoTask {
     self.title = validated.title;
     self.priority = validated.priority;
     self.notes = validated.notes;
-    self.due_date = validated.due_date;
-    self.due_at = validated.due_at;
+    self.deadline = validated.deadline;
     Ok(())
   }
 
   /// Marks the task complete. Idempotent: an already completed task keeps its first completion time.
   pub fn complete(&mut self, now: DateTime<Utc>) {
     self.completed_at.get_or_insert(now);
-  }
-
-  /// Normalizes completion timestamps the same way for entity and set-based updates (to UTC).
-  pub fn normalize_completion_time<Tz: chrono::TimeZone>(completed_at: &DateTime<Tz>) -> DateTime<Utc> {
-    completed_at.with_timezone(&Utc)
   }
 
   /// Marks the task open again. Idempotent.
@@ -242,42 +276,22 @@ impl TodoTask {
   /// Replaces the deadline of an open task with a floating date.
   pub fn set_due_date(&mut self, due_date: NaiveDate) -> Result<(), InvalidOperationError> {
     self.require_open()?;
-    (self.due_date, self.due_at) = Self::for_due_date(due_date);
+    self.deadline = Deadline::On(due_date);
     Ok(())
   }
 
   /// Replaces the deadline of an open task with an instant.
   pub fn set_due_at(&mut self, due_at: DateTime<Utc>) -> Result<(), InvalidOperationError> {
     self.require_open()?;
-    (self.due_date, self.due_at) = Self::for_due_instant(due_at);
+    self.deadline = Deadline::At(due_at);
     Ok(())
-  }
-
-  /// Normalizes deadline instants the same way for entity and set-based updates (to UTC).
-  pub fn normalize_due_at<Tz: chrono::TimeZone>(due_at: &DateTime<Tz>) -> DateTime<Utc> {
-    due_at.with_timezone(&Utc)
-  }
-
-  /// Returns the mutually exclusive deadline columns for a floating date.
-  pub fn for_due_date(due_date: NaiveDate) -> Deadline {
-    (Some(due_date), None)
-  }
-
-  /// Returns the mutually exclusive deadline columns for an instant.
-  pub fn for_due_instant(due_at: DateTime<Utc>) -> Deadline {
-    (None, Some(due_at))
   }
 
   /// Clears the deadline of an open task.
   pub fn clear_deadline(&mut self) -> Result<(), InvalidOperationError> {
     self.require_open()?;
-    (self.due_date, self.due_at) = Self::without_deadline();
+    self.deadline = Deadline::None;
     Ok(())
-  }
-
-  /// Returns empty values for both mutually exclusive deadline columns.
-  pub fn without_deadline() -> Deadline {
-    (None, None)
   }
 
   fn require_open(&self) -> Result<(), InvalidOperationError> {

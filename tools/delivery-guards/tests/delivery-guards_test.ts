@@ -400,7 +400,18 @@ const combinedCases: [string, string, boolean, string[], string][] = [
   ["TheModelWithAnAdr_RunsToolingInsteadOfTheAdrCheck", "pull_request", true, [
     "docs/architecture/calendar.architecture.json",
     "docs/decisions/0046-x.md",
-  ], "docs tooling"],
+  ], "docs frontend tooling"],
+  // #877's file set: a flow test, the model linking it and the story card (#902).
+  ["AFlowTestWithTheModelAndItsCard_RunsTheFrontendBindingCheck", "pull_request", true, [
+    "frontend/apps/e2e/tests/add-event-flow.spec.ts",
+    "frontend/apps/e2e/pending-flows.json",
+    "docs/architecture/calendar.architecture.json",
+    "docs/stories/0064-x.md",
+  ], "docs frontend adr"],
+  ["AnE2eOnlyChange_RunsNeitherTheDocsSiteNorTheImage", "pull_request", true, [
+    "frontend/apps/e2e/src/binding/check.ts",
+    "frontend/apps/e2e/README.md",
+  ], "frontend"],
   ["ACardWithABackendChange_RunsTheAdrCheckBesideTheOthers", "merge_group", true, [
     "docs/stories/0038-x.md",
     "backend/crates/a/src/lib.rs",
@@ -430,6 +441,17 @@ const combinedCases: [string, string, boolean, string[], string][] = [
 for (const [name, event, complete, files, jobs] of combinedCases) {
   Deno.test(name, () => checkRules(event, complete, files, jobs));
 }
+// The Frontend job tests with `pnpm -r ... test:coverage`, which skips a package without that script, so the flow binding
+// check of ADR-0061 runs in CI only while @calendar/e2e defines it (#902).
+Deno.test("TheFrontendJobsTestStep_ReachesTheFlowBindingCheck", () => {
+  const steps = Workflow.parse(loadFiles(root).workflow).jobNamed("Frontend")!.steps;
+  const test = steps.map((s) => s.text("run") ?? "").find((run) => run.includes(" test:coverage"));
+  assert(test, "the Frontend job has a step that runs test:coverage");
+  assert(test.startsWith("pnpm -r ") && !test.includes("@calendar/e2e"), `the step reaches every package: ${test}`);
+  const e2e = JSON.parse(Deno.readTextFileSync(join(root, "frontend/apps/e2e/package.json")));
+  assertEquals(e2e.name, "@calendar/e2e");
+  assertStringIncludes(e2e.scripts?.["test:coverage"] ?? "", "vitest run");
+});
 Deno.test("ThePublicationArtifact_IsBuiltOnlyForMainAndSameRepositoryPullRequests", () => {
   const steps = Workflow.parse(loadFiles(root).workflow).jobNamed("Docs site")!.steps;
   const configure = steps.find((s) => s.text("name") === "Read GitHub Pages configuration")!;

@@ -224,8 +224,9 @@ jobs:
             backend/target
           key: ${{ steps.cache.outputs.cache-primary-key }}
 
-  # The web app and the API client. Format and lint cover the whole workspace, docs sources included;
-  # the docs site's own checks, tests and builds run in the Docs site job beside this one (#274).
+  # The web app, the API client and the e2e package's browser-free tests (the flow binding check, ADR-0061). Format and
+  # lint cover the whole workspace, docs sources included; the docs site's own checks, tests and builds run in the Docs
+  # site job beside this one (#274).
   frontend:
     name: Frontend
     needs: changes

@@ -40,6 +40,12 @@ def tooling_github_dirs: [".github/workflows/", ".github/actions/"];
 # They run only ADR conventions, not the whole Tooling job, which a sub-second check does not justify (issue #572).
 def adr_inputs: ["docs/architecture/calendar.architecture.json"];
 
+# Frontend: files outside frontend/ that its tests read (#902). The flow binding check (ADR-0061,
+# frontend/apps/e2e/src/binding/binding.test.ts) reads the architecture model, which also runs ADR conventions; the dev
+# proxy test (frontend/apps/web/dev/apiProxy.test.ts) checks its settings against .env.example. The rest of docs/ is read
+# only by the docs site and the decks, which the Frontend job leaves to the Docs site job.
+def frontend_inputs: ["docs/architecture/calendar.architecture.json", ".env.example"];
+
 # Docs site: its suite tests the publisher, .github/workflows/pages.yml (pages-workflow.test.ts), and it builds from the
 # shared theme package, so that one named directory is an input too (ADR-0025, third amendment; story 0046, issue #518).
 # Its build also builds the narrative decks with frontend/apps/slides, which publish inside the site (ADR-0060).
@@ -55,7 +61,8 @@ def narrative_inputs: ["docs/narratives/", ".claude/skills/architecture-narrativ
 def needs($job):
   if $job == "docs" then under(["docs/", "frontend/apps/docs/", "frontend/apps/slides/", docs_theme_package]) or frontend_root or . == ".github/workflows/pages.yml"
   elif $job == "backend" then under(["backend/", "contracts/"])
-  elif $job == "frontend" then under(["frontend/apps/web/", "frontend/packages/", "contracts/"]) or frontend_root
+  elif $job == "frontend" then under(["frontend/apps/web/", "frontend/apps/e2e/", "frontend/packages/", "contracts/"])
+    or frontend_root or IN(frontend_inputs[])
   elif $job == "tooling" then
     under(["tools/", ".claude/", "infra/", "docker/", "just/", "docs/decisions/"] + tooling_github_dirs) or just_files
       or backend_toolchain or . == ".deno-version" or IN(tooling_github[])

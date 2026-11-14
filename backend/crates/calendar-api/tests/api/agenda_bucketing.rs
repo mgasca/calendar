@@ -9,7 +9,7 @@ use calendar_api::contracts::{AgendaTaskItem, TimedEventItem};
 use calendar_api::endpoints::{agenda_builder, agenda_order};
 use calendar_domain::agenda::day_inclusion;
 use calendar_domain::time::{DateRangeWindow, time_zones};
-use chrono::{DateTime, Days, NaiveDate, TimeDelta, Utc};
+use chrono::{DateTime, NaiveDate, TimeDelta, Utc};
 use uuid::Uuid;
 
 /// `SplitMix64`: a small deterministic generator, seeded like `new Random(seed)`.
@@ -40,18 +40,10 @@ impl SeededRandom {
   }
 }
 
-fn add_days(date: NaiveDate, days: i64) -> NaiveDate {
-  if days >= 0 {
-    date + Days::new(days.unsigned_abs())
-  } else {
-    date - Days::new(days.unsigned_abs())
-  }
-}
-
 fn indexed_buckets_match_per_day_filtering(zone_id: &str, year: i32, month: u32, day: u32) {
   let zone = time_zones::find_iana(zone_id).expect("a valid zone");
   let start_date = NaiveDate::from_ymd_opt(year, month, day).expect("a valid date");
-  let range = DateRangeWindow::create(start_date, 7, zone).expect("a valid range");
+  let range = DateRangeWindow::create(start_date, DateRangeWindow::DAYS_IN_WEEK, zone);
   let mut random = SeededRandom(55);
   let tick = TimeDelta::nanoseconds(100);
   let mut instants: Vec<DateTime<Utc>> = range
@@ -90,7 +82,7 @@ fn indexed_buckets_match_per_day_filtering(zone_id: &str, year: i32, month: u32,
       title: format!("Task {}", i % 8),
       priority: "medium".to_owned(),
       has_notes: false,
-      due_date: (i % 3 == 0).then(|| add_days(range.start_date(), random.between(-2, 9))),
+      due_date: (i % 3 == 0).then(|| range.start_date() + TimeDelta::days(random.between(-2, 9))),
       due_at: (i % 3 != 0).then(|| *random.pick(&instants)),
       completed_at: None,
       is_completed: false,

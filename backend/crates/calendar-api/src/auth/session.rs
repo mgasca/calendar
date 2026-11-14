@@ -7,6 +7,7 @@ use axum::http::header::COOKIE;
 use axum::http::{HeaderMap, HeaderValue};
 use base64::Engine;
 use base64::engine::general_purpose::URL_SAFE_NO_PAD;
+use calendar_infrastructure::OwnerId;
 use chacha20poly1305::aead::{Aead, KeyInit, Payload};
 use chacha20poly1305::{Key, XChaCha20Poly1305, XNonce};
 use chrono::{DateTime, TimeDelta, Utc};
@@ -102,12 +103,12 @@ pub struct SessionTicket {
 
 impl SessionTicket {
   /// A ticket for `principal`, signed in at `now`.
-  pub fn issue(principal: &Principal, now: DateTime<Utc>) -> Self {
+  pub fn issue(principal: Principal, now: DateTime<Utc>) -> Self {
     Self {
-      user_id: Some(principal.user_id),
-      name: principal.name.clone(),
-      email: principal.email.clone(),
-      picture: principal.picture.clone(),
+      user_id: Some(principal.owner.0),
+      name: principal.name,
+      email: principal.email,
+      picture: principal.picture,
       expires_at: now + SESSION_LIFETIME,
     }
   }
@@ -125,13 +126,13 @@ impl SessionTicket {
     (now < ticket.expires_at).then_some(ticket)
   }
 
-  /// The person the ticket signs in, or `None` when it carries no user id.
-  pub fn principal(&self) -> Option<Principal> {
+  /// The person the ticket signs in, or `None` when it carries no user id. Spends the ticket.
+  pub fn into_principal(self) -> Option<Principal> {
     Some(Principal {
-      user_id: self.user_id?,
-      name: self.name.clone(),
-      email: self.email.clone(),
-      picture: self.picture.clone(),
+      owner: OwnerId(self.user_id?),
+      name: self.name,
+      email: self.email,
+      picture: self.picture,
     })
   }
 }
@@ -150,7 +151,7 @@ pub fn cookie_value<'a>(headers: &'a HeaderMap, name: &str) -> Option<&'a str> {
 /// A `Set-Cookie` value for a session-lifetime cookie (or one that lasts `max_age_seconds`), with the
 /// attributes every cookie of the API has: `path=/`, `samesite=lax`, `httponly`, and `secure` when asked.
 pub fn set_cookie(name: &str, value: &str, secure: bool, max_age_seconds: Option<i64>) -> HeaderValue {
-  let max_age = max_age_seconds.map(|seconds| format!("; max-age={seconds}")).unwrap_or_default();
+  let max_age = max_age_seconds.map_or_default(|seconds| format!("; max-age={seconds}"));
   let secure = if secure { "; secure" } else { "" };
   HeaderValue::from_str(&format!("{name}={value}{max_age}; path=/{secure}; samesite=lax; httponly"))
     .expect("cookie names and sealed values are visible ASCII")
@@ -172,7 +173,7 @@ mod tests {
 
   fn principal() -> Principal {
     Principal {
-      user_id: Uuid::from_u128(7),
+      owner: OwnerId(Uuid::from_u128(7)),
       name: Some("Someone".to_owned()),
       email: Some("someone@example.com".to_owned()),
       picture: None,
@@ -183,12 +184,12 @@ mod tests {
   fn a_ticket_opens_under_its_key_until_it_expires() {
     let sealer = Sealer::new(&[1; 32]);
     let now = Utc.with_ymd_and_hms(2026, 10, 26, 15, 0, 0).unwrap();
-    let ticket = SessionTicket::issue(&principal(), now);
+    let ticket = SessionTicket::issue(principal(), now);
     assert_eq!(ticket.expires_at, now + TimeDelta::hours(8));
     let cookie = ticket.seal(&sealer);
 
     let opened = SessionTicket::open(&sealer, &cookie, now + TimeDelta::hours(8) - TimeDelta::seconds(1)).unwrap();
-    assert_eq!(opened.principal(), Some(principal()));
+    assert_eq!(opened.into_principal(), Some(principal()));
     assert_eq!(SessionTicket::open(&sealer, &cookie, now + TimeDelta::hours(8)), None);
     assert_eq!(SessionTicket::open(&Sealer::new(&[2; 32]), &cookie, now), None);
   }
@@ -212,9 +213,9 @@ mod tests {
   fn a_ticket_without_a_user_id_signs_nobody_in() {
     let ticket = SessionTicket {
       user_id: None,
-      ..SessionTicket::issue(&principal(), DateTime::UNIX_EPOCH)
+      ..SessionTicket::issue(principal(), DateTime::UNIX_EPOCH)
     };
-    assert_eq!(ticket.principal(), None);
+    assert_eq!(ticket.into_principal(), None);
   }
 
   #[test]

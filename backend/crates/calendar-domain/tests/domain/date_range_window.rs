@@ -1,13 +1,19 @@
 //! Port of `Calendar.Domain.Tests/Time/DateRangeWindowTests.cs`.
 //!
-//! `Create_WithoutZone_Throws` has no counterpart (a zone cannot be null), and of `Create_WithoutDays_Throws`
-//! only the zero case exists: the day count is unsigned, so `-1` cannot be written.
+//! `Create_WithoutZone_Throws` and `Create_WithoutDays_Throws` have no counterpart: a zone cannot be null, and
+//! the day count is a `NonZeroUsize`, so neither a zero nor a negative count can be written.
+
+use std::num::NonZeroUsize;
 
 use calendar_domain::time::{DateRangeWindow, DayWindow, IanaZone, time_zones};
 use chrono::{DateTime, Datelike, Days, NaiveDate, TimeDelta, TimeZone, Utc, Weekday};
 
 fn date(year: i32, month: u32, day: u32) -> NaiveDate {
   NaiveDate::from_ymd_opt(year, month, day).unwrap()
+}
+
+fn day_count(count: usize) -> NonZeroUsize {
+  NonZeroUsize::new(count).unwrap()
 }
 
 fn utc(year: i32, month: u32, day: u32, hour: u32, minute: u32) -> DateTime<Utc> {
@@ -34,10 +40,10 @@ fn should_tile(range: &DateRangeWindow) {
 // ---- ranges of any length ----
 
 #[test]
-fn create_one_day_is_that_days_window() {
+fn single_day_is_that_days_window() {
   let new_york = zone("America/New_York");
 
-  let range = DateRangeWindow::create(date(2026, 10, 26), 1, new_york).unwrap();
+  let range = DateRangeWindow::single_day(date(2026, 10, 26), new_york);
 
   assert_eq!(range.days(), [DayWindow::create(date(2026, 10, 26), new_york)]);
   assert_eq!(range.start_date(), date(2026, 10, 26));
@@ -49,7 +55,7 @@ fn create_one_day_is_that_days_window() {
 
 #[test]
 fn create_seven_days_tiles_consecutive_days() {
-  let range = DateRangeWindow::create(date(2026, 10, 28), 7, zone("Asia/Kolkata")).unwrap();
+  let range = DateRangeWindow::create(date(2026, 10, 28), day_count(7), zone("Asia/Kolkata"));
 
   assert_eq!(range.days().len(), 7);
   assert_eq!(range.start_date(), date(2026, 10, 28));
@@ -62,7 +68,7 @@ fn create_seven_days_tiles_consecutive_days() {
 #[test]
 fn create_forty_two_days_covers_a_month_grid_across_a_dst_change() {
   // A six-week month grid for October 2026 in Berlin, which falls back on 2026-10-25.
-  let range = DateRangeWindow::create(date(2026, 9, 28), 42, zone("Europe/Berlin")).unwrap();
+  let range = DateRangeWindow::create(date(2026, 9, 28), day_count(42), zone("Europe/Berlin"));
 
   assert_eq!(range.days().len(), 42);
   assert_eq!(range.end_date(), date(2026, 11, 9));
@@ -70,14 +76,6 @@ fn create_forty_two_days_covers_a_month_grid_across_a_dst_change() {
   assert_eq!(range.end(), utc(2026, 11, 8, 23, 0));
   assert_eq!(range.end() - range.start(), TimeDelta::hours((42 * 24) + 1));
   should_tile(&range);
-}
-
-#[test]
-fn create_without_days_fails() {
-  let error = DateRangeWindow::create(date(2026, 10, 26), 0, IanaZone::UTC).unwrap_err();
-
-  assert_eq!(error.param, "dayCount");
-  assert_eq!(error.message, "dayCount ('0') must be greater than or equal to '1'.");
 }
 
 // ---- ISO weeks ----

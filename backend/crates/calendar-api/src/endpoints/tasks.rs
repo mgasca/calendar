@@ -1,7 +1,7 @@
 //! `/api/tasks`: the task list views, create, read, replace, delete, complete, reopen and bulk actions
 //! (ports `TaskEndpoints.cs`).
 
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 
 use axum::extract::State;
 use axum::http::StatusCode;
@@ -321,7 +321,6 @@ pub async fn bulk(
     errors.require(request.due_at.is_some(), "dueAt", "dueAt is required for setDueInstant.");
   }
 
-  let mut ids = Vec::new();
   if let Some(requested) = &request.ids {
     errors.require(!requested.is_empty(), "ids", "At least one id is required.");
     errors.require(
@@ -329,11 +328,6 @@ pub async fn bulk(
       "ids",
       format!("At most {MAX_BULK_IDS} ids are allowed."),
     );
-    for id in requested {
-      if !ids.contains(id) {
-        ids.push(*id);
-      }
-    }
   }
 
   if let Some(filter) = &request.filter {
@@ -373,8 +367,15 @@ pub async fn bulk(
   }
 
   let change = BulkChange::of(action, request.due_date, request.due_at, state.now())?;
+  let ids = distinct(request.ids.as_deref().unwrap_or_default());
   let mut connection = state.db().await?;
   request::ok(&apply_to_ids(&mut connection, owner, &ids, change).await?)
+}
+
+/// The ids without repeats, each where it first appears.
+fn distinct(ids: &[Uuid]) -> Vec<Uuid> {
+  let mut seen = HashSet::with_capacity(ids.len());
+  ids.iter().copied().filter(|id| seen.insert(*id)).collect()
 }
 
 /// Validates an overdue filter; returns the client's day when its date and zone are usable.
@@ -568,4 +569,16 @@ fn not_found() -> Problem {
 /// A count as the contract's `int`.
 fn count(value: impl TryInto<i32>) -> i32 {
   value.try_into().unwrap_or(i32::MAX)
+}
+
+#[cfg(test)]
+mod tests {
+  use super::*;
+
+  #[test]
+  fn distinct_keeps_the_first_occurrence_of_each_id_in_request_order() {
+    let [a, b, c] = [1, 2, 3].map(Uuid::from_u128);
+    assert_eq!(distinct(&[b, a, b, c, a, b]), [b, a, c]);
+    assert_eq!(distinct(&[]), Vec::<Uuid>::new());
+  }
 }

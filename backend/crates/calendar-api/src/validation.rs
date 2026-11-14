@@ -83,7 +83,7 @@ impl FieldErrors {
 
   /// Requires an IANA time zone id; returns the resolved zone, or `None` when it is missing or unknown.
   pub fn require_time_zone(&mut self, time_zone: Option<&str>, field: &str) -> Option<IanaZone> {
-    let Some(id) = time_zone.filter(|id| !is_blank(Some(id))) else {
+    let Some(id) = time_zone.filter(|id| !is_blank(id)) else {
       self.add(field, format!("{field} is required (IANA id, e.g. America/New_York)."));
       return None;
     };

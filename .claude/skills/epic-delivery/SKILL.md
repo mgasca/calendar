@@ -80,7 +80,7 @@ Track native GitHub stacks as described in the stack reference. Top-of-stack mer
 
 After a merge, verify intended content on the delivery trunk, tests for the delivered revision, issue states and story evidence. Squash/rebase changes commit identity; a PR's historical base alone does not prove where content ultimately landed. Resolve actual missing closing references or stale checklists within the authorized tracking role, with evidence. Do not close an issue merely because a PR says MERGED.
 
-Every delivery worker follows `issue-handover` for its own issues (see the brief requirements above); keep that worker's cadence separate from this epic's five-minute reconciliation. It creates stacks as native GitHub stacks with `gh stack` and does not rebase or force-push a stack whose branches are pushed without the maintainer's explicit OK. Brief workers to stack that way, and surface a conflict with repository rules rather than silently overriding it.
+Every delivery worker follows `issue-handover` for its own issues (see the brief requirements above); keep that worker's cadence separate from this epic's five-minute reconciliation. It creates stacks as native GitHub stacks with `gh stack`, and it may rebase and force-push only a stack it owns, after a fetch shows no one else pushed, commenting the old and new heads ([ADR-0065](../../../docs/decisions/0065-native-github-stacks-for-stacked-prs-with-a-narrow-rebase-exception.md)). Brief workers to stack that way, and surface a conflict with repository rules rather than silently overriding it.
 
 ## Finish and stop
 

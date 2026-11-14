@@ -29,12 +29,10 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          # The repo tools (tools/, .claude/skills/) are .NET file-based apps with no project to build (ADR-0017).
-          - language: csharp
-            build-mode: none
           # The backend (backend/crates).
           - language: rust
             build-mode: none
+          # The frontend, and the repo tools and scripted skills in TypeScript on Deno (tools/, .claude/skills/, ADR-0058).
           - language: javascript-typescript
             build-mode: none
           - language: actions

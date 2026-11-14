@@ -28,7 +28,7 @@ mod image
 # Azure infrastructure (ADR-0033)
 mod infra
 
-# Repo tooling: .NET file-based apps and the doctor script (ADR-0017)
+# Repo tooling: TypeScript on Deno and the doctor script (ADR-0058)
 mod tools
 
 # List recipes

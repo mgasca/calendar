@@ -12,7 +12,6 @@ async function doctor(deno: string | null): Promise<{ code: number; output: stri
       await Deno.symlink(`/usr/bin/${command}`, `${bin}/${command}`);
     }
     const commands: Record<string, string> = {
-      dotnet: "echo 10.0.403",
       cargo: `echo cargo ${rust}`,
       rustc: `echo 'rustc ${rust} (fake)'`,
       cc: "exit 0",

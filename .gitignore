@@ -8,13 +8,12 @@ Thumbs.db
 !.vscode/extensions.json
 !.vscode/settings.json
 
-# .NET
+# Build output that the former .NET backend and tools left in older checkouts
 bin/
 obj/
-*.user
-*.suo
+
+# Backend coverage (cargo llvm-cov writes a Cobertura report into backend/TestResults)
 TestResults/
-*.coverage
 *.cobertura.xml
 
 # Node / frontend

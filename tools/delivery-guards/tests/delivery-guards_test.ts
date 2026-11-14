@@ -105,8 +105,8 @@ const mutations: [string, string, string, string, string, boolean?][] = [
   [
     "ASerialLoop_Fails",
     "parallel-tool-tests",
-    "printf '%s\\n' $tests | xargs -P \"${TOOLS_TEST_JOBS:-4}\" -I{} bash -c 'dotnet run \"$1\"' _ {}",
-    'for t in $tests; do dotnet run "$t"; done',
+    "printf '%s\\n' {{ tool_dirs }} | xargs -P \"${TOOLS_TEST_JOBS:-4}\" -I{} bash -c 'just tools deno-test \"$1\"' _ {}",
+    'for d in {{ tool_dirs }}; do just tools deno-test "$d"; done',
     "xargs -P",
     true,
   ],
@@ -132,7 +132,14 @@ const mutations: [string, string, string, string, string, boolean?][] = [
     "        run: TOOLS_TEST_JOBS=1 just tools test",
     "TOOLS_TEST_JOBS",
   ],
-  ["NoNuGetCache_Fails", "parallel-tool-tests", "cache: true", "cache: false", "NuGet cache"],
+  ["NoDenoCache_Fails", "parallel-tool-tests", "cache: true", "cache: false", "Deno cache"],
+  [
+    "ADenoCacheKeyedOnSomethingElse_Fails",
+    "parallel-tool-tests",
+    "cache: true",
+    "cache: true\n          cache-hash: ${{ github.sha }}",
+    "Deno cache",
+  ],
   [
     "AJobLeftOutOfNeeds_Fails",
     "ci-result-needs-all",

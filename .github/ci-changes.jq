@@ -21,7 +21,7 @@ def under($prefixes): . as $file | any($prefixes[]; . as $prefix | $file | start
 # the prettier files, mod.just), but not its Markdown guidance.
 def frontend_root: test("^frontend/[^/]+$") and (endswith(".md") | not);
 
-# The backend file the tooling tests read: doctor.sh checks the installed toolchain against the pin (doctor.tests.cs).
+# The backend file the tooling tests read: doctor.sh checks the installed toolchain against the pin (tools/doctor/tests/environment_test.ts).
 def backend_toolchain: . == "backend/rust-toolchain.toml";
 
 def just_files: . == "justfile" or . == ".just-version" or endswith(".just");

@@ -10,8 +10,8 @@ export const meta = {
 }
 
 // Claude Code only: a Workflow tool script (ADR-0044 Claude-first period and its amendment of
-// 2026-11-08, which lets the two sweeps use workflows while keeping a by-hand path; ADR-0017's
-// exception for scripts whose language the harness dictates). Story 0051. Other harnesses select
+// 2026-11-08, which lets the two sweeps use workflows while keeping a by-hand path; ADR-0058's
+// allowance for platform-required JavaScript). Story 0051. Other harnesses select
 // the delta and run the judgement checks by hand, as .claude/skills/adr-sweep/SKILL.md step 3 says.
 //
 // The judgement half of the ADR sweep:
@@ -158,7 +158,7 @@ Read-only: git show, git diff, git log, git grep, git cat-file, git merge-base a
 
 First check that W is an ancestor of the swept SHA (git merge-base --is-ancestor ${w.main} ${REF}); if it is not, return watermarkKnown false and nothing selected. Otherwise list the changed files with git diff --name-only ${w.main}..${REF}, and select a record, with the change named in its reason, when:
 - changed-record: its own file under docs/decisions/ is in that list (a new record counts);
-- changed-token: one of its cited tokens below changed: a path in the list or under a listed directory, or a command or version whose defining file is in the list (justfile and the */mod.just and *.just modules for recipes; global.json, backend/rust-toolchain.toml, backend/Cargo.toml, backend/crates/*/Cargo.toml, frontend/.node-version, frontend/package.json for versions);
+- changed-token: one of its cited tokens below changed: a path in the list or under a listed directory, or a command or version whose defining file is in the list (justfile and the */mod.just and *.just modules for recipes; .deno-version, the deno.json files, backend/rust-toolchain.toml, backend/Cargo.toml, backend/crates/*/Cargo.toml, frontend/.node-version, frontend/package.json for versions);
 - trigger: the record defers or sets a trigger (J3 phrases: "deferred", "for now", "interim", "until", "revisit when", "single-user", "no X account yet") and a story card, ADR or issue it names changed or was updated since W;
 - open-work: an issue or PR updated since W's commit date names it (ADR-NNNN or its number) with supersede, amend, revisit, reopen or replace (the M5 search).
 Give a record once per kind that applies. Use only the ids listed below.

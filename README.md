@@ -33,7 +33,7 @@ Each area's README covers its projects, recipes and configuration.
 | [`docs/benchmarks/`](docs/benchmarks/README.md) | Benchmark records |
 | [`docs/agent-thoughts/`](docs/agent-thoughts/README.md) | Independent agent perspectives on the repository's purpose, value and evidence limits |
 | `infra/` | Azure infrastructure as Bicep; see the [runbooks](docs/runbooks/README.md) |
-| [`tools/`](tools/README.md) | Repo tooling: .NET file-based apps and the doctor script |
+| [`tools/`](tools/README.md) | Repo tooling: TypeScript on Deno and the doctor script |
 | `compose.yaml`, `docker/` | Local backing services (PostgreSQL) and their init scripts |
 | `Dockerfile` | The container image (API + web UI) |
 | `.github/` | CI, Dependabot and the [`main` ruleset](.github/rulesets/README.md) |
@@ -45,8 +45,7 @@ New UIs go under `frontend/apps/` (TypeScript) or a new top-level directory for 
 | Tool | Version source | Notes |
 | --- | --- | --- |
 | Rust | `backend/rust-toolchain.toml` | Install [rustup](https://rustup.rs); it installs the pinned toolchain (with rustfmt and clippy) the first time `cargo` runs in `backend/`. A C compiler and linker are needed too (`build-essential` on Ubuntu) |
-| Deno | `.deno-version` (exact) | Runs TypeScript repository tooling; install the pinned release from [Deno's installation guide](https://docs.deno.com/runtime/getting_started/installation/). The .NET SDK remains required during the staged migration ([ADR-0058](docs/decisions/0058-typescript-on-deno-for-repository-tooling.md)) |
-| .NET SDK | `global.json` (exact) | For the repo tools only (`tools/`, `.claude/skills/`): exactly the version in the root `global.json` (`rollForward: disable`; install it beside other SDKs). CI installs exactly that version, which the tools' lock files match ([ADR-0017](docs/decisions/0017-dotnet-file-based-apps-for-repo-tooling.md)) |
+| Deno | `.deno-version` (exact) | Runs the TypeScript repository tooling and scripted skills ([ADR-0058](docs/decisions/0058-typescript-on-deno-for-repository-tooling.md)); install the pinned release from [Deno's installation guide](https://docs.deno.com/runtime/getting_started/installation/). The .NET SDK is no longer needed |
 | Node | `frontend/.node-version` | 24; use a version manager, since Ubuntu's apt `nodejs` is too old and lacks Corepack |
 | pnpm | `packageManager` in `frontend/package.json` | Provided by Corepack (bundled with Node 24); don't install it globally |
 | Docker | n/a | Engine running and reachable; needed for the local database and for integration tests (Testcontainers) |
@@ -62,11 +61,6 @@ Run `./tools/doctor/doctor.sh` to check all of these. `just doctor` and `just se
 # Rust via rustup, user-local (no sudo); the toolchain in backend/rust-toolchain.toml is installed on first use
 curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --default-toolchain none
 sudo apt install build-essential   # C compiler and linker, if missing
-
-# .NET SDK for the repo tools, user-local (no sudo)
-curl -sSL https://dot.net/v1/dotnet-install.sh -o /tmp/dotnet-install.sh
-bash /tmp/dotnet-install.sh --jsonfile global.json --install-dir "$HOME/.dotnet"   # run in the repo root
-echo 'export DOTNET_ROOT=$HOME/.dotnet PATH=$HOME/.dotnet:$HOME/.dotnet/tools:$PATH' >> ~/.bashrc
 
 # Deno for TypeScript repo tooling (run from the repo root)
 curl -fsSL https://deno.land/install.sh | sh -s -- "v$(cat .deno-version)"

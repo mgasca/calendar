@@ -7,8 +7,8 @@ export const meta = {
   ],
 }
 
-// Claude Code only: a Workflow tool script (ADR-0044 Claude-first period; ADR-0017's exception for
-// scripts whose language the harness dictates). Story 0035. Other harnesses run the two reviewer
+// Claude Code only: a Workflow tool script (ADR-0044 Claude-first period; ADR-0058's allowance for
+// platform-required JavaScript). Story 0035. Other harnesses run the two reviewer
 // agents by hand, as .claude/skills/issue-handover/SKILL.md says.
 //
 // The review before a merge: the two reviewer agents at once; as each returns, its findings go to

@@ -33,9 +33,9 @@
       { "id": "ADR-0004", "title": "OpenAPI document as the API contract, with a generated TypeScript client", "status": "accepted", "file": "docs/decisions/0004-openapi-contract-and-generated-client.md", "url": "https://mgasca.github.io/calendar/adr/0004/" },
       { "id": "ADR-0005", "title": "pnpm workspaces for frontend packages", "status": "accepted", "file": "docs/decisions/0005-pnpm-workspace-for-frontend.md", "url": "https://mgasca.github.io/calendar/adr/0005/" },
       { "id": "ADR-0006", "title": "NuGet Central Package Management with lock files and source mapping", "status": "superseded",
-        "superseded-by": "ADR-0053", "file": "docs/decisions/0006-dotnet-dependency-management.md", "url": "https://mgasca.github.io/calendar/adr/0006/", "note": "Only the backend's NuGet Central Package Management is withdrawn; the repo tools still restore NuGet packages in locked mode from nuget.org (ADR-0017)." },
+        "superseded-by": "ADR-0053", "file": "docs/decisions/0006-dotnet-dependency-management.md", "url": "https://mgasca.github.io/calendar/adr/0006/", "note": "Withdrawn for the backend by ADR-0053; the repo tools no longer use NuGet since ADR-0058 replaced them with Deno configurations and deno.lock files." },
       { "id": "ADR-0007", "title": "xUnit v3 on Microsoft.Testing.Platform, Shouldly and NSubstitute for .NET tests", "status": "superseded",
-        "superseded-by": "ADR-0054", "file": "docs/decisions/0007-backend-testing-stack.md", "url": "https://mgasca.github.io/calendar/adr/0007/", "note": "Only the backend's xUnit stack is withdrawn; the repo tools keep xUnit v3 file-based test apps (ADR-0017)." },
+        "superseded-by": "ADR-0054", "file": "docs/decisions/0007-backend-testing-stack.md", "url": "https://mgasca.github.io/calendar/adr/0007/", "note": "Withdrawn for the backend by ADR-0054; the repo tools no longer use xUnit since ADR-0058 moved their tests to Deno." },
       { "id": "ADR-0008", "title": "Vitest, Testing Library and MSW for frontend tests", "status": "accepted", "file": "docs/decisions/0008-frontend-testing-stack.md", "url": "https://mgasca.github.io/calendar/adr/0008/" },
       { "id": "ADR-0009", "title": "Static analysis and formatting enforced at build time", "status": "accepted", "file": "docs/decisions/0009-static-analysis-and-formatting.md", "url": "https://mgasca.github.io/calendar/adr/0009/" },
       { "id": "ADR-0010", "title": "Pin TypeScript 6.0 and ESLint 9 for ecosystem compatibility", "status": "accepted", "file": "docs/decisions/0010-toolchain-version-pins.md", "url": "https://mgasca.github.io/calendar/adr/0010/" },
@@ -46,7 +46,7 @@
       { "id": "ADR-0015", "title": "EF Core 10 with code-first migrations for data access", "status": "superseded",
         "superseded-by": "ADR-0052", "file": "docs/decisions/0015-ef-core-data-access.md", "url": "https://mgasca.github.io/calendar/adr/0015/" },
       { "id": "ADR-0016", "title": "Docker Compose for local databases and Testcontainers for tests; adopt .NET Aspire later", "status": "superseded", "superseded-by": "ADR-0063", "file": "docs/decisions/0016-local-database-provisioning.md", "url": "https://mgasca.github.io/calendar/adr/0016/", "note": "Only the provisioning half is replaced; Testcontainers for tests, with the image tag read from compose.yaml, still stands and is restated in ADR-0063." },
-      { "id": "ADR-0017", "title": ".NET 10 file-based apps for all repo tooling scripts, in their skill folder or tools/<name>/", "status": "superseded", "superseded-by": "ADR-0058", "file": "docs/decisions/0017-dotnet-file-based-apps-for-repo-tooling.md", "url": "https://mgasca.github.io/calendar/adr/0017/", "note": "Existing .NET implementations and locks remain during the staged migration; ADR-0058 replaces the tooling policy with TypeScript on Deno. Tool placement and standalone skill requirements still stand." },
+      { "id": "ADR-0017", "title": ".NET 10 file-based apps for all repo tooling scripts, in their skill folder or tools/<name>/", "status": "superseded", "superseded-by": "ADR-0058", "file": "docs/decisions/0017-dotnet-file-based-apps-for-repo-tooling.md", "url": "https://mgasca.github.io/calendar/adr/0017/", "note": "ADR-0058 replaced the tooling policy with TypeScript on Deno; the .NET implementations, locks and SDK pin were removed in story 0059. Tool placement and standalone skill requirements still stand." },
       { "id": "ADR-0018", "title": "UTC instants plus an IANA zone id and floating dates, using BCL time types instead of NodaTime", "status": "superseded",
         "superseded-by": "ADR-0057", "file": "docs/decisions/0018-time-representation-and-bcl-date-time-types.md", "url": "https://mgasca.github.io/calendar/adr/0018/", "note": "Only the BCL types are withdrawn; the value model (UTC instants with an IANA zone id, floating dates, an injected clock), the storage types and the contract formats still stand and are restated in ADR-0057." },
       { "id": "ADR-0019", "title": "Single-user mode with authentication deferred: no auth and no owner column yet", "status": "superseded", "superseded-by": "ADR-0027", "file": "docs/decisions/0019-single-user-mode-with-authentication-deferred.md", "url": "https://mgasca.github.io/calendar/adr/0019/" },
@@ -66,7 +66,7 @@
       { "id": "ADR-0033", "title": "Bicep for Azure infrastructure as code", "status": "accepted", "file": "docs/decisions/0033-bicep-for-infrastructure-as-code.md", "url": "https://mgasca.github.io/calendar/adr/0033/" },
       { "id": "ADR-0034", "title": "Deploy with GitHub Actions and OIDC federation", "status": "accepted", "file": "docs/decisions/0034-github-actions-oidc-deployment.md", "url": "https://mgasca.github.io/calendar/adr/0034/" },
       { "id": "ADR-0035", "title": "Separate staging and production environments", "status": "accepted", "file": "docs/decisions/0035-separate-staging-and-production-environments.md", "url": "https://mgasca.github.io/calendar/adr/0035/" },
-      { "id": "ADR-0036", "title": "C# layout rules enforced with a StyleCop subset and Sonar's line-length rule", "status": "superseded", "superseded-by": "ADR-0058", "file": "docs/decisions/0036-csharp-layout-rules-with-stylecop-and-sonar.md", "url": "https://mgasca.github.io/calendar/adr/0036/", "note": "C# analyzer settings still apply to unmigrated tools during transition; ADR-0058 replaces them with Deno checks as each tool moves." },
+      { "id": "ADR-0036", "title": "C# layout rules enforced with a StyleCop subset and Sonar's line-length rule", "status": "superseded", "superseded-by": "ADR-0058", "file": "docs/decisions/0036-csharp-layout-rules-with-stylecop-and-sonar.md", "url": "https://mgasca.github.io/calendar/adr/0036/", "note": "No C# remains; ADR-0058 replaced the analyzer settings with Deno check, lint and format." },
       { "id": "ADR-0037", "title": "PostgreSQL only: drop the SQLite budget fallback", "status": "accepted", "supersedes": "ADR-0014", "file": "docs/decisions/0037-postgresql-only-no-sqlite-fallback.md", "url": "https://mgasca.github.io/calendar/adr/0037/" },
       { "id": "ADR-0038", "title": "just as the top-level task runner, replacing GNU Make", "status": "accepted", "supersedes": "ADR-0011", "file": "docs/decisions/0038-just-as-the-top-level-task-runner.md", "url": "https://mgasca.github.io/calendar/adr/0038/" },
       { "id": "ADR-0039", "title": "Architecture model and visualization tooling for the documentation site", "status": "accepted", "file": "docs/decisions/0039-architecture-model-and-visualization-tooling.md", "url": "https://mgasca.github.io/calendar/adr/0039/" },
@@ -80,7 +80,7 @@
       { "id": "ADR-0047", "title": "Theme the web app with semantic CSS custom-property tokens selected by a data-theme attribute", "status": "accepted", "file": "docs/decisions/0047-semantic-css-tokens-selected-by-a-data-theme-attribute.md", "url": "https://mgasca.github.io/calendar/adr/0047/" },
       { "id": "ADR-0048", "title": "Self-host the theme fonts from Fontsource variable-font packages", "status": "accepted", "file": "docs/decisions/0048-self-host-theme-fonts-with-fontsource-packages.md", "url": "https://mgasca.github.io/calendar/adr/0048/" },
       { "id": "ADR-0049", "title": "Build the delivery dashboard from daily JSON snapshots on a data branch, rendered by the documentation site", "status": "accepted", "file": "docs/decisions/0049-build-the-delivery-dashboard-from-daily-snapshots-on-the-docs-site.md", "url": "https://mgasca.github.io/calendar/adr/0049/" },
-      { "id": "ADR-0050", "title": "Move to .NET 11 once the EF Core providers support it", "status": "superseded", "superseded-by": "ADR-0058", "file": "docs/decisions/0050-adopt-dotnet-11-once-the-providers-support-it.md", "url": "https://mgasca.github.io/calendar/adr/0050/", "note": "The SDK upgrade is displaced by the Deno migration; existing exact .NET pins remain transition requirements until the old tools are removed." },
+      { "id": "ADR-0050", "title": "Move to .NET 11 once the EF Core providers support it", "status": "superseded", "superseded-by": "ADR-0058", "file": "docs/decisions/0050-adopt-dotnet-11-once-the-providers-support-it.md", "url": "https://mgasca.github.io/calendar/adr/0050/", "note": "The SDK upgrade is displaced by the Deno migration and did not ship; the .NET SDK pin was removed in story 0059." },
       { "id": "ADR-0051", "title": "Rust backend on axum and tokio, replacing the .NET minimal API in place", "status": "accepted",
         "supersedes": "ADR-0002", "file": "docs/decisions/0051-rust-backend-on-axum-and-tokio.md", "url": "https://mgasca.github.io/calendar/adr/0051/" },
       { "id": "ADR-0052", "title": "Diesel's query builder over diesel-async, with SQL migrations embedded in a migrator binary", "status": "accepted",
@@ -93,7 +93,7 @@
       { "id": "ADR-0056", "title": "Session cookie sealed with a key held in the database, replacing ASP.NET Data Protection", "status": "accepted", "file": "docs/decisions/0056-session-cookie-sealed-with-a-database-held-key.md", "url": "https://mgasca.github.io/calendar/adr/0056/" },
       { "id": "ADR-0057", "title": "chrono and chrono-tz types for instants, floating dates and IANA zones in the Rust backend", "status": "accepted",
         "supersedes": "ADR-0018", "file": "docs/decisions/0057-chrono-time-types-for-the-rust-backend.md", "url": "https://mgasca.github.io/calendar/adr/0057/" },
-      { "id": "ADR-0058", "title": "TypeScript on Deno for repository tooling, replacing .NET file-based apps", "status": "accepted", "file": "docs/decisions/0058-typescript-on-deno-for-repository-tooling.md", "url": "https://mgasca.github.io/calendar/adr/0058/", "note": "Accepted policy; delivery is staged in story 0059. Existing component descriptions remain until each implementation switches." },
+      { "id": "ADR-0058", "title": "TypeScript on Deno for repository tooling, replacing .NET file-based apps", "status": "accepted", "file": "docs/decisions/0058-typescript-on-deno-for-repository-tooling.md", "url": "https://mgasca.github.io/calendar/adr/0058/", "note": "Delivered in story 0059: every repo tool and scripted skill runs on the pinned Deno release, and the .NET SDK is no longer required." },
       { "id": "ADR-0059", "title": "Publish architecture narratives from docs/narratives, stitched from per-system part files", "status": "proposed", "file": "docs/decisions/0059-publish-architecture-narratives-stitched-from-part-files.md", "url": "https://mgasca.github.io/calendar/adr/0059/" },
       { "id": "ADR-0060", "title": "Build narrative decks with Slidev as a frontend workspace app, published with the docs site", "status": "proposed", "file": "docs/decisions/0060-build-narrative-decks-with-slidev.md", "url": "https://mgasca.github.io/calendar/adr/0060/" },
       { "id": "ADR-0061", "title": "End-to-end UI tests with Playwright Test in frontend/apps/e2e, bound to the architecture flows", "status": "accepted", "file": "docs/decisions/0061-end-to-end-ui-tests-with-playwright-test-bound-to-the-architecture-flows.md", "url": "https://mgasca.github.io/calendar/adr/0061/" },
@@ -149,7 +149,7 @@
       ]
     },
     "quality-gates": {
-      "description": "Every change passes the same gates locally (just check) and in CI: analyzers and Clippy with warnings as errors, formatting, type-aware lint, tests (including the check that the migrated schema matches schema.rs), the contract check, the tooling tests and the ADR conventions check. The single required status check on main is 'CI result' (ADR-0009, ADR-0012, ADR-0036).",
+      "description": "Every change passes the same gates locally (just check) and in CI: analyzers and Clippy with warnings as errors, formatting, type-aware lint, tests (including the check that the migrated schema matches schema.rs), the contract check, the tooling tests and the ADR conventions check. The single required status check on main is 'CI result' (ADR-0009, ADR-0012, ADR-0058).",
       "requirements": [
         {
           "requirement-url": "https://raw.githubusercontent.com/mgasca/calendar/main/docs/architecture/controls/quality-gates.requirement.json",
@@ -171,17 +171,17 @@
               "Docs site build verified at the root path and at a project subpath"
             ],
             "repository-checks": [
-              "just tools test (tests and analyzers of every .NET file-based tool, shellcheck for doctor.sh)",
-              "just tools versions (tool package pins match backend)",
+              "just tools test (deno check, lint, fmt --check and tests of every Deno configuration: tools/ and the ADR, browser and narrative skills; shellcheck for doctor.sh)",
+              "just tools versions (exact JSR/npm pins agree across the Deno configurations)",
               "just tools adr (MADR front matter, section order, rating tables, driver coverage, links, index)",
               "just --list --list-submodules and just --fmt --check on the justfile and each module file (*.just)",
               "Container image build + smoke test against PostgreSQL in Docker",
               "Azure role SQL matches the local init script"
             ],
             "security-scanning": [
-              "CodeQL security-extended (csharp, javascript-typescript, actions) on push, PR and weekly",
+              "CodeQL security-extended (rust, javascript-typescript, actions) on push, PR and weekly",
               "Dependency review fails on moderate+ vulnerabilities",
-              "Dependabot for NuGet, npm, Docker and Actions",
+              "Dependabot for Cargo, the Rust toolchain, npm, Docker and Actions",
               "Secret scanning with push protection"
             ],
             "merge-gate": "Ruleset on main: PR required, 'CI result' must pass, no high+ CodeQL alerts, no force-push or deletion, squash/rebase only",
@@ -189,9 +189,8 @@
               "https://mgasca.github.io/calendar/adr/0009/",
               "https://mgasca.github.io/calendar/adr/0012/",
               "https://mgasca.github.io/calendar/adr/0013/",
-              "https://mgasca.github.io/calendar/adr/0017/",
-              "https://mgasca.github.io/calendar/adr/0036/",
-              "https://mgasca.github.io/calendar/adr/0038/"
+              "https://mgasca.github.io/calendar/adr/0038/",
+              "https://mgasca.github.io/calendar/adr/0058/"
             ]
           }
         }
@@ -204,18 +203,18 @@
           "requirement-url": "https://raw.githubusercontent.com/mgasca/calendar/main/docs/architecture/controls/supply-chain-integrity.requirement.json",
           "config": {
             "toolchain-pins": [
-              ".NET SDK 10.0.300 or later for repo tools, whose #:include needs it (ADR-0017), verified by just doctor",
+              "Deno 2.9.8 (.deno-version, exact) for the repo tools and scripted skills (ADR-0058), verified by just doctor",
               "Node 24 LTS (frontend/.node-version)",
               "pnpm 12.15.0 via Corepack (packageManager in frontend/package.json)",
               "just 1.59.0 (.just-version)",
               "TypeScript ~6.0, ESLint ^9",
               "Azure CLI and Bicep versions in tools/azure-versions.env, verified by just doctor"
             ],
-            "lockfiles": ["backend/*/packages.lock.json (NuGet CPM + source mapping to nuget.org)", "frontend/pnpm-lock.yaml", "tools/*/packages.lock.json"],
+            "lockfiles": ["backend/Cargo.lock", "frontend/pnpm-lock.yaml", "tools/deno.lock and the deno.lock of each scripted skill (frozen)"],
             "locked-restore": true,
             "base-image-pinning": "Dockerfile pins the node, rust and distroless cc images by sha256 digest; compose.yaml pins postgres:18.6-alpine (single source of truth for Testcontainers)",
             "action-pinning": "GitHub-owned actions by major tag, third-party actions by commit SHA",
-            "dependency-updates": "Dependabot (nuget, npm, docker, github-actions)",
+            "dependency-updates": "Dependabot (cargo, rust-toolchain, npm, docker, github-actions); Deno pins by hand, checked by just tools versions",
             "deployment-credentials": "GitHub Actions OIDC federation to a per-environment Azure identity (issuer token.actions.githubusercontent.com, audience api://AzureADTokenExchange, subject repo:mgasca/calendar:environment:<env>); no stored Azure secrets",
             "registry-admin-user": false,
             "adrs": [
@@ -670,11 +669,11 @@
       "unique-id": "infra-tool",
       "node-type": "service",
       "name": "Infrastructure tool",
-      "description": ".NET 10 file-based app (tools/infra) driven by the just infra module: `just infra what-if` and `just infra deploy <env> [foundation|full]` run the Bicep deployment with the Azure CLI, `just infra secret-init` stores the PostgreSQL admin password in the ops vault, `just infra init-roles` creates the database roles, `just infra db-stop` and `db-start` manage the staging server. Pinned Azure CLI and Bicep versions are verified by just doctor.",
+      "description": "TypeScript tool on Deno (tools/infra) driven by the just infra module: `just infra what-if` and `just infra deploy <env> [foundation|full]` run the Bicep deployment with the Azure CLI, `just infra secret-init` stores the PostgreSQL admin password in the ops vault, `just infra init-roles` creates the database roles, `just infra db-stop` and `db-start` manage the staging server. Pinned Azure CLI and Bicep versions are verified by just doctor.",
       "interfaces": [
         { "unique-id": "infra-commands", "commands": ["just infra what-if <env>", "just infra deploy <env>", "just infra secret-init <env>", "just infra init-roles <env>", "just infra db-stop", "just infra db-start"] }
       ],
-      "metadata": { "adrs": ["ADR-0017", "ADR-0033", "ADR-0034"], "source": "tools/infra, infra/main.bicep, infra/modules/*.bicep, infra/parameters/*.bicepparam" }
+      "metadata": { "adrs": ["ADR-0058", "ADR-0033", "ADR-0034"], "source": "tools/infra, infra/main.bicep, infra/modules/*.bicep, infra/parameters/*.bicepparam" }
     },
     {
       "unique-id": "github-actions",
@@ -738,7 +737,7 @@
                 },
                 "mechanism-guards": [
                   { "id": "superseded-runs", "protects": "#348", "record": "0008", "mechanism": "A same-repository pull request run has its own concurrency group, and Cancel superseded runs cancels the older runs with actions: write and no checkout", "test": "tools/delivery-guards" },
-                  { "id": "parallel-tool-tests", "protects": "#351", "record": "0011", "mechanism": "just tools test runs the test apps TOOLS_TEST_JOBS at a time, with a NuGet cache in the Tooling job", "test": "tools/delivery-guards" },
+                  { "id": "parallel-tool-tests", "protects": "#351", "record": "0011", "mechanism": "just tools test checks the Deno configurations TOOLS_TEST_JOBS at a time, with a Deno cache keyed on deno.lock in the Tooling job", "test": "tools/delivery-guards" },
                   { "id": "ci-result-needs-all", "protects": "#368", "mechanism": "CI result always runs, needs every other job except Cancel superseded runs, and passes only when each succeeded or was skipped because the Changes job said the run does not need it", "test": "tools/delivery-guards" },
                   { "id": "one-corpus-read-per-sync", "protects": "#273", "record": "0003", "mechanism": "The docs loader lists the corpus once per sync, not once per document", "test": "frontend/apps/docs/src/lib/docs-loader.test.ts" },
                   { "id": "docs-site-job", "protects": "#274", "record": "0004", "mechanism": "The docs site is checked in its own Docs site job, and its typecheck reuses the build's sync", "test": "tools/delivery-guards" },

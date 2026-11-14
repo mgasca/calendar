@@ -33,9 +33,24 @@ const DEFAULT_PAGE_SIZE: i32 = 50;
 const MAX_PAGE_SIZE: i32 = 200;
 const MAX_BULK_IDS: usize = 500;
 
-const APPLIED: &str = "applied";
-const SKIPPED: &str = "skipped";
-const NOT_FOUND: &str = "notFound";
+/// What a bulk action did to one requested task.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum BulkOutcome {
+  Applied,
+  Skipped,
+  NotFound,
+}
+
+impl BulkOutcome {
+  /// The outcome's name in the contract.
+  const fn as_str(self) -> &'static str {
+    match self {
+      Self::Applied => "applied",
+      Self::Skipped => "skipped",
+      Self::NotFound => "notFound",
+    }
+  }
+}
 
 // Creates a task owned by the signed-in user.
 #[utoipa::path(
@@ -457,7 +472,7 @@ async fn apply_to_ids(
   ids: &[Uuid],
   change: BulkChange,
 ) -> Result<BulkTaskResponse, ApiError> {
-  let mut outcomes: HashMap<Uuid, &'static str> = ids.iter().map(|id| (*id, NOT_FOUND)).collect();
+  let mut outcomes: HashMap<Uuid, BulkOutcome> = ids.iter().map(|id| (*id, BulkOutcome::NotFound)).collect();
   let mut writes = Vec::new();
   let mut written = Vec::new();
   for found in tasks::find_many(connection, owner, ids).await? {
@@ -465,10 +480,10 @@ async fn apply_to_ids(
     let mut changed = found.entity.clone();
     if change.apply(&mut changed).is_err() {
       // A completed task's deadline cannot be changed.
-      outcomes.insert(id, SKIPPED);
+      outcomes.insert(id, BulkOutcome::Skipped);
       continue;
     }
-    outcomes.insert(id, APPLIED);
+    outcomes.insert(id, BulkOutcome::Applied);
     if matches!(change, BulkChange::Delete) {
       writes.push(TaskWrite::Delete {
         id,
@@ -489,22 +504,28 @@ async fn apply_to_ids(
   let applied = tasks::write_batch(connection, owner, &writes).await?;
   for (id, applied) in written.into_iter().zip(applied) {
     if !applied {
-      outcomes.insert(id, SKIPPED);
+      outcomes.insert(id, BulkOutcome::Skipped);
     }
   }
 
-  let results: Vec<BulkTaskItemResult> = ids
-    .iter()
-    .map(|id| BulkTaskItemResult {
+  let mut results = Vec::with_capacity(ids.len());
+  let (mut applied, mut skipped, mut not_found) = (0_usize, 0_usize, 0_usize);
+  for id in ids {
+    let outcome = outcomes.get(id).copied().unwrap_or(BulkOutcome::NotFound);
+    match outcome {
+      BulkOutcome::Applied => applied += 1,
+      BulkOutcome::Skipped => skipped += 1,
+      BulkOutcome::NotFound => not_found += 1,
+    }
+    results.push(BulkTaskItemResult {
       id: *id,
-      outcome: outcomes.get(id).copied().unwrap_or(NOT_FOUND).to_owned(),
-    })
-    .collect();
-  let count_of = |outcome: &str| count(results.iter().filter(|result| result.outcome == outcome).count());
+      outcome: outcome.as_str().to_owned(),
+    });
+  }
   Ok(BulkTaskResponse {
-    applied: count_of(APPLIED),
-    skipped: count_of(SKIPPED),
-    not_found: count_of(NOT_FOUND),
+    applied: count(applied),
+    skipped: count(skipped),
+    not_found: count(not_found),
     results,
   })
 }
@@ -568,4 +589,15 @@ fn not_found() -> Problem {
 /// A count as the contract's `int`.
 fn count(value: impl TryInto<i32>) -> i32 {
   value.try_into().unwrap_or(i32::MAX)
+}
+
+#[cfg(test)]
+mod tests {
+  use super::*;
+
+  #[test]
+  fn bulk_outcomes_keep_their_contract_names() {
+    let names = [BulkOutcome::Applied, BulkOutcome::Skipped, BulkOutcome::NotFound].map(BulkOutcome::as_str);
+    assert_eq!(names, ["applied", "skipped", "notFound"]);
+  }
 }

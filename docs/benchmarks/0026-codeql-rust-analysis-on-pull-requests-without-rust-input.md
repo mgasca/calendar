@@ -1,5 +1,5 @@
 ---
-subject: "Skipping the CodeQL rust analysis on pull requests that change no Rust input, and how the main ruleset's code_scanning rule treats the missing analysis (issue #882)"
+subject: "Skipping the CodeQL rust analysis on pull requests that change no Rust input, and how the code scanning merge rule of the main ruleset treats the missing analysis (issue #882)"
 harness: "tools/ci-timings/ci-timings.ts"
 ---
 

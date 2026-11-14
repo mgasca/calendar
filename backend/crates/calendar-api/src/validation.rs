@@ -5,6 +5,7 @@ use calendar_domain::time::IanaZone;
 use calendar_domain::time::time_zones;
 use chrono::NaiveDate;
 
+use crate::error::ApiError;
 use crate::problem::Problem;
 use crate::text::is_blank;
 
@@ -13,6 +14,11 @@ use crate::text::is_blank;
 pub const MIN_DATE: NaiveDate = NaiveDate::from_ymd_opt(1900, 1, 1).expect("a valid date");
 /// The last date the API accepts.
 pub const MAX_DATE: NaiveDate = NaiveDate::from_ymd_opt(2200, 12, 31).expect("a valid date");
+
+/// Whether `date` is within [`MIN_DATE`]..=[`MAX_DATE`], so date arithmetic on it is safe.
+pub fn is_supported_date(date: NaiveDate) -> bool {
+  (MIN_DATE..=MAX_DATE).contains(&date)
+}
 
 /// Collects field errors, keeping the order in which fields first failed.
 #[derive(Debug, Default, Clone, PartialEq, Eq)]
@@ -41,6 +47,18 @@ impl FieldErrors {
     Problem::validation(self.errors)
   }
 
+  /// `Ok` when no field failed; otherwise these errors, which `?` turns into their `400` problem.
+  pub fn into_result(self) -> Result<(), Self> {
+    if self.any() { Err(self) } else { Ok(()) }
+  }
+
+  /// One domain argument error, under the API field its parameter came from.
+  pub fn from_domain(error: ArgumentError) -> Self {
+    let mut errors = Self::new();
+    errors.add(domain_field(error.param), error.message);
+    errors
+  }
+
   /// Adds `message` to `field`.
   pub fn add(&mut self, field: &str, message: impl Into<String>) {
     match self.errors.iter_mut().find(|(name, _)| name == field) {
@@ -65,7 +83,7 @@ impl FieldErrors {
 
   /// Refuses a date outside [`MIN_DATE`]..=[`MAX_DATE`].
   pub fn check_date(&mut self, date: Option<NaiveDate>, field: &str) {
-    if date.is_some_and(|date| date < MIN_DATE || date > MAX_DATE) {
+    if date.is_some_and(|date| !is_supported_date(date)) {
       self.add(field, "Date must be between 1900-01-01 and 2200-12-31.");
     }
   }
@@ -96,12 +114,23 @@ impl FieldErrors {
 
   /// Reports a domain argument error under the API field its parameter came from.
   pub fn add_domain_error(&mut self, error: &ArgumentError) {
-    let field = match error.param {
-      "timeZoneId" => "timeZone",
-      "" => "request",
-      name => name,
-    };
-    self.add(field, error.message.clone());
+    self.add(domain_field(error.param), error.message.clone());
+  }
+}
+
+/// The API field a domain parameter is reported under.
+fn domain_field(param: &str) -> &str {
+  match param {
+    "timeZoneId" => "timeZone",
+    "" => "request",
+    name => name,
+  }
+}
+
+/// Field errors answer with their `400` validation problem.
+impl From<FieldErrors> for ApiError {
+  fn from(errors: FieldErrors) -> Self {
+    errors.into_problem().into()
   }
 }
 
@@ -160,5 +189,20 @@ mod tests {
     errors.add_domain_error(&ArgumentError::new("", "odd"));
     let fields: Vec<_> = errors.entries().iter().map(|(field, _)| field.as_str()).collect();
     assert_eq!(fields, ["timeZone", "title", "request"]);
+  }
+
+  #[test]
+  fn errors_convert_to_their_validation_problem() {
+    assert_eq!(FieldErrors::new().into_result(), Ok(()));
+    let mut errors = FieldErrors::new();
+    errors.add("title", "Title is required.");
+    assert_eq!(errors.clone().into_result(), Err(errors.clone()));
+    assert_eq!(FieldErrors::from_domain(ArgumentError::new("title", "Title is required.")), errors);
+
+    let problem = |error: ApiError| match error {
+      ApiError::Problem(problem) => *problem,
+      ApiError::Internal(reason) => panic!("internal: {reason}"),
+    };
+    assert_eq!(problem(ApiError::from(errors.clone())), errors.into_problem());
   }
 }

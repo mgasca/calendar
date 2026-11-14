@@ -131,13 +131,6 @@ fn london_overdue_filter() -> Value {
   json!({"view": "overdue", "today": "2026-10-26", "timeZone": "Europe/London", "expectedTotal": 1})
 }
 
-/// Whether the validation problem names `field`.
-fn has_error(response: &TestResponse, field: &str) -> bool {
-  response.value()["errors"]
-    .as_object()
-    .is_some_and(|errors| errors.contains_key(field))
-}
-
 #[tokio::test]
 async fn create_task_with_priority_and_notes_appears_in_list_and_agenda() {
   let app = TestApp::start().await;
@@ -222,7 +215,7 @@ async fn create_task_invalid_returns_400_validation_problem() {
 
     assert_eq!(response.status, StatusCode::BAD_REQUEST, "{scenario}");
     assert_eq!(response.media_type(), Some("application/problem+json"), "{scenario}");
-    assert!(has_error(&response, field), "{scenario}: {}", response.value()["errors"]);
+    assert!(response.has_error(field), "{scenario}: {}", response.value()["errors"]);
   }
 }
 
@@ -455,7 +448,7 @@ async fn list_tasks_invalid_returns_400_validation_problem() {
     let response = app.client().get(&format!("{TASKS}{query}")).await;
 
     assert_eq!(response.status, StatusCode::BAD_REQUEST, "{scenario}");
-    assert!(has_error(&response, field), "{scenario}: {}", response.value()["errors"]);
+    assert!(response.has_error(field), "{scenario}: {}", response.value()["errors"]);
   }
 }
 
@@ -689,7 +682,7 @@ async fn bulk_tasks_invalid_request_returns_validation_problem() {
 
     assert_eq!(response.status, StatusCode::BAD_REQUEST, "{payload}");
     assert_eq!(response.media_type(), Some("application/problem+json"), "{payload}");
-    assert!(has_error(&response, field), "{payload}: {}", response.value()["errors"]);
+    assert!(response.has_error(field), "{payload}: {}", response.value()["errors"]);
   }
 }
 
@@ -825,7 +818,7 @@ async fn update_task_invalid_returns_400_with_the_field_and_leaves_the_task_unch
 
   for (response, field) in [(blank, "title"), (both, "dueAt"), (priority, "priority")] {
     assert_eq!(response.status, StatusCode::BAD_REQUEST, "{field}");
-    assert!(has_error(&response, field), "{field}: {}", response.text());
+    assert!(response.has_error(field), "{field}: {}", response.text());
   }
 
   assert_eq!(no_version.status, StatusCode::BAD_REQUEST);

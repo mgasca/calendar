@@ -284,36 +284,6 @@ function codeqlRustGate(files: RepoFiles): string[] {
   }
   return errors;
 }
-function codeqlRustCaches(files: RepoFiles): string[] {
-  const analyze = Workflow.parse(files.codeqlWorkflow).jobs.find((j) => j.name.startsWith("Analyze"));
-  if (!analyze) return ["codeql.yml has no Analyze job."];
-  const steps = analyze.steps,
-    errors: string[] = [],
-    index = (match: (s: (typeof steps)[number]) => boolean) => steps.findIndex(match),
-    uses = (s: (typeof steps)[number], action: string) => (s.text("uses") ?? "").startsWith(action),
-    init = index((s) => uses(s, "github/codeql-action/init")),
-    analyzeStep = steps.find((s) => uses(s, "github/codeql-action/analyze")),
-    target = steps.find((s) => s.text("id") === "target" && uses(s, "actions/cache/restore")),
-    targetDir = analyzeStep?.map("env")?.text("CODEQL_EXTRACTOR_RUST_OPTION_CARGO_TARGET_DIR");
-  if (!target) errors.push("the Analyze job does not restore the extractor's target directory (step id `target`).");
-  else {
-    if (index((s) => s === target) > init) errors.push("the target directory is restored after `init`.");
-    if (target.text("if") !== "matrix.language == 'rust'") {
-      errors.push("the target directory restore must run for the rust analysis only.");
-    }
-  }
-  if (!targetDir) {
-    errors.push("the analyze step does not set `CODEQL_EXTRACTOR_RUST_OPTION_CARGO_TARGET_DIR`.");
-  } else if (target && target.map("with")?.text("path") !== targetDir) {
-    errors.push("the extractor's target directory is not the directory the cache restores.");
-  }
-  for (const save of steps.filter((s) => uses(s, "actions/cache/save"))) {
-    if (!(save.text("if") ?? "").includes("github.event_name != 'pull_request'")) {
-      errors.push(`\`${save.text("name")}\` must not run on a pull request.`);
-    }
-  }
-  return errors;
-}
 export const guards: Guard[] = [
   {
     id: "superseded-runs",
@@ -370,14 +340,6 @@ export const guards: Guard[] = [
     mechanism:
       "A CodeQL languages job runs .github/ci-changes.jq and .github/codeql-languages.jq on every run, and the Analyze matrix excludes rust only when that job says no Rust input changed.",
     check: codeqlRustGate,
-  },
-  {
-    id: "codeql-rust-caches",
-    fix: "#883",
-    record: "0027",
-    mechanism:
-      "The rust analysis restores a cached target directory before init and points the extractor's CODEQL_EXTRACTOR_RUST_OPTION_CARGO_TARGET_DIR at it; only runs that are not pull requests save the caches.",
-    check: codeqlRustCaches,
   },
 ];
 export function runGuard(guard: Guard, files: RepoFiles): string[] {

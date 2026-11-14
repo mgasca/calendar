@@ -157,7 +157,7 @@ API telemetry (#731) lives in `calendar-api/src/telemetry/`:
 ### Testing
 
 - Browser: the Playwright flow tests, nightly and on demand.
-- Binding: the browser-free check on every pull request.
+- Binding: the browser-free check, in CI on every pull request that changes the e2e package or the model: in the Frontend job, or in the Flow binding job when only the model changed (#902).
 - API: `cargo test` for the exporter wiring, `traceparent` extraction, redaction and the stub guard. `crates/calendar-api/tests/api/telemetry.rs` runs the production pipeline with in-memory exporters and scans every exported span, log and metric for seeded personal data. The unit tests in `src/telemetry*` cover the `OTEL_*` configuration, the statement shape and the allow-list.
 - Web: Vitest. `src/telemetry/telemetry.test.tsx` runs the real SDK with an in-memory exporter, the real API client and MSW: a save's action span, fetch span and the `traceparent` the API receives share one trace, every bulk batch stays in that trace, nothing outside `/api` gets the header, no planted personal data is exported, and no tracer is registered when telemetry is off. `src/telemetry/attributes.test.ts` covers the allow-list rules, and `dev/otlpProxy.test.ts` runs `vite dev` and `vite preview` against a fake collector.
 
@@ -193,7 +193,7 @@ API telemetry (#731) lives in `calendar-api/src/telemetry/`:
   - Prometheus: `http_server_request_duration_seconds_count` grows by the requests made, and the `_bucket` series exist.
   - `Observer.expectFlow` makes the four assertions.
 - **Scanner** (`personal-data.ts`): it runs over every string of the trace, every API and web log record since the test began (lines and labels), and every label of the API's and web app's series. It looks for the registered values (case-insensitive) and for any email address, JWT, bearer token or cookie header. A finding names the signal and the place, never the value.
-- **Binding** (`src/binding/`): `bindingProblems` reads the model and `playwright test --list --reporter=json`. It runs as a Vitest test in `just frontend test`, so it needs no browser and runs on every pull request. Covered flows are linked by `metadata["e2e-test"]` in the model (`view-today-flow` now), and `pending-flows.json` holds the other six with their issues.
+- **Binding** (`src/binding/`): `bindingProblems` reads the model and `playwright test --list --reporter=json`. It runs as a Vitest test in `just frontend test`, so it needs no browser; in CI it runs in the Frontend job, or in the small Flow binding job for a model-only change. Until #902 it ran in no CI job: Frontend tests with `test:coverage`, which the package lacked, and the filter skipped Frontend for changes to the package or the model alone. Covered flows are linked by `metadata["e2e-test"]` in the model (`view-today-flow` now), and `pending-flows.json` holds the other six with their issues.
 - **Recipes:** `just e2e test` (`up`, the suite, then `down` whatever the result) and `just e2e test-on <project>`. When the run-calendar skill's `~/.cache/calendar-chromium-libs` exists, the recipes add it to `LD_LIBRARY_PATH`.
 - **Request log (#797):** designing the logs assertion showed that a successful request logged nothing. #798 adds the `request finished` record (see "API" above).
 - **Measured** (WSL2 laptop, images present, API build cached):
@@ -201,6 +201,21 @@ API telemetry (#731) lives in `calendar-api/src/telemetry/`:
   - With #793's 5 s interval, on `main` with #798, the test took 7.3 s (the stack was ready in 99 s, because the API had to rebuild after the merge).
 - **Scan limit:** a scan stops with an error when Loki returns its 5,000-record limit, rather than quietly scanning part of the logs (review note on #832).
   - Negative control: against an API without #798, the test passed the trace assertion and failed with "API log records with trace id … not found within 90 s".
+
+### Delivered in #737
+
+- **Workflow** `.github/workflows/e2e.yml` ("E2E flows"): nightly at 03:17 UTC on `main` and on `workflow_dispatch`, never for a pull request, so it is not part of `CI result` (ADR-0046). One job, `E2E flows`, on `ubuntu-24.04`:
+  - Rust from `backend/rust-toolchain.toml`, with its own cache of the registry and the debug build (CI's Backend cache is built for coverage, so it would not match);
+  - Node from `frontend/.node-version` and pnpm through Corepack, the way the recipes call it, with the pnpm store cached;
+  - Playwright's Chromium cached per Playwright release, and its system libraries from apt;
+  - `just e2e up`, `just e2e test-on <project>`, then `just e2e down` whatever the result. It does not use `just e2e test`, which would remove the stack's logs before they are uploaded.
+- **Artifacts**, kept 14 days: `e2e-report` (the HTML report, which shows each failure's message, so the telemetry assertion that failed), `e2e-test-results` (traces and failure screenshots) and `e2e-stack-logs` (API, web, compose and build logs). A failed test's trace holds the run's development seed key, which the fixture adds to `/api` requests; it is random per run and dies with the throwaway stack. `stack.env`, which holds it too, is not uploaded.
+- **Permissions:** none at the top; the test job reads contents, and the alert job only writes issues and checks nothing out.
+- **A failure is visible:** on `main`, a failed run comments on the one open `bug` issue titled "E2E flows: the nightly run failed on main", or opens it, with the run link. A person closes it. The maintainer chose this on #737 (option C, 2026-11-14), with a dashboard section as follow-up #892. Proved once before merge: a temporary commit failed a flow and let the alert run for #876 ([run 43583755717](https://github.com/mgasca/calendar/actions/runs/43583755717)); it opened #898, which was closed as the proof.
+- **Run time (ADR-0045):** `tools/ci-timings` now reads scheduled runs on `main` too, and names the workflow and baseline file in its report. `ci-trend.yml` has a second step for `e2e.yml` against `.github/e2e-baseline.json`, which reports "no baseline yet" until the file exists. `ci.yml`'s report is unchanged, byte for byte (the parity fixtures). The Rust and pnpm caches have no `restore-keys`, so a dependency change saves a fresh entry instead of growing the old one (review of #876).
+- **New flows need no workflow change:** the job runs every test in `frontend/apps/e2e/tests`.
+- **Verified:** run [43528677152](https://github.com/mgasca/calendar/actions/runs/43528677152) passed in 200 s on a cold cache (stack ready in 130 s, `view-today-flow` 3.5 s). Run [43529239198](https://github.com/mgasca/calendar/actions/runs/43529239198) failed on a deliberately wrong span name; the report, `trace.zip`, the screenshot and the stack logs were uploaded, and the message named the missing span. Both came from a temporary `pull_request` trigger on #876, removed before review.
+- **Follow-up (#892):** an E2E section on the delivery dashboard.
 
 ### Delivered in #734
 
@@ -229,6 +244,9 @@ API telemetry (#731) lives in `calendar-api/src/telemetry/`:
 
 ### Lessons learned, known issues and follow-ups
 
+- **Follow-up (#893):** pin `.github/e2e-baseline.json` (`just tools ci-timings --workflow e2e.yml --baseline --created <range> --out .github/e2e-baseline.json --record <record>`) once 30 successful nightly runs exist, about a month after #737 merges; until then the trend check concludes nothing about this workflow. The maintainer chose this input change without an ADR-0045 amendment (#737, option A, 2026-11-14).
+- **Known issue:** when `just e2e up` itself fails (a migration or a build), the recipe removes the run, logs included, so only its error message reaches the job log.
+
 - Browser OpenTelemetry is marked experimental upstream, and the Rust traces signal is beta; ADR-0062 records the versions checked.
 - **Follow-up:** web telemetry in Azure stays off in this story, as the maintainer chose on #729 on 2026-11-13; turning it on is a later decision (ADR-0062). With the switch off the fetch instrumentation is not loaded, so Azure requests carry no `traceparent` either (#732).
 - **Follow-up:** `@opentelemetry/instrumentation-fetch` is deprecated upstream in favour of the experimental `@opentelemetry/browser-instrumentation`; `sdk.ts` keeps it with an ESLint exception, and the move is #768.
@@ -249,4 +267,4 @@ Start the optional telemetry service with the development stack, use the app, th
 
 ### Nightly runs
 
-The suite runs every night on `main` and can be started by hand from the Actions tab. A failure is reported where the maintainer already looks, with the report and traces attached to the run.
+The suite runs every night on `main` and can be started by hand from the Actions tab ("E2E flows", "Run workflow"). When a night's run fails, an issue titled "E2E flows: the nightly run failed on main" is opened, or commented on if it is already open, with a link to the run. On the run's page, download `e2e-report` and open its `index.html` to see which flow failed and why, `e2e-test-results` for the trace and screenshot of the failing test, and `e2e-stack-logs` for the API's and web app's logs. Close the issue once the flows pass again.

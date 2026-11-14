@@ -138,6 +138,30 @@ describe('web telemetry', () => {
     expect(action?.attributes).toEqual({ 'app.bulk.action': 'complete', 'app.bulk.batches': 3 });
   });
 
+  it('names the span of a fetch(url, init) call by its route, like a Request call (#879)', async () => {
+    let traceparent: string | null = null;
+    server.use(
+      http.get('*/api/auth/me', ({ request }) => {
+        traceparent = request.headers.get('traceparent');
+        return HttpResponse.json({ name: '', email: EMAIL, pictureUrl: null });
+      }),
+      http.post('*/api/auth/logout', () => new HttpResponse(null, { status: 204 })),
+    );
+
+    // The two raw calls of the app: getUser() with a URL, signOut() with a URL and an init.
+    await fetch(new URL('/api/auth/me', window.location.origin));
+    await fetch(new URL('/api/auth/logout', window.location.origin), { method: 'POST' });
+
+    await eventually(() => {
+      if (spans().length < 2) throw new Error('the fetch spans have not ended');
+    });
+    expect(spans().map((span) => span.name)).toEqual(['GET /api/auth/me', 'POST /api/auth/logout']);
+    const me = named('GET /api/auth/me');
+    expect(me?.attributes['url.template']).toBe('/api/auth/me');
+    expect(named('POST /api/auth/logout')?.attributes['url.template']).toBe('/api/auth/logout');
+    expect(traceparent).toContain(me?.spanContext().spanId);
+  });
+
   it('sends traceparent to /api only', async () => {
     let otherHeader: string | null | undefined;
     server.use(

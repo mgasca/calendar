@@ -41,9 +41,15 @@ jobs:
             build-mode: none
     steps:
       - uses: actions/checkout@v7
-      # The Rust extractor resolves the backend workspace with cargo, which downloads about 400 crates on a cold
-      # runner (issue #883, record 0027). A run that is not a pull request saves the registry for its lock file, so pull
-      # requests read the copy that main saved; every run restores the nearest one.
+      # The Rust extractor loads the backend workspace with cargo: it fetches about 330 crates and builds their build
+      # scripts and proc macros, 25-36 s of its LoadManifest phase on a cold runner (issue #883, record 0027). The rust
+      # analysis restores the registry and a persistent target directory for the extractor, which cut that phase to
+      # about 1 s. A run that is not a pull request saves both once per lock file, so pull requests read main's copies.
+      # The target directory is also keyed on the runner's rustc, the toolchain the extractor uses.
+      - name: Read the extractor's Rust toolchain
+        id: rustc
+        if: matrix.language == 'rust'
+        run: echo "version=$(rustc --version | cut -d' ' -f2)" >> "$GITHUB_OUTPUT"
       - name: Restore the cargo registry
         id: registry
         if: matrix.language == 'rust'
@@ -55,18 +61,16 @@ jobs:
             ~/.cargo/git/db
           key: codeql-rust-registry-${{ runner.os }}-${{ hashFiles('backend/Cargo.lock') }}
           restore-keys: codeql-rust-registry-${{ runner.os }}-
-      - name: Count the restored crates
-        if: matrix.language == 'rust'
-        run: find ~/.cargo/registry/cache -name '*.crate' 2>/dev/null | wc -l | xargs echo "crates in the registry cache:"
-      # Experiment (#883 branch 3): a persistent cargo target directory for the extractor's build scripts.
-      - name: Restore the extractor target directory
+      - name: Restore the extractor's target directory
         id: target
         if: matrix.language == 'rust'
         uses: actions/cache/restore@v6
         with:
           path: ${{ runner.temp }}/codeql-rust-target
-          key: codeql-rust-target-${{ runner.os }}-${{ hashFiles('backend/Cargo.lock') }}
-          restore-keys: codeql-rust-target-${{ runner.os }}-
+          key: >-
+            codeql-rust-target-${{ runner.os }}-rustc-${{ steps.rustc.outputs.version }}-${{
+            hashFiles('backend/Cargo.lock') }}
+          restore-keys: codeql-rust-target-${{ runner.os }}-rustc-${{ steps.rustc.outputs.version }}-
       - uses: github/codeql-action/init@v4
         with:
           languages: ${{ matrix.language }}
@@ -77,17 +81,17 @@ jobs:
           CODEQL_EXTRACTOR_RUST_OPTION_CARGO_TARGET_DIR: ${{ runner.temp }}/codeql-rust-target
         with:
           category: /language:${{ matrix.language }}
-      - name: Report what the extractor built
+      - name: Report the extractor's cargo state
         if: always() && matrix.language == 'rust'
+        env:
+          TARGET: ${{ runner.temp }}/codeql-rust-target
         run: |
-          t="${{ runner.temp }}/codeql-rust-target"
-          du -sh "$t" 2>/dev/null || echo "no target dir at $t"
-          find "$t" -maxdepth 3 -type d -path '*/build/*' 2>/dev/null | wc -l | xargs echo "build-script output dirs:"
-          find "$t" -maxdepth 4 -name '*.so' 2>/dev/null | wc -l | xargs echo "proc-macro libraries:"
-          ls "$t" 2>/dev/null || true
-          du -sh /home/runner/work/_temp/codeql_databases/rust/working 2>/dev/null || true
+          echo "crates in the registry cache: $(find ~/.cargo/registry/cache -name '*.crate' 2>/dev/null | wc -l)"
+          echo "build-script output dirs: $(find "$TARGET" -maxdepth 3 -type d -path '*/build/*' 2>/dev/null | wc -l)"
+          echo "target directory: $(du -sh "$TARGET" 2>/dev/null | cut -f1)"
       - name: Save the cargo registry
-        if: matrix.language == 'rust' && github.event_name != 'pull_request' && steps.registry.outputs.cache-hit != 'true'
+        if: >-
+          matrix.language == 'rust' && github.event_name != 'pull_request' && steps.registry.outputs.cache-hit != 'true'
         uses: actions/cache/save@v6
         with:
           path: |
@@ -95,7 +99,7 @@ jobs:
             ~/.cargo/registry/cache
             ~/.cargo/git/db
           key: ${{ steps.registry.outputs.cache-primary-key }}
-      - name: Save the extractor target directory
+      - name: Save the extractor's target directory
         if: matrix.language == 'rust' && github.event_name != 'pull_request' && steps.target.outputs.cache-hit != 'true'
         uses: actions/cache/save@v6
         with:

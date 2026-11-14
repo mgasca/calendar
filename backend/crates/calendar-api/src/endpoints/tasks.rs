@@ -20,7 +20,7 @@ use super::task_list_cursor::{self, TaskListViewKind};
 use crate::auth::CurrentUser;
 use crate::contracts::{
   BulkTaskAction, BulkTaskItemResult, BulkTaskRequest, BulkTaskResponse, CreateTaskRequest, HttpValidationProblemDetails,
-  OverdueTaskFilter, ProblemDetails, TaskPage, TaskResponse, UpdateTaskRequest,
+  OverdueTaskFilter, ProblemDetails, TaskPage, TaskResponse, UpdateTaskRequest, saturating_count,
 };
 use crate::error::ApiError;
 use crate::hosting::RequestOrigin;
@@ -174,7 +174,9 @@ pub async fn list(CurrentUser(user): CurrentUser, State(state): State<AppState>,
   let mut connection = state.db().await?;
   let page = tasks::list_page(&mut connection, owner, &list_view, after.as_ref(), page_size.unsigned_abs()).await?;
   let total = match (kind, after, dated) {
-    (TaskListViewKind::Overdue, None, Some(dated)) => Some(count(tasks::count_open_overdue(&mut connection, owner, &dated.today).await?)),
+    (TaskListViewKind::Overdue, None, Some(dated)) => Some(saturating_count(
+      tasks::count_open_overdue(&mut connection, owner, &dated.today).await?,
+    )),
     _ => None,
   };
 
@@ -367,7 +369,7 @@ pub async fn bulk(
       {
         Ok(applied) => request::ok(&BulkTaskResponse {
           results: Vec::new(),
-          applied: i32::try_from(applied).unwrap_or(i32::MAX),
+          applied: saturating_count(applied),
           skipped: 0,
           not_found: 0,
         }),
@@ -523,9 +525,9 @@ async fn apply_to_ids(
     });
   }
   Ok(BulkTaskResponse {
-    applied: count(applied),
-    skipped: count(skipped),
-    not_found: count(not_found),
+    applied: saturating_count(applied),
+    skipped: saturating_count(skipped),
+    not_found: saturating_count(not_found),
     results,
   })
 }
@@ -584,11 +586,6 @@ async fn change(state: &AppState, owner: OwnerId, id: Uuid, apply: impl FnOnce(&
 
 fn not_found() -> Problem {
   Problem::titled(StatusCode::NOT_FOUND, "Task not found.")
-}
-
-/// A count as the contract's `int`.
-fn count(value: impl TryInto<i32>) -> i32 {
-  value.try_into().unwrap_or(i32::MAX)
 }
 
 #[cfg(test)]

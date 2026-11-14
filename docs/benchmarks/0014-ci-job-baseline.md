@@ -1,6 +1,6 @@
 ---
 subject: "The pinned run-time baseline of each CI job per path, and its back-test on held-out pull request runs (ADR-0045)"
-harness: "tools/ci-timings/ci-timings.cs"
+harness: "tools/ci-timings/ci-timings.ts"
 ---
 
 # 0014 The pinned CI job baseline and its back-test

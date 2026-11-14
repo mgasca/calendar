@@ -18,7 +18,7 @@ pub enum Error {
   Conflict,
 
   /// A unique constraint or index refused the write (SQLSTATE 23505).
-  #[error("a unique constraint was violated{}", constraint.as_deref().map(|name| format!(" ({name})")).unwrap_or_default())]
+  #[error("a unique constraint was violated{}", constraint.as_deref().map_or_default(|name| format!(" ({name})")))]
   UniqueViolation {
     /// The constraint or index name PostgreSQL reported.
     constraint: Option<String>,

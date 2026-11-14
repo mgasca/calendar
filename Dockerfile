@@ -46,7 +46,7 @@ RUN touch crates/calendar-domain/src/lib.rs crates/calendar-infrastructure/src/l
     && cp target/release/calendar-api target/release/calendar-migrate /out/
 
 # glibc, CA certificates (PostgreSQL and Google TLS verify against the system store) and a non-root user; no shell.
-FROM gcr.io/distroless/cc-debian13:nonroot@sha256:cc66d222f0a7ec996b78a99fe76a969bc80b539a5016ad866c14d1949bc6d0ab AS runtime
+FROM gcr.io/distroless/cc-debian13:nonroot@sha256:cb87acc574abe719b6e5c547384defa2f7b1f24af9605d3f618cf852495d8be2 AS runtime
 WORKDIR /app
 ENV ASPNETCORE_URLS=http://+:8080
 EXPOSE 8080

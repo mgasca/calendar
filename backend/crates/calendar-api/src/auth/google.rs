@@ -243,7 +243,7 @@ async fn complete(
   let sealer = state
     .sealer()
     .await
-    .map_err(|error| format!("the session key is unavailable: {error:?}"))?;
+    .map_err(|error| format!("the session key is unavailable: {error}"))?;
   let flow: SignInState = sealer
     .open(SIGN_IN_PURPOSE, cookie)
     .and_then(|json| serde_json::from_slice(&json).ok())
@@ -433,7 +433,7 @@ pub async fn attach_user(
   picture: Option<&str>,
 ) -> Result<Principal, SignInError> {
   let subject = subject.filter(|subject| !is_blank(Some(subject))).ok_or(SignInError::NoSubject)?;
-  let mut connection = state.db().await.map_err(|error| SignInError::Directory(format!("{error:?}")))?;
+  let mut connection = state.db().await.map_err(|error| SignInError::Directory(error.to_string()))?;
   let sign_in = SignIn {
     email,
     google_subject: Some(subject),

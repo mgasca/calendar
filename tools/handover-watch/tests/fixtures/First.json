@@ -1,0 +1,43 @@
+{ "data": { "repository": { "target": {
+  "id": "I_320",
+  "comments": { "pageInfo": { "hasNextPage": false, "endCursor": "Y2" }, "nodes": [
+    { "fullDatabaseId": "6689158337", "author": { "__typename": "User", "login": "mgasca" },
+      "createdAt": "2026-11-06T15:56:49Z", "url": "https://github.com/o/r/issues/320#issuecomment-6689158337",
+      "body": "Design for #320.\n\n🤖 Generated with [Claude Code](https://claude.com/claude-code)" },
+    { "fullDatabaseId": "6689200000", "author": { "__typename": "User", "login": "mgasca" },
+      "createdAt": "2026-11-06T16:10:00Z", "url": "https://github.com/o/r/issues/320#issuecomment-6689200000",
+      "body": "> Design for #320.\n>\n> 🤖 Generated with [Claude Code](https://claude.com/claude-code)\n\nApproved, go ahead." }
+  ] },
+  "timelineItems": { "pageInfo": { "hasNextPage": false, "endCursor": "VDk" }, "nodes": [
+    { "isCrossRepository": false, "source": {} },
+    { "isCrossRepository": false, "source": {
+      "id": "PR_360", "number": 360, "state": "OPEN", "createdAt": "2026-11-06T10:00:00Z", "closedAt": null, "mergedAt": null,
+      "url": "https://github.com/o/r/pull/360", "body": "Adds the tool.\r\n\r\nCloses #320\r\nRefs #318",
+      "authorAssociation": "OWNER", "author": { "__typename": "User", "login": "mgasca" } } },
+    { "isCrossRepository": false, "source": {
+      "id": "PR_361", "number": 361, "state": "MERGED", "createdAt": "2026-11-06T10:30:00Z",
+      "closedAt": "2026-11-06T16:00:14Z", "mergedAt": "2026-11-06T16:00:14Z",
+      "url": "https://github.com/o/r/pull/361", "body": "refs #318, #320",
+      "authorAssociation": "OWNER", "author": { "__typename": "User", "login": "mgasca" } } },
+    { "isCrossRepository": false, "source": {
+      "id": "PR_362", "number": 362, "state": "CLOSED", "createdAt": "2026-11-06T10:40:00Z",
+      "closedAt": "2026-11-06T11:00:00Z", "mergedAt": null, "url": "https://github.com/o/r/pull/362", "body": "Refs: #320",
+      "authorAssociation": "OWNER", "author": { "__typename": "User", "login": "mgasca" } } },
+    { "isCrossRepository": false, "source": {
+      "id": "PR_370", "number": 370, "state": "OPEN", "createdAt": "2026-11-06T11:00:00Z",
+      "url": "https://github.com/o/r/pull/370", "body": "Not changed: issue-handover (#320 owns it).",
+      "authorAssociation": "OWNER", "author": { "__typename": "User", "login": "mgasca" } } },
+    { "isCrossRepository": false, "source": {
+      "id": "PR_371", "number": 371, "state": "OPEN", "createdAt": "2026-11-06T11:00:00Z",
+      "url": "https://github.com/o/r/pull/371", "body": "Closes #3200",
+      "authorAssociation": "OWNER", "author": { "__typename": "User", "login": "mgasca" } } },
+    { "isCrossRepository": false, "source": {
+      "id": "PR_372", "number": 372, "state": "OPEN", "createdAt": "2026-11-06T11:00:00Z",
+      "url": "https://github.com/o/r/pull/372", "body": "Closes #320",
+      "authorAssociation": "NONE", "author": { "__typename": "User", "login": "outsider" } } },
+    { "isCrossRepository": true, "source": {
+      "id": "PR_373", "number": 373, "state": "OPEN", "createdAt": "2026-11-06T11:00:00Z",
+      "url": "https://github.com/other/repo/pull/373", "body": "Closes #320",
+      "authorAssociation": "OWNER", "author": { "__typename": "User", "login": "mgasca" } } }
+  ] }
+} } } }

@@ -85,6 +85,7 @@ up:
         && VITE_OTEL_TRACES_EXPORTER=otlp corepack pnpm exec vite build --outDir "$dir/web" --emptyOutDir) \
         > "$dir/logs/web-build.log" 2>&1 || fail "the web app did not build"
 
+    # Metrics are pushed every 5 s instead of the SDK's 60 s, so a flow test finds its request metrics quickly.
     # The API runs as Development (seed key and the stub overrides need it) with a clean environment, so no
     # setting from .env or the shell (a real Google client, another seed key) reaches it. setsid gives each
     # process its own group, which `down` stops as a whole.
@@ -103,6 +104,7 @@ up:
         OTEL_EXPORTER_OTLP_ENDPOINT="$CALENDAR_E2E_OTLP_HTTP_URL" \
         OTEL_EXPORTER_OTLP_PROTOCOL=http/protobuf \
         OTEL_SERVICE_NAME=calendar-api \
+        OTEL_METRIC_EXPORT_INTERVAL=5000 \
         backend/target/debug/calendar-api > "$dir/logs/api.log" 2>&1 < /dev/null &
     echo "CALENDAR_E2E_API_PID=$!" >> "$dir/stack.env"
     # vite preview serves the build and proxies /api (and /otlp, #732) like vite dev. CALENDAR_DEV_SIGN_IN stays
@@ -221,3 +223,35 @@ down project="":
         rm -rf "{{ state_root }}/$project"
         echo "removed $project"
     done
+
+# Run the end-to-end flow tests (frontend/apps/e2e, ADR-0061) on a new stack, then remove it whatever the result; arguments go to Playwright (e.g. --grep @flow:view-today-flow)
+[positional-arguments]
+test *args:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    just=({{ quote(just_executable()) }} --justfile {{ quote(justfile()) }})
+    log=$(mktemp); trap 'rm -f "$log"' EXIT
+    "${just[@]}" "{{ module_path() }}::up" 2>&1 | tee "$log"
+    project=$(grep -oP '^Starting \Kcalendar-e2e-[0-9a-z-]+' "$log" | head -n 1)
+    [[ -n $project ]] || { echo "Could not tell which run 'up' started." >&2; exit 1; }
+    trap 'rm -f "$log"; "${just[@]}" "{{ module_path() }}::down" "$project"' EXIT
+    "${just[@]}" "{{ module_path() }}::test-on" "$project" "$@"
+
+# Run the end-to-end flow tests against a stack that is already up, without starting or stopping anything; arguments after the project go to Playwright
+[positional-arguments]
+test-on project *args:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    settings=$({{ quote(just_executable()) }} --justfile {{ quote(justfile()) }} "{{ module_path() }}::env" "$1")
+    shift
+    eval "$(sed 's/^/export /' <<<"$settings")"
+    cd frontend/apps/e2e
+    # Downloads Chromium into Playwright's cache the first time; a no-op afterwards.
+    corepack pnpm exec playwright install chromium > /dev/null
+    # Without sudo, Chromium's system libraries can be extracted into this cache, as the run-calendar skill shows.
+    libs="$HOME/.cache/calendar-chromium-libs/usr/lib/x86_64-linux-gnu"
+    if [[ -d $libs ]]; then export LD_LIBRARY_PATH="$libs${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"; fi
+    status=0
+    corepack pnpm exec playwright test "$@" || status=$?
+    echo "Report: frontend/apps/e2e/playwright-report/index.html (open it with 'corepack pnpm --dir frontend/apps/e2e exec playwright show-report')."
+    exit $status

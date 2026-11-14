@@ -50,7 +50,7 @@ The API refuses to start when an override is set outside `Development`, or names
 | Offset | Service |
 | --- | --- |
 | 17 | OTLP gRPC |
-| 18 | OTLP HTTP (the API's `OTEL_EXPORTER_OTLP_ENDPOINT`, the web app's `CALENDAR_OTLP_URL`) |
+| 18 | OTLP HTTP (the API's `OTEL_EXPORTER_OTLP_ENDPOINT`, the web app's `CALENDAR_OTLP_URL`); the API pushes metrics every 5 s here (`OTEL_METRIC_EXPORT_INTERVAL`) |
 | 20 | Tempo |
 | 30 | Grafana |
 | 31 | Loki |
@@ -61,6 +61,20 @@ The API refuses to start when an override is set outside `Development`, or names
 | 90 | Prometheus |
 
 For example, slot 2 serves the web app on http://127.0.0.1:55273 and the API on http://127.0.0.1:55241. Set `CALENDAR_E2E_SLOT` to use one slot only.
+
+## Run the end-to-end flow tests
+
+The flow tests are the Playwright Test package `frontend/apps/e2e` ([ADR-0061](../decisions/0061-end-to-end-ui-tests-with-playwright-test-bound-to-the-architecture-flows.md)). Each test drives one user-facing flow of the architecture model in Chromium. It then checks the flow's trace, logs and request metrics in LGTM, and that they carry none of the test's own data.
+
+1. Run `just e2e test`. It starts a new run, downloads Chromium the first time, runs every flow test, and removes the run, whether the tests passed or failed. Arguments go to Playwright: `just e2e test --grep @flow:view-today-flow` runs one flow.
+2. To iterate, keep a stack up and run the tests against it: `just e2e up`, then `just e2e test-on <project>` as often as you like (also with Playwright arguments), then `just e2e down <project>`. `test-on` starts and stops nothing.
+3. On a failure, open the HTML report: `corepack pnpm --dir frontend/apps/e2e exec playwright show-report`. It holds the Playwright trace (actions, DOM snapshots, network) and the assertion that failed. The report and the traces are in `frontend/apps/e2e/playwright-report/` and `test-results/` (git-ignored).
+
+A test takes about a minute. Most of it is waiting for the API's request metrics, which it pushes on its metric export interval.
+
+If Chromium fails with `error while loading shared libraries` and you have no sudo, extract its libraries into `~/.cache/calendar-chromium-libs` as the `run-calendar` skill shows; the recipe adds that folder to `LD_LIBRARY_PATH`.
+
+The flow binding needs no stack. `just frontend test` runs it on every pull request. It fails when a user-facing flow has no test tagged `@flow:<unique-id>` and is not on the pending list (`frontend/apps/e2e/pending-flows.json`), when a tag names a flow the model does not define, when a pending flow already has a test, or when a covered flow's model entry does not link its test file (`metadata["e2e-test"]`). To add a flow test, see `frontend/apps/e2e/README.md`.
 
 ## What a run never touches
 

@@ -1,7 +1,7 @@
 //! The event repository against a real database: round trips, optimistic concurrency by `xmin`, and what a
 //! write that matches no row means.
 
-use calendar_infrastructure::{Error, OwnerId, RowVersion, events};
+use calendar_infrastructure::{Error, RowVersion, events};
 use uuid::Uuid;
 
 use crate::repositories::{OWNER, SqlLog, USER_B, all_day_event, date, fixture, timed_event, utc};
@@ -30,10 +30,7 @@ async fn a_timed_event_round_trips_with_its_version() {
   assert_eq!(found.entity.time_zone_id(), Some("Europe/Berlin"));
   // The database derived the range the overlap queries use; the application never wrote it.
   let client = f.database.migrator_client().await;
-  assert_eq!(
-    scalar(&client, "SELECT (span IS NOT NULL AND date_span IS NULL)::text FROM events").await,
-    "true"
-  );
+  assert!(scalar::<bool>(&client, "SELECT span IS NOT NULL AND date_span IS NULL FROM events").await);
 }
 
 #[tokio::test]
@@ -48,14 +45,7 @@ async fn an_all_day_event_round_trips_with_its_version() {
   assert_eq!(found.version, version);
   assert!(found.entity.is_all_day());
   let client = f.database.migrator_client().await;
-  assert_eq!(
-    scalar(
-      &client,
-      "SELECT (span IS NULL AND date_span = '[2026-10-26,2026-10-29)')::text FROM events"
-    )
-    .await,
-    "true"
-  );
+  assert!(scalar::<bool>(&client, "SELECT span IS NULL AND date_span = '[2026-10-26,2026-10-29)' FROM events").await);
 }
 
 #[tokio::test]
@@ -263,8 +253,7 @@ async fn an_event_can_only_be_inserted_for_its_own_owner() {
 
   assert!(matches!(result, Err(Error::OwnerMismatch)), "{result:?}");
   let client = f.database.migrator_client().await;
-  assert_eq!(scalar(&client, "SELECT count(*)::text FROM events").await, "0");
+  assert_eq!(scalar::<i64>(&client, "SELECT count(*) FROM events").await, 0);
   // The message is the .NET context's.
   assert_eq!(Error::OwnerMismatch.to_string(), "A row can only be added for the signed-in user.");
-  let _ = OwnerId(theirs.owner_id());
 }

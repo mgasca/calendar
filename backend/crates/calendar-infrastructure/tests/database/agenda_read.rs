@@ -11,7 +11,7 @@ use uuid::Uuid;
 use crate::repositories::{OWNER, SqlLog, USER_B, all_day_event, date, fixture, seed, sorted, task, task_of, timed_event, utc};
 
 fn day(date: NaiveDate) -> DateRangeWindow {
-  DateRangeWindow::create(date, 1, IanaZone::UTC).unwrap()
+  DateRangeWindow::single_day(date, IanaZone::UTC)
 }
 
 fn task_titles(rows: &[AgendaTaskRow]) -> Vec<&str> {
@@ -246,7 +246,7 @@ async fn the_overdue_list_is_ordered_limited_and_counted() {
 async fn a_skipped_date_shows_no_timed_events() {
   let mut f = fixture().await;
   let apia = time_zones::find_iana("Pacific/Apia").unwrap();
-  let skipped = DateRangeWindow::create(date(2011, 12, 30), 1, apia).unwrap();
+  let skipped = DateRangeWindow::single_day(date(2011, 12, 30), apia);
   assert_eq!(skipped.start(), skipped.end());
   seed(
     &mut f.conn,

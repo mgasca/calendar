@@ -83,6 +83,8 @@ Deno.test("main and success filters", () => {
     const [event, branch, expected] of [
       ["push", "main", true],
       ["workflow_dispatch", "main", true],
+      ["schedule", "main", true],
+      ["schedule", "feature", false],
       ["pull_request", "main", false],
       ["push", "feature", false],
       ["workflow_dispatch", "feature", false],

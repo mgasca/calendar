@@ -84,7 +84,8 @@ async fn logout_clears_cookie() {
   assert_eq!(response.status, StatusCode::NO_CONTENT);
   let cookies = response.set_cookies();
   assert_eq!(cookies.len(), 1, "{cookies:?}");
-  assert!(cookies[0].contains("expires="), "{cookies:?}");
+  let cleared = response.set_cookie(SESSION_COOKIE).expect("the session cookie is cleared");
+  assert!(cleared.has("expires"), "{cleared:?}");
 }
 
 #[tokio::test]

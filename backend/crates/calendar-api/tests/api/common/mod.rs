@@ -140,7 +140,7 @@ impl Authenticator for FakeAuthenticator {
       _ => USER_A,
     };
     AuthOutcome::Authenticated(Principal {
-      user_id: user,
+      owner: OwnerId(user),
       name: Some("Test".to_owned()),
       email: Some(if user == USER_B { USER_B_EMAIL } else { USER_A_EMAIL }.to_owned()),
       picture: None,

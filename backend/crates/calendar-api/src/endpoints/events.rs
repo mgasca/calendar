@@ -5,7 +5,7 @@ use axum::http::StatusCode;
 use axum::response::{IntoResponse, Response};
 use calendar_domain::error::ArgumentError;
 use calendar_domain::events::CalendarEvent;
-use calendar_infrastructure::{Error, OwnerId, RowVersion, events};
+use calendar_infrastructure::{Error, RowVersion, events};
 use uuid::Uuid;
 
 use super::request::{self, RouteId};
@@ -42,7 +42,7 @@ pub async fn create(
   if errors.any() {
     return Err(errors.into_problem().into());
   }
-  let created = match new_event(user.user_id, &fields) {
+  let created = match new_event(user.owner.0, &fields) {
     Ok(created) => created,
     Err(error) => {
       errors.add_domain_error(&error);
@@ -51,7 +51,7 @@ pub async fn create(
   };
 
   let mut connection = state.db().await?;
-  let version = events::insert(&mut connection, OwnerId(user.user_id), &created).await?;
+  let version = events::insert(&mut connection, user.owner, &created).await?;
   let location = format!("{}/api/events/{}", origin.base_url(), created.id());
   request::created(&location, &to_response(&created, version))
 }
@@ -70,7 +70,7 @@ pub async fn create(
 )]
 pub async fn get(RouteId(id): RouteId, CurrentUser(user): CurrentUser, State(state): State<AppState>) -> Result<Response, ApiError> {
   let mut connection = state.db().await?;
-  match events::find(&mut connection, OwnerId(user.user_id), id).await? {
+  match events::find(&mut connection, user.owner, id).await? {
     Some(found) => request::ok(&to_response(&found.entity, found.version)),
     None => Err(not_found().into()),
   }
@@ -105,7 +105,7 @@ pub async fn update(
     return Err(errors.into_problem().into());
   }
 
-  let owner = OwnerId(user.user_id);
+  let owner = user.owner;
   let mut connection = state.db().await?;
   let Some(found) = events::find(&mut connection, owner, id).await? else {
     return Err(not_found().into());
@@ -139,7 +139,7 @@ pub async fn update(
   )
 )]
 pub async fn delete(RouteId(id): RouteId, CurrentUser(user): CurrentUser, State(state): State<AppState>) -> Result<Response, ApiError> {
-  let owner = OwnerId(user.user_id);
+  let owner = user.owner;
   let mut connection = state.db().await?;
   let Some(found) = events::find(&mut connection, owner, id).await? else {
     return Err(not_found().into());

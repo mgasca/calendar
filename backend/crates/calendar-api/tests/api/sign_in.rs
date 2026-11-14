@@ -12,17 +12,48 @@ async fn host() -> TestApp {
   TestApp::builder().setting("Auth__AllowedEmails__0", FIRST).start().await
 }
 
-/// `google_subject`, `email`, `display_name` and `picture_url` of the users row `id`.
-async fn user_row(app: &TestApp, id: Uuid) -> [Option<String>; 4] {
+/// The person columns of a users row, read by name.
+#[derive(Debug, PartialEq)]
+pub struct UserRow {
+  pub google_subject: Option<String>,
+  pub email: Option<String>,
+  pub display_name: Option<String>,
+  pub picture_url: Option<String>,
+}
+
+impl UserRow {
+  pub fn new(google_subject: Option<&str>, email: Option<&str>, display_name: Option<&str>, picture_url: Option<&str>) -> Self {
+    Self {
+      google_subject: google_subject.map(str::to_owned),
+      email: email.map(str::to_owned),
+      display_name: display_name.map(str::to_owned),
+      picture_url: picture_url.map(str::to_owned),
+    }
+  }
+}
+
+impl From<&tokio_postgres::Row> for UserRow {
+  fn from(row: &tokio_postgres::Row) -> Self {
+    Self {
+      google_subject: row.get("google_subject"),
+      email: row.get("email"),
+      display_name: row.get("display_name"),
+      picture_url: row.get("picture_url"),
+    }
+  }
+}
+
+/// The person columns of the users row `id`.
+async fn user_row(app: &TestApp, id: Uuid) -> UserRow {
   let client = app.database().migrator_client().await;
   let row = client
     .query_one(
-      "SELECT google_subject, email, display_name, picture_url FROM users WHERE id = $1::text::uuid",
-      &[&id.to_string()],
+      "SELECT google_subject, email, display_name, picture_url FROM users WHERE id = $1",
+      &[&id],
     )
     .await
     .expect("exactly one users row has the id");
-  [row.get(0), row.get(1), row.get(2), row.get(3)]
+  UserRow::from(&row)
 }
 
 #[tokio::test]
@@ -41,12 +72,12 @@ async fn attach_user_adds_the_user_id_for_a_new_person() {
 
   assert_eq!(
     user_row(&app, principal.owner.0).await,
-    [
-      Some("sub-new".to_owned()),
-      Some("new@example.com".to_owned()),
-      Some("New Person".to_owned()),
-      Some("https://pic/new".to_owned())
-    ]
+    UserRow::new(
+      Some("sub-new"),
+      Some("new@example.com"),
+      Some("New Person"),
+      Some("https://pic/new")
+    )
   );
 }
 
@@ -57,10 +88,7 @@ async fn attach_user_lets_the_first_allow_listed_email_claim_the_legacy_owner() 
     .database()
     .migrator_client()
     .await
-    .execute(
-      "INSERT INTO users (id, created_at) VALUES ($1::text::uuid, now())",
-      &[&User::LEGACY_OWNER_ID.to_string()],
-    )
+    .execute("INSERT INTO users (id, created_at) VALUES ($1, now())", &[&User::LEGACY_OWNER_ID])
     .await
     .unwrap();
 
@@ -69,9 +97,9 @@ async fn attach_user_lets_the_first_allow_listed_email_claim_the_legacy_owner() 
     .expect("the sign-in succeeds");
 
   assert_eq!(principal.owner.0, User::LEGACY_OWNER_ID);
-  let [subject, email, ..] = user_row(&app, User::LEGACY_OWNER_ID).await;
-  assert_eq!(subject.as_deref(), Some("sub-first"));
-  assert_eq!(email.as_deref(), Some(FIRST));
+  let row = user_row(&app, User::LEGACY_OWNER_ID).await;
+  assert_eq!(row.google_subject.as_deref(), Some("sub-first"));
+  assert_eq!(row.email.as_deref(), Some(FIRST));
 }
 
 #[tokio::test]

@@ -17,6 +17,7 @@ use crate::queries::task_list::local_due_date;
 use crate::queries::{Tasks, owned_events, owned_tasks};
 use crate::schema::{events, tasks};
 use crate::sql::{coalesce, date_of};
+use crate::tasks::stored_priority;
 
 /// An all-day event of an agenda.
 #[derive(Debug, Clone, PartialEq, Eq, Queryable)]
@@ -125,10 +126,7 @@ type OverdueTuple = (
 );
 
 fn task_row((id, title, priority, has_notes, due_date, due_at, completed_at): AgendaTaskTuple) -> Result<AgendaTaskRow, Error> {
-  let priority = Priority::parse(&priority).ok_or(Error::InvalidRow {
-    entity: "task",
-    reason: "the priority is not low, medium or high",
-  })?;
+  let priority = stored_priority(&priority)?;
   Ok(AgendaTaskRow {
     id,
     title,

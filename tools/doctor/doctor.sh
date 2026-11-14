@@ -136,6 +136,36 @@ else
   ok "jq $(jq --version 2>/dev/null)"
 fi
 
+# git and the gh-stack extension: native stacked PRs (gh stack init/add/submit/link) need gh-stack, which needs
+# git 2.36 or newer and gh 2.0 or newer (#887). gh 2.0 introduced extensions, so a gh that cannot list them is too
+# old (or broken). Without gh, its failure above comes first and the extension is checked on the next run.
+want_git="2.36.0"
+if ! command -v git >/dev/null 2>&1; then
+  fail "git not found" "Install git $want_git or newer, e.g. 'sudo apt install git' (gh-stack needs $want_git or newer)"
+else
+  have_git="$(git --version 2>/dev/null | sed -n '1s/^git version \([0-9][0-9.]*\).*/\1/p')"
+  if [ -n "$have_git" ] && [ "$(printf '%s\n%s\n' "$want_git" "$have_git" | sort -V | head -n 1)" = "$want_git" ]; then
+    ok "git $have_git (gh-stack wants $want_git or newer)"
+  else
+    fail "git '${have_git:-unavailable}', but gh-stack wants $want_git or newer" \
+      "Install git $want_git or newer, e.g. from the git-core PPA on Ubuntu: https://git-scm.com/download/linux"
+  fi
+fi
+if command -v gh >/dev/null 2>&1; then
+  if ! gh_extensions="$(gh extension list 2>/dev/null)"; then
+    fail "gh cannot list extensions; gh-stack needs gh 2.0 or newer" \
+      "Update the GitHub CLI: https://github.com/cli/cli/blob/trunk/docs/install_linux.md"
+  else
+    have_stack="$(printf '%s\n' "$gh_extensions" | sed -n 's|^[^\t]*\tgithub/gh-stack\t\([^\t]*\).*|\1|p' | head -n 1)"
+    if [ -n "$have_stack" ]; then
+      ok "gh-stack $have_stack"
+    else
+      fail "gh-stack not installed: creating, rebasing and merging native stacked PRs needs it (gh stack init/add/submit/link)" \
+        "gh extension install github/gh-stack"
+    fi
+  fi
+fi
+
 # Azure tools are deployment prerequisites; local-only development can skip them.
 if [ "${1:-}" = "--infra" ]; then
   export AZURE_BICEP_USE_BINARY_FROM_PATH=false

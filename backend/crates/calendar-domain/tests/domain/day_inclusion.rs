@@ -8,14 +8,10 @@ use calendar_domain::events::CalendarEvent;
 use calendar_domain::tasks::TodoTask;
 use calendar_domain::time::{DayWindow, time_zones};
 use chrono::{DateTime, Days, NaiveDate, TimeDelta, TimeZone, Utc};
-use uuid::Uuid;
+
+use crate::support::{TICK, hours, owner};
 
 const ZONE: &str = "America/New_York";
-const TICK: TimeDelta = TimeDelta::nanoseconds(100);
-
-fn owner() -> Uuid {
-  Uuid::from_u128(0x0a0b_0c0d_0e0f_4a1b_8c2d_3e4f_5a6b_7c8d)
-}
 
 fn today() -> NaiveDate {
   NaiveDate::from_ymd_opt(2026, 10, 26).unwrap()
@@ -56,10 +52,6 @@ fn due_at(due_at: DateTime<Utc>) -> TodoTask {
 
 fn undated() -> TodoTask {
   task("T", None, None)
-}
-
-fn hours(count: i64) -> TimeDelta {
-  TimeDelta::hours(count)
 }
 
 // ---- events ----

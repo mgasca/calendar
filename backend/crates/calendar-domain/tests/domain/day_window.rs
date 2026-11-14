@@ -4,17 +4,9 @@
 //! `Create_WithNullZone_Throws` has no counterpart: a zone cannot be null here.
 
 use calendar_domain::time::{DayWindow, IanaZone, time_zones};
-use chrono::{DateTime, Days, LocalResult, NaiveDate, NaiveDateTime, NaiveTime, TimeDelta, TimeZone, Utc};
+use chrono::{Days, LocalResult, NaiveDate, NaiveDateTime, NaiveTime, TimeDelta, TimeZone};
 
-const TICK: TimeDelta = TimeDelta::nanoseconds(100);
-
-fn zone(id: &str) -> IanaZone {
-  time_zones::find_iana(id).unwrap()
-}
-
-fn date(year: i32, month: u32, day: u32) -> NaiveDate {
-  NaiveDate::from_ymd_opt(year, month, day).unwrap()
-}
+use crate::support::{TICK, date, hours, utc, zone};
 
 fn window(year: i32, month: u32, day: u32, zone_id: &str) -> DayWindow {
   DayWindow::create(date(year, month, day), zone(zone_id))
@@ -22,14 +14,6 @@ fn window(year: i32, month: u32, day: u32, zone_id: &str) -> DayWindow {
 
 fn local(year: i32, month: u32, day: u32) -> NaiveDateTime {
   date(year, month, day).and_time(NaiveTime::MIN)
-}
-
-fn utc(year: i32, month: u32, day: u32, hour: u32, minute: u32) -> DateTime<Utc> {
-  Utc.with_ymd_and_hms(year, month, day, hour, minute, 0).unwrap()
-}
-
-fn hours(count: i64) -> TimeDelta {
-  TimeDelta::hours(count)
 }
 
 /// The local time does not exist in the zone (the clock jumps over it).

@@ -8,11 +8,9 @@ use calendar_domain::events::{CalendarEvent, CalendarEventRecord, EventSchedule}
 use chrono::{DateTime, FixedOffset, NaiveDate, TimeDelta, TimeZone, Utc};
 use uuid::Uuid;
 
-const NEW_YORK: &str = "America/New_York";
+use crate::support::{hours, owner};
 
-fn owner() -> Uuid {
-  Uuid::from_u128(0x0a0b_0c0d_0e0f_4a1b_8c2d_3e4f_5a6b_7c8d)
-}
+const NEW_YORK: &str = "America/New_York";
 
 fn nine() -> DateTime<Utc> {
   Utc.with_ymd_and_hms(2026, 1, 5, 9, 0, 0).unwrap()
@@ -28,10 +26,6 @@ fn day_plus(days: i64) -> NaiveDate {
 
 fn minutes(count: i64) -> TimeDelta {
   TimeDelta::minutes(count)
-}
-
-fn hours(count: i64) -> TimeDelta {
-  TimeDelta::hours(count)
 }
 
 fn timed(title: &str, start: DateTime<Utc>, end: DateTime<Utc>, zone: &str) -> Result<CalendarEvent, ArgumentError> {

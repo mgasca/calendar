@@ -5,19 +5,13 @@
 
 use calendar_domain::error::{ArgumentError, InvalidOperationError};
 use calendar_domain::tasks::{Deadline, Priority, TodoTask, TodoTaskRecord};
-use chrono::{DateTime, FixedOffset, NaiveDate, TimeDelta, TimeZone, Utc};
+use chrono::{DateTime, FixedOffset, TimeDelta, TimeZone, Utc};
 use uuid::Uuid;
 
-fn owner() -> Uuid {
-  Uuid::from_u128(0x0a0b_0c0d_0e0f_4a1b_8c2d_3e4f_5a6b_7c8d)
-}
+use crate::support::{date, owner};
 
 fn now() -> DateTime<Utc> {
   Utc.with_ymd_and_hms(2026, 10, 26, 12, 0, 0).unwrap()
-}
-
-fn date(year: i32, month: u32, day: u32) -> NaiveDate {
-  NaiveDate::from_ymd_opt(year, month, day).unwrap()
 }
 
 fn with_offset(hours: i32, year: i32, month: u32, day: u32, hour: u32) -> DateTime<FixedOffset> {

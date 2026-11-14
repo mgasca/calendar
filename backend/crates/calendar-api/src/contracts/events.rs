@@ -163,19 +163,19 @@ pub struct CreateEventRequest {
   pub notes: Option<String>,
 }
 
-impl CreateEventRequest {
-  /// The event fields of the request.
-  pub fn fields(&self) -> EventFields {
-    EventFields {
-      title: self.title.clone(),
-      all_day: self.all_day,
-      start: self.start,
-      end: self.end,
-      time_zone: self.time_zone.clone(),
-      start_date: self.start_date,
-      end_date: self.end_date,
-      location: self.location.clone(),
-      notes: self.notes.clone(),
+/// The event fields of the request.
+impl From<CreateEventRequest> for EventFields {
+  fn from(request: CreateEventRequest) -> Self {
+    Self {
+      title: request.title,
+      all_day: request.all_day,
+      start: request.start,
+      end: request.end,
+      time_zone: request.time_zone,
+      start_date: request.start_date,
+      end_date: request.end_date,
+      location: request.location,
+      notes: request.notes,
     }
   }
 }
@@ -241,19 +241,20 @@ pub struct UpdateEventRequest {
 }
 
 impl UpdateEventRequest {
-  /// The event fields of the request.
-  pub fn fields(&self) -> EventFields {
-    EventFields {
-      title: self.title.clone(),
+  /// The event fields of the request and the `version` it expects.
+  pub fn into_parts(self) -> (EventFields, u32) {
+    let fields = EventFields {
+      title: self.title,
       all_day: self.all_day,
       start: self.start,
       end: self.end,
-      time_zone: self.time_zone.clone(),
+      time_zone: self.time_zone,
       start_date: self.start_date,
       end_date: self.end_date,
-      location: self.location.clone(),
-      notes: self.notes.clone(),
-    }
+      location: self.location,
+      notes: self.notes,
+    };
+    (fields, self.version)
   }
 }
 

@@ -16,7 +16,28 @@ fn default_priority() -> String {
   DEFAULT_PRIORITY.to_owned()
 }
 
-const TASK_PROPERTIES: [&str; 6] = ["title", "priority", "notes", "dueDate", "dueAt", "version"];
+/// A property of a task request body.
+#[derive(Debug, Clone, Copy)]
+enum TaskProperty {
+  Title,
+  Priority,
+  Notes,
+  DueDate,
+  DueAt,
+  Version,
+}
+
+/// The properties every task request has, in declaration order.
+const TASK_PROPERTIES: [(&str, TaskProperty); 5] = [
+  ("title", TaskProperty::Title),
+  ("priority", TaskProperty::Priority),
+  ("notes", TaskProperty::Notes),
+  ("dueDate", TaskProperty::DueDate),
+  ("dueAt", TaskProperty::DueAt),
+];
+
+/// The property an update request adds after the shared ones.
+const VERSION_PROPERTY: [(&str, TaskProperty); 1] = [("version", TaskProperty::Version)];
 
 struct TaskFields {
   title: Option<String>,
@@ -24,53 +45,71 @@ struct TaskFields {
   notes: Option<String>,
   due_date: Option<NaiveDate>,
   due_at: Option<DateTime<Utc>>,
+}
+
+/// What a task body held, before its required properties are checked.
+struct TaskBody {
+  fields: TaskFields,
+  has_title: bool,
   version: Option<u32>,
 }
 
-fn read_task(value: &Value, path: &str, type_name: &str, with_version: bool) -> JsonResult<TaskFields> {
-  let properties = if with_version {
-    &TASK_PROPERTIES[..]
-  } else {
-    &TASK_PROPERTIES[..5]
-  };
-  let mut fields = TaskFields {
-    title: None,
-    priority: Some(default_priority()),
-    notes: None,
-    due_date: None,
-    due_at: None,
+/// Reads the shared task properties and the `extra` ones; any other property is skipped.
+fn read_task_body(value: &Value, path: &str, type_name: &str, extra: &[(&'static str, TaskProperty)]) -> JsonResult<TaskBody> {
+  let mut body = TaskBody {
+    fields: TaskFields {
+      title: None,
+      priority: Some(default_priority()),
+      notes: None,
+      due_date: None,
+      due_at: None,
+    },
+    has_title: false,
     version: None,
   };
-  let mut has_title = false;
+  let fields = &mut body.fields;
   for (key, value) in json::object(value, path, type_name)? {
-    let Some(name) = json::property(properties, key) else {
+    let Some((name, property)) = json::property(TASK_PROPERTIES.iter().chain(extra), key) else {
       continue;
     };
     let at = json::child(path, name);
-    match name {
-      "title" => {
+    match property {
+      TaskProperty::Title => {
         fields.title = json::string(value, &at)?;
-        has_title = true;
+        body.has_title = true;
       }
-      "priority" => fields.priority = json::string(value, &at)?,
-      "notes" => fields.notes = json::string(value, &at)?,
-      "dueDate" => fields.due_date = json::date_opt(value, &at)?,
-      "dueAt" => fields.due_at = json::instant_opt(value, &at)?,
-      _ => fields.version = Some(json::uint32(value, &at)?),
+      TaskProperty::Priority => fields.priority = json::string(value, &at)?,
+      TaskProperty::Notes => fields.notes = json::string(value, &at)?,
+      TaskProperty::DueDate => fields.due_date = json::date_opt(value, &at)?,
+      TaskProperty::DueAt => fields.due_at = json::instant_opt(value, &at)?,
+      TaskProperty::Version => body.version = Some(json::uint32(value, &at)?),
     }
   }
+  Ok(body)
+}
 
-  let mut missing = Vec::new();
-  if !has_title {
-    missing.push("title");
-  }
-  if with_version && fields.version.is_none() {
-    missing.push("version");
-  }
-  if missing.is_empty() {
-    Ok(fields)
+/// Reads the task fields of a create request; `version` is not one of its properties.
+fn read_task(value: &Value, path: &str, type_name: &str) -> JsonResult<TaskFields> {
+  let body = read_task_body(value, path, type_name, &[])?;
+  if body.has_title {
+    Ok(body.fields)
   } else {
-    Err(json::missing_required(path, type_name, &missing))
+    Err(json::missing_required(path, type_name, &["title"]))
+  }
+}
+
+/// Reads the task fields and the required `version` of an update request.
+fn read_versioned_task(value: &Value, path: &str, type_name: &str) -> JsonResult<(TaskFields, u32)> {
+  let body = read_task_body(value, path, type_name, &VERSION_PROPERTY)?;
+  match (body.has_title, body.version) {
+    (true, Some(version)) => Ok((body.fields, version)),
+    (has_title, version) => {
+      let missing: Vec<&str> = [(!has_title).then_some("title"), version.is_none().then_some("version")]
+        .into_iter()
+        .flatten()
+        .collect();
+      Err(json::missing_required(path, type_name, &missing))
+    }
   }
 }
 
@@ -100,7 +139,7 @@ impl FromJson for CreateTaskRequest {
   const TYPE_NAME: &'static str = "Calendar.Api.Contracts.CreateTaskRequest";
 
   fn from_json(value: &Value, path: &str) -> JsonResult<Self> {
-    let fields = read_task(value, path, Self::TYPE_NAME, false)?;
+    let fields = read_task(value, path, Self::TYPE_NAME)?;
     Ok(Self {
       title: fields.title,
       priority: fields.priority,
@@ -142,14 +181,14 @@ impl FromJson for UpdateTaskRequest {
   const TYPE_NAME: &'static str = "Calendar.Api.Contracts.UpdateTaskRequest";
 
   fn from_json(value: &Value, path: &str) -> JsonResult<Self> {
-    let fields = read_task(value, path, Self::TYPE_NAME, true)?;
+    let (fields, version) = read_versioned_task(value, path, Self::TYPE_NAME)?;
     Ok(Self {
       title: fields.title,
       priority: fields.priority,
       notes: fields.notes,
       due_date: fields.due_date,
       due_at: fields.due_at,
-      version: fields.version.unwrap_or_default(),
+      version,
     })
   }
 }
@@ -291,6 +330,25 @@ pub struct BulkTaskRequest {
   pub due_at: Option<DateTime<Utc>>,
 }
 
+/// A property of a bulk request body.
+#[derive(Debug, Clone, Copy)]
+enum BulkProperty {
+  Action,
+  Ids,
+  Filter,
+  DueDate,
+  DueAt,
+}
+
+/// The properties of a bulk request, in declaration order.
+const BULK_PROPERTIES: [(&str, BulkProperty); 5] = [
+  ("action", BulkProperty::Action),
+  ("ids", BulkProperty::Ids),
+  ("filter", BulkProperty::Filter),
+  ("dueDate", BulkProperty::DueDate),
+  ("dueAt", BulkProperty::DueAt),
+];
+
 impl FromJson for BulkTaskRequest {
   const TYPE_NAME: &'static str = "Calendar.Api.Contracts.BulkTaskRequest";
 
@@ -298,22 +356,22 @@ impl FromJson for BulkTaskRequest {
     let mut action = None;
     let (mut ids, mut filter, mut due_date, mut due_at) = (None, None, None, None);
     for (key, value) in json::object(value, path, Self::TYPE_NAME)? {
-      let Some(name) = json::property(&["action", "ids", "filter", "dueDate", "dueAt"], key) else {
+      let Some((name, property)) = json::property(&BULK_PROPERTIES, key) else {
         continue;
       };
       let at = json::child(path, name);
-      match name {
-        "action" => action = Some(read_action(value, &at)?),
-        "ids" => ids = read_ids(value, &at)?,
-        "filter" => {
+      match property {
+        BulkProperty::Action => action = Some(read_action(value, &at)?),
+        BulkProperty::Ids => ids = read_ids(value, &at)?,
+        BulkProperty::Filter => {
           filter = if value.is_null() {
             None
           } else {
             Some(OverdueTaskFilter::from_json(value, &at)?)
           }
         }
-        "dueDate" => due_date = json::date_opt(value, &at)?,
-        _ => due_at = json::instant_opt(value, &at)?,
+        BulkProperty::DueDate => due_date = json::date_opt(value, &at)?,
+        BulkProperty::DueAt => due_at = json::instant_opt(value, &at)?,
       }
     }
 
@@ -416,21 +474,38 @@ pub struct OverdueTaskFilter {
   pub expected_total: i32,
 }
 
+/// A property of an overdue filter.
+#[derive(Debug, Clone, Copy)]
+enum FilterProperty {
+  View,
+  Today,
+  TimeZone,
+  ExpectedTotal,
+}
+
+/// The properties of an overdue filter, in declaration order.
+const FILTER_PROPERTIES: [(&str, FilterProperty); 4] = [
+  ("view", FilterProperty::View),
+  ("today", FilterProperty::Today),
+  ("timeZone", FilterProperty::TimeZone),
+  ("expectedTotal", FilterProperty::ExpectedTotal),
+];
+
 impl FromJson for OverdueTaskFilter {
   const TYPE_NAME: &'static str = "Calendar.Api.Contracts.OverdueTaskFilter";
 
   fn from_json(value: &Value, path: &str) -> JsonResult<Self> {
     let (mut view, mut today, mut time_zone, mut expected_total) = (None, None, None, None);
     for (key, value) in json::object(value, path, Self::TYPE_NAME)? {
-      let Some(name) = json::property(&["view", "today", "timeZone", "expectedTotal"], key) else {
+      let Some((name, property)) = json::property(&FILTER_PROPERTIES, key) else {
         continue;
       };
       let at = json::child(path, name);
-      match name {
-        "view" => view = Some(json::string(value, &at)?),
-        "today" => today = Some(json::date(value, &at)?),
-        "timeZone" => time_zone = Some(json::string(value, &at)?),
-        _ => expected_total = Some(json::int32(value, &at)?),
+      match property {
+        FilterProperty::View => view = Some(json::string(value, &at)?),
+        FilterProperty::Today => today = Some(json::date(value, &at)?),
+        FilterProperty::TimeZone => time_zone = Some(json::string(value, &at)?),
+        FilterProperty::ExpectedTotal => expected_total = Some(json::int32(value, &at)?),
       }
     }
 
@@ -443,10 +518,10 @@ impl FromJson for OverdueTaskFilter {
       }),
       (view, today, time_zone, expected_total) => {
         let present = [view.is_some(), today.is_some(), time_zone.is_some(), expected_total.is_some()];
-        let missing: Vec<&str> = ["view", "today", "timeZone", "expectedTotal"]
+        let missing: Vec<&str> = FILTER_PROPERTIES
           .into_iter()
           .zip(present)
-          .filter_map(|(name, present)| (!present).then_some(name))
+          .filter_map(|((name, _), present)| (!present).then_some(name))
           .collect();
         Err(json::missing_required(path, Self::TYPE_NAME, &missing))
       }
@@ -481,4 +556,58 @@ pub struct BulkTaskResponse {
 
   /// Number of ids that were not found.
   pub not_found: i32,
+}
+
+#[cfg(test)]
+mod tests {
+  use super::*;
+  use serde_json::json;
+
+  fn missing(type_name: &str, names: &str) -> String {
+    format!("JSON deserialization for type 'Calendar.Api.Contracts.{type_name}' was missing required properties including: {names}.")
+  }
+
+  #[test]
+  fn a_create_request_needs_a_title_and_ignores_version() {
+    let error = CreateTaskRequest::from_json(&json!({ "notes": "n" }), "$").unwrap_err();
+    assert_eq!(error.message, missing("CreateTaskRequest", "'title'"));
+
+    let request = CreateTaskRequest::from_json(&json!({ "Title": "t", "version": "not a number" }), "$").unwrap();
+    assert_eq!((request.title.as_deref(), request.priority.as_deref()), (Some("t"), Some("medium")));
+  }
+
+  #[test]
+  fn an_update_request_needs_a_title_and_a_version() {
+    for (body, names) in [
+      (json!({}), "'title', 'version'"),
+      (json!({ "title": "t" }), "'version'"),
+      (json!({ "version": 3 }), "'title'"),
+    ] {
+      let error = UpdateTaskRequest::from_json(&body, "$").unwrap_err();
+      assert_eq!(error.message, missing("UpdateTaskRequest", names), "{body}");
+    }
+
+    let request = UpdateTaskRequest::from_json(&json!({ "title": "t", "VERSION": 7, "priority": "high" }), "$").unwrap();
+    assert_eq!((request.version, request.priority.as_deref()), (7, Some("high")));
+  }
+
+  #[test]
+  fn a_bulk_request_reads_every_property_and_its_filter() {
+    let request = BulkTaskRequest::from_json(
+      &json!({
+        "action": "setDueInstant",
+        "dueAt": "2026-10-26T15:00:00Z",
+        "dueDate": "2026-10-26",
+        "filter": { "view": "overdue", "today": "2026-10-26", "timeZone": "UTC", "expectedTotal": 2 },
+      }),
+      "$",
+    )
+    .unwrap();
+    assert_eq!(request.action, Some(BulkTaskAction::SetDueInstant));
+    assert!(request.due_at.is_some() && request.due_date.is_some());
+    assert_eq!(request.filter.map(|filter| filter.expected_total), Some(2));
+
+    let error = BulkTaskRequest::from_json(&json!({ "action": "delete", "filter": { "view": "overdue" } }), "$").unwrap_err();
+    assert_eq!(error.message, missing("OverdueTaskFilter", "'today', 'timeZone', 'expectedTotal'"));
+  }
 }

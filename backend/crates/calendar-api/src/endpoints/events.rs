@@ -37,7 +37,7 @@ pub async fn create(
   origin: RequestOrigin,
   JsonBody(request): JsonBody<CreateEventRequest>,
 ) -> Result<Response, ApiError> {
-  let fields = request.fields();
+  let fields = EventFields::from(request);
   let mut errors = check_shape(&fields);
   if errors.any() {
     return Err(errors.into_problem().into());
@@ -99,7 +99,7 @@ pub async fn update(
   State(state): State<AppState>,
   JsonBody(request): JsonBody<UpdateEventRequest>,
 ) -> Result<Response, ApiError> {
-  let fields = request.fields();
+  let (fields, version) = request.into_parts();
   let mut errors = check_shape(&fields);
   if errors.any() {
     return Err(errors.into_problem().into());
@@ -117,7 +117,7 @@ pub async fn update(
     return Err(errors.into_problem().into());
   }
 
-  match events::update(&mut connection, owner, &found, &changed, RowVersion(request.version)).await {
+  match events::update(&mut connection, owner, &found, &changed, RowVersion(version)).await {
     Ok(version) => request::ok(&to_response(&changed, version)),
     Err(Error::Conflict) => Err(conflict().into()),
     Err(Error::NotFound) => Err(not_found().into()),

@@ -1635,7 +1635,7 @@
         { "relationship-unique-id": "web-app-calls-api", "sequence-number": 6, "description": "200 with the new version; 400 field errors; 404 gone or another user's; 409 stale version", "direction": "destination-to-source" },
         { "relationship-unique-id": "user-uses-web-app", "sequence-number": 7, "description": "Success closes the dialog, shows 'Task saved.', refetches ['agenda'] and ['tasks'] and returns focus to the title, or to the day heading when the task left the day; 409 reloads the latest version into the form; other errors keep the values for a retry" }
       ],
-      "metadata": { "story": "0044", "adrs": ["ADR-0014", "ADR-0052", "ADR-0020", "ADR-0041"] }
+      "metadata": { "e2e-test": "frontend/apps/e2e/tests/edit-task-flow.spec.ts", "story": "0044", "adrs": ["ADR-0014", "ADR-0052", "ADR-0020", "ADR-0041"] }
     },
     {
       "unique-id": "toggle-task-flow",
@@ -1661,7 +1661,7 @@
           ]
         }
       },
-      "metadata": { "stories": ["0001", "0002", "0003"], "adrs": ["ADR-0052", "ADR-0020"], "reference-implementation": "frontend/apps/web/src/features/agenda/useToggleTask.ts" }
+      "metadata": { "e2e-test": "frontend/apps/e2e/tests/toggle-task-flow.spec.ts", "stories": ["0001", "0002", "0003"], "adrs": ["ADR-0052", "ADR-0020"], "reference-implementation": "frontend/apps/web/src/features/agenda/useToggleTask.ts" }
     },
     {
       "unique-id": "overdue-triage-flow",
@@ -1699,7 +1699,7 @@
           ]
         }
       },
-      "metadata": { "story": "0007", "adrs": ["ADR-0052", "ADR-0057", "ADR-0020", "ADR-0021", "ADR-0026"], "measured": "50k tasks: bulk complete 1.5 s vs 40 s one by one; bulk delete 0.1 s vs 11 s", "known-limitation": "The count guard cannot detect a same-count swap" }
+      "metadata": { "e2e-test": "frontend/apps/e2e/tests/overdue-triage-flow.spec.ts", "story": "0007", "adrs": ["ADR-0052", "ADR-0057", "ADR-0020", "ADR-0021", "ADR-0026"], "measured": "50k tasks: bulk complete 1.5 s vs 40 s one by one; bulk delete 0.1 s vs 11 s", "known-limitation": "The count guard cannot detect a same-count swap" }
     },
     {
       "unique-id": "database-migration-flow",

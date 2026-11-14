@@ -99,7 +99,8 @@
       { "id": "ADR-0061", "title": "End-to-end UI tests with Playwright Test in frontend/apps/e2e, bound to the architecture flows", "status": "accepted", "file": "docs/decisions/0061-end-to-end-ui-tests-with-playwright-test-bound-to-the-architecture-flows.md", "url": "https://mgasca.github.io/calendar/adr/0061/" },
       { "id": "ADR-0062", "title": "OpenTelemetry over OTLP from the API and the web app, with Grafana LGTM locally and Application Insights in Azure", "status": "accepted", "file": "docs/decisions/0062-opentelemetry-over-otlp-with-grafana-lgtm-locally-and-application-insights-in-azure.md", "url": "https://mgasca.github.io/calendar/adr/0062/" },
       { "id": "ADR-0063", "title": "Docker Compose with opt-in profiles and per-run projects for local backing services, instead of Aspire", "status": "accepted", "supersedes": "ADR-0016", "file": "docs/decisions/0063-docker-compose-profiles-for-local-backing-services-instead-of-aspire.md", "url": "https://mgasca.github.io/calendar/adr/0063/" },
-      { "id": "ADR-0064", "title": "Stub OIDC provider for sign-in tests, reached only through Development-only loopback settings", "status": "accepted", "file": "docs/decisions/0064-stub-oidc-provider-for-sign-in-tests.md", "url": "https://mgasca.github.io/calendar/adr/0064/" }
+      { "id": "ADR-0064", "title": "Stub OIDC provider for sign-in tests, reached only through Development-only loopback settings", "status": "accepted", "file": "docs/decisions/0064-stub-oidc-provider-for-sign-in-tests.md", "url": "https://mgasca.github.io/calendar/adr/0064/" },
+      { "id": "ADR-0065", "title": "Native GitHub stacks for stacked PRs, with a narrow exception that lets an agent rebase its own stack", "status": "accepted", "file": "docs/decisions/0065-native-github-stacks-for-stacked-prs-with-a-narrow-rebase-exception.md", "url": "https://mgasca.github.io/calendar/adr/0065/" }
     ],
     "stories": [
       { "id": "0001", "title": "Today view", "status": "implemented", "url": "https://mgasca.github.io/calendar/stories/0001/" },
@@ -682,7 +683,7 @@
       "name": "GitHub Actions (CI/CD)",
       "description": "Workflows in .github/workflows: CI (a Changes job that decides from the changed paths which jobs a pull request or merge group needs; backend, frontend, docs site, tooling, ADR conventions (the ADR check alone, for a change to the ADRs, story cards or model that runs no tooling job), Narratives (the narratives drift check alone, for a change to docs/narratives or the stitcher that runs no tooling job), container image + smoke test, cancelling a pull request's superseded runs, 'CI result'), CodeQL, dependency review, Infrastructure preview (Bicep what-if), Azure OIDC check, Database migration (manual, per environment, OIDC login) and Publish docs site (trusted workflow_run publisher for production and PR previews) and Dashboard snapshot (daily and on demand: takes and checks the delivery snapshot, commits it to the dashboard-data branch, and opens or updates the threshold issues; three jobs with separate permissions, never part of CI result).",
       "interfaces": [
-        { "unique-id": "ci-workflows", "workflows": ["ci.yml", "codeql.yml", "dependency-review.yml", "infra-whatif.yml", "azure-oidc-check.yml", "migrate.yml", "pages.yml", "dashboard-snapshot.yml", "ci-trend.yml"] }
+        { "unique-id": "ci-workflows", "workflows": ["ci.yml", "codeql.yml", "dependency-review.yml", "infra-whatif.yml", "azure-oidc-check.yml", "migrate.yml", "pages.yml", "dashboard-snapshot.yml", "ci-trend.yml", "e2e.yml"] }
       ],
       "controls": {
         "delivery-performance": {
@@ -730,7 +731,7 @@
                   "workflow": ".github/workflows/ci-trend.yml",
                   "schedule": "Daily at 06:23 UTC, and on demand",
                   "window-runs": 20,
-                  "test": "One-sided Mann-Whitney U test of the last 20 successful push runs after the baseline against the publication-path baseline, per job",
+                  "test": "One-sided Mann-Whitney U test of the last 20 successful push runs after the baseline against the publication-path baseline, per job; a second step does the same for the last 20 scheduled runs of e2e.yml against .github/e2e-baseline.json once 30 nightly runs have pinned it, and reports that no baseline exists until then (#737)",
                   "significance": 0.002,
                   "minimum-effect": "Hodges-Lehmann shift of at least max(10 s, 5 % of the baseline median)",
                   "output": "Opens, or comments on, the one open performance issue titled 'CI run-time trend: …'; never fails a run",

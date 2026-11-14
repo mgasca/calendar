@@ -1,7 +1,7 @@
 //! The task repository against a real database: round trips, optimistic concurrency by `xmin`, the bulk
 //! save by ids and the guarded set-based change of the open overdue tasks.
 
-use calendar_domain::tasks::{Priority, TodoTask};
+use calendar_domain::tasks::{Deadline, Priority, TodoTask};
 use calendar_domain::time::{DayWindow, IanaZone};
 use calendar_infrastructure::tasks::{OverdueAction, TaskWrite};
 use calendar_infrastructure::{Error, RowVersion, tasks};
@@ -95,6 +95,28 @@ async fn update_switches_between_deadline_kinds_and_clears_the_deadline() {
   tasks::update(&mut f.conn, OWNER, &timed, &edited, v2).await.unwrap();
   let undated = tasks::find(&mut f.conn, OWNER, edited.id()).await.unwrap().unwrap();
   assert_eq!((undated.entity.due_date(), undated.entity.due_at()), (None, None));
+}
+
+/// A row with both deadline columns is refused as an invalid row, not read as a task with two deadlines. The
+/// `ck_tasks_due_date_xor_due_at` constraint keeps such a row out, so the test drops it first.
+#[tokio::test]
+async fn a_row_with_both_deadline_columns_is_an_invalid_row() {
+  let mut f = fixture().await;
+  let both = task("Both", Some(date(2026, 10, 26)), None, None);
+  tasks::insert(&mut f.conn, OWNER, &both).await.unwrap();
+  f.database
+    .migrator_client()
+    .await
+    .batch_execute(
+      "ALTER TABLE tasks DROP CONSTRAINT ck_tasks_due_date_xor_due_at; \
+       UPDATE tasks SET due_at = '2026-10-26 09:00+00'",
+    )
+    .await
+    .unwrap();
+
+  let result = tasks::find(&mut f.conn, OWNER, both.id()).await;
+
+  assert!(matches!(result, Err(Error::InvalidRow { entity: "task", .. })), "{result:?}");
 }
 
 /// Ports the data half of `UpdateTask_AfterACompleteElsewhere_Returns409_AndLeavesTheTaskUnchanged`.
@@ -361,17 +383,17 @@ async fn the_filtered_change_touches_exactly_the_owners_open_overdue_tasks() {
       &["at -1m", "at -2d", "at -30d", "date -1", "date -6"],
     ),
     (
-      OverdueAction::SetDeadline(TodoTask::for_due_date(date(2026, 11, 2))),
+      OverdueAction::SetDeadline(Deadline::On(date(2026, 11, 2))),
       "SELECT title FROM tasks WHERE due_date = '2026-11-02' AND due_at IS NULL ORDER BY title",
       &["at -1m", "at -2d", "at -30d", "date -1", "date -6"],
     ),
     (
-      OverdueAction::SetDeadline(TodoTask::for_due_instant(utc(2026, 11, 2, 9, 0))),
+      OverdueAction::SetDeadline(Deadline::At(utc(2026, 11, 2, 9, 0))),
       "SELECT title FROM tasks WHERE due_at = '2026-11-02 09:00+00' AND due_date IS NULL ORDER BY title",
       &["at -1m", "at -2d", "at -30d", "date -1", "date -6"],
     ),
     (
-      OverdueAction::SetDeadline(TodoTask::without_deadline()),
+      OverdueAction::SetDeadline(Deadline::None),
       "SELECT title FROM tasks WHERE due_at IS NULL AND due_date IS NULL AND title <> 'undated' ORDER BY title",
       &["at -1m", "at -2d", "at -30d", "date -1", "date -6"],
     ),
@@ -441,8 +463,8 @@ async fn the_filtered_change_is_refused_when_the_count_changed() {
 #[tokio::test]
 async fn the_filtered_deadline_change_skips_tasks_that_already_have_the_deadline() {
   let cases = [
-    (TodoTask::for_due_date(date(2026, 10, 25)), "date -1"),
-    (TodoTask::for_due_instant(utc(2026, 10, 24, 12, 0)), "at -2d"),
+    (Deadline::On(date(2026, 10, 25)), "date -1"),
+    (Deadline::At(utc(2026, 10, 24, 12, 0)), "at -2d"),
   ];
   for (deadline, already) in cases {
     let mut f = fixture().await;
@@ -462,10 +484,7 @@ async fn the_filtered_deadline_change_skips_tasks_that_already_have_the_deadline
     );
     let ids = sorted(overdue.iter().map(TodoTask::id).collect());
     let after = tasks::find_many(&mut f.conn, OWNER, &ids).await.unwrap();
-    assert!(
-      after.iter().all(|t| (t.entity.due_date(), t.entity.due_at()) == deadline),
-      "{deadline:?}"
-    );
+    assert!(after.iter().all(|t| t.entity.deadline() == deadline), "{deadline:?}");
   }
 }
 

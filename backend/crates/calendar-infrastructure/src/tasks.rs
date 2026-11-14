@@ -40,6 +40,10 @@ impl TaskRow {
       entity: "task",
       reason: "the priority is not low, medium or high",
     })?;
+    let deadline = Deadline::from_parts(self.due_date, self.due_at).map_err(|_| Error::InvalidRow {
+      entity: "task",
+      reason: "both the due date and the due instant are set",
+    })?;
     Ok(Versioned {
       entity: TodoTask::restore(TodoTaskRecord {
         id: self.id,
@@ -47,8 +51,7 @@ impl TaskRow {
         title: self.title,
         priority,
         notes: self.notes,
-        due_date: self.due_date,
-        due_at: self.due_at,
+        deadline,
         completed_at: self.completed_at,
       }),
       version: self.xmin,
@@ -283,8 +286,8 @@ pub async fn count_open_overdue(conn: &mut AsyncPgConnection, owner: OwnerId, to
 pub enum OverdueAction {
   /// Complete them at this instant.
   Complete(DateTime<Utc>),
-  /// Give them this deadline (`TodoTask::for_due_date`, `for_due_instant` or `without_deadline`). Tasks that
-  /// already have exactly it are not written and not counted.
+  /// Give them this deadline ([`Deadline::None`] clears it). Tasks that already have exactly it are not
+  /// written and not counted.
   SetDeadline(Deadline),
   /// Delete them.
   Delete,
@@ -321,7 +324,8 @@ pub async fn apply_to_open_overdue(
         .filter(is_open_overdue(date, start));
       let applied = match action {
         OverdueAction::Complete(at) => diesel::update(overdue).set(tasks::completed_at.eq(Some(at))).execute(conn).await?,
-        OverdueAction::SetDeadline((due_date, due_at)) => {
+        OverdueAction::SetDeadline(deadline) => {
+          let (due_date, due_at) = (deadline.due_date(), deadline.due_at());
           // Only rows whose deadline differs: `IS DISTINCT FROM` is the null-aware `<>`.
           diesel::update(overdue)
             .filter(

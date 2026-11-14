@@ -14,13 +14,6 @@ pub use crate::schema::RowVersion;
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct OwnerId(pub Uuid);
 
-impl OwnerId {
-  /// The user's id.
-  pub fn get(self) -> Uuid {
-    self.0
-  }
-}
-
 /// An entity with the version (`xmin`) of the row it was read from or written to.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Versioned<T> {

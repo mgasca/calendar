@@ -150,7 +150,7 @@ pub fn cookie_value<'a>(headers: &'a HeaderMap, name: &str) -> Option<&'a str> {
 /// A `Set-Cookie` value for a session-lifetime cookie (or one that lasts `max_age_seconds`), with the
 /// attributes every cookie of the API has: `path=/`, `samesite=lax`, `httponly`, and `secure` when asked.
 pub fn set_cookie(name: &str, value: &str, secure: bool, max_age_seconds: Option<i64>) -> HeaderValue {
-  let max_age = max_age_seconds.map(|seconds| format!("; max-age={seconds}")).unwrap_or_default();
+  let max_age = max_age_seconds.map_or_default(|seconds| format!("; max-age={seconds}"));
   let secure = if secure { "; secure" } else { "" };
   HeaderValue::from_str(&format!("{name}={value}{max_age}; path=/{secure}; samesite=lax; httponly"))
     .expect("cookie names and sealed values are visible ASCII")

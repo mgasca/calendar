@@ -41,6 +41,23 @@ jobs:
             build-mode: none
     steps:
       - uses: actions/checkout@v7
+      # The Rust extractor resolves the backend workspace with cargo, which downloads about 400 crates on a cold
+      # runner (issue #883, record 0027). A run that is not a pull request saves the registry for its lock file, so pull
+      # requests read the copy that main saved; every run restores the nearest one.
+      - name: Restore the cargo registry
+        id: registry
+        if: matrix.language == 'rust'
+        uses: actions/cache/restore@v6
+        with:
+          path: |
+            ~/.cargo/registry/index
+            ~/.cargo/registry/cache
+            ~/.cargo/git/db
+          key: codeql-rust-registry-${{ runner.os }}-${{ hashFiles('backend/Cargo.lock') }}
+          restore-keys: codeql-rust-registry-${{ runner.os }}-
+      - name: Count the restored crates
+        if: matrix.language == 'rust'
+        run: find ~/.cargo/registry/cache -name '*.crate' 2>/dev/null | wc -l | xargs echo "crates in the registry cache:"
       - uses: github/codeql-action/init@v4
         with:
           languages: ${{ matrix.language }}
@@ -49,3 +66,12 @@ jobs:
       - uses: github/codeql-action/analyze@v4
         with:
           category: /language:${{ matrix.language }}
+      - name: Save the cargo registry
+        if: matrix.language == 'rust' && github.event_name != 'pull_request' && steps.registry.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v6
+        with:
+          path: |
+            ~/.cargo/registry/index
+            ~/.cargo/registry/cache
+            ~/.cargo/git/db
+          key: ${{ steps.registry.outputs.cache-primary-key }}

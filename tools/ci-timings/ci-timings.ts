@@ -151,7 +151,20 @@ export async function main(args: readonly string[]): Promise<number> {
   const repoName = async () =>
     o.repo ?? (await gh(["repo", "view", "--json", "nameWithOwner", "--jq", ".nameWithOwner"])).trim();
   if (o.trend) {
-    const repo = await repoName(), pinned = readBaseline(await Deno.readTextFile(o.output));
+    // A workflow is in the trend once its baseline is pinned; until then (e2e.yml's first 30 nights, #737) there is
+    // nothing to compare with, which is not a failure.
+    const text = await Deno.readTextFile(o.output).catch((error) => {
+      if (error instanceof Deno.errors.NotFound) return null;
+      throw error;
+    });
+    if (text === null) {
+      await print(
+        `Trend check (ADR 0045): no baseline yet for \`${o.workflow}\` (\`${o.output}\` does not exist). Nothing is concluded.\n`,
+      );
+      return 0;
+    }
+    const repo = await repoName(), pinned = readBaseline(text);
+    // Every event on main: recentRuns keeps the pushes and the scheduled runs.
     const pushes = parseRuns(
       await gh([
         "run",
@@ -160,8 +173,6 @@ export async function main(args: readonly string[]): Promise<number> {
         o.workflow,
         "--branch",
         "main",
-        "--event",
-        "push",
         "--limit",
         "200",
         "--repo",
@@ -180,7 +191,8 @@ export async function main(args: readonly string[]): Promise<number> {
         ),
       });
     }
-    const result = evaluateTrend(pinned, recent, trendDefaults), report = trendReport(result, pinned, trendDefaults);
+    const result = evaluateTrend(pinned, recent, trendDefaults),
+      report = trendReport(result, pinned, trendDefaults, o.output);
     await print(report);
     if (o.issue) {
       const open = parseIssues(

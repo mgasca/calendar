@@ -33,20 +33,28 @@ struct EventRow {
   xmin: RowVersion,
 }
 
+/// A stored event row that lacks a column its kind needs.
+const fn missing(reason: &'static str) -> Error {
+  Error::InvalidRow { entity: "event", reason }
+}
+
 impl EventRow {
+  /// Rebuilds the event from the row. The schedule takes the columns of the row's kind (timed or all-day) and
+  /// ignores the other kind's; one that is missing is an [`Error::InvalidRow`] naming it. Nothing is validated:
+  /// stored rows are trusted.
   fn into_versioned(self) -> Result<Versioned<CalendarEvent>, Error> {
-    let schedule = EventSchedule::from_columns(
-      self.is_all_day,
-      self.starts_at,
-      self.ends_at,
-      self.time_zone_id,
-      self.start_date,
-      self.end_date,
-    )
-    .ok_or(Error::InvalidRow {
-      entity: "event",
-      reason: "the columns of its kind (timed or all-day) are missing",
-    })?;
+    let schedule = if self.is_all_day {
+      EventSchedule::AllDay {
+        start_date: self.start_date.ok_or(missing("an all-day event has no start_date"))?,
+        end_date: self.end_date.ok_or(missing("an all-day event has no end_date"))?,
+      }
+    } else {
+      EventSchedule::Timed {
+        start: self.starts_at.ok_or(missing("a timed event has no starts_at"))?,
+        end: self.ends_at.ok_or(missing("a timed event has no ends_at"))?,
+        time_zone_id: self.time_zone_id.ok_or(missing("a timed event has no time_zone_id"))?,
+      }
+    };
     Ok(Versioned {
       entity: CalendarEvent::restore(CalendarEventRecord {
         id: self.id,
@@ -195,4 +203,121 @@ pub async fn delete(conn: &mut AsyncPgConnection, owner: OwnerId, id: Uuid, expe
 async fn conflict_or_not_found(conn: &mut AsyncPgConnection, owner: OwnerId, id: Uuid) -> Result<Error, Error> {
   let exists: i64 = owned_events(owner).filter(events::id.eq(id)).count().get_result(conn).await?;
   Ok(if exists > 0 { Error::Conflict } else { Error::NotFound })
+}
+
+#[cfg(test)]
+mod tests {
+  use chrono::TimeZone;
+
+  use super::*;
+
+  const NEW_YORK: &str = "America/New_York";
+
+  fn nine() -> DateTime<Utc> {
+    Utc.with_ymd_and_hms(2026, 1, 5, 9, 0, 0).unwrap()
+  }
+
+  fn ten() -> DateTime<Utc> {
+    Utc.with_ymd_and_hms(2026, 1, 5, 10, 0, 0).unwrap()
+  }
+
+  fn day(day: u32) -> NaiveDate {
+    NaiveDate::from_ymd_opt(2026, 10, day).unwrap()
+  }
+
+  /// A row of the given kind with the columns of both kinds set; each case clears the ones it needs to.
+  fn row(is_all_day: bool) -> EventRow {
+    EventRow {
+      id: Uuid::from_u128(1),
+      owner_id: Uuid::from_u128(2),
+      title: "E".to_owned(),
+      location: None,
+      notes: None,
+      is_all_day,
+      starts_at: Some(nine()),
+      ends_at: Some(ten()),
+      time_zone_id: Some(NEW_YORK.to_owned()),
+      start_date: Some(day(26)),
+      end_date: Some(day(27)),
+      xmin: RowVersion(7),
+    }
+  }
+
+  fn schedule(row: EventRow) -> Result<EventSchedule, &'static str> {
+    match row.into_versioned() {
+      Ok(versioned) => Ok(versioned.entity.into_record().schedule),
+      Err(Error::InvalidRow { entity: "event", reason }) => Err(reason),
+      Err(other) => panic!("unexpected error: {other}"),
+    }
+  }
+
+  #[test]
+  fn a_row_rebuilds_the_schedule_from_the_columns_of_its_kind() {
+    let timed = EventRow {
+      start_date: None,
+      end_date: None,
+      ..row(false)
+    };
+    assert_eq!(
+      schedule(timed),
+      Ok(EventSchedule::Timed {
+        start: nine(),
+        end: ten(),
+        time_zone_id: NEW_YORK.to_owned()
+      })
+    );
+
+    let all_day = EventRow {
+      starts_at: None,
+      ends_at: None,
+      time_zone_id: None,
+      ..row(true)
+    };
+    assert_eq!(
+      schedule(all_day),
+      Ok(EventSchedule::AllDay {
+        start_date: day(26),
+        end_date: day(27)
+      })
+    );
+  }
+
+  #[test]
+  fn a_row_without_a_column_of_its_kind_is_invalid_and_names_it() {
+    assert_eq!(
+      schedule(EventRow {
+        time_zone_id: None,
+        ..row(false)
+      }),
+      Err("a timed event has no time_zone_id")
+    );
+    assert_eq!(
+      schedule(EventRow {
+        starts_at: None,
+        ..row(false)
+      }),
+      Err("a timed event has no starts_at")
+    );
+    assert_eq!(
+      schedule(EventRow {
+        ends_at: None,
+        ..row(false)
+      }),
+      Err("a timed event has no ends_at")
+    );
+    assert_eq!(
+      schedule(EventRow {
+        start_date: None,
+        ..row(true)
+      }),
+      Err("an all-day event has no start_date")
+    );
+    assert_eq!(
+      schedule(EventRow {
+        end_date: None,
+        ..row(true)
+      }),
+      Err("an all-day event has no end_date")
+    );
+  }
 }

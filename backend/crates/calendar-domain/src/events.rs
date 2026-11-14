@@ -28,33 +28,6 @@ pub enum EventSchedule {
   },
 }
 
-impl EventSchedule {
-  /// Rebuilds a schedule from the nullable columns of a stored event (`is_all_day`, `start`, `end`,
-  /// `time_zone_id`, `start_date`, `end_date`). `None` when the columns that the kind needs are missing. Columns
-  /// of the other kind are ignored. Nothing is validated: stored rows are trusted.
-  pub fn from_columns(
-    is_all_day: bool,
-    start: Option<DateTime<Utc>>,
-    end: Option<DateTime<Utc>>,
-    time_zone_id: Option<String>,
-    start_date: Option<NaiveDate>,
-    end_date: Option<NaiveDate>,
-  ) -> Option<Self> {
-    if is_all_day {
-      Some(Self::AllDay {
-        start_date: start_date?,
-        end_date: end_date?,
-      })
-    } else {
-      Some(Self::Timed {
-        start: start?,
-        end: end?,
-        time_zone_id: time_zone_id?,
-      })
-    }
-  }
-}
-
 /// The stored fields of a [`CalendarEvent`], for persistence to read and rebuild one without validation.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct CalendarEventRecord {

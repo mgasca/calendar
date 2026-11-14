@@ -354,7 +354,7 @@ async fn a_call_for_a_user_sees_only_that_users_rows_and_one_for_nobody_sees_not
     )
     .await;
   let mut connection = app.state().db().await.expect("the API connects");
-  let range = DateRangeWindow::create(today(), 1, IanaZone::UTC).expect("a one-day range");
+  let range = DateRangeWindow::single_day(today(), IanaZone::UTC);
 
   let as_a = OwnerId(USER_A);
   let page = tasks::list_page(&mut connection, as_a, &TaskListView::NoDeadline, None, 200)

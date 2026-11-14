@@ -39,7 +39,7 @@ pub async fn get_day(CurrentUser(user): CurrentUser, State(state): State<AppStat
   };
 
   // A one-day range whose overdue list is judged against the day itself.
-  let range = DateRangeWindow::create(day, 1, zone).map_err(ApiError::internal)?;
+  let range = DateRangeWindow::single_day(day, zone);
   let as_of = range.days().first().copied();
   let mut connection = state.db().await?;
   let mut snapshot = agenda_builder::read(&mut connection, user.owner, &range, as_of.as_ref()).await?;

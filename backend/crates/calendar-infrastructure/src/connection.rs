@@ -15,8 +15,8 @@ use diesel_async::AsyncPgConnection;
 use diesel_async::pooled_connection::deadpool::{BuildError, Pool};
 use diesel_async::pooled_connection::{AsyncDieselConnectionManager, ManagerConfig, RecyclingMethod};
 use futures_util::FutureExt;
-use rustls::client::WebPkiServerVerifier;
 use rustls::client::danger::{HandshakeSignatureValid, ServerCertVerified, ServerCertVerifier};
+use rustls::client::{VerifierBuilderError, WebPkiServerVerifier};
 use rustls::crypto::CryptoProvider;
 use rustls::pki_types::pem::PemObject;
 use rustls::pki_types::{CertificateDer, ServerName, UnixTime};
@@ -226,19 +226,52 @@ impl FromStr for ConnectionConfig {
 }
 
 /// Why a connection could not be opened.
+///
+/// The message names the step; the cause is the [`source`](std::error::Error::source), so render the whole
+/// chain with [`error_chain`] wherever the error becomes text.
 #[derive(Debug, thiserror::Error)]
 pub enum ConnectionError {
   #[error(transparent)]
   ConnectionString(#[from] ConnectionStringError),
-  #[error("TLS setup failed: {0}")]
-  Tls(String),
-  #[error("could not connect to PostgreSQL at {host}:{port} as {username}: {reason}")]
+  #[error("TLS setup failed")]
+  Tls(#[from] TlsError),
+  #[error("could not connect to PostgreSQL at {host}:{port} as {username}")]
   Connect {
     host: String,
     port: u16,
     username: String,
-    reason: String,
+    #[source]
+    source: ConnectSource,
   },
+}
+
+/// Why the TLS configuration of a connection could not be built.
+#[derive(Debug, thiserror::Error)]
+pub enum TlsError {
+  #[error("the TLS protocol versions could not be configured")]
+  ProtocolVersions(#[source] rustls::Error),
+  #[error("the certificate verifier could not be built")]
+  Verifier(#[source] VerifierBuilderError),
+  #[error("cannot read the root certificate '{}'", path.display())]
+  RootCertificate {
+    path: PathBuf,
+    #[source]
+    source: rustls::pki_types::pem::Error,
+  },
+  #[error("the root certificate '{}' holds no certificate", path.display())]
+  EmptyRootCertificate { path: PathBuf },
+  /// No usable root on the system; the message aggregates the reasons the store gave.
+  #[error("no trusted root certificate was found on this system ({0})")]
+  NoSystemRoots(String),
+}
+
+/// What failed while opening a connection: the PostgreSQL session itself, or Diesel's setup over it.
+#[derive(Debug, thiserror::Error)]
+pub enum ConnectSource {
+  #[error(transparent)]
+  Postgres(#[from] tokio_postgres::Error),
+  #[error(transparent)]
+  Diesel(#[from] diesel::ConnectionError),
 }
 
 /// Opens one connection for Diesel, outside any pool. The migrator uses this.
@@ -267,12 +300,7 @@ where
   let (client, connection) = open(config, tls).await?;
   AsyncPgConnection::try_from_client_and_connection(client, connection)
     .await
-    .map_err(|e| ConnectionError::Connect {
-      host: config.host.clone(),
-      port: config.port,
-      username: config.username.clone(),
-      reason: e.to_string(),
-    })
+    .map_err(|e| connect_error(config, e))
 }
 
 async fn client_with<T>(config: &ConnectionConfig, tls: T) -> Result<Client, ConnectionError>
@@ -290,11 +318,7 @@ async fn open<T>(config: &ConnectionConfig, tls: T) -> Result<(Client, Connectio
 where
   T: MakeTlsConnect<Socket>,
 {
-  config
-    .to_postgres_config()
-    .connect(tls)
-    .await
-    .map_err(|e| connect_error(config, &e))
+  config.to_postgres_config().connect(tls).await.map_err(|e| connect_error(config, e))
 }
 
 /// The deadpool manager behind [`create_pool`], for callers that configure the pool themselves.
@@ -308,7 +332,7 @@ pub fn pool_manager(config: &ConnectionConfig) -> AsyncDieselConnectionManager<A
     async move {
       connect(&config)
         .await
-        .map_err(|e| diesel::ConnectionError::BadConnection(e.to_string()))
+        .map_err(|e| diesel::ConnectionError::BadConnection(error_chain(&e)))
     }
     .boxed()
   });
@@ -321,17 +345,19 @@ pub fn create_pool(config: &ConnectionConfig) -> Result<PgPool, BuildError> {
   Pool::builder(pool_manager(config)).max_size(config.max_pool_size).build()
 }
 
-fn connect_error(config: &ConnectionConfig, error: &tokio_postgres::Error) -> ConnectionError {
+fn connect_error(config: &ConnectionConfig, source: impl Into<ConnectSource>) -> ConnectionError {
   ConnectionError::Connect {
     host: config.host.clone(),
     port: config.port,
     username: config.username.clone(),
-    reason: error_chain(error),
+    source: source.into(),
   }
 }
 
-/// `tokio_postgres::Error` prints only its kind ("db error"); the cause holds the server's message.
-fn error_chain(error: &dyn std::error::Error) -> String {
+/// The error and each of its causes, joined with `": "`: how an error of this crate becomes text. A message here
+/// names only its step, and `tokio_postgres::Error` prints only its kind ("db error"), so printing the top error
+/// alone would lose the server's message.
+pub fn error_chain(error: &dyn std::error::Error) -> String {
   let mut text = error.to_string();
   let mut source = error.source();
   while let Some(cause) = source {
@@ -352,7 +378,7 @@ fn client_config(config: &ConnectionConfig) -> Result<Option<ClientConfig>, Conn
   let provider = Arc::new(rustls::crypto::aws_lc_rs::default_provider());
   let builder = ClientConfig::builder_with_provider(Arc::clone(&provider))
     .with_safe_default_protocol_versions()
-    .map_err(|e| ConnectionError::Tls(e.to_string()))?;
+    .map_err(TlsError::ProtocolVersions)?;
 
   let client_config = match config.ssl_mode {
     SslMode::Disable => return Ok(None),
@@ -367,7 +393,7 @@ fn client_config(config: &ConnectionConfig) -> Result<Option<ClientConfig>, Conn
       let roots = Arc::new(root_store(config.root_certificate.as_deref())?);
       let inner = WebPkiServerVerifier::builder_with_provider(roots, provider)
         .build()
-        .map_err(|e| ConnectionError::Tls(e.to_string()))?;
+        .map_err(TlsError::Verifier)?;
       builder
         .dangerous()
         .with_custom_certificate_verifier(Arc::new(ChainOnlyVerification { inner }))
@@ -378,32 +404,29 @@ fn client_config(config: &ConnectionConfig) -> Result<Option<ClientConfig>, Conn
 }
 
 /// The certificates of `Root Certificate` when given, otherwise the operating system's trusted roots.
-fn root_store(root_certificate: Option<&Path>) -> Result<RootCertStore, ConnectionError> {
+fn root_store(root_certificate: Option<&Path>) -> Result<RootCertStore, TlsError> {
   let mut roots = RootCertStore::empty();
   if let Some(path) = root_certificate {
     let certificates = CertificateDer::pem_file_iter(path)
       .and_then(Iterator::collect::<Result<Vec<_>, _>>)
-      .map_err(|e| ConnectionError::Tls(format!("cannot read the root certificate '{}': {e}", path.display())))?;
+      .map_err(|source| TlsError::RootCertificate {
+        path: path.to_owned(),
+        source,
+      })?;
     let (added, _) = roots.add_parsable_certificates(certificates);
     if added == 0 {
-      return Err(ConnectionError::Tls(format!(
-        "the root certificate '{}' holds no certificate",
-        path.display()
-      )));
+      return Err(TlsError::EmptyRootCertificate { path: path.to_owned() });
     }
   } else {
     let native = rustls_native_certs::load_native_certs();
     let (added, _) = roots.add_parsable_certificates(native.certs);
     if added == 0 {
       let reasons: Vec<String> = native.errors.iter().map(ToString::to_string).collect();
-      return Err(ConnectionError::Tls(format!(
-        "no trusted root certificate was found on this system ({})",
-        if reasons.is_empty() {
-          "the store is empty".to_owned()
-        } else {
-          reasons.join("; ")
-        }
-      )));
+      return Err(TlsError::NoSystemRoots(if reasons.is_empty() {
+        "the store is empty".to_owned()
+      } else {
+        reasons.join("; ")
+      }));
     }
   }
   Ok(roots)
@@ -701,6 +724,66 @@ mod tests {
   fn a_missing_root_certificate_file_is_a_tls_error() {
     let config = ConnectionConfig::parse("Host=h;Username=u;SSL Mode=VerifyFull;Root Certificate=/nonexistent/root.pem").unwrap();
 
-    assert!(matches!(client_config(&config), Err(ConnectionError::Tls(message)) if message.contains("/nonexistent/root.pem")));
+    let error = client_config(&config).unwrap_err();
+
+    let ConnectionError::Tls(TlsError::RootCertificate { path, source }) = &error else {
+      panic!("{error:?}");
+    };
+    assert_eq!(path, Path::new("/nonexistent/root.pem"));
+    assert!(matches!(source, rustls::pki_types::pem::Error::Io(io) if io.kind() == std::io::ErrorKind::NotFound));
+    assert_eq!(
+      error_chain(&error),
+      format!("TLS setup failed: cannot read the root certificate '/nonexistent/root.pem': {source}")
+    );
+  }
+
+  #[tokio::test]
+  async fn a_refused_connection_keeps_the_typed_cause_and_renders_it_in_the_chain() {
+    // Port 1 on the loopback address: nothing listens there, so the connection is refused at once.
+    let config = ConnectionConfig::parse("Host=127.0.0.1;Port=1;Username=u;Password=secret-value;SSL Mode=Disable;Timeout=2").unwrap();
+
+    let error = connect_client(&config).await.unwrap_err();
+
+    let ConnectionError::Connect {
+      source: ConnectSource::Postgres(cause),
+      ..
+    } = &error
+    else {
+      panic!("{error:?}");
+    };
+    let io = std::error::Error::source(cause).and_then(|io| io.downcast_ref::<std::io::Error>());
+    assert_eq!(
+      io.map(std::io::Error::kind),
+      Some(std::io::ErrorKind::ConnectionRefused),
+      "{error:?}"
+    );
+    let message = error_chain(&error);
+    assert!(
+      message.starts_with("could not connect to PostgreSQL at 127.0.0.1:1 as u: "),
+      "{message}"
+    );
+    assert!(
+      message.ends_with(&cause_text(cause)),
+      "the chain ends with the operating system's words: {message}"
+    );
+    assert!(!message.contains("secret-value"), "{message}");
+  }
+
+  fn cause_text(error: &tokio_postgres::Error) -> String {
+    std::error::Error::source(error).map(ToString::to_string).unwrap_or_default()
+  }
+
+  #[test]
+  fn the_chain_joins_every_cause_once() {
+    #[derive(Debug, thiserror::Error)]
+    #[error("outer")]
+    struct Outer(#[source] Middle);
+    #[derive(Debug, thiserror::Error)]
+    #[error("middle")]
+    struct Middle(#[source] std::io::Error);
+
+    let error = Outer(Middle(std::io::Error::other("inner")));
+
+    assert_eq!(error_chain(&error), "outer: middle: inner");
   }
 }

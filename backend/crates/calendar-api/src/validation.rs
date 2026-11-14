@@ -14,6 +14,11 @@ pub const MIN_DATE: NaiveDate = NaiveDate::from_ymd_opt(1900, 1, 1).expect("a va
 /// The last date the API accepts.
 pub const MAX_DATE: NaiveDate = NaiveDate::from_ymd_opt(2200, 12, 31).expect("a valid date");
 
+/// Whether `date` is within [`MIN_DATE`]..=[`MAX_DATE`], so date arithmetic on it is safe.
+pub fn is_supported_date(date: NaiveDate) -> bool {
+  (MIN_DATE..=MAX_DATE).contains(&date)
+}
+
 /// Collects field errors, keeping the order in which fields first failed.
 #[derive(Debug, Default, Clone, PartialEq, Eq)]
 pub struct FieldErrors {
@@ -65,7 +70,7 @@ impl FieldErrors {
 
   /// Refuses a date outside [`MIN_DATE`]..=[`MAX_DATE`].
   pub fn check_date(&mut self, date: Option<NaiveDate>, field: &str) {
-    if date.is_some_and(|date| date < MIN_DATE || date > MAX_DATE) {
+    if date.is_some_and(|date| !is_supported_date(date)) {
       self.add(field, "Date must be between 1900-01-01 and 2200-12-31.");
     }
   }

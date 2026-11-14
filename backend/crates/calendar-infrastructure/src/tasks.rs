@@ -71,18 +71,15 @@ pub(crate) fn stored_priority(text: &str) -> Result<Priority, Error> {
 struct NewTask<'a> {
   id: Uuid,
   owner_id: Uuid,
-  title: &'a str,
-  priority: &'a str,
-  notes: Option<&'a str>,
-  due_date: Option<NaiveDate>,
-  due_at: Option<DateTime<Utc>>,
-  completed_at: Option<DateTime<Utc>>,
+  #[diesel(embed)]
+  fields: TaskFields<'a>,
 }
 
-/// The columns an update may change: never the id, the owner or `xmin`.
-#[derive(AsChangeset)]
+/// The columns an insert writes after the id and owner, and the ones an update may change: never the id, the
+/// owner or `xmin`. An update writes every column, so a deadline of one kind clears the other kind's column.
+#[derive(Insertable, AsChangeset)]
 #[diesel(table_name = tasks, treat_none_as_null = true)]
-struct TaskChanges<'a> {
+struct TaskFields<'a> {
   title: &'a str,
   priority: &'a str,
   notes: Option<&'a str>,
@@ -91,14 +88,15 @@ struct TaskChanges<'a> {
   completed_at: Option<DateTime<Utc>>,
 }
 
-impl<'a> TaskChanges<'a> {
+impl<'a> TaskFields<'a> {
   fn of(task: &'a TodoTask) -> Self {
+    let deadline = task.deadline();
     Self {
       title: task.title(),
       priority: task.priority().as_str(),
       notes: task.notes(),
-      due_date: task.due_date(),
-      due_at: task.due_at(),
+      due_date: deadline.due_date(),
+      due_at: deadline.due_at(),
       completed_at: task.completed_at(),
     }
   }
@@ -120,12 +118,7 @@ pub async fn insert(conn: &mut AsyncPgConnection, owner: OwnerId, task: &TodoTas
     .values(NewTask {
       id: task.id(),
       owner_id: owner.0,
-      title: task.title(),
-      priority: task.priority().as_str(),
-      notes: task.notes(),
-      due_date: task.due_date(),
-      due_at: task.due_at(),
-      completed_at: task.completed_at(),
+      fields: TaskFields::of(task),
     })
     .returning(tasks::xmin)
     .get_result(conn)
@@ -367,7 +360,7 @@ async fn update_row(
       .filter(tasks::id.eq(task.id()))
       .filter(tasks::xmin.eq(expected)),
   )
-  .set(TaskChanges::of(task))
+  .set(TaskFields::of(task))
   .returning(tasks::xmin)
   .get_result(conn)
   .await

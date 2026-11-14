@@ -45,7 +45,8 @@ jobs:
       # scripts and proc macros, 25-36 s of its LoadManifest phase on a cold runner (issue #883, record 0027). The rust
       # analysis restores the registry and a persistent target directory for the extractor, which cut that phase to
       # about 1 s. A run that is not a pull request saves both once per lock file, so pull requests read main's copies.
-      # The target directory is also keyed on the runner's rustc, the toolchain the extractor uses.
+      # The target directory is also keyed on the runner's default rustc: the extractor reports "project Rust toolchain:
+      # stable (default)", not the backend/ pin.
       - name: Read the extractor's Rust toolchain
         id: rustc
         if: matrix.language == 'rust'
@@ -60,7 +61,10 @@ jobs:
             ~/.cargo/registry/cache
             ~/.cargo/git/db
           key: codeql-rust-registry-${{ runner.os }}-${{ hashFiles('backend/Cargo.lock') }}
-          restore-keys: codeql-rust-registry-${{ runner.os }}-
+          # Only a pull request falls back to an older lock file's entry. A run that saves restores the exact key or
+          # nothing, so a saved entry never carries crates or builds the lock file no longer uses.
+          restore-keys: >-
+            ${{ github.event_name == 'pull_request' && format('codeql-rust-registry-{0}-', runner.os) || '' }}
       - name: Restore the extractor's target directory
         id: target
         if: matrix.language == 'rust'
@@ -70,7 +74,9 @@ jobs:
           key: >-
             codeql-rust-target-${{ runner.os }}-rustc-${{ steps.rustc.outputs.version }}-${{
             hashFiles('backend/Cargo.lock') }}
-          restore-keys: codeql-rust-target-${{ runner.os }}-rustc-${{ steps.rustc.outputs.version }}-
+          restore-keys: >-
+            ${{ github.event_name == 'pull_request'
+            && format('codeql-rust-target-{0}-rustc-{1}-', runner.os, steps.rustc.outputs.version) || '' }}
       - uses: github/codeql-action/init@v4
         with:
           languages: ${{ matrix.language }}

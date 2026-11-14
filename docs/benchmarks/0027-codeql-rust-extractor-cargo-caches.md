@@ -59,5 +59,5 @@ To be completed from the first successful `Analyze (rust)` push runs on `main` a
 
 Keep both caches; the target directory carries the saving. Reconsider when:
 - a warm LoadManifest on `main` exceeds 10 s;
-- the target entry grows past about 250 MiB, because the restore-key carries older builds across lock-file changes (measure, then key on the lock file alone without a fallback);
+- the target entry grows past about 250 MiB. Only pull requests fall back to an older lock file's entry. A run that saves restores the exact key or nothing, so a saved entry holds one lock file's builds and crates (review finding on #905);
 - the CodeQL action starts caching the extractor's dependencies itself.

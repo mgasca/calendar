@@ -39,18 +39,8 @@ pub async fn create(
   JsonBody(request): JsonBody<CreateEventRequest>,
 ) -> Result<Response, ApiError> {
   let fields = EventFields::from(request);
-  let shape = match check_shape(&fields) {
-    Ok(shape) => shape,
-    Err(errors) => return Err(errors.into_problem().into()),
-  };
-  let created = match new_event(user.owner.0, &fields, shape) {
-    Ok(created) => created,
-    Err(error) => {
-      let mut errors = FieldErrors::new();
-      errors.add_domain_error(&error);
-      return Err(errors.into_problem().into());
-    }
-  };
+  let shape = check_shape(&fields)?;
+  let created = new_event(user.owner.0, &fields, shape).map_err(FieldErrors::from_domain)?;
 
   let mut connection = state.db().await?;
   let version = events::insert(&mut connection, user.owner, &created).await?;
@@ -102,10 +92,7 @@ pub async fn update(
   JsonBody(request): JsonBody<UpdateEventRequest>,
 ) -> Result<Response, ApiError> {
   let (fields, version) = request.into_parts();
-  let shape = match check_shape(&fields) {
-    Ok(shape) => shape,
-    Err(errors) => return Err(errors.into_problem().into()),
-  };
+  let shape = check_shape(&fields)?;
 
   let owner = user.owner;
   let mut connection = state.db().await?;
@@ -114,11 +101,7 @@ pub async fn update(
   };
 
   let mut changed = found.entity.clone();
-  if let Err(error) = apply(&mut changed, &fields, shape) {
-    let mut errors = FieldErrors::new();
-    errors.add_domain_error(&error);
-    return Err(errors.into_problem().into());
-  }
+  apply(&mut changed, &fields, shape).map_err(FieldErrors::from_domain)?;
 
   match events::update(&mut connection, owner, &found, &changed, RowVersion(version)).await {
     Ok(version) => request::ok(&to_response(&changed, version)),

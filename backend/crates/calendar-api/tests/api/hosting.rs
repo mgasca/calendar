@@ -2,6 +2,7 @@
 //! `403` for a denied API request, and the session cookie's attributes.
 
 use crate::common::*;
+use calendar_api::auth::google::SIGN_IN_COOKIE;
 
 /// A signed-in user who is denied: no production route denies a signed-in user today.
 struct DeniesEveryone;
@@ -77,13 +78,13 @@ async fn forwarded_https_sets_google_redirect_and_secure_cookie() {
     location.contains("redirect_uri=https%3A%2F%2Fcalendar.example%2Fapi%2Fauth%2Fcallback%2Fgoogle"),
     "{location}"
   );
-  let cookies = login.set_cookies().join(",");
-  assert!(cookies.contains("secure"), "{cookies}");
+  let flow = login.set_cookie(SIGN_IN_COOKIE).expect("the sign-in cookie is set");
+  assert!(flow.has("secure"), "{flow:?}");
 
   let logout = app.client().header("x-forwarded-proto", "https").post("/api/auth/logout").await;
   assert_eq!(logout.status, StatusCode::NO_CONTENT);
-  let cookies = logout.set_cookies().join(",");
-  assert!(cookies.contains("secure"), "{cookies}");
+  let cleared = logout.set_cookie(SESSION_COOKIE).expect("the session cookie is cleared");
+  assert!(cleared.has("secure"), "{cleared:?}");
 }
 
 #[tokio::test]
@@ -104,7 +105,7 @@ async fn session_cookie_is_http_only_and_same_site_lax() {
 
   let cookies = response.set_cookies();
   assert_eq!(cookies.len(), 1, "{cookies:?}");
-  let cookie = cookies[0].to_lowercase();
-  assert!(cookie.contains("httponly"), "{cookie}");
-  assert!(cookie.contains("samesite=lax"), "{cookie}");
+  let cookie = response.set_cookie(SESSION_COOKIE).expect("the session cookie is set");
+  assert!(cookie.has("httponly"), "{cookie:?}");
+  assert!(cookie.has("samesite=lax"), "{cookie:?}");
 }

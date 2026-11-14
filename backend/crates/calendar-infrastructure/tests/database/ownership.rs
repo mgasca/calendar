@@ -16,7 +16,7 @@ async fn a_call_for_a_user_sees_only_that_users_rows() {
   let mut f = fixture().await;
   let day = date(2026, 10, 26);
   let today = DayWindow::create(day, IanaZone::UTC);
-  let range = DateRangeWindow::create(day, 1, IanaZone::UTC).unwrap();
+  let range = DateRangeWindow::single_day(day, IanaZone::UTC);
   let dated = DatedView {
     today,
     zone: IanaZone::UTC,

@@ -19,6 +19,7 @@ use axum::http::{HeaderValue, StatusCode};
 use axum::response::{IntoResponse, Response};
 use base64::Engine;
 use base64::engine::general_purpose::URL_SAFE_NO_PAD;
+use calendar_infrastructure::OwnerId;
 use calendar_infrastructure::users::{self, SignIn};
 use chrono::{DateTime, TimeDelta, Utc};
 use serde::{Deserialize, Serialize};
@@ -189,7 +190,7 @@ pub async fn callback(
   match complete(&state, &origin, &query, &headers).await {
     Ok((principal, return_url)) => match state.sealer().await {
       Ok(sealer) => {
-        let ticket = SessionTicket::issue(&principal, state.now()).seal(&sealer);
+        let ticket = SessionTicket::issue(principal, state.now()).seal(&sealer);
         let session = session::set_cookie(session::SESSION_COOKIE, &ticket, secure, None);
         redirect(&return_url, [clear_flow, session])
       }
@@ -243,7 +244,7 @@ async fn complete(
   let sealer = state
     .sealer()
     .await
-    .map_err(|error| format!("the session key is unavailable: {error:?}"))?;
+    .map_err(|error| format!("the session key is unavailable: {error}"))?;
   let flow: SignInState = sealer
     .open(SIGN_IN_PURPOSE, cookie)
     .and_then(|json| serde_json::from_slice(&json).ok())
@@ -433,7 +434,7 @@ pub async fn attach_user(
   picture: Option<&str>,
 ) -> Result<Principal, SignInError> {
   let subject = subject.filter(|subject| !is_blank(Some(subject))).ok_or(SignInError::NoSubject)?;
-  let mut connection = state.db().await.map_err(|error| SignInError::Directory(format!("{error:?}")))?;
+  let mut connection = state.db().await.map_err(|error| SignInError::Directory(error.to_string()))?;
   let sign_in = SignIn {
     email,
     google_subject: Some(subject),
@@ -444,7 +445,7 @@ pub async fn attach_user(
     .await
     .map_err(|error| SignInError::Directory(error.to_string()))?;
   Ok(Principal {
-    user_id: user.id(),
+    owner: OwnerId(user.id()),
     name: name.map(str::to_owned),
     email: Some(email.to_owned()),
     picture: picture.map(str::to_owned),

@@ -229,6 +229,81 @@ async fn a_failed_request_exports_its_error_log_with_the_trace_id_and_without_th
 }
 
 #[tokio::test]
+async fn a_successful_request_exports_one_log_record_with_its_trace_id_and_only_allow_listed_fields() {
+  let capture = Capture::start();
+  let app = TestApp::builder().meter(capture.meter()).start().await;
+
+  let response = app
+    .client()
+    .header("traceparent", TRACEPARENT)
+    .get("/api/agenda/day?date=2026-10-26&timeZone=Europe%2FMadrid")
+    .await;
+  assert_eq!(response.status, StatusCode::OK);
+
+  let logs = capture.logs();
+  let finished: Vec<_> = logs
+    .iter()
+    .filter(|log| {
+      log
+        .record
+        .body()
+        .is_some_and(|body| format!("{body:?}").contains("request finished"))
+    })
+    .collect();
+  assert_eq!(finished.len(), 1, "one record per request: {logs:#?}");
+  let record = &finished[0].record;
+  assert_eq!(record.severity_number(), Some(opentelemetry::logs::Severity::Info));
+  let server = capture
+    .spans()
+    .into_iter()
+    .find(|span| span.span_kind == SpanKind::Server)
+    .expect("a server span");
+  let context = record.trace_context().expect("the record carries the trace context");
+  assert_eq!(context.trace_id, trace_id());
+  assert_eq!(context.span_id, server.span_context.span_id());
+  let mut attributes: Vec<(String, String)> = record
+    .attributes_iter()
+    .map(|(key, value)| (key.as_str().to_owned(), format!("{value:?}")))
+    .collect();
+  attributes.sort();
+  assert_eq!(
+    attributes,
+    [
+      (
+        "http.request.method".to_owned(),
+        format!("{:?}", opentelemetry::logs::AnyValue::from("GET".to_owned()))
+      ),
+      (
+        "http.response.status_code".to_owned(),
+        format!("{:?}", opentelemetry::logs::AnyValue::Int(200))
+      ),
+      (
+        "http.route".to_owned(),
+        format!("{:?}", opentelemetry::logs::AnyValue::from("/api/agenda/day".to_owned()))
+      ),
+    ],
+    "only the method, route template and status: {record:#?}"
+  );
+}
+
+#[tokio::test]
+async fn health_probes_are_not_logged() {
+  let capture = Capture::start();
+  let app = TestApp::builder().meter(capture.meter()).start().await;
+
+  app.client().get("/api/health").await;
+
+  let logs = capture.logs();
+  assert!(
+    !logs.iter().any(|log| log
+      .record
+      .body()
+      .is_some_and(|body| format!("{body:?}").contains("request finished"))),
+    "{logs:#?}"
+  );
+}
+
+#[tokio::test]
 async fn requests_are_counted_and_timed_by_method_route_template_and_status() {
   let capture = Capture::start();
   let app = TestApp::builder().meter(capture.meter()).start().await;

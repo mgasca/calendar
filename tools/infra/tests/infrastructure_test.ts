@@ -1,5 +1,5 @@
 import { assert, assertEquals, assertStringIncludes } from "@std/assert";
-import { run } from "../infrastructure.ts";
+import { run, safePreview } from "../infrastructure.ts";
 import type { Azure } from "../process.ts";
 import { join } from "node:path";
 export class FakeAzure implements Azure {
@@ -46,7 +46,7 @@ export class FakeAzure implements Azure {
     }
     return Promise.resolve(
       args.includes("what-if")
-        ? '{"preview":"no-change","password":"transformed-secret","changes":[{"path":"properties.postgresAdministratorPassword","after":"encoded-value"}]}'
+        ? '{"preview":"no-change","password":"transformed-secret","changes":[{"path":"properties.postgresAdministratorPassword","after":"encoded-value"},{"path":"properties.appInsightsConfiguration.connectionString","after":"InstrumentationKey=delta-key"},{"resourceId":"cae","after":{"properties":{"appInsightsConfiguration":{"connectionString":"InstrumentationKey=after-key"},"appLogsConfiguration":{"logAnalyticsConfiguration":{"customerId":"workspace-id","sharedKey":"shared-key-value"}}}}}]}'
         : "",
     );
   }
@@ -105,6 +105,8 @@ Deno.test("full preview keeps password off arguments and output", () =>
     assert(!az.calls.flat().includes("secret-value"));
     assert(!output.join("\n").includes("transformed-secret"));
     assert(!output.join("\n").includes("encoded-value"));
+    for (const value of ["delta-key", "after-key", "shared-key-value"]) assert(!output.join("\n").includes(value));
+    assertStringIncludes(output.join("\n"), "workspace-id");
     assert(!az.fileContents.includes("secret-value"));
     assertStringIncludes(
       az.fileContents,
@@ -130,6 +132,51 @@ Deno.test("full preview keeps password off arguments and output", () =>
     }
     assertEquals(exists, false);
   }));
+Deno.test("preview redacts sensitive paths and nested keys case-insensitively", () => {
+  const preview = {
+    changes: [
+      { path: "properties.CONNECTIONSTRING", after: "path-value" },
+      { propertyName: "properties.SHAREDKEY", after: "property-value" },
+      {
+        path: "properties.visible",
+        after: {
+          CoNnEcTiOnStRiNg: "connection-value",
+          ShArEdKeY: "shared-value",
+          nested: [{
+            SECRET: "secret-value",
+            password: "password-value",
+            credential: "credential-value",
+            token: "token-value",
+            customerId: "workspace-id",
+          }],
+        },
+      },
+      { path: 42, propertyName: null, after: "ordinary-value" },
+    ],
+  };
+  const result = JSON.parse(safePreview(JSON.stringify(preview)));
+  assertEquals(result, {
+    changes: [
+      { redacted: true },
+      { redacted: true },
+      {
+        path: "properties.visible",
+        after: {
+          CoNnEcTiOnStRiNg: "[redacted]",
+          ShArEdKeY: "[redacted]",
+          nested: [{
+            SECRET: "[redacted]",
+            password: "[redacted]",
+            credential: "[redacted]",
+            token: "[redacted]",
+            customerId: "workspace-id",
+          }],
+        },
+      },
+      { path: 42, propertyName: null, after: "ordinary-value" },
+    ],
+  });
+});
 Deno.test("foundation preview does not access vault", () =>
   isolated(async () => {
     const az = new FakeAzure();

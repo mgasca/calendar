@@ -26,7 +26,7 @@ export function ipRange(value: string): { startIpAddress: string; endIpAddress: 
   return { startIpAddress: address(number & mask), endIpAddress: address(number | ~mask) };
 }
 function sensitive(name: string) {
-  return /secret|password|credential|token/i.test(name);
+  return /secret|connectionstring|sharedkey|password|credential|token/i.test(name);
 }
 export function safePreview(json: string): string {
   const node: unknown = JSON.parse(json);

@@ -117,7 +117,7 @@ When the request names a state directory (the routine does), write the report an
 ### 9. Hand off, if the mode allows
 
 - **`issues`**: create one epic issue that holds the report's public form (lessons, classes, routes, evidence as issue/PR links, no private handles), and one enhancement child per lesson that names its route and its capture. Link the children from the epic. Do not create a story card; the repo's workflow starts it with PR 0 when delivery begins.
-- **`deliver`**: follow the repo's story workflow. Use the `story-draft` skill for the card (PR 0 from the epic), one PR per child, each based on fresh `origin/main` or stacked until its base merges, and the `issue-handover` skill to watch, answer and close out. Merge only with the user's authorization; required checks stay. Complete the card with what was delivered and the limits of the evidence, as story 0018 does.
+- **`deliver`**: follow the repo's story workflow. Use the `story-draft` skill for the card (PR 0 from the epic), one PR per child, each based on fresh `origin/main` or stacked as a native GitHub stack (root `AGENTS.md`), and the `issue-handover` skill to watch, answer and close out. Merge only with the user's authorization; required checks stay. Complete the card with what was delivered and the limits of the evidence, as story 0018 does.
 
 In both modes, re-check the rendered text of every post for private handles and absolute paths before publishing.
 

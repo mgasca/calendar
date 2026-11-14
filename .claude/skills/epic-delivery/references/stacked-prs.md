@@ -25,9 +25,12 @@ GitHub supports partial contiguous group merges and merge queues. If a queued la
 
 Native stacks may require a cascading rebase to restore linear history; GitHub can also rebase them server-side. Fetch and re-read remote state before any worker push. Do not blindly apply ordinary-chain advice to merge `main` into every layer, manually retarget every PR, or force-push over GitHub's changes. If the native stack's required maintenance conflicts with the repository's rules against rewriting pushed branches, explain the specific conflict and seek a maintainer decision instead of overriding either rule. Preserve any local work while reconciling remote changes.
 
+Workers create stacks natively with the `gh-stack` extension (`gh stack init`/`add`/`submit`, or `gh stack link` for PRs that already exist), as root `AGENTS.md` and `issue-handover` prescribe. The update tools are a cascading rebase that force-pushes every layer: GitHub's "Rebase stack", `gh stack rebase` then `gh stack push`, or `gh stack sync`. "Update branch" does not apply, since `PUT /repos/{owner}/{repo}/pulls/{n}/update-branch` returns 403 for stack branches. A worker runs none of them on pushed branches without the maintainer's explicit OK for that stack, so a behind or conflicting native stack is a question for the maintainer, not a worker action.
+
 ## Sources
 
 * [Merge stacked pull requests](https://docs.github.com/en/pull-requests/how-tos/merge-and-close-pull-requests/merging-stacked-pull-requests): group selection, merge ordering, automatic handling of remaining layers and merge queues.
 * [Stacked pull request reference](https://docs.github.com/en/pull-requests/reference/stacked-pull-requests): trunk protections, Actions context, metadata, per-PR merge/squash results and rebasing.
+* [Stacked PRs CLI commands](https://docs.github.com/en/pull-requests/reference/stacked-prs-cli-commands): the `gh stack` commands that create, link, rebase, push, sync and merge a stack.
 
 The original epic-monitoring session interpreted grouped merges as accidental merges into parent branches. The maintainer confirmed they intentionally used GitHub's stack feature. Retain the verification lesson; discard the assumption that this merge choice was an error. No fixed epic IDs, session handles or machine paths belong in the reusable procedure.

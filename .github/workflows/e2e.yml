@@ -153,7 +153,7 @@ jobs:
   alert:
     name: Report a failure on main
     needs: e2e
-    if: ${{ failure() && (github.ref == 'refs/heads/main' || github.event_name == 'pull_request') }}
+    if: ${{ failure() && github.ref == 'refs/heads/main' }}
     runs-on: ubuntu-latest
     timeout-minutes: 5
     permissions:

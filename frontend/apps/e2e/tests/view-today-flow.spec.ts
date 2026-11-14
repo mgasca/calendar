@@ -74,7 +74,7 @@ test(
         web('ui.day.load'),
         web('GET /api/agenda/day'),
         api('GET /api/agenda/day'),
-        api('SELECT events-ALERT-PROOF-737'),
+        api('SELECT events'),
       ],
       spans: [api('SELECT tasks'), api('BEGIN'), api('COMMIT')],
       routes,

@@ -6,6 +6,7 @@ use axum::response::{IntoResponse, Response};
 use calendar_domain::error::ArgumentError;
 use calendar_domain::events::CalendarEvent;
 use calendar_infrastructure::{Error, RowVersion, events};
+use chrono::{DateTime, NaiveDate, Utc};
 use uuid::Uuid;
 
 use super::request::{self, RouteId};
@@ -38,13 +39,14 @@ pub async fn create(
   JsonBody(request): JsonBody<CreateEventRequest>,
 ) -> Result<Response, ApiError> {
   let fields = EventFields::from(request);
-  let mut errors = check_shape(&fields);
-  if errors.any() {
-    return Err(errors.into_problem().into());
-  }
-  let created = match new_event(user.owner.0, &fields) {
+  let shape = match check_shape(&fields) {
+    Ok(shape) => shape,
+    Err(errors) => return Err(errors.into_problem().into()),
+  };
+  let created = match new_event(user.owner.0, &fields, shape) {
     Ok(created) => created,
     Err(error) => {
+      let mut errors = FieldErrors::new();
       errors.add_domain_error(&error);
       return Err(errors.into_problem().into());
     }
@@ -100,10 +102,10 @@ pub async fn update(
   JsonBody(request): JsonBody<UpdateEventRequest>,
 ) -> Result<Response, ApiError> {
   let (fields, version) = request.into_parts();
-  let mut errors = check_shape(&fields);
-  if errors.any() {
-    return Err(errors.into_problem().into());
-  }
+  let shape = match check_shape(&fields) {
+    Ok(shape) => shape,
+    Err(errors) => return Err(errors.into_problem().into()),
+  };
 
   let owner = user.owner;
   let mut connection = state.db().await?;
@@ -112,7 +114,8 @@ pub async fn update(
   };
 
   let mut changed = found.entity.clone();
-  if let Err(error) = apply(&mut changed, &fields) {
+  if let Err(error) = apply(&mut changed, &fields, shape) {
+    let mut errors = FieldErrors::new();
     errors.add_domain_error(&error);
     return Err(errors.into_problem().into());
   }
@@ -153,10 +156,25 @@ pub async fn delete(RouteId(id): RouteId, CurrentUser(user): CurrentUser, State(
   }
 }
 
-/// The fields each kind of event requires and forbids, shared by create and update.
-fn check_shape(request: &EventFields) -> FieldErrors {
+/// The kind of an event with the fields that kind requires, as validation found them.
+#[derive(Debug, Clone, Copy)]
+enum EventShape<'a> {
+  AllDay {
+    start_date: NaiveDate,
+    end_date: NaiveDate,
+  },
+  Timed {
+    start: DateTime<Utc>,
+    end: DateTime<Utc>,
+    time_zone: &'a str,
+  },
+}
+
+/// The fields each kind of event requires and forbids, shared by create and update: the event's shape, or
+/// every field error.
+fn check_shape(request: &EventFields) -> Result<EventShape<'_>, FieldErrors> {
   let mut errors = FieldErrors::new();
-  if request.all_day {
+  let shape = if request.all_day {
     errors.require(
       request.start_date.is_some(),
       "startDate",
@@ -168,6 +186,10 @@ fn check_shape(request: &EventFields) -> FieldErrors {
     errors.forbid(request.time_zone.is_some(), "timeZone", "timeZone is only for timed events.");
     errors.check_date(request.start_date, "startDate");
     errors.check_date(request.end_date, "endDate");
+    match (request.start_date, request.end_date) {
+      (Some(start_date), Some(end_date)) => Some(EventShape::AllDay { start_date, end_date }),
+      _ => None,
+    }
   } else {
     errors.require(request.start.is_some(), "start", "start is required for a timed event.");
     errors.require(request.end.is_some(), "end", "end is required for a timed event.");
@@ -182,44 +204,32 @@ fn check_shape(request: &EventFields) -> FieldErrors {
       "endDate",
       "endDate is only for all-day events; use end.",
     );
-  }
-  errors
-}
-
-/// The missing-field error [`check_shape`] guarantees never happens.
-fn shape_checked() -> ArgumentError {
-  ArgumentError::new("", "The event's fields do not match its kind.")
-}
-
-fn new_event(owner: Uuid, fields: &EventFields) -> Result<CalendarEvent, ArgumentError> {
-  let title = fields.title.as_deref().unwrap_or_default();
-  let (location, notes) = (fields.location.as_deref(), fields.notes.as_deref());
-  if fields.all_day {
-    let (Some(start_date), Some(end_date)) = (fields.start_date, fields.end_date) else {
-      return Err(shape_checked());
-    };
-    CalendarEvent::create_all_day(owner, title, start_date, end_date, location, notes)
-  } else {
-    let (Some(start), Some(end), Some(time_zone)) = (fields.start, fields.end, fields.time_zone.as_deref()) else {
-      return Err(shape_checked());
-    };
-    CalendarEvent::create(owner, title, start, end, time_zone, location, notes)
+    match (request.start, request.end, request.time_zone.as_deref()) {
+      (Some(start), Some(end), Some(time_zone)) => Some(EventShape::Timed { start, end, time_zone }),
+      _ => None,
+    }
+  };
+  match (errors.any(), shape) {
+    (false, Some(shape)) => Ok(shape),
+    _ => Err(errors),
   }
 }
 
-fn apply(event: &mut CalendarEvent, fields: &EventFields) -> Result<(), ArgumentError> {
+fn new_event(owner: Uuid, fields: &EventFields, shape: EventShape<'_>) -> Result<CalendarEvent, ArgumentError> {
   let title = fields.title.as_deref().unwrap_or_default();
   let (location, notes) = (fields.location.as_deref(), fields.notes.as_deref());
-  if fields.all_day {
-    let (Some(start_date), Some(end_date)) = (fields.start_date, fields.end_date) else {
-      return Err(shape_checked());
-    };
-    event.update_all_day(title, start_date, end_date, location, notes)
-  } else {
-    let (Some(start), Some(end), Some(time_zone)) = (fields.start, fields.end, fields.time_zone.as_deref()) else {
-      return Err(shape_checked());
-    };
-    event.update(title, start, end, time_zone, location, notes)
+  match shape {
+    EventShape::AllDay { start_date, end_date } => CalendarEvent::create_all_day(owner, title, start_date, end_date, location, notes),
+    EventShape::Timed { start, end, time_zone } => CalendarEvent::create(owner, title, start, end, time_zone, location, notes),
+  }
+}
+
+fn apply(event: &mut CalendarEvent, fields: &EventFields, shape: EventShape<'_>) -> Result<(), ArgumentError> {
+  let title = fields.title.as_deref().unwrap_or_default();
+  let (location, notes) = (fields.location.as_deref(), fields.notes.as_deref());
+  match shape {
+    EventShape::AllDay { start_date, end_date } => event.update_all_day(title, start_date, end_date, location, notes),
+    EventShape::Timed { start, end, time_zone } => event.update(title, start, end, time_zone, location, notes),
   }
 }
 

@@ -71,7 +71,7 @@
 
 
 
-<table><thead><tr><th>Interface</th><th>Details</th></tr></thead><tbody><tr><td><code>ci-workflows</code></td><td><strong>workflows</strong>: ci.yml, codeql.yml, dependency-review.yml, infra-whatif.yml, azure-oidc-check.yml, migrate.yml, pages.yml, dashboard-snapshot.yml, ci-trend.yml</td></tr></tbody></table>
+<table><thead><tr><th>Interface</th><th>Details</th></tr></thead><tbody><tr><td><code>ci-workflows</code></td><td><strong>workflows</strong>: ci.yml, codeql.yml, dependency-review.yml, infra-whatif.yml, azure-oidc-check.yml, migrate.yml, pages.yml, dashboard-snapshot.yml, ci-trend.yml, e2e.yml</td></tr></tbody></table>
 <h2 id="relationships">Relationships</h2>
 
 
@@ -207,7 +207,7 @@
 <li><strong>workflow</strong>: .github/workflows/ci-trend.yml</li>
 <li><strong>schedule</strong>: Daily at 06:23 UTC, and on demand</li>
 <li><strong>window-runs</strong>: 20</li>
-<li><strong>test</strong>: One-sided Mann-Whitney U test of the last 20 successful push runs after the baseline against the publication-path baseline, per job</li>
+<li><strong>test</strong>: One-sided Mann-Whitney U test of the last 20 successful push runs after the baseline against the publication-path baseline, per job; a second step does the same for the last 20 scheduled runs of e2e.yml against .github/e2e-baseline.json once 30 nightly runs have pinned it, and reports that no baseline exists until then (#737)</li>
 <li><strong>significance</strong>: 0.002</li>
 <li><strong>minimum-effect</strong>: Hodges-Lehmann shift of at least max(10 s, 5 % of the baseline median)</li>
 <li><strong>output</strong>: Opens, or comments on, the one open performance issue titled ‘CI run-time trend: …’; never fails a run</li>

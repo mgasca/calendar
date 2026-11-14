@@ -9,7 +9,7 @@ use calendar_infrastructure::{OwnerId, agenda};
 use diesel_async::AsyncPgConnection;
 
 use super::agenda_order;
-use crate::contracts::{AgendaTaskItem, AllDayEventItem, TimedEventItem};
+use crate::contracts::{AgendaTaskItem, AllDayEventItem, TimedEventItem, saturating_count};
 use crate::error::ApiError;
 
 /// The most overdue tasks an agenda lists; the totals count them all.
@@ -63,8 +63,8 @@ pub async fn read(
   let (overdue, overdue_total, overdue_open_total) = match rows.overdue {
     Some(overdue) => (
       Some(overdue.tasks.into_iter().map(Into::into).collect()),
-      i32::try_from(overdue.total).unwrap_or(i32::MAX),
-      i32::try_from(overdue.open_total).unwrap_or(i32::MAX),
+      saturating_count(overdue.total),
+      saturating_count(overdue.open_total),
     ),
     None => (None, 0, 0),
   };

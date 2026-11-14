@@ -299,6 +299,13 @@ describe('finding the trace a navigation started (sign-in-flow)', () => {
     });
   });
 
+  it('gives trace ids all 32 hex digits, which Tempo search drops the leading zeros of', () => {
+    const [trace] = searchResults({
+      traces: [{ traceID: 'a0e9ddd4760b974aaf93b9a7fb93f9f', startTimeUnixNano: '1' }],
+    });
+    expect(trace?.traceId).toBe('0a0e9ddd4760b974aaf93b9a7fb93f9f');
+  });
+
   it('keeps only the API roots of that name started since the test began', () => {
     const since = new Date(1794612850000);
     const found = apiRootTraces(searchResults(answer), 'GET /api/auth/callback/google', since);

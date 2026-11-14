@@ -213,7 +213,8 @@ interface TempoSearch {
 /** The traces of a Tempo `GET /api/search` answer. */
 export function searchResults(body: unknown): FoundTrace[] {
   return ((body as TempoSearch).traces ?? []).map((trace) => ({
-    traceId: trace.traceID ?? '',
+    // Tempo's search drops the id's leading zeros; Loki and the traceparent keep all 32 hex digits.
+    traceId: (trace.traceID ?? '').padStart(32, '0'),
     rootService: trace.rootServiceName ?? '',
     rootName: trace.rootTraceName ?? '',
     startedAt: Number(BigInt(trace.startTimeUnixNano ?? '0') / 1_000_000n),

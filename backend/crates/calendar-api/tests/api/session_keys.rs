@@ -16,16 +16,6 @@ async fn stored_keys(app: &TestApp) -> Vec<Vec<u8>> {
   rows.iter().map(|row| row.get(0)).collect()
 }
 
-fn ticket(app: &TestApp) -> SessionTicket {
-  SessionTicket {
-    user_id: Some(USER_A),
-    name: Some("Someone".to_owned()),
-    email: Some("someone@example.com".to_owned()),
-    picture: None,
-    expires_at: app.clock.now() + TimeDelta::hours(8),
-  }
-}
-
 #[tokio::test]
 async fn the_key_is_stored_in_postgres_and_visible_to_another_instance() {
   let first = host().await;
@@ -76,7 +66,7 @@ async fn a_protected_payload_survives_another_instance() {
 #[tokio::test]
 async fn a_session_cookie_sealed_by_one_instance_signs_in_at_another() {
   let first = host().await;
-  let cookie = first.session_cookie(&ticket(&first)).await;
+  let cookie = first.session_cookie(&first.ticket_for(Some(USER_A))).await;
   let second = first.reconfigure().start().await;
 
   let me: AuthUserResponse = second.client().cookie(&cookie).get("/api/auth/me").await.success().json();
@@ -87,7 +77,7 @@ async fn a_session_cookie_sealed_by_one_instance_signs_in_at_another() {
 #[tokio::test]
 async fn a_tampered_cookie_is_rejected() {
   let app = host().await;
-  let cookie = app.session_cookie(&ticket(&app)).await;
+  let cookie = app.session_cookie(&app.ticket_for(Some(USER_A))).await;
   assert_eq!(app.client().cookie(&cookie).get("/api/auth/me").await.status, StatusCode::OK);
 
   // Change one character in the middle of the sealed value, and separately cut the value short.
@@ -106,7 +96,7 @@ async fn a_tampered_cookie_is_rejected() {
 #[tokio::test]
 async fn an_expired_cookie_is_rejected() {
   let app = host().await;
-  let cookie = app.session_cookie(&ticket(&app)).await;
+  let cookie = app.session_cookie(&app.ticket_for(Some(USER_A))).await;
   let client = app.client().cookie(&cookie);
 
   app.clock.advance(TimeDelta::hours(8) - TimeDelta::seconds(1));
@@ -119,7 +109,7 @@ async fn an_expired_cookie_is_rejected() {
 async fn a_cookie_sealed_with_another_databases_key_is_rejected() {
   let first = host().await;
   let other = host().await;
-  let cookie = other.session_cookie(&ticket(&other)).await;
+  let cookie = other.session_cookie(&other.ticket_for(Some(USER_A))).await;
 
   assert_eq!(other.client().cookie(&cookie).get("/api/auth/me").await.status, StatusCode::OK);
   assert_eq!(

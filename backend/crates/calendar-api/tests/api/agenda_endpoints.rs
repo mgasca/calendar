@@ -2,65 +2,8 @@
 
 use crate::common::*;
 
-const NEW_YORK: &str = "America/New_York";
-
-fn d(text: &str) -> NaiveDate {
-  text.parse().expect("a valid date")
-}
-
-fn timed(title: &str, start: DateTime<Utc>, end: DateTime<Utc>) -> CalendarEvent {
-  timed_in(title, start, end, NEW_YORK)
-}
-
-fn timed_in(title: &str, start: DateTime<Utc>, end: DateTime<Utc>, zone: &str) -> CalendarEvent {
-  CalendarEvent::create(OWNER, title, start, end, zone, None, None).expect("a valid event")
-}
-
-fn all_day(title: &str, start: &str, end: &str) -> CalendarEvent {
-  CalendarEvent::create_all_day(OWNER, title, d(start), d(end), None, None).expect("a valid event")
-}
-
-fn on(title: &str, due_date: &str) -> TodoTask {
-  task(title, Some(d(due_date)), None)
-}
-
-fn at(title: &str, due_at: DateTime<Utc>) -> TodoTask {
-  task(title, None, Some(due_at))
-}
-
-fn with_priority(title: &str, due_date: Option<&str>, due_at: Option<DateTime<Utc>>, priority: &str) -> TodoTask {
-  TodoTask::create(OWNER, title, due_date.map(d), due_at, priority, None).expect("a valid task")
-}
-
-fn done(title: &str, due_date: &str, completed_at: DateTime<Utc>) -> TodoTask {
-  completed_task(title, Some(d(due_date)), completed_at, None)
-}
-
-fn event_titles(events: &[TimedEventItem]) -> Vec<&str> {
-  events.iter().map(|event| event.title.as_str()).collect()
-}
-
-fn all_day_titles(events: &[AllDayEventItem]) -> Vec<&str> {
-  events.iter().map(|event| event.title.as_str()).collect()
-}
-
-fn task_titles(tasks: &[AgendaTaskItem]) -> Vec<&str> {
-  tasks.iter().map(|task| task.title.as_str()).collect()
-}
-
 fn task_ids(tasks: &[AgendaTaskItem]) -> Vec<Uuid> {
   tasks.iter().map(|task| task.id).collect()
-}
-
-fn sorted_keys(value: &Value) -> Vec<&str> {
-  let mut keys: Vec<&str> = value.as_object().expect("a JSON object").keys().map(String::as_str).collect();
-  keys.sort_unstable();
-  keys
-}
-
-fn sorted(mut names: Vec<&str>) -> Vec<&str> {
-  names.sort_unstable();
-  names
 }
 
 // ---- request validation ----
@@ -88,9 +31,7 @@ async fn get_day_agenda_invalid_input_returns_400_validation_problem() {
 
     assert_eq!(response.status, StatusCode::BAD_REQUEST, "{query}");
     assert_eq!(response.media_type(), Some("application/problem+json"), "{query}");
-    let body = response.value();
-    let errors = body["errors"].as_object().unwrap_or_else(|| panic!("{query}: no errors in {body}"));
-    assert!(errors.contains_key(field), "{query}: {errors:?}");
+    assert!(response.has_error(field), "{query}: {}", response.value());
   }
 }
 
@@ -266,7 +207,7 @@ async fn events_touching_the_window_edges_are_excluded() {
   let agenda = app.get_agenda("2026-10-26", NEW_YORK).await;
 
   assert_eq!(
-    event_titles(&agenda.events),
+    titles(&agenda.events),
     ["ends a second into the day", "starts a second before the end"]
   );
 }
@@ -291,15 +232,12 @@ async fn events_on_dst_fall_back_day_use_the_twenty_five_hour_window() {
 
   assert_eq!(nov1.window.start, utc(2026, 11, 1, 4, 0));
   assert_eq!(nov1.window.end, utc(2026, 11, 2, 5, 0));
-  assert_eq!(event_titles(&nov1.events), ["first minute", "23:30 EST on the 1st"]);
+  assert_eq!(titles(&nov1.events), ["first minute", "23:30 EST on the 1st"]);
   assert_eq!(
-    event_titles(&app.get_agenda("2026-11-02", NEW_YORK).await.events),
+    titles(&app.get_agenda("2026-11-02", NEW_YORK).await.events),
     ["00:00 EST on the 2nd"]
   );
-  assert_eq!(
-    event_titles(&app.get_agenda("2026-10-31", NEW_YORK).await.events),
-    ["late on the 31st"]
-  );
+  assert_eq!(titles(&app.get_agenda("2026-10-31", NEW_YORK).await.events), ["late on the 31st"]);
 }
 
 #[tokio::test]
@@ -319,7 +257,7 @@ async fn events_are_sorted_by_start_then_title() {
 
   let agenda = app.get_agenda("2026-10-26", NEW_YORK).await;
 
-  assert_eq!(event_titles(&agenda.events), ["early", "Zulu", "alpha", "beta"]);
+  assert_eq!(titles(&agenda.events), ["early", "Zulu", "alpha", "beta"]);
 }
 
 // ---- all-day events ----
@@ -368,8 +306,8 @@ async fn all_day_events_are_sorted_by_start_date_then_title_and_not_mixed_with_t
 
   let agenda = app.get_agenda("2026-10-26", NEW_YORK).await;
 
-  assert_eq!(all_day_titles(&agenda.all_day_events), ["older", "a", "b"]);
-  assert_eq!(event_titles(&agenda.events), ["timed"]);
+  assert_eq!(titles(&agenda.all_day_events), ["older", "a", "b"]);
+  assert_eq!(titles(&agenda.events), ["timed"]);
 }
 
 // ---- tasks ----
@@ -394,7 +332,7 @@ async fn tasks_due_today_includes_date_only_and_timed_in_window_but_not_undated_
   let agenda = app.get_agenda("2026-10-26", NEW_YORK).await;
 
   assert_eq!(
-    task_titles(&agenda.tasks.due_today),
+    titles(&agenda.tasks.due_today),
     ["timed at window start", "timed today", "date today"]
   );
   assert_eq!(agenda.tasks.overdue, Vec::new());
@@ -423,7 +361,7 @@ async fn tasks_overdue_open_ones_and_ones_completed_today_are_shown_but_not_comp
 
   assert!(overdue.len() >= 3, "{overdue:?}");
   assert_eq!(
-    task_titles(&overdue[..3]),
+    titles(&overdue[..3]),
     ["open, due last week", "open, timed yesterday", "timed just before window"]
   );
   assert!(overdue[3..].iter().all(|task| task.is_completed));
@@ -454,7 +392,7 @@ async fn tasks_due_today_stay_visible_when_completed() {
 
   let due_today = app.get_agenda("2026-10-26", NEW_YORK).await.tasks.due_today;
 
-  assert_eq!(task_titles(&due_today), ["done timed", "done earlier", "done today"]);
+  assert_eq!(titles(&due_today), ["done timed", "done earlier", "done today"]);
   assert!(due_today.iter().all(|task| task.is_completed));
 }
 
@@ -479,7 +417,7 @@ async fn tasks_overdue_are_ordered_oldest_due_first_across_date_and_instant_dues
   let overdue = app.get_agenda("2026-10-26", NEW_YORK).await.tasks.overdue;
 
   assert_eq!(
-    task_titles(&overdue),
+    titles(&overdue),
     [
       "a: date 10-20",
       "b1: timed 10-22 18:00 local",
@@ -539,7 +477,7 @@ async fn tasks_due_today_deadline_precedes_priority_and_priority_precedes_title(
   let due_today = app.get_agenda("2026-10-26", NEW_YORK).await.tasks.due_today;
 
   assert_eq!(
-    task_titles(&due_today),
+    titles(&due_today),
     [
       "early high a",
       "early high z",
@@ -632,10 +570,10 @@ async fn overdue_completed_today_follows_open_tasks_even_when_due_earlier() {
   let day = app.get_agenda("2026-10-26", NEW_YORK).await;
   let week = app.get_week_agenda("2026-10-26", NEW_YORK, "2026-10-26").await;
 
-  assert_eq!(task_titles(&day.tasks.overdue), ["open", "completed"]);
+  assert_eq!(titles(&day.tasks.overdue), ["open", "completed"]);
   assert_eq!(day.tasks.overdue_total, 2);
   assert_eq!(day.tasks.overdue_open_total, 1);
-  assert_eq!(task_titles(&week.overdue.expect("an overdue list")), ["open", "completed"]);
+  assert_eq!(titles(&week.overdue.expect("an overdue list")), ["open", "completed"]);
 }
 
 #[tokio::test]

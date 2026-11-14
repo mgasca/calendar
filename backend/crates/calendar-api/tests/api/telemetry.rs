@@ -341,11 +341,9 @@ async fn no_span_log_or_metric_carries_personal_data_query_values_or_the_session
   let capture = Capture::start();
   let app = TestApp::builder().real_authentication().meter(capture.meter()).start().await;
   let ticket = SessionTicket {
-    user_id: Some(USER_A),
     name: Some(NAME.to_owned()),
     email: Some(EMAIL.to_owned()),
-    picture: None,
-    expires_at: app.clock.now() + TimeDelta::hours(8),
+    ..app.ticket_for(Some(USER_A))
   };
   let cookie = app.session_cookie(&ticket).await;
   let client = app.client().cookie(&cookie).header("traceparent", TRACEPARENT);

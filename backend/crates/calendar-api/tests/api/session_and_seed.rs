@@ -9,7 +9,6 @@ use calendar_api::auth::dev_seed::{self, NO_ALLOWED_EMAIL_MESSAGE};
 use calendar_domain::users::User;
 use tokio_postgres::types::ToSql;
 
-const SEED_KEY: &str = "12345678901234567890123456789012";
 const FIRST_ALLOWED: &str = "Owner@Example.com";
 const SEED_HEADER: &str = "X-Dev-Seed-Key";
 
@@ -57,13 +56,7 @@ async fn a_cookie_session_is_accepted_only_with_a_user_id() {
   for (with_user_id, expected) in [(false, StatusCode::UNAUTHORIZED), (true, StatusCode::OK)] {
     // The real cookie scheme, with a ticket sealed with this host's own key.
     let app = TestApp::builder().real_authentication().start().await;
-    let ticket = SessionTicket {
-      user_id: with_user_id.then_some(USER_A),
-      name: Some("Someone".to_owned()),
-      email: Some("someone@example.com".to_owned()),
-      picture: None,
-      expires_at: app.clock.now() + TimeDelta::hours(8),
-    };
+    let ticket = app.ticket_for(with_user_id.then_some(USER_A));
     let cookie = app.session_cookie(&ticket).await;
 
     let response = app.client().cookie(&cookie).get("/api/auth/me").await;

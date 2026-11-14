@@ -4,8 +4,9 @@
 
 use crate::common::*;
 use calendar_domain::time::{DateRangeWindow, IanaZone};
+use calendar_infrastructure::agenda::AllDayEventRow;
 use calendar_infrastructure::queries::task_list::TaskListView;
-use calendar_infrastructure::{Error, OwnerId, agenda, events, tasks};
+use calendar_infrastructure::{Error, OwnerId, Versioned, agenda, events, tasks};
 
 const ZONE: &str = "UTC";
 const BULK: &str = "/api/tasks/bulk";
@@ -24,12 +25,6 @@ fn timed_event(owner: Uuid, title: &str) -> CalendarEvent {
 
 fn all_day_event(owner: Uuid, title: &str) -> CalendarEvent {
   CalendarEvent::create_all_day(owner, title, today(), today() + days(1), None, None).expect("a valid event")
-}
-
-fn completed_task_of(owner: Uuid, title: &str, due_date: Option<NaiveDate>, completed_at: DateTime<Utc>) -> TodoTask {
-  let mut task = task_of(owner, title, due_date, None);
-  task.complete(completed_at);
-  task
 }
 
 async fn list(client: &TestClient, view: &str) -> TaskPage {
@@ -54,11 +49,12 @@ async fn seed_both_users(app: &TestApp) {
     tasks.push(task_of(owner, &format!("{letter} overdue"), Some(today() - days(3)), None));
     tasks.push(task_of(owner, &format!("{letter} upcoming"), Some(today() + days(5)), None));
     tasks.push(task_of(owner, &format!("{letter} no deadline"), None, None));
-    tasks.push(completed_task_of(
+    tasks.push(task_with(
       owner,
       &format!("{letter} completed"),
       Some(today() - days(10)),
-      utc(2026, 10, 20, 9, 0),
+      None,
+      Some(utc(2026, 10, 20, 9, 0)),
     ));
   }
 
@@ -98,8 +94,17 @@ async fn is_completed(app: &TestApp, id: Uuid) -> bool {
     .get(0)
 }
 
-fn titles<T>(items: &[T], title: impl Fn(&T) -> &str) -> Vec<&str> {
-  items.iter().map(title).collect()
+// The repository rows this module asserts over, besides the contract items the harness covers.
+impl Titled for Versioned<TodoTask> {
+  fn title(&self) -> &str {
+    self.entity.title()
+  }
+}
+
+impl Titled for AllDayEventRow {
+  fn title(&self) -> &str {
+    &self.title
+  }
 }
 
 #[tokio::test]
@@ -108,10 +113,10 @@ async fn day_and_week_agendas_show_only_the_callers_rows() {
   seed_both_users(&app).await;
 
   let day_a = app.get_agenda("2026-10-26", ZONE).await;
-  assert_eq!(titles(&day_a.all_day_events, |e| &e.title), ["A all-day"]);
-  assert_eq!(titles(&day_a.events, |e| &e.title), ["A timed"]);
-  assert_eq!(titles(&day_a.tasks.due_today, |t| &t.title), ["A due today"]);
-  assert_eq!(titles(&day_a.tasks.overdue, |t| &t.title), ["A overdue"]);
+  assert_eq!(titles(&day_a.all_day_events), ["A all-day"]);
+  assert_eq!(titles(&day_a.events), ["A timed"]);
+  assert_eq!(titles(&day_a.tasks.due_today), ["A due today"]);
+  assert_eq!(titles(&day_a.tasks.overdue), ["A overdue"]);
   assert_eq!(day_a.tasks.overdue_total, 1);
   assert_eq!(day_a.tasks.overdue_open_total, 1);
 
@@ -120,14 +125,14 @@ async fn day_and_week_agendas_show_only_the_callers_rows() {
     .get(&format!("/api/agenda/day?date=2026-10-26&timeZone={ZONE}"))
     .await;
   let day_b: DayAgendaResponse = response.json();
-  assert_eq!(titles(&day_b.all_day_events, |e| &e.title), ["B all-day"]);
-  assert_eq!(titles(&day_b.events, |e| &e.title), ["B timed"]);
-  assert_eq!(titles(&day_b.tasks.due_today, |t| &t.title), ["B due today"]);
-  assert_eq!(titles(&day_b.tasks.overdue, |t| &t.title), ["B overdue"]);
+  assert_eq!(titles(&day_b.all_day_events), ["B all-day"]);
+  assert_eq!(titles(&day_b.events), ["B timed"]);
+  assert_eq!(titles(&day_b.tasks.due_today), ["B due today"]);
+  assert_eq!(titles(&day_b.tasks.overdue), ["B overdue"]);
   assert_eq!(day_b.tasks.overdue_total, 1);
 
   let week_a = app.get_week_agenda("2026-10-26", ZONE, "2026-10-26").await;
-  assert_eq!(titles(&week_a.all_day_events, |e| &e.title), ["A all-day"]);
+  assert_eq!(titles(&week_a.all_day_events), ["A all-day"]);
   let week_events: Vec<&str> = week_a.days.iter().flat_map(|day| &day.events).map(|e| e.title.as_str()).collect();
   assert_eq!(week_events, ["A timed"]);
   // "A upcoming" is due five days later, still inside the ISO week.
@@ -137,7 +142,7 @@ async fn day_and_week_agendas_show_only_the_callers_rows() {
     .overdue
     .as_deref()
     .expect("the week holds today, so it lists the overdue tasks");
-  assert_eq!(titles(overdue, |t| &t.title), ["A overdue"]);
+  assert_eq!(titles(overdue), ["A overdue"]);
   assert_eq!(week_a.overdue_total, 1);
 }
 
@@ -244,7 +249,7 @@ async fn created_rows_belong_to_the_caller() {
 async fn another_users_task_is_not_found_for_read_complete_reopen_and_delete_and_stays_unchanged() {
   let app = TestApp::start().await;
   let open = task_of(USER_B, "B open", Some(today()), None);
-  let completed = completed_task_of(USER_B, "B completed", Some(today()), utc(2026, 10, 25, 12, 0));
+  let completed = task_with(USER_B, "B completed", Some(today()), None, Some(utc(2026, 10, 25, 12, 0)));
   app.seed(&[], &[open.clone(), completed.clone()]).await;
   let open_uri = format!("/api/tasks/{}", open.id());
   let complete_uri = format!("/api/tasks/{}/complete", open.id());
@@ -357,11 +362,11 @@ async fn a_call_for_a_user_sees_only_that_users_rows_and_one_for_nobody_sees_not
   let page = tasks::list_page(&mut connection, as_a, &TaskListView::NoDeadline, None, 200)
     .await
     .expect("the tasks are listed");
-  assert_eq!(titles(&page.items, |task| task.entity.title()), ["A"]);
+  assert_eq!(titles(&page.items), ["A"]);
   let rows = agenda::read(&mut connection, as_a, &range, None, 20)
     .await
     .expect("the agenda is read");
-  assert_eq!(titles(&rows.all_day_events, |event| &event.title), ["A"]);
+  assert_eq!(titles(&rows.all_day_events), ["A"]);
   assert_eq!(page.items.len(), 1);
 
   let nobody = OwnerId(Uuid::new_v4());

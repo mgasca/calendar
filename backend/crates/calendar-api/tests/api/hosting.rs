@@ -15,10 +15,7 @@ impl Authenticator for DeniesEveryone {
 
 #[tokio::test]
 async fn spa_routing_and_cache_headers() {
-  let root = tempfile::tempdir().unwrap();
-  std::fs::create_dir(root.path().join("assets")).unwrap();
-  std::fs::write(root.path().join("index.html"), "SPA").unwrap();
-  std::fs::write(root.path().join("assets").join("app-Abc123_X.js"), "asset").unwrap();
+  let root = spa_root();
   std::fs::write(root.path().join("assets").join("plain.js"), "plain").unwrap();
   let app = TestApp::builder()
     .without_database()

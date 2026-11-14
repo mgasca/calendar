@@ -27,9 +27,9 @@ env:
 jobs:
   # Decides which jobs this run needs from the files it changes (ADR-0046, story 0038). Pull requests and merge groups
   # run only the jobs whose inputs they change; pushes and dispatches run every job, and so does a run whose file list
-  # may be truncated or that changes the rules (.github/ci-changes.jq, which tools/delivery-guards tests). ADR
-  # conventions is the one exception: a pull request or merge group never runs it with Tooling, which runs the same
-  # check. CI result accepts a skipped job only when this job's output for it is false.
+  # may be truncated or that changes the rules (.github/ci-changes.jq, which tools/delivery-guards tests). The
+  # exceptions: a pull request or merge group never runs ADR conventions or Narratives with Tooling, nor Flow binding
+  # with Frontend, which run the same checks. CI result accepts a skipped job only when this job's output for it is false.
   changes:
     name: Changes
     runs-on: ubuntu-latest
@@ -45,6 +45,7 @@ jobs:
       tooling: ${{ steps.decide.outputs.tooling }}
       adr: ${{ steps.decide.outputs.adr }}
       narratives: ${{ steps.decide.outputs.narratives }}
+      binding: ${{ steps.decide.outputs.binding }}
       image: ${{ steps.decide.outputs.image }}
       skipped: ${{ steps.decide.outputs.skipped }}
     steps:
@@ -224,8 +225,9 @@ jobs:
             backend/target
           key: ${{ steps.cache.outputs.cache-primary-key }}
 
-  # The web app and the API client. Format and lint cover the whole workspace, docs sources included;
-  # the docs site's own checks, tests and builds run in the Docs site job beside this one (#274).
+  # The web app, the API client and the e2e package's browser-free tests (the flow binding check, ADR-0061). Format and
+  # lint cover the whole workspace, docs sources included; the docs site's own checks, tests and builds run in the Docs
+  # site job beside this one (#274).
   frontend:
     name: Frontend
     needs: changes
@@ -462,6 +464,33 @@ jobs:
       - name: Narratives match their parts
         run: deno run --config .claude/skills/architecture-narrative-builder/deno.json --frozen --no-prompt --allow-read .claude/skills/architecture-narrative-builder/scripts/stitch/stitch.ts --check
 
+  # The e2e package's browser-free tests alone, the flow binding check of ADR-0061 among them (#902), for a change to the
+  # architecture model that runs no Frontend job. It installs only the e2e package and what it depends on, and lists the
+  # Playwright suite without a browser. As for ADR conventions, a pull request or merge group never runs it together with
+  # Frontend, whose test step runs the same tests; pushes and dispatches run both, so ADR-0045 can baseline it from main.
+  binding:
+    name: Flow binding
+    needs: changes
+    if: needs.changes.outputs.binding == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6.1.1
+        with:
+          package_json_file: frontend/package.json
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: frontend/.node-version
+          cache: pnpm
+          cache-dependency-path: frontend/pnpm-lock.yaml
+      - run: pnpm install --frozen-lockfile --filter '@calendar/e2e...'
+      - name: Flow binding and the e2e package's unit tests
+        run: pnpm --filter @calendar/e2e test
+
   image:
     name: Container image
     needs: changes
@@ -545,7 +574,7 @@ jobs:
   result:
     name: CI result
     if: ${{ always() }}
-    needs: [changes, backend, frontend, docs, tooling, adr, narratives, image]
+    needs: [changes, backend, frontend, docs, tooling, adr, narratives, binding, image]
     runs-on: ubuntu-latest
     # actions: read lets the steps below read this run's jobs from the API; contents: read checks out .github/ only,
     # for the run-time gate and its baseline from the commit under test.

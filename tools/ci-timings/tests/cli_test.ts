@@ -138,3 +138,35 @@ Deno.test("CSharpParity_CLI_SamplingUsesIdenticalArgumentsExitAndStdout", async 
     await Deno.remove(directory, { recursive: true });
   }
 });
+Deno.test("Trend_WithNoBaselineFileYet_ConcludesNothingAndSucceedsWithoutCallingGitHub", async () => {
+  const dir = await Deno.makeTempDir();
+  try {
+    const result = await new Deno.Command(Deno.execPath(), {
+      args: [
+        "run",
+        "--no-prompt",
+        "--config",
+        fromFileUrl(new URL("../../deno.json", import.meta.url)),
+        "--allow-read",
+        "--allow-env",
+        "--allow-write",
+        fromFileUrl(new URL("../ci-timings.ts", import.meta.url)),
+        "--trend",
+        "--issue",
+        "--workflow",
+        "e2e.yml",
+        "--out",
+        join(dir, "e2e-baseline.json"),
+        "--repo",
+        "o/r",
+      ],
+      stdout: "piped",
+      stderr: "piped",
+    }).output();
+    const out = new TextDecoder().decode(result.stdout);
+    assertEquals(result.code, 0, new TextDecoder().decode(result.stderr));
+    assertEquals(out.includes("no baseline yet for `e2e.yml`"), true, out);
+  } finally {
+    await Deno.remove(dir, { recursive: true });
+  }
+});

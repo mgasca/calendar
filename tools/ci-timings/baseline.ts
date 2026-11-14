@@ -111,7 +111,7 @@ export function isSuccessful(run: WorkflowRun): boolean {
   return run.status === "completed" && run.conclusion === "success";
 }
 export function isMain(run: WorkflowRun): boolean {
-  return run.headBranch === "main" && ["push", "workflow_dispatch"].includes(run.event);
+  return run.headBranch === "main" && ["push", "workflow_dispatch", "schedule"].includes(run.event);
 }
 export function buildBaseline(
   workflow: string,

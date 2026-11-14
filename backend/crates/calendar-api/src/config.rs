@@ -159,7 +159,7 @@ impl Settings {
       .map(|(name, value)| (name.as_ref().to_ascii_uppercase(), value.into()))
       .collect();
     let get = |name: &str| vars.get(&name.to_ascii_uppercase()).cloned();
-    let non_blank = |name: &str| get(name).filter(|value| !is_blank(Some(value)));
+    let non_blank = |name: &str| get(name).filter(|value| !is_blank(value));
 
     let mut allowed: Vec<(u32, String)> = vars
       .iter()
@@ -280,7 +280,7 @@ impl Settings {
 /// (`ApiAuthentication.IsAllowed`).
 pub fn is_allowed(email: Option<&str>, verified: bool, allowed: &[String]) -> bool {
   match email {
-    Some(email) if verified && !is_blank(Some(email)) => allowed.iter().any(|entry| ordinal_ignore_case_eq(entry, email)),
+    Some(email) if verified && !is_blank(email) => allowed.iter().any(|entry| ordinal_ignore_case_eq(entry, email)),
     _ => false,
   }
 }

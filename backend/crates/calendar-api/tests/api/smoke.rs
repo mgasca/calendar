@@ -5,8 +5,6 @@
 use crate::common::*;
 use diesel_async::RunQueryDsl;
 
-const SEED_KEY: &str = "12345678901234567890123456789012";
-
 /// Ports `DatabaseConnectivityTests.Api_ConnectsToRealPostgres_AsAppRole`.
 #[tokio::test]
 async fn the_api_connects_to_real_postgres_as_the_app_role() {
@@ -117,10 +115,7 @@ async fn an_event_is_validated_created_and_shown_in_the_agenda() {
 
   let agenda = app.get_agenda("2026-10-26", "America/New_York").await;
   assert_eq!(agenda.window.start, utc(2026, 10, 26, 4, 0));
-  assert_eq!(
-    agenda.events.iter().map(|event| event.title.as_str()).collect::<Vec<_>>(),
-    ["Stand-up"]
-  );
+  assert_eq!(titles(&agenda.events), ["Stand-up"]);
   assert_eq!(agenda.all_day_events.len(), 1);
   assert_eq!(agenda.tasks.due_today.len(), 1);
   assert_eq!((agenda.tasks.overdue_total, agenda.tasks.overdue_open_total), (1, 0));
@@ -227,13 +222,7 @@ async fn without_the_test_authenticator_only_a_session_with_a_user_id_signs_in()
   assert_eq!(app.client().get("/api/health").await.status, StatusCode::OK);
   assert_eq!(app.client().get("/openapi/v1.json").await.status, StatusCode::OK);
 
-  let ticket = SessionTicket {
-    user_id: Some(USER_A),
-    name: Some("Someone".to_owned()),
-    email: Some("someone@example.com".to_owned()),
-    picture: None,
-    expires_at: app.clock.now() + TimeDelta::hours(8),
-  };
+  let ticket = app.ticket_for(Some(USER_A));
   let signed_in = app.client().cookie(&app.session_cookie(&ticket).await);
   let me: AuthUserResponse = signed_in.get("/api/auth/me").await.success().json();
   assert_eq!((me.name.as_str(), me.email.as_str()), ("Someone", "someone@example.com"));
@@ -250,19 +239,16 @@ async fn without_the_test_authenticator_only_a_session_with_a_user_id_signs_in()
     .get("/api/auth/me")
     .await;
   assert_eq!(rejected.status, StatusCode::UNAUTHORIZED);
-  let cleared = rejected.set_cookies();
-  assert_eq!(cleared.len(), 1);
-  assert!(
-    cleared[0].starts_with(&format!("{SESSION_COOKIE}=;")) && cleared[0].contains("expires="),
-    "{cleared:?}"
-  );
+  assert_eq!(rejected.set_cookies().len(), 1, "{:?}", rejected.set_cookies());
+  let cleared = rejected.set_cookie(SESSION_COOKIE).expect("the session cookie is cleared");
+  assert!(cleared.value().is_empty() && cleared.has("expires"), "{cleared:?}");
 
   let logout = signed_in.post("/api/auth/logout").await;
   assert_eq!(logout.status, StatusCode::NO_CONTENT);
-  let cookie = logout.set_cookies().join("").to_lowercase();
+  let cookie = logout.set_cookie(SESSION_COOKIE).expect("the session cookie is cleared");
   assert!(
-    cookie.contains("expires=") && cookie.contains("httponly") && cookie.contains("samesite=lax"),
-    "{cookie}"
+    cookie.has("expires") && cookie.has("httponly") && cookie.has("samesite=lax"),
+    "{cookie:?}"
   );
 }
 
@@ -314,10 +300,7 @@ async fn the_seed_key_signs_in_as_the_first_allow_listed_email_in_development_on
 
 #[tokio::test]
 async fn static_files_the_web_app_fallback_and_the_login_explanation() {
-  let root = tempfile::tempdir().unwrap();
-  std::fs::create_dir(root.path().join("assets")).unwrap();
-  std::fs::write(root.path().join("index.html"), "SPA").unwrap();
-  std::fs::write(root.path().join("assets").join("app-Abc123_X.js"), "asset").unwrap();
+  let root = spa_root();
   let app = TestApp::builder()
     .without_database()
     .real_authentication()

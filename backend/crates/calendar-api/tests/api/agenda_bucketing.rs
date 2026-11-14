@@ -2,51 +2,15 @@
 //! against every day (issue #55). The reference below is the older implementation: filter every item with the
 //! day-inclusion rules for each day, then order.
 //!
-//! The .NET test drew from `new Random(55)` and `Guid.NewGuid()`; this one draws everything from a fixed-seed
-//! generator of its own, so the items differ but the run is repeatable.
+//! The .NET test drew from `new Random(55)` and `Guid.NewGuid()`; this one draws everything from the shared
+//! fixed-seed generator (`common::SeededRandom`), so the items differ but the run is repeatable.
 
+use crate::common::SeededRandom;
 use calendar_api::contracts::{AgendaTaskItem, TimedEventItem};
 use calendar_api::endpoints::{agenda_builder, agenda_order};
 use calendar_domain::agenda::day_inclusion;
 use calendar_domain::time::{DateRangeWindow, time_zones};
-use chrono::{DateTime, Days, NaiveDate, TimeDelta, Utc};
-use uuid::Uuid;
-
-/// `SplitMix64`: a small deterministic generator, seeded like `new Random(seed)`.
-struct SeededRandom(u64);
-
-impl SeededRandom {
-  fn next_u64(&mut self) -> u64 {
-    self.0 = self.0.wrapping_add(0x9E37_79B9_7F4A_7C15);
-    let mut z = self.0;
-    z = (z ^ (z >> 30)).wrapping_mul(0xBF58_476D_1CE4_E5B9);
-    z = (z ^ (z >> 27)).wrapping_mul(0x94D0_49BB_1331_11EB);
-    z ^ (z >> 31)
-  }
-
-  /// A value in `min..max` (`Random.Next(min, max)`).
-  fn between(&mut self, min: i64, max: i64) -> i64 {
-    let span = u64::try_from(max - min).expect("an ascending range");
-    min + i64::try_from(self.next_u64() % span).expect("a small offset")
-  }
-
-  fn pick<'a, T>(&mut self, items: &'a [T]) -> &'a T {
-    let index = usize::try_from(self.next_u64() % items.len() as u64).expect("an index");
-    &items[index]
-  }
-
-  fn id(&mut self) -> Uuid {
-    Uuid::from_u128((u128::from(self.next_u64()) << 64) | u128::from(self.next_u64()))
-  }
-}
-
-fn add_days(date: NaiveDate, days: i64) -> NaiveDate {
-  if days >= 0 {
-    date + Days::new(days.unsigned_abs())
-  } else {
-    date - Days::new(days.unsigned_abs())
-  }
-}
+use chrono::{DateTime, NaiveDate, TimeDelta, Utc};
 
 fn indexed_buckets_match_per_day_filtering(zone_id: &str, year: i32, month: u32, day: u32) {
   let zone = time_zones::find_iana(zone_id).expect("a valid zone");
@@ -90,7 +54,7 @@ fn indexed_buckets_match_per_day_filtering(zone_id: &str, year: i32, month: u32,
       title: format!("Task {}", i % 8),
       priority: "medium".to_owned(),
       has_notes: false,
-      due_date: (i % 3 == 0).then(|| add_days(range.start_date(), random.between(-2, 9))),
+      due_date: (i % 3 == 0).then(|| range.start_date() + TimeDelta::days(random.between(-2, 9))),
       due_at: (i % 3 != 0).then(|| *random.pick(&instants)),
       completed_at: None,
       is_completed: false,

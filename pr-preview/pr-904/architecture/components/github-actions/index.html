@@ -255,6 +255,11 @@
 <li><strong>record</strong>: 0016</li>
 <li><strong>mechanism</strong>: A Changes job runs .github/ci-changes.jq on every run, and every other job but CI result and Cancel superseded runs needs it and runs only when its own output is true; ChangesRulesTests run the rules with jq</li>
 <li><strong>test</strong>: tools/delivery-guards</li>
+<li><strong>id</strong>: codeql-rust-gate</li>
+<li><strong>protects</strong>: #882</li>
+<li><strong>record</strong>: 0026</li>
+<li><strong>mechanism</strong>: A CodeQL languages job runs .github/ci-changes.jq and .github/codeql-languages.jq on every run, and the Analyze matrix excludes rust only when that job says no Backend input changed; the rules tests tie the Rust input set to CI’s Backend set</li>
+<li><strong>test</strong>: tools/delivery-guards</li>
 </ul>
 </li>
 <li><strong>evidence</strong>: A delivery performance fix carries a test that fails when its mechanism is reverted and a benchmark record; a baseline change carries a record with the sample and the back-test; timings are asserted only through the pinned baseline</li>

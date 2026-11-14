@@ -1,15 +1,15 @@
 //! `/api/tasks`: the task list views, create, read, replace, delete, complete, reopen and bulk actions
 //! (ports `TaskEndpoints.cs`).
 
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 
 use axum::extract::State;
 use axum::http::StatusCode;
 use axum::response::{IntoResponse, Response};
 use calendar_domain::error::InvalidOperationError;
-use calendar_domain::tasks::TodoTask;
+use calendar_domain::tasks::{Deadline, TodoTask};
 use calendar_domain::time::DayWindow;
-use calendar_infrastructure::queries::task_list::{DatedView, TaskListView};
+use calendar_infrastructure::queries::task_list::{DatedView, TaskListKey, TaskListView};
 use calendar_infrastructure::tasks::{self, OverdueAction, TaskWrite};
 use calendar_infrastructure::{Error, OwnerId, RowVersion};
 use chrono::{DateTime, NaiveDate, Utc};
@@ -27,7 +27,7 @@ use crate::hosting::RequestOrigin;
 use crate::json::{JsonBody, JsonContent};
 use crate::problem::Problem;
 use crate::state::AppState;
-use crate::validation::FieldErrors;
+use crate::validation::{FieldErrors, is_supported_date};
 
 const DEFAULT_PAGE_SIZE: i32 = 50;
 const MAX_PAGE_SIZE: i32 = 200;
@@ -58,23 +58,16 @@ pub async fn create(
 ) -> Result<Response, ApiError> {
   let mut errors = FieldErrors::new();
   errors.check_date(request.due_date, "dueDate");
-  if errors.any() {
-    return Err(errors.into_problem().into());
-  }
-  let created = match TodoTask::create(
+  errors.into_result()?;
+  let created = TodoTask::create(
     user.owner.0,
     request.title.as_deref().unwrap_or_default(),
     request.due_date,
     request.due_at,
     request.priority.as_deref().unwrap_or_default(),
     request.notes.as_deref(),
-  ) {
-    Ok(created) => created,
-    Err(error) => {
-      errors.add_domain_error(&error);
-      return Err(errors.into_problem().into());
-    }
-  };
+  )
+  .map_err(FieldErrors::from_domain)?;
 
   let mut connection = state.db().await?;
   let version = tasks::insert(&mut connection, user.owner, &created).await?;
@@ -108,58 +101,18 @@ pub async fn list(CurrentUser(user): CurrentUser, State(state): State<AppState>,
   let limit = query.int("limit")?;
   let cursor = query.get("cursor");
 
-  let mut errors = FieldErrors::new();
-  let kind = view.as_deref().and_then(TaskListViewKind::parse);
-  errors.require(
-    kind.is_some(),
-    "view",
-    "view is required: upcoming, overdue, completed or no-deadline.",
-  );
-
-  let (mut today_date, mut zone) = (None, None);
-  if kind.is_some_and(TaskListViewKind::is_dated) {
-    today_date = errors.require_date(today, "today");
-    zone = errors.require_time_zone(time_zone.as_deref(), "timeZone");
-  }
-
-  let page_size = limit.unwrap_or(DEFAULT_PAGE_SIZE);
-  errors.require(
-    (1..=MAX_PAGE_SIZE).contains(&page_size),
-    "limit",
-    format!("limit must be between 1 and {MAX_PAGE_SIZE}."),
-  );
-
-  let mut after = None;
-  if let (Some(cursor), Some(kind)) = (cursor.as_deref(), kind) {
-    after = task_list_cursor::try_decode(cursor, kind);
-    errors.require(after.is_some(), "cursor", "cursor is not valid for this view.");
-  }
-
-  let (false, Some(kind)) = (errors.any(), kind) else {
-    return Err(errors.into_problem().into());
-  };
-  let dated = match (today_date, zone) {
-    (Some(date), Some(zone)) => Some(DatedView {
-      today: DayWindow::create(date, zone),
-      zone,
-    }),
-    _ => None,
-  };
-  let list_view = match (kind, dated) {
-    (TaskListViewKind::Upcoming, Some(dated)) => TaskListView::Upcoming(dated),
-    (TaskListViewKind::Overdue, Some(dated)) => TaskListView::Overdue(dated),
-    (TaskListViewKind::Completed, _) => TaskListView::Completed,
-    (TaskListViewKind::NoDeadline, _) => TaskListView::NoDeadline,
-    (TaskListViewKind::Upcoming | TaskListViewKind::Overdue, None) => {
-      return Err(ApiError::internal("a dated task view passed validation without today and timeZone"));
-    }
-  };
+  let ListRequest {
+    kind,
+    view: list_view,
+    after,
+    page_size,
+  } = check_list(view.as_deref(), today, time_zone.as_deref(), limit, cursor.as_deref())?;
 
   let owner = user.owner;
   let mut connection = state.db().await?;
-  let page = tasks::list_page(&mut connection, owner, &list_view, after.as_ref(), page_size.unsigned_abs()).await?;
-  let total = match (kind, after, dated) {
-    (TaskListViewKind::Overdue, None, Some(dated)) => Some(count(tasks::count_open_overdue(&mut connection, owner, &dated.today).await?)),
+  let page = tasks::list_page(&mut connection, owner, &list_view, after.as_ref(), page_size).await?;
+  let total = match (&list_view, after) {
+    (TaskListView::Overdue(dated), None) => Some(count(tasks::count_open_overdue(&mut connection, owner, &dated.today).await?)),
     _ => None,
   };
 
@@ -172,6 +125,72 @@ pub async fn list(CurrentUser(user): CurrentUser, State(state): State<AppState>,
     next_cursor: page.next.map(|key| task_list_cursor::encode(kind, &key)),
     total,
   })
+}
+
+/// A validated task-list request.
+struct ListRequest {
+  kind: TaskListViewKind,
+  view: TaskListView,
+  after: Option<TaskListKey>,
+  page_size: u32,
+}
+
+/// Validates the task-list query: the request it names, or every field error.
+fn check_list(
+  view: Option<&str>,
+  today: Option<NaiveDate>,
+  time_zone: Option<&str>,
+  limit: Option<i32>,
+  cursor: Option<&str>,
+) -> Result<ListRequest, FieldErrors> {
+  let mut errors = FieldErrors::new();
+  let kind = view.and_then(TaskListViewKind::parse);
+  errors.require(
+    kind.is_some(),
+    "view",
+    "view is required: upcoming, overdue, completed or no-deadline.",
+  );
+
+  let list_view = kind.and_then(|kind| {
+    let dated = |errors: &mut FieldErrors| {
+      // An unsupported date is reported, and never reaches `DayWindow::create`, which panics near chrono's limits.
+      let today = errors.require_date(today, "today").filter(|date| is_supported_date(*date));
+      let zone = errors.require_time_zone(time_zone, "timeZone");
+      today.zip(zone).map(|(date, zone)| DatedView {
+        today: DayWindow::create(date, zone),
+        zone,
+      })
+    };
+    match kind {
+      TaskListViewKind::Upcoming => dated(&mut errors).map(TaskListView::Upcoming),
+      TaskListViewKind::Overdue => dated(&mut errors).map(TaskListView::Overdue),
+      TaskListViewKind::Completed => Some(TaskListView::Completed),
+      TaskListViewKind::NoDeadline => Some(TaskListView::NoDeadline),
+    }
+  });
+
+  let page_size = limit.unwrap_or(DEFAULT_PAGE_SIZE);
+  errors.require(
+    (1..=MAX_PAGE_SIZE).contains(&page_size),
+    "limit",
+    format!("limit must be between 1 and {MAX_PAGE_SIZE}."),
+  );
+
+  let mut after = None;
+  if let (Some(cursor), Some(kind)) = (cursor, kind) {
+    after = task_list_cursor::try_decode(cursor, kind);
+    errors.require(after.is_some(), "cursor", "cursor is not valid for this view.");
+  }
+
+  match (errors.any(), kind, list_view) {
+    (false, Some(kind), Some(view)) => Ok(ListRequest {
+      kind,
+      view,
+      after,
+      page_size: page_size.unsigned_abs(),
+    }),
+    _ => Err(errors),
+  }
 }
 
 // Reads one of the signed-in user's tasks.
@@ -219,9 +238,7 @@ pub async fn update(
 ) -> Result<Response, ApiError> {
   let mut errors = FieldErrors::new();
   errors.check_date(request.due_date, "dueDate");
-  if errors.any() {
-    return Err(errors.into_problem().into());
-  }
+  errors.into_result()?;
 
   let owner = user.owner;
   let mut connection = state.db().await?;
@@ -230,16 +247,15 @@ pub async fn update(
   };
 
   let mut changed = found.entity.clone();
-  if let Err(error) = changed.update(
-    request.title.as_deref().unwrap_or_default(),
-    request.due_date,
-    request.due_at,
-    request.priority.as_deref().unwrap_or_default(),
-    request.notes.as_deref(),
-  ) {
-    errors.add_domain_error(&error);
-    return Err(errors.into_problem().into());
-  }
+  changed
+    .update(
+      request.title.as_deref().unwrap_or_default(),
+      request.due_date,
+      request.due_at,
+      request.priority.as_deref().unwrap_or_default(),
+      request.notes.as_deref(),
+    )
+    .map_err(FieldErrors::from_domain)?;
 
   match tasks::update(&mut connection, owner, &found, &changed, RowVersion(request.version)).await {
     Ok(version) => request::ok(&TaskResponse::from_task(&changed, version.0)),
@@ -295,6 +311,47 @@ pub async fn bulk(
   JsonBody(request): JsonBody<BulkTaskRequest>,
 ) -> Result<Response, ApiError> {
   let owner = user.owner;
+  let (change, target) = check_bulk(&request, state.now())?;
+
+  match target {
+    BulkTarget::Filter { window, expected_total } => {
+      let mut connection = state.db().await?;
+      match tasks::apply_to_open_overdue(&mut connection, owner, &window, expected_total, change.for_filter()).await {
+        Ok(applied) => request::ok(&BulkTaskResponse {
+          results: Vec::new(),
+          applied: i32::try_from(applied).unwrap_or(i32::MAX),
+          skipped: 0,
+          not_found: 0,
+        }),
+        Err(Error::Conflict) => Err(
+          Problem::titled(
+            StatusCode::CONFLICT,
+            "The overdue task count changed. Review the updated count and try again.",
+          )
+          .into(),
+        ),
+        Err(error) => Err(error.into()),
+      }
+    }
+    BulkTarget::Ids(ids) => {
+      let ids = distinct(ids);
+      let mut connection = state.db().await?;
+      request::ok(&apply_to_ids(&mut connection, owner, &ids, change).await?)
+    }
+  }
+}
+
+/// What a validated bulk request applies its change to.
+#[derive(Debug, Clone, Copy)]
+enum BulkTarget<'a> {
+  /// Explicit task ids, as sent (repeats included).
+  Ids(&'a [Uuid]),
+  /// Every open overdue task on the client's day, provided the client's count still holds.
+  Filter { window: DayWindow, expected_total: i64 },
+}
+
+/// Validates a bulk request: its change and target, or every field error.
+fn check_bulk(request: &BulkTaskRequest, now: DateTime<Utc>) -> Result<(BulkChange, BulkTarget<'_>), FieldErrors> {
   let action = request.action;
   let mut errors = FieldErrors::new();
   errors.require(action.is_some(), "action", "Action is not supported.");
@@ -321,7 +378,6 @@ pub async fn bulk(
     errors.require(request.due_at.is_some(), "dueAt", "dueAt is required for setDueInstant.");
   }
 
-  let mut ids = Vec::new();
   if let Some(requested) = &request.ids {
     errors.require(!requested.is_empty(), "ids", "At least one id is required.");
     errors.require(
@@ -329,52 +385,36 @@ pub async fn bulk(
       "ids",
       format!("At most {MAX_BULK_IDS} ids are allowed."),
     );
-    for id in requested {
-      if !ids.contains(id) {
-        ids.push(*id);
-      }
-    }
   }
 
-  if let Some(filter) = &request.filter {
-    let window = check_filter(filter, &mut errors);
-    if let (false, Some(window)) = (errors.any(), window) {
-      let change = BulkChange::of(action, request.due_date, request.due_at, state.now())?;
-      let mut connection = state.db().await?;
-      return match tasks::apply_to_open_overdue(
-        &mut connection,
-        owner,
-        &window,
-        i64::from(filter.expected_total),
-        change.for_filter(),
-      )
-      .await
-      {
-        Ok(applied) => request::ok(&BulkTaskResponse {
-          results: Vec::new(),
-          applied: i32::try_from(applied).unwrap_or(i32::MAX),
-          skipped: 0,
-          not_found: 0,
-        }),
-        Err(Error::Conflict) => Err(
-          Problem::titled(
-            StatusCode::CONFLICT,
-            "The overdue task count changed. Review the updated count and try again.",
-          )
-          .into(),
-        ),
-        Err(error) => Err(error.into()),
-      };
-    }
-  }
+  let window = request.filter.as_ref().and_then(|filter| check_filter(filter, &mut errors));
+  let target = match (&request.ids, &request.filter, window) {
+    (Some(ids), None, _) => Some(BulkTarget::Ids(ids)),
+    (None, Some(filter), Some(window)) => Some(BulkTarget::Filter {
+      window,
+      expected_total: i64::from(filter.expected_total),
+    }),
+    _ => None,
+  };
+  let change = match action {
+    Some(BulkTaskAction::Complete) => Some(BulkChange::Complete(now)),
+    Some(BulkTaskAction::SetDueDate) => request.due_date.map(BulkChange::SetDueDate),
+    Some(BulkTaskAction::SetDueInstant) => request.due_at.map(BulkChange::SetDueInstant),
+    Some(BulkTaskAction::ClearDeadline) => Some(BulkChange::ClearDeadline),
+    Some(BulkTaskAction::Delete) => Some(BulkChange::Delete),
+    None => None,
+  };
 
-  if errors.any() {
-    return Err(errors.into_problem().into());
+  match (errors.any(), change, target) {
+    (false, Some(change), Some(target)) => Ok((change, target)),
+    _ => Err(errors),
   }
+}
 
-  let change = BulkChange::of(action, request.due_date, request.due_at, state.now())?;
-  let mut connection = state.db().await?;
-  request::ok(&apply_to_ids(&mut connection, owner, &ids, change).await?)
+/// The ids without repeats, each where it first appears.
+fn distinct(ids: &[Uuid]) -> Vec<Uuid> {
+  let mut seen = HashSet::with_capacity(ids.len());
+  ids.iter().copied().filter(|id| seen.insert(*id)).collect()
 }
 
 /// Validates an overdue filter; returns the client's day when its date and zone are usable.
@@ -408,29 +448,13 @@ enum BulkChange {
 }
 
 impl BulkChange {
-  fn of(
-    action: Option<BulkTaskAction>,
-    due_date: Option<NaiveDate>,
-    due_at: Option<DateTime<Utc>>,
-    now: DateTime<Utc>,
-  ) -> Result<Self, ApiError> {
-    match (action, due_date, due_at) {
-      (Some(BulkTaskAction::Complete), _, _) => Ok(Self::Complete(now)),
-      (Some(BulkTaskAction::SetDueDate), Some(date), _) => Ok(Self::SetDueDate(date)),
-      (Some(BulkTaskAction::SetDueInstant), _, Some(instant)) => Ok(Self::SetDueInstant(instant)),
-      (Some(BulkTaskAction::ClearDeadline), _, _) => Ok(Self::ClearDeadline),
-      (Some(BulkTaskAction::Delete), _, _) => Ok(Self::Delete),
-      _ => Err(ApiError::internal("a bulk action passed validation without the value it needs")),
-    }
-  }
-
   /// The set-based form, for a filter target.
   fn for_filter(self) -> OverdueAction {
     match self {
       Self::Complete(now) => OverdueAction::Complete(now),
-      Self::SetDueDate(date) => OverdueAction::SetDeadline(TodoTask::for_due_date(date)),
-      Self::SetDueInstant(instant) => OverdueAction::SetDeadline(TodoTask::for_due_instant(instant)),
-      Self::ClearDeadline => OverdueAction::SetDeadline(TodoTask::without_deadline()),
+      Self::SetDueDate(date) => OverdueAction::SetDeadline(Deadline::On(date)),
+      Self::SetDueInstant(instant) => OverdueAction::SetDeadline(Deadline::At(instant)),
+      Self::ClearDeadline => OverdueAction::SetDeadline(Deadline::None),
       Self::Delete => OverdueAction::Delete,
     }
   }
@@ -568,4 +592,45 @@ fn not_found() -> Problem {
 /// A count as the contract's `int`.
 fn count(value: impl TryInto<i32>) -> i32 {
   value.try_into().unwrap_or(i32::MAX)
+}
+
+#[cfg(test)]
+mod tests {
+  use super::*;
+
+  #[test]
+  fn distinct_keeps_the_first_occurrence_of_each_id_in_request_order() {
+    let [a, b, c] = [1, 2, 3].map(Uuid::from_u128);
+    assert_eq!(distinct(&[b, a, b, c, a, b]), [b, a, c]);
+    assert_eq!(distinct(&[]), Vec::<Uuid>::new());
+  }
+
+  fn fields_of(errors: &FieldErrors) -> Vec<&str> {
+    errors.entries().iter().map(|(field, _)| field.as_str()).collect()
+  }
+
+  #[test]
+  fn a_dated_list_at_chronos_limits_is_refused_without_building_its_day() {
+    for (view, today) in [("overdue", NaiveDate::MIN), ("upcoming", NaiveDate::MAX)] {
+      let Err(errors) = check_list(Some(view), Some(today), Some("UTC"), None, None) else {
+        panic!("{view} {today} passed validation");
+      };
+      assert_eq!(fields_of(&errors), ["today"], "{view} {today}");
+    }
+  }
+
+  #[test]
+  fn a_list_request_names_its_view() {
+    let today = NaiveDate::from_ymd_opt(2026, 10, 26);
+    let list = check_list(Some("overdue"), today, Some("UTC"), Some(5), None).unwrap_or_else(|_| panic!("invalid"));
+    assert!(matches!(list.view, TaskListView::Overdue(_)));
+    assert_eq!((list.kind, list.page_size), (TaskListViewKind::Overdue, 5));
+    let list = check_list(Some("completed"), None, None, None, None).unwrap_or_else(|_| panic!("invalid"));
+    assert!(matches!(list.view, TaskListView::Completed));
+
+    let Err(errors) = check_list(Some("upcoming"), None, Some("Mars/Base"), Some(0), Some("!!")) else {
+      panic!("passed validation");
+    };
+    assert_eq!(fields_of(&errors), ["today", "timeZone", "limit", "cursor"]);
+  }
 }

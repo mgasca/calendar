@@ -42,3 +42,46 @@ export async function flowRequest(
   );
   return { request, traceId: traceIdOf(await request.headerValue('traceparent')) };
 }
+
+/** Requests held by `holdRequests` until the test lets them go. */
+export interface HeldRequests {
+  /** How many matching requests are waiting. */
+  readonly count: () => number;
+  /** Sends every held request on, and every later one straight away. */
+  release(): void;
+}
+
+/**
+ * Holds the page's `method` requests to the route `template` until `release()`, to see the page's state
+ * while they are in flight (an optimistic update, a pending control) or to send a burst together. A held
+ * request goes on through the signed-in route (`route.fallback()`), so it reaches the API unchanged, with
+ * the seed key and its `traceparent`.
+ */
+export async function holdRequests(
+  page: Page,
+  method: string,
+  template: string,
+): Promise<HeldRequests> {
+  let open: () => void = () => undefined;
+  const gate = new Promise<void>((resolve) => {
+    open = resolve;
+  });
+  let waiting = 0;
+  await page.route(
+    (url) => matchesRoute(url.href, template),
+    async (route) => {
+      if (route.request().method() === method) {
+        waiting++;
+        await gate;
+        waiting--;
+      }
+      await route.fallback();
+    },
+  );
+  return {
+    count: () => waiting,
+    release() {
+      open();
+    },
+  };
+}

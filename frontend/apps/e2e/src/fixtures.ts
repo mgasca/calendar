@@ -23,6 +23,8 @@ export interface Seed {
   event(body: Schemas['CreateEventRequest']): Promise<Schemas['EventResponse']>;
   updateEvent(id: string, body: Schemas['UpdateEventRequest']): Promise<Schemas['EventResponse']>;
   task(body: Schemas['CreateTaskRequest']): Promise<Schemas['TaskResponse']>;
+  updateTask(id: string, body: Schemas['UpdateTaskRequest']): Promise<Schemas['TaskResponse']>;
+  deleteTask(id: string): Promise<void>;
 }
 
 interface Fixtures {
@@ -102,6 +104,19 @@ export const test = base.extend<Fixtures>({
         const { data, response } = await client.POST('/api/tasks', { body });
         if (!data) throw new Error(`Seeding a task failed: ${String(response.status)}`);
         return data;
+      },
+      async updateTask(id, body) {
+        remember('task', body);
+        const { data, response } = await client.PUT('/api/tasks/{id}', {
+          params: { path: { id } },
+          body,
+        });
+        if (!data) throw new Error(`Updating a task failed: ${String(response.status)}`);
+        return data;
+      },
+      async deleteTask(id) {
+        const { response } = await client.DELETE('/api/tasks/{id}', { params: { path: { id } } });
+        if (!response.ok) throw new Error(`Deleting a task failed: ${String(response.status)}`);
       },
     });
   },

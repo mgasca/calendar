@@ -207,6 +207,25 @@ API telemetry (#731) lives in `calendar-api/src/telemetry/`:
 - **`edit-event-flow`** (`tests/edit-event-flow.spec.ts`, day 2026-04-09): opens an event, changes it "elsewhere" through the API, and saves. The 409 reloads the latest version into the form, and the API's server span records the 409. Saving again succeeds. The test then deletes another event after the in-dialog confirmation, after first checking that **Keep event** sends nothing. Six traces in all: open, conflict, reload, save, open, delete.
 - **Harness, reusable by #735 and #736:** `expectFlow({ …, traces })` asserts several user actions' traces in one flow; `flowRequest(page, method, routeTemplate)` gives a request and its trace id; `seed.updateEvent` writes as the same user outside the browser and registers its texts.
 
+### Delivered in #735
+
+- **`toggle-task-flow`** (`tests/toggle-task-flow.spec.ts`, day 2026-05-12):
+  - The tick shows while its request is held, and only that task is disabled.
+  - Reopening works.
+  - A burst of three held ticks causes exactly one agenda refetch.
+  - Ticking a task deleted elsewhere answers 404. The tick is undone with the "Your change was undone" alert, and the views refetch at once.
+- **`edit-task-flow`** (`tests/edit-task-flow.spec.ts`, day 2026-05-14):
+  - A save against a version changed elsewhere answers 409, and the latest version is reloaded into the form.
+  - Saving again shows `Task saved.` and returns focus to the title.
+  - Moving the task to an exact time the next day sends an instant with an offset, and focus falls back to the day heading.
+- **`overdue-triage-flow`** (`tests/overdue-triage-flow.spec.ts`, today 2026-02-02):
+  - From the day view's link, two pages of overdue tasks load with the opaque cursor.
+  - By ids: a reschedule and a complete.
+  - By the overdue filter: a delete refused with 409 because the count changed elsewhere, then the delete with the updated count.
+  - The overdue view spans every earlier day, so this test owns all days before 2026-02-01 (README).
+- **Harness:** `holdRequests(page, method, routeTemplate)` holds requests until the test releases them, then sends them on through the signed-in route. `seed.updateTask` and `seed.deleteTask` are the task counterparts of `seed.updateEvent`. `observe.exported(action)` waits until Tempo holds an action's trace. A reload drops the spans the browser has not exported yet, and edit-task's first fresh-stack run lost the web `PUT` span that way.
+- **Defect found:** an edit dialog reopened after a save shows the stale cached copy (#900). The edit-task test reloads the page before reopening until it is fixed.
+
 ### Lessons learned, known issues and follow-ups
 
 - Browser OpenTelemetry is marked experimental upstream, and the Rust traces signal is beta; ADR-0062 records the versions checked.

@@ -32,9 +32,6 @@ jobs:
           # The repo tools (tools/, .claude/skills/) are .NET file-based apps with no project to build (ADR-0017).
           - language: csharp
             build-mode: none
-          # The backend (backend/crates).
-          - language: rust
-            build-mode: none
           - language: javascript-typescript
             build-mode: none
           - language: actions

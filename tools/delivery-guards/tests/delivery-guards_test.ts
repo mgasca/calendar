@@ -2,6 +2,7 @@ import { assert, assertEquals, assertInstanceOf, assertStringIncludes, assertThr
 import { dirname, fromFileUrl, join } from "@std/path";
 import {
   changesRulesPath,
+  codeqlLanguagesPath,
   findRoot,
   guards,
   jobsApiSkipException,
@@ -14,8 +15,9 @@ import { parseYaml, Workflow, YamlMapping, YamlScalar } from "../workflow-yaml.t
 const root = findRoot(dirname(fromFileUrl(import.meta.url)))!;
 const workflow = Deno.readTextFileSync(new URL("./fixtures/workflow.yml", import.meta.url));
 const toolsJustfile = Deno.readTextFileSync(new URL("./fixtures/tools.just", import.meta.url));
+const codeqlWorkflow = Deno.readTextFileSync(new URL("./fixtures/codeql.yml", import.meta.url));
 function failures(id: string, from = "", to = "", just = false): string[] {
-  const files: RepoFiles = { workflow, toolsJustfile };
+  const files: RepoFiles = { workflow, toolsJustfile, codeqlWorkflow };
   if (from) {
     const key = just ? "toolsJustfile" : "workflow";
     assertStringIncludes(files[key], from, "mutation must alter the fixture");
@@ -38,7 +40,7 @@ Deno.test("Workflow_IsReadAsTheJobsItHolds", () => {
   assert(parsed.jobs.every((j) => j.steps.length > 0));
 });
 Deno.test("AnUnreadableWorkflow_FailsTheGuard", () => {
-  const errors = runGuard(guards[0]!, { workflow: workflow + "\n  bad: [unclosed\n", toolsJustfile });
+  const errors = runGuard(guards[0]!, { workflow: workflow + "\n  bad: [unclosed\n", toolsJustfile, codeqlWorkflow });
   assertEquals(errors.length, 1);
   assertStringIncludes(errors[0]!, "could not be read");
 });
@@ -283,7 +285,10 @@ Deno.test("ANewJobNeeded_Passes", () => {
     "  supersede:\n",
     "  gate:\n    name: Run-time gate\n    steps:\n      - run: echo\n  supersede:\n",
   ).replace("tooling]", "tooling, gate]");
-  assertEquals(runGuard(guards.find((g) => g.id === "ci-result-needs-all")!, { workflow: w, toolsJustfile }), []);
+  assertEquals(
+    runGuard(guards.find((g) => g.id === "ci-result-needs-all")!, { workflow: w, toolsJustfile, codeqlWorkflow }),
+    [],
+  );
 });
 Deno.test("NeedsAsABlockList_IsRead", () =>
   assertEquals(
@@ -301,14 +306,21 @@ Deno.test("AResultCheckThatAcceptsAnyNonFailure_Fails", () =>
   ]));
 Deno.test("TheStrictCheckWithoutSkips_Passes", () => {
   const w = workflow.replace(` or (${needsSkipException})`, "").replace(`| ${jobsApiSkipException}`, "");
-  assertEquals(runGuard(guards.find((g) => g.id === "ci-result-needs-all")!, { workflow: w, toolsJustfile }), []);
+  assertEquals(
+    runGuard(guards.find((g) => g.id === "ci-result-needs-all")!, { workflow: w, toolsJustfile, codeqlWorkflow }),
+    [],
+  );
 });
 Deno.test("TheBuildBeforeTheTypecheck_Fails", () => {
   const w = workflow.replace("      - run: pnpm -r --filter '!@calendar/docs' typecheck\n", "").replace(
     "run: pnpm --filter @calendar/web exec vite build",
     "run: pnpm --filter @calendar/web exec vite build\n      - run: pnpm -r --filter '!@calendar/docs' typecheck",
   );
-  const errors = runGuard(guards.find((g) => g.id === "single-web-typecheck")!, { workflow: w, toolsJustfile });
+  const errors = runGuard(guards.find((g) => g.id === "single-web-typecheck")!, {
+    workflow: w,
+    toolsJustfile,
+    codeqlWorkflow,
+  });
   assertEquals(errors.length, 1);
   assertStringIncludes(errors[0]!, "before its typecheck step");
 });
@@ -463,3 +475,73 @@ Deno.test("SkippedNames_AreTheJobNamesInCi", async () => {
     [...allJobs].sort(),
   );
 });
+function codeqlFailures(from: string, to: string): string[] {
+  assertStringIncludes(codeqlWorkflow, from, "mutation must alter the fixture");
+  const files: RepoFiles = { workflow, toolsJustfile, codeqlWorkflow: codeqlWorkflow.replaceAll(from, to) };
+  return runGuard(guards.find((g) => g.id === "codeql-rust-gate")!, files);
+}
+const codeqlMutations: [string, string, string, string][] = [
+  [
+    "AGateThatSkipsAnEvent_Fails",
+    "    timeout-minutes: 5\n",
+    "    timeout-minutes: 5\n    if: github.event_name == 'push'\n",
+    "every event",
+  ],
+  ["AGateWithoutTheCiRules_Fails", "jq -c -f .github/ci-changes.jq", "jq -c '.'", "ci-changes.jq"],
+  ["AGateWithoutItsOwnRules_Fails", "jq -c -f .github/codeql-languages.jq", "jq -c '.'", "codeql-languages.jq"],
+  ["AnAnalyzeJobThatDoesNotNeedTheGate_Fails", "    needs: languages\n", "", "does not need"],
+  ["AStaticExclude_Fails", "exclude: ${{ fromJSON(needs.languages.outputs.exclude) }}", "exclude: []", "must `exclude"],
+  ["AMatrixWithoutRust_Fails", "          - rust\n", "", "no `rust` entry"],
+];
+for (const [name, from, to, message] of codeqlMutations) {
+  Deno.test(`CodeqlRustGate_${name}`, () => {
+    const errors = codeqlFailures(from, to);
+    assert(errors.some((e) => e.includes(message)), JSON.stringify(errors));
+  });
+}
+async function runCodeqlLanguages(event: string, complete: boolean, files: string[]): Promise<Record<string, unknown>> {
+  const changes = await runRules(event, complete, files);
+  const process = new Deno.Command("jq", {
+    args: ["-c", "-f", join(root, codeqlLanguagesPath), "--argjson", "changes", JSON.stringify(changes)],
+    stdin: "piped",
+    stdout: "piped",
+    stderr: "piped",
+  }).spawn();
+  const writer = process.stdin.getWriter();
+  await writer.write(new TextEncoder().encode(JSON.stringify({ event, complete, files })));
+  await writer.close();
+  const result = await process.output();
+  assertEquals(result.code, 0, new TextDecoder().decode(result.stderr));
+  return JSON.parse(new TextDecoder().decode(result.stdout));
+}
+async function checkRust(event: string, complete: boolean, files: string[], rust: boolean): Promise<void> {
+  assertEquals(
+    await runCodeqlLanguages(event, complete, files),
+    { rust, exclude: rust ? [] : [{ language: "rust" }] },
+  );
+}
+// The Rust input set is CI's Backend set: every file case runs the rust analysis exactly when it runs Backend.
+for (const [file, jobs] of fileCases) {
+  Deno.test(`AFile_RunsTheRustAnalysisWhenItRunsBackend: ${file}`, () =>
+    checkRust("pull_request", true, [file], jobs.split(" ").includes("backend")));
+}
+const rustCases: [string, string, boolean, string[], boolean][] = [
+  ["ALockFileOnlyChange_RunsTheRustAnalysis", "pull_request", true, ["backend/Cargo.lock"], true],
+  ["AToolchainOnlyChange_RunsTheRustAnalysis", "pull_request", true, ["backend/rust-toolchain.toml"], true],
+  ["ADocsOnlyChange_SkipsTheRustAnalysis", "pull_request", true, ["docs/runbooks/README.md"], false],
+  ["AFrontendAndToolChange_SkipsTheRustAnalysis", "pull_request", true, [
+    "frontend/apps/web/src/main.tsx",
+    "tools/ci-timings/ci-timings.ts",
+  ], false],
+  ["ARenameOutOfTheBackend_RunsTheRustAnalysis", "pull_request", true, ["backend/x.md", "docs/x.md"], true],
+  ["AChangeToTheCodeqlWorkflow_RunsTheRustAnalysis", "pull_request", true, [".github/workflows/codeql.yml"], true],
+  ["AChangeToTheLanguageRules_RunsTheRustAnalysis", "pull_request", true, [".github/codeql-languages.jq"], true],
+  ["AChangeToTheCiRules_RunsTheRustAnalysis", "pull_request", true, [".github/ci-changes.jq"], true],
+  ["AnIncompleteListing_RunsTheRustAnalysis", "pull_request", false, ["README.md"], true],
+  ["APush_RunsTheRustAnalysis", "push", true, [], true],
+  ["ASchedule_RunsTheRustAnalysis", "schedule", true, [], true],
+  ["ADispatch_RunsTheRustAnalysis", "workflow_dispatch", true, [], true],
+];
+for (const [name, event, complete, files, rust] of rustCases) {
+  Deno.test(name, () => checkRust(event, complete, files, rust));
+}

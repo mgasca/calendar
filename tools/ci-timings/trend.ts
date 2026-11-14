@@ -31,6 +31,9 @@ export interface TrendResult {
   enough: boolean;
   regressed: boolean;
 }
+/** The runs that measure `main`: pushes (`ci.yml`) and the nightly schedule (`e2e.yml`, #737). A dispatch can run any ref
+ * by hand and a pull request measures its branch, so neither is part of the trend. */
+export const trendEvents: ReadonlySet<string> = new Set(["push", "schedule"]);
 export const issueTitle = "CI run-time trend: jobs slower than the pinned baseline on main";
 export const issueLabel = "performance";
 export function recentRuns(
@@ -41,7 +44,7 @@ export function recentRuns(
   const runs = Object.values(baseline.paths).flatMap((path) => path.runs), pinned = new Set(runs.map((run) => run.id));
   const since = runs.length ? Math.max(...runs.map((run) => run.createdAt)) : -Infinity;
   return listed.filter((run) =>
-    isSuccessful(run) && run.event === "push" && run.headBranch === "main" && !pinned.has(run.id) &&
+    isSuccessful(run) && trendEvents.has(run.event) && run.headBranch === "main" && !pinned.has(run.id) &&
     run.createdAt > since
   )
     .sort((a, b) => b.createdAt - a.createdAt).slice(0, constants.runs).sort((a, b) => a.createdAt - b.createdAt);
@@ -92,9 +95,16 @@ const signed = (value: number) => (value > 0 ? "+" : "") + String(roundEven(valu
 const p = (value: number) => value < 0.0001 ? "< 0.0001" : fixed(value, 4);
 const verdict = (value: TrendVerdict) =>
   value === "Slower" ? "**slower**" : value === "Faster" ? "faster (re-pin?)" : "no shift";
-export function trendReport(result: TrendResult, baseline: BaselineFile, constants: TrendConstants): string {
+export function trendReport(
+  result: TrendResult,
+  baseline: BaselineFile,
+  constants: TrendConstants,
+  file = ".github/ci-baseline.json",
+): string {
+  // ci.yml keeps the wording the parity fixtures froze (tests/fixtures/README.md); its runs are pushes only.
+  const runs = baseline.workflow === "ci.yml" ? "push runs" : `push and scheduled runs of \`${baseline.workflow}\``;
   let output =
-    `Trend check (ADR 0045): the last ${result.recent.length} successful push runs on \`main\` not in the baseline, against \`.github/ci-baseline.json\` (${baseline.record}). A job is reported when a one-sided exact Mann–Whitney test gives p < ${constants.pValue} and the Hodges–Lehmann shift is at least max(${constants.minSeconds} s, ${
+    `Trend check (ADR 0045): the last ${result.recent.length} successful ${runs} on \`main\` not in the baseline, against \`${file}\` (${baseline.record}). A job is reported when a one-sided exact Mann–Whitney test gives p < ${constants.pValue} and the Hodges–Lehmann shift is at least max(${constants.minSeconds} s, ${
       constants.minRelative * 100
     } % of the baseline median).\n\n`;
   const first = result.recent[0], last = result.recent.at(-1);

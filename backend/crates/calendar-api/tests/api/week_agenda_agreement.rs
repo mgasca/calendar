@@ -81,7 +81,8 @@ fn build_tasks(range: &DateRangeWindow) -> Vec<TodoTask> {
   let mut built = Vec::new();
   for completed_at in completions {
     for offset in -2..=8_i64 {
-      built.push(build_task(
+      built.push(task_with(
+        OWNER,
         &format!("date {offset}"),
         Some(range.start_date() + TimeDelta::days(offset)),
         None,
@@ -90,7 +91,8 @@ fn build_tasks(range: &DateRangeWindow) -> Vec<TodoTask> {
     }
 
     for due_at in &points {
-      built.push(build_task(
+      built.push(task_with(
+        OWNER,
         &format!("at {}", due_at.to_rfc3339()),
         None,
         Some(*due_at),
@@ -98,17 +100,9 @@ fn build_tasks(range: &DateRangeWindow) -> Vec<TodoTask> {
       ));
     }
 
-    built.push(build_task("undated", None, None, completed_at));
+    built.push(task_with(OWNER, "undated", None, None, completed_at));
   }
 
-  built
-}
-
-fn build_task(title: &str, due_date: Option<NaiveDate>, due_at: Option<DateTime<Utc>>, completed_at: Option<DateTime<Utc>>) -> TodoTask {
-  let mut built = task(title, due_date, due_at);
-  if let Some(at) = completed_at {
-    built.complete(at);
-  }
   built
 }
 
@@ -151,18 +145,8 @@ async fn each_day_of_the_week_equals_the_day_agenda(date_text: &str, zone_id: &s
   assert_ne!(week.all_day_events, Vec::new());
 }
 
-macro_rules! scenarios {
-  ($($name:ident: $date:literal, $zone:literal;)*) => {
-    $(
-      #[tokio::test]
-      async fn $name() {
-        each_day_of_the_week_equals_the_day_agenda($date, $zone).await;
-      }
-    )*
-  };
-}
-
 scenarios! {
+  each_day_of_the_week_equals_the_day_agenda;
   each_day_of_the_week_equals_the_day_agenda_utc: "2026-10-28", "UTC";
   each_day_of_the_week_equals_the_day_agenda_kolkata: "2026-10-28", "Asia/Kolkata";
   // Falls back on Sunday 2026-11-01.

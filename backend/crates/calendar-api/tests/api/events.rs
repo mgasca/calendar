@@ -29,13 +29,6 @@ async fn event_count(app: &TestApp) -> i64 {
     .get(0)
 }
 
-/// Whether the validation problem names `field`.
-fn has_error(response: &TestResponse, field: &str) -> bool {
-  response.value()["errors"]
-    .as_object()
-    .is_some_and(|errors| errors.contains_key(field))
-}
-
 #[tokio::test]
 async fn create_timed_event_round_trips_and_normalizes_to_utc() {
   let app = TestApp::start().await;
@@ -264,7 +257,7 @@ async fn create_event_invalid_returns_400_validation_problem() {
     assert_eq!(response.status, StatusCode::BAD_REQUEST, "{scenario}");
     assert_eq!(response.media_type(), Some("application/problem+json"), "{scenario}");
     assert!(
-      has_error(&response, field),
+      response.has_error(field),
       "{scenario}: expected an error for '{field}' but got {}",
       response.value()["errors"]
     );
@@ -293,7 +286,7 @@ async fn create_event_instant_without_explicit_offset_returns_400_naming_the_fie
 
     assert_eq!(response.status, StatusCode::BAD_REQUEST, "{value}");
     assert_eq!(response.media_type(), Some("application/problem+json"), "{value}");
-    assert!(has_error(&response, field), "{value}: {}", response.text());
+    assert!(response.has_error(field), "{value}: {}", response.text());
     assert_eq!(event_count(&app).await, 0, "{value}");
   }
 }
@@ -311,7 +304,7 @@ async fn create_event_end_without_offset_names_the_end_field() {
     .await;
 
   assert_eq!(response.status, StatusCode::BAD_REQUEST);
-  assert!(has_error(&response, "end"), "{}", response.text());
+  assert!(response.has_error("end"), "{}", response.text());
 }
 
 #[tokio::test]
@@ -500,7 +493,7 @@ async fn update_event_invalid_returns_400_with_the_field_and_leaves_the_event_un
     .await;
 
   assert_eq!(end_before_start.status, StatusCode::BAD_REQUEST);
-  assert!(has_error(&end_before_start, "end"), "{}", end_before_start.text());
+  assert!(end_before_start.has_error("end"), "{}", end_before_start.text());
   assert_eq!(mixed_kinds.status, StatusCode::BAD_REQUEST);
   let mixed = mixed_kinds.value();
   let mut fields: Vec<&str> = mixed["errors"]

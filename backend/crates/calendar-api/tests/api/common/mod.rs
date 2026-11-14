@@ -29,8 +29,15 @@
 //! - **Database.** [`TestApp::database`] is the `calendar_testing::TestDatabase`: connect as
 //!   `calendar_migrator` to arrange or inspect rows. [`TestApp::seed`] inserts domain entities directly.
 //!
+//! - **Fixtures.** Builders, projections and generators that several modules use (the agenda builders,
+//!   [`titles`], [`SeededRandom`], [`scenarios!`], [`spa_root`]) live in `fixtures.rs`; add one there rather
+//!   than copying it into a module.
+//!
 //! The API tests are one binary (`tests/api/main.rs`) with one container; each test module starts with
 //! `use crate::common::*;`.
+
+mod fixtures;
+pub use fixtures::*;
 
 use std::path::Path;
 use std::sync::{Arc, Mutex};
@@ -369,6 +376,18 @@ impl TestApp {
     self.client().header(USER_HEADER, &user.to_string())
   }
 
+  /// A session ticket for `user` (`None`: one without a user id) named "Someone", valid for eight hours from
+  /// the test clock's now. Vary a field with struct update syntax: `SessionTicket { name, ..app.ticket_for(..) }`.
+  pub fn ticket_for(&self, user: Option<Uuid>) -> SessionTicket {
+    SessionTicket {
+      user_id: user,
+      name: Some("Someone".to_owned()),
+      email: Some("someone@example.com".to_owned()),
+      picture: None,
+      expires_at: self.clock.now() + TimeDelta::hours(8),
+    }
+  }
+
   /// A `Cookie` header value holding a session cookie for `ticket`, sealed with this app's key.
   pub async fn session_cookie(&self, ticket: &SessionTicket) -> String {
     let sealer = self.state.sealer().await.expect("the session key is available");
@@ -423,21 +442,34 @@ pub fn escape(value: &str) -> String {
     .collect()
 }
 
+/// A task of `owner` with medium priority and no notes, completed at `completed_at` when it is `Some`.
+pub fn task_with(
+  owner: Uuid,
+  title: &str,
+  due_date: Option<NaiveDate>,
+  due_at: Option<DateTime<Utc>>,
+  completed_at: Option<DateTime<Utc>>,
+) -> TodoTask {
+  let mut task = TodoTask::create(owner, title, due_date, due_at, "medium", None).expect("a valid task");
+  if let Some(completed_at) = completed_at {
+    task.complete(completed_at);
+  }
+  task
+}
+
 /// An open task of [`OWNER`] with medium priority and no notes.
 pub fn task(title: &str, due_date: Option<NaiveDate>, due_at: Option<DateTime<Utc>>) -> TodoTask {
-  task_of(OWNER, title, due_date, due_at)
+  task_with(OWNER, title, due_date, due_at, None)
 }
 
 /// An open task of `owner` with medium priority and no notes.
 pub fn task_of(owner: Uuid, title: &str, due_date: Option<NaiveDate>, due_at: Option<DateTime<Utc>>) -> TodoTask {
-  TodoTask::create(owner, title, due_date, due_at, "medium", None).expect("a valid task")
+  task_with(owner, title, due_date, due_at, None)
 }
 
 /// A task of [`OWNER`] completed at `completed_at`.
 pub fn completed_task(title: &str, due_date: Option<NaiveDate>, completed_at: DateTime<Utc>, due_at: Option<DateTime<Utc>>) -> TodoTask {
-  let mut task = task(title, due_date, due_at);
-  task.complete(completed_at);
-  task
+  task_with(OWNER, title, due_date, due_at, Some(completed_at))
 }
 
 /// Sends requests into the app. Cheap to clone; [`TestClient::header`] adds a header to every request.
@@ -584,6 +616,15 @@ impl TestResponse {
       .collect()
   }
 
+  /// The `Set-Cookie` for cookie `name`, parsed; `None` when the response sets no cookie of that name.
+  pub fn set_cookie(&self, name: &str) -> Option<SetCookie<'_>> {
+    self
+      .set_cookies()
+      .into_iter()
+      .map(SetCookie::parse)
+      .find(|cookie| cookie.name() == name)
+  }
+
   /// The messages of field `field` in a validation problem's `errors`; empty when it has none.
   pub fn errors(&self, field: &str) -> Vec<String> {
     self.value()["errors"][field]
@@ -591,8 +632,87 @@ impl TestResponse {
       .map_or_default(|messages| messages.iter().filter_map(|message| message.as_str().map(str::to_owned)).collect())
   }
 
+  /// Whether a validation problem's `errors` names `field`.
+  pub fn has_error(&self, field: &str) -> bool {
+    self.value()["errors"].get(field).is_some()
+  }
+
   /// The `title` of a problem response.
   pub fn problem_title(&self) -> String {
     self.value()["title"].as_str().unwrap_or_default().to_owned()
+  }
+}
+
+/// One `Set-Cookie` header, parsed: the `name=value` pair and the attributes after it, trimmed and
+/// lower-cased. [`TestResponse::set_cookie`] finds one by cookie name, so an assertion tests the attribute of
+/// that cookie rather than a substring of every header (which a cookie value can contain).
+#[derive(Debug)]
+pub struct SetCookie<'a> {
+  pair: &'a str,
+  attributes: Vec<String>,
+}
+
+impl<'a> SetCookie<'a> {
+  fn parse(header: &'a str) -> Self {
+    let mut parts = header.split(';');
+    let pair = parts.next().unwrap_or_default().trim();
+    let attributes = parts.map(|attribute| attribute.trim().to_lowercase()).collect();
+    Self { pair, attributes }
+  }
+
+  /// `name=value`, as a request's `Cookie` header sends it back.
+  pub fn pair(&self) -> &'a str {
+    self.pair
+  }
+
+  /// The cookie's name.
+  pub fn name(&self) -> &'a str {
+    self.pair.split_once('=').map_or(self.pair, |(name, _)| name)
+  }
+
+  /// The cookie's value; empty for a cookie being cleared.
+  pub fn value(&self) -> &'a str {
+    self.pair.split_once('=').map_or("", |(_, value)| value)
+  }
+
+  /// Whether the cookie has `attribute`, ignoring case. An attribute written with a value (`samesite=lax`,
+  /// `path=/`) must match whole; a bare name (`secure`, `httponly`, `expires`, `max-age`) matches that
+  /// attribute whatever its value.
+  pub fn has(&self, attribute: &str) -> bool {
+    let attribute = attribute.to_lowercase();
+    self.attributes.iter().any(|candidate| {
+      *candidate == attribute || (!attribute.contains('=') && candidate.split_once('=').is_some_and(|(name, _)| name == attribute))
+    })
+  }
+}
+
+mod set_cookie_parsing {
+  use super::SetCookie;
+
+  #[test]
+  fn attributes_are_matched_whole_on_the_named_cookie() {
+    let cookie = SetCookie::parse("session=abc; Path=/; Secure; HttpOnly; SameSite=Lax; Expires=Thu, 01 Jan 1970 00:00:00 GMT");
+
+    assert_eq!((cookie.name(), cookie.value(), cookie.pair()), ("session", "abc", "session=abc"));
+    for present in ["secure", "HttpOnly", "samesite=lax", "samesite", "path=/", "expires"] {
+      assert!(cookie.has(present), "{present}: {cookie:?}");
+    }
+    for absent in ["max-age", "samesite=strict", "path=/api", "lax"] {
+      assert!(!cookie.has(absent), "{absent}: {cookie:?}");
+    }
+  }
+
+  #[test]
+  fn text_in_the_value_is_not_an_attribute() {
+    // A substring check of the header passes here; the parsed cookie has none of these attributes.
+    let header = "session=secure-httponly-expires=; Path=/";
+    let cookie = SetCookie::parse(header);
+
+    assert!(header.contains("secure") && header.contains("httponly") && header.contains("expires="));
+    assert!(
+      !cookie.has("secure") && !cookie.has("httponly") && !cookie.has("expires"),
+      "{cookie:?}"
+    );
+    assert_eq!(cookie.value(), "secure-httponly-expires=");
   }
 }

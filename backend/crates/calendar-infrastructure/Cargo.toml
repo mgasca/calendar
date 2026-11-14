@@ -29,4 +29,5 @@ rcgen.workspace = true
 tempfile.workspace = true
 testcontainers-modules = { workspace = true, features = ["postgres"] }
 tokio = { workspace = true, features = ["macros", "rt-multi-thread", "time"] }
+tokio-postgres = { workspace = true, features = ["with-uuid-1", "with-chrono-0_4"] }
 uuid = { workspace = true, features = ["v4"] }

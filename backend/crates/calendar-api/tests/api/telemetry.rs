@@ -5,6 +5,7 @@
 
 use crate::common::*;
 use calendar_api::telemetry::{self, Delivery, Telemetry};
+use opentelemetry::logs::AnyValue;
 use opentelemetry::metrics::{Meter, MeterProvider as _};
 use opentelemetry::trace::{SpanId, SpanKind, Status, TraceId};
 use opentelemetry_sdk::logs::in_memory_exporter::LogDataWithResource;
@@ -137,6 +138,11 @@ fn attribute(span: &SpanData, key: &str) -> Option<String> {
     .map(|kv| kv.value.as_str().into_owned())
 }
 
+/// Whether the record's body is a string containing `text` (the crate's log bridge sets only string bodies).
+fn body_contains(log: &LogDataWithResource, text: &str) -> bool {
+  matches!(log.record.body(), Some(AnyValue::String(body)) if body.as_str().contains(text))
+}
+
 fn trace_id() -> TraceId {
   TraceId::from_hex(TRACE_ID).unwrap()
 }
@@ -224,12 +230,7 @@ async fn a_failed_request_exports_its_error_log_with_the_trace_id_and_without_th
   let logs = capture.logs();
   let failed = logs
     .iter()
-    .find(|log| {
-      log
-        .record
-        .body()
-        .is_some_and(|body| format!("{body:?}").contains("the request failed"))
-    })
+    .find(|log| body_contains(log, "the request failed"))
     .unwrap_or_else(|| panic!("the failure is logged: {logs:#?}"));
   assert_eq!(failed.record.severity_number(), Some(opentelemetry::logs::Severity::Error));
   let context = failed.record.trace_context().expect("the record carries the trace context");
@@ -261,15 +262,7 @@ async fn a_successful_request_exports_one_log_record_with_its_trace_id_and_only_
   assert_eq!(response.status, StatusCode::OK);
 
   let logs = capture.logs();
-  let finished: Vec<_> = logs
-    .iter()
-    .filter(|log| {
-      log
-        .record
-        .body()
-        .is_some_and(|body| format!("{body:?}").contains("request finished"))
-    })
-    .collect();
+  let finished: Vec<_> = logs.iter().filter(|log| body_contains(log, "request finished")).collect();
   assert_eq!(finished.len(), 1, "one record per request: {logs:#?}");
   let record = &finished[0].record;
   assert_eq!(record.severity_number(), Some(opentelemetry::logs::Severity::Info));
@@ -289,17 +282,11 @@ async fn a_successful_request_exports_one_log_record_with_its_trace_id_and_only_
   assert_eq!(
     attributes,
     [
-      (
-        "http.request.method".to_owned(),
-        format!("{:?}", opentelemetry::logs::AnyValue::from("GET".to_owned()))
-      ),
-      (
-        "http.response.status_code".to_owned(),
-        format!("{:?}", opentelemetry::logs::AnyValue::Int(200))
-      ),
+      ("http.request.method".to_owned(), format!("{:?}", AnyValue::from("GET".to_owned()))),
+      ("http.response.status_code".to_owned(), format!("{:?}", AnyValue::Int(200))),
       (
         "http.route".to_owned(),
-        format!("{:?}", opentelemetry::logs::AnyValue::from("/api/agenda/day".to_owned()))
+        format!("{:?}", AnyValue::from("/api/agenda/day".to_owned()))
       ),
     ],
     "only the method, route template and status: {record:#?}"
@@ -314,13 +301,7 @@ async fn health_probes_are_not_logged() {
   app.client().get("/api/health").await;
 
   let logs = capture.logs();
-  assert!(
-    !logs.iter().any(|log| log
-      .record
-      .body()
-      .is_some_and(|body| format!("{body:?}").contains("request finished"))),
-    "{logs:#?}"
-  );
+  assert!(!logs.iter().any(|log| body_contains(log, "request finished")), "{logs:#?}");
 }
 
 #[tokio::test]

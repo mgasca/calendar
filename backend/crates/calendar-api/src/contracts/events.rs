@@ -31,62 +31,98 @@ pub struct EventFields {
   pub notes: Option<String>,
 }
 
-const EVENT_PROPERTIES: [&str; 10] = [
-  "title",
-  "allDay",
-  "start",
-  "end",
-  "timeZone",
-  "startDate",
-  "endDate",
-  "location",
-  "notes",
-  "version",
+/// A property of an event request body.
+#[derive(Debug, Clone, Copy)]
+enum EventProperty {
+  Title,
+  AllDay,
+  Start,
+  End,
+  TimeZone,
+  StartDate,
+  EndDate,
+  Location,
+  Notes,
+  Version,
+}
+
+/// The properties every event request has, in declaration order.
+const EVENT_PROPERTIES: [(&str, EventProperty); 9] = [
+  ("title", EventProperty::Title),
+  ("allDay", EventProperty::AllDay),
+  ("start", EventProperty::Start),
+  ("end", EventProperty::End),
+  ("timeZone", EventProperty::TimeZone),
+  ("startDate", EventProperty::StartDate),
+  ("endDate", EventProperty::EndDate),
+  ("location", EventProperty::Location),
+  ("notes", EventProperty::Notes),
 ];
 
-/// Reads the shared event fields, and `version` when `with_version`.
-fn read_event(value: &Value, path: &str, type_name: &str, with_version: bool) -> JsonResult<(EventFields, Option<u32>)> {
-  let properties = if with_version {
-    &EVENT_PROPERTIES[..]
-  } else {
-    &EVENT_PROPERTIES[..9]
+/// The property an update request adds after the shared ones.
+const VERSION_PROPERTY: [(&str, EventProperty); 1] = [("version", EventProperty::Version)];
+
+/// What an event body held, before its required properties are checked.
+struct EventBody {
+  fields: EventFields,
+  has_title: bool,
+  version: Option<u32>,
+}
+
+/// Reads the shared event properties and the `extra` ones; any other property is skipped.
+fn read_event_body(value: &Value, path: &str, type_name: &str, extra: &[(&'static str, EventProperty)]) -> JsonResult<EventBody> {
+  let mut body = EventBody {
+    fields: EventFields::default(),
+    has_title: false,
+    version: None,
   };
-  let mut fields = EventFields::default();
-  let mut has_title = false;
-  let mut version = None;
+  let fields = &mut body.fields;
   for (key, value) in json::object(value, path, type_name)? {
-    let Some(name) = json::property(properties, key) else {
+    let Some((name, property)) = json::property(EVENT_PROPERTIES.iter().chain(extra), key) else {
       continue;
     };
     let at = json::child(path, name);
-    match name {
-      "title" => {
+    match property {
+      EventProperty::Title => {
         fields.title = json::string(value, &at)?;
-        has_title = true;
+        body.has_title = true;
       }
-      "allDay" => fields.all_day = json::boolean(value, &at)?,
-      "start" => fields.start = json::instant_opt(value, &at)?,
-      "end" => fields.end = json::instant_opt(value, &at)?,
-      "timeZone" => fields.time_zone = json::string(value, &at)?,
-      "startDate" => fields.start_date = json::date_opt(value, &at)?,
-      "endDate" => fields.end_date = json::date_opt(value, &at)?,
-      "location" => fields.location = json::string(value, &at)?,
-      "notes" => fields.notes = json::string(value, &at)?,
-      _ => version = Some(json::uint32(value, &at)?),
+      EventProperty::AllDay => fields.all_day = json::boolean(value, &at)?,
+      EventProperty::Start => fields.start = json::instant_opt(value, &at)?,
+      EventProperty::End => fields.end = json::instant_opt(value, &at)?,
+      EventProperty::TimeZone => fields.time_zone = json::string(value, &at)?,
+      EventProperty::StartDate => fields.start_date = json::date_opt(value, &at)?,
+      EventProperty::EndDate => fields.end_date = json::date_opt(value, &at)?,
+      EventProperty::Location => fields.location = json::string(value, &at)?,
+      EventProperty::Notes => fields.notes = json::string(value, &at)?,
+      EventProperty::Version => body.version = Some(json::uint32(value, &at)?),
     }
   }
+  Ok(body)
+}
 
-  let mut missing = Vec::new();
-  if !has_title {
-    missing.push("title");
-  }
-  if with_version && version.is_none() {
-    missing.push("version");
-  }
-  if missing.is_empty() {
-    Ok((fields, version))
+/// Reads the event fields of a create request; `version` is not one of its properties.
+fn read_event(value: &Value, path: &str, type_name: &str) -> JsonResult<EventFields> {
+  let body = read_event_body(value, path, type_name, &[])?;
+  if body.has_title {
+    Ok(body.fields)
   } else {
-    Err(json::missing_required(path, type_name, &missing))
+    Err(json::missing_required(path, type_name, &["title"]))
+  }
+}
+
+/// Reads the event fields and the required `version` of an update request.
+fn read_versioned_event(value: &Value, path: &str, type_name: &str) -> JsonResult<(EventFields, u32)> {
+  let body = read_event_body(value, path, type_name, &VERSION_PROPERTY)?;
+  match (body.has_title, body.version) {
+    (true, Some(version)) => Ok((body.fields, version)),
+    (has_title, version) => {
+      let missing: Vec<&str> = [(!has_title).then_some("title"), version.is_none().then_some("version")]
+        .into_iter()
+        .flatten()
+        .collect();
+      Err(json::missing_required(path, type_name, &missing))
+    }
   }
 }
 
@@ -127,19 +163,19 @@ pub struct CreateEventRequest {
   pub notes: Option<String>,
 }
 
-impl CreateEventRequest {
-  /// The event fields of the request.
-  pub fn fields(&self) -> EventFields {
-    EventFields {
-      title: self.title.clone(),
-      all_day: self.all_day,
-      start: self.start,
-      end: self.end,
-      time_zone: self.time_zone.clone(),
-      start_date: self.start_date,
-      end_date: self.end_date,
-      location: self.location.clone(),
-      notes: self.notes.clone(),
+/// The event fields of the request.
+impl From<CreateEventRequest> for EventFields {
+  fn from(request: CreateEventRequest) -> Self {
+    Self {
+      title: request.title,
+      all_day: request.all_day,
+      start: request.start,
+      end: request.end,
+      time_zone: request.time_zone,
+      start_date: request.start_date,
+      end_date: request.end_date,
+      location: request.location,
+      notes: request.notes,
     }
   }
 }
@@ -148,7 +184,7 @@ impl FromJson for CreateEventRequest {
   const TYPE_NAME: &'static str = "Calendar.Api.Contracts.CreateEventRequest";
 
   fn from_json(value: &Value, path: &str) -> JsonResult<Self> {
-    let (fields, _) = read_event(value, path, Self::TYPE_NAME, false)?;
+    let fields = read_event(value, path, Self::TYPE_NAME)?;
     Ok(Self {
       title: fields.title,
       all_day: fields.all_day,
@@ -205,19 +241,20 @@ pub struct UpdateEventRequest {
 }
 
 impl UpdateEventRequest {
-  /// The event fields of the request.
-  pub fn fields(&self) -> EventFields {
-    EventFields {
-      title: self.title.clone(),
+  /// The event fields of the request and the `version` it expects.
+  pub fn into_parts(self) -> (EventFields, u32) {
+    let fields = EventFields {
+      title: self.title,
       all_day: self.all_day,
       start: self.start,
       end: self.end,
-      time_zone: self.time_zone.clone(),
+      time_zone: self.time_zone,
       start_date: self.start_date,
       end_date: self.end_date,
-      location: self.location.clone(),
-      notes: self.notes.clone(),
-    }
+      location: self.location,
+      notes: self.notes,
+    };
+    (fields, self.version)
   }
 }
 
@@ -225,7 +262,7 @@ impl FromJson for UpdateEventRequest {
   const TYPE_NAME: &'static str = "Calendar.Api.Contracts.UpdateEventRequest";
 
   fn from_json(value: &Value, path: &str) -> JsonResult<Self> {
-    let (fields, version) = read_event(value, path, Self::TYPE_NAME, true)?;
+    let (fields, version) = read_versioned_event(value, path, Self::TYPE_NAME)?;
     Ok(Self {
       title: fields.title,
       all_day: fields.all_day,
@@ -236,7 +273,7 @@ impl FromJson for UpdateEventRequest {
       end_date: fields.end_date,
       location: fields.location,
       notes: fields.notes,
-      version: version.unwrap_or_default(),
+      version,
     })
   }
 }
@@ -365,5 +402,42 @@ impl From<TimedEventRow> for TimedEventItem {
       starts_before_day: false,
       ends_after_day: false,
     }
+  }
+}
+
+#[cfg(test)]
+mod tests {
+  use super::*;
+  use serde_json::json;
+
+  fn missing(type_name: &str, names: &str) -> String {
+    format!("JSON deserialization for type 'Calendar.Api.Contracts.{type_name}' was missing required properties including: {names}.")
+  }
+
+  #[test]
+  fn a_create_request_needs_a_title_and_ignores_version() {
+    let error = CreateEventRequest::from_json(&json!({ "notes": "n" }), "$").unwrap_err();
+    assert_eq!(error.message, missing("CreateEventRequest", "'title'"));
+
+    let request = CreateEventRequest::from_json(&json!({ "TITLE": "t", "version": "not a number", "other": 1 }), "$").unwrap();
+    assert_eq!(request.title.as_deref(), Some("t"));
+  }
+
+  #[test]
+  fn an_update_request_needs_a_title_and_a_version() {
+    for (body, names) in [
+      (json!({}), "'title', 'version'"),
+      (json!({ "title": "t" }), "'version'"),
+      (json!({ "version": 3 }), "'title'"),
+    ] {
+      let error = UpdateEventRequest::from_json(&body, "$").unwrap_err();
+      assert_eq!(error.message, missing("UpdateEventRequest", names), "{body}");
+    }
+
+    let request = UpdateEventRequest::from_json(&json!({ "title": "t", "Version": "7", "allDay": true }), "$").unwrap();
+    assert_eq!((request.version, request.all_day), (7, true));
+
+    let error = UpdateEventRequest::from_json(&json!({ "title": "t", "version": -1 }), "$").unwrap_err();
+    assert_eq!(error.path, "$.version");
   }
 }

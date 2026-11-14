@@ -1,8 +1,6 @@
 //! The task repository against a real database: round trips, optimistic concurrency by `xmin`, the bulk
 //! save by ids and the guarded set-based change of the open overdue tasks.
 
-use std::time::Duration;
-
 use calendar_domain::tasks::{Priority, TodoTask};
 use calendar_domain::time::{DayWindow, IanaZone};
 use calendar_infrastructure::tasks::{OverdueAction, TaskWrite};
@@ -10,7 +8,7 @@ use calendar_infrastructure::{Error, RowVersion, tasks};
 use uuid::Uuid;
 
 use crate::repositories::{OWNER, SqlLog, USER_B, date, fixture, seed, sorted, task, task_of, utc};
-use crate::support::{scalar, strings};
+use crate::support::{scalar, strings, wait_until_blocked};
 
 fn today() -> DayWindow {
   DayWindow::create(date(2026, 10, 26), IanaZone::UTC)
@@ -190,7 +188,7 @@ async fn delete_removes_open_and_completed_tasks_and_refuses_a_stale_version() {
   tasks::delete(&mut f.conn, OWNER, open.id(), open_version).await.unwrap();
   tasks::delete(&mut f.conn, OWNER, done.id(), done_version).await.unwrap();
   let client = f.database.migrator_client().await;
-  assert_eq!(scalar(&client, "SELECT count(*)::text FROM tasks").await, "0");
+  assert_eq!(scalar::<i64>(&client, "SELECT count(*) FROM tasks").await, 0);
 }
 
 /// Ports the data half of `OwnershipTests.AnotherUsersTask_*` and `BulkByIds_ReportsAnotherUsersTasksAsNotFound`.
@@ -230,7 +228,7 @@ async fn another_users_task_is_invisible_and_cannot_be_written() {
 
   assert_eq!(tasks::find(&mut f.conn, USER_B, theirs.id()).await.unwrap().unwrap(), their_row);
   let client = f.database.migrator_client().await;
-  assert_eq!(scalar(&client, "SELECT count(*)::text FROM tasks").await, "2");
+  assert_eq!(scalar::<i64>(&client, "SELECT count(*) FROM tasks").await, 2);
 }
 
 /// The bulk-by-ids save: each write applies if its row still has the version it was loaded with; a row that
@@ -399,7 +397,7 @@ async fn the_filtered_change_touches_exactly_the_owners_open_overdue_tasks() {
       "{action:?}"
     );
     assert_eq!(
-      scalar(&client, "SELECT completed_at::text FROM tasks WHERE title = 'completed overdue'").await,
+      scalar::<String>(&client, "SELECT completed_at::text FROM tasks WHERE title = 'completed overdue'").await,
       "2026-10-21 09:00:00+00"
     );
     assert_eq!(
@@ -496,20 +494,7 @@ async fn the_filtered_change_reports_a_serialization_failure_as_a_conflict() {
     (conn, result)
   });
   // Wait until the bulk change is blocked on that row, then let the other request win.
-  loop {
-    let waiting: i64 = admin
-      .query_one(
-        "SELECT count(*) FROM pg_stat_activity WHERE datname = current_database() AND wait_event_type = 'Lock'",
-        &[],
-      )
-      .await
-      .unwrap()
-      .get(0);
-    if waiting > 0 {
-      break;
-    }
-    tokio::time::sleep(Duration::from_millis(20)).await;
-  }
+  wait_until_blocked(&admin, &bulk).await;
   racing.commit().await.unwrap();
   let (mut conn, result) = bulk.await.unwrap();
 

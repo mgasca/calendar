@@ -5,7 +5,8 @@
 use base64::Engine;
 use base64::engine::general_purpose::URL_SAFE_NO_PAD;
 use calendar_infrastructure::queries::task_list::TaskListKey;
-use serde_json::{Map, Value, json};
+use serde::Serialize;
+use serde_json::Value;
 use uuid::Uuid;
 
 use crate::wire;
@@ -45,14 +46,45 @@ impl TaskListViewKind {
   }
 }
 
+impl TryFrom<i64> for TaskListViewKind {
+  /// The number, when no view has it.
+  type Error = i64;
+
+  /// The view a cursor's `View` number names.
+  fn try_from(number: i64) -> Result<Self, Self::Error> {
+    match number {
+      0 => Ok(Self::Upcoming),
+      1 => Ok(Self::Overdue),
+      2 => Ok(Self::Completed),
+      3 => Ok(Self::NoDeadline),
+      _ => Err(number),
+    }
+  }
+}
+
+/// The JSON a cursor encodes, with the .NET property names in the .NET order.
+#[derive(Serialize)]
+#[serde(rename_all = "PascalCase")]
+struct CursorPayload {
+  view: i64,
+  id: String,
+  due_date: Option<String>,
+  instant: Option<String>,
+}
+
 /// The cursor that continues `view` after the task with `key`.
+///
+/// # Panics
+///
+/// Never: the payload is a number and strings, which always serialize.
 pub fn encode(view: TaskListViewKind, key: &TaskListKey) -> String {
-  let mut payload = Map::new();
-  payload.insert("View".to_owned(), json!(view.number()));
-  payload.insert("Id".to_owned(), json!(key.id.to_string()));
-  payload.insert("DueDate".to_owned(), json!(key.due_date.map(|date| date.to_string())));
-  payload.insert("Instant".to_owned(), json!(key.instant.map(wire::format_instant)));
-  URL_SAFE_NO_PAD.encode(Value::Object(payload).to_string())
+  let payload = CursorPayload {
+    view: view.number(),
+    id: key.id.to_string(),
+    due_date: key.due_date.map(|date| date.to_string()),
+    instant: key.instant.map(wire::format_instant),
+  };
+  URL_SAFE_NO_PAD.encode(serde_json::to_vec(&payload).expect("a cursor payload always serializes"))
 }
 
 /// Decodes a cursor issued for `view`; `None` when it is malformed, incomplete or for another view.
@@ -61,7 +93,7 @@ pub fn try_decode(cursor: &str, view: TaskListViewKind) -> Option<TaskListKey> {
   let payload: Value = serde_json::from_slice(&bytes).ok()?;
   let payload = payload.as_object()?;
 
-  let issued_for = payload.get("View").map_or(Some(0), Value::as_i64)?;
+  let issued_for = TaskListViewKind::try_from(payload.get("View").map_or(Some(0), Value::as_i64)?).ok()?;
   let id = match payload.get("Id") {
     Some(value) => crate::json::guid(value, "$.Id").ok()?,
     None => Uuid::nil(),
@@ -77,11 +109,11 @@ pub fn try_decode(cursor: &str, view: TaskListViewKind) -> Option<TaskListKey> {
 
   let complete = !id.is_nil()
     && match issued_for {
-      0 | 1 => due_date.is_some(),
-      2 => instant.is_some(),
-      _ => true,
+      TaskListViewKind::Upcoming | TaskListViewKind::Overdue => due_date.is_some(),
+      TaskListViewKind::Completed => instant.is_some(),
+      TaskListViewKind::NoDeadline => true,
     };
-  (complete && issued_for == view.number()).then_some(TaskListKey { id, due_date, instant })
+  (complete && issued_for == view).then_some(TaskListKey { id, due_date, instant })
 }
 
 #[cfg(test)]
@@ -95,6 +127,20 @@ mod tests {
       due_date: NaiveDate::from_ymd_opt(2026, 10, 26),
       instant: Some(Utc.with_ymd_and_hms(2026, 10, 26, 15, 0, 0).unwrap()),
     }
+  }
+
+  #[test]
+  fn a_view_number_converts_back_to_its_view() {
+    for view in [
+      TaskListViewKind::Upcoming,
+      TaskListViewKind::Overdue,
+      TaskListViewKind::Completed,
+      TaskListViewKind::NoDeadline,
+    ] {
+      assert_eq!(TaskListViewKind::try_from(view.number()), Ok(view));
+    }
+    assert_eq!(TaskListViewKind::try_from(4), Err(4));
+    assert_eq!(TaskListViewKind::try_from(-1), Err(-1));
   }
 
   #[test]
@@ -146,6 +192,10 @@ mod tests {
       ),
       (
         r#"{"View":"3","Id":"00000000-0000-0000-0000-000000001234"}"#,
+        TaskListViewKind::NoDeadline,
+      ),
+      (
+        r#"{"View":4,"Id":"00000000-0000-0000-0000-000000001234"}"#,
         TaskListViewKind::NoDeadline,
       ),
       ("null", TaskListViewKind::NoDeadline),

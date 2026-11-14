@@ -66,7 +66,7 @@ fn create_with_due_date_sets_due_date() {
 
 #[test]
 fn create_with_due_at_normalizes_to_utc() {
-  let due_at = TodoTask::normalize_due_at(&with_offset(-4, 2026, 10, 26, 9));
+  let due_at = with_offset(-4, 2026, 10, 26, 9).with_timezone(&Utc);
   let task = TodoTask::create(owner(), "A", None, Some(due_at), "medium", None).unwrap();
 
   assert_eq!(task.due_at(), Some(Utc.with_ymd_and_hms(2026, 10, 26, 13, 0, 0).unwrap()));
@@ -124,7 +124,7 @@ fn create_with_invalid_priority_fails() {
 fn complete_sets_completed_at_in_utc() {
   let mut task = create("A").unwrap();
 
-  task.complete(TodoTask::normalize_completion_time(&with_offset(-4, 2026, 10, 26, 8)));
+  task.complete(with_offset(-4, 2026, 10, 26, 8).with_timezone(&Utc));
 
   assert!(task.is_completed());
   assert_eq!(task.completed_at(), Some(now()));
@@ -168,7 +168,7 @@ fn deadline_changes_replace_or_clear_open_task_deadline() {
   let mut task = TodoTask::create(owner(), "A", Some(date(2026, 10, 25)), None, "medium", None).unwrap();
   let due_at = with_offset(-4, 2026, 10, 26, 9);
 
-  task.set_due_at(TodoTask::normalize_due_at(&due_at)).unwrap();
+  task.set_due_at(due_at.with_timezone(&Utc)).unwrap();
   assert_eq!(task.due_date(), None);
   assert_eq!(task.due_at(), Some(now() + TimeDelta::hours(1)));
   task.set_due_date(date(2026, 10, 27)).unwrap();
@@ -199,7 +199,7 @@ fn update_replaces_the_editable_fields_and_keeps_id_owner_and_completion() {
 
   let due_at = now().with_timezone(&FixedOffset::east_opt(2 * 3600).unwrap());
   task
-    .update(" Buy oat milk ", None, Some(TodoTask::normalize_due_at(&due_at)), "high", None)
+    .update(" Buy oat milk ", None, Some(due_at.with_timezone(&Utc)), "high", None)
     .unwrap();
 
   assert_eq!(task.id(), id);
@@ -287,7 +287,6 @@ fn deadline_column_helpers_are_mutually_exclusive() {
   assert_eq!(TodoTask::for_due_date(date(2026, 10, 27)), (Some(date(2026, 10, 27)), None));
   assert_eq!(TodoTask::for_due_instant(now()), (None, Some(now())));
   assert_eq!(TodoTask::without_deadline(), (None, None));
-  assert_eq!(TodoTask::normalize_completion_time(&with_offset(-4, 2026, 10, 26, 8)), now());
 }
 
 #[test]

@@ -97,7 +97,7 @@
       { "id": "ADR-0059", "title": "Publish architecture narratives from docs/narratives, stitched from per-system part files", "status": "proposed", "file": "docs/decisions/0059-publish-architecture-narratives-stitched-from-part-files.md", "url": "https://mgasca.github.io/calendar/adr/0059/" },
       { "id": "ADR-0060", "title": "Build narrative decks with Slidev as a frontend workspace app, published with the docs site", "status": "proposed", "file": "docs/decisions/0060-build-narrative-decks-with-slidev.md", "url": "https://mgasca.github.io/calendar/adr/0060/" },
       { "id": "ADR-0061", "title": "End-to-end UI tests with Playwright Test in frontend/apps/e2e, bound to the architecture flows", "status": "accepted", "file": "docs/decisions/0061-end-to-end-ui-tests-with-playwright-test-bound-to-the-architecture-flows.md", "url": "https://mgasca.github.io/calendar/adr/0061/" },
-      { "id": "ADR-0062", "title": "OpenTelemetry over OTLP from the API and the web app, with Grafana LGTM locally and Application Insights in Azure", "status": "accepted", "file": "docs/decisions/0062-opentelemetry-over-otlp-with-grafana-lgtm-locally-and-application-insights-in-azure.md", "url": "https://mgasca.github.io/calendar/adr/0062/" },
+      { "id": "ADR-0062", "title": "OpenTelemetry over OTLP from the API and the web app, with otel-stack locally and Application Insights in Azure", "status": "accepted", "file": "docs/decisions/0062-opentelemetry-over-otlp-with-grafana-lgtm-locally-and-application-insights-in-azure.md", "url": "https://mgasca.github.io/calendar/adr/0062/" },
       { "id": "ADR-0063", "title": "Docker Compose with opt-in profiles and per-run projects for local backing services, instead of Aspire", "status": "accepted", "supersedes": "ADR-0016", "file": "docs/decisions/0063-docker-compose-profiles-for-local-backing-services-instead-of-aspire.md", "url": "https://mgasca.github.io/calendar/adr/0063/" },
       { "id": "ADR-0064", "title": "Stub OIDC provider for sign-in tests, reached only through Development-only loopback settings", "status": "accepted", "file": "docs/decisions/0064-stub-oidc-provider-for-sign-in-tests.md", "url": "https://mgasca.github.io/calendar/adr/0064/" },
       { "id": "ADR-0065", "title": "Native GitHub stacks for stacked PRs, with a narrow exception that lets an agent rebase its own stack", "status": "accepted", "file": "docs/decisions/0065-native-github-stacks-for-stacked-prs-with-a-narrow-rebase-exception.md", "url": "https://mgasca.github.io/calendar/adr/0065/" }
@@ -529,7 +529,7 @@
           ]
         },
         "observability": {
-          "description": "The container exposes /api/health for startup, liveness and readiness probes; console logs and probe results go to the Log Analytics workspace, and Application Insights is provisioned in the same workspace. Decided, not yet delivered (ADR-0062, story 0064): the API and the web app emit OpenTelemetry over OTLP to Grafana LGTM locally and in E2E and, for the API, to Application Insights in Azure, under an attribute allow-list that keeps personal data out; every end-to-end flow test asserts its trace, logs, metrics and the absence of personal data.",
+          "description": "The container exposes /api/health for startup, liveness and readiness probes; console logs and probe results go to the Log Analytics workspace, and Application Insights is provisioned in the same workspace. Decided, not yet delivered (ADR-0062, story 0064): the API and the web app emit OpenTelemetry over OTLP to otel-stack locally and in E2E and, for the API, to Application Insights in Azure, under an attribute allow-list that keeps personal data out; every end-to-end flow test asserts its trace, logs, metrics and the absence of personal data.",
           "requirements": [
             {
               "requirement-url": "https://raw.githubusercontent.com/mgasca/calendar/main/docs/architecture/controls/observability.requirement.json",
@@ -941,20 +941,20 @@
       "unique-id": "e2e-suite",
       "node-type": "service",
       "name": "End-to-end flow tests (Playwright Test)",
-      "description": "Story 0064, harness and view-today-flow delivered in #733. Playwright Test workspace package (frontend/apps/e2e) that drives the built web app in Chromium against its own throwaway stack (PostgreSQL, API, LGTM, stub OIDC provider), one test per user-facing flow, each tagged @flow:<unique-id> and linked from its flow by metadata e2e-test. A flow is user-facing when a transition uses user-uses-web-app; a browser-free binding check (with an explicit pending list) fails on an uncovered or unknown flow on every pull request. Each test also asserts the flow's trace, correlated logs, request metrics and the absence of personal data in the LGTM stack. Runs nightly and on demand, never in a deployed environment.",
+      "description": "Story 0064, harness and view-today-flow delivered in #733. Playwright Test workspace package (frontend/apps/e2e) that drives the built web app in Chromium against its own throwaway stack (PostgreSQL, API, otel-stack, stub OIDC provider), one test per user-facing flow, each tagged @flow:<unique-id> and linked from its flow by metadata e2e-test. A flow is user-facing when a transition uses user-uses-web-app; a browser-free binding check (with an explicit pending list) fails on an uncovered or unknown flow on every pull request. Each test also asserts the flow's trace, correlated logs, request metrics and the absence of personal data in otel-stack. Runs nightly and on demand, never in a deployed environment.",
       "interfaces": [
         { "unique-id": "e2e-flow-tags", "tag-format": "@flow:<unique-id>", "binding": "user-facing flows (a transition on user-uses-web-app) ⇄ tagged tests, with a pending list that ends empty" }
       ],
       "metadata": { "ownership": "ours", "adrs": ["ADR-0061", "ADR-0062", "ADR-0063", "ADR-0008"], "stories": ["0064"], "source": "frontend/apps/e2e", "delivery": "epic #728: harness #733, flows #734 to #736, nightly workflow #737" }
     },
     {
-      "unique-id": "lgtm",
+      "unique-id": "otel-stack",
       "node-type": "system",
-      "name": "Grafana LGTM (local and E2E only)",
+      "name": "otel-stack (local and E2E only)",
       "description": "Story 0064, delivered in #730. The grafana/otel-lgtm container (OpenTelemetry Collector, Tempo, Loki, Prometheus, Pyroscope, Grafana) in compose.yaml, bound to loopback: opt-in for development under the Compose profile observability (just db observability), and part of every E2E stack (just e2e up), where the flow tests query it. A development and test tool only; it never runs in Azure.",
       "interfaces": [
-        { "unique-id": "lgtm-otlp", "protocol": "OTLP", "ports": { "grpc": 4317, "http": 4318 }, "bind": "127.0.0.1" },
-        { "unique-id": "lgtm-query", "description": "Grafana and the Tempo, Loki and Prometheus query APIs", "ports": { "grafana": 3000, "loki": 3100, "tempo": 3200, "prometheus": 9090 }, "bind": "127.0.0.1", "e2e-ports": "a 55xxx slot per run (e2e.just)" }
+        { "unique-id": "otel-stack-otlp", "protocol": "OTLP", "ports": { "grpc": 4317, "http": 4318 }, "bind": "127.0.0.1" },
+        { "unique-id": "otel-stack-query", "description": "Grafana and the Tempo, Loki and Prometheus query APIs", "ports": { "grafana": 3000, "loki": 3100, "tempo": 3200, "prometheus": 9090 }, "bind": "127.0.0.1", "e2e-ports": "a 55xxx slot per run (e2e.just)" }
       ],
       "metadata": { "ownership": "external", "adrs": ["ADR-0062", "ADR-0063"], "stories": ["0064"], "environments": ["local (opt-in)", "E2E"], "delivery": "#730" }
     },
@@ -1005,7 +1005,7 @@
       "relationship-type": {
         "connects": {
           "source": { "node": "e2e-suite", "interfaces": ["e2e-flow-tags"] },
-          "destination": { "node": "lgtm", "interfaces": ["lgtm-query"] }
+          "destination": { "node": "otel-stack", "interfaces": ["otel-stack-query"] }
         }
       },
       "protocol": "HTTP",
@@ -1017,7 +1017,7 @@
       "relationship-type": {
         "connects": {
           "source": { "node": "calendar-api", "interfaces": ["api-http"] },
-          "destination": { "node": "lgtm", "interfaces": ["lgtm-otlp"] }
+          "destination": { "node": "otel-stack", "interfaces": ["otel-stack-otlp"] }
         }
       },
       "protocol": "HTTP",
@@ -1029,7 +1029,7 @@
       "relationship-type": {
         "connects": {
           "source": { "node": "web-app", "interfaces": ["web-app-origin"] },
-          "destination": { "node": "lgtm", "interfaces": ["lgtm-otlp"] }
+          "destination": { "node": "otel-stack", "interfaces": ["otel-stack-otlp"] }
         }
       },
       "protocol": "HTTP",

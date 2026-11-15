@@ -4,7 +4,7 @@ date: 2026-11-13
 decision-makers: mgasca, Claude (AI assistant)
 ---
 
-# OpenTelemetry over OTLP from the API and the web app, with Grafana LGTM locally and Application Insights in Azure
+# OpenTelemetry over OTLP from the API and the web app, with otel-stack locally and Application Insights in Azure
 
 ## Context and Problem Statement
 
@@ -71,7 +71,7 @@ Telemetry attributes come from an allow-list, never from request or row content:
 
 ### End-to-end assertions
 
-Each flow test ([ADR-0061](0061-end-to-end-ui-tests-with-playwright-test-bound-to-the-architecture-flows.md)) queries the LGTM stack's APIs for its own run:
+Each flow test ([ADR-0061](0061-end-to-end-ui-tests-with-playwright-test-bound-to-the-architecture-flows.md)) queries otel-stack's APIs for its own run:
 
 * **One trace per flow:** the browser span, the API server span or spans and the database span or spans share one trace id, with the span names expected for the flow's transitions.
 * **Correlated logs:** Loki holds the API's log records for the flow, carrying that trace id.
@@ -98,8 +98,8 @@ Each flow test ([ADR-0061](0061-end-to-end-ui-tests-with-playwright-test-bound-t
 
 ### OpenTelemetry SDKs exporting OTLP, destination by configuration
 
-* Good, because **D1 Per-flow verifiability**: W3C `traceparent` joins browser, API and database spans in one trace, and LGTM exposes Tempo, Loki and Prometheus query APIs that a test can call.
-* Good, because **D2 One path, destination by configuration**: OTLP is accepted by LGTM, the Container Apps agent and Azure Monitor's native ingestion; only `OTEL_*` variables change.
+* Good, because **D1 Per-flow verifiability**: W3C `traceparent` joins browser, API and database spans in one trace, and otel-stack exposes Tempo, Loki and Prometheus query APIs that a test can call.
+* Good, because **D2 One path, destination by configuration**: OTLP is accepted by otel-stack, the Container Apps agent and Azure Monitor's native ingestion; only `OTEL_*` variables change.
 * Neutral, because **D3 Privacy by construction**: instrumentation libraries add attributes such as `url.full` and `db.statement` by default, so an allow-list filter is needed; the SDKs provide the hooks for it.
 * Neutral, because **D4 Azure fit**: reaches the provisioned Application Insights, but the managed agent route is preview and drops metrics.
 * Good, because **D5 Off by default and cheap**: with no endpoint, no exporter is created; batching exporters keep the overhead small.
@@ -109,7 +109,7 @@ Each flow test ([ADR-0061](0061-end-to-end-ui-tests-with-playwright-test-bound-t
 
 * Good, because **D4 Azure fit**: native to Application Insights, with its correlation and live metrics.
 * Bad, because **D1 Per-flow verifiability**: nothing local to query, so an end-to-end test would need Azure.
-* Bad, because **D2 One path, destination by configuration**: ties the code to one vendor; local and E2E runs could not use LGTM.
+* Bad, because **D2 One path, destination by configuration**: ties the code to one vendor; local and E2E runs could not use otel-stack.
 * Neutral, because **D3 Privacy by construction**: telemetry processors can filter, as in OpenTelemetry.
 * Neutral, because **D5 Off by default and cheap**: off without a connection string, but heavier SDKs.
 * Bad, because **D6 SDK maturity**: no official Rust SDK; only a community exporter crate exists.
@@ -144,7 +144,8 @@ Each flow test ([ADR-0061](0061-end-to-end-ui-tests-with-playwright-test-bound-t
   * Azure Monitor native OTLP ingestion: generally available, Azure update AZ565090, 2026-06-04.
 * **Related:** [ADR-0029](0029-azure-container-apps-compute-platform.md) (Container Apps), [ADR-0030](0030-single-container-for-api-and-spa.md) (one container serves API and SPA), [ADR-0032](0032-azure-key-vault-for-secrets.md) (secrets), [ADR-0041](0041-per-user-data-ownership.md) (per-user data).
 * **Delivery:** epic #728, children #731 (API), #732 (web), #733 (assertions) and #738 (Azure). Alerts and budgets: #80.
-* **Answered on #729 (2026-11-13, the maintainer through the epic coordinator):** the browser exports to the same-origin `/otlp` path forwarded by `vite dev` and `vite preview` to LGTM, and the API gains no endpoint. Web telemetry stays off in Azure for this epic (`traceparent` is still sent); turning it on is a follow-up for a later decision.
+* **Answered on #729 (2026-11-13, the maintainer through the epic coordinator):** the browser exports to the same-origin `/otlp` path forwarded by `vite dev` and `vite preview` to otel-stack, and the API gains no endpoint. Web telemetry stays off in Azure for this epic (`traceparent` is still sent); turning it on is a follow-up for a later decision.
 * **Question 3, answered on #729 (2026-11-13, the maintainer through the epic coordinator):** the Azure route is the managed OpenTelemetry agent. Traces and logs go to Application Insights, and request metrics in Azure come from the Container Apps platform metrics, so #738's scope is traces and logs. The fallback is an OpenTelemetry Collector sidecar using native OTLP ingestion. It is triggered if OTLP metrics in Application Insights become necessary, for example for #80's alerts.
 * **Amendment, 2026-11-13:** the API bullet named `opentelemetry-appender-tracing` for logs; #731 (PR #767) uses neither it nor `axum-tracing-opentelemetry`. The appender copies every field of an event into the log record, and an SDK log record cannot drop an attribute once it has one, so the API has its own `tracing` layer that copies the message and allow-listed fields only. The axum and tower instrumentation crates record `url.path`, `url.query` and `user_agent.original`, which the privacy rules forbid, so server spans come from a small middleware that records the route template. Database spans come from Diesel's `Instrumentation` hook, which renders the statement up to its bind values (no `diesel-tracing`, which records them). The chosen option and the privacy rules are unchanged.
+* **Amendment, 2026-11-15:** the shorthand "Grafana LGTM" is replaced by **otel-stack**: in this record and its title, the Compose service and the architecture model (#933). The pinned `grafana/otel-lgtm:0.40.0` image runs an OpenTelemetry Collector, Tempo, Loki, **Prometheus** (not Mimir, which the LGTM name implies) and Grafana, plus Pyroscope and OBI, which are unused. The image name stays because it is Grafana's. The decision and the chosen option are unchanged, and the file name is kept so that links still resolve.
 * **Revisit** when the managed agent leaves preview or gains Application Insights metrics, or when web telemetry is wanted in Azure.

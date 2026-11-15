@@ -16,7 +16,7 @@ mod frontend
 # Documentation site (ADRs, stories, architecture, runbooks, benchmarks)
 mod docs 'frontend/apps/docs'
 
-# Local PostgreSQL, and the opt-in LGTM and stub sign-in services, through Docker Compose (ADR-0063)
+# Local PostgreSQL, and the opt-in otel-stack and stub sign-in services, through Docker Compose (ADR-0063)
 mod db
 
 # Throwaway end-to-end stacks, one Compose project per run (ADR-0063)

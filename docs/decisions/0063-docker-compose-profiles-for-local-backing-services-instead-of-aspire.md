@@ -8,14 +8,14 @@ decision-makers: mgasca, Claude (AI assistant)
 
 ## Context and Problem Statement
 
-[ADR-0016](0016-local-database-provisioning.md) chose Docker Compose for the local database and Testcontainers for tests, and deferred .NET Aspire with a trigger: "when a second backing service … is added, re-evaluate Aspire in a new ADR that supersedes the provisioning part of this one". Epic #728 (story [0064](../stories/0064-test-every-user-flow-end-to-end-and-prove-it-is-observable.md)) adds two: a Grafana LGTM container for telemetry ([ADR-0062](0062-opentelemetry-over-otlp-with-grafana-lgtm-locally-and-application-insights-in-azure.md)) and a stub OIDC provider ([ADR-0064](0064-stub-oidc-provider-for-sign-in-tests.md)). They are needed locally and in a throwaway end-to-end stack ([ADR-0061](0061-end-to-end-ui-tests-with-playwright-test-bound-to-the-architecture-flows.md)) that must never touch the shared `calendar` Compose project. Since [ADR-0016](0016-local-database-provisioning.md), the backend moved to Rust ([ADR-0051](0051-rust-backend-on-axum-and-tokio.md)) and repository tooling to TypeScript on Deno ([ADR-0058](0058-typescript-on-deno-for-repository-tooling.md)), whose first driver removes C# and the .NET SDK from application and tooling code. How should local and end-to-end backing services be provisioned now?
+[ADR-0016](0016-local-database-provisioning.md) chose Docker Compose for the local database and Testcontainers for tests, and deferred .NET Aspire with a trigger: "when a second backing service … is added, re-evaluate Aspire in a new ADR that supersedes the provisioning part of this one". Epic #728 (story [0064](../stories/0064-test-every-user-flow-end-to-end-and-prove-it-is-observable.md)) adds two: an otel-stack container for telemetry ([ADR-0062](0062-opentelemetry-over-otlp-with-grafana-lgtm-locally-and-application-insights-in-azure.md)) and a stub OIDC provider ([ADR-0064](0064-stub-oidc-provider-for-sign-in-tests.md)). They are needed locally and in a throwaway end-to-end stack ([ADR-0061](0061-end-to-end-ui-tests-with-playwright-test-bound-to-the-architecture-flows.md)) that must never touch the shared `calendar` Compose project. Since [ADR-0016](0016-local-database-provisioning.md), the backend moved to Rust ([ADR-0051](0051-rust-backend-on-axum-and-tokio.md)) and repository tooling to TypeScript on Deno ([ADR-0058](0058-typescript-on-deno-for-repository-tooling.md)), whose first driver removes C# and the .NET SDK from application and tooling code. How should local and end-to-end backing services be provisioned now?
 
 ## Decision Drivers
 
 * **D1 Lightweight dev**: one command to a working database, with the new services opt-in; no new SDK, project type or IDE requirement.
 * **D2 Isolation of throwaway stacks**: an end-to-end run gets its own containers, volumes and loopback ports, and tears down only those, never the shared `calendar` project, its volume or port 5432, nor another checkout's stack.
 * **D3 Dev/prod parity**: pinned images, and one PostgreSQL tag shared by development, tests and production's major version.
-* **D4 Security**: services bind to loopback only, credentials stay out of the repo, and development-only services (LGTM, the stub provider) cannot reach a deployment.
+* **D4 Security**: services bind to loopback only, credentials stay out of the repo, and development-only services (otel-stack, the stub provider) cannot reach a deployment.
 * **D5 Growth to more services**: wiring several services, their health checks and the API's settings without hand-written glue for each.
 * **D6 Toolchain fit**: no C# or .NET in application or tooling code ([ADR-0058](0058-typescript-on-deno-for-repository-tooling.md)'s D1), and the app processes are a Rust binary and a Vite server.
 * **D7 AI familiarity**: mainstream, stable tooling that agents use reliably.
@@ -43,10 +43,10 @@ Chosen option: "Docker Compose with opt-in profiles and per-run projects", becau
 
 ### Conventions
 
-* **Development:** `compose.yaml` keeps `postgres` as its only default service, so `just db up` is unchanged. LGTM joins it under the profile `observability` and the stub OIDC provider under `sign-in-stub`; both images are pinned and both bind to `127.0.0.1` only. `just db` recipes keep addressing only the shared `calendar` project.
+* **Development:** `compose.yaml` keeps `postgres` as its only default service, so `just db up` is unchanged. otel-stack joins it under the profile `observability` and the stub OIDC provider under `sign-in-stub`; both images are pinned and both bind to `127.0.0.1` only. `just db` recipes keep addressing only the shared `calendar` project.
 * **End-to-end runs:** the E2E recipe starts its own Compose project (a unique project name per run, with both profiles enabled and ports from the run-calendar skill's 55xxx range), runs the API and the built web app as processes against it, and on teardown removes only that project's containers and volumes. It never uses the `calendar` project name, its volume or port 5432.
 * **Tests:** unchanged from [ADR-0016](0016-local-database-provisioning.md). Database tests use Testcontainers through `calendar-testing` (one container per test process, a database per test, [ADR-0054](0054-rust-backend-testing-stack.md)), with the PostgreSQL tag read from `compose.yaml`.
-* **Deployments:** Compose describes local and test stacks only. LGTM and the stub provider never appear in `infra/`.
+* **Deployments:** Compose describes local and test stacks only. otel-stack and the stub provider never appear in `infra/`.
 * **Revisit trigger:** re-evaluate an orchestrator when the local stack needs more application processes than the API and the web app, or service discovery between them. #730 records this trigger, in place of [ADR-0016](0016-local-database-provisioning.md)'s, in the `compose.yaml` header comment, the PR template checklist and the README.
 
 ### Consequences
@@ -55,7 +55,7 @@ Chosen option: "Docker Compose with opt-in profiles and per-run projects", becau
 * Good, because two worktrees and an end-to-end run can each have their own stack without touching the shared database.
 * Bad, because the API's settings for the stack (OTLP endpoint, stub endpoints, connection string) are wired by hand in recipes, and there is no shared dashboard beyond Grafana.
 * Bad, because `compose.yaml` grows, and port variables are needed so one file serves both the shared project and per-run projects.
-* Neutral, because Aspire's OpenTelemetry dashboard is not needed: LGTM's Grafana covers it.
+* Neutral, because Aspire's OpenTelemetry dashboard is not needed: otel-stack's Grafana covers it.
 
 ### Confirmation
 
@@ -90,7 +90,7 @@ Chosen option: "Docker Compose with opt-in profiles and per-run projects", becau
 * Good, because **D3 Dev/prod parity** and **D4 Security**: the same pinned images on loopback.
 * Neutral, because **D5 Growth to more services**: services are code, but wiring stays hand-written.
 * Neutral, because **D6 Toolchain fit**: a second Testcontainers library, in TypeScript, beside the Rust one.
-* Bad, because **D1 Lightweight dev**: covers only the test suite; everyday development would still need Compose for LGTM.
+* Bad, because **D1 Lightweight dev**: covers only the test suite; everyday development would still need Compose for otel-stack.
 * Neutral, because **D7 AI familiarity**: well known, though less so for multi-service stacks.
 
 ### Hand-written `docker run` scripts, as in the run-calendar skill
@@ -112,3 +112,4 @@ Chosen option: "Docker Compose with opt-in profiles and per-run projects", becau
   * Docker Compose v5.7.1. Profiles were introduced in Compose 1.28.0; docs.docker.com "Using profiles with Compose".
   * Whether a TypeScript AppHost still needs the .NET SDK installed was not confirmed.
 * **Delivery:** #730 builds the stack and moves the revisit trigger.
+* **Amendment, 2026-11-15:** the Compose service `lgtm` is renamed `otel-stack`, and "LGTM" in this record now reads otel-stack (#933, [ADR-0062](0062-opentelemetry-over-otlp-with-grafana-lgtm-locally-and-application-insights-in-azure.md)'s amendment of the same date). The image runs Prometheus, not Mimir. The decision is unchanged.

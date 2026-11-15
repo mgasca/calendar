@@ -11,19 +11,19 @@ Terms used here:
 - **Shared project**: the Compose project `calendar` that `just db` recipes use from every checkout, with the volume `calendar-pgdata` and port 5432.
 - **Run**: one end-to-end stack started by `just e2e up`: its own Compose project `calendar-e2e-<time>-<random>`, its own volume and network, and an API and a web server process.
 - **Slot**: the block of 55xxx ports a run uses. Slot *k* (2, 3, 5, 6, 7, 8 or 9) uses 55*k*00 plus the offsets in the table below; slots 0, 1 and 4 hold the `run-calendar` agent stack's ports and are never used.
-- **LGTM**: short for Grafana's `grafana/otel-lgtm` image, the one container this runbook starts for telemetry. The name comes from Loki, Grafana, Tempo and Mimir, but the image doesn't run Mimir. Checked in the pinned 0.40.0, it runs an OpenTelemetry Collector, Tempo (traces), Loki (logs), Prometheus (metrics) and Grafana, plus Pyroscope and OBI, which this project doesn't use. Metrics are therefore queried in Prometheus.
+- **otel-stack**: the one telemetry container this runbook starts, the Compose service of that name, from Grafana's `grafana/otel-lgtm` image. Despite the image name (Loki, Grafana, Tempo, Mimir), the pinned 0.40.0 runs an OpenTelemetry Collector, Tempo (traces), Loki (logs), Prometheus (metrics, not Mimir) and Grafana, plus Pyroscope and OBI, which this project doesn't use. Metrics are therefore queried in Prometheus.
 - **Stub**: `navikt/mock-oauth2-server`, an OpenID Connect provider whose sign-in page lets you type the username and the claims of each sign-in.
 
 ## Before you start
 
 - Run `just doctor`. It checks Docker, the Compose plugin (2.20 or newer: profiles and `up --wait --wait-timeout`) and `curl`, besides the toolchain.
 - Run `just frontend install` in this checkout: `just e2e up` builds the web app.
-- Allow about 4.5 GB of disk for the images: LGTM is about 3.8 GB, the stub about 0.5 GB. The first `just e2e up` pulls them.
+- Allow about 4.5 GB of disk for the images: otel-stack is about 3.8 GB, the stub about 0.5 GB. The first `just e2e up` pulls them.
 - Nothing here needs `.env` or a Google client. `just e2e` sets its own throwaway passwords and seed key and ignores `.env`.
 
 ## Look at telemetry while developing
 
-1. Run `just db up` and `just db migrate` as usual, then `just db observability`. It starts LGTM in the shared project and prints the settings for the API and the web app.
+1. Run `just db up` and `just db migrate` as usual, then `just db observability`. It starts otel-stack in the shared project and prints the settings for the API and the web app.
 2. Start the API with telemetry on. Telemetry is on only when an OTLP endpoint is set, and metrics are pushed every 60 s unless you shorten the interval:
 
    ```bash
@@ -39,7 +39,7 @@ Terms used here:
    Use `just frontend dev` instead if you sign in with Google or through the stub.
 4. Use the app: open the day view, add an event, tick a task.
 5. Open Grafana on http://127.0.0.1:3000 (admin/admin; it listens on loopback only) and find the flow, as described below.
-6. `just db down` stops PostgreSQL and the optional services and keeps the data. LGTM keeps no data between restarts.
+6. `just db down` stops PostgreSQL and the optional services and keeps the data. otel-stack keeps no data between restarts.
 
 The ports above are the defaults. If you changed `CALENDAR_OTLP_HTTP_PORT` or `CALENDAR_GRAFANA_PORT`, use the values `just db observability` prints.
 
@@ -65,7 +65,7 @@ The API refuses to start when an override is set outside `Development`, or names
 
 ## Run the end-to-end stack
 
-1. Run `just e2e up`. It picks the first free slot, starts PostgreSQL, LGTM and the stub with `docker compose up --wait`, migrates the database, builds and starts the API as `Development`, builds the web app with telemetry on and serves it with `vite preview`, then waits for both. It prints the run's settings. Measured on a WSL2 laptop with the images present: about 35 to 50 s until the containers were healthy, 50 s in all with the builds cached, and 110 s with the first build.
+1. Run `just e2e up`. It picks the first free slot, starts PostgreSQL, otel-stack and the stub with `docker compose up --wait`, migrates the database, builds and starts the API as `Development`, builds the web app with telemetry on and serves it with `vite preview`, then waits for both. It prints the run's settings. Measured on a WSL2 laptop with the images present: about 35 to 50 s until the containers were healthy, 50 s in all with the builds cached, and 110 s with the first build.
 2. Run `just e2e check`. It checks the API's health, a database read through the seed key, that the OTLP endpoint accepts an export, Grafana, and a full sign-in through the stub from the web app's origin (an allow-listed email returns to `/day/2026-11-13`, and an unknown or unverified one ends at `/signin?error=access_denied`).
 3. Run `just e2e env` to print the run's settings as `KEY=VALUE` lines (URLs, ports, seed key, allow-listed email, stub issuer), for a test harness or by hand.
 4. Run `just e2e down` to stop every run of this checkout, or `just e2e down <project>` for one. It stops the run's processes, removes its containers, network and volume, and deletes its folder.
@@ -89,7 +89,7 @@ For example, slot 2 serves the web app on http://127.0.0.1:55273 and the API on 
 
 ## Run the end-to-end flow tests
 
-The flow tests are the Playwright Test package `frontend/apps/e2e` ([ADR-0061](../decisions/0061-end-to-end-ui-tests-with-playwright-test-bound-to-the-architecture-flows.md)). Each test drives one user-facing flow of the architecture model in Chromium. It then checks the flow's trace, logs and request metrics in LGTM, and that they carry none of the test's own data.
+The flow tests are the Playwright Test package `frontend/apps/e2e` ([ADR-0061](../decisions/0061-end-to-end-ui-tests-with-playwright-test-bound-to-the-architecture-flows.md)). Each test drives one user-facing flow of the architecture model in Chromium. It then checks the flow's trace, logs and request metrics in otel-stack, and that they carry none of the test's own data.
 
 1. Run `just e2e test`. It starts a new run, downloads Chromium the first time, runs every flow test, and removes the run, whether the tests passed or failed. Arguments go to Playwright: `just e2e test --grep @flow:view-today-flow` runs one flow.
 2. To iterate, keep a stack up and run the tests against it: `just e2e up`, then `just e2e test-on <project>` as often as you like (also with Playwright arguments), then `just e2e down <project>`. `test-on` starts and stops nothing.

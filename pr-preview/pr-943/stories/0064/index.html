@@ -478,7 +478,7 @@ Covered by CI, which runs what <code>just check</code> runs: <code>CI result</co
 </ul>
 </li>
 <li><strong>Harness:</strong> <code>holdRequests(page, method, routeTemplate)</code> holds requests until the test releases them, then sends them on through the signed-in route. <code>seed.updateTask</code> and <code>seed.deleteTask</code> are the task counterparts of <code>seed.updateEvent</code>. <code>observe.exported(action)</code> waits until Tempo holds an action’s trace. A reload drops the spans the browser has not exported yet, and edit-task’s first fresh-stack run lost the web <code>PUT</code> span that way.</li>
-<li><strong>Defect found:</strong> an edit dialog reopened after a save shows the stale cached copy (#900). The edit-task test reloads the page before reopening until it is fixed.</li>
+<li><strong>Defect found:</strong> an edit dialog reopened after a save showed the stale cached copy (#900). Until it was fixed, the edit-task test reloaded the page before reopening.</li>
 </ul>
 <h3 id="delivered-in-736">Delivered in #736</h3>
 <ul>
@@ -514,7 +514,7 @@ Covered by CI, which runs what <code>just check</code> runs: <code>CI result</co
 <p><strong>Follow-up (#892):</strong> an E2E section on the delivery dashboard. Until then, a nightly failure shows as one open <code>bug</code> issue.</p>
 </li>
 <li>
-<p><strong>Known defect (#900):</strong> an edit dialog reopened after a save shows the stale cached copy. <code>edit-task-flow</code> reloads the page before reopening until it is fixed.</p>
+<p><strong>Fixed after close-out (#900):</strong> an edit dialog reopened after a save showed the stale cached copy. <a href="https://github.com/mgasca/calendar/pull/947">#947</a> fixed it in the task and event dialogs (stories 0044 and 0043), and <code>edit-task-flow</code> now reopens the task on the same page, without the reload.</p>
 </li>
 <li>
 <p><strong>Lesson: flow tests find telemetry gaps.</strong> Writing the assertions found two defects the unit tests had missed: a successful request logged nothing, so no log carried its trace id (#797), and <code>fetch(url, init)</code> spans were named by method only (#879).</p>

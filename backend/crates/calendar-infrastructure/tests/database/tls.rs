@@ -1,7 +1,7 @@
 //! The SSL modes against a PostgreSQL that serves TLS with a certificate from a private authority, the shape of
 //! the Azure connection (`SSL Mode=VerifyFull`). A container of its own: the shared one serves no TLS.
 
-use calendar_infrastructure::connection::{self, ConnectSource, ConnectionConfig, ConnectionError};
+use calendar_infrastructure::connection::{self, ConnectionConfig, ConnectionError};
 use rcgen::{BasicConstraints, CertificateParams, DnType, IsCa, Issuer, KeyPair, KeyUsagePurpose};
 use testcontainers_modules::postgres::Postgres;
 use testcontainers_modules::testcontainers::runners::AsyncRunner;
@@ -46,29 +46,7 @@ fn certificates() -> Certificates {
 }
 
 async fn connect(connection_string: &str) -> Result<tokio_postgres::Client, ConnectionError> {
-  // The server restarts once after initialisation; give it a moment before judging a refused connection.
-  let config = ConnectionConfig::parse(connection_string).unwrap();
-  let mut attempt = 0;
-  loop {
-    match connection::connect_client(&config).await {
-      Err(ConnectionError::Connect {
-        source: ConnectSource::Postgres(error),
-        ..
-      }) if attempt < 50 && not_ready_yet(&error) => {
-        attempt += 1;
-        tokio::time::sleep(std::time::Duration::from_millis(200)).await;
-      }
-      result => return result,
-    }
-  }
-}
-
-/// A refused connection (the server is not listening yet) or SQLSTATE 57P03 (`the database system is starting up`).
-fn not_ready_yet(error: &tokio_postgres::Error) -> bool {
-  let refused = std::error::Error::source(error)
-    .and_then(|cause| cause.downcast_ref::<std::io::Error>())
-    .is_some_and(|io| io.kind() == std::io::ErrorKind::ConnectionRefused);
-  refused || error.code() == Some(&tokio_postgres::error::SqlState::CANNOT_CONNECT_NOW)
+  connection::connect_client(&ConnectionConfig::parse(connection_string).unwrap()).await
 }
 
 async fn session_uses_tls(client: &tokio_postgres::Client) -> bool {
@@ -103,6 +81,12 @@ async fn ssl_modes_encrypt_and_verify_as_named() {
   let port = container.get_host_port_ipv4(5432).await.unwrap();
   let by_name = format!("Host=localhost;Port={port};Database=postgres;Username=postgres;Password=tls-test-password");
   let by_address = by_name.replace("Host=localhost", "Host=127.0.0.1");
+
+  // The server restarts once after initialisation: wait for it, in plain text, before any mode is judged.
+  let plain = ConnectionConfig::parse(&format!("{by_name};SSL Mode=Disable")).unwrap();
+  calendar_testing::wait_until_accepting(&plain, calendar_testing::CONTAINER_READY_WITHIN)
+    .await
+    .unwrap_or_else(|error| panic!("{error}"));
 
   // VerifyFull, as Azure: the chain leads to the given root and the certificate names the host.
   let client = connect(&format!("{by_name};SSL Mode=VerifyFull;Root Certificate={authority_file}"))

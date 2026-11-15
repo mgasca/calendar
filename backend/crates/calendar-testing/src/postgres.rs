@@ -297,6 +297,10 @@ impl Server {
       _container: container,
       _reaper: reaper,
     };
+    let maintenance = parse(&server.connection_string("postgres", ADMIN_USER, admin_password()));
+    crate::wait_until_accepting(&maintenance, crate::CONTAINER_READY_WITHIN)
+      .await
+      .unwrap_or_else(|error| panic!("{error}"));
     server.prepare_templates().await;
     server
   }
@@ -315,23 +319,15 @@ impl Server {
   }
 
   /// A superuser client on the maintenance database, because PostgreSQL will not copy or drop the database a
-  /// session is connected to. Retries while the container finishes starting.
+  /// session is connected to. [`Server::start`] has already waited for the server to accept connections.
   async fn maintenance_client(&self) -> tokio_postgres::Client {
     let config = parse(&self.connection_string("postgres", ADMIN_USER, admin_password()));
-    let mut attempt = 0;
-    loop {
-      match connection::connect_client(&config).await {
-        Ok(client) => return client,
-        Err(error) if attempt >= 50 => panic!(
-          "the test PostgreSQL does not accept connections: {}",
-          connection::error_chain(&error)
-        ),
-        Err(_) => {
-          attempt += 1;
-          tokio::time::sleep(Duration::from_millis(200)).await;
-        }
-      }
-    }
+    connection::connect_client(&config).await.unwrap_or_else(|error| {
+      panic!(
+        "cannot connect to the test PostgreSQL as the superuser: {}",
+        connection::error_chain(&error)
+      )
+    })
   }
 
   fn connection_string(&self, database: &str, username: &str, password: &str) -> String {

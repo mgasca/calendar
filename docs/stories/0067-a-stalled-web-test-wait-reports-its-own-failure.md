@@ -1,5 +1,5 @@
 ---
-status: planned
+status: implemented
 date: 2026-11-15
 issue: https://github.com/mgasca/calendar/issues/795
 pr:
@@ -43,11 +43,11 @@ The repo's test helper `eventually` (`src/test/render.tsx`) polls with Vitest's 
 
 ### Acceptance criteria
 
-1. **Given** a web test whose `findBy*` query never matches, **when** the suite runs, **then** the test fails with Testing Library's "Unable to find" error, which names the wait's line and prints the DOM, and not with `Test timed out`.
-2. **Given** a web test whose `waitFor` or `eventually` assertion never passes, **when** the suite runs, **then** the test fails with that assertion's error and the line of the wait, and not with `Test timed out`.
-3. **Given** the web Vitest configuration, **when** a test reads the wait timeout and the test timeout, **then** the wait timeout is lower by at least the chosen margin. A change that makes them equal again fails this test.
-4. **Given** the measurements of the first `findBy` under `just check` and under the CI command, **when** the value is chosen, **then** the card and issue #795 record the runs, p95 and maximum for each, marked measured, and the wait timeout is above that maximum with a margin.
-5. **Given** the change is complete, **when** I run `just check`, **then** it passes, and the CI `Frontend` job passes on the delivery PR.
+1. **Given** a web test whose `findBy*` query never matches, **when** the suite runs, **then** the test fails with Testing Library's "Unable to find" error, which names the wait's line and prints the DOM, and not with `Test timed out`. Tested in [timeouts.test.tsx](../../frontend/apps/web/src/test/timeouts.test.tsx): `report a stalled findBy with its query, its line and the DOM` checks the message, the DOM print and the stack's file, with a short explicit timeout. `time out a findBy or waitFor before the test does` checks that the default fires before the test timer. With the default timeout and a real stall, this was checked by hand: details under "Lessons learned".
+2. **Given** a web test whose `waitFor` or `eventually` assertion never passes, **when** the suite runs, **then** the test fails with that assertion's error and the line of the wait, and not with `Test timed out`. Tested in [timeouts.test.tsx](../../frontend/apps/web/src/test/timeouts.test.tsx): `report a stalled eventually with its assertion and its line`, and `time out an eventually before the test does`, which checks the default limit that `eventually` passes to `vi.waitFor`. `waitFor` shares `asyncUtilTimeout` with `findBy*`, which criterion 1's guard covers.
+3. **Given** the web Vitest configuration, **when** a test reads the wait timeout and the test timeout, **then** the wait timeout is lower by at least the chosen margin. A change that makes them equal again fails this test. Tested by the two `time out … before the test does` tests, which compare the wait timeout with the running test's own `task.timeout`. With the old value of 5,000 ms, both fail with `expected 5000 to be less than or equal to 4000`.
+4. **Given** the measurements of the first `findBy` under `just check` and under the CI command, **when** the value is chosen, **then** the card and issue #795 record the runs, p95 and maximum for each, marked measured, and the wait timeout is above that maximum with a margin. Recorded under "Measurements" below and on #795.
+5. **Given** the change is complete, **when** I run `just check`, **then** it passes, and the CI `Frontend` job passes on the delivery PR. Local `just check` and CI results are reported on the delivery PR.
 
 ## Design decisions
 
@@ -61,22 +61,23 @@ No new ADR is expected.
 
 ### Other decisions (not ADR-worthy)
 
-* **A margin, not a split by default** (proposed): the issue's example, a 4,000 ms wait against a 5,000 ms test, is a starting point only. The measurements decide the value, and a lower test timeout is never the fix.
-* **Measure the first `findBy` only**: a file's first render pays for module loading and jsdom warm-up under load, which is why 1 s was too tight. Later waits in the same file are faster, so the first one bounds the rest.
-* **Include `eventually`** (proposed): it was written to behave like `waitFor` on Vitest's timers, and its 5,000 ms default has the same flaw. Leaving it out would keep half of the waits reporting only the test timeout.
+* **4,000 ms wait, 5,000 ms test** (proposed in question 2 on #954): the wait timeout is at least 1.5 times the slowest measured wait (2.6 times the 1,517 ms maximum), and 1 s below the test timeout, so Testing Library has time to print the DOM. The test timeout stays at Vitest's default, because the value fits without raising it. It is now stated in `vite.config.ts`, because the wait timeout depends on it.
+* **The guard reads the running test's timeout**: the configuration test compares the wait timeout with `task.timeout`, the limit Vitest actually applies, rather than with a second copy of 5,000. Raising or lowering `testTimeout` without the wait timeout therefore fails the guard.
+* **Measure every wait, report the first**: the probe timed every wait, not only the first. Under both commands, the slowest wait in every run was a file's first wait, as expected: a first render pays for module loading and jsdom warm-up.
+* **Include `eventually`** (proposed in question 1 on #954): it was written to behave like `waitFor` on Vitest's timers, and its 5,000 ms default had the same flaw.
 
 ## Implementation notes
-
-*Planned. This section is completed as the story is built.*
 
 ### Where things live
 
 | Area | Location |
 | --- | --- |
-| Testing Library configuration | `frontend/apps/web/src/test/setup.ts` |
-| `eventually` helper | `frontend/apps/web/src/test/render.tsx` |
-| Web Vitest project (test timeout) | `frontend/apps/web/vite.config.ts`, project `web` |
-| CI command | `.github/workflows/ci.yml`, job `Frontend` |
+| The wait timeout and the margin (`WAIT_TIMEOUT_MS`, `WAIT_TIMEOUT_MARGIN_MS`) | `frontend/apps/web/src/test/timeouts.ts` |
+| Testing Library configuration (`asyncUtilTimeout`) | `frontend/apps/web/src/test/setup.ts` |
+| `eventually` helper (its default `timeout`) | `frontend/apps/web/src/test/render.tsx` |
+| Web Vitest project (`testTimeout`, now stated) | `frontend/apps/web/vite.config.ts`, project `web` |
+| Tests | `frontend/apps/web/src/test/timeouts.test.tsx` |
+| Guidance for contributors | `frontend/AGENTS.md`, "Running checks" |
 
 ### API
 
@@ -84,18 +85,32 @@ No changes.
 
 ### Testing
 
-* A test that a stalled `findBy` reports "Unable to find" with the DOM. Shown to fail with `Test timed out` on today's configuration.
-* A test that a stalled `eventually` reports its assertion. Shown to fail with `Test timed out` on today's configuration.
-* A configuration test that the wait timeout stays below the test timeout by the margin.
-* A measurement of the first `findBy` per file, repeated under `just check` and under the CI command. The method and raw numbers go on the issue, so the measurement can be repeated.
+* Four tests in `timeouts.test.tsx`, all fast (under 0.1 s each). The two guard tests check that the defaults are below the running test's timeout. The two shape tests use a 50 ms timeout to check what a stalled `findBy` and a stalled `eventually` report.
+* Negative control: with `WAIT_TIMEOUT_MS` set back to 5,000, both guard tests fail. A throwaway test with a real stalled `findBy` at the default timeout then reports only `Test timed out in 5000ms` at its `it(...)` line.
+* An earlier version tested `eventually` by letting it run out on fake timers. It took 4 s, because `vi.waitFor` measures its timeout on real timers. The test now spies on `vi.waitFor` and checks the limit it receives.
+
+### Measurements
+
+All measured on 2026-11-15 with a probe that was not committed: Testing Library's `asyncWrapper` and `eventually`, wrapped to log the duration of every wait with its file and test. The machine was a 16-core WSL2 Linux host, at the story's base revision (`main` at 490542c2e, with the card). Every run passed, except the stress runs noted below.
+
+| Load | Runs | Files with a wait, per run | First wait per file: p50 / p95 / max | Any wait: p99 / max |
+| --- | --- | --- | --- | --- |
+| CI command, `pnpm -r --filter '!@calendar/docs' --filter '!@calendar/slides' test:coverage` | 20 | 17 | 238 / 570 / 1,018 ms | 308 / 1,018 ms |
+| `just frontend test` (the frontend step of `just check`) | 20 | 17 | 308 / 900 / 1,517 ms | 378 / 1,517 ms |
+| Stress: `just frontend test` 20 s into a cold `cargo build --workspace --all-targets` | 10 | 17 | 600 / 1,891 / 3,791 ms | 785 / 5,026 ms |
+
+* **CI on GitHub** (measured from logs, as an upper bound): across the `Frontend` jobs of 20 recent successful CI runs on `main`, the slowest web test took 518 ms in total, so no single wait took longer. Vitest prints only the tests slower than 300 ms, which is enough for an upper bound.
+* **After the change** (measured): 10 more runs of the CI command on the 4,000 ms value, and all 10 passed (526 web tests each). `just check` passed once on the delivery commit, in 368 s.
 
 ### Lessons learned, known issues and follow-ups
 
-* To be filled on delivery.
+* **`just check` no longer runs the web tests beside the backend build.** The old comment in `setup.ts` said it did. Today `check` runs `lint` and then `test`, and `test` runs the backend tests before the frontend tests (both are plain dependencies, not `[parallel]`). The three `just check` runs made with the probe stopped at ESLint, which rejected the probe itself. So the `just check` load was measured on the step it runs, `just frontend test`.
+* **Under a cold backend build, the test timeout, not the wait, is the limit.** In 1 of the 10 stress runs, three web tests failed, two with `Test timed out in 5000ms`. No wait in them reached 5 s: the test as a whole ran out of time. Only one wait in all the stress runs went past 4,000 ms, and it timed out at 5,000 ms in that same failing run. So the new value turns no passing stress run red. Making the suite robust to a parallel cold build is not part of this story (see "Not in this story"); it is proposed as a follow-up on #795.
+* **A stalled wait, checked by hand** with a throwaway test (`render(<p>waiting</p>)`, then `await screen.findByText('done')` with the default timeout):
+  * Old configuration: `Error: Test timed out in 5000ms.`, pointing at the `it(...)` line.
+  * New configuration: after 4,030 ms, `TestingLibraryElementError: Unable to find an element with the text: done …`, followed by the printed `<body>` with the `<p>` and the wait's own line, `zz-stalled.test.tsx:5:16`.
 
 ## User guide
-
-*Planned behaviour. This section is finalised when the story is implemented.*
 
 ### When a web test fails on a wait
 

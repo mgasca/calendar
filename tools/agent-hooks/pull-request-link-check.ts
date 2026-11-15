@@ -50,8 +50,11 @@ function numbers(regex: RegExp, body: string): string[] {
 const closesPattern =
   /\b(?:close[sd]?|fix(?:e[sd])?|resolve[sd]?):?\s+(?:[\w.-]+\/[\w.-]+#\d+|#\d+|https:\/\/github\.com\/[\w.-]+\/[\w.-]+\/issues\/\d+)/gi;
 const refsPattern = /\brefs?:?\s+(?:[\w.-]+\/[\w.-]+)?#\d+(?:\s*(?:,|and)\s*(?:[\w.-]+\/[\w.-]+)?#\d+)*/gi;
+/** HTML comments are not rendered and link nothing, like the PR template's `Closes #123` example. */
+const visible = (body: string) => body.replace(/<!--[\s\S]*?(?:-->|$)/g, "");
 /** Neither `Closes #N` nor `Refs #N`: the issue numbers the body only mentions, which link nothing. */
-function unlinked(body: string): string[] | null {
+function unlinked(markdown: string): string[] | null {
+  const body = visible(markdown);
   const closes = numbers(closesPattern, body);
   if (closes.length || numbers(refsPattern, body).length) return null;
   return numbers(/(?<![\w/&])#\d+\b/g, body);

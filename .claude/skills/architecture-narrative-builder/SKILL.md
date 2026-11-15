@@ -92,8 +92,9 @@ After Act 1 is confirmed and before the panel is named:
    | Act 2, once the alternatives are stated | `alternatives` (with `alternatives`) | `01-setup.md`, `02-confrontation.md` |
    | Act 3 drafted | `review` | `01-setup.md`, `02-confrontation.md`, `03-resolution.md` |
 
-   If the result is `{ invalid: [...] }`, fix the arguments and run it once more. Name any expert listed as `returned nothing` to the user. Record each round in the ledger (phase, date, what it changed).
-4. **Use the output, never dump it**: merge and deduplicate the experts' questions into the next AskUserQuestion batches (the high-priority ones first, attributed by role only when that helps the user answer); turn alternative verdicts into the trade-off discussion; turn review objections into revisions, risks or open questions that the narrative shows (see Act 3). If the Workflow tool is unavailable, say so, and ask the experts' standing questions from the briefs yourself.
+   If the result is `{ invalid: [...] }`, fix the arguments and run it once more. Name any expert listed as `returned nothing` to the user. Record each round in the ledger (phase, date, run by `workflow`, what it changed).
+4. **Use the output, never dump it**: merge and deduplicate the experts' questions into the next AskUserQuestion batches (the high-priority ones first, attributed by role only when that helps the user answer); turn alternative verdicts into the trade-off discussion; turn review objections into revisions, risks or open questions that the narrative shows (see Act 3).
+5. **Fallback**: if the Workflow tool is unavailable, or every expert returned nothing, say so and offer the fallback: you voice each expert from its brief (its concern, standing question, evidence and pushback) and use what they say as in step 4. Record the round in the ledger with run by `fallback`, and, when the narrative has the panel appendix, say in `05-panel.md` which rounds were voiced from the briefs. Never skip a round silently: a round that neither the workflow nor the fallback ran is not recorded, and quality check 4 fails without it.
 
 ## Act 2: Confrontation
 
@@ -118,7 +119,10 @@ Run these on the parts in every mode before stitching, and report each as passed
 1. Every driving characteristic traces to a stated business requirement and a measurable target.
 2. Every major decision names at least one rejected alternative.
 3. Act 3 has both the solution (diagrams, decisions) and risks with likelihood, impact and mitigation.
-4. Every expert's concern appears somewhere: a revision, a risk, an accepted risk or an open question.
+4. Every expert's concern appears somewhere: a revision, a risk, an accepted risk or an open question. Read the ledger's panel rounds first:
+   - **Run by `workflow`**: trace each expert's concern from those rounds.
+   - **Run by `fallback`**: trace the concerns you voiced from the briefs the same way. The check passes only when the ledger records the fallback and, if the narrative has `05-panel.md`, the appendix says so; report that the fallback ran.
+   - **No round recorded**: the check fails, because no expert's concern can be traced. It is never "not verifiable", "not demonstrated" or skipped. Like any failed check it blocks the stitch: ask the user whether to run the panel (or its fallback) or to accept the failure, which the ledger records.
 5. Every assumption is labelled (`A<n>`) and listed in `04-assumptions.md`.
 6. Act 1's vocabulary is used consistently: no synonyms for defined terms, no undefined terms in Acts 2 and 3.
 7. The front matter has only the agreed keys; parts `01` to `05` start at H2 (the H1 is in `00-front-matter.md`).

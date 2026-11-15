@@ -52,11 +52,11 @@ Never published or stitched. The interview resumes from this file.
 
 ### Rounds
 
-| Phase | Date | Answered | Returned nothing | What changed |
-| --- | --- | --- | --- | --- |
-| questions | 2026-11-13 | 5 | none | Added the offline-tills constraint |
-| alternatives | 2026-11-13 | 5 | none | Row lock rejected on elasticity |
-| review | 2026-11-13 | 5 | none | Elasticity objected to offline sales: risk A1 added; others signed off |
+| Phase | Date | Run by | Answered | Returned nothing | What changed |
+| --- | --- | --- | --- | --- | --- |
+| questions | 2026-11-13 | workflow | 5 | none | Added the offline-tills constraint |
+| alternatives | 2026-11-13 | workflow | 5 | none | Row lock rejected on elasticity |
+| review | 2026-11-13 | workflow | 5 | none | Elasticity objected to offline sales: risk A1 added; others signed off |
 
 ## Options
 

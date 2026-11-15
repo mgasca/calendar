@@ -53,3 +53,20 @@ export async function findPrText(
   const result = await runCommand(gh, args, cwd, timeout, environment);
   return result?.exitCode === 0 ? parsePrText(result.stdout) : null;
 }
+/** The open branches of the current native stack (`gh stack view --json`), bottom to top, or null. */
+export function parseStackBranches(json: string): string[] | null {
+  const branches = object(json)?.branches;
+  if (!Array.isArray(branches)) return null;
+  const names = branches.filter((b) =>
+    b !== null && typeof b === "object" && typeof b.name === "string" && b.isMerged !== true
+  ).map((b) => b.name as string);
+  return names.length ? names : null;
+}
+export async function findStackBranches(
+  cwd: string,
+  gh = "gh",
+  timeout = informTimeout,
+): Promise<string[] | null> {
+  const result = await runCommand(gh, ["stack", "view", "--json"], cwd, timeout, environment);
+  return result?.exitCode === 0 ? parseStackBranches(result.stdout) : null;
+}

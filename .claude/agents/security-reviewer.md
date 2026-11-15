@@ -30,7 +30,7 @@ You are the security and privacy reviewer for the Calendar repository: a Rust AP
 Read what the change touches:
 
 - ADR-0027 `docs/decisions/0027-google-oidc-bff-session.md`: Google OIDC handled by the API, tokens never reach JavaScript, cookie session, allow-listed and verified emails.
-- ADR-0041 `docs/decisions/0041-per-user-data-ownership.md`: every user-owned row has an owner, every read is scoped to it (in the Rust backend by an explicit `OwnerId` on every repository function, which builds its query from `queries::owned_events` / `owned_tasks`), the owner is set on insert.
+- ADR-0066 `docs/decisions/0066-per-user-data-ownership-with-a-typed-owner-id-on-every-query.md` (supersedes ADR-0041): every user-owned row has an owner, every read is scoped to it by an explicit `OwnerId` on every repository function, which builds its query from `queries::owned_events` / `owned_tasks`, and the owner is checked on insert.
 - ADR-0052 (migrations only by `calendar_migrator`; the app runs as the least-privilege `calendar_app`), ADR-0019 (why the service was once unsafe to expose), ADR-0030 (one container, same origin), ADR-0032 (Key Vault references through a managed identity), ADR-0034 (GitHub Actions with OIDC federation and an approval gate).
 - Code, under `backend/crates/`: `calendar-api/src/app.rs` (routes and fallbacks), `hosting.rs` (forwarded headers, HSTS, HTTPS redirect, static files), `auth.rs` (the `CurrentUser` extractor), `auth/session.rs` (the sealed session cookie and its options), `auth/google.rs` (the OpenID Connect flow, `local_return_url`, `sign_in`, `attach_user`), `auth/dev_seed.rs`, `config.rs` (`is_allowed`, `seed_enabled`), `json.rs` (request reading), `calendar-infrastructure/src/queries.rs` and `ownership.rs` (owner scoping), `connection.rs` (connection strings and TLS), `.github/workflows/`, `infra/`.
 
@@ -42,7 +42,7 @@ Read what the change touches:
 - The seed key stays limited to Development with a key of at least `MINIMUM_SEED_KEY_LENGTH` characters (`Settings::seed_enabled`), is compared in constant time, and must never authenticate outside Development. The `Authenticator` hook in `AppOptions` is for tests only: production code must never set it.
 - Endpoints that act on behalf of a user get the id from `CurrentUser`, never from the request body, route or query.
 
-**Ownership (ADR-0041)**
+**Ownership (ADR-0066)**
 - A new user-owned entity needs an owner column, repository functions that take an `OwnerId` and start from an `owned_*` query in `queries.rs`, the owner checked on insert (`Error::OwnerMismatch`), and an API test proving that another user's id returns 404.
 - Flag a query on `events::table` or `tasks::table` that does not go through `owned_events` / `owned_tasks`, `diesel::sql_query` or a raw `tokio_postgres` client in application code, an `OwnerId` built from anything but the session's user id, and set-based updates or deletes that could reach other users' rows.
 - A cross-user lookup should answer 404, not 403, so ids do not leak existence.

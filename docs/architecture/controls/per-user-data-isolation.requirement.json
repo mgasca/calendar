@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://mgasca.github.io/calendar/architecture/controls/per-user-data-isolation.requirement.json",
   "title": "Per-user data isolation requirement",
-  "description": "How every read and write of user-owned rows is scoped to the signed-in user, and how another user's rows answer (ADR-0041).",
+  "description": "How every read and write of user-owned rows is scoped to the signed-in user, and how another user's rows answer (ADR-0066).",
   "type": "object",
   "properties": {
     "owner-column": { "type": "string", "description": "The non-null owner column on every user-owned table and what it references." },

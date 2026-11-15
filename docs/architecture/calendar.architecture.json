@@ -71,7 +71,7 @@
       { "id": "ADR-0038", "title": "just as the top-level task runner, replacing GNU Make", "status": "accepted", "supersedes": "ADR-0011", "file": "docs/decisions/0038-just-as-the-top-level-task-runner.md", "url": "https://mgasca.github.io/calendar/adr/0038/" },
       { "id": "ADR-0039", "title": "Architecture model and visualization tooling for the documentation site", "status": "accepted", "file": "docs/decisions/0039-architecture-model-and-visualization-tooling.md", "url": "https://mgasca.github.io/calendar/adr/0039/" },
       { "id": "ADR-0040", "title": "Derive the decision log from the ADR files instead of an index table", "status": "accepted", "file": "docs/decisions/0040-derive-the-decision-log-from-the-adr-files.md", "url": "https://mgasca.github.io/calendar/adr/0040/" },
-      { "id": "ADR-0041", "title": "Per-user data ownership: scope every query and write with an EF Core global query filter keyed by the signed-in user", "status": "accepted", "file": "docs/decisions/0041-per-user-data-ownership.md", "url": "https://mgasca.github.io/calendar/adr/0041/" },
+      { "id": "ADR-0041", "title": "Per-user data ownership: scope every query and write with an EF Core global query filter keyed by the signed-in user", "status": "superseded", "superseded-by": "ADR-0066", "file": "docs/decisions/0041-per-user-data-ownership.md", "url": "https://mgasca.github.io/calendar/adr/0041/", "note": "Only the mechanism is replaced: the per-user value model (one owner per event and task, 404 for another user's id) and its conventions still stand and are restated in ADR-0066." },
       { "id": "ADR-0042", "title": "Layer agent guidance by scope and enforce its invariants with Claude Code hooks built as repo tools", "status": "accepted", "file": "docs/decisions/0042-layered-agent-guidance-and-hooks.md", "url": "https://mgasca.github.io/calendar/adr/0042/" },
       { "id": "ADR-0043", "title": "Show form errors as red borders with a bubble, from the forms' own on-submit validation", "status": "accepted", "file": "docs/decisions/0043-form-validation-red-borders-and-bubble.md", "url": "https://mgasca.github.io/calendar/adr/0043/" },
       { "id": "ADR-0044", "title": "Focus new agent automation on Claude Code for a while, keeping the guidance files agent-neutral", "status": "accepted", "file": "docs/decisions/0044-claude-first-agent-automation.md", "url": "https://mgasca.github.io/calendar/adr/0044/" },
@@ -100,7 +100,8 @@
       { "id": "ADR-0062", "title": "OpenTelemetry over OTLP from the API and the web app, with otel-stack locally and Application Insights in Azure", "status": "accepted", "file": "docs/decisions/0062-opentelemetry-over-otlp-with-grafana-lgtm-locally-and-application-insights-in-azure.md", "url": "https://mgasca.github.io/calendar/adr/0062/" },
       { "id": "ADR-0063", "title": "Docker Compose with opt-in profiles and per-run projects for local backing services, instead of Aspire", "status": "accepted", "supersedes": "ADR-0016", "file": "docs/decisions/0063-docker-compose-profiles-for-local-backing-services-instead-of-aspire.md", "url": "https://mgasca.github.io/calendar/adr/0063/" },
       { "id": "ADR-0064", "title": "Stub OIDC provider for sign-in tests, reached only through Development-only loopback settings", "status": "accepted", "file": "docs/decisions/0064-stub-oidc-provider-for-sign-in-tests.md", "url": "https://mgasca.github.io/calendar/adr/0064/" },
-      { "id": "ADR-0065", "title": "Native GitHub stacks for stacked PRs, with a narrow exception that lets an agent rebase its own stack", "status": "accepted", "file": "docs/decisions/0065-native-github-stacks-for-stacked-prs-with-a-narrow-rebase-exception.md", "url": "https://mgasca.github.io/calendar/adr/0065/" }
+      { "id": "ADR-0065", "title": "Native GitHub stacks for stacked PRs, with a narrow exception that lets an agent rebase its own stack", "status": "accepted", "file": "docs/decisions/0065-native-github-stacks-for-stacked-prs-with-a-narrow-rebase-exception.md", "url": "https://mgasca.github.io/calendar/adr/0065/" },
+      { "id": "ADR-0066", "title": "Per-user data ownership: every event and task query takes a typed OwnerId and starts from an owner-filtered query", "status": "accepted", "supersedes": "ADR-0041", "file": "docs/decisions/0066-per-user-data-ownership-with-a-typed-owner-id-on-every-query.md", "url": "https://mgasca.github.io/calendar/adr/0066/" }
     ],
     "stories": [
       { "id": "0001", "title": "Today view", "status": "implemented", "url": "https://mgasca.github.io/calendar/stories/0001/" },
@@ -424,7 +425,7 @@
           ]
         },
         "per-user-data-isolation": {
-          "description": "Every event and task belongs to one user (owner_id). Every event and task repository function takes the signed-in user's OwnerId and builds its query from queries::owned_events / owned_tasks, so every read, count and set-based update or delete is scoped; another user's id answers 404 (ADR-0041).",
+          "description": "Every event and task belongs to one user (owner_id). Every event and task repository function takes the signed-in user's OwnerId and builds its query from queries::owned_events / owned_tasks, so every read, count and set-based update or delete is scoped; another user's id answers 404 (ADR-0066).",
           "requirements": [
             {
               "requirement-url": "https://raw.githubusercontent.com/mgasca/calendar/main/docs/architecture/controls/per-user-data-isolation.requirement.json",
@@ -444,7 +445,7 @@
                   "backend/crates/calendar-api/tests/api/session_and_seed.rs (old cookie, seed scheme)",
                   "backend/crates/calendar-infrastructure/tests/database/schema_definition.rs (owner columns, keys, indexes)"
                 ],
-                "adrs": ["https://mgasca.github.io/calendar/adr/0041/"]
+                "adrs": ["https://mgasca.github.io/calendar/adr/0066/"]
               }
             }
           ]
@@ -577,7 +578,7 @@
         }
       },
       "metadata": {
-        "adrs": ["ADR-0051", "ADR-0004", "ADR-0053", "ADR-0054", "ADR-0009", "ADR-0052", "ADR-0057", "ADR-0020", "ADR-0021", "ADR-0024", "ADR-0027", "ADR-0030", "ADR-0036", "ADR-0041", "ADR-0055", "ADR-0056"],
+        "adrs": ["ADR-0051", "ADR-0004", "ADR-0053", "ADR-0054", "ADR-0009", "ADR-0052", "ADR-0057", "ADR-0020", "ADR-0021", "ADR-0024", "ADR-0027", "ADR-0030", "ADR-0036", "ADR-0066", "ADR-0055", "ADR-0056"],
         "stories": ["0001", "0002", "0003", "0004", "0005", "0007", "0017"],
         "runtime": "Rust (toolchain pinned in backend/rust-toolchain.toml), axum on tokio, Diesel + diesel-async on tokio-postgres",
         "projects": ["backend/crates/calendar-domain", "backend/crates/calendar-infrastructure", "backend/crates/calendar-api"],
@@ -613,7 +614,7 @@
                   "ck_tasks_priority: priority IN ('low','medium','high')",
                   "ck_tasks_due_date_xor_due_at: due_date IS NULL OR due_at IS NULL",
                   "ck_users_email_lower: email IS NULL OR email = lower(email); unique google_subject and email",
-                  "fk_events_owner, fk_tasks_owner: owner_id REFERENCES users(id) ON DELETE RESTRICT (ADR-0041)",
+                  "fk_events_owner, fk_tasks_owner: owner_id REFERENCES users(id) ON DELETE RESTRICT (ADR-0066)",
                   "Events: timed span tstzrange / all-day date_span daterange generated columns",
                   "xmin concurrency tokens on events and tasks"
                 ],
@@ -635,7 +636,7 @@
                   "ix_tasks_completed_at (owner_id, completed_at) WHERE completed_at IS NOT NULL",
                   "ix_tasks_open_due_date (owner_id, due_date) WHERE due_date IS NOT NULL AND completed_at IS NULL",
                   "ix_tasks_open_due_at (owner_id, due_at) WHERE due_at IS NOT NULL AND completed_at IS NULL",
-                  "GiST on events.span (tstzrange) and events.date_span (daterange), single-column: the owner predicate is applied to the rows the overlap selects (btree_gist would need the Azure extension allow-list, ADR-0041)",
+                  "GiST on events.span (tstzrange) and events.date_span (daterange), single-column: the owner predicate is applied to the rows the overlap selects (btree_gist would need the Azure extension allow-list, ADR-0066)",
                   "ix_events_owner_id (owner_id)"
                 ],
                 "overlap-strategy": "Generated half-open ranges queried with && / @> through Diesel's range expression methods, because a B-tree on (start, end) cannot narrow start < X AND end > Y",
@@ -650,7 +651,7 @@
         }
       },
       "metadata": {
-        "adrs": ["ADR-0014", "ADR-0052", "ADR-0016", "ADR-0063", "ADR-0031", "ADR-0035", "ADR-0037", "ADR-0041"],
+        "adrs": ["ADR-0014", "ADR-0052", "ADR-0016", "ADR-0063", "ADR-0031", "ADR-0035", "ADR-0037", "ADR-0066"],
         "schema-management": "SQL migrations in backend/crates/calendar-infrastructure/migrations (the first six translate the EF Core migrations one to one), embedded in the calendar-migrate binary, snake_case naming; applied only by the migrator, never by the app",
         "local": "docker compose (compose.yaml), roles created by docker/postgres/init/01-roles.sh, credentials in untracked .env",
         "azure": "infra/modules/database.bicep; roles created by `just infra init-roles` with the same SQL (checked by CI)"
@@ -1190,7 +1191,7 @@
     },
     {
       "unique-id": "api-reads-writes-db",
-      "description": "Reads agendas and task lists from, and writes events and tasks to, as the least-privilege application role, every query scoped to the signed-in user's rows (ADR-0041)",
+      "description": "Reads agendas and task lists from, and writes events and tasks to, as the least-privilege application role, every query scoped to the signed-in user's rows (ADR-0066)",
       "relationship-type": {
         "connects": {
           "source": { "node": "calendar-api" },
@@ -1231,7 +1232,7 @@
           ]
         }
       },
-      "metadata": { "adrs": ["ADR-0014", "ADR-0052", "ADR-0020", "ADR-0031", "ADR-0041"], "driver": "tokio-postgres through Diesel's typed query builder (diesel-async, deadpool pool); parameterized queries, no raw SQL statements" }
+      "metadata": { "adrs": ["ADR-0014", "ADR-0052", "ADR-0020", "ADR-0031", "ADR-0066"], "driver": "tokio-postgres through Diesel's typed query builder (diesel-async, deadpool pool); parameterized queries, no raw SQL statements" }
     },
     {
       "unique-id": "migrator-migrates-db",
@@ -1529,7 +1530,7 @@
         { "relationship-unique-id": "web-app-calls-api", "sequence-number": 3, "description": "'Sign in with Google' navigates to GET /api/auth/login?returnUrl=/day/2026-10-29 (503 if Google is not configured)" },
         { "relationship-unique-id": "browser-redirects-to-google", "sequence-number": 4, "description": "The API answers with an OIDC challenge; the browser is redirected to Google's authorization endpoint and the person signs in" },
         { "relationship-unique-id": "browser-redirects-to-google", "sequence-number": 5, "description": "Google redirects the browser back to /api/auth/callback/google with the authorization code", "direction": "destination-to-source" },
-        { "relationship-unique-id": "api-exchanges-code-with-google", "sequence-number": 6, "description": "The API redeems the code for the ID token and claims, checks email_verified and the Auth:AllowedEmails allow-list, then finds or creates the person's users row by Google subject (the first allow-listed email claims the legacy-owner placeholder) and adds its id to the ticket (ADR-0041)" },
+        { "relationship-unique-id": "api-exchanges-code-with-google", "sequence-number": 6, "description": "The API redeems the code for the ID token and claims, checks email_verified and the Auth:AllowedEmails allow-list, then finds or creates the person's users row by Google subject (the first allow-listed email claims the legacy-owner placeholder) and adds its id to the ticket (ADR-0066)" },
         { "relationship-unique-id": "web-app-calls-api", "sequence-number": 7, "description": "On success the API sets the HttpOnly, SameSite=Lax, Secure session cookie (8 h) and redirects to the local returnUrl; on failure it redirects to /signin?error=access_denied without a session", "direction": "destination-to-source" },
         { "relationship-unique-id": "web-app-calls-api", "sequence-number": 8, "description": "The app calls GET /api/auth/me again (200: name, email, picture) and renders the header and the requested page" }
       ],
@@ -1553,7 +1554,7 @@
           ]
         }
       },
-      "metadata": { "story": "0005", "adrs": ["ADR-0027", "ADR-0030", "ADR-0041"], "e2e-test": "frontend/apps/e2e/tests/sign-in-flow.spec.ts", "not-automated": "The round trip with the real Google and the cookie and proxy settings behind HTTPS are verified manually; the end-to-end test signs in through the stub provider (ADR-0064)" }
+      "metadata": { "story": "0005", "adrs": ["ADR-0027", "ADR-0030", "ADR-0066"], "e2e-test": "frontend/apps/e2e/tests/sign-in-flow.spec.ts", "not-automated": "The round trip with the real Google and the cookie and proxy settings behind HTTPS are verified manually; the end-to-end test signs in through the stub provider (ADR-0064)" }
     },
     {
       "unique-id": "view-today-flow",
@@ -1609,7 +1610,7 @@
     {
       "unique-id": "edit-event-flow",
       "name": "Edit or delete an event",
-      "description": "From the day page the person opens an event by its title, edits it in the event dialog or deletes it after a confirmation inside the dialog; updates are checked against the version the dialog loaded (story 0043, ADR-0052, ADR-0041).",
+      "description": "From the day page the person opens an event by its title, edits it in the event dialog or deletes it after a confirmation inside the dialog; updates are checked against the version the dialog loaded (story 0043, ADR-0052, ADR-0066).",
       "requirement-url": "https://mgasca.github.io/calendar/stories/0043/",
       "transitions": [
         { "relationship-unique-id": "user-uses-web-app", "sequence-number": 1, "description": "The event's title (a button in All day or Schedule) opens the 'Edit event' dialog, which shows 'Loading event…'" },
@@ -1620,12 +1621,12 @@
         { "relationship-unique-id": "web-app-calls-api", "sequence-number": 6, "description": "200 with the new version or 204; 400 field errors; 404 gone or another user's; 409 stale version", "direction": "destination-to-source" },
         { "relationship-unique-id": "user-uses-web-app", "sequence-number": 7, "description": "Success closes the dialog, says 'Dentist saved.' or 'Dentist deleted.', refetches ['agenda'] and returns focus to the title or the day heading; 409 reloads the latest version into the form and says the event was changed elsewhere; other errors keep the values for a retry" }
       ],
-      "metadata": { "story": "0043", "adrs": ["ADR-0014", "ADR-0052", "ADR-0020", "ADR-0041"], "e2e-test": "frontend/apps/e2e/tests/edit-event-flow.spec.ts" }
+      "metadata": { "story": "0043", "adrs": ["ADR-0014", "ADR-0052", "ADR-0020", "ADR-0066"], "e2e-test": "frontend/apps/e2e/tests/edit-event-flow.spec.ts" }
     },
     {
       "unique-id": "edit-task-flow",
       "name": "Edit a task",
-      "description": "From the day page the person opens a task by its title (the checkbox still completes it), edits title, deadline, priority or notes in the task dialog, and saves against the version the dialog loaded (story 0044, ADR-0052, ADR-0041).",
+      "description": "From the day page the person opens a task by its title (the checkbox still completes it), edits title, deadline, priority or notes in the task dialog, and saves against the version the dialog loaded (story 0044, ADR-0052, ADR-0066).",
       "requirement-url": "https://mgasca.github.io/calendar/stories/0044/",
       "transitions": [
         { "relationship-unique-id": "user-uses-web-app", "sequence-number": 1, "description": "The task's title (a button; the checkbox is named by it) opens the 'Edit task' dialog, which shows 'Loading task…'" },
@@ -1636,7 +1637,7 @@
         { "relationship-unique-id": "web-app-calls-api", "sequence-number": 6, "description": "200 with the new version; 400 field errors; 404 gone or another user's; 409 stale version", "direction": "destination-to-source" },
         { "relationship-unique-id": "user-uses-web-app", "sequence-number": 7, "description": "Success closes the dialog, shows 'Task saved.', refetches ['agenda'] and ['tasks'] and returns focus to the title, or to the day heading when the task left the day; 409 reloads the latest version into the form; other errors keep the values for a retry" }
       ],
-      "metadata": { "e2e-test": "frontend/apps/e2e/tests/edit-task-flow.spec.ts", "story": "0044", "adrs": ["ADR-0014", "ADR-0052", "ADR-0020", "ADR-0041"] }
+      "metadata": { "e2e-test": "frontend/apps/e2e/tests/edit-task-flow.spec.ts", "story": "0044", "adrs": ["ADR-0014", "ADR-0052", "ADR-0020", "ADR-0066"] }
     },
     {
       "unique-id": "toggle-task-flow",

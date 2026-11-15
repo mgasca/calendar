@@ -2,7 +2,8 @@
 status: planned
 date: 2026-11-15
 issue: https://github.com/mgasca/calendar/issues/937
-pr: []
+pr:
+  - https://github.com/mgasca/calendar/pull/939
 adrs: ["0038", "0046", "0058"]
 ---
 
@@ -34,11 +35,11 @@ This story adds `just changed`. It applies the CI rules to the local branch and 
   * ADR conventions: `just tools adr`.
   * Narratives: `just tools narratives --check`.
   * Flow binding: the e2e package's unit tests (`pnpm --filter @calendar/e2e test`).
-  * Container image: `just image build` (proposed; see the open question on PR 0).
+  * Container image: `just image build`, only with `--image` (proposed). It takes minutes and needs Docker, so by default the job is reported as `selected, not run (--image to run)` rather than run or skipped silently.
 * **No silent gaps**: if the rules name a job the map does not cover, the command fails before it runs anything, and a test fails in `just tools test`. A new CI job therefore cannot be skipped locally by accident.
 * **Report**: before running anything, the command prints the base it compared with, how many files changed, and each CI job as `runs` or `skipped`. It then runs the selected recipes, each under a heading that names it. It finishes with a summary of passed and failed recipes and exits non-zero if any recipe failed.
 * **Runs every selected recipe**: a failing recipe does not stop the rest, because CI reports every job too. `--fail-fast` stops at the first failure.
-* **Options**: `--dry-run` prints the plan and the commands without running them. `--base REF` compares with a ref other than `origin/main`.
+* **Options**: `--dry-run` prints the plan and the commands without running them. `--base REF` compares with a ref other than `origin/main`. `--image` also runs the Container image job's recipe when it is selected.
 * **Nothing changed**: with no changed files, it prints that no CI job would run and exits 0.
 
 ### Not in this story
@@ -63,7 +64,8 @@ This story adds `just changed`. It applies the CI rules to the local branch and 
 8. **Given** two selected recipes where the first fails, **when** I run `just changed`, **then** the second still runs, the summary lists the failure, and the exit code is non-zero; **with** `--fail-fast`, the second does not run.
 9. **Given** no changed files, **when** I run `just changed`, **then** it prints that no CI job would run and exits 0.
 10. **Given** `--base REF`, **when** I run `just changed --dry-run --base REF`, **then** it compares with the merge base of `HEAD` and `REF` and prints that ref.
-11. **Given** the change is complete, **when** I run `just check`, **then** it passes.
+11. **Given** a branch that changes `Dockerfile`, **when** I run `just changed --dry-run`, **then** Container image is reported as selected but not run; **with** `--image`, the plan includes `just image build`.
+12. **Given** the change is complete, **when** I run `just check`, **then** it passes.
 
 ## Design decisions
 

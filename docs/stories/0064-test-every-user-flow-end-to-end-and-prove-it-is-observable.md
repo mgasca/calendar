@@ -22,6 +22,7 @@ pr:
   - https://github.com/mgasca/calendar/pull/877
   - https://github.com/mgasca/calendar/pull/901
   - https://github.com/mgasca/calendar/pull/903
+  - https://github.com/mgasca/calendar/pull/931
   - https://github.com/mgasca/calendar/pull/929
 adrs: ["0008", "0021", "0027", "0030", "0039", "0058", "0061", "0062", "0063", "0064"]
 ---
@@ -95,10 +96,11 @@ Each slice is a child issue with its own PR. Their acceptance criteria are copie
 | [#738](https://github.com/mgasca/calendar/issues/738) | Azure: API telemetry to Application Insights | #729, #731 | `just infra` what-if for staging shows only the intended telemetry changes; Bicep lint and build pass. **Given** a deployed staging revision, **when** a flow runs, **then** its trace and logs appear in Application Insights (owner-verified; record what was and was not verified). **Given** staging telemetry, **then** it carries no personal data (owner check per the runbook). |
 | [#104](https://github.com/mgasca/calendar/issues/104) | Google sign-in test gaps at API level | #729; may reuse the stub from #730 | **Given** a Google callback for an email that is not allow-listed or not verified, **when** it is processed, **then** the response redirects to `/signin?error=access_denied` and no auth cookie is issued. **Given** a callback for an allow-listed verified email, **then** a session cookie is issued and the user is redirected to the original local `returnUrl`. **Given** a non-Development environment behind `X-Forwarded-Proto: https`, **when** signing in, **then** the cookie is `Secure`, `HttpOnly`, `SameSite=Lax` and the `redirect_uri` uses the public HTTPS origin. Story 0005's notes drop the "known gaps" sentence. The Rust tests in `google_sign_in.rs` may already cover part of this; #104's own design post says what is left. |
 
-Two children were added during delivery, both within the agreed scope:
+Three children were added during delivery, all within the agreed scope:
 
 | # | Slice | Delivered in |
 | --- | --- | --- |
+| [#930](https://github.com/mgasca/calendar/issues/930) | Runbook: make "Look at telemetry while developing" match the delivered telemetry (the web build switch, finding a flow in Grafana) | #931 |
 | [#797](https://github.com/mgasca/calendar/issues/797) | API: one `request finished` log record per traced request, so a successful flow's logs carry its trace id (found while designing #733) | #798, with the review follow-up #841 |
 | [#902](https://github.com/mgasca/calendar/issues/902) | CI: run the flow binding check for changes to the e2e package and the model (it had never run in CI) | #909 |
 
@@ -295,7 +297,7 @@ API telemetry (#731) lives in `calendar-api/src/telemetry/`:
 - **Lesson: check that a new check actually runs in CI.** The binding check ran in no CI job until #909 (#902). The Frontend job only runs packages that have a `test:coverage` script, and its path filter skipped changes to the e2e package and the model. Three PRs reported green CI that never ran it.
 - **Lesson: stacked PRs and squash merges.** #901 and #903 were stacked on #877. Once #877 and #901 were squash-merged, #903's branch still held #877's original commits and conflicted with `main` in code #903 never changed. Merging with #877's final head as the base left only the shared lines (`pending-flows.json`, the README and this card) to resolve. ADR-0065 now makes stacks native GitHub stacks.
 - **Lesson: lock files.** A broken `frontend/pnpm-lock.yaml` after a merge (#832) should be rebuilt as `main`'s lock file plus the change. `pnpm install --fix-lockfile` also dropped about 10 KB of entries `main` relies on.
-- **Docs gap:** the runbook's "Look at telemetry while developing" section still says nothing is exported until #731 and #732 land. It doesn't mention the web build switch `VITE_OTEL_TRACES_EXPORTER=otlp` or say where to find a flow's trace, logs and metrics in Grafana.
+- **Docs gap, fixed (#930, #931):** the runbook's "Look at telemetry while developing" section had gone stale. It said nothing was exported until #731 and #732 landed, left out the web build switch `VITE_OTEL_TRACES_EXPORTER=otlp`, and gave no way to find a flow in Grafana. It now gives the commands and the Tempo, Loki and Prometheus queries, checked against a throwaway run.
 
 - Browser OpenTelemetry is marked experimental upstream, and the Rust traces signal is beta; ADR-0062 records the versions checked.
 - **Follow-up:** web telemetry in Azure stays off in this story, as the maintainer chose on #729 on 2026-11-13; turning it on is a later decision (ADR-0062). With the switch off the fetch instrumentation is not loaded, so Azure requests carry no `traceparent` either (#732).

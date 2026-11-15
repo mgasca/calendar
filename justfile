@@ -63,5 +63,10 @@ contracts: backend::contract frontend::generate
 # Everything CI runs
 check: lint test
 
+# Run only the checks of the CI jobs this branch's changes select (--dry-run, --base REF, --fail-fast, --image)
+[positional-arguments]
+changed *args:
+    @deno run --config tools/deno.json --frozen --no-prompt --allow-read --allow-run=git,jq,just,pnpm tools/changed/changed.ts "$@"
+
 # Remove build outputs
 clean: backend::clean frontend::clean

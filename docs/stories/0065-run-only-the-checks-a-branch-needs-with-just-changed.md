@@ -1,9 +1,10 @@
 ---
-status: planned
+status: implemented
 date: 2026-11-15
 issue: https://github.com/mgasca/calendar/issues/937
 pr:
   - https://github.com/mgasca/calendar/pull/939
+  - https://github.com/mgasca/calendar/pull/941
 adrs: ["0038", "0046", "0058"]
 ---
 
@@ -54,18 +55,18 @@ This story adds `just changed`. It applies the CI rules to the local branch and 
 
 ### Acceptance criteria
 
-1. **Given** a branch that changes only a story card, **when** I run `just changed`, **then** it reports ADR conventions and Docs site as `runs` and every other job as `skipped`, as CI does for that file, and runs only the recipes of those two jobs.
-2. **Given** an uncommitted edit to a file under `backend/`, **when** I run `just changed`, **then** Backend is selected, although nothing is committed.
-3. **Given** a new untracked file under `tools/` and an ignored file under `.plan/`, **when** I run `just changed --dry-run`, **then** the untracked file counts as changed and the ignored one does not.
-4. **Given** a branch that renames a file out of `frontend/apps/web/`, **when** I run `just changed --dry-run`, **then** Frontend is selected because of the old path.
-5. **Given** a branch that changes `.github/ci-changes.jq`, **when** I run `just changed --dry-run`, **then** every CI job is selected except ADR conventions, Narratives and Flow binding, which CI then runs inside Tooling and Frontend.
-6. **Given** any file list, **when** the command selects jobs, **then** the selection equals the output of `.github/ci-changes.jq` for that list as a complete `pull_request` event.
-7. **Given** a CI rule for a job the recipe map lacks, **when** I run `just changed` or `just tools test`, **then** it fails and names the unmapped job, and no recipe runs.
-8. **Given** two selected recipes where the first fails, **when** I run `just changed`, **then** the second still runs, the summary lists the failure, and the exit code is non-zero; **with** `--fail-fast`, the second does not run.
-9. **Given** no changed files, **when** I run `just changed`, **then** it prints that no CI job would run and exits 0.
-10. **Given** `--base REF`, **when** I run `just changed --dry-run --base REF`, **then** it compares with the merge base of `HEAD` and `REF` and prints that ref.
-11. **Given** a branch that changes `Dockerfile`, **when** I run `just changed --dry-run`, **then** Container image is reported as selected but not run; **with** `--image`, the plan includes `just image build`.
-12. **Given** the change is complete, **when** I run `just check`, **then** it passes.
+1. **Given** a branch that changes only a story card, **when** I run `just changed`, **then** it reports ADR conventions and Docs site as `runs` and every other job as `skipped`, as CI does for that file, and runs only the recipes of those two jobs. Tested in [changed_test.ts](../../tools/changed/tests/changed_test.ts) (`a story card alone runs ADR conventions and Docs site`, `main exits non-zero when a selected recipe fails, and --dry-run runs nothing`).
+2. **Given** an uncommitted edit to a file under `backend/`, **when** I run `just changed`, **then** Backend is selected, although nothing is committed. Tested in [changed_test.ts](../../tools/changed/tests/changed_test.ts) (`an uncommitted backend edit selects Backend`).
+3. **Given** a new untracked file under `tools/` and an ignored file under `.plan/`, **when** I run `just changed --dry-run`, **then** the untracked file counts as changed and the ignored one does not. Tested in [changed_test.ts](../../tools/changed/tests/changed_test.ts) (`changed files cover commits, staged, unstaged, untracked, renames and deletions, not ignored files`).
+4. **Given** a branch that renames a file out of `frontend/apps/web/`, **when** I run `just changed --dry-run`, **then** Frontend is selected because of the old path. Tested in [changed_test.ts](../../tools/changed/tests/changed_test.ts) (`a rename out of the web app selects Frontend through the old path`).
+5. **Given** a branch that changes `.github/ci-changes.jq`, **when** I run `just changed --dry-run`, **then** every CI job is selected except ADR conventions, Narratives and Flow binding, which CI then runs inside Tooling and Frontend. Tested in [changed_test.ts](../../tools/changed/tests/changed_test.ts) (`a change to the rules selects every job but those CI runs inside Tooling and Frontend`).
+6. **Given** any file list, **when** the command selects jobs, **then** the selection equals the output of `.github/ci-changes.jq` for that list as a complete `pull_request` event. Tested in [changed_test.ts](../../tools/changed/tests/changed_test.ts) (`the selection is ci-changes.jq's for …`, nine file lists, one per CI job plus no files and an unmatched file).
+7. **Given** a CI rule for a job the recipe map lacks, **when** I run `just changed` or `just tools test`, **then** it fails and names the unmapped job, and no recipe runs. Tested in [changed_test.ts](../../tools/changed/tests/changed_test.ts) (`a job the recipe map lacks fails before anything runs, naming the job`, with a fixture rules file; `every CI job in the rules has local recipes, and every mapping has a job` fails `just tools test` against the real rules).
+8. **Given** two selected recipes where the first fails, **when** I run `just changed`, **then** the second still runs, the summary lists the failure, and the exit code is non-zero; **with** `--fail-fast`, the second does not run. Tested in [changed_test.ts](../../tools/changed/tests/changed_test.ts) (`every selected step runs after a failure, and the summary lists the failure`, `--fail-fast stops at the first failure and lists what did not run`, `main exits non-zero when a selected recipe fails, and --dry-run runs nothing`).
+9. **Given** no changed files, **when** I run `just changed`, **then** it prints that no CI job would run and exits 0. Tested in [changed_test.ts](../../tools/changed/tests/changed_test.ts) (`main exits 0 and runs nothing when nothing changed`).
+10. **Given** `--base REF`, **when** I run `just changed --dry-run --base REF`, **then** it compares with the merge base of `HEAD` and `REF` and prints that ref. Tested in [changed_test.ts](../../tools/changed/tests/changed_test.ts) (`--base compares with the merge base of HEAD and that ref`). That the ref is printed is checked by hand, not by a test.
+11. **Given** a branch that changes `Dockerfile`, **when** I run `just changed --dry-run`, **then** Container image is reported as selected but not run; **with** `--image`, the plan includes `just image build`. Tested in [changed_test.ts](../../tools/changed/tests/changed_test.ts) (`the container image job is held without --image and planned with it`).
+12. **Given** the change is complete, **when** I run `just check`, **then** it passes. Checked by running `just changed` on the delivery branch (Docs site and Tooling, 10 of 10 recipes passed) and by CI on the delivery PR.
 
 ## Design decisions
 
@@ -88,17 +89,17 @@ No new ADR is expected: the command adds a local entry point and changes no deci
 
 ## Implementation notes
 
-*Planned. This section is completed as the story is built.*
-
 ### Where things live
 
 | Area | Location |
 | --- | --- |
-| Tool: file listing, selection, recipe map, runner | `tools/changed/changed.ts` |
-| Tests | `tools/changed/tests/changed_test.ts` |
-| Recipe | `changed` in the root `justfile` |
+| Tool: file listing (`changedFiles`), selection (`selectJobs`), recipe map (`recipeMap`), plan and runner | `tools/changed/changed.ts` |
+| Tests | `tools/changed/tests/changed_test.ts`, discovered by the shared `tools/deno.json` |
+| Recipe | `changed` in the root `justfile`, run with `--allow-read --allow-run=git,jq,just,pnpm` |
 | Rules (read, unchanged) | `.github/ci-changes.jq` |
-| Tool documentation | `tools/README.md`, a "changed" section |
+| Tool documentation | [tools/README.md](../../tools/README.md), "changed" |
+
+`changedFiles` runs `git merge-base HEAD <ref>`, then `git diff --name-status -z -M <merge base>`, which compares the merge base with the working tree and so covers commits, staged and unstaged edits and deletions, with both paths of a rename. It adds `git ls-files --others --exclude-standard` for untracked files. `selectJobs` runs `jq -c -f .github/ci-changes.jq` twice: once on a probe listing that selects nothing, whose `skipped` array names every job in the rules' order, and once on the real listing. The tool therefore keeps neither the path rules nor the job names. `mappingGaps` compares the rules' job ids with `recipeMap` in both directions. The Tooling job's justfile check lists `git ls-files justfile '*.just'` and runs `just --fmt --check --justfile` on each, as CI does.
 
 ### API
 
@@ -106,24 +107,27 @@ No changes.
 
 ### Testing
 
-* Pure tests for the recipe map and the plan output, using canned jq results.
-* Tests that run `.github/ci-changes.jq` with `jq` and check that every job it can select has a mapping, so a new rule without a mapping fails `just tools test`.
-* Tests against a throwaway git repository for the file listing: committed, staged, unstaged, untracked, ignored, renamed and deleted files, and `--base`.
-* Runner tests with stub commands for run-all, `--fail-fast`, the summary and the exit code.
+* Selection agreement: nine file lists run through both `selectJobs` and `jq` directly, compared job by job.
+* Mapping: the real rules against `recipeMap` in both directions, plus a fixture rules file with an extra job that `main` must reject before running anything.
+* File listing: a throwaway git repository with committed, staged, unstaged, untracked, ignored, renamed and deleted files, and a two-layer branch for `--base`.
+* Plan and runner: stub runners for run-all, `--fail-fast`, a multi-command step, the summary, `--dry-run` and the exit code.
 
 ### Lessons learned, known issues and follow-ups
 
-* To be filled in on delivery.
+* **Not every job runs on a rules change**: a change to `ci-changes.jq` turns every job on, but in a `pull_request` run the rules then turn off ADR conventions, Narratives and Flow binding again, because Tooling and Frontend run the same checks. The card first said "every job". The tool follows the rules, and criterion 5 now says so.
+* **Recipes are not CI steps**: `just frontend test` and `just frontend typecheck` cover every workspace package, while CI's Frontend job leaves the docs site and the decks to the Docs site job. Locally the overlap costs a little time but misses nothing. Coverage, the Pages artifact and the image smoke test stay CI-only.
+* **Stale base**: the command does not fetch, so an old `origin/main` widens the changed set (it never narrows it). The plan prints the ref and merge base it used.
+* **Not measured**: no timing comparison with `just check` was recorded. On the delivery branch `just changed` ran the Docs site and Tooling recipes and skipped Backend and Frontend.
 
 ## User guide
 
-*Planned behaviour. This section is finalised when the story is implemented.*
-
 ### Check only what your branch changed
 
-1. Commit or keep your edits in the working tree. Both count.
-2. Run **`just changed`**. It lists how many files changed and which CI jobs your change would run, then runs the matching local checks and prints a summary.
-3. To see the plan without running anything, run **`just changed --dry-run`**.
-4. To compare with another branch, for example the branch a stacked change sits on, add **`--base <branch>`**.
+1. Commit or keep your edits in the working tree. Both count, and so do new files that git does not ignore.
+2. Run **`just changed`**. It prints the branch it compared with, how many files changed, and each CI job as `runs` or `skipped`. It then runs the matching local checks, each under a `==>` heading, and ends with a **Summary** of passed and failed checks.
+3. To see the plan and its commands without running anything, run **`just changed --dry-run`**.
+4. To stop at the first failure, add **`--fail-fast`**.
+5. To compare with another branch, for example the branch a stacked change sits on, add **`--base <branch>`**.
+6. The container image build takes minutes and needs Docker, so it is shown as `selected, not run (--image to run)`. Add **`--image`** to run it.
 
 Run `git fetch` first if `origin/main` may be old: the command compares with the copy of `main` you already have. Before asking for a merge, `just check` remains the full run.

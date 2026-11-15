@@ -382,6 +382,16 @@ async function ensureRole(
     (message) => output(`${role}: ${message}`),
   );
 }
+/**
+ * The client address for the temporary firewall rule. It may come from the public IP service, so it reaches the Azure
+ * CLI arguments only after matching digits and dots (the check static analysis recognises) and parsing as IPv4.
+ */
+export function clientIpv4(value: string): string {
+  if (!/^[0-9.]{7,15}$/.test(value) || isIP(value) !== 4 || value === "0.0.0.0") {
+    throw new Error("Client IP must be an IPv4 address.");
+  }
+  return value;
+}
 export async function databaseCommand(args: string[], az: Azure, output: Write, signal?: AbortSignal): Promise<number> {
   const init = args[0] === "db";
   const index = init ? 2 : 1;
@@ -405,7 +415,7 @@ export async function databaseCommand(args: string[], az: Azure, output: Write, 
       throw new Error("Unable to detect public IP; pass --client-ip IPv4.");
     }
   } else throw new Error("Use --client-ip IPv4.");
-  if (isIP(ip) !== 4 || ip === "0.0.0.0") throw new Error("Client IP must be an IPv4 address.");
+  ip = clientIpv4(ip);
   const server = await resourceName(az, env, "Microsoft.DBforPostgreSQL/flexibleServers");
   const group = `rg-calendar-${env}`;
   const ops = await vaultName(az, env, "opsKeyVaultName");

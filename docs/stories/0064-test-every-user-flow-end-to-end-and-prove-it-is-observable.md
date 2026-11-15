@@ -100,9 +100,9 @@ Three children were added during delivery, all within the agreed scope:
 
 | # | Slice | Delivered in |
 | --- | --- | --- |
-| [#930](https://github.com/mgasca/calendar/issues/930) | Runbook: make "Look at telemetry while developing" match the delivered telemetry (the web build switch, finding a flow in Grafana) | #931 |
 | [#797](https://github.com/mgasca/calendar/issues/797) | API: one `request finished` log record per traced request, so a successful flow's logs carry its trace id (found while designing #733) | #798, with the review follow-up #841 |
 | [#902](https://github.com/mgasca/calendar/issues/902) | CI: run the flow binding check for changes to the e2e package and the model (it had never run in CI) | #909 |
+| [#930](https://github.com/mgasca/calendar/issues/930) | Runbook: make "Look at telemetry while developing" match the delivered telemetry (the web build switch, finding a flow in Grafana) | #931 |
 
 Dependencies: #729 first; then #730, #731 and #732 in parallel; #733 when all three have landed; then #734, #735 and #736 in parallel, with #737 able to start once one flow runs. #738 needs only #731, and #104 only #729. The epic's dependency map is the live version.
 

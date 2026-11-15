@@ -590,29 +590,26 @@ jobs:
             echo "::error::A needed job did not succeed, and Changes did not skip it."
             exit 1
           fi
-          # Every other job of this run attempt, except this one and the optional Cancel superseded runs, that did not
-          # succeed and was not skipped by Changes. Up to three tries, 5 s apart, while the API errs or still shows a job
-          # as running; whatever the last try finds decides. The last response is kept in $RUNNER_TEMP/jobs.json for the
-          # run-time gate below.
-          # shellcheck disable=SC2016 # $skipped is a jq variable, so the single quotes are intended.
-          for try in 1 2 3; do
+          # Every other job of this run attempt, read from the jobs API and judged by .github/ci-result.jq (story 0066): a
+          # completed job that did not succeed fails at once; while the API errs or still shows a job as not completed,
+          # read it again every 5 s, for up to 120 s, because every such job is in `needs` and has already finished
+          # (run 43474865497). The last good read is kept in $RUNNER_TEMP/jobs.json for the run-time gate below.
+          SECONDS=0
+          while :; do
             if gh api "repos/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID/attempts/$GITHUB_RUN_ATTEMPT/jobs?per_page=100" \
-              > "$RUNNER_TEMP/jobs.json"; then
-              others=$(jq -r '(env.SKIPPED | fromjson) as $skipped | .jobs[] | select(.name != "CI result" and .name != "Cancel superseded runs")
-                | select(.conclusion != "success")
-                | select(.conclusion != "skipped" or (.name | IN($skipped[]) | not))
-                | "\(.name): \(.status) \(.conclusion)"' "$RUNNER_TEMP/jobs.json")
-              if [ -z "$others" ] || ! grep -qv ': completed ' <<< "$others"; then break; fi
+              > "$RUNNER_TEMP/read.json"; then
+              cp "$RUNNER_TEMP/read.json" "$RUNNER_TEMP/jobs.json"
             else
-              others="the jobs API could not be read"
+              echo '{}' > "$RUNNER_TEMP/read.json"
             fi
-            [ "$try" = 3 ] || sleep 5
+            verdict=$(jq -r -f .github/ci-result.jq --argjson skipped "$SKIPPED" --argjson waited "$SECONDS" "$RUNNER_TEMP/read.json")
+            tail -n +2 <<< "$verdict"
+            case "$(head -n 1 <<< "$verdict")" in
+              pass) break ;;
+              wait) sleep 5 ;;
+              *) exit 1 ;;
+            esac
           done
-          if [ -n "$others" ]; then
-            echo "::error::The jobs API reports jobs that did not succeed:"
-            echo "$others"
-            exit 1
-          fi
           echo "All CI jobs passed."
       # ADR 0045: fails a pull request or merge-queue run when a job took longer than its pinned threshold in
       # .github/ci-baseline.json, and only reports on pushes, dispatches and provisional baselines. All of the logic is in

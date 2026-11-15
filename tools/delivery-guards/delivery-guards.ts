@@ -5,6 +5,8 @@ export interface RepoFiles {
   workflow: string;
   toolsJustfile: string;
   codeqlWorkflow: string;
+  /** `.github/ci-result.jq`, which `CI result` runs on the jobs API response (story 0066). */
+  ciResultJq?: string;
 }
 export interface Guard {
   id: string;
@@ -15,6 +17,7 @@ export interface Guard {
 }
 export const workflowPath = ".github/workflows/ci.yml", changesRulesPath = ".github/ci-changes.jq";
 export const codeqlWorkflowPath = ".github/workflows/codeql.yml", codeqlLanguagesPath = ".github/codeql-languages.jq";
+export const ciResultPath = ".github/ci-result.jq";
 export const needsSkipException = '.value.result == "skipped" and $needs.changes.outputs[.key] == "false"';
 export const jobsApiSkipException = 'select(.conclusion != "skipped" or (.name | IN($skipped[]) | not))';
 const sameRepository = [
@@ -26,6 +29,7 @@ export function loadFiles(root: string): RepoFiles {
     workflow: Deno.readTextFileSync(join(root, workflowPath)),
     toolsJustfile: Deno.readTextFileSync(join(root, "tools/mod.just")),
     codeqlWorkflow: Deno.readTextFileSync(join(root, codeqlWorkflowPath)),
+    ciResultJq: Deno.readTextFileSync(join(root, ciResultPath)),
   };
 }
 export function justRecipe(text: string, recipe: string): string[] | null {
@@ -151,7 +155,13 @@ function ciResultNeedsAll(files: RepoFiles): string[] {
       `\`CI result\` needs \`${optional}\`, which is skipped on every run but a same-repository pull request.`,
     );
   }
-  const script = result.steps.map(Workflow.run).join("\n");
+  // The jobs API check lives in .github/ci-result.jq when the step runs that file (story 0066), so it is read as part
+  // of the step's script.
+  const steps = result.steps.map(Workflow.run).join("\n"),
+    script = steps.includes(ciResultPath) ? `${steps}\n${files.ciResultJq ?? ""}` : steps;
+  if (steps.includes(ciResultPath) && !files.ciResultJq) {
+    errors.push(`\`CI result\` runs \`${ciResultPath}\`, which does not exist.`);
+  }
   if (!script.includes('.result == "success"')) {
     errors.push('`CI result` no longer requires every needed job\'s result to be success (`.result == "success"`).');
   }

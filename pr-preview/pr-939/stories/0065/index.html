@@ -79,7 +79,7 @@
 <li>ADR conventions: <code>just tools adr</code>.</li>
 <li>Narratives: <code>just tools narratives --check</code>.</li>
 <li>Flow binding: the e2e package’s unit tests (<code>pnpm --filter @calendar/e2e test</code>).</li>
-<li>Container image: <code>just image build</code>, only with <code>--image</code> (proposed). It takes minutes and needs Docker, so by default the job is reported as <code>selected, not run (--image to run)</code> rather than run or skipped silently.</li>
+<li>Container image: <code>just image build</code>, only with <code>--image</code>, as agreed on PR 0. It takes minutes and needs Docker, so by default the job is reported as <code>selected, not run (--image to run)</code> rather than run or skipped silently.</li>
 </ul>
 </li>
 <li><strong>No silent gaps</strong>: if the rules name a job the map does not cover, the command fails before it runs anything, and a test fails in <code>just tools test</code>. A new CI job therefore cannot be skipped locally by accident.</li>

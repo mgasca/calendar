@@ -10,6 +10,7 @@ pr:
   - https://github.com/mgasca/calendar/pull/529
   - https://github.com/mgasca/calendar/pull/536
   - https://github.com/mgasca/calendar/pull/539
+  - https://github.com/mgasca/calendar/pull/942
 adrs: ["0012", "0023", "0025", "0045", "0046", "0047", "0048"]
 ---
 
@@ -200,7 +201,7 @@ Delivered as planned: PR 0 ([#523](https://github.com/mgasca/calendar/pull/523),
 * **Search does not focus its input on open.** Starlight's default: the pre-theme build behaves the same. It is not part of this story; the keyboard can still reach the input and close the dialog with Escape.
 * **A trace of `data-theme` is not a first-paint check.** The static `data-theme="dark"` makes a mutation trace show dark then light on a light page, although the start-up script runs in the head before the first frame. The check that matters is the background at the first animation frame, which #519 used.
 * **A fresh worktree needs `just backend restore` before `just check`**, and `corepack pnpm` can fail on a pnpm version mismatch where `pnpm` run directly does not; neither is a defect of this story.
-* **Fixed, [#908](https://github.com/mgasca/calendar/issues/908): CI never ran the package's tests.** The Frontend job tests with `pnpm -r … test:coverage`, which skips a package without that script, and `@calendar/theme` defined only `test`. So the token, font and storage guards that criteria 1 to 5 cite ran only locally (in `just check`, as in the #519 evidence above), never on a pull request or on `main`. The package now has `test:coverage`, `@vitest/coverage-v8` and a `vitest.config.ts` that measures `src/`. `TheFrontendJobsTestStep_ReachesEveryTestedPackage` in `tools/delivery-guards` fails when a workspace package that the step reaches has `test` but not `test:coverage`, so a new package can't fall through the same way (#902 fixed the same gap for `@calendar/e2e`).
+* **Fixed, [#908](https://github.com/mgasca/calendar/issues/908) (PR #942): CI never ran the package's tests.** The Frontend job tests with `pnpm -r … test:coverage`, which skips a package without that script, and `@calendar/theme` defined only `test`. So the token, font and storage guards that criteria 1 to 5 cite ran only locally (in `just check`, as in the #519 evidence above), never on a pull request or on `main`. The package now has `test:coverage`, `@vitest/coverage-v8` and a `vitest.config.ts` that measures `src/`. `TheFrontendJobsTestStep_ReachesEveryTestedPackage` in `tools/delivery-guards` fails when a workspace package that the step reaches has `test` but not `test:coverage`, so a new package can't fall through the same way (#902 fixed the same gap for `@calendar/e2e`).
 * **The docs site still has no favicon.** `verify:build` ignores the missing `favicon.svg`; every page requests it and gets a 404.
 * **After the merge** the published site was inspected as recorded under criterion 20; the card is `implemented`.
 

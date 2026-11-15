@@ -10,7 +10,9 @@ pr:
   - https://github.com/mgasca/calendar/pull/798
   - https://github.com/mgasca/calendar/pull/832
   - https://github.com/mgasca/calendar/pull/877
+  - https://github.com/mgasca/calendar/pull/899
   - https://github.com/mgasca/calendar/pull/901
+  - https://github.com/mgasca/calendar/pull/903
 adrs: ["0008", "0021", "0027", "0030", "0039", "0058", "0061", "0062", "0063", "0064"]
 ---
 
@@ -241,6 +243,19 @@ API telemetry (#731) lives in `calendar-api/src/telemetry/`:
   - The overdue view spans every earlier day, so this test owns all days before 2026-02-01 (README).
 - **Harness:** `holdRequests(page, method, routeTemplate)` holds requests until the test releases them, then sends them on through the signed-in route. `seed.updateTask` and `seed.deleteTask` are the task counterparts of `seed.updateEvent`. `observe.exported(action)` waits until Tempo holds an action's trace. A reload drops the spans the browser has not exported yet, and edit-task's first fresh-stack run lost the web `PUT` span that way.
 - **Defect found:** an edit dialog reopened after a save shows the stale cached copy (#900). The edit-task test reloads the page before reopening until it is fixed.
+
+### Delivered in #736
+
+- **`sign-in-flow`** (`tests/sign-in-flow.spec.ts`, days 2026-05-19 and 2026-05-20), signed out (`signedIn: false`), through the stub provider's interactive login (ADR-0064):
+  - **allow-listed:** a deep link to `/day/<date>` routes to `/signin?returnTo=…`. "Sign in with Google" goes through the stub's `/authorize` form, where the test types the subject (`subject-<email>`, the same as `just e2e check`) and the claims `email` and `email_verified`. The callback lands back on the deep link with the session cookie, and the event seeded for that day shows.
+  - **not allow-listed:** the same steps end at `/signin?error=access_denied`, with the alert and with neither the session cookie nor the sign-in cookie.
+- **Trace shape.** Login and callback are full-page navigations without a `traceparent`, so each is a trace the API starts. The test finds each by its root server span through Tempo's search (`observe.rootTrace`), which requires exactly one since the test began:
+  - `GET /api/auth/login`: the server span;
+  - `GET /api/auth/callback/google`: the server span with `users` queries under it on the allowed path; on the denied path, the server span alone, plus a `Google sign-in failed` log record (`logs` on a trace of `expectFlow`);
+  - after landing: the browser's `GET /api/auth/me` fetch → the API's server span.
+- **Personal-data scan:** the email, the subject, the authorization code, `state`, `nonce` and `code_challenge`, the sealed sign-in cookie and the session cookie are registered. The ID token never passes through the browser, so the scanner's JWT pattern and its registered claims cover it.
+- **Fix found on the way:** the web app named the spans of `fetch(url, init)` calls by their method only (`GET` for `/api/auth/me`). The fix is #879, in #899.
+- The binding check's pending list is now empty: every user-facing flow has a tagged test.
 
 ### Lessons learned, known issues and follow-ups
 

@@ -70,7 +70,7 @@
 <ul>
 <li><strong>A real failure still fails at once</strong>: a job the API shows as completed with any conclusion other than <code>success</code>, or <code>skipped</code> when the Changes job did not skip it, fails the gate on the first read that shows it, as today.</li>
 <li><strong>A finished job the API still shows as running waits</strong>: while some job is not yet <code>completed</code> in the API, the gate reads the API again every 5 s, for up to 120 s (today about 10 s). A healthy run passes on the first read, so the longer limit costs time only when the API lags.</li>
-<li><strong>Limit reached (proposed)</strong>: when a job still shows as running after 120 s, the gate fails with a message that says the jobs API had not caught up and that a rerun is the remedy, distinct from the message for a job that did not succeed. The alternative, passing on the <code>needs</code> result with a warning, is an open question on PR 0.</li>
+<li><strong>Limit reached</strong>: when a job still shows as running after 120 s, the gate fails with a message that says the jobs API had not caught up and that a rerun is the remedy, distinct from the message for a job that did not succeed. Passing on the <code>needs</code> result with a warning was rejected, as was a shorter limit: the product owner chose to fail at the limit and to keep 120 s (answers to the questions on PR 0, #943).</li>
 <li><strong>API errors</strong>: a read that fails is retried within the same limit; if the API cannot be read by the limit, the gate fails, as today.</li>
 <li><strong>Tested logic</strong>: the classification of the jobs API response moves from the inline script into a jq file under <code>.github/</code>, as ADR-0045 did with <code>ci-gate.jq</code>. Committed Deno tests run that file with <code>jq</code> on canned responses, and a test checks that <code>ci.yml</code> runs it. The step keeps only the loop: read, classify, wait or stop.</li>
 <li><strong>Guards stay meaningful</strong>: the <code>ci-result-needs-all</code> guard keeps requiring a <code>needs</code> success check and a jobs-API check, reading them where they live after the move.</li>
@@ -131,8 +131,8 @@
 <h3 id="other-decisions-not-adr-worthy">Other decisions (not ADR-worthy)</h3>
 <ul>
 <li><strong>jq, not a Deno script, in the job</strong>: <code>CI result</code> checks out <code>.github/</code> only and installs nothing; jq is on the runner, as for <code>ci-gate.jq</code>.</li>
-<li><strong>120 s limit</strong>: long enough to cover the lag seen in run 43474865497 many times over, short enough that a stuck API still fails the check in about two minutes. The limit is an argument to the jq file, so tests can set the waited time.</li>
-<li><strong>Fail at the limit (proposed)</strong>: a job that still shows as running after two minutes is rare enough to deserve a human look; passing on <code>needs</code> would trust the source #368 showed can miss a failure.</li>
+<li><strong>120 s limit</strong> (agreed on #943): long enough to cover the lag seen in run 43474865497 many times over, short enough that a stuck API still fails the check in about two minutes. The limit is an argument to the jq file, so tests can set the waited time.</li>
+<li><strong>Fail at the limit</strong> (agreed on #943): a job that still shows as running after two minutes is rare enough to deserve a human look; passing on <code>needs</code> would trust the source #368 showed can miss a failure.</li>
 </ul>
 <h2 id="implementation-notes">Implementation notes</h2>
 <p><em>Planned. This section is completed as the story is built.</em></p>

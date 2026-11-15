@@ -17,7 +17,7 @@ interface Received {
 }
 
 describe('otlpProxy', () => {
-  it('forwards to LGTM on localhost by default', () => {
+  it('forwards to the otel-stack collector on localhost by default', () => {
     expect(otlpProxy({}).target).toBe(DEFAULT_OTLP_URL);
   });
 

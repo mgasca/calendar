@@ -1,4 +1,4 @@
-# Local PostgreSQL recipes (`just db <recipe>`), through Docker Compose (ADR-0063), plus the opt-in Grafana LGTM
+# Local PostgreSQL recipes (`just db <recipe>`), through Docker Compose (ADR-0063), plus the opt-in otel-stack telemetry container
 # (`observability`) and stub sign-in (`sign-in-stub`) services, all in the shared `calendar` project.
 # Migrations are applied only by `just db migrate`, as calendar_migrator (ADR-0052).
 # For a throwaway stack that never touches this project, use `just e2e`.
@@ -24,12 +24,12 @@ up:
     test -f .env || { cp .env.example .env && echo "Created .env from .env.example"; }
     docker compose up -d --wait postgres
 
-# Start Grafana LGTM for local telemetry (http://127.0.0.1:3000) and print the API's OTLP settings
+# Start the otel-stack telemetry container (http://127.0.0.1:3000) and print the API's OTLP settings
 observability:
     #!/usr/bin/env bash
     set -euo pipefail
     test -f .env || { cp .env.example .env && echo "Created .env from .env.example"; }
-    docker compose --profile observability up -d --wait --wait-timeout 300 lgtm
+    docker compose --profile observability up -d --wait --wait-timeout 300 otel-stack
     echo "Grafana: http://127.0.0.1:${CALENDAR_GRAFANA_PORT:-3000} (admin/admin, loopback only)"
     echo "Run the API with:"
     echo "  OTEL_EXPORTER_OTLP_ENDPOINT=http://127.0.0.1:${CALENDAR_OTLP_HTTP_PORT:-4318} OTEL_EXPORTER_OTLP_PROTOCOL=http/protobuf"

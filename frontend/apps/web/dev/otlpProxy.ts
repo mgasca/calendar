@@ -1,6 +1,6 @@
 import type { ProxyOptions } from 'vite';
 
-/** Where the dev and preview servers send `/otlp` when `CALENDAR_OTLP_URL` is unset: LGTM's OTLP/HTTP port. */
+/** Where the dev and preview servers send `/otlp` when `CALENDAR_OTLP_URL` is unset: the otel-stack collector's OTLP/HTTP port. */
 export const DEFAULT_OTLP_URL = 'http://localhost:4318';
 
 /** The one path the browser exports to (`src/telemetry/sdk.ts`); nothing else under `/otlp` is forwarded. */

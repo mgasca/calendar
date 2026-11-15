@@ -17,7 +17,7 @@ The end-to-end `sign-in-flow` test ([ADR-0061](0061-end-to-end-ui-tests-with-pla
 * **D1 Fidelity to the Google round trip**: authorization endpoint with `state`, PKCE (S256) and `nonce` echoed into the ID token; token endpoint; userinfo endpoint; a fixed issuer, so the API's real code path runs unchanged.
 * **D2 Per-test control of claims**: a test chooses who signs in, including an email that is not allow-listed and an unverified one, without a user store to maintain.
 * **D3 Kept out of staging and production**: the stub, and any setting that points the API at it, cannot take effect in a deployed environment, even by misconfiguration.
-* **D4 Weight and start-up**: starts quickly with little memory beside PostgreSQL, LGTM, the API and Chromium on a CI runner.
+* **D4 Weight and start-up**: starts quickly with little memory beside PostgreSQL, otel-stack, the API and Chromium on a CI runner.
 * **D5 Supply chain and maintenance**: a pinned image from an active, permissively licensed project, or code the repository owns, with no licence condition that bites later.
 * **D6 Reuse and effort**: little new code, and usable by #104 without Docker where the in-process fake already serves.
 
@@ -133,3 +133,4 @@ Chosen option: "`navikt/mock-oauth2-server`", because it implements the whole au
 * **Related:** story [0005](../stories/0005-google-sign-in.md) (Google sign-in), [ADR-0056](0056-session-cookie-sealed-with-a-database-held-key.md) (session cookie).
 * **Answered on #729 (2026-11-13, the maintainer through the epic coordinator):** no new environment. The end-to-end stack runs the API as `Development`, the overrides are honoured only there and only for loopback URLs, and the API refuses to start otherwise.
 * **Delivery:** #730 (the stub in the stack and the API's guarded settings), #736 (`sign-in-flow`) and #104 (API-level gaps).
+* **Amendment, 2026-11-15:** "LGTM" in this record now reads otel-stack, the new name of the telemetry container (#933). The decision is unchanged.

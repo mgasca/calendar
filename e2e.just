@@ -1,5 +1,5 @@
 # Throwaway end-to-end stack recipes (`just e2e <recipe>`), ADR-0063. Each run is its own Compose project,
-# calendar-e2e-<run-id>, with PostgreSQL, Grafana LGTM and the stub OpenID Connect provider from compose.yaml, plus
+# calendar-e2e-<run-id>, with PostgreSQL, the otel-stack telemetry container and the stub OpenID Connect provider from compose.yaml, plus
 # the API and the built web app as processes. It never uses the shared `calendar` project, its volume or port 5432.
 #
 # Ports come from a slot k in 2, 3, 5, 6, 7, 8, 9 (the run-calendar agent stack's 55041, 55173 and 55432 sit in

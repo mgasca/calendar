@@ -2,7 +2,7 @@ name: E2E flows
 
 # The end-to-end flow tests of ADR-0061 (story 0064, #737): nightly on main, and on demand, every Playwright test in
 # frontend/apps/e2e (each tagged with its CALM flow) runs in Chromium against a throwaway stack (`just e2e up`,
-# ADR-0063: PostgreSQL, Grafana LGTM, the stub OpenID Connect provider, the API and the built web app). It never runs
+# ADR-0063: PostgreSQL, the otel-stack telemetry container, the stub OpenID Connect provider, the API and the built web app). It never runs
 # for a pull request, so it fails no PR and is not part of `CI result` (ADR-0046); the browser-free flow binding check
 # runs with the frontend tests on every PR. The HTML report, traces, failure screenshots and the stack's logs are
 # uploaded; a failure on main comments on one issue. Its job durations feed ADR-0045's trend check (ci-trend.yml,

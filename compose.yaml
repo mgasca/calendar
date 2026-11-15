@@ -1,6 +1,6 @@
 # Local backing services for development and end-to-end runs (ADR-0063). Start the database with `just db up`.
 #
-# `postgres` is the only default service. The others are opt-in through profiles: `observability` (Grafana LGTM,
+# `postgres` is the only default service. The others are opt-in through profiles: `observability` (otel-stack,
 # ADR-0062: `just db observability`) and `sign-in-stub` (a stub OpenID Connect provider standing in for Google,
 # ADR-0064). Every port is published on 127.0.0.1 only, and every host port is a variable with the default below,
 # so `just e2e up` can run its own project (calendar-e2e-*) from this file on other ports without touching this one.
@@ -46,10 +46,11 @@ services:
       retries: 10
       start_period: 10s
 
-  # Grafana LGTM (ADR-0062): an OpenTelemetry collector with Tempo, Loki, Prometheus and Grafana, for development
+  # otel-stack (ADR-0062): Grafana's grafana/otel-lgtm image, an OpenTelemetry Collector with Tempo, Loki, Prometheus
+  # (not Mimir, despite the image name) and Grafana, for development
   # and end-to-end runs only; it never appears in infra/. Grafana's admin/admin login is acceptable because it
   # listens on loopback only. Telemetry is kept in the container and lost with it.
-  lgtm:
+  otel-stack:
     image: grafana/otel-lgtm:0.40.0
     profiles: [observability]
     ports:

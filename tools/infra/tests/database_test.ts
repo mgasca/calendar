@@ -1,6 +1,7 @@
 import { assert, assertEquals, assertRejects, assertStringIncludes, assertThrows } from "@std/assert";
 import {
   checkConnectionSecret,
+  clientIpv4,
   confirmCreationState,
   grantsSql,
   reconcileRole,
@@ -235,4 +236,19 @@ Deno.test("connection strings match Npgsql for persisted secrets", async () => {
       `${prefix}${expected};SSL Mode=VerifyFull`,
     );
   }
+});
+Deno.test("client IP must be a plain IPv4 address before it reaches the Azure CLI", () => {
+  assertEquals(clientIpv4("192.0.2.1"), "192.0.2.1");
+  const rejected = [
+    "",
+    "0.0.0.0",
+    "192.0.2",
+    "192.0.2.256",
+    "192.0.2.1 ",
+    "192.0.2.1\n--output",
+    "--help",
+    "::1",
+    "a.b.c.d",
+  ];
+  for (const value of rejected) assertThrows(() => clientIpv4(value), Error, "Client IP must be an IPv4 address.");
 });

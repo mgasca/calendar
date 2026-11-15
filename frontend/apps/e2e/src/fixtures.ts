@@ -14,9 +14,14 @@ export interface Run {
   label(text: string): string;
 }
 
-/** Seeds data through the API as the signed-in user, registering every text as personal data. */
+/**
+ * Seeds data through the API as the signed-in user, registering every text as personal data. The update
+ * methods are the same user writing "elsewhere" (another tab or device) while the page is open, for the
+ * version-conflict paths.
+ */
 export interface Seed {
   event(body: Schemas['CreateEventRequest']): Promise<Schemas['EventResponse']>;
+  updateEvent(id: string, body: Schemas['UpdateEventRequest']): Promise<Schemas['EventResponse']>;
   task(body: Schemas['CreateTaskRequest']): Promise<Schemas['TaskResponse']>;
 }
 
@@ -81,6 +86,15 @@ export const test = base.extend<Fixtures>({
         remember('event', body);
         const { data, response } = await client.POST('/api/events', { body });
         if (!data) throw new Error(`Seeding an event failed: ${String(response.status)}`);
+        return data;
+      },
+      async updateEvent(id, body) {
+        remember('event', body);
+        const { data, response } = await client.PUT('/api/events/{id}', {
+          params: { path: { id } },
+          body,
+        });
+        if (!data) throw new Error(`Updating an event failed: ${String(response.status)}`);
         return data;
       },
       async task(body) {

@@ -224,7 +224,7 @@
 <li><strong>id</strong>: parallel-tool-tests</li>
 <li><strong>protects</strong>: #351</li>
 <li><strong>record</strong>: 0011</li>
-<li><strong>mechanism</strong>: just tools test runs the test apps TOOLS_TEST_JOBS at a time, with a NuGet cache in the Tooling job</li>
+<li><strong>mechanism</strong>: just tools test checks the Deno configurations TOOLS_TEST_JOBS at a time, with a Deno cache keyed on deno.lock in the Tooling job</li>
 <li><strong>test</strong>: tools/delivery-guards</li>
 <li><strong>id</strong>: ci-result-needs-all</li>
 <li><strong>protects</strong>: #368</li>

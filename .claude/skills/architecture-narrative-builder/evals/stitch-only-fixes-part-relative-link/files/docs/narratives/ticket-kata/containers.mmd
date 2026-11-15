@@ -1,0 +1,4 @@
+flowchart TB
+  shop["Web shop"] --> hold["Hold service: queue per concert"]
+  tills["Box-office tills"] --> hold
+  hold --> db[("Sales database")]

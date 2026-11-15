@@ -1,5 +1,7 @@
 ## Act 2: Confrontation
 
+<!-- Links resolve from docs/narratives/<system>-narrative.md, where this part is stitched: ../decisions/…, not ../../decisions/…. -->
+
 ### Constraints
 
 Business: budget, deadline, team, contracts, regulation.

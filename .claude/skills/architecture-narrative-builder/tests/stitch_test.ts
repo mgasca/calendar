@@ -133,3 +133,30 @@ Deno.test("Build_mode_removes_parts_and_ledger_but_keeps_slides_and_their_diagra
     "ledger.md",
   ]);
 });
+
+// Parts are copied as-is into docs/narratives/<system>-narrative.md, so links resolve from there (#763).
+Deno.test("A_link_written_relative_to_the_part_folder_is_an_error_with_the_fix", () => {
+  const text = errors(parts({
+    "03-resolution.md": "## Act 3: Resolution\n\nSee [ADR-0001](../../decisions/0001-use-a-queue.md#context).\n",
+  }));
+  assertStringIncludes(text, '03-resolution.md: link "../../decisions/0001-use-a-queue.md#context" leaves docs/');
+  assertStringIncludes(text, 'write "../decisions/0001-use-a-queue.md#context"');
+});
+
+Deno.test("Wrapped_links_and_reference_definitions_are_checked_too", () => {
+  const text = errors(parts({
+    "02-confrontation.md": "## Act 2: Confrontation\n\nSee [the\nbenchmark](../../benchmarks/0001-x.md) and [r].\n\n" +
+      "[r]: ../../../outside.md\n",
+  }));
+  assertStringIncludes(text, '"../../benchmarks/0001-x.md"');
+  assertStringIncludes(text, '"../../../outside.md"');
+  assert(!text.includes('write "../../outside.md"'), "no hint when dropping one ../ does not fix the link");
+});
+
+Deno.test("Links_relative_to_the_stitched_file_urls_anchors_and_code_pass", () => {
+  stitched(parts({
+    "03-resolution.md": "## Act 3: Resolution\n\n[ADR](../decisions/0001-use-a-queue.md), " +
+      "[story](../stories/0001-x.md), [site](https://example.com/../../x), [top](#act-3-resolution), " +
+      "`[code](../../x.md)`.\n\n```md\n[fenced](../../x.md)\n```\n",
+  }));
+});

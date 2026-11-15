@@ -528,7 +528,42 @@ const codeqlMutations: [string, string, string, string][] = [
   ["AGateWithoutTheCiRules_Fails", "jq -c -f .github/ci-changes.jq", "jq -c '.'", "ci-changes.jq"],
   ["AGateWithoutItsOwnRules_Fails", "jq -c -f .github/codeql-languages.jq", "jq -c '.'", "codeql-languages.jq"],
   ["AnAnalyzeJobThatDoesNotNeedTheGate_Fails", "    needs: languages\n", "", "does not need"],
-  ["AStaticExclude_Fails", "exclude: ${{ fromJSON(needs.languages.outputs.exclude) }}", "exclude: []", "must `exclude"],
+  [
+    "AMatrixThatExcludesALanguage_Fails",
+    "          - actions\n    steps:",
+    "          - actions\n        exclude: [{ language: rust }]\n    steps:",
+    "must not exclude",
+  ],
+  [
+    "AReuseStepOnEveryLanguage_Fails",
+    "        id: reuse\n        if: matrix.language == 'rust' && needs.languages.outputs.rust == 'false'",
+    "        id: reuse\n        if: needs.languages.outputs.rust == 'false'",
+    "`reuse` step must run",
+  ],
+  [
+    "AReuseStepWithoutTheGateRules_Fails",
+    "            rust=$(jq -c -f .github/codeql-languages.jq",
+    "            rust=$(jq -c '{rust: false}'",
+    "does not decide the match",
+  ],
+  [
+    "NoUploadOfTheReusedResult_Fails",
+    "        uses: github/codeql-action/upload-sarif@v4",
+    "        uses: actions/upload-artifact@v6",
+    "no upload-sarif step",
+  ],
+  [
+    "AReusedResultUnderAnotherCategory_Fails",
+    "          sarif_file: ${{ runner.temp }}/rust.sarif\n          category: /language:rust",
+    "          sarif_file: ${{ runner.temp }}/rust.sarif\n          category: /language:reused",
+    "category: /language:rust",
+  ],
+  [
+    "AnAnalysisAfterAReusedResult_Fails",
+    "      - uses: github/codeql-action/analyze@v4\n        if: steps.reuse.outputs.found != 'true'\n",
+    "      - uses: github/codeql-action/analyze@v4\n",
+    "github/codeql-action/analyze",
+  ],
   ["AMatrixWithoutRust_Fails", "          - rust\n", "", "no `rust` entry"],
 ];
 for (const [name, from, to, message] of codeqlMutations) {
@@ -555,7 +590,7 @@ async function runCodeqlLanguages(event: string, complete: boolean, files: strin
 async function checkRust(event: string, complete: boolean, files: string[], rust: boolean): Promise<void> {
   assertEquals(
     await runCodeqlLanguages(event, complete, files),
-    { rust, exclude: rust ? [] : [{ language: "rust" }] },
+    { rust },
   );
 }
 // The Rust input set is CI's Backend set: every file case runs the rust analysis exactly when it runs Backend.

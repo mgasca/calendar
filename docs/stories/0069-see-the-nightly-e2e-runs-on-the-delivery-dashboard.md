@@ -1,0 +1,107 @@
+---
+status: planned
+date: 2026-11-15
+issue: https://github.com/mgasca/calendar/issues/892
+pr: []
+adrs: ["0045", "0049", "0058", "0061"]
+---
+
+# 0069 See the nightly E2E runs on the delivery dashboard
+
+## Story
+
+> As a maintainer, I need the delivery dashboard to show the nightly end-to-end runs next to CI, so that I can see the latest result, the recent failures and the run times without opening the Actions tab.
+
+Tracked in issue #892, a follow-up of #737 (story [0064](0064-test-every-user-flow-end-to-end-and-prove-it-is-observable.md), epic #728).
+
+## Background
+
+The delivery dashboard of story [0053](0053-show-how-fast-and-how-smoothly-changes-reach-main.md) is built from one snapshot a day. The `Dashboard snapshot` workflow takes it with `tools/delivery-dashboard`, checks it against the schema and privacy rules, and commits it to the never-merged `dashboard-data` branch ([ADR-0049](../decisions/0049-build-the-delivery-dashboard-from-daily-snapshots-on-the-docs-site.md)). The docs site checks each file again and renders the pages. The snapshot reads only `ci.yml` today, in its CI, quality, flow and superseded sections, plus the agent proxies.
+
+Story 0064 added the `E2E flows` workflow (`e2e.yml`, [ADR-0061](../decisions/0061-end-to-end-ui-tests-with-playwright-test-bound-to-the-architecture-flows.md)), which runs every night on `main` and on demand. A failed run on `main` comments on one open `bug` issue, "E2E flows: the nightly run failed on main", or opens it. The maintainer chose that alert on #737 (option C, 2026-11-14) and asked for a dashboard section as this follow-up. Today a failed night shows only as that issue, and run times and history are visible only in the Actions tab.
+
+### Agreed scope
+
+* **An E2E section in the snapshot:** each snapshot holds the newest completed runs of `e2e.yml` on `main`, both nightly and on-demand, up to 30. For each run it records the trigger, the time it was created, its conclusion and its run time. The run time is measured from the run starting to it finishing, or left empty when GitHub reports no start time.
+* **Checked like every other section:** the snapshot tool and the docs site both check the section's shape, conclusions, ordering, counts and window. The existing privacy rules (no machine paths, handles, UUIDs or e-mail addresses) cover it too. A snapshot that breaks a rule is neither published nor rendered.
+* **A new schema version that keeps old files valid:** the section arrives with snapshot schema version 4, required from that version (`null` when it was not sampled) and not allowed before it. Snapshots of versions 1 to 3 already on `dashboard-data` keep validating and rendering unchanged (proposed; mirrors how version 3 added the superseded section).
+* **An "E2E flows" dashboard page:** it shows the latest run's result, and a failed latest run stands out with a link to the run. Below that come a summary of the sample (runs, failures, success rate, and the median, p90 and max run time of successful runs) and a table of the recent runs, each with its date, trigger, result, run time and run link. The page names the failure issue by its title, and every number says whether it is measured and over which window.
+* **Honest empty states:** a snapshot older than version 4, one with no E2E section, and a window with no completed run each say so on the page. None of them implies a result.
+
+### Not in this story
+
+* **A new alert:** the one failure issue from #737 stays the alert for a failed night. The dashboard adds no threshold issue for E2E runs.
+* **A run-time trend verdict for E2E:** ADR-0045's trend check of the E2E job against `.github/e2e-baseline.json` stays in `ci-trend.yml`. The page shows run times but no verdict.
+* **Per-flow or per-test results:** the page shows whole runs, not which flow or test failed. The run's report and traces stay in the run's artifacts.
+* **Pull request or branch runs:** `e2e.yml` never runs for a pull request, and the section reads `main` only.
+* **Looking up the failure issue's number:** the snapshot does not read issues for this section, so the page names the issue by its title.
+
+### Acceptance criteria
+
+1. **Given** completed `e2e.yml` runs on `main`, **when** the daily snapshot is taken, **then** it holds an E2E section listing up to 30 of them, newest first, each with its trigger, creation time, conclusion and run time, and the run link is derived from the repository and the run id.
+2. **Given** an E2E section with a wrong shape (an unknown conclusion or trigger, runs out of order or duplicated, a run count that does not match the list or passes the cap, or a window that does not match the runs), **when** the snapshot is checked, **then** the check fails and names the field.
+3. **Given** an E2E section holding an e-mail address, a machine path, a session handle or a UUID, **when** the snapshot is checked, **then** the privacy rules reject it.
+4. **Given** snapshots of schema versions 1 to 3 without an E2E section, **when** they are checked by the tool and by the docs site, **then** they still pass. **Given** a version 4 snapshot without the field, or a version 3 snapshot with it, **then** the check fails.
+5. **Given** a snapshot whose latest E2E run failed, **when** the dashboard is built, **then** the E2E flows page shows that run as failed, with a link to the run.
+6. **Given** a snapshot whose latest E2E run succeeded, **when** the dashboard is built, **then** the page shows the summary and the table of recent runs, with the failures counted and each run linked.
+7. **Given** a snapshot older than version 4, or one whose E2E section is `null` or holds no runs, **when** the dashboard is built, **then** the page says that nothing was sampled and shows no result.
+8. **Given** the change is complete, **when** I run `just check`, **then** it passes.
+
+## Design decisions
+
+### Any Decision Records
+
+| ADR | Decision | Why it matters for this story |
+| --- | --- | --- |
+| [0049](../decisions/0049-build-the-delivery-dashboard-from-daily-snapshots-on-the-docs-site.md) | The delivery dashboard is built from daily snapshots on the docs site | The E2E section is one more snapshot section. It is checked twice, once by the tool and once by the site, and it is published only on `dashboard-data`. |
+| [0061](../decisions/0061-end-to-end-ui-tests-with-playwright-test-bound-to-the-architecture-flows.md) | End-to-end UI tests with Playwright, bound to the architecture flows | It defines the `E2E flows` workflow whose runs the section reads. |
+| [0045](../decisions/0045-run-time-regression-gates-for-ci-jobs.md) | Run-time regression gates for CI jobs | The E2E trend verdict stays in that check. The page shows run times only. |
+| [0058](../decisions/0058-typescript-on-deno-for-repository-tooling.md) | TypeScript on Deno for repository tooling | The collector and its rules are written in the Deno tool `tools/delivery-dashboard`. |
+
+No new ADR is expected.
+
+### Other decisions (not ADR-worthy)
+
+* **The section's own page, not a block on "CI speed":** E2E runs are a separate workflow with a different cadence (proposed; question 2 on #892).
+* **Whole runs, from one API call:** the run list holds everything the page needs (conclusion, creation, start and update times), so the snapshot makes no per-job calls. The run time is wall time from start to finish, so it includes any wait between jobs.
+* **A link derived, not stored:** the snapshot stores the run id, and the page builds `https://github.com/<repository>/actions/runs/<id>`. The snapshot then holds no free-form URL to check.
+* **Completed runs only:** a run still in progress at snapshot time has no conclusion yet, so it appears in the next snapshot.
+
+## Implementation notes
+
+*Planned. This section is completed as the story is built.*
+
+### Where things live
+
+| Area | Location |
+| --- | --- |
+| Collector, builder and rules of the E2E section | `tools/delivery-dashboard/e2e.ts` (new) |
+| Schema version and snapshot writer | `tools/delivery-dashboard/snapshot.ts`, `snapshot-rules.ts`, `delivery-dashboard.ts` |
+| Tool tests | `tools/delivery-dashboard/tests/` |
+| Docs reader and the E2E flows page | `frontend/apps/docs/src/lib/dashboard.ts` and `dashboard.test.ts` |
+| Runbook | `docs/runbooks/delivery-dashboard.md` |
+
+### API
+
+No changes. The calendar API and its contract are untouched.
+
+### Testing
+
+* Deno tests of the collector with a stub `gh` runner, of the builder, and of the rules: each wrong shape, the privacy rules, versions 1 to 3 without the section, and version 4 with and without it.
+* Vitest tests of the docs reader and of the page: a failed latest run, a successful one, an empty window, and a snapshot older than version 4.
+
+### Lessons learned, known issues and follow-ups
+
+* To be filled in on delivery.
+
+## User guide
+
+*Planned behaviour. This section is finalised when the story is implemented.*
+
+### See how the nightly end-to-end runs are going
+
+1. Open the docs site and choose **Delivery dashboard**, then **E2E flows**.
+2. The top of the page shows the latest run. If it failed, a caution says so and links to the run, where the report, traces and screenshots are kept. The open issue "E2E flows: the nightly run failed on main" holds the failure history.
+3. Below it, the summary gives the number of runs and failures in the sample, the success rate and the run times of successful runs. The table lists each recent run with its date, whether it was nightly or started by hand, its result, its run time and a link.
+
+The page shows the latest daily snapshot, not the current minute: a run that ends after the morning snapshot appears the next day.

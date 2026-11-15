@@ -32,6 +32,8 @@ export default defineConfig({
           globals: true,
           setupFiles: ['./src/test/setup.ts'],
           css: false,
+          // Vitest's default, stated because waits must time out first (src/test/timeouts.ts, #795).
+          testTimeout: 5000,
           // One jsdom per worker instead of one per file (benchmark 0005); the setup file resets the
           // module registry before each file, so app modules are still fresh per file.
           isolate: false,

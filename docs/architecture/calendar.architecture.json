@@ -126,7 +126,7 @@
       { "id": "0053", "title": "Show how fast and how smoothly changes reach main", "status": "implemented", "url": "https://mgasca.github.io/calendar/stories/0053/" },
       { "id": "0059", "title": "Run repository tooling on TypeScript and Deno", "status": "in-progress", "url": "https://mgasca.github.io/calendar/stories/0059/" },
       { "id": "0063", "title": "Build architecture narratives with an interviewing agent and an expert panel", "status": "in-progress", "url": "https://mgasca.github.io/calendar/stories/0063/" },
-      { "id": "0064", "title": "Test every user flow end to end and prove it is observable", "status": "planned", "url": "https://mgasca.github.io/calendar/stories/0064/" },
+      { "id": "0064", "title": "Test every user flow end to end and prove it is observable", "status": "implemented", "url": "https://mgasca.github.io/calendar/stories/0064/" },
       { "id": "XXXX", "title": "Create events and tasks from the week view", "status": "planned", "url": "https://mgasca.github.io/calendar/stories/create-events-and-tasks-from-week-view/" }
     ]
   },
@@ -546,7 +546,7 @@
                 "audit-logs": ["Key Vault AuditEvent diagnostics for the app and ops vaults"],
                 "structured-logging": "tracing with tracing-subscriber's formatter at INFO, written to standard output",
                 "telemetry-decision": {
-                  "status": "decided, not delivered (ADR-0062 proposed; epic #728)",
+                  "status": "delivered (ADR-0062; epic #728); the owner check in staging is deferred to #927",
                   "standard": "OpenTelemetry over OTLP, configured only by OTEL_* variables; no exporter when no endpoint is set",
                   "signals": [
                     "API: one server span per request named '<METHOD> <route template>', W3C traceparent extracted, one span per database query named '<operation> <table>', logs bridged from tracing with trace and span ids (stdout logging stays), HTTP server request count and duration by method, route template and status (#731)",
@@ -997,7 +997,7 @@
         }
       },
       "protocol": "HTTP",
-      "metadata": { "adrs": ["ADR-0061", "ADR-0063"], "stories": ["0064"], "delivery": "planned (#733)" }
+      "metadata": { "adrs": ["ADR-0061", "ADR-0063"], "stories": ["0064"], "delivery": "#733 (#832)" }
     },
     {
       "unique-id": "e2e-suite-queries-telemetry",
@@ -1009,7 +1009,7 @@
         }
       },
       "protocol": "HTTP",
-      "metadata": { "adrs": ["ADR-0061", "ADR-0062"], "stories": ["0064"], "delivery": "planned (#733)" }
+      "metadata": { "adrs": ["ADR-0061", "ADR-0062"], "stories": ["0064"], "delivery": "#733 (#832)" }
     },
     {
       "unique-id": "api-exports-telemetry",
@@ -1021,7 +1021,7 @@
         }
       },
       "protocol": "HTTP",
-      "metadata": { "adrs": ["ADR-0062"], "stories": ["0064"], "delivery": "planned (#731); in Azure the same export goes to Application Insights through the Container Apps managed OpenTelemetry agent (#738)" }
+      "metadata": { "adrs": ["ADR-0062"], "stories": ["0064"], "delivery": "#731 (#767, #798, #841); in Azure the same export goes to Application Insights through the Container Apps managed OpenTelemetry agent (#738)" }
     },
     {
       "unique-id": "web-app-exports-telemetry",
@@ -1033,7 +1033,7 @@
         }
       },
       "protocol": "HTTP",
-      "metadata": { "adrs": ["ADR-0062"], "stories": ["0064"], "delivery": "planned (#732); not exported in Azure" }
+      "metadata": { "adrs": ["ADR-0062"], "stories": ["0064"], "delivery": "#732 (#765, #899); not exported in Azure" }
     },
     {
       "unique-id": "browser-redirects-to-oidc-stub",
@@ -1045,7 +1045,7 @@
         }
       },
       "protocol": "HTTP",
-      "metadata": { "adrs": ["ADR-0064", "ADR-0027"], "stories": ["0064"], "delivery": "planned (#730, #736)" }
+      "metadata": { "adrs": ["ADR-0064", "ADR-0027"], "stories": ["0064"], "delivery": "#730 (#772), #736 (#903)" }
     },
     {
       "unique-id": "api-exchanges-code-with-oidc-stub",
@@ -1057,7 +1057,7 @@
         }
       },
       "protocol": "HTTP",
-      "metadata": { "adrs": ["ADR-0064"], "stories": ["0064"], "delivery": "planned (#730)" }
+      "metadata": { "adrs": ["ADR-0064"], "stories": ["0064"], "delivery": "#730 (#772)" }
     },
     {
       "unique-id": "operator-operates-platform",

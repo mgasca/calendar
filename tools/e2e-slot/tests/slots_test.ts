@@ -20,6 +20,13 @@ const UNRESERVED = fixture("netsh-unreserved.txt");
 
 const nothingListening = (reserved: PortState["reserved"]): PortState => ({ listening: () => false, reserved });
 
+Deno.test("the captured netsh output keeps its CRLF line endings (.gitattributes)", () => {
+  for (const text of [RESERVED, UNRESERVED]) {
+    assertEquals(text.includes("\r\n"), true);
+    assertEquals(/[^\r]\n/.test(text), false);
+  }
+});
+
 Deno.test("reads every range of netsh output, administered ones included, and nothing else", () => {
   assertEquals(parseExcludedRanges(RESERVED), [
     { start: 50000, end: 50059 },

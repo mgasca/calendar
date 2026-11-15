@@ -63,6 +63,14 @@ export class Observer {
     return requestCounts(this.stack.prometheusUrl, routes);
   }
 
+  /**
+   * Waits until Tempo holds `action`'s whole trace. Call it before a reload or a navigation away from the app:
+   * the browser exports spans in batches, and leaving the page drops the ones it has not sent yet.
+   */
+  async exported(action: ActionTrace): Promise<void> {
+    await waitForTrace(this.stack.tempoUrl, action.traceId, action, this.poll);
+  }
+
   async expectFlow(flow: FlowTelemetry): Promise<ObservedFlow> {
     const actions = [flow, ...(flow.traces ?? [])];
     const traces: FlatSpan[][] = [];

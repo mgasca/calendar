@@ -9,4 +9,4 @@ mod postgres;
 mod readiness;
 
 pub use postgres::{MAX_DATABASES, MIGRATED_DATABASE, TestDatabase};
-pub use readiness::{CONTAINER_READY_WITHIN, NotAccepting, is_not_ready_yet, wait_until_accepting};
+pub use readiness::{CONTAINER_READY_WITHIN, LastAttempt, NotAccepting, is_not_ready_yet, wait_until_accepting};

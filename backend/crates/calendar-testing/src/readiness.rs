@@ -19,6 +19,30 @@ pub const CONTAINER_READY_WITHIN: Duration = Duration::from_secs(120);
 
 const RETRY_EVERY: Duration = Duration::from_millis(250);
 
+/// The most one attempt (connect, then `SELECT 1`) may take. `Timeout` in the connection string bounds only the
+/// TCP connect, not the PostgreSQL handshake after it, and a handshake can wait for ever: on a TCP
+/// self-connection, which Linux makes when a refused port in its ephemeral range is retried often enough that the
+/// port comes up as the attempt's own source port (#949).
+const ATTEMPT_WITHIN: Duration = Duration::from_secs(5);
+
+/// How the last attempt of a wait ended.
+#[derive(Debug)]
+pub enum LastAttempt {
+  /// It failed with this error.
+  Failed(ConnectionError),
+  /// It had no answer within its time ([`ATTEMPT_WITHIN`] or what was left of the wait).
+  Unanswered(Duration),
+}
+
+impl fmt::Display for LastAttempt {
+  fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+    match self {
+      Self::Failed(error) => f.write_str(&connection::error_chain(error)),
+      Self::Unanswered(within) => write!(f, "no answer within {:.1} s", within.as_secs_f64()),
+    }
+  }
+}
+
 /// The server did not accept a connection: either it gave an error that waiting cannot cure, or the time ran out.
 #[derive(Debug)]
 pub struct NotAccepting {
@@ -26,8 +50,8 @@ pub struct NotAccepting {
   pub waited: Duration,
   /// Whether the wait ended because its time was up, rather than on an error that does not pass.
   pub timed_out: bool,
-  /// The last connection error.
-  pub last: ConnectionError,
+  /// How the last attempt ended.
+  pub last: LastAttempt,
 }
 
 impl fmt::Display for NotAccepting {
@@ -37,13 +61,14 @@ impl fmt::Display for NotAccepting {
       f,
       "the test PostgreSQL does not accept connections ({reason} after {:.1} s): {}",
       self.waited.as_secs_f64(),
-      connection::error_chain(&self.last)
+      self.last
     )
   }
 }
 
 /// Connects with `config` and runs `SELECT 1` until that succeeds, retrying while the server is still starting
-/// ([`is_not_ready_yet`]) and for at most `within`. Any other error ends the wait at once.
+/// ([`is_not_ready_yet`]) or does not answer, and for at most `within`. Each attempt has at most
+/// [`ATTEMPT_WITHIN`], so the wait ends on time whatever the server does. Any other error ends the wait at once.
 ///
 /// # Errors
 /// [`NotAccepting`] when the time is up or an error is not one a starting server gives.
@@ -51,25 +76,37 @@ pub async fn wait_until_accepting(config: &ConnectionConfig, within: Duration) -
   let started = Instant::now();
   let deadline = started + within;
   loop {
-    let error = match connection::connect_client(config).await {
-      Ok(client) => match client.simple_query("SELECT 1").await {
-        Ok(_) => return Ok(()),
-        // The session was opened but the server went away under it: the temporary server stopping, say.
-        Err(error) => connect_error(config, error),
-      },
-      Err(error) => error,
+    let attempt_within = deadline.saturating_duration_since(Instant::now()).min(ATTEMPT_WITHIN);
+    let last = match tokio::time::timeout(attempt_within, attempt(config)).await {
+      Ok(Ok(())) => return Ok(()),
+      Ok(Err(error)) => LastAttempt::Failed(error),
+      Err(_) => LastAttempt::Unanswered(attempt_within),
     };
     let now = Instant::now();
     let timed_out = now + RETRY_EVERY > deadline;
-    if timed_out || !is_not_ready_yet(&error) {
+    let retryable = match &last {
+      LastAttempt::Failed(error) => is_not_ready_yet(error),
+      LastAttempt::Unanswered(_) => true,
+    };
+    if timed_out || !retryable {
       return Err(NotAccepting {
         waited: now - started,
         timed_out,
-        last: error,
+        last,
       });
     }
     tokio::time::sleep(RETRY_EVERY).await;
   }
+}
+
+async fn attempt(config: &ConnectionConfig) -> Result<(), ConnectionError> {
+  let client = connection::connect_client(config).await?;
+  client
+    .simple_query("SELECT 1")
+    .await
+    // The session was opened but the server went away under it: the temporary server stopping, say.
+    .map_err(|error| connect_error(config, error))?;
+  Ok(())
 }
 
 /// Whether `error` is one a PostgreSQL container gives while it is still starting: nothing listening yet (a
@@ -134,7 +171,10 @@ mod tests {
 
     assert!(error.timed_out, "{error}");
     assert!(error.waited + RETRY_EVERY >= within, "{error}");
-    assert!(is_not_ready_yet(&error.last), "{error}");
+    assert!(
+      matches!(&error.last, LastAttempt::Failed(last) if is_not_ready_yet(last)),
+      "{error}"
+    );
     let message = error.to_string();
     assert!(message.contains("still not ready after"), "{message}");
   }
@@ -155,7 +195,35 @@ mod tests {
     proxy.abort();
 
     assert!(error.timed_out, "{error}");
-    assert!(is_not_ready_yet(&error.last), "{error}");
+    assert!(
+      matches!(&error.last, LastAttempt::Failed(last) if is_not_ready_yet(last)),
+      "{error}"
+    );
+  }
+
+  /// A server that accepts and then never answers, as a TCP self-connection does (#949): each attempt gives up on
+  /// time, so the wait ends at its bound instead of hanging.
+  #[tokio::test]
+  async fn a_server_that_never_answers_is_retried_until_the_time_is_up() {
+    let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+    let port = listener.local_addr().unwrap().port();
+    let silent = tokio::spawn(async move {
+      let mut held = Vec::new();
+      loop {
+        let (socket, _) = listener.accept().await.unwrap();
+        held.push(socket);
+      }
+    });
+    let within = Duration::from_secs(2);
+
+    let waited = tokio::time::timeout(Duration::from_secs(30), wait_until_accepting(&config_for(port), within)).await;
+    silent.abort();
+
+    let error = waited.expect("the wait ends at its bound").unwrap_err();
+    assert!(error.timed_out, "{error}");
+    assert!(error.waited < within + RETRY_EVERY, "{error}");
+    assert!(matches!(error.last, LastAttempt::Unanswered(_)), "{error}");
+    assert!(error.to_string().contains("no answer within"), "{error}");
   }
 
   /// Not every failure is a server still starting: a wrong configuration ends the wait at once.

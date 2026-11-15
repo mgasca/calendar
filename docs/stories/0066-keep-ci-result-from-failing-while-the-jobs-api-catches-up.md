@@ -28,7 +28,7 @@ Every job the API lists is in `needs`, except `Cancel superseded runs`, which th
 
 * **A real failure still fails at once**: a job the API shows as completed with any conclusion other than `success`, or `skipped` when the Changes job did not skip it, fails the gate on the first read that shows it, as today.
 * **A finished job the API still shows as running waits**: while some job is not yet `completed` in the API, the gate reads the API again every 5 s, for up to 120 s (today about 10 s). A healthy run passes on the first read, so the longer limit costs time only when the API lags.
-* **Limit reached (proposed)**: when a job still shows as running after 120 s, the gate fails with a message that says the jobs API had not caught up and that a rerun is the remedy, distinct from the message for a job that did not succeed. The alternative, passing on the `needs` result with a warning, is an open question on PR 0.
+* **Limit reached**: when a job still shows as running after 120 s, the gate fails with a message that says the jobs API had not caught up and that a rerun is the remedy, distinct from the message for a job that did not succeed. Passing on the `needs` result with a warning was rejected, as was a shorter limit: the product owner chose to fail at the limit and to keep 120 s (answers to the questions on PR 0, #943).
 * **API errors**: a read that fails is retried within the same limit; if the API cannot be read by the limit, the gate fails, as today.
 * **Tested logic**: the classification of the jobs API response moves from the inline script into a jq file under `.github/`, as ADR-0045 did with `ci-gate.jq`. Committed Deno tests run that file with `jq` on canned responses, and a test checks that `ci.yml` runs it. The step keeps only the loop: read, classify, wait or stop.
 * **Guards stay meaningful**: the `ci-result-needs-all` guard keeps requiring a `needs` success check and a jobs-API check, reading them where they live after the move.
@@ -68,8 +68,8 @@ No new ADR is expected.
 ### Other decisions (not ADR-worthy)
 
 * **jq, not a Deno script, in the job**: `CI result` checks out `.github/` only and installs nothing; jq is on the runner, as for `ci-gate.jq`.
-* **120 s limit**: long enough to cover the lag seen in run 43474865497 many times over, short enough that a stuck API still fails the check in about two minutes. The limit is an argument to the jq file, so tests can set the waited time.
-* **Fail at the limit (proposed)**: a job that still shows as running after two minutes is rare enough to deserve a human look; passing on `needs` would trust the source #368 showed can miss a failure.
+* **120 s limit** (agreed on #943): long enough to cover the lag seen in run 43474865497 many times over, short enough that a stuck API still fails the check in about two minutes. The limit is an argument to the jq file, so tests can set the waited time.
+* **Fail at the limit** (agreed on #943): a job that still shows as running after two minutes is rare enough to deserve a human look; passing on `needs` would trust the source #368 showed can miss a failure.
 
 ## Implementation notes
 

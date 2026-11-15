@@ -185,7 +185,7 @@ Deno.test("TheWorkflow_RunsThisGateFileInCiResult_OnTheSavedJobsResponse", async
   for (
     const text of [
       "sparse-checkout: .github",
-      '> "$RUNNER_TEMP/jobs.json"',
+      'cp "$RUNNER_TEMP/read.json" "$RUNNER_TEMP/jobs.json"',
       'gate=(jq -r -f .github/ci-gate.jq --slurpfile baseline .github/ci-baseline.json --arg event "$GITHUB_EVENT_NAME")',
       '"${gate[@]}" "$RUNNER_TEMP/jobs.json"',
     ]

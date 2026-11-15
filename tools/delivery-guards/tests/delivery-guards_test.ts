@@ -694,3 +694,19 @@ for (const [name, from, to, message] of cacheMutations) {
     assert(errors.some((e) => e.includes(message)), JSON.stringify(errors));
   });
 }
+Deno.test("TheCheckoutsJobsApiCheck_IsReadFromCiResultJq", () => {
+  const guard = guards.find((g) => g.id === "ci-result-needs-all")!, files = loadFiles(root);
+  assertStringIncludes(files.ciResultJq!, jobsApiSkipException);
+  assertEquals(
+    runGuard(guard, {
+      ...files,
+      ciResultJq: files.ciResultJq!.replace(jobsApiSkipException, 'select(.conclusion != "skipped")'),
+    }),
+    [`\`CI result\` accepts a job that did not succeed beyond a skip the Changes job intended (\`${needsSkipException}\`).`],
+  );
+  assertEquals(
+    runGuard(guard, { ...files, ciResultJq: files.ciResultJq!.replaceAll('.conclusion != "success"', "true") }),
+    ["`CI result` no longer checks the jobs API for jobs that did not succeed (run 42270142424)."],
+  );
+  assertEquals(runGuard(guard, { ...files, ciResultJq: undefined }).length > 0, true);
+});

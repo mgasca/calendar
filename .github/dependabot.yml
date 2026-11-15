@@ -21,20 +21,6 @@ updates:
       day: monday
     labels: [dependencies, backend]
 
-  # The exact .NET SDK the repo tools run on, pinned in the repo-root global.json. The tool lock files record
-  # the SDK's implicit AOT packages, so the bump fails CI's locked restore until they are refreshed on its
-  # branch (tools/README.md, ADR-0017, #645).
-  - package-ecosystem: dotnet-sdk
-    directory: /
-    schedule:
-      interval: weekly
-      day: monday
-    labels: [dependencies]
-    ignore:
-      # The SDK major moves with the rest of .NET in story 0056 (ADR-0050).
-      - dependency-name: dotnet-sdk
-        update-types: [version-update:semver-major]
-
   # Dockerfile base images and the images pinned in compose.yaml (postgres, grafana/otel-lgtm, the stub OIDC
   # provider). The rust image and
   # backend/rust-toolchain.toml are bumped separately: while they differ, the image build downloads the pinned
@@ -50,9 +36,9 @@ updates:
       - dependency-name: postgres
         update-types: [version-update:semver-major]
 
-  # Repo tooling (.claude/skills/*, tools/) is not listed: Dependabot doesn't read .NET file-based
-  # app #:package directives or folder-local Directory.Build.props, so those are bumped manually (ADR-0017);
-  # `just tools versions` keeps the pins of one package equal across the tools.
+  # Repo tooling (tools/ and the scripted skills in .claude/skills/) is not listed: each Deno configuration pins
+  # exact versions with its own deno.lock, bumped by hand (ADR-0058); `just tools versions` keeps the pins of one
+  # package equal across the configurations.
 
   - package-ecosystem: npm
     directory: /frontend

@@ -67,8 +67,8 @@ export function checkAction(action: string): string[] {
 
 const installsAzureCli = /apt(-get)?\s+install\b[^\n]*\bazure-cli\b/;
 // Steps that need the pinned CLI: Bicep itself, and the infra tool, which drives `az`.
-const needsCli = /\baz bicep\b|tools\/infra\/infra\.cs|\bjust infra (migrate|what-if|deploy)\b/;
-const needsBicep = /\baz bicep\b|tools\/infra\/infra\.cs.*\bwhat-if\b|\bjust infra (what-if|deploy)\b/;
+const needsCli = /\baz bicep\b|tools\/infra\/infra\.ts|\bjust infra (migrate|what-if|deploy)\b/;
+const needsBicep = /\baz bicep\b|tools\/infra\/infra\.ts.*\bwhat-if\b|\bjust infra (what-if|deploy)\b/;
 
 export function checkWorkflow(path: string, text: string): string[] {
   const workflow = Workflow.parse(text), errors: string[] = [];

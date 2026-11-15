@@ -32,21 +32,7 @@ else
   fail "no C compiler (cc, gcc or clang) found" "Install one, e.g. 'sudo apt install build-essential': the backend cannot link without it"
 fi
 
-# Repo tools run from the repo root, where global.json pins their exact SDK
-# (ADR-0017). Their lock files record that SDK's implicit AOT packages, so another SDK fails CI's
-# locked restore (#645); an SDK before 10.0.300 also lacks #:include.
-if ! command -v dotnet >/dev/null 2>&1; then
-  fail "dotnet not found" "Install the .NET SDK pinned in global.json, which the repo tools need: https://learn.microsoft.com/dotnet/core/install/linux"
-else
-  if tools_sdk="$(cd "$root" && dotnet --version 2>/dev/null)"; then
-    ok ".NET SDK $tools_sdk for repo tools (satisfies global.json)"
-  else
-    fail "no .NET SDK satisfies global.json at the repo root, which the repo tools need (ADR-0017)" \
-      "Install the SDK version in global.json, e.g. 'dotnet-install.sh --version <version>'; until then just tools adr, tools test, tools versions, db seed and lint fail"
-  fi
-fi
-
-# Deno: exact version for TypeScript repo tooling. .NET remains required until all tools are ported.
+# Deno: exact version for the TypeScript repo tooling and scripted skills (ADR-0058).
 want_deno="$(tr -d '[:space:]v' < "$root/.deno-version")"
 if ! command -v deno >/dev/null 2>&1; then
   fail "deno not found" "Install Deno $want_deno from https://docs.deno.com/runtime/getting_started/installation/"

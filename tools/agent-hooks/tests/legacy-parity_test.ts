@@ -37,10 +37,20 @@ function resultShape(value: unknown): unknown {
     ).map(([k, v]) => [k[0]!.toLowerCase() + k.slice(1), resultShape(v)]),
   );
 }
-let replacements = 0;
+/**
+ * Rows whose recorded result changed on purpose with story 0068 (native stacks, ADR-0065): a PR on any base gets
+ * the link reminder, `Refs` alone is never reminded, and the usage line lists `post-bash`. Each row's new result is
+ * asserted on the same input in `stack-pr-links_test.ts`.
+ */
+const stackReplacements = [218, 240, 244, 268, 269, 271, 273, 278];
+let replacements = 0, stackReplaced = 0;
 for (const [i, c] of cases.entries()) {
   if (c.kind === "HookRunner.Run" && ["warm", "post-edit"].includes(c.args.subcommand)) {
     replacements++;
+    continue;
+  }
+  if (stackReplacements.includes(i)) {
+    stackReplaced++;
     continue;
   }
   Deno.test(`legacy ${i}: ${c.test} / ${c.kind}`, async () => {
@@ -97,3 +107,4 @@ for (const [i, c] of cases.entries()) {
   });
 }
 Deno.test("legacy capture accounts for approved warm/post-edit replacements", () => assertEquals(replacements, 2));
+Deno.test("legacy capture accounts for the story 0068 replacements", () => assertEquals(stackReplaced, 8));

@@ -31,6 +31,7 @@ export interface RepoProbe {
     selector: string | null,
     repo: string | null,
   ): PullRequestText | null | Promise<PullRequestText | null>;
+  stackBranches(cwd: string): string[] | null | Promise<string[] | null>;
 }
 export interface HookInput {
   toolName: string | null;
@@ -38,6 +39,7 @@ export interface HookInput {
   filePath: string | null;
   cwd: string;
   stopHookActive: boolean;
+  interrupted: boolean;
 }
 export function parseInput(json: string): HookInput {
   const root = JSON.parse(json);
@@ -49,6 +51,7 @@ export function parseInput(json: string): HookInput {
     filePath: text(root.tool_input?.file_path),
     cwd: text(root.cwd) ?? Deno.cwd(),
     stopHookActive: root.stop_hook_active === true,
+    interrupted: root.tool_response?.interrupted === true,
   };
 }
 export const pass: HookResult = { exitCode: 0 };

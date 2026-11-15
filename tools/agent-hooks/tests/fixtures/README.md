@@ -10,15 +10,16 @@ The capture ran in a scratch copy with unchanged test bodies/assertions. Thin wr
 | `ShellCommandTests.cs` | Every split/tokenize call and result in the legacy replay, including malformed input and quoting. |
 | `EditGuardTests.cs` | Every call with full verdict and reason in the legacy replay; Deno locks added in protocol tests. |
 | `ContractCheckTests.cs` | Every changed-file/timestamp combination in the legacy replay, including deleted sources, same-time writes and client regeneration. |
-| `PullRequestLinkCheckTests.cs` | Every call and query in the legacy replay. These rows name the suite's `Describe` helper because that is the original immediate caller. |
-| `HookRunnerTests.cs` | Every call and complete JSON/exit/stderr result in the legacy replay except the two approved replacements below. Invalid-JSON diagnostics retain exit 2 and the stable diagnostic prefix; parser-specific detail differs by runtime. |
+| `PullRequestLinkCheckTests.cs` | Every call and query in the legacy replay, except seven rows replaced by story 0068 (below). These rows name the suite's `Describe` helper because that is the original immediate caller. |
+| `HookRunnerTests.cs` | Every call and complete JSON/exit/stderr result in the legacy replay except the two approved replacements and row 218 (story 0068) below. Invalid-JSON diagnostics retain exit 2 and the stable diagnostic prefix; parser-specific detail differs by runtime. |
 | `PullRequestLookupTests.cs` | Every JSON parsing call in the legacy replay. Every process scenario is ported in `process-and-git_test.ts`: arguments/cwd, missing/failing gh, prompts, stdin closure, timeout and PR text selectors. |
 | `ExternalCommandTests.cs` | All six scenarios in `process-and-git_test.ts`, including Linux ETXTBSY retry, literal arguments, closed stdin, environment, failure, time limits and descendant cleanup. |
 | `GitProbeTests.cs` | All seven scenarios in `process-and-git_test.ts`: ancestor `.git`, squash delivery, branch/detached state, timestamps, missing/text/binary/oversized files and a FIFO without a writer. Extra tests cover real unstaged queries, untracked files and the default branch. |
 | `LineLengthCheckTests.cs` | Approved replacement: `protocol-and-registration_test.ts` tests Deno guidance for tooling TypeScript, passes other paths (including all former C#/migration examples), and makes no content-length decision. |
 | `DotnetSdkTests.cs` | Approved replacement: SDK parsing, SDK lookup and compilation warmup are retired. Protocol tests compare the actual running Deno version in SessionStart, including CLI JSON and no extra arguments. General process success/failure/timeout behavior remains covered in the process suite. |
+| Story 0068 (native stacks) | Approved replacement of row 218 (the `HookRunner` usage line) and the seven link-check rows 240, 244, 268, 269, 271, 273 and 278: with native GitHub stacks (ADR-0065) a PR on any base gets the link reminder, `Refs` alone is never reminded, and the usage line lists `post-bash`. `stack-pr-links_test.ts` replays each row's input and probe state and asserts the new result. |
 
-The replay runs 556 recorded calls plus an assertion accounting for the two deliberately replaced `HookRunner` results. It compares complete decisions, reason text, JSON strings, shell segments and probe query sequences. New protocol/registration/CLI and real process/Git tests complete the port. Run with the shared configuration:
+The replay runs 548 recorded calls plus assertions accounting for the two deliberately replaced `HookRunner` results and the eight rows replaced by story 0068. It compares complete decisions, reason text, JSON strings, shell segments and probe query sequences. New protocol/registration/CLI and real process/Git tests complete the port. Run with the shared configuration:
 
 ```bash
 deno test --config tools/deno.json --frozen --no-prompt --allow-read --allow-write --allow-run --allow-env tools/agent-hooks/tests

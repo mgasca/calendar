@@ -468,16 +468,53 @@ const combinedCases: [string, string, boolean, string[], string][] = [
 for (const [name, event, complete, files, jobs] of combinedCases) {
   Deno.test(name, () => checkRules(event, complete, files, jobs));
 }
-// The Frontend job tests with `pnpm -r ... test:coverage`, which skips a package without that script, so the flow binding
-// check of ADR-0061 runs in CI only while @calendar/e2e defines it (#902).
-Deno.test("TheFrontendJobsTestStep_ReachesTheFlowBindingCheck", () => {
+// The Frontend job tests with `pnpm -r ... test:coverage`, which skips a package without that script, so a package's
+// tests run in CI only while it defines it: the flow binding check of ADR-0061 in @calendar/e2e (#902), the theme
+// guards of story 0046 in @calendar/theme (#908), and any package added later.
+type WorkspacePackage = { name: string; scripts?: Record<string, string> };
+function packagesTheStepSkips(step: string, packages: WorkspacePackage[]): string[] {
+  const excluded = [...step.matchAll(/--filter '!([^']+)'/g)].map((m) => m[1]);
+  return packages
+    .filter((p) => !excluded.includes(p.name) && p.scripts?.test !== undefined && !p.scripts?.["test:coverage"])
+    .map((p) => p.name);
+}
+function workspacePackages(): WorkspacePackage[] {
+  // The globs of frontend/pnpm-workspace.yaml.
+  return ["apps", "packages"].flatMap((dir) =>
+    [...Deno.readDirSync(join(root, "frontend", dir))]
+      .filter((e) => e.isDirectory)
+      .map((e) => join(root, "frontend", dir, e.name, "package.json"))
+      .filter((path) => {
+        try {
+          return Deno.statSync(path).isFile;
+        } catch {
+          return false;
+        }
+      })
+      .map((path) => JSON.parse(Deno.readTextFileSync(path)) as WorkspacePackage)
+  );
+}
+Deno.test("PackagesTheStepSkips_AreTheTestedPackagesWithoutTestCoverage", () => {
+  const step = "pnpm -r --filter '!@calendar/docs' test:coverage";
+  assertEquals(
+    packagesTheStepSkips(step, [
+      { name: "@calendar/only-test", scripts: { test: "vitest run" } },
+      { name: "@calendar/both", scripts: { test: "vitest run", "test:coverage": "vitest run --coverage" } },
+      { name: "@calendar/docs", scripts: { test: "vitest run" } },
+      { name: "@calendar/untested", scripts: { typecheck: "tsc" } },
+      { name: "@calendar/no-scripts" },
+    ]),
+    ["@calendar/only-test"],
+  );
+});
+Deno.test("TheFrontendJobsTestStep_ReachesEveryTestedPackage", () => {
   const steps = Workflow.parse(loadFiles(root).workflow).jobNamed("Frontend")!.steps;
   const test = steps.map((s) => s.text("run") ?? "").find((run) => run.includes(" test:coverage"));
   assert(test, "the Frontend job has a step that runs test:coverage");
   assert(test.startsWith("pnpm -r ") && !test.includes("@calendar/e2e"), `the step reaches every package: ${test}`);
-  const e2e = JSON.parse(Deno.readTextFileSync(join(root, "frontend/apps/e2e/package.json")));
-  assertEquals(e2e.name, "@calendar/e2e");
-  assertStringIncludes(e2e.scripts?.["test:coverage"] ?? "", "vitest run");
+  const packages = workspacePackages();
+  assert(packages.some((p) => p.name === "@calendar/e2e") && packages.some((p) => p.name === "@calendar/theme"));
+  assertEquals(packagesTheStepSkips(test, packages), [], `these packages have \`test\` but no \`test:coverage\``);
 });
 // A change to the model alone runs Flow binding instead of Frontend, so that job must run the same tests (#902).
 Deno.test("TheFlowBindingJob_RunsTheE2ePackagesTests", () => {

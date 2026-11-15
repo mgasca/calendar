@@ -1,5 +1,5 @@
 ---
-status: proposed
+status: accepted
 date: 2026-11-15
 decision-makers: mgasca, Claude (AI assistant)
 ---
@@ -134,3 +134,4 @@ A wrapper around `AsyncPgConnection` that holds the owner and only hands out `ow
 * Versions at the time of writing (`backend/Cargo.lock`): diesel 2.3.14, diesel-async 0.9.2, deadpool 0.13.1, axum 0.8.9.
 * **Revisit triggers:** see "Row-level security stays a second layer for later". They are also in `.github/pull_request_template.md`.
 * **Resolved in review, 2026-11-15 (#948):** the maintainer chose to defer row-level security with the revisit triggers above, and judged review plus the per-endpoint tests enough for direct `events::table` / `tasks::table` queries, so no Clippy `disallowed-types` guard is added. No story card records this change; the ADR is its record (#938).
+* **Accepted, 2026-11-15:** the maintainer accepted this record in the delivering session (#948).

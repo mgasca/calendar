@@ -58,7 +58,7 @@ This story adds `just changed`. It applies the CI rules to the local branch and 
 2. **Given** an uncommitted edit to a file under `backend/`, **when** I run `just changed`, **then** Backend is selected, although nothing is committed.
 3. **Given** a new untracked file under `tools/` and an ignored file under `.plan/`, **when** I run `just changed --dry-run`, **then** the untracked file counts as changed and the ignored one does not.
 4. **Given** a branch that renames a file out of `frontend/apps/web/`, **when** I run `just changed --dry-run`, **then** Frontend is selected because of the old path.
-5. **Given** a branch that changes `.github/ci-changes.jq`, **when** I run `just changed --dry-run`, **then** every CI job is selected.
+5. **Given** a branch that changes `.github/ci-changes.jq`, **when** I run `just changed --dry-run`, **then** every CI job is selected except ADR conventions, Narratives and Flow binding, which CI then runs inside Tooling and Frontend.
 6. **Given** any file list, **when** the command selects jobs, **then** the selection equals the output of `.github/ci-changes.jq` for that list as a complete `pull_request` event.
 7. **Given** a CI rule for a job the recipe map lacks, **when** I run `just changed` or `just tools test`, **then** it fails and names the unmapped job, and no recipe runs.
 8. **Given** two selected recipes where the first fails, **when** I run `just changed`, **then** the second still runs, the summary lists the failure, and the exit code is non-zero; **with** `--fail-fast`, the second does not run.

@@ -61,7 +61,7 @@
 <li><strong>Shared project</strong>: the Compose project <code>calendar</code> that <code>just db</code> recipes use from every checkout, with the volume <code>calendar-pgdata</code> and port 5432.</li>
 <li><strong>Run</strong>: one end-to-end stack started by <code>just e2e up</code>: its own Compose project <code>calendar-e2e-&#x3C;time>-&#x3C;random></code>, its own volume and network, and an API and a web server process.</li>
 <li><strong>Slot</strong>: the block of 55xxx ports a run uses. Slot <em>k</em> (2, 3, 5, 6, 7, 8 or 9) uses 55<em>k</em>00 plus the offsets in the table below; slots 0, 1 and 4 hold the <code>run-calendar</code> agent stack’s ports and are never used.</li>
-<li><strong>LGTM</strong>: the <code>grafana/otel-lgtm</code> container: an OpenTelemetry collector with Tempo (traces), Loki (logs), Prometheus (metrics) and Grafana.</li>
+<li><strong>LGTM</strong>: short for Grafana’s <code>grafana/otel-lgtm</code> image, the one container this runbook starts for telemetry. The name comes from Loki, Grafana, Tempo and Mimir, but the image doesn’t run Mimir. Checked in the pinned 0.40.0, it runs an OpenTelemetry Collector, Tempo (traces), Loki (logs), Prometheus (metrics) and Grafana, plus Pyroscope and OBI, which this project doesn’t use. Metrics are therefore queried in Prometheus.</li>
 <li><strong>Stub</strong>: <code>navikt/mock-oauth2-server</code>, an OpenID Connect provider whose sign-in page lets you type the username and the claims of each sign-in.</li>
 </ul>
 <h2 id="before-you-start">Before you start</h2>

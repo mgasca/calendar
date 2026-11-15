@@ -11,7 +11,6 @@ use calendar_infrastructure::migrations;
 use diesel_async::AsyncPgConnection;
 use testcontainers_modules::postgres::Postgres;
 
-use testcontainers_modules::testcontainers::runners::AsyncRunner;
 use testcontainers_modules::testcontainers::{ContainerAsync, CopyTargetOptions, ImageExt};
 use tokio::sync::{Mutex, OnceCell, OwnedSemaphorePermit, Semaphore};
 use tokio_postgres::error::SqlState;
@@ -264,28 +263,27 @@ impl Server {
   async fn start() -> Self {
     let (_, tag) = crate::repo_files::postgres_image();
     let role_script = crate::repo_files::find("docker/postgres/init/01-roles.sh");
-    let container = Postgres::default()
-      .with_db_name(MIGRATED_DATABASE)
-      .with_user(ADMIN_USER)
-      .with_password(admin_password())
-      .with_tag(tag)
-      .with_env_var("CALENDAR_MIGRATOR_PASSWORD", migrator_password())
-      .with_env_var("CALENDAR_APP_PASSWORD", app_password())
-      .with_copy_to(
-        CopyTargetOptions::new("/docker-entrypoint-initdb.d/01-roles.sh").with_mode(0o755),
-        role_script,
-      )
-      .start()
-      .await
-      .expect("the PostgreSQL container starts (is Docker running?)");
+    let (container, port) = crate::start_postgres(|| {
+      Postgres::default()
+        .with_db_name(MIGRATED_DATABASE)
+        .with_user(ADMIN_USER)
+        .with_password(admin_password())
+        .with_tag(tag.clone())
+        .with_env_var("CALENDAR_MIGRATOR_PASSWORD", migrator_password())
+        .with_env_var("CALENDAR_APP_PASSWORD", app_password())
+        .with_copy_to(
+          CopyTargetOptions::new("/docker-entrypoint-initdb.d/01-roles.sh").with_mode(0o755),
+          role_script.clone(),
+        )
+    })
+    .await;
 
     let reaper = remove_container_when_this_process_exits(container.id());
     let host = match container.get_host().await.expect("the container has a host").to_string() {
-      // The mapped port below is the IPv4 one.
+      // The published port is bound on IPv4.
       host if host == "localhost" => "127.0.0.1".to_owned(),
       host => host,
     };
-    let port = container.get_host_port_ipv4(5432).await.expect("the PostgreSQL port is mapped");
 
     let server = Self {
       host,

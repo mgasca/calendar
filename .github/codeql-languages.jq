@@ -14,6 +14,6 @@
 # answers true too, so a change to the gate is checked by the analysis it could skip, and main's result is never reused
 # across a change to the queries or the workflow.
 
-def rules_files: []; # throwaway probe for #882: lets this PR take the reuse path
+def rules_files: [".github/workflows/codeql.yml", ".github/codeql-languages.jq"];
 
 {rust: ($changes.backend or any(.files[]; IN(rules_files[])))}

@@ -43,7 +43,7 @@ Story [0030](0030-docs-only-pr-previews.md) limited the hosted docs preview to p
 
 ### Not in this story
 
-* **CodeQL, dependency review and the other workflows:** unchanged; they keep their own triggers.
+* **CodeQL, dependency review and the other workflows:** unchanged; they keep their own triggers. *Amended 2026-11-15:* CodeQL's Rust analysis now follows the Backend set; see the follow-ups below.
 * **Splitting a job by path inside the job** (for example, running only the docs tests a change touches): out of scope; a job runs whole or not at all.
 * **Removing a stale preview** when a pull request stops changing the docs: it stays until the pull request closes, as today.
 * **Re-measuring the ADR-0045 baselines:** pushes and dispatches still run every job, so the baselines stay valid. The gate stack (epic #380) merged first, and this story merged it in.
@@ -111,6 +111,7 @@ No changes.
 
 ### Lessons learned, known issues and follow-ups
 
+* **Amendment, 2026-11-15 (CodeQL's Rust analysis, issue #882, epic #881):** the CodeQL workflow reuses this story's Backend set. A pull request that changes no Backend input and neither the CodeQL workflow nor `.github/codeql-languages.jq` uploads `main`'s Rust result for the same Rust inputs instead of analysing Rust again ([ADR-0046](../decisions/0046-run-ci-jobs-only-for-the-paths-they-check.md), amendment of 2026-11-15; record [0026](../benchmarks/0026-codeql-rust-analysis-on-pull-requests-without-rust-input.md)). A missing Backend path in `ci-changes.jq` now also lets a Rust change skip the Rust analysis on its pull request; pushes to `main` still analyse every language.
 * **The #380 gate stack merged mid-delivery** (#392, #395, #398). Merging `main` resolved `CI result` by keeping the gate's checkout and saved jobs response and adding the skip exception. The tooling tests read the gate's files under `.github/`, so those now run Tooling.
 * **The review** (review-before-merge workflow) found three low issues, posted on #422. Docs lint ran twice when Frontend also ran: fixed. `pages.yml` skipped the docs suite that tests it: fixed. The Changes job's own cost: measured in record 0016, about 5 s.
 * **Changes has no ADR-0045 baseline entry:** the gate reports it on every run without gating it, until the next baseline update.

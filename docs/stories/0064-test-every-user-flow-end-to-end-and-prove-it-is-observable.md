@@ -9,6 +9,7 @@ pr:
   - https://github.com/mgasca/calendar/pull/769
   - https://github.com/mgasca/calendar/pull/798
   - https://github.com/mgasca/calendar/pull/832
+  - https://github.com/mgasca/calendar/pull/877
 adrs: ["0008", "0021", "0027", "0030", "0039", "0058", "0061", "0062", "0063", "0064"]
 ---
 
@@ -214,6 +215,12 @@ API telemetry (#731) lives in `calendar-api/src/telemetry/`:
 - **New flows need no workflow change:** the job runs every test in `frontend/apps/e2e/tests`.
 - **Verified:** run [43528677152](https://github.com/mgasca/calendar/actions/runs/43528677152) passed in 200 s on a cold cache (stack ready in 130 s, `view-today-flow` 3.5 s). Run [43529239198](https://github.com/mgasca/calendar/actions/runs/43529239198) failed on a deliberately wrong span name; the report, `trace.zip`, the screenshot and the stack logs were uploaded, and the message named the missing span. Both came from a temporary `pull_request` trigger on #876, removed before review.
 - **Follow-up (#892):** an E2E section on the delivery dashboard.
+
+### Delivered in #734
+
+- **`add-event-flow`** (`tests/add-event-flow.spec.ts`, day 2026-04-07): adds a timed and an all-day event from the day page through the dialog, and checks the focus, the confirmation, the exclusive `endDate` of an all-day event and the agenda's refetch. Each save is its own `ui.event.create` trace down to `INSERT events`.
+- **`edit-event-flow`** (`tests/edit-event-flow.spec.ts`, day 2026-04-09): opens an event, changes it "elsewhere" through the API, and saves. The 409 reloads the latest version into the form, and the API's server span records the 409. Saving again succeeds. The test then deletes another event after the in-dialog confirmation, after first checking that **Keep event** sends nothing. Six traces in all: open, conflict, reload, save, open, delete.
+- **Harness, reusable by #735 and #736:** `expectFlow({ …, traces })` asserts several user actions' traces in one flow; `flowRequest(page, method, routeTemplate)` gives a request and its trace id; `seed.updateEvent` writes as the same user outside the browser and registers its texts.
 
 ### Lessons learned, known issues and follow-ups
 

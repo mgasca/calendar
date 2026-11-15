@@ -84,7 +84,7 @@
 </ul>
 <h3 id="not-in-this-story">Not in this story</h3>
 <ul>
-<li><strong>CodeQL, dependency review and the other workflows:</strong> unchanged; they keep their own triggers.</li>
+<li><strong>CodeQL, dependency review and the other workflows:</strong> unchanged; they keep their own triggers. <em>Amended 2026-11-15:</em> CodeQL’s Rust analysis now follows the Backend set; see the follow-ups below.</li>
 <li><strong>Splitting a job by path inside the job</strong> (for example, running only the docs tests a change touches): out of scope; a job runs whole or not at all.</li>
 <li><strong>Removing a stale preview</strong> when a pull request stops changing the docs: it stays until the pull request closes, as today.</li>
 <li><strong>Re-measuring the ADR-0045 baselines:</strong> pushes and dispatches still run every job, so the baselines stay valid. The gate stack (epic #380) merged first, and this story merged it in.</li>
@@ -191,6 +191,7 @@
 </ul>
 <h3 id="lessons-learned-known-issues-and-follow-ups">Lessons learned, known issues and follow-ups</h3>
 <ul>
+<li><strong>Amendment, 2026-11-15 (CodeQL’s Rust analysis, issue #882, epic #881):</strong> the CodeQL workflow reuses this story’s Backend set. A pull request that changes no Backend input and neither the CodeQL workflow nor <code>.github/codeql-languages.jq</code> uploads <code>main</code>’s Rust result for the same Rust inputs instead of analysing Rust again (<a href="/calendar/pr-preview/pr-904/adr/0046/">ADR-0046</a>, amendment of 2026-11-15; record <a href="/calendar/pr-preview/pr-904/benchmarks/0026/">0026</a>). A missing Backend path in <code>ci-changes.jq</code> now also lets a Rust change skip the Rust analysis on its pull request; pushes to <code>main</code> still analyse every language.</li>
 <li><strong>The #380 gate stack merged mid-delivery</strong> (#392, #395, #398). Merging <code>main</code> resolved <code>CI result</code> by keeping the gate’s checkout and saved jobs response and adding the skip exception. The tooling tests read the gate’s files under <code>.github/</code>, so those now run Tooling.</li>
 <li><strong>The review</strong> (review-before-merge workflow) found three low issues, posted on #422. Docs lint ran twice when Frontend also ran: fixed. <code>pages.yml</code> skipped the docs suite that tests it: fixed. The Changes job’s own cost: measured in record 0016, about 5 s.</li>
 <li><strong>Changes has no ADR-0045 baseline entry:</strong> the gate reports it on every run without gating it, until the next baseline update.</li>

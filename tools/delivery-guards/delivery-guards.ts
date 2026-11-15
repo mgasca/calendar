@@ -266,21 +266,45 @@ function codeqlRustGate(files: RepoFiles): string[] {
       errors.push(`\`CodeQL languages\` does not run \`jq -c -f ${rules}\`, the rules the tests check.`);
     }
   }
-  if (!gate.body.map("outputs")?.text("exclude")) errors.push("`CodeQL languages` has no `exclude` output.");
+  if (!gate.body.map("outputs")?.text("rust")) errors.push("`CodeQL languages` has no `rust` output.");
   const analyze = workflow.jobs.find((j) => j.name.startsWith("Analyze"));
   if (!analyze) return [...errors, "codeql.yml has no Analyze job."];
   if (!analyze.body.list("needs").some((n) => n instanceof YamlScalar && n.value === gate.id)) {
-    errors.push(`\`${analyze.name}\` does not need \`${gate.id}\`, so it cannot read which languages to leave out.`);
+    errors.push(`\`${analyze.name}\` does not need \`${gate.id}\`, so it cannot read whether Rust input changed.`);
   }
   if (analyze.body.text("if") !== null) {
-    errors.push(`\`${analyze.name}\` must run on every event; only its matrix is filtered.`);
+    errors.push(`\`${analyze.name}\` must run on every event; only its rust entry chooses analysis or reuse.`);
   }
   const matrix = analyze.body.map("strategy")?.map("matrix"),
-    languages = (matrix?.list("language") ?? []).map((n) => (n as YamlScalar).value),
-    expected = `\${{ fromJSON(needs.${gate.id}.outputs.exclude) }}`;
+    languages = (matrix?.list("language") ?? []).map((n) => (n as YamlScalar).value);
   if (!languages.includes("rust")) errors.push(`\`${analyze.name}\` has no \`rust\` entry in its \`language\` matrix.`);
-  if (matrix?.text("exclude") !== expected) {
-    errors.push(`\`${analyze.name}\`'s matrix must \`exclude: ${expected}\` and nothing else.`);
+  // The code_scanning rule blocks a head with no /language:rust analysis (record 0026), so the entry always runs.
+  if (matrix?.get("exclude") !== undefined) {
+    errors.push(`\`${analyze.name}\`'s matrix must not exclude a language; a skipped rust entry blocks the merge.`);
+  }
+  const steps = analyze.steps,
+    uses = (s: (typeof steps)[number], action: string) => (s.text("uses") ?? "").startsWith(action),
+    reuse = steps.find((s) => s.text("id") === "reuse"),
+    skip = "steps.reuse.outputs.found != 'true'";
+  if (!reuse) return [...errors, `\`${analyze.name}\` has no step with id \`reuse\` that looks up main's Rust result.`];
+  const reuseIf = `matrix.language == 'rust' && needs.${gate.id}.outputs.rust == 'false'`;
+  if (reuse.text("if") !== reuseIf) errors.push(`the \`reuse\` step must run \`if: ${reuseIf}\` and nothing else.`);
+  for (const rules of [changesRulesPath, codeqlLanguagesPath]) {
+    if (!Workflow.run(reuse).includes(`jq -c -f ${rules}`)) {
+      errors.push(`the \`reuse\` step does not decide the match with \`jq -c -f ${rules}\`.`);
+    }
+  }
+  const upload = steps.find((s) => uses(s, "github/codeql-action/upload-sarif"));
+  if (!upload || upload.text("if") !== "steps.reuse.outputs.found == 'true'") {
+    errors.push("no upload-sarif step runs exactly `if: steps.reuse.outputs.found == 'true'`.");
+  } else if (upload.map("with")?.text("category") !== "/language:rust") {
+    errors.push("the reused result is not uploaded under `category: /language:rust`.");
+  }
+  for (const action of ["github/codeql-action/init", "github/codeql-action/analyze"]) {
+    const step = steps.find((s) => uses(s, action));
+    if (!step || !(step.text("if") ?? "").includes(skip)) {
+      errors.push(`\`${action}\` must run \`if: ${skip}\`, so a reused result is not analysed again.`);
+    }
   }
   return errors;
 }
@@ -338,7 +362,7 @@ export const guards: Guard[] = [
     fix: "#882",
     record: "0026",
     mechanism:
-      "A CodeQL languages job runs .github/ci-changes.jq and .github/codeql-languages.jq on every run, and the Analyze matrix excludes rust only when that job says no Rust input changed.",
+      "A CodeQL languages job runs .github/ci-changes.jq and .github/codeql-languages.jq on every run; when it says no Rust input changed, the rust entry looks up main's result for the same Rust inputs with the same rules, uploads it under /language:rust and skips init and analyze.",
     check: codeqlRustGate,
   },
 ];

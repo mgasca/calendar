@@ -17,9 +17,9 @@ concurrency:
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
-  # A pull request that changes no Rust input skips the rust analysis (issue #882, ADR-0046 amendment of 2026-11-14).
-  # The Rust input set is CI's Backend set: this job runs the same rules as CI's Changes job, then
-  # .github/codeql-languages.jq. A push, the schedule and a dispatch analyse every language.
+  # A pull request that changes no Rust input skips the rust analysis and reuses main's result for the same Rust inputs
+  # (issue #882, ADR-0046 amendment of 2026-11-15). The Rust input set is CI's Backend set: this job runs the same rules
+  # as CI's Changes job, then .github/codeql-languages.jq. A push, the schedule and a dispatch analyse every language.
   languages:
     name: CodeQL languages
     runs-on: ubuntu-latest
@@ -29,7 +29,7 @@ jobs:
       contents: read
       pull-requests: read
     outputs:
-      exclude: ${{ steps.decide.outputs.exclude }}
+      rust: ${{ steps.decide.outputs.rust }}
     steps:
       - uses: actions/checkout@v7
         with:
@@ -54,10 +54,10 @@ jobs:
           fi
           changes=$(jq -c -f .github/ci-changes.jq <<< "$input")
           result=$(jq -c -f .github/codeql-languages.jq --argjson changes "$changes" <<< "$input")
-          echo "exclude=$(jq -c .exclude <<< "$result")" >> "$GITHUB_OUTPUT"
+          echo "rust=$(jq -c .rust <<< "$result")" >> "$GITHUB_OUTPUT"
           jq -r '"\(.files | length) changed file(s), listing complete: \(.complete)"' <<< "$input"
-          jq -r '"rust: \(if .rust then "analysed" else "skipped, no Rust input changed" end)"' <<< "$result" \
-            | tee -a "$GITHUB_STEP_SUMMARY"
+          jq -r '"rust: \(if .rust then "analysed" else "no Rust input changed, so a matching main result is reused" end)"' \
+            <<< "$result" | tee -a "$GITHUB_STEP_SUMMARY"
 
   analyze:
     name: Analyze (${{ matrix.language }})
@@ -78,9 +78,53 @@ jobs:
           - rust
           - javascript-typescript
           - actions
-        exclude: ${{ fromJSON(needs.languages.outputs.exclude) }}
     steps:
       - uses: actions/checkout@v7
+      # The main ruleset's code_scanning rule blocks a pull request whose head has no /language:rust analysis at all
+      # (record 0026), so a pull request that changes no Rust input uploads the result of the newest analysed main
+      # commit whose Rust inputs match its head. The match is decided by the gate's rules, on the files between that
+      # commit and the head. With no match among main's 10 latest Rust analyses, the full analysis below runs.
+      - name: Find main's Rust result for these Rust inputs
+        id: reuse
+        if: matrix.language == 'rust' && needs.languages.outputs.rust == 'false'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          repo="repos/$GITHUB_REPOSITORY"
+          merge_base=$(gh api "$repo/compare/$BASE_SHA...$HEAD_SHA" --jq .merge_base_commit.sha)
+          candidates=$(gh api "$repo/code-scanning/analyses?ref=refs/heads/main&tool_name=CodeQL&per_page=100" --jq '
+            [.[] | select(.category == "/language:rust" and .analysis_key == ".github/workflows/codeql.yml:analyze"
+              and .error == "")][:10][] | "\(.id) \(.commit_sha)"')
+          while read -r id sha; do
+            [ -n "$id" ] || continue
+            # The analysed commit must be the merge base or one of its ancestors ...
+            status=$(gh api "$repo/compare/$sha...$merge_base" --jq .status)
+            [ "$status" = identical ] || [ "$status" = ahead ] || continue
+            # ... and the files between it and the head must change no Rust input, by the gate's own rules.
+            input=$(gh api "$repo/compare/$sha...$HEAD_SHA" --jq '{event: "pull_request",
+              complete: ((.files // []) | length < 300),
+              files: [(.files // [])[] | .filename, (.previous_filename // empty)]}')
+            changes=$(jq -c -f .github/ci-changes.jq <<< "$input")
+            rust=$(jq -c -f .github/codeql-languages.jq --argjson changes "$changes" <<< "$input" | jq -r .rust)
+            if [ "$rust" = false ]; then
+              gh api -H "Accept: application/sarif+json" "$repo/code-scanning/analyses/$id" \
+                | jq 'del(.runs[].automationDetails)' > "$RUNNER_TEMP/rust.sarif"
+              echo "found=true" >> "$GITHUB_OUTPUT"
+              echo "rust: reuses main's analysis $id of $sha; no Rust input changed between it and $HEAD_SHA." \
+                | tee -a "$GITHUB_STEP_SUMMARY"
+              exit 0
+            fi
+          done <<< "$candidates"
+          echo "rust: no analysed main commit has these Rust inputs; running the full analysis." \
+            | tee -a "$GITHUB_STEP_SUMMARY"
+      - name: Upload main's Rust result for this pull request
+        if: steps.reuse.outputs.found == 'true'
+        uses: github/codeql-action/upload-sarif@v4
+        with:
+          sarif_file: ${{ runner.temp }}/rust.sarif
+          category: /language:rust
       # The Rust extractor loads the backend workspace with cargo: it fetches about 330 crates and builds their build
       # scripts and proc macros, 25-36 s of its LoadManifest phase on a cold runner (issue #883, record 0027). The rust
       # analysis restores the registry and a persistent target directory for the extractor, which cut that phase to
@@ -89,11 +133,11 @@ jobs:
       # stable (default)", not the backend/ pin.
       - name: Read the extractor's Rust toolchain
         id: rustc
-        if: matrix.language == 'rust'
+        if: matrix.language == 'rust' && steps.reuse.outputs.found != 'true'
         run: echo "version=$(rustc --version | cut -d' ' -f2)" >> "$GITHUB_OUTPUT"
       - name: Restore the cargo registry
         id: registry
-        if: matrix.language == 'rust'
+        if: matrix.language == 'rust' && steps.reuse.outputs.found != 'true'
         uses: actions/cache/restore@v6
         with:
           path: |
@@ -107,7 +151,7 @@ jobs:
             ${{ github.event_name == 'pull_request' && format('codeql-rust-registry-{0}-', runner.os) || '' }}
       - name: Restore the extractor's target directory
         id: target
-        if: matrix.language == 'rust'
+        if: matrix.language == 'rust' && steps.reuse.outputs.found != 'true'
         uses: actions/cache/restore@v6
         with:
           path: ${{ runner.temp }}/codeql-rust-target
@@ -118,18 +162,20 @@ jobs:
             ${{ github.event_name == 'pull_request'
             && format('codeql-rust-target-{0}-rustc-{1}-', runner.os, steps.rustc.outputs.version) || '' }}
       - uses: github/codeql-action/init@v4
+        if: steps.reuse.outputs.found != 'true'
         with:
           languages: ${{ matrix.language }}
           # No language here needs a build (ADR-0017, ADR-0051).
           build-mode: none
           queries: security-extended
       - uses: github/codeql-action/analyze@v4
+        if: steps.reuse.outputs.found != 'true'
         env:
           CODEQL_EXTRACTOR_RUST_OPTION_CARGO_TARGET_DIR: ${{ runner.temp }}/codeql-rust-target
         with:
           category: /language:${{ matrix.language }}
       - name: Report the extractor's cargo state
-        if: always() && matrix.language == 'rust'
+        if: always() && matrix.language == 'rust' && steps.reuse.outputs.found != 'true'
         env:
           TARGET: ${{ runner.temp }}/codeql-rust-target
         run: |

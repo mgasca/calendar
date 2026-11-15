@@ -1,16 +1,25 @@
 ---
-status: planned
+status: implemented
 date: 2026-11-13
 issue: https://github.com/mgasca/calendar/issues/728
 pr:
   - https://github.com/mgasca/calendar/pull/740
+  - https://github.com/mgasca/calendar/pull/750
+  - https://github.com/mgasca/calendar/pull/746
   - https://github.com/mgasca/calendar/pull/765
-  - https://github.com/mgasca/calendar/pull/767
   - https://github.com/mgasca/calendar/pull/769
+  - https://github.com/mgasca/calendar/pull/767
+  - https://github.com/mgasca/calendar/pull/772
+  - https://github.com/mgasca/calendar/pull/793
+  - https://github.com/mgasca/calendar/pull/796
+  - https://github.com/mgasca/calendar/pull/800
   - https://github.com/mgasca/calendar/pull/798
+  - https://github.com/mgasca/calendar/pull/841
   - https://github.com/mgasca/calendar/pull/832
-  - https://github.com/mgasca/calendar/pull/877
+  - https://github.com/mgasca/calendar/pull/876
+  - https://github.com/mgasca/calendar/pull/909
   - https://github.com/mgasca/calendar/pull/899
+  - https://github.com/mgasca/calendar/pull/877
   - https://github.com/mgasca/calendar/pull/901
   - https://github.com/mgasca/calendar/pull/903
 adrs: ["0008", "0021", "0027", "0030", "0039", "0058", "0061", "0062", "0063", "0064"]
@@ -85,21 +94,39 @@ Each slice is a child issue with its own PR. Their acceptance criteria are copie
 | [#738](https://github.com/mgasca/calendar/issues/738) | Azure: API telemetry to Application Insights | #729, #731 | `just infra` what-if for staging shows only the intended telemetry changes; Bicep lint and build pass. **Given** a deployed staging revision, **when** a flow runs, **then** its trace and logs appear in Application Insights (owner-verified; record what was and was not verified). **Given** staging telemetry, **then** it carries no personal data (owner check per the runbook). |
 | [#104](https://github.com/mgasca/calendar/issues/104) | Google sign-in test gaps at API level | #729; may reuse the stub from #730 | **Given** a Google callback for an email that is not allow-listed or not verified, **when** it is processed, **then** the response redirects to `/signin?error=access_denied` and no auth cookie is issued. **Given** a callback for an allow-listed verified email, **then** a session cookie is issued and the user is redirected to the original local `returnUrl`. **Given** a non-Development environment behind `X-Forwarded-Proto: https`, **when** signing in, **then** the cookie is `Secure`, `HttpOnly`, `SameSite=Lax` and the `redirect_uri` uses the public HTTPS origin. Story 0005's notes drop the "known gaps" sentence. The Rust tests in `google_sign_in.rs` may already cover part of this; #104's own design post says what is left. |
 
+Two children were added during delivery, both within the agreed scope:
+
+| # | Slice | Delivered in |
+| --- | --- | --- |
+| [#797](https://github.com/mgasca/calendar/issues/797) | API: one `request finished` log record per traced request, so a successful flow's logs carry its trace id (found while designing #733) | #798, with the review follow-up #841 |
+| [#902](https://github.com/mgasca/calendar/issues/902) | CI: run the flow binding check for changes to the e2e package and the model (it had never run in CI) | #909 |
+
 Dependencies: #729 first; then #730, #731 and #732 in parallel; #733 when all three have landed; then #734, #735 and #736 in parallel, with #737 able to start once one flow runs. #738 needs only #731, and #104 only #729. The epic's dependency map is the live version.
 
 ### Acceptance criteria
 
 1. **Given** the model's user-facing flows, **when** the nightly E2E run finishes on `main`, **then** each of the 7 flows has a test tagged with its `unique-id` that passed in Chromium against the throwaway stack.
+   Tested by the seven specs in [`frontend/apps/e2e/tests/`](../../frontend/apps/e2e/tests/), run by the "E2E flows" workflow ([`e2e.yml`](../../.github/workflows/e2e.yml)) on `main` at 6f535beb4: [run 43705021443](https://github.com/mgasca/calendar/actions/runs/43705021443), dispatched on 2026-11-15, passed 8 tests (sign-in has two cases) in 1.7 min, 322 s for the whole job.
 2. **Given** a user-facing flow with no tagged test, or a test tagged with a flow id the model does not define, **when** the binding check runs on a pull request, **then** it fails and names the flow or the tag.
+   Tested by [`binding.test.ts`](../../frontend/apps/e2e/src/binding/binding.test.ts): "binds every user-facing flow of the architecture model to a tagged test or the pending list" runs against the real model and test list. "fails naming a user-facing flow that has no test and is not pending" and "fails naming a tag the model does not define" cover the failures. It runs on pull requests since #909 (#902).
 3. **Given** a flow test runs, **when** it queries the LGTM stack, **then** it finds one trace holding the browser span, the API span or spans and the database span or spans with the flow's expected span names, Loki log records carrying that trace id, and Prometheus request count and duration series for the routes the flow hit.
+   Tested by each flow spec through `expectFlow` ([`flow.ts`](../../frontend/apps/e2e/src/telemetry/flow.ts)); the assertion's own rules are in [`telemetry.test.ts`](../../frontend/apps/e2e/src/telemetry/telemetry.test.ts) ("the trace assertion", for example "fails when the API span is not under the browser span (two traces glued by name)"). On the API side, [`tests/api/telemetry.rs`](../../backend/crates/calendar-api/tests/api/telemetry.rs) has `a_request_with_a_traceparent_joins_its_server_and_database_spans_to_that_trace`, `a_successful_request_exports_one_log_record_with_its_trace_id_and_only_allow_listed_fields` and `requests_are_counted_and_timed_by_method_route_template_and_status`. Sign-in has no browser span, because its pages are full redirects; its traces start at the API's root span.
 4. **Given** a flow test seeded titles, notes and a signed-in email, **when** it scans the flow's spans, logs and metric labels, **then** none of those values, nor the session cookie or a token, appears; and a planted value makes the scan fail.
+   Tested by each flow spec's scan, and by "the personal-data scanner" in [`telemetry.test.ts`](../../frontend/apps/e2e/src/telemetry/telemetry.test.ts) ("fails on a seeded title in a span attribute, without repeating the value", "fails on a token or a cookie header whoever wrote it", "refuses streams that reach the limit, where Loki may have cut records off"). At the source: `no_span_log_or_metric_carries_personal_data_query_values_or_the_session_cookie` in [`telemetry.rs`](../../backend/crates/calendar-api/tests/api/telemetry.rs), and "exports no personal value, query string or URL" in the web app's [`telemetry.test.tsx`](../../frontend/apps/web/src/telemetry/telemetry.test.tsx).
 5. **Given** the shared `calendar` Compose project, or another checkout's E2E stack, is running, **when** an E2E run starts and tears down, **then** those resources are untouched and the run removes only its own containers and volumes.
+   Checked by hand in #772 (#730): a second run went up, passed `just e2e check` and went down, alongside another run and the shared project's container, volume and network, and every `calendar*` resource was compared before and after. In code, `just e2e down` refuses any project not named `calendar-e2e-*`. No automated test covers this.
 6. **Given** a signed-out deep link to `/day/<date>`, **when** the person signs in through the stub as an allow-listed verified email, **then** they land on `/day/<date>` signed in; **and given** an email that is not allow-listed, **then** they land on `/signin?error=access_denied` with no session cookie.
+   Tested by [`sign-in-flow.spec.ts`](../../frontend/apps/e2e/tests/sign-in-flow.spec.ts) (the allow-listed and not allow-listed cases), and at API level by [`google_sign_in.rs`](../../backend/crates/calendar-api/tests/api/google_sign_in.rs) (#104, #750).
 7. **Given** the API's Google endpoint or issuer overrides are set, **when** the API starts as anything but `Development`, or the override names a non-loopback host, **then** it refuses to start.
+   Tested by `an_override_outside_development_stops_the_api` and `a_non_loopback_override_stops_the_api_even_in_development` in [`google_overrides_startup.rs`](../../backend/crates/calendar-api/tests/google_overrides_startup.rs), which run the `calendar-api` binary.
 8. **Given** no OTLP endpoint is configured, **when** the API and the web app run, **then** no exporter is loaded and behaviour and existing tests are unchanged.
+   Tested by `nothing_is_exported_without_an_endpoint` and `without_telemetry_spans_are_disabled_and_only_events_reach_stdout` (unit tests in `calendar-api/src/telemetry.rs`), and by "web telemetry when not configured" › "runs the action directly and registers no tracer provider" in [`telemetry.test.tsx`](../../frontend/apps/web/src/telemetry/telemetry.test.tsx). The rest of each suite ran unchanged.
 9. **Given** a deployed staging revision, **when** a flow runs, **then** its API trace and logs appear in Application Insights without personal data (owner-verified).
+   **Not verified.** The route is wired (#769), but the maintainer deferred the owner check on 2026-11-15; it is #927.
 10. **Given** a failed nightly run, **when** the maintainer opens it, **then** the Playwright HTML report, the trace and the failing telemetry assertion are available as artifacts, and the failure is visible without opening the Actions tab.
+    Proved by runs on #876: [43529239198](https://github.com/mgasca/calendar/actions/runs/43529239198) uploaded the report, `trace.zip`, the screenshot and the stack logs for a deliberately wrong span name, and [43583755717](https://github.com/mgasca/calendar/actions/runs/43583755717) opened the failure issue (#898, closed as the proof). Both came from a temporary trigger, removed before review.
 11. **Given** the change is complete, **when** I run `just check`, **then** it passes.
+    Covered by CI, which runs what `just check` runs: `CI result` passed on the merged head of every delivery PR listed above. `just check` was not run as one command locally.
 
 ## Design decisions
 
@@ -128,8 +155,6 @@ Dependencies: #729 first; then #730, #731 and #732 in parallel; #733 when all th
 
 ## Implementation notes
 
-*Planned. This section is completed as the story is built.*
-
 ### Where things live
 
 | Area | Location |
@@ -139,7 +164,8 @@ Dependencies: #729 first; then #730, #731 and #732 in parallel; #733 when all th
 | API telemetry | `backend/crates/calendar-api` (startup in `src/main.rs`, request and database spans) |
 | Stub issuer settings and guard | `backend/crates/calendar-api/src/config.rs` (`GoogleOverrides`, the two refusals), `src/auth/google.rs`, `src/state.rs`; tests in `config.rs`, `google.rs` and `tests/google_overrides_startup.rs` (#730) |
 | Web telemetry | `frontend/apps/web`: `src/telemetry/` (`action.ts` with `traceAction`, always bundled; `sdk.ts`, loaded by `main.tsx` only in a `VITE_OTEL_TRACES_EXPORTER=otlp` build; `attributes.ts` and `allowListExporter.ts`, the allow-list); `dev/otlpProxy.ts` and `vite.config.ts` (the `/otlp/v1/traces` proxy) (#732) |
-| Nightly workflow | `.github/workflows/` (#737) |
+| Nightly workflow | `.github/workflows/e2e.yml` ("E2E flows"), and the second trend step in `ci-trend.yml` (#737) |
+| Flow binding in CI | the Frontend job, and the filtered Flow binding job in `.github/workflows/ci.yml` (#902) |
 | Azure route | `infra/modules/app.bicep`: the Container Apps managed OpenTelemetry agent on the environment sends traces and logs to Application Insights; the app sets `OTEL_SERVICE_NAME=calendar-api` and `OTEL_METRICS_EXPORTER=none` (#738). Where to look: [the Azure infrastructure runbook](../runbooks/azure-infrastructure.md#monitoring-where-to-look) |
 | Model | `docs/architecture/calendar.architecture.json` (nodes `e2e-suite`, `lgtm`, `oidc-stub`; the `observability` control; flow test links) |
 
@@ -261,14 +287,20 @@ API telemetry (#731) lives in `calendar-api/src/telemetry/`:
 
 - **Follow-up (#893):** pin `.github/e2e-baseline.json` (`just tools ci-timings --workflow e2e.yml --baseline --created <range> --out .github/e2e-baseline.json --record <record>`) once 30 successful nightly runs exist, about a month after #737 merges; until then the trend check concludes nothing about this workflow. The maintainer chose this input change without an ADR-0045 amendment (#737, option A, 2026-11-14).
 - **Known issue:** when `just e2e up` itself fails (a migration or a build), the recipe removes the run, logs included, so only its error message reaches the job log.
+- **Deferred (#927):** the owner check in staging that API traces and logs reach Application Insights without personal data (criterion 9). The maintainer deferred it on 2026-11-15, so this story closes without it.
+- **Follow-up (#892):** an E2E section on the delivery dashboard. Until then, a nightly failure shows as one open `bug` issue.
+- **Known defect (#900):** an edit dialog reopened after a save shows the stale cached copy. `edit-task-flow` reloads the page before reopening until it is fixed.
+- **Lesson: flow tests find telemetry gaps.** Writing the assertions found two defects the unit tests had missed: a successful request logged nothing, so no log carried its trace id (#797), and `fetch(url, init)` spans were named by method only (#879).
+- **Lesson: check that a new check actually runs in CI.** The binding check ran in no CI job until #909 (#902). The Frontend job only runs packages that have a `test:coverage` script, and its path filter skipped changes to the e2e package and the model. Three PRs reported green CI that never ran it.
+- **Lesson: stacked PRs and squash merges.** #901 and #903 were stacked on #877. Once #877 and #901 were squash-merged, #903's branch still held #877's original commits and conflicted with `main` in code #903 never changed. Merging with #877's final head as the base left only the shared lines (`pending-flows.json`, the README and this card) to resolve. ADR-0065 now makes stacks native GitHub stacks.
+- **Lesson: lock files.** A broken `frontend/pnpm-lock.yaml` after a merge (#832) should be rebuilt as `main`'s lock file plus the change. `pnpm install --fix-lockfile` also dropped about 10 KB of entries `main` relies on.
+- **Docs gap:** the runbook's "Look at telemetry while developing" section still says nothing is exported until #731 and #732 land. It doesn't mention the web build switch `VITE_OTEL_TRACES_EXPORTER=otlp` or say where to find a flow's trace, logs and metrics in Grafana.
 
 - Browser OpenTelemetry is marked experimental upstream, and the Rust traces signal is beta; ADR-0062 records the versions checked.
 - **Follow-up:** web telemetry in Azure stays off in this story, as the maintainer chose on #729 on 2026-11-13; turning it on is a later decision (ADR-0062). With the switch off the fetch instrumentation is not loaded, so Azure requests carry no `traceparent` either (#732).
 - **Follow-up:** `@opentelemetry/instrumentation-fetch` is deprecated upstream in favour of the experimental `@opentelemetry/browser-instrumentation`; `sdk.ts` keeps it with an ESLint exception, and the move is #768.
 
 ## User guide
-
-*Planned behaviour. This section is finalised when the story is implemented.*
 
 This story changes nothing a calendar user sees. For the maintainer:
 

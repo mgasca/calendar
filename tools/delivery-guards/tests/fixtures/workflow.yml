@@ -48,12 +48,10 @@ jobs:
     needs: changes
     if: needs.changes.outputs.tooling == 'true'
     steps:
-      - uses: actions/setup-dotnet@v6
+      - uses: denoland/setup-deno@v2
         with:
-          dotnet-version: 10.0.x
+          deno-version-file: .deno-version
           cache: true
-          cache-dependency-path: |
-            tools/**/packages.lock.json
       - name: Test and lint tooling
         run: just tools test
   supersede:

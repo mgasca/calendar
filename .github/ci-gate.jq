@@ -7,7 +7,7 @@
 # format the messages. With `--arg format summary` it prints a Markdown table for the step summary instead. It exits 1
 # (halt_error) only when a pull_request or merge_group run has a job above a pinned threshold; on any other event, and
 # on a provisional path, an exceedance is a warning. The thresholds are derived by `tools/ci-timings --baseline`; the
-# tests in tools/ci-timings/tests/GateTests.cs run this file.
+# tests in tools/ci-timings/tests/gate_test.ts run this file.
 
 def clock: round as $s | "\(($s / 60) | floor):\(($s % 60) | if . < 10 then "0\(.)" else tostring end)";
 def seconds: (.completed_at | fromdateiso8601) - (.started_at | fromdateiso8601);

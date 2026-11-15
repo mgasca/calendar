@@ -134,7 +134,7 @@ Record every delivery answer on the epic before launching. When an answer was gi
 
 ## Limits
 
-These rules come from one epic in one repository. They are a strong starting point, not a law. Where a new review contradicts one, follow the evidence and propose a change to this skill. The agent-loop counts come from one session's transcript, so treat them as a first measurement, not a norm. The harness can't yet report queue time or critical path directly. A `ci-timings` option for those would be a .NET tool change under ADR-0017, filed as its own issue.
+These rules come from one epic in one repository. They are a strong starting point, not a law. Where a new review contradicts one, follow the evidence and propose a change to this skill. The agent-loop counts come from one session's transcript, so treat them as a first measurement, not a norm. The harness can't yet report queue time or critical path directly. A `ci-timings` option for those would be a TypeScript tool change under ADR-0058, filed as its own issue.
 
 ## Final message to the user
 

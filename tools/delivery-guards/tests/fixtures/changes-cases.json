@@ -5,7 +5,7 @@
   ],
   [
     "docs/architecture/calendar.architecture.json",
-    "docs adr"
+    "docs adr binding"
   ],
   [
     "docs/decisions/0001-x.md",
@@ -194,5 +194,37 @@
   [
     ".github/pull_request_template.md",
     "tooling"
+  ],
+  [
+    "frontend/apps/e2e/src/binding/check.ts",
+    "frontend"
+  ],
+  [
+    "frontend/apps/e2e/tests/view-today-flow.spec.ts",
+    "frontend"
+  ],
+  [
+    "frontend/apps/e2e/pending-flows.json",
+    "frontend"
+  ],
+  [
+    "frontend/apps/e2e/package.json",
+    "frontend"
+  ],
+  [
+    ".env.example",
+    "frontend"
+  ],
+  [
+    "frontend/apps/e2e-extra/src/a.ts",
+    ""
+  ],
+  [
+    "docs/architecture/url-mapping.json",
+    "docs"
+  ],
+  [
+    ".env.example.bak",
+    ""
   ]
 ]

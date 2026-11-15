@@ -82,4 +82,4 @@ Any endpoint that judges overdue or upcoming takes `today` + `timeZone`, validat
 - When a pedantic lint is wrong for one item, allow it there with a reason: `#[allow(clippy::too_many_lines, reason = "...")]`. Do not widen the workspace list for one case.
 - `cargo fmt --all` formats (`rustfmt.toml`: 140 columns, two spaces). rustfmt does not wrap long string literals or comments; wrap those by hand.
 - `Cargo.lock` is committed and every recipe and CI step passes `--locked`. Change dependencies with `cargo add` or `cargo update -p <crate>` and commit the lock file; never edit it by hand. A dependency used by one crate goes in that crate's manifest.
-- The repo tools under `tools/` and `.claude/skills/` are still .NET file-based apps with their own analyzers; their traps are in `tools/README.md`.
+- The repo tools under `tools/` and `.claude/skills/` are TypeScript on Deno with their own configurations; their conventions are in `tools/README.md`.

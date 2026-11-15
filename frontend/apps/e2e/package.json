@@ -6,6 +6,7 @@
   "scripts": {
     "typecheck": "tsc -b",
     "test": "vitest run",
+    "test:coverage": "vitest run --coverage",
     "e2e": "playwright test",
     "list": "playwright test --list --reporter=json"
   },
@@ -15,6 +16,7 @@
   "devDependencies": {
     "@playwright/test": "^1.65.0",
     "@types/node": "^26.6.6",
+    "@vitest/coverage-v8": "^5.1.0",
     "typescript": "~6.0.3",
     "vitest": "^5.1.0"
   }

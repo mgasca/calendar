@@ -1,7 +1,8 @@
 name: CI run-time trend
 
 # The trend check of ADR 0045: daily, and on demand, it compares the last 20 successful push runs on main (those after
-# the pinned baseline) with .github/ci-baseline.json, and comments on the one open `performance` issue titled
+# the pinned baseline) with .github/ci-baseline.json, and the last 20 nightly runs of e2e.yml with
+# .github/e2e-baseline.json once that is pinned (#737). It comments on the one open `performance` issue titled
 # "CI run-time trend: …", or opens it, only when a job is significantly slower by at least the minimum effect. It never
 # runs for a pull request, so it fails no PR and is not part of `CI result`. The logic and its tests are in
 # tools/ci-timings (trend.ts, tests/trend_test.ts).
@@ -41,3 +42,9 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: deno run --config tools/deno.json --frozen --no-prompt --allow-read --allow-write --allow-run --allow-env tools/ci-timings/ci-timings.ts --trend --issue --repo "$GITHUB_REPOSITORY" | tee -a "$GITHUB_STEP_SUMMARY"
+      # The nightly end-to-end workflow (#737) against its own baseline. Until 30 nightly runs exist and that baseline
+      # is pinned, the file is missing and the step reports that nothing is concluded.
+      - name: Compare recent nightly E2E runs on main with their pinned baseline
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: deno run --config tools/deno.json --frozen --no-prompt --allow-read --allow-write --allow-run --allow-env tools/ci-timings/ci-timings.ts --trend --issue --workflow e2e.yml --out .github/e2e-baseline.json --repo "$GITHUB_REPOSITORY" | tee -a "$GITHUB_STEP_SUMMARY"

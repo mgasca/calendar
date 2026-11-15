@@ -1,4 +1,4 @@
-import { getJson, poll, type PollOptions } from './poll.ts';
+import { FatalPollError, getJson, poll, type PollOptions } from './poll.ts';
 
 /** One span of a trace as Tempo returns it, with the ids in hex and every value as text. */
 export interface FlatSpan {
@@ -187,6 +187,80 @@ export async function waitForTrace(
       return problems.length === 0
         ? { done: true, value: spans }
         : { done: false, reason: `${problems.join(', ')} (has: ${outline(spans) || 'nothing'})` };
+    },
+    options,
+  );
+}
+
+/** A trace as Tempo's search lists it. */
+export interface FoundTrace {
+  readonly traceId: string;
+  readonly rootService: string;
+  readonly rootName: string;
+  /** The root span's start, in milliseconds since the epoch. */
+  readonly startedAt: number;
+}
+
+interface TempoSearch {
+  traces?: {
+    traceID?: string;
+    rootServiceName?: string;
+    rootTraceName?: string;
+    startTimeUnixNano?: string;
+  }[];
+}
+
+/** The traces of a Tempo `GET /api/search` answer. */
+export function searchResults(body: unknown): FoundTrace[] {
+  return ((body as TempoSearch).traces ?? []).map((trace) => ({
+    // Tempo's search drops the id's leading zeros; Loki and the traceparent keep all 32 hex digits.
+    traceId: (trace.traceID ?? '').padStart(32, '0'),
+    rootService: trace.rootServiceName ?? '',
+    rootName: trace.rootTraceName ?? '',
+    startedAt: Number(BigInt(trace.startTimeUnixNano ?? '0') / 1_000_000n),
+  }));
+}
+
+/** The traces in `found` whose root is the API's span `name` and that started at or after `since`. */
+export const apiRootTraces = (found: readonly FoundTrace[], name: string, since: Date) =>
+  found.filter(
+    (trace) =>
+      trace.rootService === 'calendar-api' &&
+      trace.rootName === name &&
+      trace.startedAt >= since.getTime(),
+  );
+
+/**
+ * The id of the one trace whose root is the API's server span `name`, started since `since`. A full-page
+ * navigation (the sign-in redirects) carries no `traceparent`, so the API starts its own trace and the test
+ * finds it by name. More than one is an error, because then the test cannot tell which one is its own.
+ *
+ * Tempo's search is queried without a time range: with one it reads only flushed blocks and misses the
+ * traces still in the ingester, which are the ones a test has just made.
+ */
+export async function findRootTrace(
+  tempoUrl: string,
+  name: string,
+  since: Date,
+  options?: PollOptions,
+): Promise<string> {
+  const query = `{ resource.service.name = "calendar-api" && name = "${name}" && kind = server }`;
+  return poll(
+    `A trace with root '${name}' in Tempo`,
+    async () => {
+      const url = new URL('/api/search', tempoUrl);
+      url.searchParams.set('q', query);
+      url.searchParams.set('limit', '100');
+      const traces = apiRootTraces(searchResults(await getJson(url)), name, since);
+      if (traces.length > 1) {
+        throw new FatalPollError(
+          `${String(traces.length)} traces with root '${name}' since the test began; expected exactly one`,
+        );
+      }
+      const [trace] = traces;
+      return trace
+        ? { done: true, value: trace.traceId }
+        : { done: false, reason: 'none since the test began' };
     },
     options,
   );

@@ -51,9 +51,11 @@ Never published or stitched. The interview resumes from this file.
 
 ### Rounds
 
-| Phase | Date | Answered | Returned nothing | What changed |
-| --- | --- | --- | --- | --- |
-| questions | date | n | none | New gaps S9, S10 |
+"Run by" is `workflow` when the `narrative-panel` workflow ran the experts, or `fallback` when the facilitator voiced each expert from its brief. No row means no panel ran, which fails quality check 4.
+
+| Phase | Date | Run by | Answered | Returned nothing | What changed |
+| --- | --- | --- | --- | --- | --- |
+| questions | date | workflow / fallback | n | none | New gaps S9, S10 |
 
 ## Accepted check failures
 

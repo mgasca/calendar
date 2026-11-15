@@ -148,7 +148,7 @@ The skill was run with the maintainer as the interviewee, in keep-parts mode wit
 
 #### Evals
 
-Five cases are in `.claude/skills/architecture-narrative-builder/evals/`, built on a small ticketing-kata fixture. `claude plugin eval` was not installed, so each case ran as a scenario, as story 0033 did. A fresh Sonnet agent got only the skill and the case prompt, never the graders, in a scratch root. Its result was graded by hand against the graders and the files it left. Results are posted on #711.
+Nine cases are in `.claude/skills/architecture-narrative-builder/evals/`, built on a small ticketing-kata fixture. `claude plugin eval` was not installed, so each case ran as a scenario, as story 0033 did. A fresh Sonnet agent got only the skill and the case prompt, never the graders, in a scratch root. Its result was graded by hand against the graders and the files it left. Results are posted on #711.
 
 | Case | Result |
 | --- | --- |
@@ -158,10 +158,13 @@ Five cases are in `.claude/skills/architecture-narrative-builder/evals/`, built 
 | [slides-mode-links-deck](../../.claude/skills/architecture-narrative-builder/evals/slides-mode-links-deck/case.yaml) | 3/3 |
 | [build-removes-parts](../../.claude/skills/architecture-narrative-builder/evals/build-removes-parts/case.yaml) | 3/3 on the corrected fixture |
 | [quality-check-minor-failure-blocks-stitch](../../.claude/skills/architecture-narrative-builder/evals/quality-check-minor-failure-blocks-stitch/case.yaml) | 4/4 in two runs (#762); the skill before the fix scored 3/4 in two runs, missing the offer to accept the failure |
+| [quality-check-no-panel-fails](../../.claude/skills/architecture-narrative-builder/evals/quality-check-no-panel-fails/case.yaml) | 3/3 (#760); the skill before the fix also scored 3/3 |
+| [quality-check-fallback-panel-passes](../../.claude/skills/architecture-narrative-builder/evals/quality-check-fallback-panel-passes/case.yaml) | 2/2 (#760); the skill before the fix also scored 2/2 |
+| [quality-check-fallback-undisclosed-fails](../../.claude/skills/architecture-narrative-builder/evals/quality-check-fallback-undisclosed-fails/case.yaml) | 3/3 (#760); the skill before the fix scored 1/3: it passed check 4 and stitched an appendix that calls fallback rounds a panel of expert agents |
 
 The first runs of stitch-only and build were invalid, because the fixture itself was inconsistent. In each, the agent correctly refused to stitch and asked. The fixture had an Act 2 edit that contradicted the Cost requirement, no panel record, terms its vocabulary did not define, and two names for one component. The fixture was fixed and both cases were rerun. The runs also showed three gaps in the skill, recorded on #711 for follow-up:
 
-* **Panel never ran.** Quality check 4 does not say what to do when no panel round was run.
+* **Panel never ran.** Quality check 4 did not say what to do when no panel round was run. Fixed in #760: the ledger's rounds record who ran each one (`workflow` or `fallback`), and check 4 has three cases. Workflow rounds are traced as before. Fallback rounds, in which the facilitator voices each expert from its brief, are traced the same way, but pass only when the ledger records the fallback and the panel appendix, if there is one, discloses it. With no round recorded the check fails, never "not verifiable", and blocks the stitch like any failed check. The fallback now also applies when every expert returned nothing, as in run 1. Three cases cover it. With #762's blocking rule in place, the skill before the fix already failed a missing panel (3/3, also on a ledger with no Panel section at all), so the original divergence did not reproduce. Only the fix fails a fallback that the appendix hides.
 * **Slides mode.** It does not say whether the quality checks must be reported in that mode.
 * **Stitched despite a failed check.** One stitch-only rerun stitched even though check 6 failed and it was asking about it, although the skill says a failed check goes back to the user as a question. Fixed in #762: any failed check, however minor, now blocks the stitch until the user answers or explicitly accepts the failure, which the ledger records. The case `quality-check-minor-failure-blocks-stitch` covers a single undefined term in a restitch the user calls trivial. Its control runs on the skill before the fix also refused to stitch, so the original slip did not reproduce in two runs; what only the fix produces is the offer to accept the failure.
 

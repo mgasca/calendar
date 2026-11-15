@@ -24,13 +24,21 @@ export interface PathBaseline {
   runs: WorkflowRun[];
   jobs: Record<string, JobBaseline>;
 }
+/** Where a path kept by a one-path rebuild was derived: its record and the constants of its thresholds. */
+export interface CarriedPath {
+  record: string;
+  constants: GateConstants;
+}
 export interface BaselineFile {
   workflow: string;
   record: string;
   minRuns: number;
   constants: GateConstants;
   paths: Record<string, PathBaseline>;
+  /** Paths copied unchanged from an earlier file, keyed by path; absent when every path was built from one window. */
+  carried?: Record<string, CarriedPath>;
 }
+export const baselinePaths = ["check", "publication"] as const;
 export interface PathSample {
   runId: number;
   job: string;
@@ -124,11 +132,49 @@ export function buildBaseline(
   const jobs = new Set(all.map((sample) => sample.job)).size;
   if (jobs > 0) constants = { ...constants, jobs };
   const paths: Record<string, PathBaseline> = {};
-  for (const path of ["check", "publication"]) {
+  for (const path of baselinePaths) {
     const built = buildPath(path, runs, all, minRuns, constants);
     if (built) paths[path] = built;
   }
   return { workflow, record, minRuns, constants, paths };
+}
+/**
+ * Rebuilds one path from a window and copies every other path of `existing` unchanged. The new top-level record and
+ * constants describe the rebuilt path; each copied path keeps, under `carried`, the record and constants its thresholds
+ * were derived with. J counts the distinct jobs of the resulting file, as for a full rebuild.
+ */
+export function rebuildPath(
+  existing: BaselineFile,
+  path: string,
+  record: string,
+  minRuns: number,
+  sampled: readonly SampledRun[],
+): BaselineFile {
+  if (!(baselinePaths as readonly string[]).includes(path)) {
+    throw new Error(`unknown path ${path}; expected ${baselinePaths.join(" or ")}`);
+  }
+  const all = sampled.flatMap((item) => item.samples).filter((sample) => sample.path === path),
+    runs = sampled.map((item) => item.run);
+  const kept = Object.values(existing.paths).filter((other) => other.path !== path);
+  const jobs = new Set([...all.map((sample) => sample.job), ...kept.flatMap((other) => Object.keys(other.jobs))]).size;
+  const constants = { ...existing.constants, jobs };
+  const built = buildPath(path, runs, all, minRuns, constants);
+  if (!built) throw new Error(`no successful run on the ${path} path in the window`);
+  const paths: Record<string, PathBaseline> = {}, carried: Record<string, CarriedPath> = {};
+  for (const other of kept) {
+    paths[other.path] = other;
+    carried[other.path] = existing.carried?.[other.path] ??
+      { record: existing.record, constants: { ...existing.constants } };
+  }
+  paths[path] = built;
+  return {
+    workflow: existing.workflow,
+    record,
+    minRuns,
+    constants,
+    paths,
+    ...(Object.keys(carried).length ? { carried } : {}),
+  };
 }
 export interface Exceedance extends PathSample {
   threshold: number;

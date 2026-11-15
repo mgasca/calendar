@@ -142,13 +142,13 @@ To be completed on delivery. So far:
 The skill was run with the maintainer as the interviewee, in keep-parts mode with the panel appendix. The result is [the Calendar narrative](../narratives/calendar-narrative.md), with parts in `docs/narratives/calendar/` and a twelve-slide deck. At the maintainer's request, each act was reviewed as its own stacked pull request (#744, #748, #749) instead of being confirmed in chat. That was for this run only; the skill is unchanged. What the run showed:
 
 * **Partial narratives fail the drift check.** The stitcher requires every act, so the act pull requests fail the Narratives check until Act 3 lands, and the stack merges down. The maintainer kept the stitcher as it is.
-* **Links in a part are copied verbatim.** They must be written relative to the stitched file (`../decisions/…`), not to the part, and the skill and templates do not say so.
+* **Links in a part are copied verbatim.** They must be written relative to the stitched file (`../decisions/…`), not to the part. Fixed in #763: the skill and the Act 2 and Act 3 templates state the rule, and the stitcher rejects a part link that leaves `docs/` from the stitched file, naming the fix. The skill rewrites such a path and reports it rather than asking.
 * **The interview found a drifted record.** [ADR-0041](../decisions/0041-per-user-data-ownership.md) still describes the .NET framework filter, while the Rust backend uses the explicit owner parameter that the ADR rejected. The narrative states what the code does, and a superseding record is an open question. [ADR-0066](../decisions/0066-per-user-data-ownership-with-a-typed-owner-id-on-every-query.md) now supersedes it (#938).
 * **Evidence was measured where it could be.** Delivery speed was bounded from the 2026-11-12 dashboard snapshot. The verifiability outcome (correction rounds) is not measured, and the narrative says so.
 
 #### Evals
 
-Five cases are in `.claude/skills/architecture-narrative-builder/evals/`, built on a small ticketing-kata fixture. `claude plugin eval` was not installed, so each case ran as a scenario, as story 0033 did. A fresh Sonnet agent got only the skill and the case prompt, never the graders, in a scratch root. Its result was graded by hand against the graders and the files it left. Results are posted on #711.
+Seven cases are in `.claude/skills/architecture-narrative-builder/evals/`, built on a small ticketing-kata fixture. `claude plugin eval` was not installed, so each case ran as a scenario, as story 0033 did. A fresh Sonnet agent got only the skill and the case prompt, never the graders, in a scratch root. Its result was graded by hand against the graders and the files it left. Results are posted on #711.
 
 | Case | Result |
 | --- | --- |
@@ -158,6 +158,7 @@ Five cases are in `.claude/skills/architecture-narrative-builder/evals/`, built 
 | [slides-mode-links-deck](../../.claude/skills/architecture-narrative-builder/evals/slides-mode-links-deck/case.yaml) | 3/3 |
 | [build-removes-parts](../../.claude/skills/architecture-narrative-builder/evals/build-removes-parts/case.yaml) | 3/3 on the corrected fixture |
 | [quality-check-minor-failure-blocks-stitch](../../.claude/skills/architecture-narrative-builder/evals/quality-check-minor-failure-blocks-stitch/case.yaml) | 4/4 in two runs (#762); the skill before the fix scored 3/4 in two runs, missing the offer to accept the failure |
+| [stitch-only-fixes-part-relative-link](../../.claude/skills/architecture-narrative-builder/evals/stitch-only-fixes-part-relative-link/case.yaml) | 4/4 in two runs (#763). The skill before the fix scored 2/4 and 4/4: one run stitched the broken link and asked, the other caught it in the stitched output. Only the fix makes the stitcher reject the link, which `just check` then enforces |
 
 The first runs of stitch-only and build were invalid, because the fixture itself was inconsistent. In each, the agent correctly refused to stitch and asked. The fixture had an Act 2 edit that contradicted the Cost requirement, no panel record, terms its vocabulary did not define, and two names for one component. The fixture was fixed and both cases were rerun. The runs also showed three gaps in the skill, recorded on #711 for follow-up:
 

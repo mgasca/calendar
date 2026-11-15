@@ -85,7 +85,9 @@ The API refuses to start when an override is set outside `Development`, or names
 | 80 | Stub OpenID Connect provider (issuer `/google`) |
 | 90 | Prometheus |
 
-For example, slot 2 serves the web app on http://127.0.0.1:55273 and the API on http://127.0.0.1:55241. Set `CALENDAR_E2E_SLOT` to use one slot only.
+For example, slot 2 serves the web app on http://127.0.0.1:55273 and the API on http://127.0.0.1:55241. Set `CALENDAR_E2E_SLOT` to use one slot only, or several separated by spaces.
+
+A slot is free when nothing listens on any of its ports. On WSL, a port inside a TCP range Windows reserves for Hyper-V or WinNAT also counts as in use: Docker Desktop cannot publish it, and WSL cannot see the reservation (#878). The reserved ranges change, for example when Docker Desktop restarts, so `just e2e up` reads them with `netsh.exe` on every run and prints why it skipped each slot. `tools/e2e-slot` makes the choice.
 
 ## Run the end-to-end flow tests
 
@@ -109,7 +111,8 @@ The flow binding needs no stack. `just frontend test` runs it on every pull requ
 
 ## Troubleshooting
 
-- **"No free end-to-end slot"**: every slot has a port in use. `just e2e ls` shows this checkout's runs; stop one with `just e2e down <project>`. A run from another checkout is stopped from that checkout.
+- **"No free end-to-end slot"**: every slot has a port in use, or one Windows reserves (the lines before it say which). `just e2e ls` shows this checkout's runs; stop one with `just e2e down <project>`. A run from another checkout is stopped from that checkout.
+- **`ports are not available: … /forwards/expose returned unexpected status: 500`** in `compose.log`: Docker Desktop refused a port that Windows reserved after the slot was chosen. Run `just e2e up` again, which reads the ranges afresh, or pin another slot with `CALENDAR_E2E_SLOT`. `netsh.exe interface ipv4 show excludedportrange protocol=tcp` lists the reserved ranges.
 - **`just e2e up` failed**: it prints the logs folder and removes the run. Read `compose.log`, `migrate.log`, `api-build.log`, `web-build.log`, `api.log` or `web.log` there. Run it again with the same slot to retry.
 - **A sign-in ends at `/signin?error=access_denied`**: the API log says why. A different username for an email that already signed in is refused, because the API binds each email to one subject.
 - **A pull fails with "unexpected commit digest"**: the download was corrupted, or the registry served a broken layer. Retry; if the same tag keeps failing, report it on the issue rather than switching tags silently.

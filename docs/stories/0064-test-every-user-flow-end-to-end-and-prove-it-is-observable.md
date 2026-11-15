@@ -163,7 +163,7 @@ Dependencies: #729 first; then #730, #731 and #732 in parallel; #733 when all th
 | Area | Location |
 | --- | --- |
 | E2E suite, fixtures, telemetry helpers, binding check | `frontend/apps/e2e` (`tests/`, `src/fixtures.ts`, `src/telemetry/`, `src/binding/`, `pending-flows.json`); `just e2e test` and `test-on` in `e2e.just` (#733) |
-| E2E stack and recipes | `compose.yaml` profiles `observability` (`otel-stack`) and `sign-in-stub` (`oidc-stub`); `e2e.just` (`just e2e up`, `check`, `env`, `ls`, `down`); `just db observability` and `just db sign-in-stub`; [runbook](../runbooks/local-stack-and-e2e.md) (#730) |
+| E2E stack and recipes | `compose.yaml` profiles `observability` (`otel-stack`) and `sign-in-stub` (`oidc-stub`); `e2e.just` (`just e2e up`, `check`, `env`, `ls`, `down`); `just db observability` and `just db sign-in-stub`; [runbook](../runbooks/local-stack-and-e2e.md) (#730); `tools/e2e-slot` chooses the slot, skipping ports Windows reserves on WSL (#878) |
 | API telemetry | `backend/crates/calendar-api` (startup in `src/main.rs`, request and database spans) |
 | Stub issuer settings and guard | `backend/crates/calendar-api/src/config.rs` (`GoogleOverrides`, the two refusals), `src/auth/google.rs`, `src/state.rs`; tests in `config.rs`, `google.rs` and `tests/google_overrides_startup.rs` (#730) |
 | Web telemetry | `frontend/apps/web`: `src/telemetry/` (`action.ts` with `traceAction`, always bundled; `sdk.ts`, loaded by `main.tsx` only in a `VITE_OTEL_TRACES_EXPORTER=otlp` build; `attributes.ts` and `allowListExporter.ts`, the allow-list); `dev/otlpProxy.ts` and `vite.config.ts` (the `/otlp/v1/traces` proxy) (#732) |

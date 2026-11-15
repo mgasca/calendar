@@ -770,7 +770,7 @@ mod tests {
   }
 
   fn cause_text(error: &tokio_postgres::Error) -> String {
-    std::error::Error::source(error).map(ToString::to_string).unwrap_or_default()
+    std::error::Error::source(error).map_or_default(ToString::to_string)
   }
 
   #[test]

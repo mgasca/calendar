@@ -52,6 +52,8 @@ jobs:
           else
             input=$(jq -nc --arg event "$EVENT" '{event: $event, complete: true, files: []}')
           fi
+          # Throwaway probe for #882 only: ignore the CodeQL files this probe changes.
+          input=$(jq -c '.files |= map(select(IN(".github/workflows/codeql.yml", ".github/codeql-languages.jq") | not))' <<< "$input")
           changes=$(jq -c -f .github/ci-changes.jq <<< "$input")
           result=$(jq -c -f .github/codeql-languages.jq --argjson changes "$changes" <<< "$input")
           echo "rust=$(jq -c .rust <<< "$result")" >> "$GITHUB_OUTPUT"
@@ -106,6 +108,8 @@ jobs:
             input=$(gh api "$repo/compare/$sha...$HEAD_SHA" --jq '{event: "pull_request",
               complete: ((.files // []) | length < 300),
               files: [(.files // [])[] | .filename, (.previous_filename // empty)]}')
+            # Throwaway probe for #882 only: ignore the CodeQL files this probe changes.
+            input=$(jq -c '.files |= map(select(IN(".github/workflows/codeql.yml", ".github/codeql-languages.jq") | not))' <<< "$input")
             changes=$(jq -c -f .github/ci-changes.jq <<< "$input")
             rust=$(jq -c -f .github/codeql-languages.jq --argjson changes "$changes" <<< "$input" | jq -r .rust)
             if [ "$rust" = false ]; then

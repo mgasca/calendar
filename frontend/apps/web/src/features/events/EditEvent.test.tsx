@@ -195,6 +195,25 @@ describe('editing an event from the day view', () => {
     ]);
   });
 
+  it('reopens after a save with the saved values and version (#900)', async () => {
+    const { puts } = serveStore([timed()]);
+    const { user, dialog } = await openEvent('Dentist');
+
+    await user.clear(within(dialog).getByLabelText('Location'));
+    await user.type(within(dialog).getByLabelText('Location'), 'New clinic');
+    await user.click(within(dialog).getByRole('button', { name: 'Save event' }));
+    await screen.findByText('Dentist saved.');
+    await user.click(screen.getByRole('button', { name: 'Dentist' }));
+    const reopened = await screen.findByRole('dialog', { name: 'Edit event' });
+    await within(reopened).findByLabelText('Title');
+
+    expect(within(reopened).getByLabelText('Location')).toHaveValue('New clinic');
+    await user.click(within(reopened).getByRole('button', { name: 'Save event' }));
+    await waitFor(() => {
+      expect(puts.map((p) => p.version)).toEqual([7, 8]);
+    });
+  });
+
   it('validates like Add event and sends nothing', async () => {
     const { puts } = serveStore([timed()]);
     const { user, dialog } = await openEvent('Dentist');

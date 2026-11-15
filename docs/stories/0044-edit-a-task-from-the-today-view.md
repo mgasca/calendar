@@ -6,6 +6,7 @@ pr:
   - https://github.com/mgasca/calendar/pull/485
   - https://github.com/mgasca/calendar/pull/495
   - https://github.com/mgasca/calendar/pull/499
+  - https://github.com/mgasca/calendar/pull/942
 adrs: ["0014", "0015", "0018", "0020", "0021", "0041", "0043", "0047"]
 ---
 
@@ -128,6 +129,7 @@ Delivered after the card ([#485](https://github.com/mgasca/calendar/pull/485)) i
 * **Week view and My tasks:** opening a task from them is not in this story; the row keeps the old label there. Follow-up: [#500](https://github.com/mgasca/calendar/issues/500).
 * **Completed tasks** can be edited and stay completed, as proposed in PR 0.
 * **Focus after a move raced the refetch ([#698](https://github.com/mgasca/calendar/issues/698)).** The save resolves once the refetched day is in the query cache, but TanStack Query hands it to React on a later `setTimeout(0)`. The `requestAnimationFrame` that chose the focus target could run first: it found the moved task's old title, focused it, and focus fell to `<body>` when the row went. In CI the move-to-tomorrow test then timed out at 5 s. Focus is now chosen in an effect after the render that closes the dialog (`useAfterRender` in `components/`), and that render already shows the refetched day. The regression test runs the frame at once, so it fails on the old code every time. Before the fix, a probe that delayed the notifications failed 32 of 180 runs; after it, 0 of 120. The same race was in every edit dialog whose focus target depends on the refetched list: the day view's event dialog (an event moved to another day), the week view's task and event dialogs, and My tasks. They all use `useAfterRender` now. Each has a regression test that runs the frame at once (`frameFirst` in `src/test/render.tsx`) and fails on the old code with focus on `<body>`.
+* **A reopened dialog showed its cached copy ([#900](https://github.com/mgasca/calendar/issues/900)).** After a save, the task query is only marked stale (`refetchType: 'none'`), and `TaskForm` reads the task once. So opening the same task again rendered the copy cached at the earlier open (the pre-save copy, or the one reloaded after a 409) with its old version, and the background refetch never reached the form. Found by `edit-task-flow`'s end-to-end test (story 0064). Fixed after close-out by [#942](https://github.com/mgasca/calendar/pull/942): `useOpenedCopy` (`src/api/`) shows the form only once the open's own fetch has succeeded (`isFetchedAfterMount`), and keeps it after that, so a failed background refetch does not discard what was typed. The event dialog had the same defect (story 0043). The regression tests reopen against one query client and fail on the old code with the stale title.
 
 ## User guide
 

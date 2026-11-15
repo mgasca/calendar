@@ -69,6 +69,18 @@ Deno.test("snapshot collector preserves job reuse, stable timestamps and validat
   };
   function fixture(args: readonly string[]): string {
     calls.push([...args]);
+    if (args[0] === "run" && args.includes("e2e.yml")) {
+      return JSON.stringify([{
+        databaseId: 7,
+        status: "completed",
+        conclusion: "failure",
+        createdAt: "2026-11-09T03:17:00Z",
+        startedAt: "2026-11-09T03:17:05Z",
+        updatedAt: "2026-11-09T03:40:05Z",
+        event: "schedule",
+        headBranch: "main",
+      }]);
+    }
     if (args[0] === "run") {
       return args.includes("--event") && args[args.indexOf("--event") + 1] === "pull_request" ? "[]" : JSON.stringify([{
         databaseId: 1,
@@ -127,6 +139,15 @@ Deno.test("snapshot collector preserves job reuse, stable timestamps and validat
     assertEquals(parsed.ci.jobs[0].medianSeconds, 80);
     assertEquals(parsed.ci.queue.medianSeconds, 4);
     assertEquals(parsed.quality.scopes[0].jobs[0].trials, 1);
+    assertEquals(parsed.version, 4);
+    assertEquals(parsed.e2e.runs, [{
+      id: 7,
+      event: "schedule",
+      createdAt: "2026-11-09T03:17:00Z",
+      conclusion: "failure",
+      runSeconds: 1380,
+    }]);
+    assert(lines.some((l) => l.includes("e2e: 1 completed runs of e2e.yml on main, 1 not successful")));
     assertEquals(calls.filter((c) => c[1]?.includes("/jobs")).length, 1);
     assert(lines.some((l) => l.includes("1 runs of ci.yml, 1 job and path rows")));
     const checked = await invoke(["check", out]);

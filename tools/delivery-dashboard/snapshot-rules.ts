@@ -14,6 +14,7 @@ import { validateQuality } from "./quality-rules.ts";
 import { validateAgents } from "./agents.ts";
 import { validateFlow } from "./flow.ts";
 import { validateSuperseded } from "./superseded.ts";
+import { validateE2e } from "./e2e.ts";
 const absolutePath = /(?:^|[\s"'(=])(?:\/(?:home|tmp|Users|var|root|etc|mnt|opt|usr)\b|[A-Za-z]:\\)/i;
 const handle = /\b(?:session|task|agent|local|subagent)[_-][0-9a-z]{6,}\b/i;
 const uuid = /\b[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\b/i;
@@ -171,11 +172,12 @@ export function validateSnapshot(json: string): string[] {
       "flow",
       "agents",
       "superseded",
+      "e2e",
     ])
   ) return errors;
   const version = root.version;
-  if (typeof version !== "number" || !Number.isInteger(version) || version < 1 || version > 3) {
-    errors.push("$.version: must be 1 to 3");
+  if (typeof version !== "number" || !Number.isInteger(version) || version < 1 || version > 4) {
+    errors.push("$.version: must be 1 to 4");
     return errors;
   }
   checkDate(root.date, "$.date", errors);
@@ -190,5 +192,8 @@ export function validateSnapshot(json: string): string[] {
   else if (version < 3 && "superseded" in root) {
     errors.push("$.superseded: field is not in the schema before version 3");
   } else if ("superseded" in root) validateSuperseded(root, errors);
+  if (version >= 4 && !("e2e" in root)) errors.push("$.e2e: field is missing (null when not sampled)");
+  else if (version < 4 && "e2e" in root) errors.push("$.e2e: field is not in the schema before version 4");
+  else if ("e2e" in root) validateE2e(root, errors);
   return errors;
 }

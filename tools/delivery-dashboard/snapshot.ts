@@ -60,8 +60,9 @@ export interface Snapshot {
   flow?: unknown;
   agents?: unknown;
   superseded?: unknown;
+  e2e?: unknown;
 }
-export const currentVersion = 3, oldestVersion = 1;
+export const currentVersion = 4, oldestVersion = 1;
 export const timeString = (time: number) => new Date(time).toISOString().replace(/\.\d{3}Z$/, "Z");
 export const round = (seconds: number) => Math.sign(seconds) * Math.round(Math.abs(seconds) * 10) / 10;
 export function sampleWindow(runs: readonly WorkflowRun[]): SampleWindow | null {
@@ -145,6 +146,7 @@ export function writeSnapshot(snapshot: Snapshot): string {
     ...(snapshot.flow !== undefined && snapshot.flow !== null ? { flow: snapshot.flow } : {}),
     ...(snapshot.agents !== undefined && snapshot.agents !== null ? { agents: snapshot.agents } : {}),
     ...(snapshot.version >= 3 ? { superseded: snapshot.superseded ?? null } : {}),
+    ...(snapshot.version >= 4 ? { e2e: snapshot.e2e ?? null } : {}),
   };
   return JSON.stringify(value, null, 2).replace(/"(?:\\.|[^"\\])*"/g, (token) => {
     const decoded = JSON.parse(token) as string;

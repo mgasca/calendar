@@ -10,6 +10,7 @@ import { buildQuality, collectQuality } from "./quality.ts";
 import { buildAgents, collectAgents } from "./agents.ts";
 import { collectFlow } from "./flow.ts";
 import { collectSuperseded } from "./superseded.ts";
+import { collectE2e, type E2eSection } from "./e2e.ts";
 import { alertActions, checkRetention, evaluateAlerts, issueLabel, limitBytes } from "./alerts.ts";
 const usageText =
   "usage: delivery-dashboard snapshot [--repo OWNER/NAME] [--workflow FILE] [--runs N] [--quality-runs N] [--date YYYY-MM-DD] [--out FILE] | delivery-dashboard check FILE...";
@@ -182,6 +183,7 @@ export async function main(args: readonly string[], runner: GhRunner = gh): Prom
     flow: await collectFlow(repository, now, runner),
     agents: buildAgents(await collectAgents(repository, 100, runner)),
     superseded: await collectSuperseded(repository, workflow, 30, runner),
+    e2e: await collectE2e(repository, undefined, undefined, runner),
   };
   const json = writeSnapshot(snapshot), problems = validateSnapshot(json);
   if (problems.length) {
@@ -201,6 +203,12 @@ export async function main(args: readonly string[], runner: GhRunner = gh): Prom
     console.log(`quality: ${quality.sample.runs} runs in scope, ${quality.sample.ignoredRuns} ignored`);
     console.log(
       `agents: ${agents.sample.scanned} issues scanned, ${agents.activity.issues} listed, ${agents.activity.withCounts} with count comments`,
+    );
+    const e2e = snapshot.e2e as E2eSection;
+    console.log(
+      `e2e: ${e2e.sample.runs} completed runs of ${e2e.workflow} on main, ${
+        e2e.runs.filter((r) => r.conclusion !== "success").length
+      } not successful`,
     );
   }
   return 0;

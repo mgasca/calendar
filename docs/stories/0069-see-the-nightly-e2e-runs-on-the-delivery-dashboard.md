@@ -2,7 +2,8 @@
 status: planned
 date: 2026-11-15
 issue: https://github.com/mgasca/calendar/issues/892
-pr: []
+pr:
+  - https://github.com/mgasca/calendar/pull/965
 adrs: ["0045", "0049", "0058", "0061"]
 ---
 

@@ -6,6 +6,7 @@ pr:
   - https://github.com/mgasca/calendar/pull/472
   - https://github.com/mgasca/calendar/pull/488
   - https://github.com/mgasca/calendar/pull/491
+  - https://github.com/mgasca/calendar/pull/947
 adrs: ["0014", "0015", "0018", "0020", "0021", "0041", "0043", "0047"]
 ---
 
@@ -131,6 +132,7 @@ Delivered in two PRs after the card ([#472](https://github.com/mgasca/calendar/p
 * **Focus after a delete** goes to the day heading, which gets `tabindex="-1"` when it is first needed, so the header markup stays as it was.
 * **Confirmation message:** the fading notification of #463 (`useNotify`), which merged while this PR was open; a first version used a plain `role="status"` line.
 * **Follow-up:** editing and deleting from the Week view is [#492](https://github.com/mgasca/calendar/issues/492).
+* **A reopened dialog showed its cached copy ([#900](https://github.com/mgasca/calendar/issues/900)).** Because the event query is only marked stale after a save, opening the same event again rendered the copy cached at the earlier open, with its old version. Fixed after close-out by [#947](https://github.com/mgasca/calendar/pull/947), the same fix as story 0044's task dialog (`useOpenedCopy`). The regression test reopens the event from the day view and fails on the old code with the old location.
 
 ## User guide
 

@@ -10,10 +10,10 @@ vi.resetModules();
 await import('@testing-library/jest-dom/vitest');
 const { cleanup, configure } = await import('@testing-library/react');
 const { server } = await import('./server.ts');
+const { WAIT_TIMEOUT_MS } = await import('./timeouts.ts');
 
-// The default 1 s for findBy/waitFor is too tight for a file's first render when `just check`
-// runs the backend build and every test file in parallel.
-configure({ asyncUtilTimeout: 5000 });
+// Below the test timeout, so a stalled findBy/waitFor fails with its own message (timeouts.ts).
+configure({ asyncUtilTimeout: WAIT_TIMEOUT_MS });
 
 // jsdom doesn't implement scrolling; the router's scroll restoration calls it on every navigation.
 window.scrollTo = () => undefined;

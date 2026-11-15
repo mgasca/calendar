@@ -12,6 +12,7 @@ import { expect, onTestFinished, vi } from 'vitest';
 import { App } from '../App.tsx';
 import { createQueryClient } from '../queryClient.ts';
 import { createAppRouter } from '../router.tsx';
+import { WAIT_TIMEOUT_MS } from './timeouts.ts';
 
 export interface RetryOption {
   /**
@@ -103,7 +104,7 @@ export function frameFirst() {
  * such as TanStack Query's notifications, are the behaviour being awaited, not updates the test
  * forgot to wrap, so they must not warn.
  */
-export async function eventually(assertion: () => void, { timeout = 5000 } = {}) {
+export async function eventually(assertion: () => void, { timeout = WAIT_TIMEOUT_MS } = {}) {
   const env = globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean | undefined };
   const previous = env.IS_REACT_ACT_ENVIRONMENT;
   env.IS_REACT_ACT_ENVIRONMENT = false;

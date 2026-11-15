@@ -23,10 +23,35 @@ Terms used here:
 
 ## Look at telemetry while developing
 
-1. Run `just db observability`. It starts LGTM in the shared project and prints the settings for the API and the web app.
-2. Start the API with the printed `OTEL_EXPORTER_OTLP_ENDPOINT` and `OTEL_EXPORTER_OTLP_PROTOCOL`, and the web app with `CALENDAR_OTLP_URL`. Until the API's and the web app's telemetry land (#731, #732), nothing is exported yet.
-3. Open Grafana on http://127.0.0.1:3000 (admin/admin; it listens on loopback only).
-4. `just db down` stops PostgreSQL and the optional services and keeps the data. LGTM keeps no data between restarts.
+1. Run `just db up` and `just db migrate` as usual, then `just db observability`. It starts LGTM in the shared project and prints the settings for the API and the web app.
+2. Start the API with telemetry on. Telemetry is on only when an OTLP endpoint is set, and metrics are pushed every 60 s unless you shorten the interval:
+
+   ```bash
+   OTEL_EXPORTER_OTLP_ENDPOINT=http://127.0.0.1:4318 OTEL_EXPORTER_OTLP_PROTOCOL=http/protobuf OTEL_METRIC_EXPORT_INTERVAL=5000 just backend dev
+   ```
+
+3. In a second terminal, start the web app with telemetry built in. Web telemetry is a build-time switch: without `VITE_OTEL_TRACES_EXPORTER=otlp` the app loads no OpenTelemetry code and sends no `traceparent`. The dev server forwards the browser's `/otlp` requests to `CALENDAR_OTLP_URL`.
+
+   ```bash
+   VITE_OTEL_TRACES_EXPORTER=otlp CALENDAR_OTLP_URL=http://127.0.0.1:4318 just frontend dev-signed-in
+   ```
+
+   Use `just frontend dev` instead if you sign in with Google or through the stub.
+4. Use the app: open the day view, add an event, tick a task.
+5. Open Grafana on http://127.0.0.1:3000 (admin/admin; it listens on loopback only) and find the flow, as described below.
+6. `just db down` stops PostgreSQL and the optional services and keeps the data. LGTM keeps no data between restarts.
+
+The ports above are the defaults. If you changed `CALENDAR_OTLP_HTTP_PORT` or `CALENDAR_GRAFANA_PORT`, use the values `just db observability` prints.
+
+### Find a flow in Grafana
+
+Everything is under **Explore**; pick the data source at the top.
+
+- **Trace (Tempo):** search by service name `calendar-web` and open a trace named after a user action, such as `ui.day.load` or `ui.event.create`. It holds the browser's fetch span (for example `GET /api/agenda/day`), the API's server span of the same name under service `calendar-api`, and one span per database query (`SELECT events`, `INSERT events`). Copy the trace id from the trace view. A page load or sign-in redirect sends no `traceparent`, so search service `calendar-api` for those instead.
+- **Logs (Loki):** query `{service_name="calendar-api"} | trace_id="<trace id>"`. Every traced request has one `request finished` record with its method, route and status; failures add their own records. Health probes are not logged.
+- **Metrics (Prometheus):** query `http_server_request_duration_seconds_count{job="calendar-api"}`. It is broken down by `http_route`, `http_request_method` and `http_response_status_code`, and the `_bucket` series give the durations. With the 5 s interval above, a request shows up within a few seconds.
+
+Telemetry carries route templates, methods, statuses, durations and database operations only, never titles, notes, emails, query values or cookies (ADR-0062). If you see one, that is a defect: open an issue.
 
 Every host port is a variable with the default in `compose.yaml`: `CALENDAR_GRAFANA_PORT`, `CALENDAR_OTLP_GRPC_PORT`, `CALENDAR_OTLP_HTTP_PORT`, `CALENDAR_LOKI_PORT`, `CALENDAR_TEMPO_PORT`, `CALENDAR_PROMETHEUS_PORT`, `CALENDAR_OIDC_STUB_PORT` and `CALENDAR_POSTGRES_PORT`. Set one in `.env` if its port is taken.
 

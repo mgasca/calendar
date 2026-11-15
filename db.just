@@ -33,7 +33,8 @@ observability:
     echo "Grafana: http://127.0.0.1:${CALENDAR_GRAFANA_PORT:-3000} (admin/admin, loopback only)"
     echo "Run the API with:"
     echo "  OTEL_EXPORTER_OTLP_ENDPOINT=http://127.0.0.1:${CALENDAR_OTLP_HTTP_PORT:-4318} OTEL_EXPORTER_OTLP_PROTOCOL=http/protobuf"
-    echo "and the web app with CALENDAR_OTLP_URL=http://127.0.0.1:${CALENDAR_OTLP_HTTP_PORT:-4318}"
+    echo "and the web app with VITE_OTEL_TRACES_EXPORTER=otlp CALENDAR_OTLP_URL=http://127.0.0.1:${CALENDAR_OTLP_HTTP_PORT:-4318}"
+    echo "(docs/runbooks/local-stack-and-e2e.md, 'Look at telemetry while developing', says how to find a flow in Grafana)"
 
 # Start the stub sign-in provider standing in for Google (Development only) and print the API's settings
 sign-in-stub:

@@ -1,5 +1,5 @@
 ---
-status: accepted
+status: superseded by [ADR-0066](0066-per-user-data-ownership-with-a-typed-owner-id-on-every-query.md)
 date: 2026-11-02
 decision-makers: mgasca, Claude (AI assistant)
 ---

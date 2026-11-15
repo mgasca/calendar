@@ -7,7 +7,7 @@ pr:
   - https://github.com/mgasca/calendar/pull/192
   - https://github.com/mgasca/calendar/pull/211
   - https://github.com/mgasca/calendar/pull/212
-adrs: ["0014", "0015", "0019", "0020", "0021", "0027", "0037", "0041"]
+adrs: ["0014", "0015", "0019", "0020", "0021", "0027", "0037", "0041", "0066"]
 ---
 
 # 0017 Per-user calendar ownership: my events and tasks are mine alone
@@ -71,6 +71,7 @@ The migration runs as `calendar_migrator` from `just db migrate` or the Azure mi
 | [0027](../decisions/0027-google-oidc-bff-session.md) | Google OIDC with a BFF cookie and an allow-list | The user id is resolved in the sign-in callback and carried in that cookie; the allow-list still decides who gets in |
 | [0037](../decisions/0037-postgresql-only-no-sqlite-fallback.md) | PostgreSQL only, no SQLite fallback | PostgreSQL-specific features (partial indexes, GiST ranges) can be used freely when the indexes gain an owner column |
 | [0041](../decisions/0041-per-user-data-ownership.md) | Scope every query and write with an EF Core global query filter keyed by the signed-in user | The decision this story implements: the identity key, the lookup order, the legacy-owner claim, the session claim, 404 for other users' ids, and row-level security as a later layer with its trigger |
+| [0066](../decisions/0066-per-user-data-ownership-with-a-typed-owner-id-on-every-query.md) | Every event and task query takes a typed `OwnerId` and starts from an owner-filtered query | Supersedes 0041 after the Rust port (#938): the same value model and conventions, scoped by an explicit owner parameter because Diesel has no global query filter |
 
 [ADR-0041](../decisions/0041-per-user-data-ownership.md) was drafted with the `adr-draft` skill in [#192](https://github.com/mgasca/calendar/pull/192) and accepted by the product owner.
 

@@ -201,7 +201,7 @@ The browser integration fixture is opt-in: `deno task --config .claude/skills/ru
 - **No Google credentials, so sign in with the seed key.** In Development with `Auth__DevSeedKey` (at least 32
   characters) set, a request carrying `X-Dev-Seed-Key` is authenticated as `dev-seed`, acting as the user of the
   first allow-listed email (`Auth__AllowedEmails__0`, any syntactically valid address here): the seed finds, claims
-  or creates that user's row, and every event and task it creates belongs to it (ADR-0041). The driver sends the
+  or creates that user's row, and every event and task it creates belongs to it (ADR-0066). The driver sends the
   key on every browser request, so the SPA's `/api/auth/me` check passes and the nav shows "dev-seed".
 - **The API is Production unless told otherwise.** The binary has no launch profile: without
   `ASPNETCORE_ENVIRONMENT=Development` the seed scheme is off and every call is 401. `just backend dev` sets it; the

@@ -143,7 +143,7 @@ The skill was run with the maintainer as the interviewee, in keep-parts mode wit
 
 * **Partial narratives fail the drift check.** The stitcher requires every act, so the act pull requests fail the Narratives check until Act 3 lands, and the stack merges down. The maintainer kept the stitcher as it is.
 * **Links in a part are copied verbatim.** They must be written relative to the stitched file (`../decisions/…`), not to the part, and the skill and templates do not say so.
-* **The interview found a drifted record.** [ADR-0041](../decisions/0041-per-user-data-ownership.md) still describes the .NET framework filter, while the Rust backend uses the explicit owner parameter that the ADR rejected. The narrative states what the code does, and a superseding record is an open question.
+* **The interview found a drifted record.** [ADR-0041](../decisions/0041-per-user-data-ownership.md) still describes the .NET framework filter, while the Rust backend uses the explicit owner parameter that the ADR rejected. The narrative states what the code does, and a superseding record is an open question. [ADR-0066](../decisions/0066-per-user-data-ownership-with-a-typed-owner-id-on-every-query.md) now supersedes it (#938).
 * **Evidence was measured where it could be.** Delivery speed was bounded from the 2026-11-12 dashboard snapshot. The verifiability outcome (correction rounds) is not measured, and the narrative says so.
 
 #### Evals

@@ -35,7 +35,7 @@ This story adds `just changed`. It applies the CI rules to the local branch and 
   * ADR conventions: `just tools adr`.
   * Narratives: `just tools narratives --check`.
   * Flow binding: the e2e package's unit tests (`pnpm --filter @calendar/e2e test`).
-  * Container image: `just image build`, only with `--image` (proposed). It takes minutes and needs Docker, so by default the job is reported as `selected, not run (--image to run)` rather than run or skipped silently.
+  * Container image: `just image build`, only with `--image`, as agreed on PR 0. It takes minutes and needs Docker, so by default the job is reported as `selected, not run (--image to run)` rather than run or skipped silently.
 * **No silent gaps**: if the rules name a job the map does not cover, the command fails before it runs anything, and a test fails in `just tools test`. A new CI job therefore cannot be skipped locally by accident.
 * **Report**: before running anything, the command prints the base it compared with, how many files changed, and each CI job as `runs` or `skipped`. It then runs the selected recipes, each under a heading that names it. It finishes with a summary of passed and failed recipes and exits non-zero if any recipe failed.
 * **Runs every selected recipe**: a failing recipe does not stop the rest, because CI reports every job too. `--fail-fast` stops at the first failure.

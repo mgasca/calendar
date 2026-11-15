@@ -106,23 +106,13 @@ test(
     await expect(dueToday.getByRole('button', { name: mine, exact: true })).toBeFocused();
 
     // Moved to an exact time the next day: the due instant goes out with an explicit offset, the task leaves
-    // the day, and focus falls back to the day heading.
-    // A fresh page, because a reopened dialog shows its stale cached copy until #900 is fixed. The spans so
-    // far must reach Tempo first: a reload drops what the browser has not exported yet.
-    for (const action of [
-      open(openTrace),
-      update(conflict.traceId),
-      open(reloadTrace),
-      update(saved.traceId),
-    ])
-      await observe.exported(action);
-    const reloadedDay = flowRequest(page, 'GET', '/api/agenda/day');
-    await page.reload();
-    await reloadedDay;
+    // the day, and focus falls back to the day heading. Reopened on the same page, the dialog shows the saved
+    // copy, not the one it cached when it reloaded after the conflict (#900).
     const reopened = flowRequest(page, 'GET', '/api/tasks/{id}');
     await dueToday.getByRole('button', { name: mine, exact: true }).click();
     const reopenTrace = (await reopened).traceId;
     await expect(dialog.getByLabel('Title')).toHaveValue(mine);
+    await expect(dialog.getByLabel('Priority')).toHaveValue('high');
     await dialog.getByLabel('Deadline').selectOption('time');
     await dialog.getByLabel('Due date').fill(NEXT_DAY);
     await dialog.getByLabel('Due time').fill('09:00');

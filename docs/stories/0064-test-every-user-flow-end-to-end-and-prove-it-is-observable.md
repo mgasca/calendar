@@ -272,7 +272,7 @@ API telemetry (#731) lives in `calendar-api/src/telemetry/`:
   - By the overdue filter: a delete refused with 409 because the count changed elsewhere, then the delete with the updated count.
   - The overdue view spans every earlier day, so this test owns all days before 2026-02-01 (README).
 - **Harness:** `holdRequests(page, method, routeTemplate)` holds requests until the test releases them, then sends them on through the signed-in route. `seed.updateTask` and `seed.deleteTask` are the task counterparts of `seed.updateEvent`. `observe.exported(action)` waits until Tempo holds an action's trace. A reload drops the spans the browser has not exported yet, and edit-task's first fresh-stack run lost the web `PUT` span that way.
-- **Defect found:** an edit dialog reopened after a save shows the stale cached copy (#900). The edit-task test reloads the page before reopening until it is fixed.
+- **Defect found:** an edit dialog reopened after a save showed the stale cached copy (#900). Until it was fixed, the edit-task test reloaded the page before reopening.
 
 ### Delivered in #736
 
@@ -293,7 +293,7 @@ API telemetry (#731) lives in `calendar-api/src/telemetry/`:
 - **Known issue:** when `just e2e up` itself fails (a migration or a build), the recipe removes the run, logs included, so only its error message reaches the job log.
 - **Deferred (#927):** the owner check in staging that API traces and logs reach Application Insights without personal data (criterion 9). The maintainer deferred it on 2026-11-15, so this story closes without it.
 - **Follow-up (#892):** an E2E section on the delivery dashboard. Until then, a nightly failure shows as one open `bug` issue.
-- **Known defect (#900):** an edit dialog reopened after a save shows the stale cached copy. `edit-task-flow` reloads the page before reopening until it is fixed.
+- **Fixed after close-out (#900):** an edit dialog reopened after a save showed the stale cached copy. [#947](https://github.com/mgasca/calendar/pull/947) fixed it in the task and event dialogs (stories 0044 and 0043), and `edit-task-flow` now reopens the task on the same page, without the reload.
 - **Lesson: flow tests find telemetry gaps.** Writing the assertions found two defects the unit tests had missed: a successful request logged nothing, so no log carried its trace id (#797), and `fetch(url, init)` spans were named by method only (#879).
 - **Lesson: check that a new check actually runs in CI.** The binding check ran in no CI job until #909 (#902). The Frontend job only runs packages that have a `test:coverage` script, and its path filter skipped changes to the e2e package and the model. Three PRs reported green CI that never ran it.
 - **Lesson: stacked PRs and squash merges.** #901 and #903 were stacked on #877. Once #877 and #901 were squash-merged, #903's branch still held #877's original commits and conflicted with `main` in code #903 never changed. Merging with #877's final head as the base left only the shared lines (`pending-flows.json`, the README and this card) to resolve. ADR-0065 now makes stacks native GitHub stacks.

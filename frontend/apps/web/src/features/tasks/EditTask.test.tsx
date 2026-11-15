@@ -2,11 +2,13 @@ import type { Schemas } from '@calendar/api-client';
 import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { http, HttpResponse } from 'msw';
+import { useState } from 'react';
 
-import { renderWithProviders } from '../../test/render.tsx';
+import { renderWithProviders, settle } from '../../test/render.tsx';
 import { server } from '../../test/server.ts';
 import { EditTask } from './EditTask.tsx';
 import { fromTask } from './taskForm.ts';
+import { taskKey } from './useEditTask.ts';
 
 type StoredTask = Schemas['TaskResponse'];
 
@@ -70,6 +72,40 @@ async function open(onClose = vi.fn()) {
   await screen.findByLabelText('Title');
   const dialog = screen.getByRole('dialog', { name: 'Edit task' });
   return { user: userEvent.setup(), dialog, onClose };
+}
+
+/** Opens the dialog behind an Edit button, so it can be closed and reopened on one query client. */
+async function openReopenable() {
+  function Opener() {
+    const [isOpen, setOpen] = useState(true);
+    return isOpen ? (
+      <EditTask
+        id="t1"
+        onClose={() => {
+          setOpen(false);
+        }}
+      />
+    ) : (
+      <button
+        type="button"
+        onClick={() => {
+          setOpen(true);
+        }}
+      >
+        Edit
+      </button>
+    );
+  }
+  const { queryClient } = renderWithProviders(<Opener />);
+  await screen.findByLabelText('Title');
+  const user = userEvent.setup();
+  /** Waits for the dialog to close, opens it again and waits for its form. */
+  const reopen = async () => {
+    await user.click(await screen.findByRole('button', { name: 'Edit' }));
+    await screen.findByLabelText('Title');
+    return screen.getByRole('dialog', { name: 'Edit task' });
+  };
+  return { user, reopen, queryClient };
 }
 
 describe('fromTask', () => {
@@ -197,6 +233,74 @@ describe('editing a task', () => {
       expect(onClose).toHaveBeenCalledWith({ title: 'Buy milk today', date: '2099-10-29' });
     });
     expect(puts).toHaveLength(2);
+  });
+
+  it('reopens after a save with the saved values and version (#900)', async () => {
+    const { puts } = serveTask(stored());
+    const { user, reopen } = await openReopenable();
+    let dialog = screen.getByRole('dialog', { name: 'Edit task' });
+
+    await user.clear(within(dialog).getByLabelText('Title'));
+    await user.type(within(dialog).getByLabelText('Title'), 'Buy bread');
+    await user.click(within(dialog).getByRole('button', { name: 'Save task' }));
+    dialog = await reopen();
+
+    expect(within(dialog).getByLabelText('Title')).toHaveValue('Buy bread');
+    await user.click(within(dialog).getByRole('button', { name: 'Save task' }));
+    await waitFor(() => {
+      expect(puts.map((p) => p.version)).toEqual([5, 6]);
+    });
+  });
+
+  it('reopens after a conflict and a save with the saved values, not the reloaded copy (#900)', async () => {
+    const { store, puts } = serveTask(stored());
+    const { user, reopen } = await openReopenable();
+    let dialog = screen.getByRole('dialog', { name: 'Edit task' });
+    store.set('t1', stored({ title: 'Buy oat milk', version: 6 }));
+
+    await user.click(within(dialog).getByRole('button', { name: 'Save task' }));
+    await within(dialog).findByRole('alert');
+    await user.clear(within(dialog).getByLabelText('Title'));
+    await user.type(within(dialog).getByLabelText('Title'), 'Buy soy milk');
+    await user.click(within(dialog).getByRole('button', { name: 'Save task' }));
+    dialog = await reopen();
+
+    expect(within(dialog).getByLabelText('Title')).toHaveValue('Buy soy milk');
+    await user.click(within(dialog).getByRole('button', { name: 'Save task' }));
+    await waitFor(() => {
+      expect(puts.map((p) => p.version)).toEqual([5, 6, 7]);
+    });
+  });
+
+  it('says so when the reopen cannot load the task, instead of showing the cached copy', async () => {
+    serveTask(stored());
+    const { user } = await openReopenable();
+    await user.click(screen.getByRole('button', { name: 'Cancel' }));
+    server.use(
+      http.get('*/api/tasks/:id', () => HttpResponse.json({ title: 'Boom' }, { status: 500 })),
+    );
+
+    await user.click(await screen.findByRole('button', { name: 'Edit' }));
+
+    const dialog = screen.getByRole('dialog', { name: 'Edit task' });
+    expect(await within(dialog).findByRole('alert')).toHaveTextContent('Couldn’t load the task.');
+    expect(within(dialog).queryByLabelText('Title')).not.toBeInTheDocument();
+  });
+
+  it('keeps the open form and its edits when a background refetch fails', async () => {
+    serveTask(stored());
+    const { user, queryClient } = await openReopenable();
+    const dialog = screen.getByRole('dialog', { name: 'Edit task' });
+    await user.type(within(dialog).getByLabelText('Title'), ' today');
+    server.use(
+      http.get('*/api/tasks/:id', () => HttpResponse.json({ title: 'Boom' }, { status: 500 })),
+    );
+
+    await queryClient.refetchQueries({ queryKey: taskKey('t1') });
+    await settle(queryClient);
+
+    expect(queryClient.getQueryState(taskKey('t1'))?.status).toBe('error');
+    expect(within(dialog).getByLabelText('Title')).toHaveValue('Buy milk today');
   });
 
   it('says when the task can no longer be opened', async () => {

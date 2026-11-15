@@ -67,6 +67,62 @@ function inlineDiagrams(part: string, text: string, files: PartFiles, errors: st
   }).join("\n");
 }
 
+const inlineLink = /\]\(\s*<?([^\s)>]+)/g;
+const referenceDefinition = /^\s{0,3}\[[^\]]+\]:\s*<?([^\s>]+)/;
+const fence = /^\s{0,3}(`{3,}|~{3,})/;
+
+/** The link destinations in a part, outside fenced code blocks and inline code. */
+function linkTargets(text: string): string[] {
+  const targets: string[] = [];
+  let open: string | undefined;
+  const prose: string[] = [];
+  for (const line of text.split("\n")) {
+    const marker = fence.exec(line)?.[1];
+    if (marker !== undefined && (open === undefined || (marker[0] === open[0] && marker.length >= open.length))) {
+      open = open === undefined ? marker : undefined;
+      continue;
+    }
+    if (open !== undefined) continue;
+    const definition = referenceDefinition.exec(line);
+    if (definition) targets.push(definition[1]!);
+    prose.push(line);
+  }
+  // Joined so that a link whose text wraps onto the next line is still found.
+  const withoutCode = prose.join("\n").replace(/`+[^`]*`+/g, "");
+  for (const match of withoutCode.matchAll(inlineLink)) targets.push(match[1]!);
+  return targets;
+}
+
+/** Whether a relative path, resolved from docs/narratives/ (where the stitched file lives), stays inside docs/. */
+function staysInDocs(path: string): boolean {
+  const resolved = ["docs", "narratives"];
+  for (const segment of path.split("/")) {
+    if (segment === "..") resolved.pop();
+    else if (segment !== "." && segment !== "") resolved.push(segment);
+    if (resolved.length === 0) return false;
+  }
+  return resolved[0] === "docs";
+}
+
+/**
+ * Rejects relative links that leave docs/ from the stitched file's location (#763).
+ * A part is copied as-is into docs/narratives/<system>-narrative.md, so a link written relative to the part's own
+ * folder (`../../decisions/…`) has one `../` too many there.
+ */
+function checkLinks(system: string, part: string, text: string, errors: string[]): void {
+  for (const target of linkTargets(text)) {
+    if (/^[a-z][a-z0-9+.-]*:/i.test(target) || target.startsWith("#") || target.startsWith("/")) continue;
+    const path = target.split(/[?#]/)[0]!;
+    if (staysInDocs(path)) continue;
+    const shorter = path.startsWith("../") ? target.slice(3) : undefined;
+    const hint = shorter !== undefined && staysInDocs(shorter.split(/[?#]/)[0]!) ? ` (write "${shorter}")` : "";
+    errors.push(
+      `${part}: link "${target}" leaves docs/ from docs/narratives/${outputName(system)}; ` +
+        `links in a part are relative to the stitched file, not to the part's folder${hint}`,
+    );
+  }
+}
+
 /**
  * Stitches a system's parts into its published narrative.
  * `note` adds the generated-file comment after the front matter; the build mode omits it, because it removes the parts.
@@ -83,6 +139,7 @@ export function stitch(system: string, files: PartFiles, options: { note: boolea
     if (!files.has(name)) errors.push(`${name}: required part missing`);
   }
   const parts = stitchedParts.filter((name) => files.has(name));
+  for (const name of parts) checkLinks(system, name, normalise(files.get(name)!), errors);
   const bodies = parts.map((name) => inlineDiagrams(name, normalise(files.get(name)!), files, errors).trim());
   const head = bodies[0];
   if (head !== undefined && files.has(requiredParts[0])) {

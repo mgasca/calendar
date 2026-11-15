@@ -1,0 +1,11 @@
+schema_version: "1.1"
+name: stitch-only-fixes-part-relative-link
+expected_outcome: |
+  Decision D1 in 03-resolution.md links its ADR relative to the part's folder
+  (../../decisions/0001-hold-seats-through-a-queue.md), which leaves docs/ once
+  the part is stitched into docs/narratives/ticket-kata-narrative.md (#763). In
+  stitch-only mode the skill rewrites that link in the part to
+  ../decisions/0001-hold-seats-through-a-queue.md, keeping the same target,
+  says which link it changed, and stitches with the parts kept; the stitcher's
+  check passes. It asks no interview questions, changes nothing else in the
+  parts, and pushes nothing.

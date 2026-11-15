@@ -12,5 +12,8 @@ testcontainers-modules = { workspace = true, features = ["postgres"] }
 tokio = { workspace = true, features = ["sync", "rt", "time", "macros"] }
 tokio-postgres.workspace = true
 
+[dev-dependencies]
+tokio = { workspace = true, features = ["net"] }
+
 [lints]
 workspace = true

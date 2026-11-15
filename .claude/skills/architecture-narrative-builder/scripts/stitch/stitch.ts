@@ -51,6 +51,8 @@ function report(system: string, errors: string[]): void {
 export function main(args: string[]): number {
   let root: string | undefined, check = false, remove: string | undefined;
   const systems: string[] = [], pending = [...args];
+  // `deno task … stitch -- --root <repo>` passes the separator through to the script.
+  if (pending[0] === "--") pending.shift();
   while (pending.length) {
     const arg = pending.shift()!;
     if (arg === "--check") check = true;

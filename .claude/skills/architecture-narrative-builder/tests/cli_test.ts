@@ -169,3 +169,17 @@ Deno.test("Usage_errors_exit_2", () => {
     Deno.removeSync(root, { recursive: true });
   }
 });
+
+Deno.test("Stitch_accepts_a_leading_double_dash_from_deno_task", () => {
+  const { root, narratives } = repo();
+  try {
+    assertEquals(run(["--", "--root", root]).code, 0);
+    assert(exists(join(narratives, "kata-narrative.md")));
+    assertEquals(run(["--", "--root", root, "--check"]).code, 0);
+    const late = run(["--root", root, "--"]);
+    assertEquals(late.code, 2);
+    assertStringIncludes(late.stderr, "unknown option: --");
+  } finally {
+    Deno.removeSync(root, { recursive: true });
+  }
+});

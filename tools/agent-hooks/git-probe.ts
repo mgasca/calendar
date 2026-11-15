@@ -1,6 +1,6 @@
 import { dirname, resolve } from "node:path";
 import { runCommand } from "./external-command.ts";
-import { findPr, findPrText } from "./pull-request-lookup.ts";
+import { findPr, findPrText, findStackBranches } from "./pull-request-lookup.ts";
 import type { RepoProbe } from "./protocol.ts";
 export const maxTextFileBytes = 1 << 20;
 const lines = (s: string) => s.split("\n").map((l) => l.replace(/\r$/, "")).filter((l) => l.length > 0);
@@ -93,5 +93,8 @@ export class GitProbe implements RepoProbe {
   }
   pullRequestTextFor(cwd: string, selector: string | null, repo: string | null) {
     return findPrText(cwd, selector, repo);
+  }
+  stackBranches(cwd: string) {
+    return findStackBranches(cwd);
   }
 }

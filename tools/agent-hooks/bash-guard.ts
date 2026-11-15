@@ -2,7 +2,7 @@ import { resolve } from "node:path";
 import { BodySources, redirectedFrom } from "./body-sources.ts";
 import { type Segment, split } from "./shell-command.ts";
 import type { RepoProbe, Verdict } from "./protocol.ts";
-const privateDetails =
+export const privateDetails =
   /\/home\/[^\s"']*|\/tmp\/[^\s"']*|\/mnt\/c\/[^\s"']*|\/Users\/[^\s"']*|\b[A-Za-z]:\\[^\s"']*|\.claude\/worktrees\/[^\s"']*|\b(?:session|task|agent)[_-][0-9a-f]{8,}\b|\b[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\b/gi;
 const hasFlag = (arg: string, flag: string) => arg.length > 1 && arg[0] === "-" && arg[1] !== "-" && arg.includes(flag);
 const pathArgs = (args: string[]) => args.filter((a) => !a.startsWith("-"));

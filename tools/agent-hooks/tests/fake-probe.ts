@@ -29,6 +29,8 @@ export class FakeProbe implements RepoProbe {
   unstagedQueries: [string, string[]][] = [];
   prQueries: [string, string][] = [];
   textQueries: [string | null, string | null][] = [];
+  stack: string[] | null = null;
+  stackQueries: string[] = [];
   constructor(s?: ProbeState | null) {
     if (!s) return;
     this.dirty = new Set(s.Dirty);
@@ -86,5 +88,9 @@ export class FakeProbe implements RepoProbe {
   pullRequestTextFor(_cwd: string, selector: string | null, repo: string | null) {
     this.textQueries.push([selector, repo]);
     return this.texts[selector ?? ""] ?? null;
+  }
+  stackBranches(cwd: string) {
+    this.stackQueries.push(cwd);
+    return this.stack;
   }
 }

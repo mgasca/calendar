@@ -1,6 +1,7 @@
 #!/usr/bin/env -S deno run --no-prompt --frozen --allow-read --allow-run --allow-env
 // Claude Code hooks (ADR-0042/0044). Each command reads hook JSON on stdin.
 // pre-bash: protect unstaged work, public posts, merged branches and shared databases; note PR links.
+// post-bash: after gh stack submit/link, note published PR bodies without links or with private details.
 // pre-edit: protect generated files. post-edit: Deno format guidance for tooling TypeScript.
 // stop: stale-contract protection, once. warm: SessionStart Deno version report.
 // Exit 0: JSON decision/context or pass; exit 2: usage/JSON error. Other failures are non-blocking.

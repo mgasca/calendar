@@ -1,0 +1,8 @@
+schema_version: "1.1"
+name: quality-check-fallback-panel-passes
+expected_outcome: |
+  The ledger records all three panel rounds as run by the fallback: the
+  facilitator voiced each expert from its brief. The narrative has no panel
+  appendix. In stitch-only mode the skill reports quality check 4 as passed,
+  says that the panel rounds were the fallback, and stitches
+  docs/narratives/ticket-kata-narrative.md with the parts kept.

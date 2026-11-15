@@ -1,0 +1,11 @@
+schema_version: "1.1"
+name: quality-check-fallback-undisclosed-fails
+expected_outcome: |
+  The ledger records all three panel rounds as run by the fallback (the
+  facilitator voiced each expert from its brief), and the narrative has the
+  panel appendix, but 05-panel.md says the narrative was reviewed by a panel
+  of expert agents and never mentions the fallback. In stitch-only mode the
+  skill reports quality check 4 as failed because the appendix does not
+  disclose the fallback, asks the user to add the disclosure or accept the
+  failure, and does not stitch: no docs/narratives/ticket-kata-narrative.md is
+  written, and 05-panel.md is unchanged.

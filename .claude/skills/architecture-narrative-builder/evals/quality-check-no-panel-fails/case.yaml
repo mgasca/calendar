@@ -1,0 +1,12 @@
+schema_version: "1.1"
+name: quality-check-no-panel-fails
+expected_outcome: |
+  The ledger names the expert panel and its synergy/conflict map but records
+  no panel round: neither the narrative-panel workflow nor the facilitator's
+  fallback ran. In stitch-only mode the skill reports quality check 4 (every
+  expert's concern appears somewhere) as failed, not as skipped, "not
+  verifiable" or "not demonstrated", and gives the missing panel rounds as the
+  reason. It asks the user whether to run the panel or its fallback, or to
+  accept the failure, and does not stitch: no
+  docs/narratives/ticket-kata-narrative.md is written, and the skill does not
+  invent panel rounds or concerns.

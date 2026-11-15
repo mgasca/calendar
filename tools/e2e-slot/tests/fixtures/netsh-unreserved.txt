@@ -1,0 +1,18 @@
+
+Protocol tcp Port Exclusion Ranges
+
+Start Port    End Port      
+----------    --------      
+     50000       50059     *
+     51142       51241      
+     53433       53532      
+     58601       58700      
+     63393       63492      
+     64931       65030      
+     65031       65130      
+     65131       65230      
+     65231       65330      
+     65331       65430      
+
+* - Administered port exclusions.
+

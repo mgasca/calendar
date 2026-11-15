@@ -1,8 +1,11 @@
 ---
-status: planned
+status: implemented
 date: 2026-11-15
 issue: https://github.com/mgasca/calendar/issues/894
-pr: []
+pr:
+  - https://github.com/mgasca/calendar/pull/959
+  - https://github.com/mgasca/calendar/pull/960
+  - https://github.com/mgasca/calendar/pull/963
 adrs: ["0042", "0044", "0058", "0065"]
 ---
 
@@ -25,7 +28,8 @@ Two paths are now unchecked. First, a layer above the bottom of a stack has a ba
 ### Agreed scope
 
 * **Every PR body is checked, whatever its base.** `gh pr create` and `gh pr edit` with a new body get the `Closes`/`Refs` reminder for any base branch. ADR-0065 allows no bare chains, so a PR whose base is not `main` is a stack layer, and it lands on `main` itself.
-* **Wording for native stacks.** The "retargeted to main" message is removed. A body with `Refs` but no `Closes` gets no reminder, as on `main` today. A body with neither gets the reminder, which also says that each stack layer merges onto `main` directly, so the layer that completes the issue carries `Closes #N` from the start.
+* **Wording for native stacks.** The "retargeted to main" message is removed. A body with `Refs` but no `Closes` gets no reminder, as on `main` today. A body with neither gets the reminder. For a base other than `main`, and in the note after a `gh stack` command, the reminder also says that each stack layer merges onto `main` directly, so the layer that completes the issue carries `Closes #N` from the start.
+* **HTML comments link nothing.** A closing keyword or `Refs` inside an HTML comment does not count as a link. Added during delivery: `gh stack submit --auto` fills each body from the PR template, whose comment holds a `Closes #123` example, so without this every generated body passed.
 * **A check after `gh stack submit` and `gh stack link`.** A new hook runs after a Bash command that ran `gh stack submit` or `gh stack link` successfully. It reads the PRs of that stack and their bodies, and sends one inform message (not a block) naming each PR whose body has neither `Closes #N` nor `Refs #N`, and each PR whose body contains private details. The bodies are already public by then, so the message says to edit each one in place with `gh pr edit --body-file`. That edit then gets the existing checks before it runs.
 * **Failures stay quiet.** A `gh stack` command that failed, a stack whose PRs cannot be read (no network, no `gh` sign-in), or a read that times out produces no message, and the command's own result is unchanged. A hook never turns a successful command into a failure.
 * **Registration.** The new hook is a `post-bash` subcommand of `agent-hooks`, registered as a `PostToolUse` entry for `Bash` in `.claude/settings.json`, like the other subcommands ([ADR-0044](../decisions/0044-claude-first-agent-automation.md): Claude Code only).
@@ -41,14 +45,14 @@ Two paths are now unchecked. First, a layer above the bottom of a stack has a ba
 
 ### Acceptance criteria
 
-1. **Given** `gh pr create --base <stack branch>` with a body that has neither `Closes #N` nor `Refs #N`, **when** the command runs under the hooks, **then** an inform message names the rule and the PR is created.
-2. **Given** `gh pr edit <n> --body-file <file>` on a PR whose base is not `main`, with a body that has neither link, **when** it runs under the hooks, **then** the same inform message appears.
-3. **Given** a PR body with `Refs #N` and no `Closes`, on any base, **when** `gh pr create` or `gh pr edit` runs, **then** no message appears, and no hook message anywhere says a PR "gets its `Closes` when it is retargeted to main".
-4. **Given** `gh stack submit --auto` succeeded and opened two PRs, one with `Refs #N` and one with a generated body without links, **when** the post-command hook runs, **then** one inform message names the second PR and tells the agent to edit its body in place.
-5. **Given** `gh stack link 101 102` succeeded and PR 102's body contains an absolute machine path, **when** the post-command hook runs, **then** the message names PR 102 and the private detail, and tells the agent to edit the body in place.
-6. **Given** `gh stack submit` failed, or the stack's PRs cannot be read, **when** the post-command hook runs, **then** it sends no message.
-7. **Given** a Bash command that does not run `gh stack submit` or `gh stack link`, **when** the post-command hook runs, **then** it sends no message and makes no GitHub call.
-8. **Given** the change is complete, **when** I run `just check`, **then** it passes.
+1. **Given** `gh pr create --base <stack branch>` with a body that has neither `Closes #N` nor `Refs #N`, **when** the command runs under the hooks, **then** an inform message names the rule and the PR is created. Tests: [stack branch reminder](../../tools/agent-hooks/tests/stack-pr-links_test.ts#L22) (`A PR on a stack branch gets the reminder…`).
+2. **Given** `gh pr edit <n> --body-file <file>` on a PR whose base is not `main`, with a body that has neither link, **when** it runs under the hooks, **then** the same inform message appears. Tests: [stack branch reminder](../../tools/agent-hooks/tests/stack-pr-links_test.ts#L22) (body edit of PR #41, base `docs/story-0027`) and [retarget on any base](../../tools/agent-hooks/tests/stack-pr-links_test.ts#L42).
+3. **Given** a PR body with `Refs #N` and no `Closes`, on any base, **when** `gh pr create` or `gh pr edit` runs, **then** no message appears, and no hook message anywhere says a PR "gets its `Closes` when it is retargeted to main". Tests: [Refs alone](../../tools/agent-hooks/tests/stack-pr-links_test.ts#L54) and [no retarget wording](../../tools/agent-hooks/tests/stack-pr-links_test.ts#L66).
+4. **Given** `gh stack submit --auto` succeeded and opened two PRs, one with `Refs #N` and one with a generated body without links, **when** the post-command hook runs, **then** one inform message names the second PR and tells the agent to edit its body in place. Tests: [after submit](../../tools/agent-hooks/tests/stack-pr-links_test.ts#L90) and [the PR template's commented-out example](../../tools/agent-hooks/tests/stack-pr-links_test.ts#L187).
+5. **Given** `gh stack link 101 102` succeeded and PR 102's body contains an absolute machine path, **when** the post-command hook runs, **then** the message names PR 102 and the private detail, and tells the agent to edit the body in place. Tests: [after link](../../tools/agent-hooks/tests/stack-pr-links_test.ts#L106).
+6. **Given** `gh stack submit` failed, or the stack's PRs cannot be read, **when** the post-command hook runs, **then** it sends no message. Tests: [unreadable stack or PRs](../../tools/agent-hooks/tests/stack-pr-links_test.ts#L127); a failed command is a `PostToolUseFailure` event, which the hook does not register, so it is not exercised by a test.
+7. **Given** a Bash command that does not run `gh stack submit` or `gh stack link`, **when** the post-command hook runs, **then** it sends no message and makes no GitHub call. Tests: [no GitHub call](../../tools/agent-hooks/tests/stack-pr-links_test.ts#L139).
+8. **Given** the change is complete, **when** I run `just check`, **then** it passes. `just tools test` passed locally (1262 tests; shellcheck skipped, not installed); the full `just check` is CI's result on the PR head.
 
 ## Design decisions
 
@@ -71,18 +75,17 @@ No new ADR is expected.
 
 ## Implementation notes
 
-*Planned. This section is completed as the story is built.*
-
 ### Where things live
 
 | Area | Location |
 | --- | --- |
-| Link check and messages | `tools/agent-hooks/pull-request-link-check.ts` |
-| Subcommands and dispatch | `tools/agent-hooks/hook-runner.ts`, `tools/agent-hooks/agent-hooks.ts` |
-| GitHub reads (PR bodies, with time limits) | `tools/agent-hooks/pull-request-lookup.ts`, `tools/agent-hooks/protocol.ts` |
-| Private-details pattern | `tools/agent-hooks/bash-guard.ts` |
-| Hook registration | `.claude/settings.json` |
-| Tests | `tools/agent-hooks/tests/` |
+| Link reminder, stack check and messages | `tools/agent-hooks/pull-request-link-check.ts` (`describePrLink`, `describeStackPrs`, `unlinked`) |
+| `post-bash` subcommand | `tools/agent-hooks/hook-runner.ts`, `tools/agent-hooks/agent-hooks.ts` |
+| Stack branches (`gh stack view --json`, 3 s) | `findStackBranches` and `parseStackBranches` in `tools/agent-hooks/pull-request-lookup.ts`; `stackBranches` on `RepoProbe` (`protocol.ts`, `git-probe.ts`) |
+| Private-details pattern, shared with the bash guard | `privateDetails` in `tools/agent-hooks/bash-guard.ts` |
+| Registration | `PostToolUse`, matcher `Bash`, `if: Bash(gh *)` in `.claude/settings.json` |
+| Hook reference | "Agent hooks" in `tools/README.md` |
+| Tests | `tools/agent-hooks/tests/stack-pr-links_test.ts`; replaced legacy rows in `tests/legacy-parity_test.ts` and `tests/fixtures/README.md` |
 
 ### API
 
@@ -90,18 +93,22 @@ No changes.
 
 ### Testing
 
-* Deno tests with the fake repository probe: each criterion as a case, including a failed command and an unreadable stack.
-* The legacy parity cases that expected no reminder for a base other than `main` are updated to the new behaviour, and the change is named in the PR.
-* `just tools test` and `just check`.
+* Deno tests with the fake probe for every criterion, run by `just tools test`.
+* Eight rows of the legacy C# capture recorded the old behaviour (218, 240, 244, 268, 269, 271, 273, 278). They are skipped as approved replacements, counted by an assertion, and `stack-pr-links_test.ts` replays each row's input and probe state against the new result.
+* Negative control: the new tests were run in a scratch worktree with the old `pull-request-link-check.ts` (and a stub `describeStackPrs`). Every behaviour test failed there; the tests that passed cover the parts the control kept (runner, parser, registration, quiet paths).
+* Live check: the hook was run by hand with the real probe after `gh stack submit --auto --open` opened #959 and #960. The first run printed nothing, which exposed the PR template problem below; after the fix it named both PRs.
 
 ### Lessons learned, known issues and follow-ups
 
-* To be written on delivery.
+* **A generated body is the PR template.** `gh stack submit --auto` fills each body from `.github/pull_request_template.md`. Its HTML comment says `Closes #123`, which the link pattern matched. Unit tests with hand-written bodies did not catch it; running the hook on this story's own stack did.
+* **A failed command gets no note** because Claude Code reports a non-zero exit as `PostToolUseFailure`, which the hook does not register. This is inferred from the hooks reference, not observed.
+* **The stack merged with its generated bodies.** #959 and #960 were merged from the top about a minute after `gh stack submit --auto --open`, while their bodies were still the PR template, so neither carried `Refs #894` or `Closes #894`, #894 stayed open, and `handover-watch` did not count them as delivery PRs. That is the gap this story closes, hit by the story's own stack before its hook was active. The HTML-comment fix and this card update followed in #963, which carries `Closes #894`. Lesson: set each body with `gh pr edit --body-file` right after `gh stack submit`, before asking for review.
+* **The session that delivers a hook does not run it**: hooks come from the settings of the checkout Claude Code started in, so this story's own `gh stack submit` ran the old hooks.
+* **`gh stack link <stack number> …`** grows an existing stack. The stack number is not a PR, so its layers are not read; only the named PRs are checked.
+* **`gh api` edits of a PR body** remain unchecked, as agreed on #894.
 
 ## User guide
 
-*Planned behaviour. This section is finalised when the story is implemented.*
-
 ### Opening a stack of pull requests with an agent
 
-When an agent opens or edits a PR in a stack, it now gets the same reminder as for a PR to `main` if the body links no issue. After **gh stack submit** or **gh stack link**, the agent is told which of the stack's PRs link no issue or show private details, and edits those bodies in place. The commands themselves are never blocked or changed. Other agents (Codex, Cursor) do not get these reminders and follow the rule in `AGENTS.md` by hand.
+When an agent opens or edits a PR in a stack, it now gets the same reminder as for a PR to `main` if the body links no issue. After **gh stack submit** or **gh stack link** succeeds, the agent is told which of the stack's PRs link no issue or show private details, and edits those bodies in place. The commands themselves are never blocked or changed. Other agents (Codex, Cursor) do not get these reminders and follow the rule in `AGENTS.md` by hand.

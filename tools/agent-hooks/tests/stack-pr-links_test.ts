@@ -183,3 +183,22 @@ Deno.test("post-bash is registered after Bash gh commands with the shared Deno c
     bash.some((h: { if: string; command: string }) => h.if === "Bash(gh *)" && h.command.endsWith(" post-bash")),
   );
 });
+
+Deno.test("The PR template's commented-out Closes example links nothing (gh stack submit --auto bodies)", async () => {
+  const template = Deno.readTextFileSync(new URL("../../../.github/pull_request_template.md", import.meta.url));
+  assertStringIncludes(template, "<!--");
+  const p = stackProbe();
+  p.texts["docs/story-0068"]!.body = template;
+  p.texts["agent-hooks/stack"]!.body = template + "\nRefs #894\n";
+  const note = await describeStackPrs("gh stack submit --auto", "/repo", p) ?? "";
+  assertStringIncludes(note, "PR #101 (base main) has neither `Closes #N` nor `Refs #N`");
+  assert(!note.includes("PR #102"));
+  assertStringIncludes(
+    await describePrLink("gh pr create --title t --body '<!-- Closes #1 -->\nSummary'", "/r", new FakeProbe()) ?? "",
+    "neither",
+  );
+  assertEquals(
+    await describePrLink("gh pr create --title t --body '<!-- note -->\nCloses #1'", "/r", new FakeProbe()),
+    null,
+  );
+});

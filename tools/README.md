@@ -1,15 +1,16 @@
 # Repo tooling
 
-Repository tooling is migrating to TypeScript on Deno ([ADR-0058](../docs/decisions/0058-typescript-on-deno-for-repository-tooling.md)). New tooling uses Deno; existing .NET file-based apps and their checks stay operational until each owning slice switches its callers. The bootstrap doctor remains shell so it can diagnose missing runtimes. Read this page before writing or fixing a tool.
+Repository tooling is TypeScript on Deno ([ADR-0058](../docs/decisions/0058-typescript-on-deno-for-repository-tooling.md), story [0059](../docs/stories/0059-run-repository-tooling-on-typescript-and-deno.md)); the .NET file-based apps it replaced are gone, and no tool needs the .NET SDK. The bootstrap doctor remains shell so it can diagnose missing runtimes. Read this page before writing or fixing a tool.
 
-## Deno tooling during migration
+## Deno tooling
 
-- `.deno-version` pins the exact runtime used locally and in CI. Doctor requires Deno and the .NET SDK while both kinds of tools remain.
-- Repo tools share `tools/deno.json` and `tools/deno.lock`. The ADR, browser and architecture-narrative skills each carry their own configuration and lockfile so they can be copied outside this repository.
-- `just tools deno-test` installs frozen dependencies for every configuration, checks TypeScript strictly, runs `deno lint` and `deno fmt --check`, then discovers every `*_test.ts` outside fixtures and integration directories. `just tools test` runs these checks before the existing .NET suites. `just tools format` formats both languages during transition.
+- `.deno-version` pins the exact runtime used locally and in CI; `just doctor` checks it beside the Rust and frontend runtimes.
+- Repo tools share `tools/deno.json` and `tools/deno.lock`. The ADR, browser and architecture-narrative skills each carry their own configuration and lockfile so they can be copied outside this repository. These four configurations are the `tool_dirs` list in `tools/mod.just`.
+- `just tools deno-test [DIR...]` installs frozen dependencies for each configuration (all of them by default), checks TypeScript strictly, runs `deno lint` and `deno fmt --check`, then runs the configuration's `test` task, which discovers every `*_test.ts` outside fixtures and integration directories. `just tools test` runs it for the four configurations `TOOLS_TEST_JOBS` at a time (default 4), prints each one's log in order, then runs shellcheck on the doctor; the `parallel-tool-tests` delivery guard keeps the default above 1 and the Tooling job's Deno cache keyed on `deno.lock`. `just tools format` runs `deno fmt` for each configuration.
+- A new tool goes in `tools/<name>/` as TypeScript modules with `tests/*_test.ts`, which the shared configuration discovers; copy `tools/tool-versions/` as the pattern. A new scripted skill gets its own `deno.json` and `deno.lock` and must be added to `tool_dirs`, or neither its tests nor CI validate it (the gap behind #190 and #209). After adding one, check that `just tools test` prints its directory.
 - Direct imports use exact versions in each configuration. Intentional updates use `deno install --config <configuration> --frozen=false`; commit the generated lockfile. Ordinary checks never rewrite locks.
 - `just tools versions` checks exact JSR/npm dependency pins across independent tooling configurations, including executable task dependencies. `--fix` moves older pins to the newest pinned version and refreshes affected lockfiles; review and commit both configurations and locks. Registry package identities are case-sensitive.
-- The ADR validator, delivery guards and dependency checker now use Deno. `just tools adr` retains validation, `--fix-links`, `--next-number` and `--inventory`; the standalone skill carries its own configuration and tests. The ADR CI job needs Deno only.
+- The ADR validator, delivery guards and dependency checker use Deno. `just tools adr` retains validation, `--fix-links`, `--next-number` and `--inventory`; the standalone skill carries its own configuration and tests. The ADR CI job needs Deno only.
 - Development seeding and infrastructure commands use Deno: `just db seed`, `just infra migrate`, and the other `just infra` recipes keep their existing arguments. `just infra integration` checks role grants against disposable PostgreSQL containers without contacting Azure.
 - `just tools narratives` stitches `docs/narratives/<system>/` parts into `docs/narratives/<system>-narrative.md` (ADR-0059); `--check` fails when a stitched narrative differs from its parts and runs in `just check`, in the Tooling CI job and, for a change that runs no Tooling job, in the small Narratives job; `--remove-parts SYSTEM` is the skill's build mode. The script lives in `.claude/skills/architecture-narrative-builder/scripts/stitch/`.
 - Tests explicitly receive read, write, subprocess and environment permissions; production tasks specify their required permissions separately and disable interactive prompts.
@@ -17,35 +18,9 @@ Repository tooling is migrating to TypeScript on Deno ([ADR-0058](../docs/decisi
 
 Chromium still needs the Linux shared libraries documented in the browser skill. If those libraries were extracted into the user-local cache rather than installed system-wide, set `LD_LIBRARY_PATH` to that cache's `usr/lib/x86_64-linux-gnu` directory when running the feasibility test.
 
-The following .NET guidance applies only to the tools that have not yet been ported.
-
-## Layout and discovery
-
-- An unported tool has a `tools/<name>/<name>.cs` entry point, one or more `#:include`d implementation files, and `tests/<name>.tests.cs`. New tools use TypeScript modules and `tests/*_test.ts`; copy `tools/tool-versions/` as the Deno pattern.
-- `just tools test` runs every `*.tests.cs` under the `tool_dirs` list in `tools/mod.just` and `dotnet format whitespace --verify-no-changes` on each directory. `tools` is in the list, so a new `tools/<name>/` is checked automatically. A tool inside a skill folder must be added to `tool_dirs` by hand, or neither its tests nor CI validate it (the gap behind #190 and #209). After adding one, check that `just tools test` prints its test file.
-- Unported tools still keep NuGet versions in `#:package` directives and `Directory.Build.props`, with committed `packages.lock.json` files and locked restore in CI. Keep those pins consistent by hand during coexistence; `just tools versions` now checks the replacement Deno configurations.
-
-## SDK and build gotchas
-
-- The repo-root `global.json` pins the exact SDK the tools run on; `just doctor` fails when no installed SDK satisfies it. The backend is Rust and has no .NET SDK pin of its own. The pin matters because file-based apps default to `PublishAot=true`, so every tool lock file records `Microsoft.DotNet.ILCompiler` and `Microsoft.NET.ILLink.Tasks` at the SDK's own runtime version, and CI's locked restore fails with `NU1004` on any other SDK (#645). Every CI job that runs a tool installs the SDK from `global.json`.
-- **Bumping the SDK** (Dependabot's `dotnet-sdk` update, or by hand): set the version in the root `global.json`, install that SDK, run every tool and test app once outside CI so restore rewrites its lock file (`just tools test`, plus `dotnet build <tool>.cs` for each tool entry point that has a `packages.lock.json` beside it), check that the lock diff changes only those AOT packages, and commit the lock files on the same branch.
-- `#:include` needs .NET SDK **10.0.300 or later**, which the pin satisfies. On 10.0.1xx or 10.0.2xx every tool that uses it fails with `Unrecognized directive 'include'` before compiling. A skill folder copied into another repo still needs only 10.0.300.
-- File-based apps default to `PublishAot=true`, so reflection-based `System.Text.Json` fails analysis. Use `JsonDocument`, `Utf8JsonWriter` or a source-generated `JsonSerializerContext`.
-- Warnings are errors: Roslyn analyzers at `latest-recommended`, SonarAnalyzer and a StyleCop subset (ADR-0036), set in each folder's `Directory.Build.props`. The traps that bite most: S2699 (a test needs an assertion), IDE0011 (braces), IDE0005 (an unused `using` after code moves), SA1501 (no single-line blocks), SA1116/SA1117 (a wrapped argument list starts on a new line, one item per line; `dotnet format` fixes these), S103 (lines over 140 characters, which nothing fixes automatically), IDE0007/IDE0008 (`var` only when the type is apparent on the right-hand side), IDE0305 (use collection expressions instead of `.ToList()` into a typed variable), CA1307 (pass a `StringComparison`), S127 (don't change a `for` loop variable in its body), S4036 (start processes by absolute path), S6966 (await the async console methods). The first `dotnet run` compiles the file and takes a few seconds; later runs are cached.
-
-## Formatting a tool
-
-`dotnet format` doesn't accept file-based apps. To apply code fixes, convert the tool into a scratch project inside its own directory, so its `Directory.Build.props`, `.editorconfig` and `SonarLint.xml` still apply, format that, copy the code back and keep the `#!`/`#:` header lines:
-
-```bash
-cd tools/<name> && mkdir -p .scratch && cp *.cs .scratch/ && cd .scratch && dotnet project convert <name>.cs
-```
-
-Then `dotnet format` inside `.scratch`, copy the formatted bodies back and delete `.scratch`. The whitespace check that CI runs (`dotnet format whitespace --folder --verify-no-changes <dir>`) does accept file-based apps, so run it last.
-
 ## Reporting what a tool's checks covered
 
-A scratch build that drops the folder's `Directory.Build.props`, `.editorconfig`, `SonarLint.xml` or package settings can pass locally and fail the CI analyzers (#185). When you report verification, name the directory, the command, and whether `just tools test` discovered the tests.
+A check run with another configuration, or with `--frozen=false`, can pass locally and fail in CI. When you report verification, name the configuration directory, the command, and whether `just tools test` discovered the tests.
 
 ## ci-timings
 

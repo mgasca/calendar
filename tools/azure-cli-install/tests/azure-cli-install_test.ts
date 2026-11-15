@@ -1,7 +1,7 @@
 import { assert, assertEquals, assertStringIncludes } from "@std/assert";
 import { dirname, fromFileUrl } from "@std/path";
 import { findRoot } from "../../delivery-guards/delivery-guards.ts";
-import { actionPath, actionUse, check, type InstallFiles, loadFiles } from "../azure-cli-install.ts";
+import { actionPath, actionUse, check, checkWorkflow, type InstallFiles, loadFiles } from "../azure-cli-install.ts";
 
 const root = findRoot(dirname(fromFileUrl(import.meta.url)))!;
 const whatIf = ".github/workflows/infra-whatif.yml", migrate = ".github/workflows/migrate.yml";
@@ -80,6 +80,38 @@ Deno.test("AMigrationWithoutTheAction_Fails", () =>
 
 Deno.test("ABicepJobWithoutBicepTrue_Fails", () =>
   assertFails(withWorkflow(whatIf, "          bicep: true\n", ""), "does not set `bicep: true`"));
+
+// A workflow step that runs the Deno infra tool directly, as infra-whatif.yml does, needs the CLI (and Bicep for what-if)
+// just as `just infra` does; the pattern matched only the retired C# entry point (#685).
+for (
+  const [name, command, expected] of [
+    ["WhatIf", "what-if staging --phase full", "uses the Azure CLI before any"],
+    ["Migrate", "migrate staging", "uses the Azure CLI before any"],
+  ] as const
+) {
+  Deno.test(`TheInfraToolRunDirectly_${name}WithoutTheAction_Fails`, () => {
+    const workflow = `jobs:
+  infra:
+    name: Infra
+    steps:
+      - run: deno run --config tools/deno.json --frozen tools/infra/infra.ts ${command}
+`;
+    const errors = checkWorkflow("w.yml", workflow);
+    assert(errors.some((e) => e.includes(expected)), errors.join("\n"));
+  });
+}
+
+Deno.test("TheInfraToolWhatIfAfterACliOnlyAction_FailsForBicep", () => {
+  const workflow = `jobs:
+  infra:
+    name: Infra
+    steps:
+      - uses: ${actionUse}
+      - run: deno run --config tools/deno.json --frozen tools/infra/infra.ts what-if staging
+`;
+  const errors = checkWorkflow("w.yml", workflow);
+  assert(errors.some((e) => e.includes("does not set `bicep: true`")), errors.join("\n"));
+});
 
 Deno.test("AnyOtherWorkflowInstallingAzureCli_Fails", () => {
   const f = files();

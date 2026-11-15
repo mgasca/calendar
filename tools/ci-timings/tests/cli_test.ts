@@ -30,6 +30,8 @@ Deno.test("CLI defaults and every existing argument are preserved", () => {
     "--issue",
     "--holdout",
     "HELD",
+    "--path",
+    "publication",
     "--out",
     "baseline.json",
     "--record",
@@ -55,6 +57,8 @@ Deno.test("CLI defaults and every existing argument are preserved", () => {
     trend: true,
     issue: true,
     holdout: "HELD",
+    path: "publication",
+    tunedConstants: true,
     output: "baseline.json",
     record: "record.md",
     minRuns: 3,
@@ -92,9 +96,14 @@ Deno.test("CSharpParity_CLI_ArgumentExitAndUsageArePreserved", async () => {
   }).output();
   assertEquals(result.code, 2);
   assertEquals(new TextDecoder().decode(result.stdout), "");
+  // The frozen C# evidence predates `--path` (#779), the one argument added since; the rest of the text is unchanged.
   assertEquals(
     new TextDecoder().decode(result.stderr),
-    await Deno.readTextFile(new URL("fixtures/csharp-cli-invalid.txt", import.meta.url)),
+    (await Deno.readTextFile(new URL("fixtures/csharp-cli-invalid.txt", import.meta.url)))
+      .replace(
+        "[--baseline --created RANGE [--holdout RANGE]",
+        "[--baseline --created RANGE [--path NAME] [--holdout RANGE]",
+      ),
   );
 });
 Deno.test("CSharpParity_CLI_SamplingUsesIdenticalArgumentsExitAndStdout", async () => {

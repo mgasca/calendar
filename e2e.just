@@ -4,7 +4,9 @@
 #
 # Ports come from a slot k in 2, 3, 5, 6, 7, 8, 9 (the run-calendar agent stack's 55041, 55173 and 55432 sit in
 # slots 0, 1 and 4): 55k00 + 17 OTLP gRPC, 18 OTLP HTTP, 20 Tempo, 30 Grafana, 31 Loki, 32 PostgreSQL, 41 API,
-# 73 web, 80 stub, 90 Prometheus. The first slot whose ports are all free wins; CALENDAR_E2E_SLOT pins one.
+# 73 web, 80 stub, 90 Prometheus. The first slot whose ports are all free wins; CALENDAR_E2E_SLOT pins one (or
+# several, space-separated). On WSL a port Windows reserves for Hyper-V or WinNAT counts as in use, because Docker
+# Desktop cannot publish it (#878); tools/e2e-slot chooses the slot.
 # A run's state (ports, URLs, PIDs, logs) is in .plan/e2e/<project>/ (git-ignored); `just e2e env` prints it.
 
 set shell := ["bash", "-euo", "pipefail", "-c"]
@@ -25,17 +27,9 @@ up:
     set -euo pipefail
     test -f docker/postgres/init/01-roles.sh || { echo "docker/postgres/init is missing: the working tree is incomplete." >&2; exit 1; }
     project="calendar-e2e-$(date -u +%Y%m%d%H%M%S)-$(printf '%04x%04x' $RANDOM $RANDOM)"
-    offsets=(17 18 20 30 31 32 41 73 80 90)
-    in_use() { (exec 3<>"/dev/tcp/127.0.0.1/$1") 2>/dev/null; }
-    slot=""
-    for k in ${CALENDAR_E2E_SLOT:-2 3 5 6 7 8 9}; do
-        case "$k" in 2|3|5|6|7|8|9) ;; *) echo "CALENDAR_E2E_SLOT must be one of 2 3 5 6 7 8 9, not '$k'." >&2; exit 1 ;; esac
-        busy=""
-        for o in "${offsets[@]}"; do if in_use $((55000 + 100 * k + o)); then busy=$((55000 + 100 * k + o)); break; fi; done
-        if [[ -z $busy ]]; then slot=$k; break; fi
-        echo "slot $k: port $busy is in use" >&2
-    done
-    [[ -n $slot ]] || { echo "No free end-to-end slot: stop a run with 'just e2e down <project>' (see 'just e2e ls')." >&2; exit 1; }
+    # The first slot with no listener and, on WSL, no Windows-reserved port; it explains every slot it skips.
+    slot=$(deno run --quiet --config tools/deno.json --frozen --no-prompt --allow-run=netsh.exe --allow-net=127.0.0.1 \
+        --allow-env=CALENDAR_E2E_SLOT,WSL_DISTRO_NAME tools/e2e-slot/e2e-slot.ts)
     base=$((55000 + 100 * slot))
     dir="{{ state_root }}/$project"
     mkdir -p "$dir/logs"
@@ -75,7 +69,13 @@ up:
         CALENDAR_OIDC_STUB_PORT=$((base + 80))
     started=$(date +%s)
     docker compose -p "$project" --profile observability --profile sign-in-stub up -d --wait --wait-timeout 300 \
-        > "$dir/logs/compose.log" 2>&1 || { cat "$dir/logs/compose.log" >&2; fail "the containers did not become healthy"; }
+        > "$dir/logs/compose.log" 2>&1 || {
+            cat "$dir/logs/compose.log" >&2
+            # A port can become reserved after the slot was chosen (#878): name the way out.
+            grep -q 'ports are not available' "$dir/logs/compose.log" \
+                && echo "Docker could not publish a port of slot $slot. Try another slot: CALENDAR_E2E_SLOT=<2 3 5 6 7 8 9> just e2e up." >&2
+            fail "the containers did not become healthy"
+        }
     echo "Containers healthy after $(( $(date +%s) - started )) s"
 
     (cd backend && CALENDAR_MIGRATOR_CONNECTION="Host=127.0.0.1;Port=$CALENDAR_E2E_POSTGRES_PORT;Database=calendar;Username=calendar_migrator;Password=e2e-migrator-password" \

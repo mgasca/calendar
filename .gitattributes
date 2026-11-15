@@ -1,5 +1,7 @@
 * text=auto eol=lf
 *.{cmd,bat} text eol=crlf
+# Captured netsh.exe output keeps its Windows line endings, which the e2e-slot parser must handle (#878).
+tools/e2e-slot/tests/fixtures/*.txt text eol=crlf
 *.{png,jpg,jpeg,gif,ico,woff,woff2} binary
 pnpm-lock.yaml linguist-generated=true -diff
 **/packages.lock.json linguist-generated=true -diff

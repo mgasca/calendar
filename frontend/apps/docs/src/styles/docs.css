@@ -151,7 +151,8 @@ pre.mermaid rect.actor {
   font-weight: 600;
   white-space: nowrap;
 }
-.dashboard-verdict-slower {
+.dashboard-verdict-slower,
+.dashboard-verdict-failed {
   background: var(--color-error-soft);
   color: var(--color-error);
 }

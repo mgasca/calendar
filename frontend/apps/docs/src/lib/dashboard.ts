@@ -15,7 +15,7 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 
 /** The snapshot schema versions this reader accepts (tools/delivery-dashboard/snapshot.ts). */
 export const oldestVersion = 1;
-export const currentVersion = 3;
+export const currentVersion = 4;
 
 export interface SnapshotWindow {
   from: string;
@@ -191,6 +191,7 @@ export interface Snapshot {
   quality?: QualitySection | null;
   agents?: AgentsSection | null;
   superseded?: SupersededSection | null;
+  e2e?: E2eSection | null;
 }
 
 /** What the build found: no snapshots yet (data branch absent or empty), or the snapshots, oldest first. */
@@ -215,7 +216,7 @@ const rootKeys = ['version', 'date', 'generatedAt', 'repository', 'ci'];
 // Sections added after version 1: absent from older files, validated when present.
 // Sections whose pages are delivered by their own slices are accepted as objects here (the tool's rules check them, and
 // the privacy scan above covers every string); the page for each replaces this with a full check.
-const optionalRootKeys = ['flow', 'quality', 'agents', 'superseded'];
+const optionalRootKeys = ['flow', 'quality', 'agents', 'superseded', 'e2e'];
 const ciKeysV1 = ['workflow', 'basis', 'runs', 'window', 'jobs'];
 const jobKeysV1 = [
   'job',
@@ -348,7 +349,7 @@ class Checker {
 
 /**
  * Parses a snapshot's text. Throws a SnapshotError naming the file and every field that breaks the
- * schema (versions 1 to 3) or the privacy rules, so a build never renders a half-understood file.
+ * schema (versions 1 to 4) or the privacy rules, so a build never renders a half-understood file.
  */
 export function parseSnapshot(file: string, text: string): Snapshot {
   let json: Json;
@@ -381,6 +382,12 @@ export function parseSnapshot(file: string, text: string): Snapshot {
         else checkSuperseded(check, json.superseded);
       } else if (version >= 3) {
         check.problems.push('$.superseded: field is missing (null when not sampled)');
+      }
+      if ('e2e' in json) {
+        if (version < 4) check.problems.push('$.e2e: field is not in the schema before version 4');
+        else checkE2e(check, json.e2e);
+      } else if (version >= 4) {
+        check.problems.push('$.e2e: field is missing (null when not sampled)');
       }
     }
   }
@@ -1521,6 +1528,7 @@ function overview(data: DashboardData): string {
 export const dashboardPages: DashboardPage[] = [
   { slug: '', title: 'Delivery dashboard', label: 'Overview', render: overview },
   { slug: 'ci-speed', title: 'CI speed', label: 'CI speed', render: ciSpeed },
+  { slug: 'e2e', title: 'E2E flows', label: 'E2E flows', render: e2ePage },
   { slug: 'flow', title: 'Flow', label: 'Flow', render: flowPage },
   { slug: 'quality', title: 'Quality and failures', label: 'Quality', render: qualityPage },
   { slug: 'agents', title: 'Agent activity', label: 'Agent activity', render: agentsPage },
@@ -1711,4 +1719,194 @@ function supersededBlock(section: SupersededSection | null | undefined, version:
     ),
   );
   return lines;
+}
+
+// The E2E section (story 0069, issue #892): the newest completed runs of the nightly `E2E flows` workflow on `main`.
+
+export interface E2eRun {
+  id: number;
+  event: string;
+  createdAt: string;
+  conclusion: string;
+  runSeconds: number | null;
+}
+
+export interface E2eSection {
+  workflow: string;
+  basis: string;
+  sample: { runs: number; cap: number; window: SnapshotWindow | null };
+  runs: E2eRun[];
+}
+
+/** The triggers and the conclusions of a completed run, as the tool's rules (e2e.ts) accept them. */
+const e2eEvents = ['schedule', 'workflow_dispatch'];
+const runConclusions = [
+  'success',
+  'failure',
+  'cancelled',
+  'timed_out',
+  'action_required',
+  'neutral',
+  'skipped',
+  'stale',
+  'startup_failure',
+];
+
+/** The E2E section's shape, order and counts; the tool's rules (e2e.ts) check the same. */
+function checkE2e(check: Checker, section: Json) {
+  const path = '$.e2e';
+  if (section === null || !check.keys(section, path, ['workflow', 'basis', 'sample', 'runs']))
+    return;
+  if (typeof section.workflow !== 'string' || !/^[\w.-]+\.ya?ml$/.test(section.workflow))
+    check.problems.push(`${path}.workflow: must be a workflow file name`);
+  check.oneOf(section.basis, `${path}.basis`, ['measured', 'inferred']);
+  let listed = -1;
+  let window: Record<string, Json> | null = null;
+  const sample = section.sample;
+  if (check.keys(sample, `${path}.sample`, ['runs', 'cap', 'window'])) {
+    listed = check.count(sample.runs, `${path}.sample.runs`, 0);
+    const cap = check.count(sample.cap, `${path}.sample.cap`, 1);
+    if (cap > 0 && listed > cap)
+      check.problems.push(`${path}.sample.runs: cannot exceed sample.cap (${cap})`);
+    if (sample.window !== null && listed === 0)
+      check.problems.push(`${path}.sample.window: must be null when runs is 0`);
+    check.window(sample.window, `${path}.sample.window`, listed);
+    if (isObject(sample.window)) window = sample.window;
+  }
+  if (!Array.isArray(section.runs)) {
+    check.problems.push(`${path}.runs: must be an array`);
+    return;
+  }
+  if (listed >= 0 && section.runs.length !== listed)
+    check.problems.push(
+      `${path}.runs: lists ${section.runs.length} runs, but sample.runs is ${listed}`,
+    );
+  const ids = new Set<number>();
+  const times: string[] = [];
+  section.runs.forEach((run: Json, index: number) => {
+    const at = `${path}.runs[${index}]`;
+    if (!check.keys(run, at, ['id', 'event', 'createdAt', 'conclusion', 'runSeconds'])) return;
+    if (typeof run.id !== 'number' || !Number.isSafeInteger(run.id) || run.id < 1)
+      check.problems.push(`${at}.id: must be a run id (a whole number of at least 1)`);
+    else if (ids.has(run.id)) check.problems.push(`${at}.id: each run must be listed once`);
+    else ids.add(run.id);
+    check.oneOf(run.event, `${at}.event`, e2eEvents);
+    check.oneOf(run.conclusion, `${at}.conclusion`, runConclusions);
+    if (run.runSeconds !== null) check.seconds(run.runSeconds, `${at}.runSeconds`);
+    const before = check.problems.length;
+    check.time(run.createdAt, `${at}.createdAt`);
+    if (check.problems.length === before && typeof run.createdAt === 'string') {
+      const previous = times.at(-1);
+      if (previous !== undefined && run.createdAt > previous)
+        check.problems.push(`${at}.createdAt: runs must be listed newest first`);
+      times.push(run.createdAt);
+    }
+  });
+  if (window && times.length > 0 && times.length === section.runs.length) {
+    if (window.to !== times[0] || window.from !== times.at(-1))
+      check.problems.push(
+        `${path}.sample.window: must run from the oldest run's createdAt to the newest one's`,
+      );
+  }
+}
+
+/** The issue that the `E2E flows` workflow comments on, or opens, when a run on `main` fails (#737). */
+export const e2eFailureIssue = 'E2E flows: the nightly run failed on main';
+
+const e2eStory =
+  '../../../../../docs/stories/0069-see-the-nightly-e2e-runs-on-the-delivery-dashboard.md';
+
+const triggers: Record<string, string> = { schedule: 'nightly', workflow_dispatch: 'by hand' };
+
+/** A nearest-rank percentile of sorted values, as the tool computes them (tools/ci-timings/statistics.ts). */
+function nearestRank(sorted: number[], quantile: number) {
+  return sorted[Math.min(sorted.length, Math.max(1, Math.ceil(quantile * sorted.length))) - 1] ?? 0;
+}
+
+function e2ePage(data: DashboardData): string {
+  if (data.state === 'absent') return noSnapshotNotice;
+  const latest = data.snapshots.at(-1);
+  if (!latest) return noSnapshotNotice;
+  const e2e = latest.e2e;
+  const workflow = `https://github.com/${latest.repository}/actions/workflows/e2e.yml`;
+  const issues = `https://github.com/${latest.repository}/issues?q=${encodeURIComponent(`is:issue is:open in:title "${e2eFailureIssue}"`)}`;
+  if (latest.version < 4 || e2e === undefined) {
+    return `The latest snapshot (${latest.date}) has no E2E section: it was written by an older version of the snapshot tool (schema version below 4). Nothing is shown and none is implied; the [workflow's runs](${workflow}) are on GitHub.`;
+  }
+  if (e2e === null) {
+    return `The latest snapshot (${latest.date}) did not sample the E2E runs. Nothing is shown and none is implied; the [workflow's runs](${workflow}) are on GitHub.`;
+  }
+  const runLink = (id: number) => `https://github.com/${latest.repository}/actions/runs/${id}`;
+  const lines: string[] = [
+    `**Snapshot of ${latest.date}** (taken ${minute(latest.generatedAt)}). The runs of the \`E2E flows\` workflow (\`${escapeText(e2e.workflow)}\`) on \`main\`, nightly and started by hand: the newest ${e2e.sample.runs} completed run${e2e.sample.runs === 1 ? '' : 's'} (at most ${e2e.sample.cap}), created ${windowText(e2e.sample.window)}. ` +
+      `A run still in progress when the snapshot was taken appears in the next one. The story is [0069](${e2eStory}); the decision for this dashboard is [ADR-0049](${adr49}).`,
+    '',
+  ];
+  const newest = e2e.runs[0];
+  if (!newest) {
+    lines.push(
+      ':::note[No completed run]',
+      `The snapshot found no completed run of \`${escapeText(e2e.workflow)}\` on \`main\`. Nothing is shown and none is implied.`,
+      ':::',
+    );
+    return lines.join('\n');
+  }
+  const when = minute(newest.createdAt);
+  if (newest.conclusion === 'success') {
+    lines.push(
+      ':::tip[The latest run passed]',
+      `The ${triggers[newest.event] ?? newest.event} run of ${when} succeeded: [run ${newest.id}](${runLink(newest.id)}).`,
+      ':::',
+    );
+  } else {
+    lines.push(
+      ':::caution[The latest run did not pass]',
+      `The ${triggers[newest.event] ?? newest.event} run of ${when} ended as **${newest.conclusion.replace(/_/g, ' ')}**: [run ${newest.id}](${runLink(newest.id)}). ` +
+        `Its report, traces and screenshots are in the run's artifacts. A failed run on \`main\` also comments on the open issue "[${e2eFailureIssue}](${issues})".`,
+      ':::',
+    );
+  }
+  const failed = e2e.runs.filter((run) => run.conclusion !== 'success');
+  const times = e2e.runs
+    .filter((run) => run.conclusion === 'success' && run.runSeconds !== null)
+    .map((run) => run.runSeconds ?? 0)
+    .sort((a, b) => a - b);
+  lines.push(
+    '',
+    '## Summary',
+    '',
+    `**Measured** from the times GitHub recorded for each run. The run time is from the run starting to its last update, so a run that was re-run spans its attempts. A run that did not succeed is counted as not passed, whatever its conclusion.`,
+    '',
+    table(
+      ['Runs', 'Not passed', 'Success rate', 'Median run time', 'p90', 'Max'],
+      [
+        [
+          String(e2e.runs.length),
+          String(failed.length),
+          `${Math.round(((e2e.runs.length - failed.length) / e2e.runs.length) * 100)} %`,
+          ...(times.length > 0
+            ? [0.5, 0.9]
+                .map((q) => formatSeconds(nearestRank(times, q)))
+                .concat(formatSeconds(times.at(-1) ?? 0))
+            : ['no successful run', 'no successful run', 'no successful run']),
+        ],
+      ],
+    ),
+    '',
+    '## Recent runs',
+    '',
+    table(
+      ['Created', 'Trigger', 'Result', 'Run time', 'Run'],
+      e2e.runs.map((run) => [
+        minute(run.createdAt),
+        triggers[run.event] ?? run.event,
+        run.conclusion === 'success'
+          ? 'passed'
+          : `<span class="dashboard-verdict dashboard-verdict-failed">${run.conclusion.replace(/_/g, ' ')}</span>`,
+        run.runSeconds === null ? 'not recorded' : formatSeconds(run.runSeconds),
+        `[${run.id}](${runLink(run.id)})`,
+      ]),
+    ),
+  );
+  return lines.join('\n');
 }

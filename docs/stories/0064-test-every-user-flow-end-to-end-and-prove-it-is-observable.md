@@ -247,7 +247,7 @@ API telemetry (#731) lives in `calendar-api/src/telemetry/`:
 - **Run time (ADR-0045):** `tools/ci-timings` now reads scheduled runs on `main` too, and names the workflow and baseline file in its report. `ci-trend.yml` has a second step for `e2e.yml` against `.github/e2e-baseline.json`, which reports "no baseline yet" until the file exists. `ci.yml`'s report is unchanged, byte for byte (the parity fixtures). The Rust and pnpm caches have no `restore-keys`, so a dependency change saves a fresh entry instead of growing the old one (review of #876).
 - **New flows need no workflow change:** the job runs every test in `frontend/apps/e2e/tests`.
 - **Verified:** run [43528677152](https://github.com/mgasca/calendar/actions/runs/43528677152) passed in 200 s on a cold cache (stack ready in 130 s, `view-today-flow` 3.5 s). Run [43529239198](https://github.com/mgasca/calendar/actions/runs/43529239198) failed on a deliberately wrong span name; the report, `trace.zip`, the screenshot and the stack logs were uploaded, and the message named the missing span. Both came from a temporary `pull_request` trigger on #876, removed before review.
-- **Follow-up (#892):** an E2E section on the delivery dashboard.
+- **Follow-up (#892):** an E2E section on the delivery dashboard, delivered by story [0069](0069-see-the-nightly-e2e-runs-on-the-delivery-dashboard.md).
 
 ### Delivered in #734
 
@@ -292,7 +292,7 @@ API telemetry (#731) lives in `calendar-api/src/telemetry/`:
 - **Follow-up (#893):** pin `.github/e2e-baseline.json` (`just tools ci-timings --workflow e2e.yml --baseline --created <range> --out .github/e2e-baseline.json --record <record>`) once 30 successful nightly runs exist, about a month after #737 merges; until then the trend check concludes nothing about this workflow. The maintainer chose this input change without an ADR-0045 amendment (#737, option A, 2026-11-14).
 - **Known issue:** when `just e2e up` itself fails (a migration or a build), the recipe removes the run, logs included, so only its error message reaches the job log.
 - **Deferred (#927):** the owner check in staging that API traces and logs reach Application Insights without personal data (criterion 9). The maintainer deferred it on 2026-11-15, so this story closes without it.
-- **Follow-up (#892):** an E2E section on the delivery dashboard. Until then, a nightly failure shows as one open `bug` issue.
+- **Follow-up (#892):** an E2E section on the delivery dashboard, delivered by story [0069](0069-see-the-nightly-e2e-runs-on-the-delivery-dashboard.md). A nightly failure still opens or comments on one `bug` issue.
 - **Fixed after close-out (#900):** an edit dialog reopened after a save showed the stale cached copy. [#947](https://github.com/mgasca/calendar/pull/947) fixed it in the task and event dialogs (stories 0044 and 0043), and `edit-task-flow` now reopens the task on the same page, without the reload.
 - **Lesson: flow tests find telemetry gaps.** Writing the assertions found two defects the unit tests had missed: a successful request logged nothing, so no log carried its trace id (#797), and `fetch(url, init)` spans were named by method only (#879).
 - **Lesson: check that a new check actually runs in CI.** The binding check ran in no CI job until #909 (#902). The Frontend job only runs packages that have a `test:coverage` script, and its path filter skipped changes to the e2e package and the model. Three PRs reported green CI that never ran it.

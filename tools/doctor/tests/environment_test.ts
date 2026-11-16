@@ -19,8 +19,9 @@ const stackInstalled = "printf 'gh stack\\tgithub/gh-stack\\tv0.3.0\\n'";
 const otherExtension = "printf 'gh copilot\\tgithub/gh-copilot\\tv1.0.0\\n'";
 
 /** A fake gh whose `extension list` runs the given command; other arguments print the version. */
-function gh(extensionList: string): string {
-  return `if [ "$1" = extension ]; then ${extensionList}; else echo 'gh version 2.0.0 (fake)'; fi`;
+function gh(extensionList: string, version: string | null = "2.82.1"): string {
+  const report = version === null ? "exit 1" : `echo 'gh version ${version} (fake)'`;
+  return `if [ "$1" = extension ]; then ${extensionList}; else ${report}; fi`;
 }
 async function withCommands(run: (bin: string) => Promise<void>): Promise<void> {
   const bin = await Deno.makeTempDir({ prefix: "doctor-environment-" });
@@ -144,6 +145,31 @@ for (
       assertStringIncludes(result.text, "gh stack init/add/submit/link");
       assertStringIncludes(result.text, "→ gh extension install github/gh-stack");
       assertStringIncludes(result.text, "Found 1 problem(s)");
+    });
+  });
+}
+
+// Older gh releases ask for the removed Projects (classic) fields, so `gh pr edit` and `gh issue view` fail (#964).
+for (
+  const [version, passes, expected] of [
+    ["2.46.0", false, "gh '2.46.0', but the repo wants 2.82.1 or newer"],
+    ["2.82.0", false, "gh '2.82.0', but the repo wants 2.82.1 or newer"],
+    [null, false, "gh 'unavailable', but the repo wants 2.82.1 or newer"],
+    ["2.82.1", true, "gh 2.82.1 (wants 2.82.1 or newer)"],
+    ["2.100.0", true, "gh 2.100.0 (wants 2.82.1 or newer)"],
+  ] as const
+) {
+  Deno.test(`doctor needs a gh without the Projects (classic) failure: ${version ?? "no version"}`, async () => {
+    await withCommands(async (bin) => {
+      await executable(bin, "gh", gh(stackInstalled, version));
+      const result = await doctor(bin);
+      assertEquals(result.code, passes ? 0 : 1, result.text);
+      assertStringIncludes(result.text, expected);
+      if (!passes) {
+        assertStringIncludes(result.text, "fail 'gh pr edit' and 'gh issue view'");
+        assertStringIncludes(result.text, "from GitHub's apt repository, not Ubuntu's archive");
+        assertStringIncludes(result.text, "Found 1 problem(s)");
+      }
     });
   });
 }

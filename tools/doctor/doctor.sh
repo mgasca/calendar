@@ -110,11 +110,21 @@ else
   fi
 fi
 
-# gh and jq: the GitHub CLI and JSON processor used by the issue, PR and CI workflows.
+# gh and jq: the GitHub CLI and JSON processor used by the issue, PR and CI workflows. Older gh releases ask GitHub for
+# the removed Projects (classic) fields, so `gh pr edit` and `gh issue view` fail; 2.82.1 is the first release with
+# every known fix (cli/cli#11983, #11987; story 0070). Ubuntu's own archive ships 2.46, hence GitHub's apt repository.
+want_gh="2.82.1"
+gh_install="https://github.com/cli/cli/blob/trunk/docs/install_linux.md"
 if ! command -v gh >/dev/null 2>&1; then
-  fail "gh not found" "Install the GitHub CLI: https://github.com/cli/cli/blob/trunk/docs/install_linux.md (then run 'gh auth login')"
+  fail "gh not found" "Install the GitHub CLI, $want_gh or newer, from GitHub's apt repository: $gh_install (then run 'gh auth login')"
 else
-  ok "gh $(gh --version 2>/dev/null | sed -n '1s/^gh version \([0-9][0-9.]*\).*/\1/p')"
+  have_gh="$(gh --version 2>/dev/null | sed -n '1s/^gh version \([0-9][0-9.]*\).*/\1/p')"
+  if [ -n "$have_gh" ] && [ "$(printf '%s\n%s\n' "$want_gh" "$have_gh" | sort -V | head -n 1)" = "$want_gh" ]; then
+    ok "gh $have_gh (wants $want_gh or newer)"
+  else
+    fail "gh '${have_gh:-unavailable}', but the repo wants $want_gh or newer: older releases fail 'gh pr edit' and 'gh issue view' on the removed Projects (classic) fields" \
+      "Install GitHub CLI $want_gh or newer from GitHub's apt repository, not Ubuntu's archive: $gh_install"
+  fi
 fi
 if ! command -v jq >/dev/null 2>&1; then
   fail "jq not found" "Install jq, e.g. 'sudo apt install jq': https://jqlang.org/download/"

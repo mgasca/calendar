@@ -50,7 +50,7 @@ New UIs go under `frontend/apps/` (TypeScript) or a new top-level directory for 
 | pnpm | `packageManager` in `frontend/package.json` | Provided by Corepack (bundled with Node 24); don't install it globally |
 | Docker | n/a | Engine running and reachable; needed for the local database and for integration tests (Testcontainers) |
 | just | `.just-version` | The task runner ([ADR-0038](docs/decisions/0038-just-as-the-top-level-task-runner.md)); it only wraps the native commands. Ubuntu's apt package is older than the pinned version, so download the release binary from <https://github.com/casey/just/releases> and put `just` on your `PATH` |
-| gh | n/a | The GitHub CLI, used for issues, PRs and CI; run `gh auth login` once |
+| gh | 2.82.1 or newer | The GitHub CLI, used for issues, PRs and CI; run `gh auth login` once. Ubuntu's apt archive ships 2.46, which fails `gh pr edit` and `gh issue view` on the removed Projects (classic) fields, so install it from [GitHub's apt repository](https://github.com/cli/cli/blob/trunk/docs/install_linux.md) |
 | jq | n/a | JSON processor used by the GitHub and CI scripts and recipes |
 | gh-stack | n/a | The GitHub CLI extension for native stacked PRs (`gh stack init`/`add`/`submit`/`link`): `gh extension install github/gh-stack`; needs gh 2.0 or newer |
 | git | 2.36 or newer | What gh-stack needs; Ubuntu 22.04's apt git (2.34) is older, so use the [git-core PPA](https://git-scm.com/download/linux) there |

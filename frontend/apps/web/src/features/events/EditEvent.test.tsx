@@ -5,7 +5,15 @@ import { http, HttpResponse } from 'msw';
 
 import { frameFirst, renderApp } from '../../test/render.tsx';
 import { server } from '../../test/server.ts';
+import { allowSlowFirstRender, SLOW_FIRST_RENDER_TEST_TIMEOUT_MS } from '../../test/timeouts.ts';
 import { fromEvent } from './eventForm.ts';
+
+// The first rendering test pays a warm-up that can pass 5 s under load (src/test/timeouts.ts, #957).
+allowSlowFirstRender();
+
+it('gives its tests the longer timeout of a slow first render (#957)', ({ task }) => {
+  expect(task.timeout).toBe(SLOW_FIRST_RENDER_TEST_TIMEOUT_MS);
+});
 
 type StoredEvent = Schemas['EventResponse'];
 

@@ -6,9 +6,17 @@ import { useState } from 'react';
 
 import { renderWithProviders, settle } from '../../test/render.tsx';
 import { server } from '../../test/server.ts';
+import { allowSlowFirstRender, SLOW_FIRST_RENDER_TEST_TIMEOUT_MS } from '../../test/timeouts.ts';
 import { EditTask } from './EditTask.tsx';
 import { fromTask } from './taskForm.ts';
 import { taskKey } from './useEditTask.ts';
+
+// The first rendering test pays a warm-up that can pass 5 s under load (src/test/timeouts.ts, #957).
+allowSlowFirstRender();
+
+it('gives its tests the longer timeout of a slow first render (#957)', ({ task }) => {
+  expect(task.timeout).toBe(SLOW_FIRST_RENDER_TEST_TIMEOUT_MS);
+});
 
 type StoredTask = Schemas['TaskResponse'];
 

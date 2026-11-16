@@ -1,7 +1,11 @@
 import { getConfig, render, screen } from '@testing-library/react';
 
 import { eventually } from './render.tsx';
-import { WAIT_TIMEOUT_MARGIN_MS, WAIT_TIMEOUT_MS } from './timeouts.ts';
+import {
+  SLOW_FIRST_RENDER_TEST_TIMEOUT_MS,
+  WAIT_TIMEOUT_MARGIN_MS,
+  WAIT_TIMEOUT_MS,
+} from './timeouts.ts';
 
 // A wait that never passes must fail on its own, before the test timer fires, so the report names
 // the wait, its line and the DOM instead of only "Test timed out" (#795, story 0067).
@@ -22,6 +26,16 @@ describe('wait timeouts', () => {
     await eventually(() => undefined);
     expect(waitFor).toHaveBeenCalledWith(expect.any(Function), { timeout: WAIT_TIMEOUT_MS });
     expect(WAIT_TIMEOUT_MS).toBeLessThanOrEqual(task.timeout - WAIT_TIMEOUT_MARGIN_MS);
+  });
+
+  it('time out before the test timeout of a slow first render, which is longer (#957)', ({
+    task,
+  }) => {
+    expect(WAIT_TIMEOUT_MS).toBeLessThanOrEqual(
+      SLOW_FIRST_RENDER_TEST_TIMEOUT_MS - WAIT_TIMEOUT_MARGIN_MS,
+    );
+    // This file doesn't call allowSlowFirstRender, so it has the project's timeout.
+    expect(SLOW_FIRST_RENDER_TEST_TIMEOUT_MS).toBeGreaterThan(task.timeout);
   });
 
   it('report a stalled eventually with its assertion and its line', async () => {

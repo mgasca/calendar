@@ -105,54 +105,6 @@
       }
     ]
   },
-  "agents": {
-    "basis": {
-      "activity": "measured",
-      "counts": "inferred"
-    },
-    "sample": {
-      "scanned": 3,
-      "window": {
-        "from": "2026-11-09T10:00:00Z",
-        "to": "2026-11-09T12:00:00Z"
-      }
-    },
-    "activity": {
-      "issues": 2,
-      "withCounts": 1,
-      "comments": 5,
-      "reviews": 2,
-      "pullRequests": 1
-    },
-    "counts": {
-      "countComments": 2,
-      "malformed": 1,
-      "tasks": 3,
-      "subagents": 3
-    },
-    "issues": [
-      {
-        "issue": 11,
-        "countComments": 0,
-        "malformed": 0,
-        "tasks": null,
-        "subagents": null,
-        "comments": 1,
-        "reviews": 0,
-        "pullRequests": 0
-      },
-      {
-        "issue": 10,
-        "countComments": 2,
-        "malformed": 1,
-        "tasks": 3,
-        "subagents": 3,
-        "comments": 4,
-        "reviews": 2,
-        "pullRequests": 1
-      }
-    ]
-  },
   "superseded": {
     "basis": {
       "detection": "inferred",

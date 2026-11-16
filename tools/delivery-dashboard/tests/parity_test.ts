@@ -1,11 +1,10 @@
 import { assertEquals } from "@std/assert";
 import { buildCi, writeSnapshot } from "../snapshot.ts";
-import { buildAgents } from "../agents.ts";
 import { buildFlow } from "../flow.ts";
 import { buildSuperseded } from "../superseded.ts";
 import { validateSnapshot } from "../snapshot-rules.ts";
 import type { SupersededPair, WorkflowRun } from "../../ci-timings/timings.ts";
-Deno.test("snapshot bytes match retained original C# CI flow agents superseded output", async () => {
+Deno.test("snapshot bytes match retained original C# CI flow superseded output, without the removed agents section", async () => {
   const noon = Date.parse("2026-11-09T12:00:00Z"), hour = 3600000, day = 24 * hour;
   const run = (id: number, hours: number): WorkflowRun => ({
     id,
@@ -58,22 +57,6 @@ Deno.test("snapshot bytes match retained original C# CI flow agents superseded o
     number: 22,
     items: [{ issue: 1, closed: true }, { issue: 2, closed: false }],
   }]);
-  const agents = buildAgents([
-    {
-      number: 10,
-      updatedAt: noon - 2 * hour,
-      commentTotal: 4,
-      commentBodies: [
-        "Tasks started: 2. Subagents started: 3.",
-        "task started=1",
-        "> Tasks started: 20.",
-        "Subagents started: nope",
-      ],
-      pullRequests: [{ number: 40, reviews: 2 }, { number: 40, reviews: 9 }],
-    },
-    { number: 11, updatedAt: noon, commentTotal: 1, commentBodies: ["No counts"], pullRequests: [] },
-    { number: 12, updatedAt: noon, commentTotal: 0, commentBodies: [], pullRequests: [] },
-  ]);
   const pair = (
     cancelledRunId: number,
     supersedingRunId: number,
@@ -105,7 +88,6 @@ Deno.test("snapshot bytes match retained original C# CI flow agents superseded o
     repository: "mgasca/calendar",
     ci: buildCi("ci.yml", runs, null, undefined, [1.25, 2.75]),
     flow,
-    agents,
     superseded,
   });
   const expected = await Deno.readTextFile(new URL("fixtures/snapshot-parity.json", import.meta.url));

@@ -7,7 +7,6 @@ import { parseIssues, parseJobs, parseRuns } from "../ci-timings/timings.ts";
 import { buildCi, currentVersion, queueSeconds, type Snapshot, timeString, writeSnapshot } from "./snapshot.ts";
 import { validateSnapshot } from "./snapshot-rules.ts";
 import { buildQuality, collectQuality } from "./quality.ts";
-import { buildAgents, collectAgents } from "./agents.ts";
 import { collectFlow } from "./flow.ts";
 import { collectSuperseded } from "./superseded.ts";
 import { collectE2e, type E2eSection } from "./e2e.ts";
@@ -181,7 +180,6 @@ export async function main(args: readonly string[], runner: GhRunner = gh): Prom
     ci: buildCi(workflow, sampled, pinned, undefined, queue),
     quality: buildQuality(workflow, await collectQuality(repository, workflow, qualityRuns, fetchedJobs, runner)),
     flow: await collectFlow(repository, now, runner),
-    agents: buildAgents(await collectAgents(repository, 100, runner)),
     superseded: await collectSuperseded(repository, workflow, 30, runner),
     e2e: await collectE2e(repository, undefined, undefined, runner),
   };
@@ -198,12 +196,8 @@ export async function main(args: readonly string[], runner: GhRunner = gh): Prom
   } else {
     await Deno.writeTextFile(output, json);
     console.log(`wrote ${output}: ${sampled.length} runs of ${workflow}, ${snapshot.ci.jobs.length} job and path rows`);
-    const quality = snapshot.quality as ReturnType<typeof buildQuality>,
-      agents = snapshot.agents as ReturnType<typeof buildAgents>;
+    const quality = snapshot.quality as ReturnType<typeof buildQuality>;
     console.log(`quality: ${quality.sample.runs} runs in scope, ${quality.sample.ignoredRuns} ignored`);
-    console.log(
-      `agents: ${agents.sample.scanned} issues scanned, ${agents.activity.issues} listed, ${agents.activity.withCounts} with count comments`,
-    );
     const e2e = snapshot.e2e as E2eSection;
     console.log(
       `e2e: ${e2e.sample.runs} completed runs of ${e2e.workflow} on main, ${

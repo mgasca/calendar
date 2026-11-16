@@ -15,6 +15,7 @@ pr:
   - https://github.com/mgasca/calendar/pull/620
   - https://github.com/mgasca/calendar/pull/622
   - https://github.com/mgasca/calendar/pull/631
+  - https://github.com/mgasca/calendar/pull/986
 adrs: ["0017", "0025", "0045", "0046", "0049"]
 ---
 
@@ -67,7 +68,7 @@ Agreed with the maintainer in a Claude Code session on 2026-11-09 and recorded o
 5. **Given** a number on the page, **when** I read it, **then** it states whether it is measured or inferred and gives its sample and window ([dashboard.test.ts](../../frontend/apps/docs/src/lib/dashboard.test.ts)).
 6. **Given** a job with too few runs, **when** the page shows its failure rate, **then** it is marked inconclusive, not shown as 0 % or 100 %. "Too few" is fewer than 20 trials; `main` and pull requests are separate tables. Data: [quality tests](../../tools/delivery-dashboard/tests/QualityTests.cs) (`Fewer_trials_than_the_rule_needs_are_inconclusive_with_no_rate_and_no_interval`, `An_inconclusive_row_with_a_rate_fails`). Page: [dashboard tests](../../frontend/apps/docs/src/lib/dashboard.test.ts) ("the quality page": `marks a job with too few trials inconclusive and shows no rate for it`).
 7. **Given** a metric breaches its threshold, **when** the daily workflow runs, **then** it opens or updates exactly one issue and opens no other alert. Thresholds and the one-issue-per-kind rule: [AlertTests.cs](../../tools/delivery-dashboard/tests/AlertTests.cs) (`Several_breaches_of_one_kind_open_exactly_one_issue`, `An_open_issue_with_the_title_is_commented_on_instead_of_a_second_one_opened`).
-8. **Given** an issue with no count comments, **when** the agent proxies are computed, **then** the issue appears with no cost data and does not fail the run. Data: [agent tests](../../tools/delivery-dashboard/tests/AgentTests.cs) (`An_issue_without_count_comments_is_listed_with_no_cost_data_and_does_not_fail`, `A_count_comment_with_an_unusable_number_is_malformed_and_contributes_nothing`). Page: [dashboard tests](../../frontend/apps/docs/src/lib/dashboard.test.ts) ("the agent activity page": `shows issues by number with links, and an issue without count comments as having no cost data`, `states that these are proxies, not token or money cost, and what is not covered`).
+8. *(Removed on 2026-11-16 with the agent activity page, #985; kept for the record.)* **Given** an issue with no count comments, **when** the agent proxies are computed, **then** the issue appears with no cost data and does not fail the run. Data: [agent tests](../../tools/delivery-dashboard/tests/AgentTests.cs) (`An_issue_without_count_comments_is_listed_with_no_cost_data_and_does_not_fail`, `A_count_comment_with_an_unusable_number_is_malformed_and_contributes_nothing`). Page: [dashboard tests](../../frontend/apps/docs/src/lib/dashboard.test.ts) ("the agent activity page": `shows issues by number with links, and an issue without count comments as having no cost data`, `states that these are proxies, not token or money cost, and what is not covered`).
 9. **Given** pull request runs that a newer push cancelled, **when** the snapshot and the CI-speed page are built (#618), **then** each week shows how many were superseded and how long the newer run waited, beside a control of runs that superseded nothing, labelled inferred (the pairing) and measured (the waits), and a week below the minimum shows no statistic. Data: [superseded tests](../../tools/delivery-dashboard/tests/SupersededTests.cs) (`Pairs_are_counted_and_timed_per_week_beside_the_control`, `A_run_cancelled_by_hand_before_the_newer_run_is_not_a_pair`, `Version_2_may_not_carry_the_section`). Page: [dashboard tests](../../frontend/apps/docs/src/lib/dashboard.test.ts) ("superseded runs": `shows the weeks with their control, and no statistic for a week below the minimum`).
 10. **Given** the change is complete, **when** I run `just check`, **then** it passes, including the architecture model entry for the new components. CI (the same checks as `just check`) passed on every delivering PR and on `main` at the merge of #620. `just docs architecture` validates the model entries added in #616.
 
@@ -106,6 +107,7 @@ Agreed with the maintainer in a Claude Code session on 2026-11-09 and recorded o
 | 6. Alerts and upkeep | #601 | #616, #622 (first run on `main` recorded, closes #601) |
 | Review findings on #607 | #613, #614 | #615 (pull request job names that `main` lacks are dropped), #617 (the jobs already fetched are reused) |
 | Count-comment line in the skill | #610 | #612 |
+| Agent activity page and `agents` section removed | #985 | #986 |
 
 The slices were delivered as stacked PRs and squash-merged on 2026-11-09. This card PR (#631) completes the story.
 
@@ -172,6 +174,8 @@ The slices were delivered as stacked PRs and squash-merged on 2026-11-09. This c
 
 ### Agent proxies section (#600)
 
+**Removed on 2026-11-16** (#985, #986) at the maintainer's request: the page, the collection, the count comments of the `issue-handover` skill and their tests are gone, and ADR-0049 is amended. Older snapshots keep their `agents` section, which both readers accept as an object, scan and ignore. The notes below record what was delivered.
+
 * **Data:** the optional `agents` section (`tools/delivery-dashboard/AgentSection.cs`, `AgentRules.cs`): per issue number, valid and malformed count comments, tasks and subagents started, comments, reviews on the pull requests that mention it, and those pull requests, with sums that the rules check. No logins, titles or comment text are read into the snapshot; a test feeds comments with a path, an e-mail address and a handle and checks that none of them reaches the file.
 * **Count comment shape:** the comments in the repository read `Tasks started: N. Subagents started: M.`, so the parser accepts that line anywhere in a comment, ignoring quoted lines. A whole number above 1000, a negative or a non-number makes the comment malformed (counted, contributes nothing). The skill states the line since #610.
 * **Coverage:** the 100 most recently updated issues, so older count comments are not seen, and the page says so; an issue without a count comment is listed with null totals. Maintainer's answer on #603: this coverage is acceptable. Question 2 on #608 asked whether to read more than 100 issues. It got no answer, so the recommendation shipped: read 100 issues, and let the history build up across the daily snapshots.
@@ -201,24 +205,21 @@ No changes. The calendar API is not touched.
 * **Known issues (no issue opened; open one when it hurts):**
   * The alert issue gets a comment every day a threshold stays crossed. This is noisy by design, like the CI trend check.
   * Thinning the data branch is a manual runbook step until the limit is near, which is years away.
-  * Count comments that quote the format with placeholders are read as malformed.
-  * Only the 100 most recently updated issues are read for the agent proxies.
   * The guard numbers are a proxy taken from a shared Tooling step.
 * **Follow-ups:**
   * #618: delivered in the CI-speed page; the first real daily run should confirm the number of GitHub calls it makes.
   * #892: the nightly E2E runs, on their own E2E flows page, in story [0069](0069-see-the-nightly-e2e-runs-on-the-delivery-dashboard.md) (snapshot schema version 4).
-  * Revisit triggers in ADR-0049: several repositories, local transcript aggregates, or data leaving the organisation.
+  * Revisit triggers in ADR-0049: several repositories, or data leaving the organisation (the transcript trigger lapsed with the agent page, #985).
 
 ## User guide
 
 ### See how delivery is going
 
-Open **Delivery dashboard** in the documentation site's sidebar. Its **Overview** links to the four pages:
+Open **Delivery dashboard** in the documentation site's sidebar. Its **Overview** links to the pages:
 
 * **CI speed:** for each CI job, the run count, minimum, median, p90 and maximum, set against the job's pinned baseline and threshold, with the trend verdict, the time runs wait in the queue, and, per week, the pull request runs a newer push cancelled with how long the newer run waited.
 * **Flow:** open pull requests and their age, pull requests waiting for a first review, lead time to `main`, time from issue to merge, open stacks and epic progress. Each metric is defined on the page.
 * **Quality:** how runs on `main` and on pull requests ended, the failure rate per job with its 95 % interval, and the delivery-guard step by day. Each count links to the public runs behind it.
-* **Agent activity:** for each issue, the tasks and subagents started (from count comments), the comments and reviews, and the pull requests that mention the issue. These are proxies, not token or money cost.
 
 Every number says whether it is **measured** (recorded by GitHub) or **inferred** (an estimate), and gives its sample and window. A sample that is too small reads **inconclusive** instead of showing a figure. The pages show numbers and links only, never titles or names. Pages with two or more daily snapshots also show a history.
 

@@ -58,7 +58,6 @@ export interface Snapshot {
   ci: CiSection;
   quality?: unknown;
   flow?: unknown;
-  agents?: unknown;
   superseded?: unknown;
   e2e?: unknown;
 }
@@ -144,7 +143,6 @@ export function writeSnapshot(snapshot: Snapshot): string {
     ci: snapshot.ci,
     ...(snapshot.quality !== undefined && snapshot.quality !== null ? { quality: snapshot.quality } : {}),
     ...(snapshot.flow !== undefined && snapshot.flow !== null ? { flow: snapshot.flow } : {}),
-    ...(snapshot.agents !== undefined && snapshot.agents !== null ? { agents: snapshot.agents } : {}),
     ...(snapshot.version >= 3 ? { superseded: snapshot.superseded ?? null } : {}),
     ...(snapshot.version >= 4 ? { e2e: snapshot.e2e ?? null } : {}),
   };

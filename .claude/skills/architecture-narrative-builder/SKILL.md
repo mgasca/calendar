@@ -52,6 +52,7 @@ Run this loop for each act. [references/act-guide.md](references/act-guide.md) l
 
 1. **Seed** the act's gaps in the ledger from the act guide, marking any the user's material already closes (with the source).
 2. **Ask** one AskUserQuestion batch of 1 to 4 questions about the most important open gaps. Every question has 2 to 4 concrete options drawn from what you know (an "Other" answer is always possible). Never ask about something the user already answered.
+   - **Without AskUserQuestion** (it is unavailable, or the user asked for plain text), ask the same batch in plain text with the same shape: numbered questions, each followed by 2 to 4 lettered concrete options (`a)`, `b)`, …) and a final lettered "other" option, then stop and wait. An open-ended question with no options is never allowed, in either form; if you cannot name options yet, the question is too broad, so split it or draw options from Act 1 and the ledger.
 3. **Record** each answer in the ledger at once: closed (with the answer, in the user's words), still open, or proposed as an assumption.
 4. **Follow up** on a weak answer in the next batch, naming what is missing:
    - an adjective without a number ("fast", "lots of users"): ask for a target, or what failure looks like;

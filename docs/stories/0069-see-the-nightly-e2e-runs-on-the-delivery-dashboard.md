@@ -6,6 +6,7 @@ pr:
   - https://github.com/mgasca/calendar/pull/965
   - https://github.com/mgasca/calendar/pull/967
   - https://github.com/mgasca/calendar/pull/975
+  - https://github.com/mgasca/calendar/pull/977
 adrs: ["0045", "0049", "0058", "0061"]
 ---
 
@@ -96,14 +97,14 @@ Version 4 adds the root field `e2e`. It is required from version 4 (`null` when 
 * Deno tests, using a stub `gh` runner, cover filtering (in progress, other branches, other triggers, duplicates), ordering, the cap, run times with and without a start time, the one collector call and its arguments, every rule, the privacy scan, and the version 1 to 4 compatibility.
 * Vitest tests of the docs reader and the page cover a failed latest run, a passing one, the summary and table, no completed run, `e2e: null`, a version 2 snapshot, and the reader's rules.
 * Negative control: the five new page and reader tests fail against the `dashboard.ts` on `main` and pass with this change. The new tool tests import `e2e.ts`, which does not exist on `main`.
-* The builder was also run once by hand on the real `gh run list` output for `e2e.yml` (three runs, 2026-11-14 and 2026-11-15) to confirm that GitHub returns `startedAt` and `updatedAt`. The first published version 4 snapshot, after merge, is the real-data check of the whole pipeline.
+* The builder was also run once by hand on the real `gh run list` output for `e2e.yml` (three runs, 2026-11-14 and 2026-11-15) to confirm that GitHub returns `startedAt` and `updatedAt`. The first published version 4 snapshot, after merge, was the real-data check of the whole pipeline (see the last item below).
 
 ### Lessons learned, known issues and follow-ups
 
 * **Run time spans re-runs:** `runSeconds` is the run's `updatedAt` minus its `startedAt`, and GitHub moves `updatedAt` when a run is re-run, so a re-run includes the gap between attempts. The page says so. Nightly runs are rarely re-run, and timing per attempt would need one job call per run.
 * **The failure issue is named, not linked by number:** the page links a GitHub search for its title, because this section reads no issues.
 * **Statistics are computed on the page:** the median, p90 and max of the runs that passed use the tool's nearest-rank rule (`tools/ci-timings/statistics.ts`) over at most 30 runs. The snapshot stores only the runs.
-* **First real snapshot:** check on the first scheduled `Dashboard snapshot` run after merge that the published file is version 4 and holds the nightly runs.
+* **First real snapshot (verified):** the `Dashboard snapshot` run dispatched by hand after merge, [run 43850396958](https://github.com/mgasca/calendar/actions/runs/43850396958) on 2026-11-16, passed all three jobs and published `snapshots/2026-11-16.json` on `dashboard-data` as version 4. Its E2E section holds three runs (2026-11-14 18:22 to 2026-11-15 11:01 UTC, one nightly and two by hand, all passed, in 220 s to 325 s), and the file passes the tool's `check` again. The scheduled run had not started that day, so it was dispatched by hand.
 
 ## User guide
 

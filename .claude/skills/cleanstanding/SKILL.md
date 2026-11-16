@@ -11,7 +11,7 @@ Check first, clean second, and never mix them: cleaning a session that still has
 
 ## 1. Establish what this session owns
 
-Build the list from the conversation, not from the machine: branches, worktrees, PRs, issues, PIDs, containers, volumes, ports and temp directories **this session created or started**. Anything else (the shared Compose project `calendar`, other worktrees, other people's PRs, processes you did not start) is not yours: report it if relevant, never touch it (AGENTS.md "Working on several changes at once").
+Build the list from the conversation, not from the machine: branches, worktrees, PRs, issues, PIDs, containers, volumes, ports and temp directories **this session created or started**. Anything else (the shared Compose project `calendar`, other worktrees, other sessions' PRs, processes you did not start) is not yours: never touch it (AGENTS.md "Working on several changes at once"), and never report it unless it blocks this session's own work, and then only in a 3a report.
 
 ## 2. Check for outstanding work
 
@@ -38,7 +38,7 @@ No preamble, no restating of finished work. Do not offer to clean up partially.
 
 ## 3b. Nothing is outstanding: clean up
 
-Clean only what step 1 listed as yours, and verify ownership of each item immediately before removing it (container name, volume, PID and its command line, branch's author and merged state). If ownership is uncertain, leave it and say so.
+Clean only what step 1 listed as yours, and verify ownership of each item immediately before removing it (container name, volume, PID and its command line, branch's author and merged state). If ownership is uncertain, leave it and report it as in 3a: the run is not clean.
 
 1. Stop background processes and watchers the session started (`kill <pid>` after checking `ps -p <pid> -o args=`); stop and remove the throwaway stack with the `run-calendar` skill's own teardown, never `just db down` or `just db reset` (those hit the shared project).
 2. Remove session worktrees whose branch is merged or fully pushed: `git worktree remove <path>` (no `--force`; a refusal means there is unsaved work, so go back to 3a). Delete the local branch only when merged to `origin/main` (`git branch -d`, not `-D`). Check the merge by content on `main`, since squash merges change commit identity.
@@ -46,10 +46,21 @@ Clean only what step 1 listed as yours, and verify ownership of each item immedi
 4. `git fetch --prune` so deleted remote branches drop from the local view.
 5. Never delete remote branches, close issues or PRs, or merge anything as part of cleanup unless the user asked for it in this session.
 
-Finish with a short summary: what was removed (one line each, grouped), what was deliberately left and why, and the closing statement `Clean: ready to archive`. If a cleanup step failed, say which and do not claim the session is clean.
+Then re-run the step 2 checks. If a cleanup step failed, a check could not run, or the re-check finds anything, the session is not clean: report it as in 3a, naming the failed or skipped step.
+
+## 4. Clean: say exactly one line
+
+When the re-check is clean, the whole reply to the user is exactly:
+
+```text
+clean and ready to archive
+```
+
+Nothing else, before or after: no list of what was removed or left, no check coverage, no counts, no state of other sessions, worktrees or PRs, and no narration between tool calls while the skill runs. Where the harness asks for a turn summary (the Code tab's next-step recap), it is the same line, with no question or buttons.
 
 ## Rules
 
-- Report what each check covered (command and tree), and say which did not run. Never write "nothing outstanding" from checks that were skipped.
+- In a 3a report, say what each check covered (command and tree) and which did not run. A skipped check makes the run not clean, so it is never hidden behind the one-line clean reply.
 - Re-run the outstanding check after cleanup that changed state, and before declaring the session clean.
+- Keep the user-visible text to the 3a report or the one clean line; work silently in between.
 - Do not post to GitHub from this skill.

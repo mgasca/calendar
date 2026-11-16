@@ -103,8 +103,8 @@ describe('reading snapshots', () => {
     ],
     [
       'an unknown version',
-      (valid) => valid.replace('"version": 3', '"version": 9'),
-      '$.version: must be 1 to 3',
+      (valid) => valid.replace('"version": 4', '"version": 9'),
+      '$.version: must be 1 to 4',
     ],
     [
       'a bad verdict',
@@ -588,7 +588,7 @@ describe('superseded runs (issue 618)', () => {
 
   it('rejects the section in version 2, a missing one in version 3 and bad sums', async () => {
     const text = await validText('2026-11-09.json');
-    const asV2 = text.replace('"version": 3', '"version": 2');
+    const asV2 = text.replace('"version": 4', '"version": 2');
     expect(() => parseSnapshot('a.json', asV2)).toThrow('before version 3');
     const json = JSON.parse(text) as Record<string, unknown>;
     delete json.superseded;
@@ -605,5 +605,107 @@ describe('superseded runs (issue 618)', () => {
     const json = JSON.parse(await validText('2026-11-09.json')) as Record<string, unknown>;
     json.superseded = null;
     expect(parseSnapshot('a.json', JSON.stringify(json)).superseded).toBeNull();
+  });
+});
+
+describe('E2E flows (story 0069, issue 892)', () => {
+  async function withE2e(change: (e2e: Record<string, unknown>) => void) {
+    const json = JSON.parse(await validText('2026-11-09.json')) as { e2e: Record<string, unknown> };
+    change(json.e2e);
+    return readDashboardData(await folder({ '2026-11-09.json': JSON.stringify(json) }));
+  }
+
+  it('shows a failed latest run as failed, with a link to the run and the failure issue', async () => {
+    const body = render('e2e', await present());
+    expect(body).toContain(':::caution[The latest run did not pass]');
+    expect(body).toContain(
+      'The nightly run of 2026-11-09 03:17 UTC ended as **failure**: [run 43583755717](https://github.com/mgasca/calendar/actions/runs/43583755717).',
+    );
+    expect(body).toContain('E2E flows: the nightly run failed on main');
+    expect(body).toContain(
+      '| 2026-11-09 03:17 UTC | nightly | <span class="dashboard-verdict dashboard-verdict-failed">failure</span> | 23 min 5 s | [43583755717](https://github.com/mgasca/calendar/actions/runs/43583755717) |',
+    );
+  });
+
+  it('summarises the sample and lists every run, linked, with its trigger and run time', async () => {
+    const body = render('e2e', await present());
+    expect(body).toContain(
+      'the newest 3 completed runs (at most 30), created 2026-11-07 03:17 UTC to 2026-11-09 03:17 UTC',
+    );
+    expect(body).toContain('| 3 | 1 | 67 % | 20 min 10 s | 20 min 10 s | 20 min 10 s |');
+    expect(body).toContain('| 2026-11-08 10:05 UTC | by hand | passed | 20 min 10 s |');
+    expect(body).toContain('| 2026-11-07 03:17 UTC | nightly | passed | not recorded |');
+    expect(body).toContain('**Measured**');
+  });
+
+  it('shows a passing latest run as passed', async () => {
+    const data = await withE2e((e2e) => {
+      const [newest] = e2e.runs as Record<string, unknown>[];
+      if (newest) newest.conclusion = 'success';
+    });
+    const body = render('e2e', data);
+    expect(body).toContain(':::tip[The latest run passed]');
+    expect(body).not.toContain(':::caution');
+    expect(body).toContain('| 3 | 0 | 100 % |');
+  });
+
+  it('says so, and shows no result, when nothing completed, nothing was sampled or the snapshot is older', async () => {
+    const empty = await withE2e((e2e) => {
+      e2e.runs = [];
+      e2e.sample = { runs: 0, cap: 30, window: null };
+    });
+    expect(render('e2e', empty)).toContain(':::note[No completed run]');
+    expect(render('e2e', empty)).not.toContain('## Recent runs');
+    const json = JSON.parse(await validText('2026-11-09.json')) as Record<string, unknown>;
+    json.e2e = null;
+    const unsampled = render(
+      'e2e',
+      await readDashboardData(await folder({ '2026-11-09.json': JSON.stringify(json) })),
+    );
+    expect(unsampled).toContain('did not sample the E2E runs');
+    const older = await readDashboardData(
+      await folder({ '2026-11-08.json': await validText('2026-11-08.json') }),
+    );
+    expect(render('e2e', older)).toContain('schema version below 4');
+    for (const body of [unsampled, render('e2e', older)]) {
+      expect(body).not.toContain('passed');
+      expect(body).not.toContain(':::caution');
+    }
+  });
+
+  it('rejects the section before version 4, a missing one in version 4 and a bad shape', async () => {
+    const text = await validText('2026-11-09.json');
+    expect(() => parseSnapshot('a.json', text.replace('"version": 4', '"version": 3'))).toThrow(
+      '$.e2e: field is not in the schema before version 4',
+    );
+    const json = JSON.parse(text) as Record<string, unknown>;
+    delete json.e2e;
+    expect(() => parseSnapshot('a.json', JSON.stringify(json))).toThrow('$.e2e: field is missing');
+    const cases: [string, string, string][] = [
+      ['"conclusion": "failure"', '"conclusion": "exploded"', '$.e2e.runs[0].conclusion'],
+      ['"event": "workflow_dispatch"', '"event": "pull_request"', '$.e2e.runs[1].event'],
+      ['"runs": 3,', '"runs": 4,', 'lists 3 runs, but sample.runs is 4'],
+      ['"id": 43500000002', '"id": 43583755717', '$.e2e.runs[1].id: each run must be listed once'],
+      [
+        '"createdAt": "2026-11-08T10:05:00Z"',
+        '"createdAt": "2026-11-10T10:05:00Z"',
+        'newest first',
+      ],
+      ['"runSeconds": 1210', '"runSeconds": -1', '$.e2e.runs[1].runSeconds'],
+      [
+        '"to": "2026-11-09T03:17:00Z"',
+        '"to": "2026-11-09T04:00:00Z"',
+        '$.e2e.sample.window: must run from',
+      ],
+      [
+        '"workflow": "e2e.yml"',
+        '"workflow": "someone@example.com"',
+        'looks like an e-mail address',
+      ],
+    ];
+    for (const [from, to, rule] of cases) {
+      expect(text).toContain(from);
+      expect(() => parseSnapshot('a.json', text.replace(from, to)), rule).toThrow(rule);
+    }
   });
 });

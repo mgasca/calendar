@@ -1,5 +1,5 @@
 {
-  "version": 3,
+  "version": 4,
   "date": "2026-11-09",
   "generatedAt": "2026-11-09T06:47:05Z",
   "repository": "mgasca/calendar",
@@ -601,6 +601,41 @@
         "pushGapMedianSeconds": 90,
         "controlRuns": 1,
         "controlWaitMedianSeconds": 7
+      }
+    ]
+  },
+  "e2e": {
+    "workflow": "e2e.yml",
+    "basis": "measured",
+    "sample": {
+      "runs": 3,
+      "cap": 30,
+      "window": {
+        "from": "2026-11-07T03:17:00Z",
+        "to": "2026-11-09T03:17:00Z"
+      }
+    },
+    "runs": [
+      {
+        "id": 43583755717,
+        "event": "schedule",
+        "createdAt": "2026-11-09T03:17:00Z",
+        "conclusion": "failure",
+        "runSeconds": 1385
+      },
+      {
+        "id": 43500000002,
+        "event": "workflow_dispatch",
+        "createdAt": "2026-11-08T10:05:00Z",
+        "conclusion": "success",
+        "runSeconds": 1210
+      },
+      {
+        "id": 43500000001,
+        "event": "schedule",
+        "createdAt": "2026-11-07T03:17:00Z",
+        "conclusion": "success",
+        "runSeconds": null
       }
     ]
   }

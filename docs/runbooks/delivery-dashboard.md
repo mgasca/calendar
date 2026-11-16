@@ -4,7 +4,7 @@ order: 5
 
 # Operate the delivery dashboard
 
-Use this runbook when the delivery dashboard on the documentation site looks stale, a docs build fails on a snapshot, a threshold issue opens, or the data branch nears its size limit. The decision is [ADR-0049](../decisions/0049-build-the-delivery-dashboard-from-daily-snapshots-on-the-docs-site.md) and the story is [0053](../stories/0053-show-how-fast-and-how-smoothly-changes-reach-main.md).
+Use this runbook when the delivery dashboard on the documentation site looks stale, a docs build fails on a snapshot, a threshold issue opens, the E2E flows page shows a failed night, or the data branch nears its size limit. The decision is [ADR-0049](../decisions/0049-build-the-delivery-dashboard-from-daily-snapshots-on-the-docs-site.md) and the story is [0053](../stories/0053-show-how-fast-and-how-smoothly-changes-reach-main.md); the E2E section is story [0069](../stories/0069-see-the-nightly-e2e-runs-on-the-delivery-dashboard.md).
 
 Terms used here:
 
@@ -41,6 +41,14 @@ Read the failed step in `gh run view <run-id> --log-failed`, then match it:
 | `Could not push the snapshot after three attempts` in `publish` | Another run pushed at the same time | Re-run the workflow; a second run on the same day replaces that day's file. |
 
 Dispatch a run by hand with `gh workflow run dashboard-snapshot.yml --ref main`. A run for a day that already has a snapshot replaces that file.
+
+## When the E2E flows page shows a failure
+
+The **E2E flows** page lists the newest completed runs of the nightly `E2E flows` workflow (`.github/workflows/e2e.yml`) on `main`, read once a day by the snapshot (story [0069](../stories/0069-see-the-nightly-e2e-runs-on-the-delivery-dashboard.md)). It adds no alert of its own: a failed run on `main` already comments on the one open `bug` issue "E2E flows: the nightly run failed on main", or opens it.
+
+1. Open the run from the page's link and download its report and traces from the run's artifacts.
+2. Follow the failure issue, which holds every failed night. Close it when a nightly run passes again.
+3. The page lags by up to a day: a run that ends after 06:47 UTC appears in the next snapshot. For the current state, run `gh run list --workflow e2e.yml --branch main --limit 5`.
 
 ## When the docs build fails on a snapshot
 

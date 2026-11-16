@@ -1,9 +1,10 @@
 ---
-status: planned
+status: implemented
 date: 2026-11-15
 issue: https://github.com/mgasca/calendar/issues/892
 pr:
   - https://github.com/mgasca/calendar/pull/965
+  - https://github.com/mgasca/calendar/pull/967
 adrs: ["0045", "0049", "0058", "0061"]
 ---
 
@@ -39,14 +40,14 @@ Story 0064 added the `E2E flows` workflow (`e2e.yml`, [ADR-0061](../decisions/00
 
 ### Acceptance criteria
 
-1. **Given** completed `e2e.yml` runs on `main`, **when** the daily snapshot is taken, **then** it holds an E2E section listing up to 30 of them, newest first, each with its trigger, creation time, conclusion and run time, and the run link is derived from the repository and the run id.
-2. **Given** an E2E section with a wrong shape (an unknown conclusion or trigger, runs out of order or duplicated, a run count that does not match the list or passes the cap, or a window that does not match the runs), **when** the snapshot is checked, **then** the check fails and names the field.
-3. **Given** an E2E section holding an e-mail address, a machine path, a session handle or a UUID, **when** the snapshot is checked, **then** the privacy rules reject it.
-4. **Given** snapshots of schema versions 1 to 3 without an E2E section, **when** they are checked by the tool and by the docs site, **then** they still pass. **Given** a version 4 snapshot without the field, or a version 3 snapshot with it, **then** the check fails.
-5. **Given** a snapshot whose latest E2E run failed, **when** the dashboard is built, **then** the E2E flows page shows that run as failed, with a link to the run.
-6. **Given** a snapshot whose latest E2E run succeeded, **when** the dashboard is built, **then** the page shows the summary and the table of recent runs, with the failures counted and each run linked.
-7. **Given** a snapshot older than version 4, or one whose E2E section is `null` or holds no runs, **when** the dashboard is built, **then** the page says that nothing was sampled and shows no result.
-8. **Given** the change is complete, **when** I run `just check`, **then** it passes.
+1. **Given** completed `e2e.yml` runs on `main`, **when** the daily snapshot is taken, **then** it holds an E2E section listing up to 30 of them, newest first, each with its trigger, creation time, conclusion and run time, and the run link is derived from the repository and the run id. Tests: [e2e_test.ts](../../tools/delivery-dashboard/tests/e2e_test.ts) (`E2E section lists completed main runs newest first with measured run times`, `E2E section keeps at most the cap and is empty, with no window, when nothing completed`, `E2E collector makes one run list call for e2e.yml on main`) and [cli_test.ts](../../tools/delivery-dashboard/tests/cli_test.ts) (`snapshot collector preserves job reuse, stable timestamps and validates before writing`, which now checks the version 4 E2E section end to end through the CLI). The link is checked on the page, in criterion 5.
+2. **Given** an E2E section with a wrong shape (an unknown conclusion or trigger, runs out of order or duplicated, a run count that does not match the list or passes the cap, or a window that does not match the runs), **when** the snapshot is checked, **then** the check fails and names the field. Tests: [e2e_test.ts](../../tools/delivery-dashboard/tests/e2e_test.ts) (`bad E2E values fail at their schema paths`) for the tool, and [dashboard.test.ts](../../frontend/apps/docs/src/lib/dashboard.test.ts) (`rejects the section before version 4, a missing one in version 4 and a bad shape`) for the docs reader.
+3. **Given** an E2E section holding an e-mail address, a machine path, a session handle or a UUID, **when** the snapshot is checked, **then** the privacy rules reject it. Tests: [e2e_test.ts](../../tools/delivery-dashboard/tests/e2e_test.ts) (`the privacy rules cover the E2E section`, for an e-mail address and a machine path) and the docs reader case above (an e-mail address). Handles and UUIDs go through the same scan of every string, which the existing tests in `snapshot_test.ts` and `dashboard.test.ts` cover; no E2E-specific test exists for them.
+4. **Given** snapshots of schema versions 1 to 3 without an E2E section, **when** they are checked by the tool and by the docs site, **then** they still pass. **Given** a version 4 snapshot without the field, or a version 3 snapshot with it, **then** the check fails. Tests: [e2e_test.ts](../../tools/delivery-dashboard/tests/e2e_test.ts) (`versions 1 to 3 cannot carry the E2E section and version 4 requires it`) and the docs reader case above. The shared fixtures (versions 1, 2 and 4) pass both readers: [snapshot_test.ts](../../tools/delivery-dashboard/tests/snapshot_test.ts) (`all docs-site valid fixtures pass the same schema and privacy rules`) and [dashboard.test.ts](../../frontend/apps/docs/src/lib/dashboard.test.ts) (`reads every valid fixture, oldest first, and shows a version 1 file without the new sections`).
+5. **Given** a snapshot whose latest E2E run failed, **when** the dashboard is built, **then** the E2E flows page shows that run as failed, with a link to the run. Test: [dashboard.test.ts](../../frontend/apps/docs/src/lib/dashboard.test.ts) (`shows a failed latest run as failed, with a link to the run and the failure issue`).
+6. **Given** a snapshot whose latest E2E run succeeded, **when** the dashboard is built, **then** the page shows the summary and the table of recent runs, with the failures counted and each run linked. Tests: [dashboard.test.ts](../../frontend/apps/docs/src/lib/dashboard.test.ts) (`shows a passing latest run as passed`, `summarises the sample and lists every run, linked, with its trigger and run time`).
+7. **Given** a snapshot older than version 4, or one whose E2E section is `null` or holds no runs, **when** the dashboard is built, **then** the page says that nothing was sampled and shows no result. Test: [dashboard.test.ts](../../frontend/apps/docs/src/lib/dashboard.test.ts) (`says so, and shows no result, when nothing completed, nothing was sampled or the snapshot is older`).
+8. **Given** the change is complete, **when** I run `just check`, **then** it passes. The delivery PR records which suites ran locally and which ran only in CI.
 
 ## Design decisions
 
@@ -70,39 +71,46 @@ No new ADR is expected.
 
 ## Implementation notes
 
-*Planned. This section is completed as the story is built.*
-
 ### Where things live
 
 | Area | Location |
 | --- | --- |
-| Collector, builder and rules of the E2E section | `tools/delivery-dashboard/e2e.ts` (new) |
-| Schema version and snapshot writer | `tools/delivery-dashboard/snapshot.ts`, `snapshot-rules.ts`, `delivery-dashboard.ts` |
-| Tool tests | `tools/delivery-dashboard/tests/` |
-| Docs reader and the E2E flows page | `frontend/apps/docs/src/lib/dashboard.ts` and `dashboard.test.ts` |
-| Runbook | `docs/runbooks/delivery-dashboard.md` |
+| Collector, builder and rules of the E2E section | `tools/delivery-dashboard/e2e.ts`: `collectE2e`, `buildE2e`, `validateE2e` |
+| Schema version 4 and the writer | `tools/delivery-dashboard/snapshot.ts` (`currentVersion`, `writeSnapshot`), `snapshot-rules.ts` (`validateSnapshot`), `delivery-dashboard.ts` (the `snapshot` command) |
+| Tool tests | `tools/delivery-dashboard/tests/e2e_test.ts`, plus `cli_test.ts` and `snapshot_test.ts` |
+| Docs reader and the **E2E flows** page | `frontend/apps/docs/src/lib/dashboard.ts` (`checkE2e`, `e2ePage`, the `e2e` entry of `dashboardPages`), with the `dashboard-verdict-failed` style in `src/styles/docs.css` |
+| Shared fixture | `frontend/apps/docs/src/lib/fixtures/dashboard/valid/snapshots/2026-11-09.json`, now version 4 with three E2E runs, the newest one failed |
+| Runbook | [Operate the delivery dashboard](../runbooks/delivery-dashboard.md), "When the E2E flows page shows a failure" |
 
 ### API
 
 No changes. The calendar API and its contract are untouched.
 
+### Snapshot schema
+
+Version 4 adds the root field `e2e`. It is required from version 4 (`null` when not sampled) and rejected before it, the same way version 3 added `superseded`. The section is `{ workflow, basis, sample: { runs, cap, window }, runs: [{ id, event, createdAt, conclusion, runSeconds }] }`, with the runs newest first. Files of versions 1 to 3 on `dashboard-data` are read unchanged, and the page treats them as not sampled. The `Dashboard snapshot` workflow is unchanged: `actions: read` already covers the extra `gh run list` call, and this section makes no per-job calls.
+
 ### Testing
 
-* Deno tests of the collector with a stub `gh` runner, of the builder, and of the rules: each wrong shape, the privacy rules, versions 1 to 3 without the section, and version 4 with and without it.
-* Vitest tests of the docs reader and of the page: a failed latest run, a successful one, an empty window, and a snapshot older than version 4.
+* Deno tests, using a stub `gh` runner, cover filtering (in progress, other branches, other triggers, duplicates), ordering, the cap, run times with and without a start time, the one collector call and its arguments, every rule, the privacy scan, and the version 1 to 4 compatibility.
+* Vitest tests of the docs reader and the page cover a failed latest run, a passing one, the summary and table, no completed run, `e2e: null`, a version 2 snapshot, and the reader's rules.
+* Negative control: the five new page and reader tests fail against the `dashboard.ts` on `main` and pass with this change. The new tool tests import `e2e.ts`, which does not exist on `main`.
+* The builder was also run once by hand on the real `gh run list` output for `e2e.yml` (three runs, 2026-11-14 and 2026-11-15) to confirm that GitHub returns `startedAt` and `updatedAt`. The first published version 4 snapshot, after merge, is the real-data check of the whole pipeline.
 
 ### Lessons learned, known issues and follow-ups
 
-* To be filled in on delivery.
+* **Run time spans re-runs:** `runSeconds` is the run's `updatedAt` minus its `startedAt`, and GitHub moves `updatedAt` when a run is re-run, so a re-run includes the gap between attempts. The page says so. Nightly runs are rarely re-run, and timing per attempt would need one job call per run.
+* **The failure issue is named, not linked by number:** the page links a GitHub search for its title, because this section reads no issues.
+* **Statistics are computed on the page:** the median, p90 and max of the runs that passed use the tool's nearest-rank rule (`tools/ci-timings/statistics.ts`) over at most 30 runs. The snapshot stores only the runs.
+* **First real snapshot:** check on the first scheduled `Dashboard snapshot` run after merge that the published file is version 4 and holds the nightly runs.
 
 ## User guide
-
-*Planned behaviour. This section is finalised when the story is implemented.*
 
 ### See how the nightly end-to-end runs are going
 
 1. Open the docs site and choose **Delivery dashboard**, then **E2E flows**.
-2. The top of the page shows the latest run. If it failed, a caution says so and links to the run, where the report, traces and screenshots are kept. The open issue "E2E flows: the nightly run failed on main" holds the failure history.
-3. Below it, the summary gives the number of runs and failures in the sample, the success rate and the run times of successful runs. The table lists each recent run with its date, whether it was nightly or started by hand, its result, its run time and a link.
+2. The top of the page shows the latest run. A note says **The latest run passed**. If the run failed, timed out or was cancelled, a caution says **The latest run did not pass**, names the result and links to the run, where the report, traces and screenshots are kept. The caution also links to the open issue "E2E flows: the nightly run failed on main", which holds the history of failed nights.
+3. Under **Summary**, a table gives the number of runs in the sample, how many did not pass, the success rate, and the median, p90 and longest run time of the runs that passed.
+4. Under **Recent runs**, each run shows its date and time, whether it ran **nightly** or was started **by hand**, its result (**passed**, or the result highlighted), its run time and a link.
 
-The page shows the latest daily snapshot, not the current minute: a run that ends after the morning snapshot appears the next day.
+The page shows the latest daily snapshot, not the current minute, so a run that ends after the morning snapshot appears the next day. A run that was re-run shows a run time that includes the wait between attempts. If the snapshot is older than this page, or holds no completed run, the page says so and shows no result.

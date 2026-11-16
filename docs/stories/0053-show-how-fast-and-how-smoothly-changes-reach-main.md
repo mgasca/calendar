@@ -206,6 +206,7 @@ No changes. The calendar API is not touched.
   * The guard numbers are a proxy taken from a shared Tooling step.
 * **Follow-ups:**
   * #618: delivered in the CI-speed page; the first real daily run should confirm the number of GitHub calls it makes.
+  * #892: the nightly E2E runs, on their own E2E flows page, in story [0069](0069-see-the-nightly-e2e-runs-on-the-delivery-dashboard.md) (snapshot schema version 4).
   * Revisit triggers in ADR-0049: several repositories, local transcript aggregates, or data leaving the organisation.
 
 ## User guide

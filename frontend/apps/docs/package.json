@@ -16,7 +16,7 @@
   },
   "dependencies": {
     "@astrojs/markdown-remark": "^7.3.8",
-    "@astrojs/starlight": "^0.42.10",
+    "@astrojs/starlight": "^0.42.11",
     "@calendar/theme": "workspace:*",
     "astro": "^7.4.11",
     "gray-matter": "^4.0.3",

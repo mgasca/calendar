@@ -279,6 +279,17 @@ Deno.test("all docs-site valid fixtures pass the same schema and privacy rules",
   }
   assert(files > 1);
 });
+Deno.test("a legacy agents section is accepted as an object, scanned, and never written (#985)", () => {
+  const base = JSON.parse(writeSnapshot(sample()));
+  assert(!("agents" in base));
+  assertEquals(validateSnapshot(JSON.stringify({ ...base, agents: { issues: [] } })), []);
+  assert(validateSnapshot(JSON.stringify({ ...base, agents: 3 })).includes("$.agents: must be an object"));
+  assert(
+    validateSnapshot(JSON.stringify({ ...base, agents: { note: "/home/hidden" } })).some((e) =>
+      e.includes("machine path")
+    ),
+  );
+});
 Deno.test("scheduled reporting workflow uses pinned Deno frozen permissions and unchanged publication split", async () => {
   const text = await Deno.readTextFile(new URL("../../../.github/workflows/dashboard-snapshot.yml", import.meta.url));
   assertStringIncludes(text, "denoland/setup-deno@");

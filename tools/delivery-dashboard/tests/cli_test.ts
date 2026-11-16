@@ -111,7 +111,6 @@ Deno.test("snapshot collector preserves job reuse, stable timestamps and validat
     if (query.includes("defaultBranchRef")) {
       return '{"data":{"repository":{"defaultBranchRef":{"name":"main"},"open":{"nodes":[]},"merged":{"nodes":[]},"epics":{"nodes":[]}}}}';
     }
-    if (query.includes("issues(first: $count")) return '{"data":{"repository":{"issues":{"nodes":[]}}}}';
     throw new Error("unexpected fixture request: " + args.join(" "));
   }
   try {

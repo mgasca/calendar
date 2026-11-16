@@ -5,13 +5,13 @@ import {
   checkTime,
   checkWindow,
   count,
+  isObject,
   keys,
   type Obj,
   oneOf,
   seconds,
 } from "./rules-helpers.ts";
 import { validateQuality } from "./quality-rules.ts";
-import { validateAgents } from "./agents.ts";
 import { validateFlow } from "./flow.ts";
 import { validateSuperseded } from "./superseded.ts";
 import { validateE2e } from "./e2e.ts";
@@ -187,7 +187,8 @@ export function validateSnapshot(json: string): string[] {
   if (keys(root.ci, "$.ci", v2 ? [...ciKeys, "trend", "queue"] : ciKeys, errors)) checkCi(root.ci, v2, errors);
   if ("flow" in root) validateFlow(root, errors);
   if ("quality" in root) validateQuality(root, errors);
-  if ("agents" in root) validateAgents(root, errors);
+  // A legacy section (#985): older files hold it, nothing writes or reads it any more; scanned like every string.
+  if ("agents" in root && !isObject(root.agents)) errors.push("$.agents: must be an object");
   if (version >= 3 && !("superseded" in root)) errors.push("$.superseded: field is missing (null when not sampled)");
   else if (version < 3 && "superseded" in root) {
     errors.push("$.superseded: field is not in the schema before version 3");

@@ -21,7 +21,7 @@ async function doctor(deno: string | null): Promise<{ code: number; output: stri
       curl: "echo 'curl 8.0.0 (fake)'",
       just: "echo just 99.0.0",
       gh:
-        `if [ "$1" = extension ]; then printf 'gh stack\\tgithub/gh-stack\\tv0.3.0\\n'; else echo 'gh version 2.0.0 (fake)'; fi`,
+        `if [ "$1" = extension ]; then printf 'gh stack\\tgithub/gh-stack\\tv0.3.0\\n'; else echo 'gh version 2.82.1 (fake)'; fi`,
       jq: "echo jq-1.7",
       git: "echo 'git version 2.36.0'",
     };

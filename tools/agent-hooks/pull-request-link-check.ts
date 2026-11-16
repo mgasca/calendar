@@ -70,7 +70,16 @@ function missing(body: string, subject: string, base: string | null): string | n
     base === "main" ? "" : stackLayer
   }`;
 }
-async function describe(s: Segment, probe: RepoProbe): Promise<string | null> {
+/** A PR body or base that a command is about to write, whether through `gh pr` or the REST API. */
+interface PrWrite {
+  create: boolean;
+  selector: string | null;
+  repo: string | null;
+  body: string | null;
+  hasNewBody: boolean;
+  target: string | undefined;
+}
+function cliWrite(s: Segment, probe: RepoProbe): PrWrite {
   const ts = s.tokens, options = new Map<string, string>(), positionals: string[] = [];
   for (let i = 3; i < ts.length;) {
     const t = ts[i]!, eq = t.indexOf("=");
@@ -86,16 +95,95 @@ async function describe(s: Segment, probe: RepoProbe): Promise<string | null> {
     }
   }
   const file = options.get("--body-file");
-  let body = options.get("--body") ?? (file !== undefined ? bodyFile(s, file, probe) : null);
-  const target = options.get("--base");
-  if (ts[2]! === "create") {
+  return {
+    create: ts[2]! === "create",
+    selector: positionals[0] ?? null,
+    repo: options.get("--repo") ?? null,
+    body: options.get("--body") ?? (file !== undefined ? bodyFile(s, file, probe) : null),
+    hasNewBody: options.has("--body") || options.has("--body-file"),
+    target: options.get("--base"),
+  };
+}
+const apiOptionsWithValue = [
+  "-f",
+  "--raw-field",
+  "-F",
+  "--field",
+  "-X",
+  "--method",
+  "-H",
+  "--header",
+  "-q",
+  "--jq",
+  "-t",
+  "--template",
+  "--input",
+  "--hostname",
+  "-p",
+  "--preview",
+  "--cache",
+];
+const pullsEndpoint = /^repos\/([^/]+)\/([^/]+)\/pulls(?:\/(\d+))?$/;
+/**
+ * `gh api` writing a PR body: a PATCH to `repos/<owner>/<repo>/pulls/<n>` or a POST to `repos/<owner>/<repo>/pulls`,
+ * the fallback for a `gh pr edit` that fails on an old gh (story 0070). Fields are `-f`/`--raw-field` (literal) and
+ * `-F`/`--field` (`@file` reads the file, `@-` stdin); a `--input` JSON request is not read.
+ */
+function apiWrite(s: Segment, probe: RepoProbe): PrWrite | null {
+  const ts = s.tokens, fields: [typed: boolean, field: string][] = [], positionals: string[] = [];
+  let method: string | null = null, input = false;
+  for (let i = 2; i < ts.length;) {
+    const t = ts[i]!;
+    let flag = t, value: string | null = null, words = 1;
+    if (t.startsWith("--") && t.includes("=")) {
+      flag = t.slice(0, t.indexOf("="));
+      value = t.slice(t.indexOf("=") + 1);
+    } else if (/^-[fFX]./.test(t)) {
+      flag = t.slice(0, 2);
+      value = t.slice(2);
+    } else if (apiOptionsWithValue.includes(t) && i + 1 < ts.length) {
+      value = ts[i + 1]!;
+      words = 2;
+    }
+    if (value !== null && ["-f", "--raw-field"].includes(flag)) fields.push([false, value]);
+    else if (value !== null && ["-F", "--field"].includes(flag)) fields.push([true, value]);
+    else if (value !== null && ["-X", "--method"].includes(flag)) method = value.toUpperCase();
+    else if (flag === "--input") input = true;
+    else if (!t.startsWith("-")) positionals.push(t);
+    i += words;
+  }
+  const endpoint = (positionals[0] ?? "").replace(/^\//, "").replace(/\?.*$/, "");
+  const match = endpoint.match(pullsEndpoint);
+  if (match === null) return null;
+  const [, owner, name, number] = match as unknown as [string, string, string, string | undefined];
+  method ??= fields.length || input ? "POST" : "GET";
+  if (method !== (number === undefined ? "POST" : "PATCH")) return null;
+  const last = (key: string) => fields.findLast(([, f]) => f.startsWith(key + "="));
+  const body = last("body"), base = last("base");
+  let text: string | null = null;
+  if (body !== undefined) {
+    const value = body[1].slice(5);
+    text = body[0] && value.startsWith("@") ? bodyFile(s, value.slice(1), probe) : value;
+  }
+  return {
+    create: number === undefined,
+    selector: number ?? null,
+    repo: owner.includes("{") || name.includes("{") ? null : `${owner}/${name}`,
+    body: text,
+    hasNewBody: body !== undefined,
+    target: base?.[1].slice(5),
+  };
+}
+async function describe(s: Segment, w: PrWrite, probe: RepoProbe): Promise<string | null> {
+  let body = w.body;
+  const target = w.target;
+  if (w.create) {
     if (body === null) return null;
     const base = target ?? await probe.defaultBranch(s.cwd) ?? "main";
     return missing(body, `this PR targets ${base}`, base);
   }
-  const hasNewBody = options.has("--body") || options.has("--body-file");
-  if ((target === undefined && !hasNewBody) || (hasNewBody && body === null)) return null;
-  const current = () => probe.pullRequestTextFor(s.cwd, positionals[0] ?? null, options.get("--repo") ?? null);
+  if ((target === undefined && !w.hasNewBody) || (w.hasNewBody && body === null)) return null;
+  const current = () => probe.pullRequestTextFor(s.cwd, w.selector, w.repo);
   if (target !== undefined) {
     body ??= (await current())?.body ?? null;
     return body === null ? null : missing(body, `this PR is being retargeted to ${target}`, target);
@@ -105,11 +193,15 @@ async function describe(s: Segment, probe: RepoProbe): Promise<string | null> {
 }
 export async function describePrLink(command: string, cwd: string, probe: RepoProbe): Promise<string | null> {
   for (const s of split(command, cwd)) {
-    if (
-      s.tokens.length < 3 || s.tokens[0]! !== "gh" || s.tokens[1]! !== "pr" ||
-      !["create", "edit"].includes(s.tokens[2]!)
-    ) continue;
-    const note = await describe(s, probe);
+    const ts = s.tokens;
+    if (ts.length < 3 || ts[0]! !== "gh") continue;
+    const write = ts[1]! === "pr" && ["create", "edit"].includes(ts[2]!)
+      ? cliWrite(s, probe)
+      : ts[1]! === "api"
+      ? apiWrite(s, probe)
+      : null;
+    if (write === null) continue;
+    const note = await describe(s, write, probe);
     if (note !== null) return note;
   }
   return null;
@@ -162,6 +254,6 @@ export async function describeStackPrs(command: string, cwd: string, probe: Repo
   return notes.length
     ? `${rule}: \`${name}\` published PR bodies that need an edit. ${
       notes.join("; ")
-    }. The bodies are already public, so edit each one in place with \`gh pr edit <n> --body-file <file>\`: \`Closes #N\` on the layer that completes an issue, \`Refs #N\` on the others, and repository-relative paths and public links instead of private details (AGENTS.md: public GitHub posts).${stackLayer}`
+    }. The bodies are already public, so edit each one in place with \`gh pr edit <n> --body-file <file>\` (on a gh older than 2.82.1, where it fails on the removed Projects (classic) fields, \`gh api -X PATCH repos/<owner>/<repo>/pulls/<n> -F body=@<file>\`, which these hooks check the same way): \`Closes #N\` on the layer that completes an issue, \`Refs #N\` on the others, and repository-relative paths and public links instead of private details (AGENTS.md: public GitHub posts).${stackLayer}`
     : null;
 }

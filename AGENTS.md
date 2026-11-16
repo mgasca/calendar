@@ -50,7 +50,7 @@ Guidance for AI coding agents (Claude Code, Codex, Cursor, …) working in this 
 
 ## Public GitHub posts
 
-Before posting an issue, PR or comment, check the rendered text for private session/task/subagent handles and absolute machine paths; use repository-relative paths and public issue/PR links *(hook)*. If a disclosure slips through, edit the post in place. Images for a post go on the `screenshots` branch, one directory per issue or PR number, linked by commit (the `github-screenshots` skill). Issue-driven handovers (watching an issue and its PRs, questions as PR comments, resume and close-out) are opt-in via the `issue-handover` skill.
+Before posting an issue, PR or comment, check the rendered text for private session/task/subagent handles and absolute machine paths; use repository-relative paths and public issue/PR links *(hook)*. If a disclosure slips through, edit the post in place: `gh pr edit <n> --body-file <file>` needs `gh` 2.82.1 or newer (`just doctor`), and on an older one `gh api -X PATCH repos/<owner>/<repo>/pulls/<n> -F body=@<file>` does the same and is checked the same way *(hook)*. Images for a post go on the `screenshots` branch, one directory per issue or PR number, linked by commit (the `github-screenshots` skill). Issue-driven handovers (watching an issue and its PRs, questions as PR comments, resume and close-out) are opt-in via the `issue-handover` skill.
 
 ## graphify
 

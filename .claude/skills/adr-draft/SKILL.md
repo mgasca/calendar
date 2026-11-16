@@ -188,7 +188,7 @@ The PR body has:
 
 Do not merge the PR. The user decides when to merge.
 
-If `gh pr edit` fails on an old `gh` (Projects-classic error), use `gh api -X PATCH repos/<owner>/<repo>/pulls/<n> -f title=… -F body=@file`.
+If `gh pr edit` fails on an old `gh` (Projects-classic error; `just doctor` wants 2.82.1 or newer), use `gh api -X PATCH repos/<owner>/<repo>/pulls/<n> -f title=… -F body=@file`. The agent hooks check that body as they check `gh pr edit`.
 
 Then tell the user, in plain language:
 

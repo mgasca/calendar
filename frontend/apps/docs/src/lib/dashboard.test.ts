@@ -55,6 +55,15 @@ function render(slug: string, data: DashboardData) {
   return page.render(data);
 }
 
+/** The lines of one `## ` section of a rendered page, without its heading. */
+function section(body: string, heading: string) {
+  const lines = body.split('\n');
+  const start = lines.indexOf(`## ${heading}`);
+  if (start < 0) throw new Error(`No section ${heading}`);
+  const end = lines.findIndex((line, index) => index > start && line.startsWith('## '));
+  return lines.slice(start + 1, end < 0 ? undefined : end);
+}
+
 describe('reading snapshots', () => {
   it('reads every valid fixture, oldest first, and shows a version 1 file without the new sections', async () => {
     const data = await present();
@@ -178,8 +187,10 @@ describe('escaping', () => {
     const rows = body.split('\n').filter((line) => line.includes('&lt;b&gt;site'));
     expect(rows.length).toBeGreaterThan(0);
     const cells = (row: string) => row.split(/(?<!\\)\|/).length;
-    const backend = body.split('\n').find((line) => line.startsWith('| Backend |')) ?? '';
-    expect(cells(rows[0] ?? '')).toBe(cells(backend));
+    const runTimes = section(body, 'Run times per job and path');
+    const hostile = runTimes.find((line) => line.includes('&lt;b&gt;site')) ?? '';
+    const backend = runTimes.find((line) => line.startsWith('| Backend |')) ?? '';
+    expect(cells(hostile)).toBe(cells(backend));
   });
 });
 
@@ -188,7 +199,9 @@ describe('the CI-speed page', () => {
     const body = render('ci-speed', await present());
     expect(body).toContain('Snapshot of 2026-11-09');
     expect(body).toContain('**measured**');
-    const backend = body.split('\n').find((line) => line.startsWith('| Backend |')) ?? '';
+    const backend =
+      section(body, 'Run times per job and path').find((line) => line.startsWith('| Backend |')) ??
+      '';
     for (const part of [
       'check',
       '30',
@@ -206,7 +219,7 @@ describe('the CI-speed page', () => {
 
   it('puts the trend verdict second, after the job, and keeps every row in step with the header', async () => {
     const body = render('ci-speed', await present());
-    const lines = body.split('\n');
+    const lines = section(body, 'Run times per job and path');
     const header = lines.find((line) => line.startsWith('| Job |')) ?? '';
     const cells = (line: string) =>
       line
@@ -252,6 +265,23 @@ describe('the CI-speed page', () => {
     const body = render('ci-speed', await present());
     expect(body).toContain('29 of the 30 sampled runs');
     expect(body).toContain('2026-11-07 09:00 UTC to 2026-11-09 05:30 UTC');
+  });
+
+  it('shows the history of the median first, above the run times per job and path', async () => {
+    for (const data of [
+      await present(),
+      await readDashboardData(
+        await folder({ '2026-11-09.json': await validText('2026-11-09.json') }),
+      ),
+    ]) {
+      const headings = render('ci-speed', data)
+        .split('\n')
+        .filter((line) => line.startsWith('## '));
+      expect(headings.slice(0, 2)).toEqual([
+        '## History of the median',
+        '## Run times per job and path',
+      ]);
+    }
   });
 
   it('draws the history from the daily files and needs two snapshots for it', async () => {

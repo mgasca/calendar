@@ -1004,9 +1004,40 @@ function ciSpeed(data: DashboardData): string {
     '',
     `Baselines, thresholds and verdicts are those of [ADR-0045](${adr45}); the page and the gate read the same pinned baseline. The decision for this dashboard is [ADR-0049](${adr49}) and the story is [0053](${story}).`,
     '',
-    '## Run times per job and path',
-    '',
   );
+  const recent = data.snapshots.slice(-historyLength);
+  lines.push('## History of the median', '');
+  if (recent.length < 2) {
+    lines.push(
+      `Only ${recent.length} snapshot${recent.length === 1 ? '' : 's'} so far (${recent.map((s) => s.date).join(', ')}): a history needs at least two.`,
+    );
+  } else {
+    lines.push(
+      `**Measured**, the median of each job and path in the last ${recent.length} daily snapshots (${day(recent[0]?.generatedAt ?? '')} to ${day(recent.at(-1)?.generatedAt ?? '')}). ` +
+        'Consecutive snapshots overlap (each samples the newest runs), so a point is a rolling median, not an independent measurement.',
+      '',
+      table(
+        ['Job', 'Path', 'Snapshots', 'First', 'Latest', 'Change', 'Median over time'],
+        history(recent).map((series) => {
+          const first = series.medians[0] ?? 0;
+          const last = series.medians.at(-1) ?? 0;
+          return [
+            escapeText(series.job),
+            series.path,
+            String(series.medians.length),
+            formatSeconds(first),
+            formatSeconds(last),
+            signed(last - first),
+            sparkline(
+              series.medians,
+              `Median from ${formatSeconds(first)} to ${formatSeconds(last)} over ${series.medians.length} snapshots`,
+            ),
+          ];
+        }),
+      ),
+    );
+  }
+  lines.push('', '## Run times per job and path', '');
   const rows = ci.jobs.map((row) => {
     const [verdict, shift] = verdictCells(row, ci.trend);
     return [
@@ -1072,38 +1103,6 @@ function ciSpeed(data: DashboardData): string {
     );
   }
   lines.push('', ...supersededBlock(latest.superseded, latest.version));
-  const recent = data.snapshots.slice(-historyLength);
-  lines.push('', '## History of the median', '');
-  if (recent.length < 2) {
-    lines.push(
-      `Only ${recent.length} snapshot${recent.length === 1 ? '' : 's'} so far (${recent.map((s) => s.date).join(', ')}): a history needs at least two.`,
-    );
-  } else {
-    lines.push(
-      `**Measured**, the median of each job and path in the last ${recent.length} daily snapshots (${day(recent[0]?.generatedAt ?? '')} to ${day(recent.at(-1)?.generatedAt ?? '')}). ` +
-        'Consecutive snapshots overlap (each samples the newest runs), so a point is a rolling median, not an independent measurement.',
-      '',
-      table(
-        ['Job', 'Path', 'Snapshots', 'First', 'Latest', 'Change', 'Median over time'],
-        history(recent).map((series) => {
-          const first = series.medians[0] ?? 0;
-          const last = series.medians.at(-1) ?? 0;
-          return [
-            escapeText(series.job),
-            series.path,
-            String(series.medians.length),
-            formatSeconds(first),
-            formatSeconds(last),
-            signed(last - first),
-            sparkline(
-              series.medians,
-              `Median from ${formatSeconds(first)} to ${formatSeconds(last)} over ${series.medians.length} snapshots`,
-            ),
-          ];
-        }),
-      ),
-    );
-  }
   return lines.join('\n');
 }
 

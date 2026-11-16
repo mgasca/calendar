@@ -15,7 +15,7 @@ pr:
   - https://github.com/mgasca/calendar/pull/620
   - https://github.com/mgasca/calendar/pull/622
   - https://github.com/mgasca/calendar/pull/631
-  - https://github.com/mgasca/calendar/pull/986
+  - https://github.com/mgasca/calendar/pull/989
 adrs: ["0017", "0025", "0045", "0046", "0049"]
 ---
 
@@ -107,7 +107,7 @@ Agreed with the maintainer in a Claude Code session on 2026-11-09 and recorded o
 | 6. Alerts and upkeep | #601 | #616, #622 (first run on `main` recorded, closes #601) |
 | Review findings on #607 | #613, #614 | #615 (pull request job names that `main` lacks are dropped), #617 (the jobs already fetched are reused) |
 | Count-comment line in the skill | #610 | #612 |
-| Agent activity page and `agents` section removed | #985 | #986 |
+| Agent activity page and `agents` section removed | #985 | #989 |
 
 The slices were delivered as stacked PRs and squash-merged on 2026-11-09. This card PR (#631) completes the story.
 
@@ -174,7 +174,7 @@ The slices were delivered as stacked PRs and squash-merged on 2026-11-09. This c
 
 ### Agent proxies section (#600)
 
-**Removed on 2026-11-16** (#985, #986) at the maintainer's request: the page, the collection, the count comments of the `issue-handover` skill and their tests are gone, and ADR-0049 is amended. Older snapshots keep their `agents` section, which both readers accept as an object, scan and ignore. The notes below record what was delivered.
+**Removed on 2026-11-16** (#985, #989) at the maintainer's request: the page, the collection, the count comments of the `issue-handover` skill and their tests are gone, and ADR-0049 is amended. Older snapshots keep their `agents` section, which both readers accept as an object, scan and ignore. The notes below record what was delivered.
 
 * **Data:** the optional `agents` section (`tools/delivery-dashboard/AgentSection.cs`, `AgentRules.cs`): per issue number, valid and malformed count comments, tasks and subagents started, comments, reviews on the pull requests that mention it, and those pull requests, with sums that the rules check. No logins, titles or comment text are read into the snapshot; a test feeds comments with a path, an e-mail address and a handle and checks that none of them reaches the file.
 * **Count comment shape:** the comments in the repository read `Tasks started: N. Subagents started: M.`, so the parser accepts that line anywhere in a comment, ignoring quoted lines. A whole number above 1000, a negative or a non-number makes the comment malformed (counted, contributes nothing). The skill states the line since #610.

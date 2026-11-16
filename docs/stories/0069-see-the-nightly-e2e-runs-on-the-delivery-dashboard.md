@@ -26,7 +26,7 @@ Story 0064 added the `E2E flows` workflow (`e2e.yml`, [ADR-0061](../decisions/00
 
 * **An E2E section in the snapshot:** each snapshot holds the newest completed runs of `e2e.yml` on `main`, both nightly and on-demand, up to 30. For each run it records the trigger, the time it was created, its conclusion and its run time. The run time is measured from the run starting to it finishing, or left empty when GitHub reports no start time.
 * **Checked like every other section:** the snapshot tool and the docs site both check the section's shape, conclusions, ordering, counts and window. The existing privacy rules (no machine paths, handles, UUIDs or e-mail addresses) cover it too. A snapshot that breaks a rule is neither published nor rendered.
-* **A new schema version that keeps old files valid:** the section arrives with snapshot schema version 4, required from that version (`null` when it was not sampled) and not allowed before it. Snapshots of versions 1 to 3 already on `dashboard-data` keep validating and rendering unchanged (proposed; mirrors how version 3 added the superseded section).
+* **A new schema version that keeps old files valid:** the section arrives with snapshot schema version 4, required from that version (`null` when it was not sampled) and not allowed before it. Snapshots of versions 1 to 3 already on `dashboard-data` keep validating and rendering unchanged, the way version 3 added the superseded section. The product owner accepted this design on #892 (2026-11-16).
 * **An "E2E flows" dashboard page:** it shows the latest run's result, and a failed latest run stands out with a link to the run. Below that come a summary of the sample (runs, failures, success rate, and the median, p90 and max run time of successful runs) and a table of the recent runs, each with its date, trigger, result, run time and run link. The page names the failure issue by its title, and every number says whether it is measured and over which window.
 * **Honest empty states:** a snapshot older than version 4, one with no E2E section, and a window with no completed run each say so on the page. None of them implies a result.
 
@@ -64,7 +64,7 @@ No new ADR is expected.
 
 ### Other decisions (not ADR-worthy)
 
-* **The section's own page, not a block on "CI speed":** E2E runs are a separate workflow with a different cadence (proposed; question 2 on #892).
+* **The section's own page, not a block on "CI speed":** E2E runs are a separate workflow with a different cadence. The product owner chose this on 2026-11-16 (question 2 on #965), and also chose a new card over an amendment to story 0053 (question 1).
 * **Whole runs, from one API call:** the run list holds everything the page needs (conclusion, creation, start and update times), so the snapshot makes no per-job calls. The run time is wall time from start to finish, so it includes any wait between jobs.
 * **A link derived, not stored:** the snapshot stores the run id, and the page builds `https://github.com/<repository>/actions/runs/<id>`. The snapshot then holds no free-form URL to check.
 * **Completed runs only:** a run still in progress at snapshot time has no conclusion yet, so it appears in the next snapshot.

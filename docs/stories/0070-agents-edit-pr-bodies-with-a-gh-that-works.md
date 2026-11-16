@@ -1,5 +1,5 @@
 ---
-status: in-progress
+status: implemented
 date: 2026-11-16
 issue: https://github.com/mgasca/calendar/issues/964
 pr:
@@ -46,7 +46,7 @@ The prerequisites table in the root `README.md` lists `gh` with no version, and 
 
 1. **Given** a `gh` older than the minimum on the `PATH`, **when** I run `just doctor`, **then** it fails, naming the version it found, the minimum, and GitHub's apt repository as the install route. [environment_test.ts](../../tools/doctor/tests/environment_test.ts) (`doctor needs a gh without the Projects (classic) failure: 2.46.0`, `2.82.0`, `no version`).
 2. **Given** a `gh` at or above the minimum, **when** I run `just doctor`, **then** the `gh` line passes and shows the version. [environment_test.ts](../../tools/doctor/tests/environment_test.ts) (`doctor needs a gh without the Projects (classic) failure: 2.82.1`, `2.100.0`).
-3. **Given** `gh` at the minimum version, **when** I run `gh pr edit <n> --body-file <file>` and `gh issue view <n>` against this repository, **then** both succeed. *Not yet checked:* running a downloaded 2.82.1 against the repository with the maintainer's credentials needs the maintainer's go-ahead, so this stays open until it has been run by hand.
+3. **Given** `gh` at the minimum version, **when** I run `gh pr edit <n> --body-file <file>` and `gh issue view <n>` against this repository, **then** both succeed. Checked by hand on 2026-11-16 with the official 2.82.1 release binary (checksum verified) against this repository: `gh issue view 964`, `gh pr view 988` and `gh pr edit 988 --body-file <file>` all exited 0, and the edit left the body as it was. In the same run, the installed 2.46.0 failed `gh pr edit 988` with the Projects (classic) error.
 4. **Given** a `gh stack submit` or `gh stack link` that leaves a layer without `Closes #N` or `Refs #N`, **when** the link check reminds me, **then** the reminder names both `gh pr edit <n> --body-file <file>` and the `gh api -X PATCH … -F body=@<file>` fallback. [rest-pr-links_test.ts](../../tools/agent-hooks/tests/rest-pr-links_test.ts) (`The stack note names the REST fallback next to gh pr edit`).
 5. **Given** `gh api -X PATCH repos/<owner>/<repo>/pulls/<n> -F body=@<file>`, where the file has neither `Closes #N` nor `Refs #N`, **when** the command runs, **then** the link check gives the same reminder as `gh pr edit` would for that PR and base. [rest-pr-links_test.ts](../../tools/agent-hooks/tests/rest-pr-links_test.ts) (`A REST PATCH of a PR body gets the reminder gh pr edit gets`, `Every way of passing a PATCH body is read`, `A PATCH on a stack layer adds the native-stack sentence`, `A PATCH that retargets reads the current body, as gh pr edit --base does`).
 6. **Given** the same PATCH with a body that carries `Closes #N` or `Refs #N`, **when** the command runs, **then** no reminder appears. [rest-pr-links_test.ts](../../tools/agent-hooks/tests/rest-pr-links_test.ts) (`A PATCH body with Closes or Refs gets no reminder`).
@@ -99,7 +99,9 @@ No changes.
 
 ### Lessons learned, known issues and follow-ups
 
-* **Which release fixes what:** 2.73.0 added Projects (classic) feature detection to `gh pr view`, `create` and `edit`; 2.82.1 fixed the last `gh pr edit` path (cli/cli#11987). The release notes don't name a fix for `gh issue view` without `--json`, hence the by-hand check of criterion 3.
+* **Which release fixes what:** 2.73.0 added Projects (classic) feature detection to `gh pr view`, `create` and `edit`; 2.82.1 fixed the last `gh pr edit` path (cli/cli#11987). The release notes don't name a fix for `gh issue view` without `--json`, so criterion 3 was checked by hand: it works on 2.82.1.
+* **Open questions on #988** (the minimum version, and `--input` bodies) were delivered with the recommended answers: 2.82.1, and no `--input` parsing.
+* **Side finding:** `gh stack submit` rebased and force-pushed the stack's pushed layers while it opened this story's delivery PR (#992).
 * **A POST to `pulls/<n>`** (fields without `-X PATCH`) is not a PR write: GitHub rejects it, so the link check stays silent.
 * **`--input` JSON** stays out of scope, as agreed. The bash guard still reads it for private details.
 

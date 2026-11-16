@@ -91,6 +91,11 @@ jobs:
       - uses: extractions/setup-just@53165ef7e734c5c07cb06b3c8e7b647c5aa16db3 # v4.0.0
         with:
           just-version: ${{ steps.versions.outputs.just }}
+      # `just e2e up` chooses its port slot with tools/e2e-slot, a Deno tool (#878); without Deno it exits 127 (#980).
+      - uses: denoland/setup-deno@22d081ff2d3a40755e97629de92e3bcbfa7cf2ed # v2.0.5
+        with:
+          deno-version-file: .deno-version
+          cache: true
       # Chromium is downloaded once per Playwright release; its system libraries come from apt on every run, which the
       # cache cannot hold.
       - name: Cache Playwright's Chromium

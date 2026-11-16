@@ -4,7 +4,6 @@
 use calendar_infrastructure::connection::{self, ConnectionConfig, ConnectionError};
 use rcgen::{BasicConstraints, CertificateParams, DnType, IsCa, Issuer, KeyPair, KeyUsagePurpose};
 use testcontainers_modules::postgres::Postgres;
-use testcontainers_modules::testcontainers::runners::AsyncRunner;
 use testcontainers_modules::testcontainers::{CopyTargetOptions, ImageExt};
 
 /// Runs during the image's first start, as the postgres user: installs the certificate and turns TLS on for the
@@ -66,19 +65,18 @@ async fn ssl_modes_encrypt_and_verify_as_named() {
   let authority_file = authority_file.display();
 
   let (_, tag) = calendar_testing::repo_files::postgres_image();
-  let container = Postgres::default()
-    .with_password("tls-test-password")
-    .with_tag(tag)
-    .with_env_var("TLS_CERTIFICATE", certificates.server)
-    .with_env_var("TLS_KEY", certificates.server_key)
-    .with_copy_to(
-      CopyTargetOptions::new("/docker-entrypoint-initdb.d/00-tls.sh").with_mode(0o755),
-      ENABLE_TLS.as_bytes().to_vec(),
-    )
-    .start()
-    .await
-    .unwrap();
-  let port = container.get_host_port_ipv4(5432).await.unwrap();
+  let (_container, port) = calendar_testing::start_postgres(|| {
+    Postgres::default()
+      .with_password("tls-test-password")
+      .with_tag(tag.clone())
+      .with_env_var("TLS_CERTIFICATE", certificates.server.clone())
+      .with_env_var("TLS_KEY", certificates.server_key.clone())
+      .with_copy_to(
+        CopyTargetOptions::new("/docker-entrypoint-initdb.d/00-tls.sh").with_mode(0o755),
+        ENABLE_TLS.as_bytes().to_vec(),
+      )
+  })
+  .await;
   let by_name = format!("Host=localhost;Port={port};Database=postgres;Username=postgres;Password=tls-test-password");
   let by_address = by_name.replace("Host=localhost", "Host=127.0.0.1");
 

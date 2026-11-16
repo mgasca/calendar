@@ -5,8 +5,10 @@
 
 pub mod repo_files;
 
+mod container;
 mod postgres;
 mod readiness;
 
+pub use container::{free_port, publishable_ports, start_postgres};
 pub use postgres::{MAX_DATABASES, MIGRATED_DATABASE, TestDatabase};
 pub use readiness::{CONTAINER_READY_WITHIN, LastAttempt, NotAccepting, is_not_ready_yet, wait_until_accepting};

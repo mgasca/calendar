@@ -13,7 +13,7 @@ RUN pnpm --filter @calendar/web build
 
 # The Rust toolchain is the one backend/rust-toolchain.toml pins: rustup reads the file, so when this image is
 # behind or ahead of the pin it installs the pinned toolchain instead of building with its own.
-FROM rust:1.99.1-slim-trixie@sha256:f6c4a35d21dbb3c89d7a8d056c193e94fc09037f2b58dd858b09c39a47dd02d7 AS build
+FROM rust:1.100.0-slim-trixie@sha256:e9d95b74296f7126a83ae3d041aeaba1ff4c478f13abc5cc034fcf7c131c3d4a AS build
 WORKDIR /src/backend
 COPY backend/rust-toolchain.toml ./
 RUN rustup toolchain install

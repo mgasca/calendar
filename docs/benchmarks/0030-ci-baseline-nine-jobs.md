@@ -1,5 +1,5 @@
 ---
-subject: "The pinned run-time baseline re-measured for nine jobs on both paths after the first gated week, with the first week's false failures (ADR-0045)"
+subject: "The pinned run-time baseline re-measured for nine jobs on both paths after the first gated week, with the false failures of the first week (ADR-0045)"
 harness: "tools/ci-timings/ci-timings.ts"
 ---
 
@@ -134,10 +134,16 @@ Not re-measured: the gate and its step are unchanged. Record 0014's +3 s at the 
 - **Measured: the rate is far above the budget.** 6 of 83 held-out runs (7.2 %; upper bound 13.8 %) would fail with no regression the author could remove, five of them Container image, against a budget of 1 %.
 - **Measured: the Container image failures are in one step.** The Buildx build took 188–214 s on the slow runs against 57 s on a normal run.
 - **Decided by the maintainer on #421:** record this as it is; constants and method are unchanged. The remedies to weigh at the next review are a per-job treatment of Container image (a bimodal job gets a wider bound or its own handling), a recalibrated `z`, or a slow-runner rule (an ADR-0045 amendment).
+- **Where the new thresholds are loose, read from the file (measured ratios, inferred consequences).**
+  - **Backend on the publication path** has a threshold of 3:16, 1.75 times its 1:52 median, against 2:22 (1.21 times) on the check path, although Backend does the same work on both. The publication sample has a wider spread (log-MAD 0.102 against 0.035) and a 4:31 outlier. A Backend slowdown from 1:52 to 3:15 passes on the publication path, which most PR runs take, and fails on the check path.
+  - **Container image** has thresholds of 3:18 (2.15 times its median) on the publication path and 2:10 (1.57 times) on the check path, because the job is bimodal.
+  - **Frontend** is 31 % slower on the check path (0:52 to 1:08) and 23 % on the publication path (0:52 to 1:04) than in record 0017, and the thresholds follow (publication 1:30 to 2:01). **The cause was not investigated**, so this re-pin accepts it as normal.
+  - **The four short jobs** (ADR conventions, Narratives, Changes, Flow binding) are bounded by the 15 s floor, not by their spread, so a slowdown of up to about 15 s passes; the trend check is their backstop.
 - **Not measured:** the nights (18Z–08Z) in both baselines; the real regressions among the 15 first-week runs that never passed (it needs each PR's diff); whether a faster runner explains the 22 false failures; how many more Container image cache misses the gate will see.
 
 ## Reconsider when
 
+- Someone finds what moved Frontend's median up between record 0017 and #889, or Backend's publication-path spread, and one of them turns out to be a regression rather than the new normal.
 - Container image keeps failing the gate on pull requests that change dependencies or source layers: weigh a wider bound or its own handling for it (a change of constants or method, so a record or an amendment).
 - The next week of gated runs shows false failures above the 1 % budget, in particular at hours this baseline did not cover (18–08Z).
 - A job's steps change, a job is added or split, or GitHub changes the `ubuntu-latest` image. Re-pin in the same PR as the change, with a new record.

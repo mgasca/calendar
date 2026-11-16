@@ -1,6 +1,6 @@
 import { access, readFile, readdir, stat } from 'node:fs/promises';
 import { join } from 'node:path';
-import { describe, expect, it, vi } from 'vitest';
+import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import { deployment, runbookSlug, storySlug } from '../src/lib/adr';
 import { architecturePages, pageRoute } from '../src/lib/architecture';
 import {
@@ -22,9 +22,20 @@ vi.mock('node:fs/promises', async (importOriginal) => {
   return { ...fs, readdir, default: { ...fs, readdir } };
 });
 
-// Each corpus read parses every document under docs/ (about 2.5 s); the tests share one (#755).
+// Each corpus read parses every document under docs/ (2 to 3 s, almost all of it parsing); the tests
+// share one (#755). It is read in beforeAll, with its own timeout, so no test pays it inside its 5 s:
+// the first test to read it lazily used to, and timed out on a loaded machine (#972).
 let corpus: ReturnType<typeof readCorpus> | undefined;
 const readDocuments = () => (corpus ??= readCorpus());
+beforeAll(async () => {
+  await readDocuments();
+}, 30_000);
+
+// The corpus listings seen when the first test starts, for the #972 guard at the end of the file.
+let listingsBeforeTests: number | undefined;
+beforeEach(() => {
+  listingsBeforeTests ??= decisionListings.count;
+});
 
 const { base } = deployment(process.env.DOCS_SITE_URL);
 
@@ -504,5 +515,9 @@ describe('script-free theme fallback (story 0046, #534)', () => {
 describe('verification cost (#755)', () => {
   it('reads the documentation corpus at most once', () => {
     expect(decisionListings.count).toBeLessThanOrEqual(1);
+  });
+
+  it('reads the corpus before the first test starts, outside every test timeout (#972)', () => {
+    expect(listingsBeforeTests).toBe(1);
   });
 });

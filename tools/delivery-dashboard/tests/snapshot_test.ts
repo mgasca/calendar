@@ -198,8 +198,8 @@ Deno.test("strict root nested schema missing fields versions and invalid files",
   delete value.ci.basis;
   assert(validateSnapshot(JSON.stringify(value)).includes("$.ci.basis: field is missing"));
   value = structuredClone(base);
-  value.version = 4;
-  assert(validateSnapshot(JSON.stringify(value)).includes("$.version: must be 1 to 3"));
+  value.version = 5;
+  assert(validateSnapshot(JSON.stringify(value)).includes("$.version: must be 1 to 4"));
   for (const text of ["", "not json", "[]", "{}"]) assert(validateSnapshot(text).length > 0);
 });
 Deno.test("bad scalar values and duration ordering fail at exact paths", () => {

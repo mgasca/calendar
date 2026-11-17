@@ -13,6 +13,7 @@
   "test": { "include": ["**/*_test.ts"], "exclude": ["**/fixtures/**", "**/integration/**"] },
   "tasks": {
     "azure-cli-install": "deno run --frozen --no-prompt --allow-read azure-cli-install/azure-cli-install.ts",
+    "deno-setup": "deno run --frozen --no-prompt --allow-read --allow-run=just deno-setup/deno-setup.ts",
     "delivery-guards": "deno run --frozen --no-prompt --allow-read delivery-guards/delivery-guards.ts",
     "test": "deno test --permit-no-files --no-prompt --allow-read --allow-write --allow-run --allow-env"
   }

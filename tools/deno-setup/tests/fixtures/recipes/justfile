@@ -1,0 +1,13 @@
+# A fixture for tools/deno-setup: recipes that reach Deno only indirectly, in real just syntax.
+set shell := ["bash", "-euo", "pipefail", "-c"]
+
+# A module whose recipes call Deno in each way the guard follows
+mod m
+
+# Reaches Deno only through a nested just call into the module
+outer:
+    just m inner
+
+# Calls no tool at all
+plain:
+    echo plain

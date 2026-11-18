@@ -2,7 +2,9 @@
 status: implemented
 date: 2026-11-18
 issue: https://github.com/mgasca/calendar/issues/992
-pr: []
+pr:
+  - https://github.com/mgasca/calendar/pull/995
+  - https://github.com/mgasca/calendar/pull/996
 adrs: ["0042", "0044", "0058", "0065"]
 ---
 
@@ -100,6 +102,7 @@ No changes.
 ### Lessons learned, known issues and follow-ups
 
 * **The rewrite is GitHub's, not the CLI's** (inferred from the #990 timeline and the gh-stack v0.3.0 source, not reproduced). `submit` pushes, opens PRs and creates the stack. The force-push arrived 23 s later, and the local branches did not move. A hook after the command therefore cannot see it, which is why the note runs before.
+* **This story's own stack was not rewritten.** Its bottom contained `origin/main` when `gh stack submit --auto --open` created #995 and #996. A minute later both remote heads still matched the local ones, and neither PR had a force-push event. That is consistent with the inference that GitHub rebases only a stack that is behind its trunk (one observation, not a proof).
 * **`gh stack view --json` calls GitHub** (it syncs the PRs), and its `needsRebase` compares with the local trunk branch, so the note reads the stack file and `origin/<trunk>` directly.
 * **The note reflects the last fetch.** A stack that looks current against a stale `origin/main` gets no note. The guidance's `git fetch` before an update covers this; the hook does not fetch.
 * **`gh stack link` gets no note**, and the check after creating stays a guidance step (see "Not in this story").

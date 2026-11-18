@@ -32,6 +32,10 @@ export interface RepoProbe {
     repo: string | null,
   ): PullRequestText | null | Promise<PullRequestText | null>;
   stackBranches(cwd: string): string[] | null | Promise<string[] | null>;
+  /** gh-stack's local stack file (`<git common dir>/gh-stack`), or null when there is none. */
+  stackFile(cwd: string): string | null | Promise<string | null>;
+  /** Whether `ancestor` is an ancestor of `ref` (`git merge-base --is-ancestor`), or null when git cannot tell. */
+  isAncestor(cwd: string, ancestor: string, ref: string): boolean | null | Promise<boolean | null>;
 }
 export interface HookInput {
   toolName: string | null;

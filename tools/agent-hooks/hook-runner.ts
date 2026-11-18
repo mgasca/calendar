@@ -1,6 +1,7 @@
 import { evaluateBash } from "./bash-guard.ts";
 import { describeFormat, evaluateContract, evaluateEdit } from "./checks.ts";
 import { describePrLink, describeStackPrs } from "./pull-request-link-check.ts";
+import { describeStackTrunk } from "./stack-trunk-check.ts";
 import { context, type HookResult, parseInput, pass, preToolUse, type RepoProbe, stopBlock } from "./protocol.ts";
 export const subcommands = ["pre-bash", "post-bash", "pre-edit", "post-edit", "stop", "warm"];
 export async function runHook(
@@ -30,8 +31,11 @@ export async function runHook(
     }
     const verdict = await evaluateBash(input.command, input.cwd, probe);
     if (verdict) return { exitCode: 0, stdout: preToolUse(verdict) };
-    const note = await describePrLink(input.command, input.cwd, probe);
-    return note === null ? pass : { exitCode: 0, stdout: context("PreToolUse", note) };
+    const notes = [
+      await describePrLink(input.command, input.cwd, probe),
+      await describeStackTrunk(input.command, input.cwd, probe),
+    ].filter((n) => n !== null);
+    return notes.length ? { exitCode: 0, stdout: context("PreToolUse", notes.join("\n\n")) } : pass;
   }
   if (subcommand === "post-bash") {
     if (input.command === null || input.interrupted) return pass;

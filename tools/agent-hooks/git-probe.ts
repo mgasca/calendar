@@ -97,4 +97,13 @@ export class GitProbe implements RepoProbe {
   stackBranches(cwd: string) {
     return findStackBranches(cwd);
   }
+  async stackFile(cwd: string) {
+    const r = await git(cwd, ["rev-parse", "--path-format=absolute", "--git-common-dir"], 5000);
+    const dir = r.exitCode === 0 ? r.stdout.trim() : "";
+    return dir ? this.readFile(cwd, resolve(dir, "gh-stack")) || null : null;
+  }
+  async isAncestor(cwd: string, ancestor: string, ref: string) {
+    const r = await git(cwd, ["merge-base", "--is-ancestor", ancestor, ref], 5000);
+    return r.exitCode === 0 ? true : r.exitCode === 1 ? false : null;
+  }
 }

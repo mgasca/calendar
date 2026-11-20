@@ -12,7 +12,9 @@ publish = false
 # Rune is pre-release: pin an exact rev of its `dev` branch (never rewritten). A bump moves this rev, every
 # [patch.crates-io] entry below and rust-toolchain.toml together (native/AGENTS.md, "Bumping Rune").
 rune = { git = "https://github.com/anomalyco/rune", rev = "9553c9a7d7d1e5e038d14e0b313513e95b4fb8bb" }
-wasm-bindgen = "0.2"
+# Exactly the version in Rune's own Cargo.lock at the pinned rev (ADR-0067, "Build"): the wasm-bindgen CLI must match
+# this crate, and `just native build-web` and `just doctor` read the version from native/Cargo.lock. Move it with Rune.
+wasm-bindgen = "=0.2.129"
 
 [workspace.lints.rust]
 unsafe_code = "forbid"

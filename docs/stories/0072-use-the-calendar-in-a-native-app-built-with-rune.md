@@ -163,6 +163,14 @@ No further ADR is expected. A slice that finds a decision ADR-0067 or ADR-0068 d
 | [#1009](https://github.com/mgasca/calendar/issues/1009) | macOS and Windows CI, WASM at `/native/` | S4 | #1002 |
 | [#1010](https://github.com/mgasca/calendar/issues/1010) | End-to-end flows | S3 | #1008, #1007 |
 
+### Scaffold (#1002), delivered
+
+* **Workspace:** `native/Cargo.toml` pins Rune to `dev` rev `9553c9a7d7d1e5e038d14e0b313513e95b4fb8bb`, copies Rune's six `[patch.crates-io]` entries at the same rev (without them the workspace does not resolve), and pins `wasm-bindgen` to `=0.2.129`, the version in Rune's own lock (Cargo would otherwise pick 0.2.130, which Rune's pinned CLI version does not match). `native/rust-toolchain.toml` is Rust 1.99.1 with `wasm32-unknown-unknown`.
+* **App:** `crates/calendar-native` is a lib, cdylib and bin with one `App` state and `view`: a header with **Today**, **Week** and **My tasks** (the current page is `checked`), in both themes. `src/theme.rs` holds the web app's colour tokens.
+* **Tests** (`just native test`): `tests/shell.rs` drives the element tree headlessly (criterion 3). `tests/theme.rs` fails when a token drifts from `tokens.css`. `tests/goldens.rs` checks the accessibility trees of the `today`, `week` and `tasks` scenes in both themes on every platform, and PNG snapshots on Linux with a tolerance. Each was shown to fail on a changed token, tree or image.
+* **Recipes and CI:** `native/mod.just` is in the root `build`, `test`, `lint`, `format` and `clean`, so `just check` includes it (criterion 3). The `Native` job in `ci.yml` is a matrix with `Linux` (lint and tests) and `WASM` (wasm32 lint and `build-web`) rows, is selected by `native/`, `contracts/` and `tokens.css`, and is part of `CI result` (criterion 4). `just doctor` checks the native Rust pin and wasm32 target, the xkbcommon and wayland development files, and `wasm-bindgen`.
+* **Window:** `just native dev` starts the desktop app under WSLg (criterion 2). The headless renders of both themes are `tests/goldens/today-light.png` and `today-dark.png`.
+
 ### Where things live
 
 | Area | Location (forecast) |
@@ -170,7 +178,7 @@ No further ADR is expected. A slice that finds a decision ADR-0067 or ADR-0068 d
 | Native workspace | `native/` (`Cargo.toml`, `Cargo.lock`, `rust-toolchain.toml`, `mod.just`) |
 | App | `native/crates/calendar-native` |
 | Generated client | `native/crates/calendar-client` |
-| CI | `.github/workflows/ci.yml` (native jobs), a nightly workflow for macOS and Windows |
+| CI | `.github/workflows/ci.yml`, job `native` (matrix rows; macOS and Windows join as rows), a nightly workflow for macOS and Windows (#1009) |
 | Native sign-in | `backend/crates/calendar-api/src/auth/native.rs` and the `token` endpoint in `endpoints/auth.rs`; no migration, because the handover code is sealed and stateless (ADR-0068) (#1008) |
 | WASM hosting | the Vite config in `frontend/apps/web` and the container image's web root (#1009) |
 
@@ -188,6 +196,8 @@ No changes for the views, actions, create and edit, or triage slices: they use t
 ### Lessons learned, known issues and follow-ups
 
 * Packaging, signing and installers: #1011.
+* Linux builds link `libxkbcommon` and `libwayland-client`: the runtime libraries alone are not enough, the `-dev` packages are needed (`just doctor` says so). Headless PNGs without a GPU render on lavapipe (`mesa-vulkan-drivers`).
+* Rune's browser build script needs Python, so `just native build-web` runs `cargo` and `wasm-bindgen` itself (ADR-0067, ADR-0058).
 * The bearer scheme for clients that cannot keep a cookie: #84.
 
 ## User guide

@@ -11,7 +11,7 @@ Practices for the second UI in `native/`, built with [Rune](https://github.com/a
 
 ## Commands
 
-`just native dev` opens the window (WSLg works). `just native test` runs the headless suite and `just native lint` the checks. `just native build-web` builds the browser bundle into `native/target/web/` with `wasm-bindgen` at the version of the `wasm-bindgen` crate in `native/Cargo.lock`. That version can differ from the one Rune's own docs name. Don't use Rune's `scripts/web-build.sh`, which needs Python (ADR-0058).
+`just native dev` opens the window (WSLg works). `just native test` runs the headless suite and `just native lint` the checks. `just native build-web` builds the browser bundle into `native/target/web/` with `wasm-bindgen` at the version of the `wasm-bindgen` crate in `native/Cargo.lock`, which `native/Cargo.toml` pins to exactly the version in Rune's own lock (ADR-0067). Don't use Rune's `scripts/web-build.sh`, which needs Python (ADR-0058).
 
 ## Views
 
@@ -32,5 +32,5 @@ Rune has no releases: `native/Cargo.toml` pins an exact `rev` of its `dev` branc
 
 1. Move the `rev` of `rune` **and of every `[patch.crates-io]` entry** to the new revision. Then compare the patch list with Rune's root `Cargo.toml` at that revision, because Cargo does not inherit a dependency's patches.
 2. Move `rust-toolchain.toml` to the channel Rune's `rust-toolchain.toml` names at that revision.
-3. Run `cargo update -p rune` (never edit `Cargo.lock` by hand). Then run `just native run lint test build-web`, and update `wasm-bindgen-cli` if the lock moved it.
+3. Set the `wasm-bindgen` pin in `native/Cargo.toml` to the version in Rune's `Cargo.lock` at the new revision. Run `cargo update -p rune -p wasm-bindgen` (never edit `Cargo.lock` by hand). Then run `just native run lint test build-web`, after installing the matching `wasm-bindgen-cli` if the pin moved.
 4. Read Rune's `CHANGELOG.md` between the two revisions for changes that move output without a code change. Re-bless goldens only with the diff reviewed.

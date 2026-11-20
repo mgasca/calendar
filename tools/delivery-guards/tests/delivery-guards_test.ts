@@ -675,6 +675,12 @@ function cacheFailures(from: string, to: string): string[] {
   return runGuard(guards.find((g) => g.id === "codeql-rust-caches")!, files);
 }
 const cacheMutations: [string, string, string, string][] = [
+  [
+    "ARustAnalysisOfTheWholeRepository_Fails",
+    "          source-root: ${{ matrix.language == 'rust' && 'backend' || '.' }}\n",
+    "",
+    "not scoped to backend/",
+  ],
   ["NoTargetDirectoryRestore_Fails", "        id: target\n", "        id: elsewhere\n", "does not restore"],
   [
     "NoExtractorTargetDirectory_Fails",

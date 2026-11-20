@@ -31,18 +31,44 @@ fn blessing() -> bool {
   std::env::var_os("BLESS").is_some_and(|v| v == "1")
 }
 
-/// Runs the app headlessly with `args`, writing to `out`.
-fn render(args: &[&str], out: &Path) {
+/// Runs the app headlessly with `args`, writing to `out`; the error is the binary's stderr.
+fn try_render(args: &[&str], out: &Path) -> Result<(), String> {
   let output = Command::new(env!("CARGO_BIN_EXE_calendar-native"))
     .args(args)
     .arg(out)
     .output()
     .expect("the calendar-native binary runs");
-  assert!(
-    output.status.success(),
-    "calendar-native {args:?} failed: {}",
-    String::from_utf8_lossy(&output.stderr)
-  );
+  if output.status.success() {
+    Ok(())
+  } else {
+    Err(format!(
+      "calendar-native {args:?} failed: {}",
+      String::from_utf8_lossy(&output.stderr)
+    ))
+  }
+}
+
+fn render(args: &[&str], out: &Path) {
+  if let Err(error) = try_render(args, out) {
+    panic!("{error}");
+  }
+}
+
+/// What a snapshot render that failed means: on Linux, where CI installs lavapipe, a failure; elsewhere a runner may
+/// have no GPU adapter, and PNGs there are artefacts only (ADR-0067), so it is logged and skipped.
+fn snapshot_render_failed(linux: bool, error: String) -> Result<(), String> {
+  if linux {
+    Err(error)
+  } else {
+    eprintln!("skipping the snapshot (PNGs gate on Linux only): {error}");
+    Ok(())
+  }
+}
+
+#[test]
+fn a_snapshot_that_cannot_render_fails_on_linux_only() {
+  assert!(snapshot_render_failed(true, "no adapter".to_owned()).is_err());
+  assert!(snapshot_render_failed(false, "no adapter".to_owned()).is_ok());
 }
 
 fn tree(scene: &str, theme: &str) -> serde_json::Value {
@@ -114,7 +140,12 @@ fn snapshots_match_their_goldens_on_linux() {
   for theme in THEMES {
     let name = format!("today-{theme}.png");
     let actual = actual_dir().join(&name);
-    render(&["--scene", "today", "--theme", theme, "--scale", "1", "--snap"], &actual);
+    if let Err(error) = try_render(&["--scene", "today", "--theme", theme, "--scale", "1", "--snap"], &actual) {
+      if let Err(error) = snapshot_render_failed(cfg!(target_os = "linux"), error) {
+        failures.push(error);
+      }
+      continue;
+    }
     let golden = goldens().join(&name);
     if blessing() {
       std::fs::copy(&actual, &golden).expect("the golden is writable");

@@ -164,6 +164,9 @@ jobs:
         if: steps.reuse.outputs.found != 'true'
         with:
           languages: ${{ matrix.language }}
+          # Rust: the backend workspace only, so the extractor loads neither native/ nor Rune's git dependencies. Adding
+          # native/ is its own row (#1019, maintainer on #1002).
+          source-root: ${{ matrix.language == 'rust' && 'backend' || '.' }}
           # No language here needs a build (ADR-0051, ADR-0058).
           build-mode: none
           queries: security-extended

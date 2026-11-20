@@ -183,7 +183,7 @@
 <li><strong>identity-provider</strong>: Google OpenID Connect</li>
 <li><strong>pattern</strong>: Backend-for-frontend cookie session</li>
 <li><strong>fallback-policy</strong>: CurrentUser extractor on every non-anonymous handler</li>
-<li><strong>anonymous-endpoints</strong>: GET /api/auth/login, GET /api/auth/callback/google</li>
+<li><strong>anonymous-endpoints</strong>: GET /api/auth/login, GET /api/auth/callback/google, GET /api/auth/native/start, POST /api/auth/native/token</li>
 <li><strong>allow-list</strong>:
 <ul>
 <li><strong>source</strong>: Auth:AllowedEmails</li>
@@ -199,7 +199,7 @@
 <li><strong>sliding-expiration</strong>: false</li>
 </ul>
 </li>
-<li><strong>open-redirect-protection</strong>: returnUrl validated as a local path on server and client; /signin itself is never a return target</li>
+<li><strong>open-redirect-protection</strong>: returnUrl validated as a local path on server and client; /signin itself is never a return target; a native redirect_uri must be <a href="http://127.0.0.1">http://127.0.0.1</a> or http://[::1] with a port from 1024 to 65535 and the path /callback</li>
 <li><strong>adrs</strong>: <a href="https://mgasca.github.io/calendar/adr/0027/">https://mgasca.github.io/calendar/adr/0027/</a></li>
 </ul>
 <h2 id="decisions-and-stories">Decisions and stories</h2>

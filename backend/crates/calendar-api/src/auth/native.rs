@@ -260,7 +260,15 @@ pub async fn confirm(
     return Err(Problem::titled(StatusCode::FORBIDDEN, "The desktop sign-in must be confirmed on its own page.").into());
   }
   let request = open_flow(&state, &headers).await?.ok_or_else(no_flow)?;
-  let code = Handover::issue(&user, &request, state.now()).seal(&state.sealer().await?);
+  let sealer = state.sealer().await?;
+  let now = state.now();
+  // The app's session must not outlive this one, or a session could renew itself for ever by confirming
+  // desktop sign-ins of its own (security review of #1018). A request signed in without a session cookie
+  // (the Development seed key) has no end of its own, so the app's session gets the usual lifetime.
+  let session_ends_at = session::cookie_value(&headers, session::SESSION_COOKIE)
+    .and_then(|cookie| session::SessionTicket::open(&sealer, cookie, now))
+    .map_or(now + session::SESSION_LIFETIME, |ticket| ticket.expires_at);
+  let code = Handover::issue(&user, &request, session_ends_at, now).seal(&sealer);
   let clear_flow = session::clear_cookie(NATIVE_COOKIE, origin.secure_cookies(state.settings()));
   Ok(redirect(StatusCode::SEE_OTHER, &request.success_location(&code), &[clear_flow]))
 }
@@ -313,6 +321,8 @@ pub struct Handover {
   picture: Option<String>,
   code_challenge: String,
   redirect_uri: String,
+  /// When the browser session that confirmed the sign-in ends: the app's session ends then at the latest.
+  session_ends_at: DateTime<Utc>,
   expires_at: DateTime<Utc>,
 }
 
@@ -334,8 +344,9 @@ pub enum HandoverError {
 }
 
 impl Handover {
-  /// The handover for `principal`, confirmed for `request` at `now`.
-  pub fn issue(principal: &Principal, request: &NativeRequest, now: DateTime<Utc>) -> Self {
+  /// The handover for `principal`, confirmed for `request` at `now` by a browser session that ends at
+  /// `session_ends_at`.
+  pub fn issue(principal: &Principal, request: &NativeRequest, session_ends_at: DateTime<Utc>, now: DateTime<Utc>) -> Self {
     Self {
       user_id: principal.owner.0,
       name: principal.name.clone(),
@@ -343,6 +354,7 @@ impl Handover {
       picture: principal.picture.clone(),
       code_challenge: request.code_challenge.clone(),
       redirect_uri: request.redirect_uri.clone(),
+      session_ends_at,
       expires_at: now + HANDOVER_LIFETIME,
     }
   }
@@ -353,8 +365,15 @@ impl Handover {
     sealer.seal(HANDOVER_PURPOSE, &json)
   }
 
-  /// Redeems `code` with the app's `verifier` and `redirect_uri` at `now`: the person it signs in.
-  pub fn redeem(sealer: &Sealer, code: &str, verifier: &str, redirect_uri: &str, now: DateTime<Utc>) -> Result<Principal, HandoverError> {
+  /// Redeems `code` with the app's `verifier` and `redirect_uri` at `now`: the app's session ticket. It lasts
+  /// the usual [`session::SESSION_LIFETIME`], but never beyond the browser session that confirmed it.
+  pub fn redeem(
+    sealer: &Sealer,
+    code: &str,
+    verifier: &str,
+    redirect_uri: &str,
+    now: DateTime<Utc>,
+  ) -> Result<session::SessionTicket, HandoverError> {
     let handover: Self = sealer
       .open(HANDOVER_PURPOSE, code)
       .and_then(|json| serde_json::from_slice(&json).ok())
@@ -369,12 +388,15 @@ impl Handover {
     if !bool::from(redirect_uri.as_bytes().ct_eq(handover.redirect_uri.as_bytes())) {
       return Err(HandoverError::RedirectMismatch);
     }
-    Ok(Principal {
+    let principal = Principal {
       owner: OwnerId(handover.user_id),
       name: handover.name,
       email: handover.email,
       picture: handover.picture,
-    })
+    };
+    let mut ticket = session::SessionTicket::issue(principal, now);
+    ticket.expires_at = ticket.expires_at.min(handover.session_ends_at);
+    Ok(ticket)
   }
 }
 
@@ -537,11 +559,17 @@ mod tests {
     let sealer = Sealer::new(&[1; 32]);
     let now = Utc.with_ymd_and_hms(2026, 11, 20, 10, 0, 0).unwrap();
     let request = NativeRequest::from_query(&start_query(&[])).unwrap();
-    let code = Handover::issue(&principal(), &request, now).seal(&sealer);
+    let code = Handover::issue(&principal(), &request, now + session::SESSION_LIFETIME, now).seal(&sealer);
     let redirect = "http://127.0.0.1:5000/callback";
 
     let last_moment = now + HANDOVER_LIFETIME - TimeDelta::seconds(1);
-    assert_eq!(Handover::redeem(&sealer, &code, VERIFIER, redirect, last_moment), Ok(principal()));
+    let ticket = Handover::redeem(&sealer, &code, VERIFIER, redirect, last_moment).unwrap();
+    assert_eq!(
+      ticket.expires_at,
+      now + session::SESSION_LIFETIME,
+      "bounded by the confirming session"
+    );
+    assert_eq!(ticket.into_principal(), Some(principal()));
     assert_eq!(
       Handover::redeem(&sealer, &code, VERIFIER, redirect, now + HANDOVER_LIFETIME),
       Err(HandoverError::Expired)
@@ -570,6 +598,24 @@ mod tests {
   }
 
   #[test]
+  fn the_app_session_never_outlives_the_session_that_confirmed_it() {
+    let sealer = Sealer::new(&[1; 32]);
+    let now = Utc.with_ymd_and_hms(2026, 11, 20, 10, 0, 0).unwrap();
+    let request = NativeRequest::from_query(&start_query(&[])).unwrap();
+    let redirect = "http://127.0.0.1:5000/callback";
+
+    // Confirmed an hour before the browser session ends: the app's session ends with it, not 8 hours on.
+    let ending = Handover::issue(&principal(), &request, now + TimeDelta::hours(1), now).seal(&sealer);
+    let ticket = Handover::redeem(&sealer, &ending, VERIFIER, redirect, now).unwrap();
+    assert_eq!(ticket.expires_at, now + TimeDelta::hours(1));
+
+    // A confirming session with longer left than the usual lifetime does not lengthen it.
+    let long = Handover::issue(&principal(), &request, now + TimeDelta::hours(20), now).seal(&sealer);
+    let ticket = Handover::redeem(&sealer, &long, VERIFIER, redirect, now).unwrap();
+    assert_eq!(ticket.expires_at, now + session::SESSION_LIFETIME);
+  }
+
+  #[test]
   fn a_handover_does_not_open_as_another_kind_of_token() {
     let sealer = Sealer::new(&[1; 32]);
     let now = Utc.with_ymd_and_hms(2026, 11, 20, 10, 0, 0).unwrap();
@@ -592,7 +638,7 @@ mod tests {
       Handover::redeem(&sealer, &flow, VERIFIER, redirect, now),
       Err(HandoverError::Unreadable)
     );
-    let code = Handover::issue(&principal(), &request, now).seal(&sealer);
+    let code = Handover::issue(&principal(), &request, now + session::SESSION_LIFETIME, now).seal(&sealer);
     assert_eq!(session::SessionTicket::open(&sealer, &code, now), None);
   }
 }

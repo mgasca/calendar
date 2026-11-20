@@ -10,7 +10,7 @@ use calendar_infrastructure::users;
 use super::request;
 use crate::auth::CurrentUser;
 use crate::auth::native::Handover;
-use crate::auth::session::{self, SESSION_COOKIE, SessionTicket};
+use crate::auth::session::{self, SESSION_COOKIE};
 use crate::contracts::{AuthUserResponse, NativeSessionRequest, ProblemDetails};
 use crate::error::ApiError;
 use crate::hosting::RequestOrigin;
@@ -78,21 +78,26 @@ pub async fn native_token(
 ) -> Result<Response, ApiError> {
   let refused = || Problem::titled(StatusCode::BAD_REQUEST, "invalid_grant");
   let sealer = state.sealer().await?;
-  let principal = match Handover::redeem(&sealer, &request.code, &request.code_verifier, &request.redirect_uri, state.now()) {
-    Ok(principal) => principal,
+  // The ticket lasts eight hours at most, and never beyond the browser session that confirmed the sign-in.
+  let ticket = match Handover::redeem(&sealer, &request.code, &request.code_verifier, &request.redirect_uri, state.now()) {
+    Ok(ticket) => ticket,
     Err(reason) => {
       tracing::warn!(%reason, "native sign-in handover refused");
       return Err(refused().into());
     }
   };
-  // The allow-list was applied at the callback; a user removed since is not signed in.
+  // The allow-list was applied at sign-in; a user removed since is not signed in.
   let mut connection = state.db().await?;
-  if users::find(&mut connection, principal.owner.0).await?.is_none() {
+  let exists = match ticket.user_id {
+    Some(user_id) => users::find(&mut connection, user_id).await?.is_some(),
+    None => false,
+  };
+  if !exists {
     tracing::warn!("native sign-in handover refused: the user no longer exists");
     return Err(refused().into());
   }
 
-  let ticket = SessionTicket::issue(principal, state.now()).seal(&sealer);
+  let ticket = ticket.seal(&sealer);
   let mut response = StatusCode::NO_CONTENT.into_response();
   let headers = response.headers_mut();
   headers.insert(

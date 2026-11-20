@@ -10,6 +10,9 @@ set shell := ["bash", "-euo", "pipefail", "-c"]
 # Rust backend (Cargo workspace), run in backend/ so backend/rust-toolchain.toml applies
 mod backend
 
+# Rune UI (its own Cargo workspace, ADR-0067), run in native/ so native/rust-toolchain.toml applies
+mod native
+
 # pnpm workspace, run in frontend/
 mod frontend
 
@@ -45,17 +48,17 @@ setup: doctor && backend::restore frontend::install
     git config blame.ignoreRevsFile .git-blame-ignore-revs
 
 # Build backend and frontend
-build: backend::build frontend::build
+build: backend::build frontend::build native::build
 
 # Run all tests
-test: backend::test frontend::test
+test: backend::test frontend::test native::test
 
 # Static analysis (clippy and rustfmt for the backend, ESLint and tsc for the frontend, then the repo tooling checks)
 [parallel]
-lint: backend::lint frontend::lint frontend::typecheck && tools::test tools::versions tools::adr (tools::narratives "--check") docs::architecture
+lint: backend::lint frontend::lint frontend::typecheck native::lint && tools::test tools::versions tools::adr (tools::narratives "--check") docs::architecture
 
 # Auto-format all code
-format: backend::format tools::format frontend::format
+format: backend::format tools::format frontend::format native::format
 
 # Regenerate OpenAPI contract and TypeScript client
 contracts: backend::contract frontend::generate
@@ -69,4 +72,4 @@ changed *args:
     @deno run --config tools/deno.json --frozen --no-prompt --allow-read --allow-run=git,jq,just,pnpm tools/changed/changed.ts "$@"
 
 # Remove build outputs
-clean: backend::clean frontend::clean
+clean: backend::clean frontend::clean native::clean

@@ -11,7 +11,7 @@
 # The filtered jobs: id in ci.yml -> job name.
 def jobs:
   {backend: "Backend", frontend: "Frontend", docs: "Docs site", tooling: "Tooling", adr: "ADR conventions",
-    narratives: "Narratives", binding: "Flow binding", image: "Container image"};
+    narratives: "Narratives", binding: "Flow binding", image: "Container image", native: "Native"};
 
 # A change to the rules themselves runs everything, so the new rules are checked by every job they could skip.
 def rules_files: [".github/workflows/ci.yml", ".github/ci-changes.jq"];
@@ -62,6 +62,10 @@ def docs_theme_package: "frontend/packages/theme/";
 # runs the stitcher from the skill folder, so a change to either, or to the pinned Deno, runs it.
 def narrative_inputs: ["docs/narratives/", ".claude/skills/architecture-narrative-builder/"];
 
+# Native: the Rune UI workspace (ADR-0067). Its generated client comes from the contract, and its theme test reads the
+# web app's colour tokens, so both are inputs too.
+def native_inputs: ["frontend/packages/theme/src/tokens.css"];
+
 # Whether the file at `.` is an input of job `$job`.
 def needs($job):
   if $job == "docs" then under(["docs/", "frontend/apps/docs/", "frontend/apps/slides/", docs_theme_package]) or frontend_root or . == ".github/workflows/pages.yml"
@@ -74,6 +78,7 @@ def needs($job):
   elif $job == "adr" then under(["docs/decisions/", "docs/stories/"]) or IN(adr_inputs[])
   elif $job == "narratives" then under(narrative_inputs) or . == ".deno-version"
   elif $job == "binding" then under(["frontend/apps/e2e/"]) or frontend_root or IN(binding_inputs[])
+  elif $job == "native" then under(["native/", "contracts/"]) or IN(native_inputs[])
   elif $job == "image" then
     under(["backend/", "frontend/apps/web/", "frontend/packages/", "contracts/", "docker/"]) or frontend_root
       or IN("Dockerfile", ".dockerignore", "image.just")

@@ -1,0 +1,27 @@
+[package]
+name = "calendar-native"
+version = "0.1.0"
+description = "Calendar's second UI, built with Rune, for Linux, macOS, Windows and the browser (WASM)"
+edition.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[[bin]]
+name = "calendar-native"
+path = "src/main.rs"
+
+[dependencies]
+rune = { workspace = true }
+
+[target.'cfg(target_arch = "wasm32")'.dependencies]
+wasm-bindgen = { workspace = true }
+
+[lints]
+workspace = true
+
+[dev-dependencies]
+png = "0.18"
+serde_json = "1"

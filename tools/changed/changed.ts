@@ -52,6 +52,7 @@ export function recipeMap(justfiles: string[]): Record<string, Step[]> {
       commands: [["pnpm", "--dir", "frontend", "--filter", "@calendar/e2e", "test"]],
     }],
     image: [{ ...just("image", "build"), optIn: "--image" }],
+    native: [just("native", "lint"), just("native", "test")],
   };
 }
 

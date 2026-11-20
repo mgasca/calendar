@@ -352,7 +352,7 @@ for (const yaml of ["a: [1", "a:\n  b: 1\n c: 2", "a: 1\n---\nb: 2", ""]) {
     assertThrows(() => parseYaml(yaml));
   });
 }
-const allJobs = ["backend", "frontend", "docs", "tooling", "adr", "narratives", "binding", "image"];
+const allJobs = ["backend", "frontend", "docs", "tooling", "adr", "narratives", "binding", "image", "native"];
 async function runRules(event: string, complete: boolean, files: string[]): Promise<Record<string, unknown>> {
   const process = new Deno.Command("jq", {
     args: ["-c", "-f", join(root, changesRulesPath)],
@@ -382,7 +382,7 @@ for (const [file, jobs] of fileCases) {
 }
 for (const file of [".github/workflows/ci.yml", ".github/ci-changes.jq"]) {
   Deno.test(`AChangeToTheRules_RunsEverything: ${file}`, () =>
-    checkRules("pull_request", true, ["README.md", file], "backend frontend docs tooling image"));
+    checkRules("pull_request", true, ["README.md", file], "backend frontend docs tooling image native"));
 }
 const combinedCases: [string, string, boolean, string[], string][] = [
   [
@@ -397,7 +397,7 @@ const combinedCases: [string, string, boolean, string[], string][] = [
     "pull_request",
     true,
     ["frontend/packages/theme/src/tokens.css"],
-    "docs frontend image",
+    "docs frontend image native",
   ],
   ["ARenameOutOfTheThemePackage_RunsTheDocsSite", "pull_request", true, [
     "frontend/packages/theme/tokens.css",
@@ -411,7 +411,7 @@ const combinedCases: [string, string, boolean, string[], string][] = [
     "frontend/apps/web/src/main.tsx",
     "frontend/packages/api-client/src/index.ts",
     "contracts/openapi.json",
-  ], "backend frontend image"],
+  ], "backend frontend image native"],
   ["ACardWithAToolChange_RunsToolingInsteadOfTheAdrCheck", "pull_request", true, [
     "docs/stories/0038-x.md",
     "tools/ci-timings/CiTimings.cs",
@@ -454,13 +454,19 @@ const combinedCases: [string, string, boolean, string[], string][] = [
   ["AStitcherChange_RunsToolingWhichRunsTheCheck", "pull_request", true, [
     ".claude/skills/architecture-narrative-builder/scripts/stitch/stitch.ts",
   ], "tooling"],
-  ["AnIncompleteListing_RunsEverything", "pull_request", false, ["README.md"], "backend frontend docs tooling image"],
+  [
+    "AnIncompleteListing_RunsEverything",
+    "pull_request",
+    false,
+    ["README.md"],
+    "backend frontend docs tooling image native",
+  ],
   [
     "AnIncompleteMergeGroupListing_RunsEverythingButTheAdrCheck",
     "merge_group",
     false,
     ["docs/stories/0038-x.md"],
-    "backend frontend docs tooling image",
+    "backend frontend docs tooling image native",
   ],
   ["APushOrDispatch_RunsEverything: push", "push", true, [], allJobs.join(" ")],
   ["APushOrDispatch_RunsEverything: dispatch", "workflow_dispatch", true, [], allJobs.join(" ")],
@@ -545,6 +551,7 @@ Deno.test("SkippedNames_AreTheJobNamesInCi", async () => {
     "Narratives",
     "Flow binding",
     "Container image",
+    "Native",
   ]);
   const workflow = Workflow.parse(loadFiles(root).workflow);
   for (const id of allJobs) {

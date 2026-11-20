@@ -43,3 +43,4 @@ frontend/apps/docs/.dashboard-data/
 
 # Rust build output (backend Cargo workspace)
 backend/target/
+native/target/

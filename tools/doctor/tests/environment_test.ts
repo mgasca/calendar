@@ -26,13 +26,16 @@ function gh(extensionList: string, version: string | null = "2.82.1"): string {
 async function withCommands(run: (bin: string) => Promise<void>): Promise<void> {
   const bin = await Deno.makeTempDir({ prefix: "doctor-environment-" });
   try {
-    for (const name of ["dirname", "tr", "sed", "sort", "head"]) {
+    for (const name of ["dirname", "tr", "sed", "sort", "head", "grep", "uname"]) {
       await Deno.symlink(`/usr/bin/${name}`, `${bin}/${name}`);
     }
     const commands: Record<string, string> = {
       deno: `echo deno ${denoPin}`,
       cargo: `echo cargo ${rustPin}`,
-      rustc: `echo 'rustc ${rustPin} (fake)'`,
+      // The pin of the directory it runs in, as rustup selects it: backend/ and native/ pin different releases.
+      rustc: `echo "rustc $(sed -n 's/^channel *= *"\\(.*\\)"/\\1/p' rust-toolchain.toml) (fake)"`,
+      rustup: "echo wasm32-unknown-unknown",
+      "pkg-config": "exit 0",
       cc: "exit 0",
       node: "echo v24.0.0",
       pnpm: "exit 0",
@@ -251,6 +254,50 @@ for (
     });
   });
 }
+
+const nativePin = (await Deno.readTextFile(new URL("native/rust-toolchain.toml", root)))
+  .match(/channel\s*=\s*"([^"]+)"/)?.[1];
+const wasmBindgenPin = (await Deno.readTextFile(new URL("native/Cargo.lock", root)))
+  .match(/name = "wasm-bindgen"\nversion = "([^"]+)"/)?.[1];
+if (!nativePin || !wasmBindgenPin) throw new Error("native/ has no Rust pin or no locked wasm-bindgen");
+
+Deno.test("doctor accepts native/'s own Rust pin with the wasm32 target", async () => {
+  await withCommands(async (bin) => {
+    const result = await doctor(bin);
+    assertEquals(result.code, 0, result.text);
+    assertStringIncludes(result.text, `Rust ${nativePin} with wasm32 (native/rust-toolchain.toml)`);
+    assertStringIncludes(result.text, "libxkbcommon and libwayland-client development files");
+    assertStringIncludes(result.text, "wasm-bindgen not installed (only 'just native build-web' needs it");
+  });
+});
+
+for (
+  const [tool, body, expected, hint] of [
+    ["rustc", "echo 'rustc 1.0.0 (fake)'", "Rust '1.0.0' in native/", `native/rust-toolchain.toml wants ${nativePin}`],
+    ["rustup", "exit 0", "lacks the wasm32-unknown-unknown target", "rustup target add wasm32-unknown-unknown"],
+    ["pkg-config", "exit 1", "pkg-config cannot find xkbcommon and wayland-client", "libxkbcommon-dev libwayland-dev"],
+    ["wasm-bindgen", "echo 'wasm-bindgen 0.1.0'", "wasm-bindgen '0.1.0'", `--version ${wasmBindgenPin} --locked`],
+  ] as const
+) {
+  Deno.test(`doctor diagnoses the Rune UI's ${tool}: ${expected}`, async () => {
+    await withCommands(async (bin) => {
+      await executable(bin, tool, body);
+      const result = await doctor(bin);
+      assertEquals(result.code, 1, result.text);
+      assertStringIncludes(result.text, expected);
+      assertStringIncludes(result.text, hint);
+    });
+  });
+}
+
+Deno.test("doctor accepts wasm-bindgen at native/Cargo.lock's version", async () => {
+  await withCommands(async (bin) => {
+    await executable(bin, "wasm-bindgen", `echo 'wasm-bindgen ${wasmBindgenPin}'`);
+    const result = await doctor(bin);
+    assertEquals(result.code, 0, result.text);
+    assertStringIncludes(result.text, `wasm-bindgen ${wasmBindgenPin} (native/Cargo.lock)`);
+  });
+});
 
 for (
   const [compose, success, expected] of [

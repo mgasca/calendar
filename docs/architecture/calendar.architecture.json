@@ -350,6 +350,17 @@
       }
     },
     {
+      "unique-id": "native-app",
+      "node-type": "webclient",
+      "name": "Calendar native app (Rune)",
+      "description": "The second UI (epic #998): a Rust app on the Rune framework (native/crates/calendar-native), in its own Cargo workspace with Rune's Rust pin, built as a desktop window for Linux, macOS and Windows and as a WASM bundle for the browser. One state and view for every target; headless tests render its element tree, accessibility tree and PNG snapshots with no display. It does not depend on backend crates.",
+      "interfaces": [
+        { "unique-id": "native-app-desktop", "description": "Desktop window, just native dev" },
+        { "unique-id": "native-app-web-bundle", "description": "WASM bundle built by just native build-web into native/target/web/ (served under /native/ on the same origin, #1009)" }
+      ],
+      "metadata": { "adrs": ["ADR-0067"], "delivery": "#1002", "source": "native/" }
+    },
+    {
       "unique-id": "api-client",
       "node-type": "library",
       "name": "@calendar/api-client",
@@ -979,7 +990,7 @@
       "relationship-type": {
         "composed-of": {
           "container": "calendar-system",
-          "nodes": ["web-app", "api-client", "theme-package", "openapi-contract", "calendar-api", "calendar-db", "db-migrator", "infra-tool", "decision-log", "docs-site", "narrative-decks", "delivery-dashboard-tool", "dashboard-data-branch"]
+          "nodes": ["web-app", "native-app", "api-client", "theme-package", "openapi-contract", "calendar-api", "calendar-db", "db-migrator", "infra-tool", "decision-log", "docs-site", "narrative-decks", "delivery-dashboard-tool", "dashboard-data-branch"]
         }
       },
       "metadata": { "adrs": ["ADR-0001"] }
@@ -989,6 +1000,12 @@
       "description": "Signs in and plans the day and week with",
       "relationship-type": { "interacts": { "actor": "user", "nodes": ["web-app"] } },
       "metadata": { "stories": ["0001", "0002", "0003", "0004", "0005", "0006", "0007"] }
+    },
+    {
+      "unique-id": "user-uses-native-app",
+      "description": "Plans the day and week, on the desktop or in a WebGPU browser, with",
+      "relationship-type": { "interacts": { "actor": "user", "nodes": ["native-app"] } },
+      "metadata": { "adrs": ["ADR-0067"] }
     },
     {
       "unique-id": "e2e-suite-drives-web-app",
@@ -1133,6 +1150,17 @@
         }
       },
       "metadata": { "adrs": ["ADR-0047", "ADR-0048"], "binding": "pnpm workspace:* dependency" }
+    },
+    {
+      "unique-id": "native-app-mirrors-theme",
+      "description": "Copies the colour tokens of both themes, checked by a test that reads tokens.css (native/crates/calendar-native/tests/theme.rs), from",
+      "relationship-type": {
+        "connects": {
+          "source": { "node": "native-app" },
+          "destination": { "node": "theme-package", "interfaces": ["theme-package-exports"] }
+        }
+      },
+      "metadata": { "adrs": ["ADR-0047", "ADR-0067"], "binding": "values copied into native/crates/calendar-native/src/theme.rs; no package dependency" }
     },
     {
       "unique-id": "docs-site-uses-theme",

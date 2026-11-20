@@ -8,12 +8,15 @@ const rust =
 async function doctor(deno: string | null): Promise<{ code: number; output: string }> {
   const bin = await Deno.makeTempDir({ prefix: "doctor-deno-" });
   try {
-    for (const command of ["dirname", "tr", "sed", "sort", "head"]) {
+    for (const command of ["dirname", "tr", "sed", "sort", "head", "grep", "uname"]) {
       await Deno.symlink(`/usr/bin/${command}`, `${bin}/${command}`);
     }
     const commands: Record<string, string> = {
       cargo: `echo cargo ${rust}`,
-      rustc: `echo 'rustc ${rust} (fake)'`,
+      // The pin of the directory it runs in, as rustup selects it: backend/ and native/ pin different releases.
+      rustc: `echo "rustc $(sed -n 's/^channel *= *"\\(.*\\)"/\\1/p' rust-toolchain.toml) (fake)"`,
+      rustup: "echo wasm32-unknown-unknown",
+      "pkg-config": "exit 0",
       cc: "exit 0",
       node: "echo v24.0.0",
       pnpm: "exit 0",

@@ -1571,3 +1571,15 @@ impl CreateTaskRequestBuilder {
 pub struct HealthResponse {
     pub status: String,
 }
+///Redeem a native sign-in's handover code for a session (the desktop app's loopback sign-in, ADR-0068).
+#[derive(Debug, Clone, Deserialize, Serialize)]
+pub struct NativeSessionRequest {
+    ///The `code` the API sent to the app's loopback redirect after the person confirmed the sign-in.
+    pub code: String,
+    ///The PKCE code verifier whose S256 challenge the app sent to `GET /api/auth/native/start`.
+    #[serde(rename = "codeVerifier")]
+    pub code_verifier: String,
+    ///The loopback redirect URI the app sent to `GET /api/auth/native/start`.
+    #[serde(rename = "redirectUri")]
+    pub redirect_uri: String,
+}

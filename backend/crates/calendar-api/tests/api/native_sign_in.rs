@@ -328,3 +328,27 @@ async fn outside_development_the_flow_and_the_app_session_cookies_are_secure() {
   assert_eq!(token.status, StatusCode::NO_CONTENT, "{}", token.text());
   assert_secure_http_only_lax(&token, SESSION_COOKIE);
 }
+
+#[tokio::test]
+async fn the_app_session_ends_when_the_browser_session_that_confirmed_it_ends() {
+  // Security review of #1018: without this bound, any session could renew itself for ever by confirming a
+  // desktop sign-in of its own, defeating the fixed eight-hour lifetime (ADR-0027, ADR-0056).
+  let app = signed_in_browser_app().await;
+  let session = app.session_cookie(&app.ticket_for(Some(USER_A))).await;
+  app.clock.advance(TimeDelta::hours(7));
+
+  let flow = begin_native(&app).await;
+  let code = loopback_query(&click_confirm(&app, &jar(&[&flow, &session])).await)["code"].clone();
+  let token = redeem(&app, &code, VERIFIER, LOOPBACK).await;
+  assert_eq!(token.status, StatusCode::NO_CONTENT, "{}", token.text());
+  let desktop = app.client().cookie(set_cookie(&token, SESSION_COOKIE).pair());
+
+  app.clock.advance(TimeDelta::hours(1) - TimeDelta::seconds(1));
+  assert_eq!(desktop.get("/api/auth/me").await.status, StatusCode::OK);
+  app.clock.advance(TimeDelta::seconds(1));
+  assert_eq!(
+    desktop.get("/api/auth/me").await.status,
+    StatusCode::UNAUTHORIZED,
+    "the app's session ends with the browser session that confirmed it, eight hours after that sign-in"
+  );
+}

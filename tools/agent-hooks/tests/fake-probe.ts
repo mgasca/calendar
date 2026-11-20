@@ -31,6 +31,9 @@ export class FakeProbe implements RepoProbe {
   textQueries: [string | null, string | null][] = [];
   stack: string[] | null = null;
   stackQueries: string[] = [];
+  stackFileText: string | null = null;
+  ancestry: Record<string, boolean> = {};
+  ancestryQueries: [string, string][] = [];
   constructor(s?: ProbeState | null) {
     if (!s) return;
     this.dirty = new Set(s.Dirty);
@@ -92,5 +95,12 @@ export class FakeProbe implements RepoProbe {
   stackBranches(cwd: string) {
     this.stackQueries.push(cwd);
     return this.stack;
+  }
+  stackFile(_cwd: string) {
+    return this.stackFileText;
+  }
+  isAncestor(_cwd: string, ancestor: string, ref: string) {
+    this.ancestryQueries.push([ancestor, ref]);
+    return this.ancestry[`${ancestor} ${ref}`] ?? null;
   }
 }

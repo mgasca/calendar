@@ -1,8 +1,10 @@
 ---
-status: planned
+status: implemented
 date: 2026-11-18
 issue: https://github.com/mgasca/calendar/issues/992
-pr: []
+pr:
+  - https://github.com/mgasca/calendar/pull/995
+  - https://github.com/mgasca/calendar/pull/996
 adrs: ["0042", "0044", "0058", "0065"]
 ---
 
@@ -44,14 +46,14 @@ The only check that runs after `gh stack submit` today is the `post-bash` hook o
 
 ### Acceptance criteria
 
-1. **Given** the guidance in `AGENTS.md`, the `issue-handover` skill and `references/stacked-prs.md`, **when** an agent reads how to open a stack's PRs, **then** each place says that creating or growing a stack can rebase and force-push its layers on GitHub, says to update the stack first when its bottom is behind `origin/<trunk>`, and says to compare and comment the heads afterwards.
-2. **Given** a stack whose lowest open layer does not contain `origin/main`, **when** the agent runs `gh stack submit --auto`, **then** one inform note names that layer and `origin/main`, tells the agent to run the ADR-0065 update first or to check and comment the heads afterwards, and the command runs.
-3. **Given** a stack whose lowest open layer contains `origin/main`, **when** the agent runs `gh stack submit`, **then** no note about the trunk appears.
-4. **Given** a stack whose lowest layers are merged, **when** the agent runs `gh stack submit`, **then** the note is about the lowest open layer only, and it names that layer.
-5. **Given** no stack in the checkout, an unreadable stack, or no `origin/<trunk>` ref, **when** the agent runs `gh stack submit`, **then** no note appears and no network call is made.
-6. **Given** a Bash command that does not run `gh stack submit`, **when** the hooks run, **then** the new check reads nothing and adds no note.
-7. **Given** ADR-0065, **when** I read it, **then** an amendment says that GitHub can rebase a stack when it is created, that the exception's conditions cover `submit` and `link`, and points to the note. `just tools adr` passes.
-8. **Given** the change is complete, **when** I run `just check`, **then** it passes.
+1. **Given** the guidance in `AGENTS.md`, the `issue-handover` skill and `references/stacked-prs.md`, **when** an agent reads how to open a stack's PRs, **then** each place says that creating or growing a stack can rebase and force-push its layers on GitHub, says to update the stack first when its bottom is behind `origin/<trunk>`, and says to compare and comment the heads afterwards. Checked by review of the three files in this story's delivery PR; no automatic test.
+2. **Given** a stack whose lowest open layer does not contain `origin/main`, **when** the agent runs `gh stack submit --auto`, **then** one inform note names that layer and `origin/main`, tells the agent to run the ADR-0065 update first or to check and comment the heads afterwards, and the command runs. Tests: [behind origin/main](../../tools/agent-hooks/tests/stack-trunk_test.ts#L34).
+3. **Given** a stack whose lowest open layer contains `origin/main`, **when** the agent runs `gh stack submit`, **then** no note about the trunk appears. Tests: [already on origin/main or unknown](../../tools/agent-hooks/tests/stack-trunk_test.ts#L50).
+4. **Given** a stack whose lowest layers are merged, **when** the agent runs `gh stack submit`, **then** the note is about the lowest open layer only, and it names that layer. Tests: [merged lower layers](../../tools/agent-hooks/tests/stack-trunk_test.ts#L56).
+5. **Given** no stack in the checkout, an unreadable stack, or no `origin/<trunk>` ref, **when** the agent runs `gh stack submit`, **then** no note appears and no network call is made. Tests: [no stack or unreadable file](../../tools/agent-hooks/tests/stack-trunk_test.ts#L67), [the real probe on a linked worktree](../../tools/agent-hooks/tests/stack-trunk_test.ts#L118). The check calls only the probe's `currentBranch`, `stackFile` and `isAncestor`, which run local git commands.
+6. **Given** a Bash command that does not run `gh stack submit`, **when** the hooks run, **then** the new check reads nothing and adds no note. Tests: [only gh stack submit](../../tools/agent-hooks/tests/stack-trunk_test.ts#L85).
+7. **Given** ADR-0065, **when** I read it, **then** an amendment says that GitHub can rebase a stack when it is created, that the exception's conditions cover `submit` and `link`, and points to the note. `just tools adr` passes. `just tools adr` passed locally.
+8. **Given** the change is complete, **when** I run `just check`, **then** it passes. Locally `just tools test` (1293 tests; shellcheck skipped, not installed), `just tools adr` and `just docs test` passed; the full `just check` is CI's result on the PR head.
 
 ## Design decisions
 
@@ -75,17 +77,17 @@ No new ADR is expected. ADR-0065 gets an amendment that applies its existing rul
 
 ## Implementation notes
 
-*Planned. This section is completed as the story is built.*
-
 ### Where things live
 
 | Area | Location |
 | --- | --- |
-| Guidance | `AGENTS.md`, `.claude/skills/issue-handover/SKILL.md`, `.claude/skills/epic-delivery/references/stacked-prs.md` |
-| Note before `gh stack submit` | `tools/agent-hooks/` (a Bash pre-check beside the bash guard; stack read through `RepoProbe`) |
-| ADR amendment | `docs/decisions/0065-native-github-stacks-for-stacked-prs-with-a-narrow-rebase-exception.md` |
+| Guidance | `AGENTS.md` ("Working on several changes at once"), `.claude/skills/issue-handover/SKILL.md` ("Resume and close out"), `.claude/skills/epic-delivery/references/stacked-prs.md` ("Updating work that remains open") |
+| Note before `gh stack submit` | `describeStackTrunk` and `parseStackBottom` in `tools/agent-hooks/stack-trunk-check.ts`, called from `pre-bash` in `tools/agent-hooks/hook-runner.ts` after the PR link reminder |
+| Stack file and ancestry | `stackFile` (`git rev-parse --path-format=absolute --git-common-dir`, then `gh-stack`) and `isAncestor` (`git merge-base --is-ancestor`, 5 s) on `RepoProbe` (`protocol.ts`, `git-probe.ts`, `tests/fake-probe.ts`) |
+| Registration | Unchanged: `pre-bash` already runs for `Bash(gh *)` in `.claude/settings.json` |
+| ADR amendment | "The rule", "Consequences" and "More Information" in `docs/decisions/0065-native-github-stacks-for-stacked-prs-with-a-narrow-rebase-exception.md` |
 | Hook reference | "Agent hooks" in `tools/README.md` |
-| Tests | `tools/agent-hooks/tests/` |
+| Tests | `tools/agent-hooks/tests/stack-trunk_test.ts` |
 
 ### API
 
@@ -93,18 +95,21 @@ No changes.
 
 ### Testing
 
-* Deno tests with the fake probe for criteria 2 to 6, run by `just tools test`, with a negative control against the old code.
-* Criterion 1 is a review of the three guidance files; criterion 7 is `just tools adr`.
-* If `main` moves while this story's own stack is open, the delivery records what GitHub does when the stack is created, as live evidence for the inference in Background.
+* Deno tests with the fake probe for criteria 2 to 6, plus one with the real `GitProbe` on a temporary repository with a linked worktree (the stack file sits in the common git dir, not the worktree's), run by `just tools test`.
+* Negative control: in a scratch worktree of `origin/main` with the new probe and tests but a stub `stack-trunk-check.ts` that returns nothing, the four behaviour tests failed. The quiet-path tests and the `GitProbe` test passed there, as they should.
+* Criterion 1 was checked by review; criterion 7 by `just tools adr`.
 
 ### Lessons learned, known issues and follow-ups
 
-* To be filled in on delivery.
+* **The rewrite is GitHub's, not the CLI's** (inferred from the #990 timeline and the gh-stack v0.3.0 source, not reproduced). `submit` pushes, opens PRs and creates the stack. The force-push arrived 23 s later, and the local branches did not move. A hook after the command therefore cannot see it, which is why the note runs before.
+* **This story's own stack was not rewritten.** Its bottom contained `origin/main` when `gh stack submit --auto --open` created #995 and #996. A minute later both remote heads still matched the local ones, and neither PR had a force-push event. That is consistent with the inference that GitHub rebases only a stack that is behind its trunk (one observation, not a proof).
+* **`gh stack view --json` calls GitHub** (it syncs the PRs), and its `needsRebase` compares with the local trunk branch, so the note reads the stack file and `origin/<trunk>` directly.
+* **The note reflects the last fetch.** A stack that looks current against a stale `origin/main` gets no note. The guidance's `git fetch` before an update covers this; the hook does not fetch.
+* **`gh stack link` gets no note**, and the check after creating stays a guidance step (see "Not in this story").
+* **The session that delivers a hook does not run it** (as in story [0068](0068-pr-hooks-see-native-stack-prs.md)), so this story's own `gh stack submit` ran without the note.
 
 ## User guide
 
-*Planned behaviour. This section is finalised when the story is implemented.*
-
 ### Opening a stack of pull requests with an agent
 
-Before an agent runs **gh stack submit**, it is told when the bottom of its stack is behind the latest `main` it has fetched. GitHub may then rebase and force-push every layer when it creates the stack. The agent brings the stack up to date first, under the rule that lets it rebase its own stack, and comments the old and new heads on each PR. If a layer still moves after the stack is created, the agent comments that PR's old and new heads and updates its local branch. The command is never blocked. Other agents (Codex, Cursor) get no note and follow the rule in `AGENTS.md` by hand.
+Before an agent runs **gh stack submit**, it is told when the bottom of its stack is behind the latest `main` it has fetched. In that case GitHub may rebase and force-push every layer when it creates or updates the stack. The agent brings the stack up to date first, under the rule that lets it rebase its own stack, and comments the old and new heads on each PR. If a layer still moves after the stack is created, the agent comments that PR's old and new heads and updates its local branch. The command is never blocked. Other agents (Codex, Cursor) get no note and follow the rule in `AGENTS.md` by hand.

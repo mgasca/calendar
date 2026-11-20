@@ -298,7 +298,7 @@ pub fn spec() -> AppSpec<App> {
         scene(app, Route::Today);
         app.day.finish(Ok(fixtures::day()));
         let id = "00000000-0000-4000-8000-000000000003".parse().expect("a fixture id");
-        actions::ask_delete(app, id, "Book flights");
+        actions::ask_delete(app, id, Some("Book flights"));
       }),
     ],
     ..AppSpec::new("Calendar", (960.0, 720.0), App::default, view)

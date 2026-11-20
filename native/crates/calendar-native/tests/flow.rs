@@ -386,11 +386,11 @@ fn deleting_asks_first_then_waits_for_the_server() {
   );
   let mut app = started(&server);
   let id = CALL_THE_BANK.parse().unwrap();
-  calendar_native::actions::ask_delete(&mut app, id, "Call the bank");
+  calendar_native::actions::ask_delete(&mut app, id, Some("Call the bank"));
   calendar_native::actions::cancel_delete(&mut app);
   assert!(app.actions.delete.is_none(), "Cancel closes it");
   assert!(requests(&server, &format!("/api/tasks/{CALL_THE_BANK}")).is_empty());
-  calendar_native::actions::ask_delete(&mut app, id, "Call the bank");
+  calendar_native::actions::ask_delete(&mut app, id, Some("Call the bank"));
   calendar_native::actions::confirm_delete(&mut app);
   assert!(app.actions.delete.as_ref().unwrap().pending);
   calendar_native::actions::cancel_delete(&mut app);
@@ -433,4 +433,31 @@ fn a_toggle_on_my_tasks_uses_its_own_words() {
     app.actions.toggle_error.as_deref(),
     Some("That task changed elsewhere. The list has been refreshed; try again.")
   );
+}
+
+#[test]
+fn deleting_from_my_tasks_counts_the_task_and_keeps_quiet_on_failure() {
+  // The web app's task list opens `ConfirmDialog` with `count={1}` and no title, and shows no error text.
+  let server = day_api();
+  let book = "00000000-0000-4000-8000-000000000101";
+  mount(
+    &server,
+    Mock::given(method("GET"))
+      .and(path("/api/tasks"))
+      .respond_with(ResponseTemplate::new(200).set_body_json(to_json(&fixtures::tasks()))),
+  );
+  mount(
+    &server,
+    Mock::given(method("DELETE"))
+      .and(path(format!("/api/tasks/{book}")))
+      .respond_with(ResponseTemplate::new(500)),
+  );
+  let mut app = started(&server);
+  load::go(&mut app, Route::Tasks(TaskView::Upcoming));
+  settle(&mut app);
+  calendar_native::actions::ask_delete(&mut app, book.parse().unwrap(), None);
+  calendar_native::actions::confirm_delete(&mut app);
+  settle(&mut app);
+  let dialog = app.actions.delete.clone().expect("still open after the failure");
+  assert_eq!((dialog.title, dialog.error, dialog.pending), (None, None, false));
 }

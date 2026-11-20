@@ -18,7 +18,8 @@ type Completion = (bool, Option<Option<DateTime<Utc>>>);
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct DeleteDialog {
   pub id: Uuid,
-  pub title: String,
+  /// The task's title on Day and Week; `None` on My tasks, whose dialog says "1 task", as the web app's does.
+  pub title: Option<String>,
   pub pending: bool,
   pub error: Option<String>,
 }
@@ -115,10 +116,10 @@ pub fn toggle(app: &mut App, id: Uuid, complete: bool) {
 }
 
 /// Opens the delete confirmation for task `id`.
-pub fn ask_delete(app: &mut App, id: Uuid, title: &str) {
+pub fn ask_delete(app: &mut App, id: Uuid, title: Option<&str>) {
   app.actions.delete = Some(DeleteDialog {
     id,
-    title: title.to_owned(),
+    title: title.map(str::to_owned),
     pending: false,
     error: None,
   });
@@ -151,7 +152,10 @@ pub fn confirm_delete(app: &mut App) {
       Err(_) => {
         if let Some(dialog) = &mut app.actions.delete {
           dialog.pending = false;
-          dialog.error = Some("Couldn\u{2019}t delete the task. Try again, or cancel.".to_owned());
+          // Day and Week say why; My tasks keeps the dialog open without a message, as the web app's list does.
+          if dialog.title.is_some() {
+            dialog.error = Some("Couldn\u{2019}t delete the task. Try again, or cancel.".to_owned());
+          }
         }
       }
     },

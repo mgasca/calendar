@@ -79,6 +79,8 @@ pub fn view(app: &App, week_start: NaiveDate, t: &Tokens) -> El {
             overdue: true,
             priority: task.priority.as_deref(),
             meta: Some(described),
+            notes: None,
+            named: true,
           },
           app,
           t,

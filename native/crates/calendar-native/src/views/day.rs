@@ -188,6 +188,8 @@ fn agenda_task(task: &AgendaTaskItem, meta_text: Option<String>, overdue: bool) 
     overdue: overdue && !task.is_completed,
     priority: task.priority.as_deref(),
     meta: meta_text,
+    notes: None,
+    named: true,
   }
 }
 

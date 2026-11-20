@@ -96,7 +96,7 @@ pub fn item(key: &str, t: &Tokens) -> El {
     .fill(t.surface)
 }
 
-/// One task row: its checkbox (inert until #1005), title, priority badge and notes of its due state.
+/// One task row: its checkbox, title, due text, notes, priority badge and Delete.
 pub struct TaskRow<'a> {
   pub id: uuid::Uuid,
   pub key: String,
@@ -105,6 +105,11 @@ pub struct TaskRow<'a> {
   pub overdue: bool,
   pub priority: Option<&'a str>,
   pub meta: Option<String>,
+  /// The task's notes, as their own paragraph (My tasks shows them; the agenda rows do not).
+  pub notes: Option<&'a str>,
+  /// Whether Delete names the task: "Delete {title}" and a titled confirmation on Day and Week; a plain
+  /// "Delete" and "1 task" on My tasks, as the web app's `TaskItem` and `TaskList` differ.
+  pub named: bool,
 }
 
 pub fn task_row(task: TaskRow<'_>, app: &App, t: &Tokens) -> El {
@@ -121,6 +126,15 @@ pub fn task_row(task: TaskRow<'_>, app: &App, t: &Tokens) -> El {
   if let Some(meta_text) = task.meta {
     body = body.child(meta(meta_text, t));
   }
+  if let Some(notes) = task.notes {
+    body = body.child(
+      text(notes)
+        .key(format!("{}-notes", task.key))
+        .font(type_::BODY)
+        .color(t.text)
+        .wrap(),
+    );
+  }
   let mut r = item(&task.key, t).child(check).child(body);
   if let Some(priority) = task.priority {
     r = r.child(badge(format!("{priority} priority"), t.accent_soft, t.text));
@@ -128,13 +142,16 @@ pub fn task_row(task: TaskRow<'_>, app: &App, t: &Tokens) -> El {
   if task.overdue {
     r = r.fill(t.overdue_bg);
   }
-  let (id, title) = (task.id, task.title.to_owned());
-  // "Delete" on screen, "Delete {title}" to assistive technology, as the web app's `aria-label`.
-  r.child(
-    button(&format!("{}-delete", task.key), "Delete", t)
-      .label(format!("Delete {}", task.title))
-      .on_press(move |app: &mut App| crate::actions::ask_delete(app, id, &title)),
-  )
+  let id = task.id;
+  let title = task.named.then(|| task.title.to_owned());
+  // "Delete" on screen; on Day and Week also "Delete {title}" to assistive technology, as the web app's `aria-label`.
+  let delete = button(&format!("{}-delete", task.key), "Delete", t);
+  let delete = if task.named {
+    delete.label(format!("Delete {}", task.title))
+  } else {
+    delete
+  };
+  r.child(delete.on_press(move |app: &mut App| crate::actions::ask_delete(app, id, title.as_deref())))
 }
 
 /// A task's checkbox: pressing it completes or reopens the task; it is disabled while that request runs.
@@ -190,7 +207,16 @@ pub fn delete_dialog(app: &App, t: &Tokens) -> Option<El> {
     .w(420.0)
     .fill(t.surface_raised)
     .child(heading("delete-heading", "Confirm deletion", 2, t))
-    .child(text(format!("Delete \u{201c}{}\u{201d}? This can\u{2019}t be undone.", dialog.title)).color(t.text));
+    .child(
+      text(format!(
+        "Delete {}? This can\u{2019}t be undone.",
+        dialog
+          .title
+          .as_ref()
+          .map_or_else(|| "1 task".to_owned(), |title| format!("\u{201c}{title}\u{201d}"))
+      ))
+      .color(t.text),
+    );
   if let Some(error) = &dialog.error {
     body = body.child(text(error).key("delete-error").role("alert").color(t.error));
   }

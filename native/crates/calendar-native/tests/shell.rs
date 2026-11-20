@@ -136,7 +136,10 @@ fn pressing_a_checkbox_completes_the_task_and_disables_it_until_the_server_answe
 fn delete_opens_the_confirmation_and_cancel_closes_it() {
   let mut rt = runtime("today", false);
   press(&mut rt, &format!("task-{BOOK_FLIGHTS}-delete"));
-  assert_eq!(rt.state.actions.delete.as_ref().map(|d| d.title.as_str()), Some("Book flights"));
+  assert_eq!(
+    rt.state.actions.delete.as_ref().and_then(|d| d.title.as_deref()),
+    Some("Book flights")
+  );
   shows(&rt, &["delete-dialog", "confirm-delete", "cancel-delete"]);
   press(&mut rt, "cancel-delete");
   assert!(rt.state.actions.delete.is_none());
@@ -152,4 +155,16 @@ fn delete_opens_the_confirmation_and_cancel_closes_it() {
 #[test]
 fn the_toggle_error_is_an_alert() {
   shows(&runtime("today-toggle-error", false), &["toggle-error"]);
+}
+
+#[test]
+fn my_tasks_rows_say_delete_and_show_their_notes() {
+  let mut rt = runtime("tasks", false);
+  shows(&rt, &["task-00000000-0000-4000-8000-000000000103-notes"]);
+  press(&mut rt, "task-00000000-0000-4000-8000-000000000101-delete");
+  assert_eq!(
+    rt.state.actions.delete.as_ref().map(|d| d.title.clone()),
+    Some(None),
+    "\"1 task\", no title"
+  );
 }

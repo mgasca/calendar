@@ -84,9 +84,6 @@ fn row_for<'a>(task: &'a TaskResponse, view: TaskView, app: &App) -> TaskRow<'a>
   if view == TaskView::Upcoming && format::is_past_due(task.is_completed, task.due_at.flatten(), app.clock.now()) {
     due.push_str(" · Past due");
   }
-  if let Some(Some(notes)) = &task.notes {
-    due = format!("{due} — {notes}");
-  }
   TaskRow {
     id: task.id,
     key: format!("task-{}", task.id),
@@ -95,5 +92,7 @@ fn row_for<'a>(task: &'a TaskResponse, view: TaskView, app: &App) -> TaskRow<'a>
     overdue: false,
     priority: Some(task.priority.as_deref().unwrap_or("medium")),
     meta: Some(due),
+    notes: task.notes.as_ref().and_then(|n| n.as_deref()),
+    named: false,
   }
 }

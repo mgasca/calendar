@@ -18,7 +18,7 @@ use crate::endpoints::{agenda, auth, events, health, tasks};
     health::get_health,
     auth::me,
     auth::logout,
-    auth::create_native_session,
+    auth::native_token,
     events::create,
     events::get,
     events::update,

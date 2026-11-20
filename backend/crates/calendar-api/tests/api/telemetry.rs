@@ -466,41 +466,66 @@ async fn health_probes_are_counted_but_not_traced() {
 }
 
 #[tokio::test]
-async fn no_span_or_log_carries_a_native_sign_in_challenge_state_code_or_verifier() {
-  const CHALLENGE: &str = "E9Melhoa2OwvFrEMTJguCHaoeK1t8URWbuGJSstw-cM";
+async fn no_span_or_log_carries_a_native_sign_in_challenge_state_code_verifier_or_session() {
+  use base64::Engine;
+  use base64::engine::general_purpose::URL_SAFE_NO_PAD;
+  use sha2::{Digest, Sha256};
   const APP_STATE: &str = "planted-app-state";
-  const CODE: &str = "planted-handover-code";
   const VERIFIER: &str = "planted-verifier-planted-verifier-planted-verifier";
+  const LOOPBACK: &str = "http://127.0.0.1:49152/callback";
+  let challenge = URL_SAFE_NO_PAD.encode(Sha256::digest(VERIFIER.as_bytes()));
   let capture = Capture::start();
-  let app = TestApp::builder()
-    .real_authentication()
-    .setting("Auth__Google__ClientId", "test-client")
-    .setting("Auth__Google__ClientSecret", "test-secret")
-    .meter(capture.meter())
-    .start()
-    .await;
+  let app = TestApp::builder().real_authentication().meter(capture.meter()).start().await;
+  let session = app.session_cookie(&app.ticket_for(Some(USER_A))).await;
 
-  let login = app
+  let start = app
     .client()
     .get(&format!(
-      "/api/auth/login?redirectUri=http%3A%2F%2F127.0.0.1%3A49152%2Fcallback&codeChallenge={CHALLENGE}\
-       &codeChallengeMethod=S256&appState={APP_STATE}"
+      "/api/auth/native/start?redirect_uri={}&state={APP_STATE}&code_challenge={challenge}&code_challenge_method=S256",
+      escape(LOOPBACK)
     ))
     .await;
-  assert_eq!(login.status, StatusCode::FOUND, "{}", login.text());
+  assert_eq!(start.status, StatusCode::FOUND, "{}", start.text());
+  let flow = start.set_cookie("calendar_native").unwrap().pair().to_owned();
+  let browser = app
+    .client()
+    .cookie(&format!("{flow}; {session}"))
+    .header("origin", "http://localhost");
+  let _ = browser.get("/api/auth/native/confirm").await.success();
+  let confirmed = browser.post("/api/auth/native/confirm").await;
+  assert_eq!(confirmed.status, StatusCode::SEE_OTHER, "{}", confirmed.text());
+  let location = confirmed.header("location").unwrap().to_owned();
+  let code = form_urlencoded::parse(location.split_once('?').unwrap().1.as_bytes())
+    .find(|(name, _)| name == "code")
+    .unwrap()
+    .1
+    .into_owned();
+  let token = app
+    .client()
+    .post_json(
+      "/api/auth/native/token",
+      &json!({"code": code, "codeVerifier": VERIFIER, "redirectUri": LOOPBACK}),
+    )
+    .await;
+  assert_eq!(token.status, StatusCode::NO_CONTENT, "{}", token.text());
+  let app_session = token.set_cookie(SESSION_COOKIE).unwrap().value().to_owned();
   let refused = app
     .client()
     .post_json(
-      "/api/auth/native/session",
-      &json!({"code": CODE, "codeVerifier": VERIFIER, "redirectUri": "http://127.0.0.1:49152/callback"}),
+      "/api/auth/native/token",
+      &json!({"code": code, "codeVerifier": "x".repeat(43), "redirectUri": LOOPBACK}),
     )
     .await;
   assert_eq!(refused.status, StatusCode::BAD_REQUEST);
 
   let exported = capture.everything();
-  assert!(exported.contains("/api/auth/native/session"), "the scan reads the spans");
+  assert!(exported.contains("/api/auth/native/token"), "the scan reads the spans");
+  let flow_value = flow.split_once('=').unwrap().1;
   assert_eq!(
-    leaks(&exported, &[CHALLENGE, APP_STATE, CODE, VERIFIER, "49152"]),
+    leaks(
+      &exported,
+      &[&challenge, APP_STATE, &code, VERIFIER, flow_value, &app_session, "49152"]
+    ),
     Vec::<&str>::new()
   );
 }

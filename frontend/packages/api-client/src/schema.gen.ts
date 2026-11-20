@@ -52,7 +52,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/auth/native/session": {
+    "/api/auth/native/token": {
         parameters: {
             query?: never;
             header?: never;
@@ -61,7 +61,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        post: operations["CreateNativeSession"];
+        post: operations["RedeemNativeCode"];
         delete?: never;
         options?: never;
         head?: never;
@@ -518,13 +518,13 @@ export interface components {
                 [key: string]: string[];
             };
         };
-        /** @description Redeem a native sign-in's handover code for a session (the desktop app's loopback sign-in). */
+        /** @description Redeem a native sign-in's handover code for a session (the desktop app's loopback sign-in, ADR-0068). */
         NativeSessionRequest: {
-            /** @description The `code` the API sent to the app's loopback redirect. */
+            /** @description The `code` the API sent to the app's loopback redirect after the person confirmed the sign-in. */
             code: string;
-            /** @description The PKCE code verifier whose S256 challenge the app sent to `GET /api/auth/login`. */
+            /** @description The PKCE code verifier whose S256 challenge the app sent to `GET /api/auth/native/start`. */
             codeVerifier: string;
-            /** @description The loopback redirect URI the app sent to `GET /api/auth/login`. */
+            /** @description The loopback redirect URI the app sent to `GET /api/auth/native/start`. */
             redirectUri: string;
         };
         /** @description Guarded overdue query and the count the client observed. */
@@ -804,7 +804,7 @@ export interface operations {
             };
         };
     };
-    CreateNativeSession: {
+    RedeemNativeCode: {
         parameters: {
             query?: never;
             header?: never;

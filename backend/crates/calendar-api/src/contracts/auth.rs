@@ -26,15 +26,15 @@ pub struct AuthUserResponse {
   pub picture_url: Option<String>,
 }
 
-/// Redeem a native sign-in's handover code for a session (the desktop app's loopback sign-in).
+/// Redeem a native sign-in's handover code for a session (the desktop app's loopback sign-in, ADR-0068).
 #[derive(Debug, Clone, PartialEq, Eq, ToSchema)]
 #[schema(rename_all = "camelCase")]
 pub struct NativeSessionRequest {
-  /// The `code` the API sent to the app's loopback redirect.
+  /// The `code` the API sent to the app's loopback redirect after the person confirmed the sign-in.
   pub code: String,
-  /// The PKCE code verifier whose S256 challenge the app sent to `GET /api/auth/login`.
+  /// The PKCE code verifier whose S256 challenge the app sent to `GET /api/auth/native/start`.
   pub code_verifier: String,
-  /// The loopback redirect URI the app sent to `GET /api/auth/login`.
+  /// The loopback redirect URI the app sent to `GET /api/auth/native/start`.
   pub redirect_uri: String,
 }
 

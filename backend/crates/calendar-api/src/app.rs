@@ -11,7 +11,7 @@ use axum::response::{IntoResponse, Response};
 use axum::routing::{get, post};
 use tokio::net::TcpListener;
 
-use crate::auth::google;
+use crate::auth::{google, native};
 use crate::endpoints::{agenda, auth, events, health, tasks};
 use crate::hosting::{self, RequestOrigin};
 use crate::openapi;
@@ -32,7 +32,9 @@ pub fn router(state: AppState) -> Router {
     .route(google::CALLBACK_PATH, get(google::callback))
     .route("/api/auth/me", get(auth::me))
     .route("/api/auth/logout", post(auth::logout))
-    .route("/api/auth/native/session", post(auth::create_native_session))
+    .route(native::START_PATH, get(native::start))
+    .route(native::CONFIRM_PATH, get(native::confirm_page).post(native::confirm))
+    .route("/api/auth/native/token", post(auth::native_token))
     .route("/api/events", post(events::create))
     .route("/api/events/{id}", get(events::get).put(events::update).delete(events::delete))
     .route("/api/tasks", get(tasks::list).post(tasks::create))

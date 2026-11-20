@@ -58,12 +58,12 @@
         }
       }
     },
-    "/api/auth/native/session": {
+    "/api/auth/native/token": {
       "post": {
         "tags": [
           "Auth"
         ],
-        "operationId": "CreateNativeSession",
+        "operationId": "RedeemNativeCode",
         "requestBody": {
           "content": {
             "application/json": {
@@ -1458,18 +1458,18 @@
         "properties": {
           "code": {
             "type": "string",
-            "description": "The `code` the API sent to the app's loopback redirect."
+            "description": "The `code` the API sent to the app's loopback redirect after the person confirmed the sign-in."
           },
           "codeVerifier": {
             "type": "string",
-            "description": "The PKCE code verifier whose S256 challenge the app sent to `GET /api/auth/login`."
+            "description": "The PKCE code verifier whose S256 challenge the app sent to `GET /api/auth/native/start`."
           },
           "redirectUri": {
             "type": "string",
-            "description": "The loopback redirect URI the app sent to `GET /api/auth/login`."
+            "description": "The loopback redirect URI the app sent to `GET /api/auth/native/start`."
           }
         },
-        "description": "Redeem a native sign-in's handover code for a session (the desktop app's loopback sign-in)."
+        "description": "Redeem a native sign-in's handover code for a session (the desktop app's loopback sign-in, ADR-0068)."
       },
       "OverdueTaskFilter": {
         "required": [

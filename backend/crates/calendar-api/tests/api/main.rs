@@ -13,6 +13,7 @@ mod events;
 mod google_sign_in;
 mod health;
 mod hosting;
+mod native_sign_in;
 mod ownership;
 mod session_and_seed;
 mod session_keys;

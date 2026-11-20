@@ -375,7 +375,7 @@
       "name": "OpenAPI contract",
       "description": "contracts/openapi.json: the committed OpenAPI 3 document emitted by the API build. It is the single contract between the backend and every client; CI fails when it is stale.",
       "interfaces": [
-        { "unique-id": "openapi-document", "path": "contracts/openapi.json", "operations": ["GET /api/health", "GET /api/auth/me", "POST /api/auth/logout", "POST /api/auth/native/session", "POST /api/events", "GET /api/events/{id}", "PUT /api/events/{id}", "DELETE /api/events/{id}", "GET /api/tasks", "POST /api/tasks", "GET /api/tasks/{id}", "PUT /api/tasks/{id}", "DELETE /api/tasks/{id}", "POST /api/tasks/bulk", "POST /api/tasks/{id}/complete", "POST /api/tasks/{id}/reopen", "GET /api/agenda/day", "GET /api/agenda/week"] }
+        { "unique-id": "openapi-document", "path": "contracts/openapi.json", "operations": ["GET /api/health", "GET /api/auth/me", "POST /api/auth/logout", "POST /api/auth/native/token", "POST /api/events", "GET /api/events/{id}", "PUT /api/events/{id}", "DELETE /api/events/{id}", "GET /api/tasks", "POST /api/tasks", "GET /api/tasks/{id}", "PUT /api/tasks/{id}", "DELETE /api/tasks/{id}", "POST /api/tasks/bulk", "POST /api/tasks/{id}/complete", "POST /api/tasks/{id}/reopen", "GET /api/agenda/day", "GET /api/agenda/week"] }
       ],
       "metadata": { "adrs": ["ADR-0004"], "regenerate": "just contracts" }
     },
@@ -387,7 +387,7 @@
       "interfaces": [
         { "unique-id": "api-http", "port": 8080, "description": "The axum server on tokio listens on http://+:8080 inside the container (ASPNETCORE_URLS, set in the image; http://localhost:5041 when unset); TLS terminates at the Container Apps ingress" },
         { "unique-id": "api-health", "path": "/api/health", "operations": ["GET /api/health"], "authentication": "anonymous" },
-        { "unique-id": "api-auth", "path": "/api/auth", "operations": ["GET /api/auth/login?returnUrl=", "GET /api/auth/login?redirectUri=&codeChallenge=&codeChallengeMethod=S256&appState=", "GET /api/auth/callback/google", "POST /api/auth/native/session", "GET /api/auth/me", "POST /api/auth/logout"], "authentication": "login, callback and the native session exchange anonymous (the exchange needs the handover code and its PKCE verifier); me and logout require the session cookie" },
+        { "unique-id": "api-auth", "path": "/api/auth", "operations": ["GET /api/auth/login?returnUrl=", "GET /api/auth/callback/google", "GET /api/auth/me", "POST /api/auth/logout", "GET /api/auth/native/start", "GET /api/auth/native/confirm", "POST /api/auth/native/confirm", "POST /api/auth/native/token"], "authentication": "login, callback, native start and native token anonymous (the token needs the handover code and its PKCE verifier); the native confirm page and its same-origin POST, me and logout require the session cookie" },
         { "unique-id": "api-events", "path": "/api/events", "operations": ["POST /api/events", "GET /api/events/{id}", "PUT /api/events/{id}", "DELETE /api/events/{id}"], "authentication": "session cookie" },
         { "unique-id": "api-tasks", "path": "/api/tasks", "operations": ["GET /api/tasks?view=&today=&timeZone=&limit=&cursor=", "POST /api/tasks", "GET /api/tasks/{id}", "PUT /api/tasks/{id}", "DELETE /api/tasks/{id}", "POST /api/tasks/bulk", "POST /api/tasks/{id}/complete", "POST /api/tasks/{id}/reopen"], "authentication": "session cookie" },
         { "unique-id": "api-agenda", "path": "/api/agenda", "operations": ["GET /api/agenda/day?date=&timeZone=", "GET /api/agenda/week?date=&timeZone=&today="], "authentication": "session cookie" },
@@ -405,7 +405,7 @@
                 "identity-provider": "Google OpenID Connect (authorization-code flow with state, PKCE and nonce in calendar-api), callback /api/auth/callback/google",
                 "pattern": "Backend-for-frontend: the API holds the OAuth client secret and issues a same-origin cookie; the browser never sees tokens",
                 "fallback-policy": "Every handler outside health, sign-in and the static files takes a CurrentUser extractor, which answers 401 or 403 and never redirects (calendar-api/src/auth.rs)",
-                "anonymous-endpoints": ["GET /api/health", "GET /api/auth/login", "GET /api/auth/callback/google", "POST /api/auth/native/session", "SPA static files and index.html fallback", "OpenAPI document (Development only)"],
+                "anonymous-endpoints": ["GET /api/health", "GET /api/auth/login", "GET /api/auth/callback/google", "GET /api/auth/native/start", "POST /api/auth/native/token", "SPA static files and index.html fallback", "OpenAPI document (Development only)"],
                 "allow-list": {
                   "source": "Auth:AllowedEmails (Key Vault secrets allowed-email-N → Auth__AllowedEmails__N in Azure; .env locally)",
                   "requires-verified-email": true,
@@ -1546,10 +1546,10 @@
                 "identity-provider": "Google OpenID Connect",
                 "pattern": "Backend-for-frontend cookie session",
                 "fallback-policy": "CurrentUser extractor on every non-anonymous handler",
-                "anonymous-endpoints": ["GET /api/auth/login", "GET /api/auth/callback/google", "POST /api/auth/native/session"],
+                "anonymous-endpoints": ["GET /api/auth/login", "GET /api/auth/callback/google", "GET /api/auth/native/start", "POST /api/auth/native/token"],
                 "allow-list": { "source": "Auth:AllowedEmails", "requires-verified-email": true },
                 "session-cookie": { "http-only": true, "same-site": "Lax", "secure": "Always outside Development", "lifetime": "8 hours", "sliding-expiration": false },
-                "open-redirect-protection": "returnUrl validated as a local path on server and client; /signin itself is never a return target; a native redirectUri must be http://127.0.0.1 or http://[::1], a port from 1024 to 65535 and the path /callback",
+                "open-redirect-protection": "returnUrl validated as a local path on server and client; /signin itself is never a return target; a native redirect_uri must be http://127.0.0.1 or http://[::1] with a port from 1024 to 65535 and the path /callback",
                 "adrs": ["https://mgasca.github.io/calendar/adr/0027/"]
               }
             }

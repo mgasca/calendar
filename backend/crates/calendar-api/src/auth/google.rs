@@ -28,7 +28,6 @@ use sha2::{Digest, Sha256};
 use subtle::ConstantTimeEq;
 
 use super::Principal;
-use super::native::{Handover, NativeRequest};
 use super::session::{self, SessionTicket};
 use crate::config::{GoogleCredentials, GoogleOverrides};
 use crate::endpoints::request::QueryParams;
@@ -122,9 +121,6 @@ struct SignInState {
   nonce: String,
   return_url: String,
   expires_at: DateTime<Utc>,
-  /// The desktop app's loopback handover, for a native sign-in ([`super::native`]).
-  #[serde(default)]
-  native: Option<NativeRequest>,
 }
 
 fn random_token() -> String {
@@ -146,8 +142,6 @@ pub async fn login(State(state): State<AppState>, origin: RequestOrigin, query: 
     );
   };
 
-  let native = NativeRequest::from_query(&query)
-    .map_err(|error| Problem::titled(StatusCode::BAD_REQUEST, "The native sign-in request is invalid.").with_detail(error.to_string()))?;
   let return_url = query.get("returnUrl");
   let flow = SignInState {
     state: random_token(),
@@ -155,7 +149,6 @@ pub async fn login(State(state): State<AppState>, origin: RequestOrigin, query: 
     nonce: random_token(),
     return_url: local_return_url(return_url.as_deref()).to_owned(),
     expires_at: state.now() + SIGN_IN_LIFETIME,
-    native,
   };
   let challenge = URL_SAFE_NO_PAD.encode(Sha256::digest(flow.verifier.as_bytes()));
   let authorize = form_urlencoded::Serializer::new(String::new())
@@ -194,47 +187,20 @@ pub async fn callback(
 ) -> Response {
   let secure = origin.secure_cookies(state.settings());
   let clear_flow = session::clear_cookie(SIGN_IN_COOKIE, secure);
-  let flow = open_flow(&state, &headers).await;
-  // A failure is sent to the app's loopback only when the flow cookie opened, so the redirect is the one
-  // `login` checked; otherwise there is no trusted loopback, and the browser ends at the web failure page.
-  let native = flow.as_ref().ok().and_then(|flow| flow.native.clone());
-  let completed = match flow {
-    Ok(flow) => complete(&state, &origin, &query, flow).await,
-    Err(reason) => Err(reason),
-  };
-  match completed {
+  match complete(&state, &origin, &query, &headers).await {
     Ok((principal, return_url)) => match state.sealer().await {
-      // A native sign-in sets no session in the browser: the app redeems the handover for its own.
       Ok(sealer) => {
-        if let Some(native) = native {
-          let code = Handover::issue(&principal, &native, state.now()).seal(&sealer);
-          redirect(&native.success_location(&code), [clear_flow])
-        } else {
-          let ticket = SessionTicket::issue(principal, state.now()).seal(&sealer);
-          let session = session::set_cookie(session::SESSION_COOKIE, &ticket, secure, None);
-          redirect(&return_url, [clear_flow, session])
-        }
+        let ticket = SessionTicket::issue(principal, state.now()).seal(&sealer);
+        let session = session::set_cookie(session::SESSION_COOKIE, &ticket, secure, None);
+        redirect(&return_url, [clear_flow, session])
       }
       Err(error) => error.into_response(),
     },
     Err(reason) => {
-      tracing::warn!(%reason, native = native.is_some(), "Google sign-in failed");
-      let location = native
-        .as_ref()
-        .map_or_else(|| FAILURE_REDIRECT.to_owned(), NativeRequest::failure_location);
-      redirect(&location, [clear_flow])
+      tracing::warn!(%reason, "Google sign-in failed");
+      redirect(FAILURE_REDIRECT, [clear_flow])
     }
   }
-}
-
-/// Opens the sign-in cookie of the flow this callback belongs to.
-async fn open_flow(state: &AppState, headers: &axum::http::HeaderMap) -> Result<SignInState, CallbackError> {
-  let cookie = session::cookie_value(headers, SIGN_IN_COOKIE).ok_or(CallbackError::NoFlowCookie)?;
-  let sealer = state.sealer().await.map_err(|error| CallbackError::SessionKey(error.to_string()))?;
-  sealer
-    .open(SIGN_IN_PURPOSE, cookie)
-    .and_then(|json| serde_json::from_slice(&json).ok())
-    .ok_or(CallbackError::UnreadableFlowCookie)
 }
 
 fn redirect<const N: usize>(location: &str, cookies: [HeaderValue; N]) -> Response {
@@ -311,12 +277,12 @@ enum CallbackError {
   SignIn(#[from] SignInError),
 }
 
-/// Runs the callback of `flow`.
+/// Runs the callback.
 async fn complete(
   state: &AppState,
   origin: &RequestOrigin,
   query: &QueryParams,
-  flow: SignInState,
+  headers: &axum::http::HeaderMap,
 ) -> Result<(Principal, String), CallbackError> {
   let credentials = state.settings().google.as_ref().ok_or(CallbackError::NotConfigured)?;
   if let Some(error) = query.get("error") {
@@ -325,6 +291,12 @@ async fn complete(
   let code = query.get("code").filter(|code| !code.is_empty()).ok_or(CallbackError::NoCode)?;
   let returned_state = query.get("state").ok_or(CallbackError::NoState)?;
 
+  let cookie = session::cookie_value(headers, SIGN_IN_COOKIE).ok_or(CallbackError::NoFlowCookie)?;
+  let sealer = state.sealer().await.map_err(|error| CallbackError::SessionKey(error.to_string()))?;
+  let flow: SignInState = sealer
+    .open(SIGN_IN_PURPOSE, cookie)
+    .and_then(|json| serde_json::from_slice(&json).ok())
+    .ok_or(CallbackError::UnreadableFlowCookie)?;
   if state.now() >= flow.expires_at {
     return Err(CallbackError::FlowExpired);
   }

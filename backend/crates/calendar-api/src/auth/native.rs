@@ -1,17 +1,27 @@
-//! Native sign-in: the desktop app's session handover through a loopback redirect (RFC 8252), with the
-//! API as the authorization server and the cookie session unchanged (ADR-0027, #1008).
+//! Native sign-in: the desktop app's session handover through a loopback redirect (RFC 8252), with the API
+//! as the authorization server and the cookie session unchanged (ADR-0068, amending ADR-0027; #1008).
 //!
-//! The app binds `127.0.0.1:0` (or `[::1]:0`), opens the system browser at `GET /api/auth/login` with a
-//! [`NativeRequest`] (`redirectUri`, `codeChallenge`, `codeChallengeMethod=S256`, `appState`), and the
-//! Google flow runs as for the web app. Instead of setting the session cookie in the browser, the callback
-//! redirects to the loopback with a sealed [`Handover`] token that lasts [`HANDOVER_LIFETIME`] and the
-//! app's `state`. The app redeems the token with its PKCE verifier at `POST /api/auth/native/session`, whose
-//! answer sets the ordinary session cookie. The session cookie therefore never travels in a URL, and the
-//! token in the URL is worthless without the verifier, which never leaves the app.
+//! 1. The app binds `127.0.0.1:0` (or `[::1]:0`) and opens the system browser at `GET /api/auth/native/start`
+//!    with a [`NativeRequest`]. The API checks it, seals it into the [`NATIVE_COOKIE`] flow cookie, and sends
+//!    the browser to the confirm page.
+//! 2. `GET /api/auth/native/confirm` sends a browser without a session through the ordinary Google sign-in
+//!    (`/api/auth/login?returnUrl=/api/auth/native/confirm`), so a browser already signed in skips Google. A
+//!    signed-in browser sees "Sign in to the Calendar desktop app?" and the signed-in email.
+//! 3. The page's button posts the same-origin form `POST /api/auth/native/confirm`. Without that click no code
+//!    is minted, so a local process that sends the browser to `start` with its own listener gets nothing. The
+//!    POST is refused unless the browser says it is same-origin, and the page refuses to be framed.
+//! 4. The POST redirects (303) to the loopback with a sealed [`Handover`] code that lasts [`HANDOVER_LIFETIME`]
+//!    and the app's `state`. The app redeems the code with its PKCE verifier at `POST /api/auth/native/token`
+//!    (`crate::endpoints::auth::native_token`), whose answer sets the ordinary session cookie.
 //!
-//! The token is stateless, like the session cookie: it can be redeemed more than once within its lifetime
-//! by whoever holds the verifier (the maintainer's answer on #1008, question 2).
+//! The session cookie never travels in a URL, and the code in the URL is worthless without the verifier, which
+//! never leaves the app. The code is stateless, like the session cookie: it can be redeemed more than once
+//! within its lifetime by whoever holds the verifier (the maintainer's answer on #1008, question 2).
 
+use axum::extract::State;
+use axum::http::header::{CACHE_CONTROL, CONTENT_TYPE, LOCATION, ORIGIN, SET_COOKIE, X_FRAME_OPTIONS};
+use axum::http::{HeaderMap, HeaderName, HeaderValue, StatusCode};
+use axum::response::{IntoResponse, Response};
 use base64::Engine;
 use base64::engine::general_purpose::URL_SAFE_NO_PAD;
 use calendar_infrastructure::OwnerId;
@@ -21,19 +31,37 @@ use sha2::{Digest, Sha256};
 use subtle::ConstantTimeEq;
 use uuid::Uuid;
 
-use super::Principal;
-use super::session::Sealer;
+use super::session::{self, Sealer};
+use super::{CurrentUser, MaybeUser, Principal};
 use crate::endpoints::request::QueryParams;
+use crate::error::ApiError;
+use crate::hosting::RequestOrigin;
+use crate::problem::Problem;
+use crate::state::AppState;
+
+/// The path that starts a native sign-in.
+pub const START_PATH: &str = "/api/auth/native/start";
+
+/// The path of the confirm page and of the form it posts.
+pub const CONFIRM_PATH: &str = "/api/auth/native/confirm";
+
+/// Where the confirm page sends a browser that is not signed in.
+pub const SIGN_IN_FOR_CONFIRM: &str = "/api/auth/login?returnUrl=%2Fapi%2Fauth%2Fnative%2Fconfirm";
+
+/// The cookie that carries the app's [`NativeRequest`] from `start` to the confirm POST.
+pub const NATIVE_COOKIE: &str = "calendar_native";
 
 /// The only path a loopback redirect may name.
 pub const LOOPBACK_PATH: &str = "/callback";
 
-/// How long a handover token can be redeemed, from the callback.
+/// How long a handover code can be redeemed, from the confirm click.
 pub const HANDOVER_LIFETIME: TimeDelta = TimeDelta::seconds(60);
 
+const FLOW_PURPOSE: &str = "calendar.native-flow.v1";
+const FLOW_LIFETIME: TimeDelta = TimeDelta::minutes(15);
 const HANDOVER_PURPOSE: &str = "calendar.native-handover.v1";
 const LOWEST_PORT: u16 = 1024;
-const MAX_APP_STATE_LENGTH: usize = 128;
+const MAX_STATE_LENGTH: usize = 128;
 
 /// The redirect URI if it is an allowed loopback redirect: `http`, the host `127.0.0.1` or `[::1]` (never
 /// `localhost`, which the hosts file can point elsewhere; RFC 8252 §8.3), a port from 1024 to 65535 written
@@ -48,53 +76,43 @@ pub fn loopback_redirect(uri: &str) -> Option<&str> {
   allowed.then_some(uri)
 }
 
-/// What a native sign-in asks of `GET /api/auth/login`, carried in the sign-in cookie to the callback.
+/// What the app asks of `GET /api/auth/native/start`.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct NativeRequest {
   /// The app's loopback redirect, already checked by [`loopback_redirect`].
   pub redirect_uri: String,
   /// The app's PKCE challenge: `BASE64URL(SHA-256(verifier))`.
   pub code_challenge: String,
-  /// The app's own `state`, echoed to the loopback for the app to check.
-  pub app_state: String,
+  /// The app's `state`, echoed to the loopback for the app to check.
+  pub state: String,
 }
 
-/// Why a login request is not a valid native sign-in. The message is the problem's detail.
+/// Why a start request is refused. The message is the problem's detail.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, thiserror::Error)]
 pub enum NativeRequestError {
-  /// Some native parameters are present but not all.
-  #[error("A native sign-in needs redirectUri, codeChallenge, codeChallengeMethod and appState.")]
+  /// A parameter is missing.
+  #[error("A native sign-in needs redirect_uri, state, code_challenge and code_challenge_method.")]
   Incomplete,
-  /// `returnUrl` was sent with native parameters.
-  #[error("returnUrl cannot be combined with a native sign-in.")]
-  WithReturnUrl,
   /// The redirect URI is not an allowed loopback redirect.
-  #[error("redirectUri must be http://127.0.0.1:<port>/callback or http://[::1]:<port>/callback with a port from 1024 to 65535.")]
+  #[error("redirect_uri must be http://127.0.0.1:<port>/callback or http://[::1]:<port>/callback with a port from 1024 to 65535.")]
   RedirectUri,
   /// The challenge method is not `S256`, or the challenge is not a base64url SHA-256 digest.
-  #[error("codeChallengeMethod must be S256 and codeChallenge a base64url SHA-256 digest.")]
+  #[error("code_challenge_method must be S256 and code_challenge a base64url SHA-256 digest.")]
   Challenge,
-  /// `appState` is empty, too long, or not URL-safe.
-  #[error("appState must be 1 to 128 characters from A-Z, a-z, 0-9, '-', '.', '_' and '~'.")]
-  AppState,
+  /// `state` is empty, too long, or not URL-safe.
+  #[error("state must be 1 to 128 characters from A-Z, a-z, 0-9, '-', '.', '_' and '~'.")]
+  State,
 }
 
 impl NativeRequest {
-  /// The native sign-in a login request asks for: `Ok(None)` for the web app's flow, which sends none of the
-  /// native parameters.
-  pub fn from_query(query: &QueryParams) -> Result<Option<Self>, NativeRequestError> {
-    let redirect_uri = query.get("redirectUri");
-    let code_challenge = query.get("codeChallenge");
-    let method = query.get("codeChallengeMethod");
-    let app_state = query.get("appState");
-    if redirect_uri.is_none() && code_challenge.is_none() && method.is_none() && app_state.is_none() {
-      return Ok(None);
-    }
-    if query.get("returnUrl").is_some() {
-      return Err(NativeRequestError::WithReturnUrl);
-    }
-    let (Some(redirect_uri), Some(code_challenge), Some(method), Some(app_state)) = (redirect_uri, code_challenge, method, app_state)
-    else {
+  /// Reads and checks a start request.
+  pub fn from_query(query: &QueryParams) -> Result<Self, NativeRequestError> {
+    let (Some(redirect_uri), Some(state), Some(code_challenge), Some(method)) = (
+      query.get("redirect_uri"),
+      query.get("state"),
+      query.get("code_challenge"),
+      query.get("code_challenge_method"),
+    ) else {
       return Err(NativeRequestError::Incomplete);
     };
     if loopback_redirect(&redirect_uri).is_none() {
@@ -103,30 +121,21 @@ impl NativeRequest {
     if method != "S256" || !is_sha256_challenge(&code_challenge) {
       return Err(NativeRequestError::Challenge);
     }
-    if app_state.is_empty() || app_state.len() > MAX_APP_STATE_LENGTH || !app_state.bytes().all(is_unreserved) {
-      return Err(NativeRequestError::AppState);
+    if state.is_empty() || state.len() > MAX_STATE_LENGTH || !state.bytes().all(is_unreserved) {
+      return Err(NativeRequestError::State);
     }
-    Ok(Some(Self {
+    Ok(Self {
       redirect_uri,
       code_challenge,
-      app_state,
-    }))
+      state,
+    })
   }
 
-  /// Where the browser goes when the sign-in succeeded: the loopback with the handover token and `state`.
+  /// Where the browser goes after the confirm click: the loopback with the handover code and `state`.
   pub fn success_location(&self, code: &str) -> String {
     let query = form_urlencoded::Serializer::new(String::new())
       .append_pair("code", code)
-      .append_pair("state", &self.app_state)
-      .finish();
-    format!("{}?{query}", self.redirect_uri)
-  }
-
-  /// Where the browser goes when the sign-in failed: the loopback with `error=access_denied` and `state`.
-  pub fn failure_location(&self) -> String {
-    let query = form_urlencoded::Serializer::new(String::new())
-      .append_pair("error", "access_denied")
-      .append_pair("state", &self.app_state)
+      .append_pair("state", &self.state)
       .finish();
     format!("{}?{query}", self.redirect_uri)
   }
@@ -147,7 +156,143 @@ fn is_verifier(verifier: &str) -> bool {
   (43..=128).contains(&verifier.len()) && verifier.bytes().all(is_unreserved)
 }
 
-/// The one-time code of a native sign-in: who signed in, bound to the app's challenge and redirect URI.
+/// What the flow cookie holds between `start` and the confirm POST.
+#[derive(Debug, Serialize, Deserialize)]
+struct NativeFlow {
+  request: NativeRequest,
+  expires_at: DateTime<Utc>,
+}
+
+/// The app's request from the flow cookie, while it lasts.
+async fn open_flow(state: &AppState, headers: &HeaderMap) -> Result<Option<NativeRequest>, ApiError> {
+  let Some(cookie) = session::cookie_value(headers, NATIVE_COOKIE) else {
+    return Ok(None);
+  };
+  let flow: Option<NativeFlow> = state
+    .sealer()
+    .await?
+    .open(FLOW_PURPOSE, cookie)
+    .and_then(|json| serde_json::from_slice(&json).ok());
+  Ok(flow.filter(|flow| state.now() < flow.expires_at).map(|flow| flow.request))
+}
+
+fn no_flow() -> ApiError {
+  Problem::titled(StatusCode::BAD_REQUEST, "The desktop sign-in has expired or was not started.")
+    .with_detail("Start signing in again from the desktop app.")
+    .into()
+}
+
+/// `GET /api/auth/native/start`: checks the app's request, keeps it in the flow cookie, and sends the browser
+/// to the confirm page. A request that is not safe is answered `400`, never redirected.
+pub async fn start(State(state): State<AppState>, origin: RequestOrigin, query: QueryParams) -> Result<Response, ApiError> {
+  let request = NativeRequest::from_query(&query)
+    .map_err(|error| Problem::titled(StatusCode::BAD_REQUEST, "The native sign-in request is invalid.").with_detail(error.to_string()))?;
+  let flow = NativeFlow {
+    request,
+    expires_at: state.now() + FLOW_LIFETIME,
+  };
+  let sealed = state
+    .sealer()
+    .await?
+    .seal(FLOW_PURPOSE, &serde_json::to_vec(&flow).map_err(ApiError::internal)?);
+  let cookie = session::set_cookie(
+    NATIVE_COOKIE,
+    &sealed,
+    origin.secure_cookies(state.settings()),
+    Some(FLOW_LIFETIME.num_seconds()),
+  );
+  Ok(redirect(StatusCode::FOUND, CONFIRM_PATH, &[cookie]))
+}
+
+/// `GET /api/auth/native/confirm`: asks the signed-in person to confirm the desktop sign-in, or sends a browser
+/// that is not signed in through Google first.
+pub async fn confirm_page(State(state): State<AppState>, MaybeUser(user): MaybeUser, headers: HeaderMap) -> Result<Response, ApiError> {
+  if open_flow(&state, &headers).await?.is_none() {
+    return Err(no_flow());
+  }
+  let Some(user) = user else {
+    return Ok(redirect(StatusCode::FOUND, SIGN_IN_FOR_CONFIRM, &[]));
+  };
+  let email = escape_html(user.email.as_deref().unwrap_or_default());
+  let page = format!(
+    "<!doctype html>\n<html lang=\"en\"><head><meta charset=\"utf-8\"><meta name=\"viewport\" content=\"width=device-width\">\
+     <title>Sign in to the Calendar desktop app</title></head><body>\
+     <h1>Sign in to the Calendar desktop app?</h1>\
+     <p>You are signed in as <strong>{email}</strong>. Continue only if you started signing in from the Calendar \
+     desktop app on this computer.</p>\
+     <form method=\"post\" action=\"{CONFIRM_PATH}\"><button type=\"submit\">Sign in to the desktop app</button></form>\
+     <p><a href=\"/\">Cancel</a></p></body></html>\n"
+  );
+  let mut response = (StatusCode::OK, page).into_response();
+  let headers = response.headers_mut();
+  headers.insert(CONTENT_TYPE, HeaderValue::from_static("text/html; charset=utf-8"));
+  // The click is the guard, so the page must not be framed (clickjacking) or kept.
+  headers.insert(
+    HeaderName::from_static("content-security-policy"),
+    HeaderValue::from_static("default-src 'none'; form-action 'self'; frame-ancestors 'none'; base-uri 'none'"),
+  );
+  headers.insert(X_FRAME_OPTIONS, HeaderValue::from_static("DENY"));
+  headers.insert(CACHE_CONTROL, HeaderValue::from_static("no-store"));
+  Ok(response)
+}
+
+/// `POST /api/auth/native/confirm`: the confirm click. Mints the handover code and sends the browser to the app's
+/// loopback. Refused unless the browser says the form came from this origin.
+pub async fn confirm(
+  State(state): State<AppState>,
+  origin: RequestOrigin,
+  CurrentUser(user): CurrentUser,
+  headers: HeaderMap,
+) -> Result<Response, ApiError> {
+  if !is_same_origin(&headers, &origin) {
+    return Err(Problem::titled(StatusCode::FORBIDDEN, "The desktop sign-in must be confirmed on its own page.").into());
+  }
+  let request = open_flow(&state, &headers).await?.ok_or_else(no_flow)?;
+  let code = Handover::issue(&user, &request, state.now()).seal(&state.sealer().await?);
+  let clear_flow = session::clear_cookie(NATIVE_COOKIE, origin.secure_cookies(state.settings()));
+  Ok(redirect(StatusCode::SEE_OTHER, &request.success_location(&code), &[clear_flow]))
+}
+
+/// Whether the browser says the request came from this origin: `Origin` names it, or, without `Origin`,
+/// `Sec-Fetch-Site` is `same-origin`. A request with neither (not a browser form) is refused.
+fn is_same_origin(headers: &HeaderMap, origin: &RequestOrigin) -> bool {
+  let header = |name| headers.get(name).and_then(|value: &HeaderValue| value.to_str().ok());
+  match header(ORIGIN) {
+    Some(sent) => sent.eq_ignore_ascii_case(&format!("{}://{}", origin.scheme, origin.host)),
+    None => header(HeaderName::from_static("sec-fetch-site")) == Some("same-origin"),
+  }
+}
+
+fn redirect(status: StatusCode, location: &str, cookies: &[HeaderValue]) -> Response {
+  let mut response = status.into_response();
+  let headers = response.headers_mut();
+  headers.insert(
+    LOCATION,
+    HeaderValue::from_str(location).unwrap_or_else(|_| HeaderValue::from_static("/")),
+  );
+  headers.insert(CACHE_CONTROL, HeaderValue::from_static("no-store"));
+  for cookie in cookies {
+    headers.append(SET_COOKIE, cookie.clone());
+  }
+  response
+}
+
+fn escape_html(text: &str) -> String {
+  let mut escaped = String::with_capacity(text.len());
+  for character in text.chars() {
+    match character {
+      '&' => escaped.push_str("&amp;"),
+      '<' => escaped.push_str("&lt;"),
+      '>' => escaped.push_str("&gt;"),
+      '"' => escaped.push_str("&quot;"),
+      '\'' => escaped.push_str("&#39;"),
+      other => escaped.push(other),
+    }
+  }
+  escaped
+}
+
+/// The handover code of a native sign-in: who confirmed, bound to the app's challenge and redirect URI.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Handover {
   user_id: Uuid,
@@ -159,25 +304,25 @@ pub struct Handover {
   expires_at: DateTime<Utc>,
 }
 
-/// Why a handover token is not redeemed. The precise reason is only logged; the app sees one problem.
+/// Why a handover code is not redeemed. The precise reason is only logged; the app sees `invalid_grant`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, thiserror::Error)]
 pub enum HandoverError {
-  /// The token is malformed, forged, or sealed for another purpose or under another key.
-  #[error("the handover token cannot be opened")]
+  /// The code is malformed, forged, or sealed for another purpose or under another key.
+  #[error("the handover code cannot be opened")]
   Unreadable,
-  /// The token is older than [`HANDOVER_LIFETIME`].
-  #[error("the handover token has expired")]
+  /// The code is older than [`HANDOVER_LIFETIME`].
+  #[error("the handover code has expired")]
   Expired,
-  /// The verifier is not a code verifier, or does not hash to the token's challenge.
+  /// The verifier is not a code verifier, or does not hash to the code's challenge.
   #[error("the code verifier does not match the challenge")]
   VerifierMismatch,
-  /// The redirect URI is not the one the token was issued for.
-  #[error("the redirect URI does not match the handover token")]
+  /// The redirect URI is not the one the code was issued for.
+  #[error("the redirect URI does not match the handover code")]
   RedirectMismatch,
 }
 
 impl Handover {
-  /// The handover for `principal` at the end of `request`'s callback at `now`.
+  /// The handover for `principal`, confirmed for `request` at `now`.
   pub fn issue(principal: &Principal, request: &NativeRequest, now: DateTime<Utc>) -> Self {
     Self {
       user_id: principal.owner.0,
@@ -190,7 +335,7 @@ impl Handover {
     }
   }
 
-  /// The token that goes to the loopback.
+  /// The code that goes to the loopback.
   pub fn seal(&self, sealer: &Sealer) -> String {
     let json = serde_json::to_vec(self).expect("a handover serializes to JSON");
     sealer.seal(HANDOVER_PURPOSE, &json)
@@ -268,82 +413,102 @@ mod tests {
     URL_SAFE_NO_PAD.encode(Sha256::digest(VERIFIER.as_bytes()))
   }
 
-  fn query(pairs: &[(&str, &str)]) -> QueryParams {
-    let query = form_urlencoded::Serializer::new(String::new()).extend_pairs(pairs).finish();
-    QueryParams::parse(&query)
-  }
+  /// A parameter to replace, or to remove when the value is `None`.
+  type Override<'a> = (&'a str, Option<&'a str>);
 
-  fn native_query(overrides: &[(&str, &str)]) -> QueryParams {
+  /// A start query: the valid request, with each `overrides` pair replacing its parameter (or, when the value
+  /// is `None`, removing it).
+  fn start_query(overrides: &[Override]) -> QueryParams {
     let challenge = challenge();
     let mut pairs = vec![
-      ("redirectUri", "http://127.0.0.1:5000/callback"),
-      ("codeChallenge", challenge.as_str()),
-      ("codeChallengeMethod", "S256"),
-      ("appState", "app-state_1.~"),
+      ("redirect_uri", "http://127.0.0.1:5000/callback"),
+      ("state", "app-state_1.~"),
+      ("code_challenge", challenge.as_str()),
+      ("code_challenge_method", "S256"),
     ];
     for (name, value) in overrides {
       pairs.retain(|(key, _)| key != name);
-      if !value.is_empty() {
+      if let Some(value) = value {
         pairs.push((name, value));
       }
     }
-    query(&pairs)
+    QueryParams::parse(&form_urlencoded::Serializer::new(String::new()).extend_pairs(pairs).finish())
   }
 
   #[test]
-  fn a_login_without_native_parameters_is_the_web_flow() {
-    assert_eq!(NativeRequest::from_query(&query(&[("returnUrl", "/day")])), Ok(None));
-    assert_eq!(NativeRequest::from_query(&query(&[])), Ok(None));
-  }
-
-  #[test]
-  fn a_complete_native_login_is_read() {
-    let request = NativeRequest::from_query(&native_query(&[])).unwrap().unwrap();
+  fn a_complete_start_request_is_read() {
+    let request = NativeRequest::from_query(&start_query(&[])).unwrap();
     assert_eq!(request.redirect_uri, "http://127.0.0.1:5000/callback");
     assert_eq!(request.code_challenge, challenge());
-    assert_eq!(request.app_state, "app-state_1.~");
+    assert_eq!(request.state, "app-state_1.~");
   }
 
   #[test]
-  fn an_incomplete_or_invalid_native_login_is_refused() {
-    use NativeRequestError::*;
-    let cases: &[(&[(&str, &str)], NativeRequestError)] = &[
-      (&[("redirectUri", "")], Incomplete),
-      (&[("codeChallenge", "")], Incomplete),
-      (&[("codeChallengeMethod", "")], Incomplete),
-      (&[("appState", "")], Incomplete),
-      (&[("returnUrl", "/day")], WithReturnUrl),
-      (&[("redirectUri", "http://localhost:5000/callback")], RedirectUri),
-      (&[("codeChallengeMethod", "plain")], Challenge),
-      (&[("codeChallenge", "short")], Challenge),
-      (&[("codeChallenge", "dBjftJeZ4CVP-mB92K27uhbUJU1p1r_wW1gFWFOEjX!")], Challenge),
-      (&[("appState", "has space")], AppState),
-      (&[("appState", &"a".repeat(129))], AppState),
+  fn an_incomplete_or_invalid_start_request_is_refused() {
+    use NativeRequestError::{Challenge, Incomplete, RedirectUri, State};
+    let long_state = "a".repeat(129);
+    let cases: &[(&[Override], NativeRequestError)] = &[
+      (&[("redirect_uri", None)], Incomplete),
+      (&[("state", None)], Incomplete),
+      (&[("code_challenge", None)], Incomplete),
+      (&[("code_challenge_method", None)], Incomplete),
+      (&[("redirect_uri", Some("http://localhost:5000/callback"))], RedirectUri),
+      (&[("code_challenge_method", Some("plain"))], Challenge),
+      (&[("code_challenge", Some("short"))], Challenge),
+      (
+        &[("code_challenge", Some("dBjftJeZ4CVP-mB92K27uhbUJU1p1r_wW1gFWFOEjX!"))],
+        Challenge,
+      ),
+      (&[("state", Some(""))], State),
+      (&[("state", Some("has space"))], State),
+      (&[("state", Some(&long_state))], State),
     ];
     for (overrides, expected) in cases {
-      assert_eq!(NativeRequest::from_query(&native_query(overrides)), Err(*expected), "{overrides:?}");
+      assert_eq!(NativeRequest::from_query(&start_query(overrides)), Err(*expected), "{overrides:?}");
     }
-    // An empty `appState` is sent but empty.
-    let empty_state = query(&[
-      ("redirectUri", "http://127.0.0.1:5000/callback"),
-      ("codeChallenge", &challenge()),
-      ("codeChallengeMethod", "S256"),
-      ("appState", ""),
-    ]);
-    assert_eq!(NativeRequest::from_query(&empty_state), Err(AppState));
   }
 
   #[test]
-  fn the_loopback_locations_carry_the_code_or_the_error_and_the_app_state() {
-    let request = NativeRequest::from_query(&native_query(&[])).unwrap().unwrap();
+  fn the_loopback_location_carries_the_code_and_the_state() {
+    let request = NativeRequest::from_query(&start_query(&[])).unwrap();
     assert_eq!(
       request.success_location("a.b-c_"),
       "http://127.0.0.1:5000/callback?code=a.b-c_&state=app-state_1.%7E"
     );
-    assert_eq!(
-      request.failure_location(),
-      "http://127.0.0.1:5000/callback?error=access_denied&state=app-state_1.%7E"
+  }
+
+  #[test]
+  fn the_confirm_post_must_come_from_this_origin() {
+    let origin = RequestOrigin {
+      scheme: "https".to_owned(),
+      host: "calendar.example".to_owned(),
+    };
+    let headers = |pairs: &[(&'static str, &'static str)]| {
+      let mut headers = HeaderMap::new();
+      for (name, value) in pairs {
+        headers.insert(*name, HeaderValue::from_static(value));
+      }
+      headers
+    };
+    assert!(is_same_origin(&headers(&[("origin", "https://calendar.example")]), &origin));
+    assert!(is_same_origin(&headers(&[("sec-fetch-site", "same-origin")]), &origin));
+    assert!(!is_same_origin(&headers(&[("origin", "https://evil.test")]), &origin));
+    assert!(!is_same_origin(&headers(&[("origin", "http://calendar.example")]), &origin));
+    assert!(!is_same_origin(&headers(&[("origin", "null")]), &origin));
+    assert!(
+      !is_same_origin(
+        &headers(&[("origin", "https://evil.test"), ("sec-fetch-site", "same-origin")]),
+        &origin
+      ),
+      "Origin wins over Sec-Fetch-Site"
     );
+    assert!(!is_same_origin(&headers(&[("sec-fetch-site", "same-site")]), &origin));
+    assert!(!is_same_origin(&headers(&[]), &origin));
+  }
+
+  #[test]
+  fn emails_are_escaped_on_the_confirm_page() {
+    assert_eq!(escape_html("a<b>&\"'c@example.com"), "a&lt;b&gt;&amp;&quot;&#39;c@example.com");
   }
 
   fn principal() -> Principal {
@@ -359,7 +524,7 @@ mod tests {
   fn a_handover_redeems_with_its_verifier_and_redirect_until_it_expires() {
     let sealer = Sealer::new(&[1; 32]);
     let now = Utc.with_ymd_and_hms(2026, 11, 20, 10, 0, 0).unwrap();
-    let request = NativeRequest::from_query(&native_query(&[])).unwrap().unwrap();
+    let request = NativeRequest::from_query(&start_query(&[])).unwrap();
     let code = Handover::issue(&principal(), &request, now).seal(&sealer);
     let redirect = "http://127.0.0.1:5000/callback";
 
@@ -369,15 +534,14 @@ mod tests {
       Handover::redeem(&sealer, &code, VERIFIER, redirect, now + HANDOVER_LIFETIME),
       Err(HandoverError::Expired)
     );
-    let other_verifier = "x".repeat(43);
     assert_eq!(
-      Handover::redeem(&sealer, &code, &other_verifier, redirect, now),
+      Handover::redeem(&sealer, &code, &"x".repeat(43), redirect, now),
       Err(HandoverError::VerifierMismatch)
     );
-    // The challenge itself is not a verifier for it.
     assert_eq!(
       Handover::redeem(&sealer, &code, &challenge(), redirect, now),
-      Err(HandoverError::VerifierMismatch)
+      Err(HandoverError::VerifierMismatch),
+      "the challenge itself is not a verifier for it"
     );
     assert_eq!(
       Handover::redeem(&sealer, &code, VERIFIER, "http://127.0.0.1:5001/callback", now),
@@ -388,7 +552,7 @@ mod tests {
       Err(HandoverError::Unreadable)
     );
     assert_eq!(
-      Handover::redeem(&sealer, "not-a-token", VERIFIER, redirect, now),
+      Handover::redeem(&sealer, "not-a-code", VERIFIER, redirect, now),
       Err(HandoverError::Unreadable)
     );
   }
@@ -397,13 +561,26 @@ mod tests {
   fn a_handover_does_not_open_as_another_kind_of_token() {
     let sealer = Sealer::new(&[1; 32]);
     let now = Utc.with_ymd_and_hms(2026, 11, 20, 10, 0, 0).unwrap();
-    let session = crate::auth::session::SessionTicket::issue(principal(), now).seal(&sealer);
+    let redirect = "http://127.0.0.1:5000/callback";
+    let session = session::SessionTicket::issue(principal(), now).seal(&sealer);
     assert_eq!(
-      Handover::redeem(&sealer, &session, VERIFIER, "http://127.0.0.1:5000/callback", now),
+      Handover::redeem(&sealer, &session, VERIFIER, redirect, now),
       Err(HandoverError::Unreadable)
     );
-    let request = NativeRequest::from_query(&native_query(&[])).unwrap().unwrap();
+    let request = NativeRequest::from_query(&start_query(&[])).unwrap();
+    let flow = sealer.seal(
+      FLOW_PURPOSE,
+      &serde_json::to_vec(&NativeFlow {
+        request: request.clone(),
+        expires_at: now + FLOW_LIFETIME,
+      })
+      .unwrap(),
+    );
+    assert_eq!(
+      Handover::redeem(&sealer, &flow, VERIFIER, redirect, now),
+      Err(HandoverError::Unreadable)
+    );
     let code = Handover::issue(&principal(), &request, now).seal(&sealer);
-    assert_eq!(crate::auth::session::SessionTicket::open(&sealer, &code, now), None);
+    assert_eq!(session::SessionTicket::open(&sealer, &code, now), None);
   }
 }

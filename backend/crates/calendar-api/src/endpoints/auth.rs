@@ -1,5 +1,5 @@
-//! `GET /api/auth/me`, `POST /api/auth/logout` and `POST /api/auth/native/session`. Sign-in itself is in
-//! [`crate::auth::google`], and the native handover in [`crate::auth::native`].
+//! `GET /api/auth/me`, `POST /api/auth/logout` and `POST /api/auth/native/token`. Sign-in itself is in
+//! [`crate::auth::google`], and the rest of the native sign-in in [`crate::auth::native`].
 
 use axum::extract::State;
 use axum::http::header::{CACHE_CONTROL, EXPIRES, PRAGMA, SET_COOKIE};
@@ -56,13 +56,13 @@ pub async fn logout(_user: CurrentUser, axum::extract::State(state): axum::extra
   response
 }
 
-// Ends a native sign-in: redeems the handover code the API sent to the desktop app's loopback redirect,
+// Ends a native sign-in: redeems the handover code the API sent to the desktop app's loopback redirect
 // with the app's PKCE verifier, for the ordinary session cookie (`auth::native`). Unauthenticated, like the
 // rest of sign-in.
 #[utoipa::path(
   post,
-  path = "/api/auth/native/session",
-  operation_id = "CreateNativeSession",
+  path = "/api/auth/native/token",
+  operation_id = "RedeemNativeCode",
   tag = "Auth",
   request_body = NativeSessionRequest,
   responses(
@@ -70,13 +70,13 @@ pub async fn logout(_user: CurrentUser, axum::extract::State(state): axum::extra
     (status = 400, description = "Bad Request", body = ProblemDetails, content_type = "application/problem+json"),
   )
 )]
-pub async fn create_native_session(
+pub async fn native_token(
   _json: JsonContent,
   State(state): State<AppState>,
   origin: RequestOrigin,
   JsonBody(request): JsonBody<NativeSessionRequest>,
 ) -> Result<Response, ApiError> {
-  let refused = || Problem::titled(StatusCode::BAD_REQUEST, "The sign-in handover is invalid or has expired.");
+  let refused = || Problem::titled(StatusCode::BAD_REQUEST, "invalid_grant");
   let sealer = state.sealer().await?;
   let principal = match Handover::redeem(&sealer, &request.code, &request.code_verifier, &request.redirect_uri, state.now()) {
     Ok(principal) => principal,

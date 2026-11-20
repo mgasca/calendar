@@ -2,84 +2,113 @@
 //! macOS, Credential Manager on Windows) through `keyring`, keyed by the API origin, and, when there is no store, in
 //! memory only, so the person signs in again at the next launch. It is never written to a plain file (ADR-0068, "On
 //! desktop").
+//!
+//! `CALENDAR_SESSION_STORE=memory` keeps the session in memory even when a credential store exists: headless runs
+//! and the end-to-end tests (#1010) never touch the person's keyring.
 
-use std::sync::Mutex;
+use std::collections::HashMap;
+use std::sync::{LazyLock, Mutex};
 
 /// The `keyring` service name every entry is filed under.
 const SERVICE: &str = "calendar-native";
 
-/// A session cookie value, kept for one API origin.
-pub struct Store {
-  backend: Backend,
+/// The environment variable that forces the memory store.
+pub const STORE_VARIABLE: &str = "CALENDAR_SESSION_STORE";
+
+/// Set by [`use_memory_store`]: the memory store for every origin, for the rest of the process.
+static FORCE_MEMORY: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
+
+/// Keeps every session in memory for the rest of the process, whatever the platform offers: headless tests and the
+/// end-to-end driver (#1010), which must never touch the person's keyring.
+pub fn use_memory_store() {
+  FORCE_MEMORY.store(true, std::sync::atomic::Ordering::SeqCst);
 }
 
-enum Backend {
-  Keyring(keyring::Entry),
-  Memory(Mutex<Option<String>>),
+/// The memory store, per origin, for this run of the app.
+static MEMORY: LazyLock<Mutex<HashMap<String, String>>> = LazyLock::new(Mutex::default);
+
+/// The session cookie of one API origin.
+pub struct Store {
+  origin: String,
+  keyring: Option<keyring::Entry>,
 }
 
 impl std::fmt::Debug for Store {
   fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
     // Never the cookie itself.
-    f.write_str(if self.is_persistent() { "Store(keyring)" } else { "Store(memory)" })
+    f.debug_struct("Store")
+      .field("origin", &self.origin)
+      .field("persistent", &self.is_persistent())
+      .finish_non_exhaustive()
   }
 }
 
 impl Store {
   /// The OS credential store's entry for `origin`, or memory when the platform has no store (headless CI, a WSL
-  /// without a Secret Service).
+  /// without a Secret Service) or [`STORE_VARIABLE`] is `memory`.
   #[must_use]
   pub fn for_origin(origin: &str) -> Self {
-    match keyring::Entry::new(SERVICE, origin) {
-      Ok(entry) => Self {
-        backend: Backend::Keyring(entry),
-      },
-      Err(_) => Self::memory(),
+    let forced_memory =
+      FORCE_MEMORY.load(std::sync::atomic::Ordering::SeqCst) || std::env::var(STORE_VARIABLE).is_ok_and(|value| value == "memory");
+    let keyring = if forced_memory {
+      None
+    } else {
+      keyring::Entry::new(SERVICE, origin).ok()
+    };
+    Self {
+      origin: origin.to_owned(),
+      keyring,
     }
   }
 
-  /// A store that forgets everything when the app quits: headless runs and the end-to-end tests (#1010).
+  /// The memory store for `origin`, whatever the platform offers.
   #[must_use]
-  pub fn memory() -> Self {
+  pub fn memory(origin: &str) -> Self {
     Self {
-      backend: Backend::Memory(Mutex::new(None)),
+      origin: origin.to_owned(),
+      keyring: None,
     }
   }
 
   /// Whether the cookie survives a restart.
   #[must_use]
   pub fn is_persistent(&self) -> bool {
-    matches!(self.backend, Backend::Keyring(_))
+    self.keyring.is_some()
   }
 
   /// The stored cookie value, if any. A credential store that cannot be read counts as empty.
   #[must_use]
   pub fn load(&self) -> Option<String> {
-    match &self.backend {
-      Backend::Keyring(entry) => entry.get_password().ok().filter(|value| !value.is_empty()),
-      Backend::Memory(value) => value.lock().ok()?.clone(),
-    }
+    let stored = match &self.keyring {
+      Some(entry) => entry.get_password().ok(),
+      None => None,
+    };
+    stored
+      .or_else(|| MEMORY.lock().ok()?.get(&self.origin).cloned())
+      .filter(|value| !value.is_empty())
   }
 
-  /// Keeps `value`. When the credential store refuses it, the store falls back to memory for the rest of the run, so
-  /// the person stays signed in until they quit.
-  pub fn save(&mut self, value: &str) {
-    if let Backend::Keyring(entry) = &self.backend
+  /// Keeps `value`. When the credential store refuses it, the value is kept in memory, so the person stays signed in
+  /// until they quit.
+  pub fn save(&self, value: &str) {
+    if let Some(entry) = &self.keyring
       && entry.set_password(value).is_ok()
     {
       return;
     }
-    self.backend = Backend::Memory(Mutex::new(Some(value.to_owned())));
+    if let Ok(mut memory) = MEMORY.lock() {
+      memory.insert(self.origin.clone(), value.to_owned());
+    }
   }
 
-  /// Forgets the cookie (sign-out, or a session the API no longer accepts).
-  pub fn clear(&mut self) {
-    match &self.backend {
-      Backend::Keyring(entry) => {
-        // Nothing stored is as good as deleted.
-        let _ = entry.delete_credential();
-      }
-      Backend::Memory(_) => self.backend = Backend::Memory(Mutex::new(None)),
+  /// Forgets the cookie (sign-out, or a session the API no longer accepts), in both places.
+  pub fn clear(&self) {
+    if let Some(entry) = &self.keyring {
+      // Nothing stored is as good as deleted.
+      let _ = entry.delete_credential();
+    }
+    if let Ok(mut memory) = MEMORY.lock() {
+      memory.remove(&self.origin);
     }
   }
 }
@@ -89,12 +118,18 @@ mod tests {
   use super::*;
 
   #[test]
-  fn a_memory_store_keeps_a_value_until_cleared_and_never_prints_it() {
-    let mut store = Store::memory();
+  fn a_memory_store_keeps_a_value_per_origin_until_cleared_and_never_prints_it() {
+    let store = Store::memory("http://store-test.invalid");
     assert!(!store.is_persistent());
     assert_eq!(store.load(), None);
     store.save("sealed-cookie");
     assert_eq!(store.load().as_deref(), Some("sealed-cookie"));
+    assert_eq!(
+      Store::memory("http://store-test.invalid").load().as_deref(),
+      Some("sealed-cookie"),
+      "kept for the rest of the run"
+    );
+    assert_eq!(Store::memory("http://other.invalid").load(), None, "one value per origin");
     assert!(!format!("{store:?}").contains("sealed-cookie"));
     store.clear();
     assert_eq!(store.load(), None);

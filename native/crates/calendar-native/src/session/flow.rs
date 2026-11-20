@@ -6,6 +6,7 @@
 use std::sync::Arc;
 use std::time::Duration;
 
+use calendar_client::reqwest;
 use reqwest::cookie::Jar;
 use reqwest::{StatusCode, Url};
 
@@ -121,7 +122,13 @@ pub async fn redeem(origin: &str, client: &reqwest::Client, code: &str, verifier
     .and_then(|origin| origin.join("/api/auth/native/token"))
     .map_err(|_| SignInError::Origin)?;
   let body = serde_json::json!({ "code": code, "codeVerifier": verifier, "redirectUri": redirect_uri });
-  let response = client.post(url).json(&body).send().await.map_err(|_| SignInError::Network)?;
+  let response = client
+    .post(url)
+    .header(reqwest::header::CONTENT_TYPE, "application/json")
+    .body(body.to_string())
+    .send()
+    .await
+    .map_err(|_| SignInError::Network)?;
   if response.status() != StatusCode::NO_CONTENT {
     return Err(SignInError::Refused(response.status()));
   }

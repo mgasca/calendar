@@ -207,9 +207,7 @@ pub async fn start(State(state): State<AppState>, origin: RequestOrigin, query: 
 /// `GET /api/auth/native/confirm`: asks the signed-in person to confirm the desktop sign-in, or sends a browser
 /// that is not signed in through Google first.
 pub async fn confirm_page(State(state): State<AppState>, MaybeUser(user): MaybeUser, headers: HeaderMap) -> Result<Response, ApiError> {
-  if open_flow(&state, &headers).await?.is_none() {
-    return Err(no_flow());
-  }
+  let request = open_flow(&state, &headers).await?.ok_or_else(no_flow)?;
   let Some(user) = user else {
     return Ok(redirect(StatusCode::FOUND, SIGN_IN_FOR_CONFIRM, &[]));
   };
@@ -226,14 +224,28 @@ pub async fn confirm_page(State(state): State<AppState>, MaybeUser(user): MaybeU
   let mut response = (StatusCode::OK, page).into_response();
   let headers = response.headers_mut();
   headers.insert(CONTENT_TYPE, HeaderValue::from_static("text/html; charset=utf-8"));
-  // The click is the guard, so the page must not be framed (clickjacking) or kept.
+  // Browsers apply `form-action` to the redirects that follow a form, so the policy names the one loopback
+  // the POST will send the browser to. `loopback_redirect` admitted only header-safe characters.
+  let policy = format!(
+    "default-src 'none'; form-action 'self' {}; frame-ancestors 'none'; base-uri 'none'",
+    request.redirect_uri
+  );
   headers.insert(
     HeaderName::from_static("content-security-policy"),
-    HeaderValue::from_static("default-src 'none'; form-action 'self'; frame-ancestors 'none'; base-uri 'none'"),
+    HeaderValue::from_str(&policy).map_err(ApiError::internal)?,
   );
+  refuse_framing(headers);
+  Ok(response)
+}
+
+/// The click is the guard, so neither the confirm page nor the answer to its POST may be framed
+/// (clickjacking) or kept.
+fn refuse_framing(headers: &mut HeaderMap) {
   headers.insert(X_FRAME_OPTIONS, HeaderValue::from_static("DENY"));
   headers.insert(CACHE_CONTROL, HeaderValue::from_static("no-store"));
-  Ok(response)
+  headers
+    .entry(HeaderName::from_static("content-security-policy"))
+    .or_insert(HeaderValue::from_static("frame-ancestors 'none'"));
 }
 
 /// `POST /api/auth/native/confirm`: the confirm click. Mints the handover code and sends the browser to the app's
@@ -270,7 +282,7 @@ fn redirect(status: StatusCode, location: &str, cookies: &[HeaderValue]) -> Resp
     LOCATION,
     HeaderValue::from_str(location).unwrap_or_else(|_| HeaderValue::from_static("/")),
   );
-  headers.insert(CACHE_CONTROL, HeaderValue::from_static("no-store"));
+  refuse_framing(headers);
   for cookie in cookies {
     headers.append(SET_COOKIE, cookie.clone());
   }

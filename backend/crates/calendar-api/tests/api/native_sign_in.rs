@@ -62,6 +62,14 @@ fn loopback_query(confirmed: &TestResponse) -> HashMap<String, String> {
   assert!(location.starts_with(&format!("{LOOPBACK}?")), "{location}");
   assert!(confirmed.set_cookie(SESSION_COOKIE).is_none(), "{:?}", confirmed.set_cookies());
   assert_eq!(set_cookie(confirmed, NATIVE_COOKIE).value(), "", "the flow cookie is cleared");
+  assert_eq!(confirmed.header("x-frame-options"), Some("DENY"));
+  assert_eq!(confirmed.header("cache-control"), Some("no-store"));
+  assert!(
+    confirmed
+      .header("content-security-policy")
+      .unwrap()
+      .contains("frame-ancestors 'none'")
+  );
   let query = query_of(location);
   assert_eq!(query["state"], APP_STATE);
   query
@@ -120,10 +128,10 @@ async fn a_browser_without_a_session_signs_in_with_google_confirms_and_hands_the
   assert!(page.text().contains("Sign in to the Calendar desktop app?"), "{}", page.text());
   assert!(page.text().contains("Second@Example.com"));
   assert!(page.text().contains(&format!("action=\"{CONFIRM_PATH}\"")));
-  assert!(
-    page.header("content-security-policy").unwrap().contains("frame-ancestors 'none'"),
-    "{:?}",
-    page.header("content-security-policy")
+  assert_eq!(
+    page.header("content-security-policy"),
+    Some("default-src 'none'; form-action 'self' http://127.0.0.1:49152/callback; frame-ancestors 'none'; base-uri 'none'"),
+    "the form may lead only to this flow's loopback, and the page may not be framed"
   );
   assert_eq!(page.header("x-frame-options"), Some("DENY"));
   assert_eq!(page.header("cache-control"), Some("no-store"));

@@ -1,6 +1,6 @@
 #!/usr/bin/env -S deno run --allow-read
 import { dirname, join, resolve } from "@std/path";
-import { Workflow, YamlScalar } from "./workflow-yaml.ts";
+import { Workflow, YamlMapping, YamlScalar } from "./workflow-yaml.ts";
 export interface RepoFiles {
   workflow: string;
   toolsJustfile: string;
@@ -274,28 +274,50 @@ function codeqlRustGate(files: RepoFiles): string[] {
       errors.push(`\`CodeQL languages\` does not run \`jq -c -f ${rules}\`, the rules the tests check.`);
     }
   }
-  if (!gate.body.map("outputs")?.text("rust")) errors.push("`CodeQL languages` has no `rust` output.");
+  const outputs = gate.body.map("outputs");
   const analyze = workflow.jobs.find((j) => j.name.startsWith("Analyze"));
   if (!analyze) return [...errors, "codeql.yml has no Analyze job."];
   if (!analyze.body.list("needs").some((n) => n instanceof YamlScalar && n.value === gate.id)) {
     errors.push(`\`${analyze.name}\` does not need \`${gate.id}\`, so it cannot read whether Rust input changed.`);
   }
   if (analyze.body.text("if") !== null) {
-    errors.push(`\`${analyze.name}\` must run on every event; only its rust entry chooses analysis or reuse.`);
+    errors.push(`\`${analyze.name}\` must run on every event; only its rust entries choose analysis or reuse.`);
   }
+  // Each Rust entry analyses one Cargo workspace from its own source root, under a category of its own, and reads its
+  // own output of the languages job (#1019).
   const matrix = analyze.body.map("strategy")?.map("matrix"),
-    languages = (matrix?.list("language") ?? []).map((n) => (n as YamlScalar).value);
-  if (!languages.includes("rust")) errors.push(`\`${analyze.name}\` has no \`rust\` entry in its \`language\` matrix.`);
-  // The code_scanning rule blocks a head with no /language:rust analysis (record 0026), so the entry always runs.
+    entries = (matrix?.list("include") ?? []).filter((n): n is YamlMapping => n instanceof YamlMapping),
+    rustEntries = entries.filter((e) => e.text("language") === "rust"),
+    analyses = entries.map((e) => e.text("analysis"));
+  for (const [root, analysis] of [["backend", "rust"], ["native", "rust-native"]]) {
+    const entry = rustEntries.find((e) => e.text("root") === root);
+    if (!entry) errors.push(`\`${analyze.name}\` has no \`rust\` entry with \`root: ${root}\`.`);
+    else if (entry.text("analysis") !== analysis) {
+      errors.push(`the \`rust\` entry for ${root}/ must be \`analysis: ${analysis}\`, its job name and category.`);
+    }
+  }
+  for (const entry of rustEntries) {
+    const gateKey = entry.text("gate");
+    if (!gateKey || !outputs?.text(gateKey)) {
+      errors.push(
+        `the \`rust\` entry \`${entry.text("analysis")}\` has no \`gate\` that \`CodeQL languages\` outputs.`,
+      );
+    }
+  }
+  if (analyses.some((a, i) => a === null || analyses.indexOf(a) !== i)) {
+    errors.push(`every \`${analyze.name}\` entry needs an \`analysis\` of its own, so no two share a category.`);
+  }
+  // The code_scanning rule blocks a head with no analysis in a category main has (record 0026), so every entry runs.
   if (matrix?.get("exclude") !== undefined) {
     errors.push(`\`${analyze.name}\`'s matrix must not exclude a language; a skipped rust entry blocks the merge.`);
   }
   const steps = analyze.steps,
     uses = (s: (typeof steps)[number], action: string) => (s.text("uses") ?? "").startsWith(action),
     reuse = steps.find((s) => s.text("id") === "reuse"),
-    skip = "steps.reuse.outputs.found != 'true'";
+    skip = "steps.reuse.outputs.found != 'true'",
+    category = "/language:${{ matrix.analysis }}";
   if (!reuse) return [...errors, `\`${analyze.name}\` has no step with id \`reuse\` that looks up main's Rust result.`];
-  const reuseIf = `matrix.language == 'rust' && needs.${gate.id}.outputs.rust == 'false'`;
+  const reuseIf = `matrix.language == 'rust' && needs.${gate.id}.outputs[matrix.gate] == 'false'`;
   if (reuse.text("if") !== reuseIf) errors.push(`the \`reuse\` step must run \`if: ${reuseIf}\` and nothing else.`);
   for (const rules of [changesRulesPath, codeqlLanguagesPath]) {
     if (!Workflow.run(reuse).includes(`jq -c -f ${rules}`)) {
@@ -305,14 +327,34 @@ function codeqlRustGate(files: RepoFiles): string[] {
   const upload = steps.find((s) => uses(s, "github/codeql-action/upload-sarif"));
   if (!upload || upload.text("if") !== "steps.reuse.outputs.found == 'true'") {
     errors.push("no upload-sarif step runs exactly `if: steps.reuse.outputs.found == 'true'`.");
-  } else if (upload.map("with")?.text("category") !== "/language:rust") {
-    errors.push("the reused result is not uploaded under `category: /language:rust`.");
+  } else if (upload.map("with")?.text("category") !== category) {
+    errors.push(`the reused result is not uploaded under \`category: ${category}\`.`);
+  }
+  if (reuse.map("env")?.text("CATEGORY") !== category) {
+    errors.push(`the \`reuse\` step does not look up main's results under \`CATEGORY: ${category}\`.`);
   }
   for (const action of ["github/codeql-action/init", "github/codeql-action/analyze"]) {
     const step = steps.find((s) => uses(s, action));
     if (!step || !(step.text("if") ?? "").includes(skip)) {
       errors.push(`\`${action}\` must run \`if: ${skip}\`, so a reused result is not analysed again.`);
     }
+  }
+  const init = steps.find((s) => uses(s, "github/codeql-action/init")),
+    analyzeStep = steps.find((s) => uses(s, "github/codeql-action/analyze"));
+  if (init?.map("with")?.text("config") !== "${{ matrix.config || '' }}") {
+    errors.push("`github/codeql-action/init` must set `config: ${{ matrix.config || '' }}`, one workspace per entry.");
+  }
+  // A source root does not scope the Rust extractor; a `paths` config does (#1020, run 44728211078).
+  for (const entry of rustEntries) {
+    const root = entry.text("root"), config = `{"paths":["${root ?? ""}"]}`;
+    if (entry.text("config") !== config) {
+      errors.push(
+        `the \`rust\` entry \`${entry.text("analysis") ?? "?"}\` is not scoped to its root by \`config: '${config}'\`.`,
+      );
+    }
+  }
+  if (analyzeStep?.map("with")?.text("category") !== category) {
+    errors.push(`\`github/codeql-action/analyze\` must upload under \`category: ${category}\`.`);
   }
   return errors;
 }
@@ -360,11 +402,10 @@ function codeqlRustCaches(files: RepoFiles): string[] {
     analyzeStep = steps.find((s) => uses(s, "github/codeql-action/analyze")),
     target = steps.find((s) => s.text("id") === "target" && uses(s, "actions/cache/restore")),
     targetDir = analyzeStep?.map("env")?.text("CODEQL_EXTRACTOR_RUST_OPTION_CARGO_TARGET_DIR");
-  // The Rust row analyses the backend workspace only: from the repository root the extractor also loads native/ and
-  // Rune's git dependencies (#1002; native/ gets its own row in #1019).
-  if (
-    !/matrix\.language == 'rust' && '\{"paths":\["backend"\]\}'/.test(steps[init]?.map("with")?.text("config") ?? "")
-  ) {
+  // Each Rust entry analyses its own workspace only: unscoped, the extractor loads every workspace's manifests, so the
+  // backend's analysis would load native/ and Rune's git dependencies (#1002, #1019). `init` reads the entry's `paths`
+  // config; codeql-rust-gate checks that each entry's config names its own root.
+  if (!/^\$\{\{ matrix\.config\b/.test(steps[init]?.map("with")?.text("config") ?? "")) {
     errors.push("the rust analysis is not scoped to backend/ (a `paths` config on `init`).");
   }
   if (!target) errors.push("the Analyze job does not restore the extractor's target directory (step id `target`).");
@@ -383,6 +424,16 @@ function codeqlRustCaches(files: RepoFiles): string[] {
   for (const save of steps.filter((s) => uses(s, "actions/cache/save"))) {
     if (!(save.text("if") ?? "").includes("github.event_name != 'pull_request'")) {
       errors.push(`\`${save.text("name")}\` must not run on a pull request.`);
+    }
+  }
+  // Each Rust entry restores and saves entries of its own, keyed on its own workspace's lock file (#1019), so the native
+  // UI's git dependencies never land in, or evict, the backend's caches.
+  for (const restore of steps.filter((s) => uses(s, "actions/cache/restore"))) {
+    const key = restore.map("with")?.text("key") ?? "";
+    if (!key.includes("${{ matrix.analysis }}") || !key.includes("hashFiles(format('{0}/Cargo.lock', matrix.root))")) {
+      errors.push(
+        `\`${restore.text("name")}\` is not keyed on \`matrix.analysis\` and the entry's own \`Cargo.lock\`.`,
+      );
     }
   }
   return errors;
@@ -441,7 +492,7 @@ export const guards: Guard[] = [
     fix: "#882",
     record: "0026",
     mechanism:
-      "A CodeQL languages job runs .github/ci-changes.jq and .github/codeql-languages.jq on every run; when it says no Rust input changed, the rust entry looks up main's result for the same Rust inputs with the same rules, uploads it under /language:rust and skips init and analyze.",
+      "A CodeQL languages job runs .github/ci-changes.jq and .github/codeql-languages.jq on every run, with one output per Rust workspace (backend, native); when it says an entry's inputs did not change, that rust entry looks up main's result for the same inputs with the same rules, uploads it under its own category and skips init and analyze. Each rust entry analyses one workspace from its own source root (#1019).",
     check: codeqlRustGate,
   },
   {
@@ -449,7 +500,7 @@ export const guards: Guard[] = [
     fix: "#883",
     record: "0027",
     mechanism:
-      "The rust analysis restores a cached target directory before init and points the extractor's CODEQL_EXTRACTOR_RUST_OPTION_CARGO_TARGET_DIR at it; only runs that are not pull requests save the caches.",
+      "Each rust analysis restores a cached target directory before init and points the extractor's CODEQL_EXTRACTOR_RUST_OPTION_CARGO_TARGET_DIR at it, with cache keys of its own entry and lock file (#1019); only runs that are not pull requests save the caches.",
     check: codeqlRustCaches,
   },
   {

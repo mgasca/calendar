@@ -581,20 +581,26 @@ const codeqlMutations: [string, string, string, string][] = [
   ["AnAnalyzeJobThatDoesNotNeedTheGate_Fails", "    needs: languages\n", "", "does not need"],
   [
     "AMatrixThatExcludesALanguage_Fails",
-    "          - actions\n    steps:",
-    "          - actions\n        exclude: [{ language: rust }]\n    steps:",
+    "          - { language: actions, analysis: actions }\n    steps:",
+    "          - { language: actions, analysis: actions }\n        exclude: [{ language: rust }]\n    steps:",
     "must not exclude",
   ],
   [
     "AReuseStepOnEveryLanguage_Fails",
-    "        id: reuse\n        if: matrix.language == 'rust' && needs.languages.outputs.rust == 'false'",
-    "        id: reuse\n        if: needs.languages.outputs.rust == 'false'",
+    "        id: reuse\n        if: matrix.language == 'rust' && needs.languages.outputs[matrix.gate] == 'false'",
+    "        id: reuse\n        if: needs.languages.outputs[matrix.gate] == 'false'",
+    "`reuse` step must run",
+  ],
+  [
+    "AReuseStepOnTheBackendGateOnly_Fails",
+    "needs.languages.outputs[matrix.gate] == 'false'",
+    "needs.languages.outputs.rust == 'false'",
     "`reuse` step must run",
   ],
   [
     "AReuseStepWithoutTheGateRules_Fails",
-    "            rust=$(jq -c -f .github/codeql-languages.jq",
-    "            rust=$(jq -c '{rust: false}'",
+    "            analyse=$(jq -c -f .github/codeql-languages.jq",
+    "            analyse=$(jq -c '{rust: false}'",
     "does not decide the match",
   ],
   [
@@ -605,9 +611,15 @@ const codeqlMutations: [string, string, string, string][] = [
   ],
   [
     "AReusedResultUnderAnotherCategory_Fails",
-    "          sarif_file: ${{ runner.temp }}/rust.sarif\n          category: /language:rust",
-    "          sarif_file: ${{ runner.temp }}/rust.sarif\n          category: /language:reused",
-    "category: /language:rust",
+    "          sarif_file: ${{ runner.temp }}/reused.sarif\n          category: /language:${{ matrix.analysis }}",
+    "          sarif_file: ${{ runner.temp }}/reused.sarif\n          category: /language:rust",
+    "the reused result is not uploaded",
+  ],
+  [
+    "AReuseLookupInAnotherCategory_Fails",
+    "          CATEGORY: /language:${{ matrix.analysis }}",
+    "          CATEGORY: /language:rust",
+    "does not look up main's results",
   ],
   [
     "AnAnalysisAfterAReusedResult_Fails",
@@ -615,7 +627,49 @@ const codeqlMutations: [string, string, string, string][] = [
     "      - uses: github/codeql-action/analyze@v4\n",
     "github/codeql-action/analyze",
   ],
-  ["AMatrixWithoutRust_Fails", "          - rust\n", "", "no `rust` entry"],
+  [
+    "AMatrixWithoutTheBackend_Fails",
+    '          - { language: rust, analysis: rust, root: backend, gate: rust, config: \'{"paths":["backend"]}\' }\n',
+    "",
+    "`root: backend`",
+  ],
+  [
+    "AMatrixWithoutTheNativeUi_Fails",
+    '          - { language: rust, analysis: rust-native, root: native, gate: native, config: \'{"paths":["native"]}\' }\n',
+    "",
+    "`root: native`",
+  ],
+  [
+    "TheNativeUiUnderTheBackendsCategory_Fails",
+    "analysis: rust-native, root: native",
+    "analysis: rust, root: native",
+    "`analysis: rust-native`",
+  ],
+  [
+    "TheNativeEntryScopedToTheBackend_Fails",
+    'gate: native, config: \'{"paths":["native"]}\'',
+    'gate: native, config: \'{"paths":["backend"]}\'',
+    "not scoped to its root",
+  ],
+  [
+    "AnUnscopedBackendEntry_Fails",
+    'gate: rust, config: \'{"paths":["backend"]}\' }',
+    "gate: rust }",
+    "not scoped to its root",
+  ],
+  ["ANativeEntryWithoutItsGateOutput_Fails", "      native: ${{ steps.decide.outputs.native }}\n", "", "no `gate`"],
+  [
+    "AnInitWithoutTheEntrysConfig_Fails",
+    "          config: ${{ matrix.config || '' }}\n",
+    "",
+    "must set `config",
+  ],
+  [
+    "AnAnalysisUnderTheLanguagesCategory_Fails",
+    "        with:\n          category: /language:${{ matrix.analysis }}\n      - name: Report",
+    "        with:\n          category: /language:${{ matrix.language }}\n      - name: Report",
+    "must upload under",
+  ],
 ];
 for (const [name, from, to, message] of codeqlMutations) {
   Deno.test(`CodeqlRustGate_${name}`, () => {
@@ -638,36 +692,80 @@ async function runCodeqlLanguages(event: string, complete: boolean, files: strin
   assertEquals(result.code, 0, new TextDecoder().decode(result.stderr));
   return JSON.parse(new TextDecoder().decode(result.stdout));
 }
-async function checkRust(event: string, complete: boolean, files: string[], rust: boolean): Promise<void> {
-  assertEquals(
-    await runCodeqlLanguages(event, complete, files),
-    { rust },
-  );
+async function checkRust(
+  event: string,
+  complete: boolean,
+  files: string[],
+  rust: boolean,
+  native: boolean,
+): Promise<void> {
+  assertEquals(await runCodeqlLanguages(event, complete, files), { rust, native });
 }
-// The Rust input set is CI's Backend set: every file case runs the rust analysis exactly when it runs Backend.
+// Each Rust input set is a CI job's set: every file case runs the backend's analysis exactly when it runs Backend, and
+// the native UI's exactly when it runs Native (#1019).
 for (const [file, jobs] of fileCases) {
-  Deno.test(`AFile_RunsTheRustAnalysisWhenItRunsBackend: ${file}`, () =>
-    checkRust("pull_request", true, [file], jobs.split(" ").includes("backend")));
+  Deno.test(`AFile_RunsEachRustAnalysisWhenItRunsItsCiJob: ${file}`, () =>
+    checkRust("pull_request", true, [file], jobs.split(" ").includes("backend"), jobs.split(" ").includes("native")));
 }
-const rustCases: [string, string, boolean, string[], boolean][] = [
-  ["ALockFileOnlyChange_RunsTheRustAnalysis", "pull_request", true, ["backend/Cargo.lock"], true],
-  ["AToolchainOnlyChange_RunsTheRustAnalysis", "pull_request", true, ["backend/rust-toolchain.toml"], true],
-  ["ADocsOnlyChange_SkipsTheRustAnalysis", "pull_request", true, ["docs/runbooks/README.md"], false],
-  ["AFrontendAndToolChange_SkipsTheRustAnalysis", "pull_request", true, [
-    "frontend/apps/web/src/main.tsx",
-    "tools/ci-timings/ci-timings.ts",
-  ], false],
-  ["ARenameOutOfTheBackend_RunsTheRustAnalysis", "pull_request", true, ["backend/x.md", "docs/x.md"], true],
-  ["AChangeToTheCodeqlWorkflow_RunsTheRustAnalysis", "pull_request", true, [".github/workflows/codeql.yml"], true],
-  ["AChangeToTheLanguageRules_RunsTheRustAnalysis", "pull_request", true, [".github/codeql-languages.jq"], true],
-  ["AChangeToTheCiRules_RunsTheRustAnalysis", "pull_request", true, [".github/ci-changes.jq"], true],
-  ["AnIncompleteListing_RunsTheRustAnalysis", "pull_request", false, ["README.md"], true],
-  ["APush_RunsTheRustAnalysis", "push", true, [], true],
-  ["ASchedule_RunsTheRustAnalysis", "schedule", true, [], true],
-  ["ADispatch_RunsTheRustAnalysis", "workflow_dispatch", true, [], true],
+const rustCases: [string, string, boolean, string[], boolean, boolean][] = [
+  ["ALockFileOnlyChange_RunsTheRustAnalysis", "pull_request", true, ["backend/Cargo.lock"], true, false],
+  ["AToolchainOnlyChange_RunsTheRustAnalysis", "pull_request", true, ["backend/rust-toolchain.toml"], true, false],
+  ["ANativeLockFileOnlyChange_RunsTheNativeAnalysis", "pull_request", true, ["native/Cargo.lock"], false, true],
+  [
+    "ANativeToolchainOnlyChange_RunsTheNativeAnalysis",
+    "pull_request",
+    true,
+    ["native/rust-toolchain.toml"],
+    false,
+    true,
+  ],
+  [
+    "ANativeSourceChange_RunsOnlyTheNativeAnalysis",
+    "pull_request",
+    true,
+    ["native/crates/calendar-native/src/lib.rs"],
+    false,
+    true,
+  ],
+  ["AContractChange_RunsBothRustAnalyses", "pull_request", true, ["contracts/openapi.json"], true, true],
+  ["ADocsOnlyChange_SkipsTheRustAnalysis", "pull_request", true, ["docs/runbooks/README.md"], false, false],
+  [
+    "AFrontendAndToolChange_SkipsTheRustAnalysis",
+    "pull_request",
+    true,
+    [
+      "frontend/apps/web/src/main.tsx",
+      "tools/ci-timings/ci-timings.ts",
+    ],
+    false,
+    false,
+  ],
+  ["ARenameOutOfTheBackend_RunsTheRustAnalysis", "pull_request", true, ["backend/x.md", "docs/x.md"], true, false],
+  ["ARenameOutOfTheNativeUi_RunsTheNativeAnalysis", "pull_request", true, ["native/x.md", "docs/x.md"], false, true],
+  [
+    "AChangeToTheCodeqlWorkflow_RunsTheRustAnalysis",
+    "pull_request",
+    true,
+    [".github/workflows/codeql.yml"],
+    true,
+    true,
+  ],
+  [
+    "AChangeToTheLanguageRules_RunsTheRustAnalysis",
+    "pull_request",
+    true,
+    [".github/codeql-languages.jq"],
+    true,
+    true,
+  ],
+  ["AChangeToTheCiRules_RunsTheRustAnalysis", "pull_request", true, [".github/ci-changes.jq"], true, true],
+  ["AnIncompleteListing_RunsTheRustAnalysis", "pull_request", false, ["README.md"], true, true],
+  ["APush_RunsTheRustAnalysis", "push", true, [], true, true],
+  ["ASchedule_RunsTheRustAnalysis", "schedule", true, [], true, true],
+  ["ADispatch_RunsTheRustAnalysis", "workflow_dispatch", true, [], true, true],
 ];
-for (const [name, event, complete, files, rust] of rustCases) {
-  Deno.test(name, () => checkRust(event, complete, files, rust));
+for (const [name, event, complete, files, rust, native] of rustCases) {
+  Deno.test(name, () => checkRust(event, complete, files, rust, native));
 }
 function cacheFailures(from: string, to: string): string[] {
   assertStringIncludes(codeqlWorkflow, from, "mutation must alter the fixture");
@@ -677,20 +775,20 @@ function cacheFailures(from: string, to: string): string[] {
 const cacheMutations: [string, string, string, string][] = [
   [
     "ARustAnalysisOfTheWholeRepository_Fails",
-    "          config: ${{ matrix.language == 'rust' && '{\"paths\":[\"backend\"]}' || '' }}\n",
-    "",
+    "          config: ${{ matrix.config || '' }}\n",
+    "          config: ''\n",
     "not scoped to backend/",
   ],
   ["NoTargetDirectoryRestore_Fails", "        id: target\n", "        id: elsewhere\n", "does not restore"],
   [
     "NoExtractorTargetDirectory_Fails",
-    "          CODEQL_EXTRACTOR_RUST_OPTION_CARGO_TARGET_DIR: ${{ runner.temp }}/codeql-rust-target\n",
+    "          CODEQL_EXTRACTOR_RUST_OPTION_CARGO_TARGET_DIR: ${{ runner.temp }}/codeql-${{ matrix.analysis }}-target\n",
     "          UNRELATED: x\n",
     "does not set",
   ],
   [
     "AnotherTargetDirectory_Fails",
-    "CODEQL_EXTRACTOR_RUST_OPTION_CARGO_TARGET_DIR: ${{ runner.temp }}/codeql-rust-target",
+    "CODEQL_EXTRACTOR_RUST_OPTION_CARGO_TARGET_DIR: ${{ runner.temp }}/codeql-${{ matrix.analysis }}-target",
     "CODEQL_EXTRACTOR_RUST_OPTION_CARGO_TARGET_DIR: ${{ runner.temp }}/elsewhere",
     "is not the directory",
   ],
@@ -699,6 +797,18 @@ const cacheMutations: [string, string, string, string][] = [
     "matrix.language == 'rust' && github.event_name != 'pull_request' && steps.target.outputs.cache-hit",
     "matrix.language == 'rust' && steps.target.outputs.cache-hit",
     "must not run on a pull request",
+  ],
+  [
+    "ARegistryKeyedOnTheBackendLockOnly_Fails",
+    "key: codeql-${{ matrix.analysis }}-registry-${{ runner.os }}-${{ hashFiles(format('{0}/Cargo.lock', matrix.root)) }}",
+    "key: codeql-${{ matrix.analysis }}-registry-${{ runner.os }}-${{ hashFiles('backend/Cargo.lock') }}",
+    "is not keyed on",
+  ],
+  [
+    "ATargetDirectorySharedByBothWorkspaces_Fails",
+    "            codeql-${{ matrix.analysis }}-target-${{ runner.os }}",
+    "            codeql-rust-target-${{ runner.os }}",
+    "is not keyed on",
   ],
 ];
 for (const [name, from, to, message] of cacheMutations) {

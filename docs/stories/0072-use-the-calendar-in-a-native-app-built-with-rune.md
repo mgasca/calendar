@@ -98,7 +98,7 @@ The maintainer agreed the decisions below on 2026-11-20, on the epic. Two ADRs r
 17. **Given** the desktop app signed out, **when** I choose **Sign in with Google**, **then** my system browser opens the Google flow, and after I confirm, the app is signed in without my typing anything into it.
 18. **Given** an email that is not allow-listed, or a sign-in I abandon, **when** the flow ends, **then** the app stays signed out and says why, and no session is stored.
 19. **Given** I am signed in on the desktop, **when** I restart the app within the session's lifetime, **then** I am still signed in; **when** I sign out, **then** the stored session is removed and the app shows the sign-in screen.
-20. **Given** the handover, **when** any step is replayed or forged (a reused or expired code, a wrong verifier, a non-loopback redirect, a cross-origin confirm), **then** the API refuses it, and the session cookie never appears in a URL.
+20. **Given** the handover, **when** any step is forged or out of bounds (an expired or forged code, a wrong verifier, a redirect URI that differs at redemption, a non-loopback redirect, a cross-origin or framed confirm), **then** the API refuses it, and the session cookie never appears in a URL. The code is stateless (ADR-0068): within its 60 seconds it can be redeemed again, but only with the app's verifier.
 
 **Platforms and hosting (#1009)**
 
@@ -171,7 +171,7 @@ No further ADR is expected. A slice that finds a decision ADR-0067 or ADR-0068 d
 | App | `native/crates/calendar-native` |
 | Generated client | `native/crates/calendar-client` |
 | CI | `.github/workflows/ci.yml` (native jobs), a nightly workflow for macOS and Windows |
-| Native sign-in | `backend/crates/calendar-api/src/auth/` and a migration in `calendar-infrastructure` (#1008) |
+| Native sign-in | `backend/crates/calendar-api/src/auth/native.rs` and the `token` endpoint in `endpoints/auth.rs`; no migration, because the handover code is sealed and stateless (ADR-0068) (#1008) |
 | WASM hosting | the Vite config in `frontend/apps/web` and the container image's web root (#1009) |
 
 ### API

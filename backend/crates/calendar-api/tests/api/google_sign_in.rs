@@ -18,11 +18,11 @@ use sha2::{Digest, Sha256};
 
 const CLIENT_ID: &str = "test-client";
 const CLIENT_SECRET: &str = "test-secret";
-const CODE: &str = "the-code";
+pub(crate) const CODE: &str = "the-code";
 
 /// What the fake Google answers, and what it saw.
 #[derive(Default)]
-struct FakeGoogle {
+pub(crate) struct FakeGoogle {
   /// The claims of the person signing in (userinfo and ID token).
   claims: Value,
   /// The `nonce` and `code_challenge` of the authorization request, as Google would remember them.
@@ -32,7 +32,7 @@ struct FakeGoogle {
   token_request: Option<HashMap<String, String>>,
 }
 
-type Shared = Arc<Mutex<FakeGoogle>>;
+pub(crate) type Shared = Arc<Mutex<FakeGoogle>>;
 
 async fn token(State(google): State<Shared>, Form(form): Form<HashMap<String, String>>) -> Result<Json<Value>, StatusCode> {
   let mut google = google.lock().unwrap();
@@ -66,12 +66,12 @@ async fn user_info(State(google): State<Shared>, headers: HeaderMap) -> Result<J
 
 /// Starts the fake and a Development app that signs in through it, allow-listing `first@example.com` and
 /// `second@example.com`.
-async fn start(claims: Value) -> (TestApp, Shared) {
+pub(crate) async fn start(claims: Value) -> (TestApp, Shared) {
   start_in("Development", claims).await
 }
 
 /// [`start`] in environment `environment`.
-async fn start_in(environment: &str, claims: Value) -> (TestApp, Shared) {
+pub(crate) async fn start_in(environment: &str, claims: Value) -> (TestApp, Shared) {
   let google: Shared = Arc::new(Mutex::new(FakeGoogle {
     claims,
     ..FakeGoogle::default()
@@ -101,24 +101,24 @@ async fn start_in(environment: &str, claims: Value) -> (TestApp, Shared) {
   (app, google)
 }
 
-fn person(sub: &str, email: &str) -> Value {
+pub(crate) fn person(sub: &str, email: &str) -> Value {
   json!({"sub": sub, "email": email, "email_verified": true, "name": "A Person", "picture": "https://pic/person"})
 }
 
-fn query_of(location: &str) -> HashMap<String, String> {
+pub(crate) fn query_of(location: &str) -> HashMap<String, String> {
   let query = location.split_once('?').map_or("", |(_, query)| query);
   form_urlencoded::parse(query.as_bytes()).into_owned().collect()
 }
 
 /// The `Set-Cookie` for `name`, panicking with every cookie the response set when there is none.
-fn set_cookie<'a>(response: &'a TestResponse, name: &str) -> SetCookie<'a> {
+pub(crate) fn set_cookie<'a>(response: &'a TestResponse, name: &str) -> SetCookie<'a> {
   response
     .set_cookie(name)
     .unwrap_or_else(|| panic!("no Set-Cookie for {name}: {:?}", response.set_cookies()))
 }
 
 /// Asserts that the `Set-Cookie` for `name` is `Secure`, `HttpOnly` and `SameSite=Lax`.
-fn assert_secure_http_only_lax(response: &TestResponse, name: &str) {
+pub(crate) fn assert_secure_http_only_lax(response: &TestResponse, name: &str) {
   let cookie = set_cookie(response, name);
   for expected in ["secure", "httponly", "samesite=lax"] {
     assert!(cookie.has(expected), "{name} lacks {expected}: {cookie:?}");
@@ -126,17 +126,17 @@ fn assert_secure_http_only_lax(response: &TestResponse, name: &str) {
 }
 
 /// What `GET /api/auth/login` hands the browser.
-struct SignInStart {
+pub(crate) struct SignInStart {
   /// The query parameters of the redirect to Google's authorization endpoint.
-  parameters: HashMap<String, String>,
+  pub(crate) parameters: HashMap<String, String>,
   /// The sign-in cookie (name and value).
-  cookie: String,
+  pub(crate) cookie: String,
   /// The login response itself.
-  login: TestResponse,
+  pub(crate) login: TestResponse,
 }
 
 /// `GET /api/auth/login`, as a browser would; tells the fake what Google would remember.
-async fn begin(app: &TestApp, google: &Shared, return_url: &str) -> SignInStart {
+pub(crate) async fn begin(app: &TestApp, google: &Shared, return_url: &str) -> SignInStart {
   begin_with(app, &app.client(), google, return_url).await
 }
 
@@ -154,7 +154,7 @@ async fn begin_with(app: &TestApp, client: &TestClient, google: &Shared, return_
   SignInStart { parameters, cookie, login }
 }
 
-async fn finish(app: &TestApp, cookie: &str, query: &str) -> TestResponse {
+pub(crate) async fn finish(app: &TestApp, cookie: &str, query: &str) -> TestResponse {
   app.client().cookie(cookie).get(&format!("{CALLBACK_PATH}?{query}")).await
 }
 

@@ -1,15 +1,21 @@
-//! `GET /api/auth/me` and `POST /api/auth/logout`. Sign-in itself is in [`crate::auth::google`].
+//! `GET /api/auth/me`, `POST /api/auth/logout` and `POST /api/auth/native/token`. Sign-in itself is in
+//! [`crate::auth::google`], and the rest of the native sign-in in [`crate::auth::native`].
 
+use axum::extract::State;
 use axum::http::header::{CACHE_CONTROL, EXPIRES, PRAGMA, SET_COOKIE};
 use axum::http::{HeaderValue, StatusCode};
 use axum::response::{IntoResponse, Response};
+use calendar_infrastructure::users;
 
 use super::request;
 use crate::auth::CurrentUser;
+use crate::auth::native::Handover;
 use crate::auth::session::{self, SESSION_COOKIE};
-use crate::contracts::AuthUserResponse;
+use crate::contracts::{AuthUserResponse, NativeSessionRequest, ProblemDetails};
 use crate::error::ApiError;
 use crate::hosting::RequestOrigin;
+use crate::json::{JsonBody, JsonContent};
+use crate::problem::Problem;
 use crate::state::AppState;
 
 // The signed-in person.
@@ -48,4 +54,57 @@ pub async fn logout(_user: CurrentUser, axum::extract::State(state): axum::extra
   headers.insert(EXPIRES, HeaderValue::from_static("Thu, 01 Jan 1970 00:00:00 GMT"));
   headers.insert(PRAGMA, HeaderValue::from_static("no-cache"));
   response
+}
+
+// Ends a native sign-in: redeems the handover code the API sent to the desktop app's loopback redirect
+// with the app's PKCE verifier, for the ordinary session cookie (`auth::native`). Unauthenticated, like the
+// rest of sign-in.
+#[utoipa::path(
+  post,
+  path = "/api/auth/native/token",
+  operation_id = "RedeemNativeCode",
+  tag = "Auth",
+  request_body = NativeSessionRequest,
+  responses(
+    (status = 204, description = "No Content"),
+    (status = 400, description = "Bad Request", body = ProblemDetails, content_type = "application/problem+json"),
+  )
+)]
+pub async fn native_token(
+  _json: JsonContent,
+  State(state): State<AppState>,
+  origin: RequestOrigin,
+  JsonBody(request): JsonBody<NativeSessionRequest>,
+) -> Result<Response, ApiError> {
+  let refused = || Problem::titled(StatusCode::BAD_REQUEST, "invalid_grant");
+  let sealer = state.sealer().await?;
+  // The ticket lasts eight hours at most, and never beyond the browser session that confirmed the sign-in.
+  let ticket = match Handover::redeem(&sealer, &request.code, &request.code_verifier, &request.redirect_uri, state.now()) {
+    Ok(ticket) => ticket,
+    Err(reason) => {
+      tracing::warn!(%reason, "native sign-in handover refused");
+      return Err(refused().into());
+    }
+  };
+  // The allow-list was applied at sign-in; a user removed since is not signed in.
+  let mut connection = state.db().await?;
+  let exists = match ticket.user_id {
+    Some(user_id) => users::find(&mut connection, user_id).await?.is_some(),
+    None => false,
+  };
+  if !exists {
+    tracing::warn!("native sign-in handover refused: the user no longer exists");
+    return Err(refused().into());
+  }
+
+  let ticket = ticket.seal(&sealer);
+  let mut response = StatusCode::NO_CONTENT.into_response();
+  let headers = response.headers_mut();
+  headers.insert(
+    SET_COOKIE,
+    session::set_cookie(SESSION_COOKIE, &ticket, origin.secure_cookies(state.settings()), None),
+  );
+  headers.insert(CACHE_CONTROL, HeaderValue::from_static("no-cache,no-store"));
+  headers.insert(PRAGMA, HeaderValue::from_static("no-cache"));
+  Ok(response)
 }

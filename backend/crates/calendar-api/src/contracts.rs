@@ -16,7 +16,7 @@ mod problems;
 mod tasks;
 
 pub use agenda::{AgendaDay, AgendaTasks, AgendaWindow, DayAgendaResponse, WeekAgendaResponse};
-pub use auth::{AuthUserResponse, HealthResponse};
+pub use auth::{AuthUserResponse, HealthResponse, NativeSessionRequest};
 pub use events::{AllDayEventItem, CreateEventRequest, EventFields, EventResponse, TimedEventItem, UpdateEventRequest};
 pub use problems::{HttpValidationProblemDetails, ProblemDetails};
 pub use tasks::{

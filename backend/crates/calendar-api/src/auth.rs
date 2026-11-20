@@ -7,6 +7,7 @@
 
 pub mod dev_seed;
 pub mod google;
+pub mod native;
 pub mod session;
 
 use axum::extract::FromRequestParts;
@@ -99,6 +100,23 @@ impl FromRequestParts<AppState> for CurrentUser {
 
   async fn from_request_parts(parts: &mut Parts, state: &AppState) -> Result<Self, Self::Rejection> {
     authenticate(state, parts).await.map(Self)
+  }
+}
+
+/// The signed-in person of a request, or `None` when nobody is: for a page that sends an anonymous browser
+/// to sign in rather than answering `401` (the native sign-in's confirm page).
+#[derive(Debug, Clone)]
+pub struct MaybeUser(pub Option<Principal>);
+
+impl FromRequestParts<AppState> for MaybeUser {
+  type Rejection = AuthRejection;
+
+  async fn from_request_parts(parts: &mut Parts, state: &AppState) -> Result<Self, Self::Rejection> {
+    match authenticate(state, parts).await {
+      Ok(principal) => Ok(Self(Some(principal))),
+      Err(AuthRejection::Unauthorized { .. }) => Ok(Self(None)),
+      Err(rejection) => Err(rejection),
+    }
   }
 }
 

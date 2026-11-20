@@ -226,3 +226,28 @@ fn the_all_day_box_hides_the_times() {
   assert!(rt.find("event-start-time").is_none() && rt.find("event-zone").is_none());
   shows(&rt, &["event-start-date", "event-end-date"]);
 }
+
+#[test]
+fn a_long_task_list_builds_only_the_rows_near_the_viewport() {
+  // Pre-merge review of #1025: "Load more" can load many pages; each commit must not rebuild every row.
+  let mut rt = runtime("tasks", false);
+  rt.update(|app, _| {
+    let template = calendar_native::fixtures::tasks().items[0].clone();
+    let items = (0..500u128)
+      .map(|n| {
+        let mut task = template.clone();
+        task.id = uuid::Uuid::from_u128(n + 1);
+        task.title = format!("Task {n}");
+        task
+      })
+      .collect();
+    app.tasks.data = Some(calendar_native::views::tasks::TaskList { items, next_cursor: None });
+  });
+  rt.frame(1.0 / 60.0);
+  rt.settle_all();
+  rt.frame(1.0 / 60.0);
+  let first = format!("task-{}", uuid::Uuid::from_u128(1));
+  let last = format!("task-{}", uuid::Uuid::from_u128(500));
+  assert!(rt.find(&first).is_some(), "the first rows are built");
+  assert!(rt.find(&last).is_none(), "the 500th row is not built until it scrolls near");
+}

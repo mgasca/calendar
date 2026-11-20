@@ -674,10 +674,9 @@ fn task_text(d: &TaskDialog, field: TaskField) -> String {
 /// A field's error clears once that field is edited, as the web app clears it on change; called from `poll`. The
 /// text a field had when its error appeared is kept in `seen`; when it differs, the error goes.
 pub fn clear_edited_errors(app: &mut App) {
-  fn sweep<F: Ord + Copy>(errors: &mut BTreeMap<F, String>, seen: &mut BTreeMap<F, String>, form: F, text: impl Fn(F) -> String) {
-    let fields: Vec<F> = errors.keys().copied().filter(|f| *f != form).collect();
-    for field in fields {
-      let now = text(field);
+  /// `texts` holds each errored field's current text, read before this borrows the dialog mutably.
+  fn sweep<F: Ord + Copy>(errors: &mut BTreeMap<F, String>, seen: &mut BTreeMap<F, String>, texts: Vec<(F, String)>) {
+    for (field, now) in texts {
       match seen.get(&field) {
         Some(before) if *before != now => {
           errors.remove(&field);
@@ -691,14 +690,30 @@ pub fn clear_edited_errors(app: &mut App) {
     }
     seen.retain(|field, _| errors.contains_key(field));
   }
+  // Runs every frame while a dialog is open (pre-merge review of #1025): with no field errors it does nothing, and it
+  // copies only the errored fields' text, never the dialog.
   match &mut app.dialog {
     Some(Dialog::Event(d)) => {
-      let snapshot = (*d).clone();
-      sweep(&mut d.errors, &mut d.seen, EventField::Form, |f| event_text(&snapshot, f));
+      let texts: Vec<_> = d
+        .errors
+        .keys()
+        .filter(|f| **f != EventField::Form)
+        .map(|f| (*f, event_text(d, *f)))
+        .collect();
+      if !texts.is_empty() || !d.seen.is_empty() {
+        sweep(&mut d.errors, &mut d.seen, texts);
+      }
     }
     Some(Dialog::Task(d)) => {
-      let snapshot = (*d).clone();
-      sweep(&mut d.errors, &mut d.seen, TaskField::Form, |f| task_text(&snapshot, f));
+      let texts: Vec<_> = d
+        .errors
+        .keys()
+        .filter(|f| **f != TaskField::Form)
+        .map(|f| (*f, task_text(d, *f)))
+        .collect();
+      if !texts.is_empty() || !d.seen.is_empty() {
+        sweep(&mut d.errors, &mut d.seen, texts);
+      }
     }
     None => {}
   }

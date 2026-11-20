@@ -78,6 +78,22 @@ Deno.test("path derives from successful publication step in Docs site only", () 
     ],
   );
 });
+// The Native job is a matrix (#1002, #1009): each row is its own job, under the name GitHub gives it, so the baseline,
+// the gate and the delivery dashboard (which groups samples by job name) keep the macOS and Windows rows apart.
+Deno.test("matrix rows are sampled as separate jobs under their own names", () => {
+  assertEquals(
+    samples(run(8, "push"), [
+      job("Native (Linux, ubuntu-24.04, desktop)", 300),
+      job("Native (macOS, macos-latest, desktop)", 500),
+      job("Native (Windows, windows-latest, desktop)", 700),
+    ]).map((s) => [s.job, s.seconds]),
+    [
+      ["Native (Linux, ubuntu-24.04, desktop)", 300],
+      ["Native (macOS, macos-latest, desktop)", 500],
+      ["Native (Windows, windows-latest, desktop)", 700],
+    ],
+  );
+});
 Deno.test("main and success filters", () => {
   for (
     const [event, branch, expected] of [

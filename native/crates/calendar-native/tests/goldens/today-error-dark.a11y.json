@@ -1,0 +1,349 @@
+{
+  "bounds": [
+    0.0,
+    0.0,
+    960.0,
+    720.0
+  ],
+  "children": [
+    {
+      "bounds": [
+        0.0,
+        0.0,
+        960.0,
+        52.3
+      ],
+      "children": [
+        {
+          "bounds": [
+            16.0,
+            18.0,
+            56.8,
+            16.3
+          ],
+          "key": "app-title",
+          "name": "Calendar",
+          "role": "label"
+        },
+        {
+          "bounds": [
+            88.8,
+            12.0,
+            207.3,
+            28.3
+          ],
+          "children": [
+            {
+              "actions": [
+                "click",
+                "focus"
+              ],
+              "bounds": [
+                88.8,
+                12.0,
+                61.6,
+                28.3
+              ],
+              "key": "nav-today",
+              "name": "Today",
+              "role": "button",
+              "states": [
+                "checked"
+              ]
+            },
+            {
+              "actions": [
+                "click",
+                "focus"
+              ],
+              "bounds": [
+                154.4,
+                12.0,
+                58.5,
+                28.3
+              ],
+              "key": "nav-week",
+              "name": "Week",
+              "role": "button",
+              "states": [
+                "unchecked"
+              ]
+            },
+            {
+              "actions": [
+                "click",
+                "focus"
+              ],
+              "bounds": [
+                216.8,
+                12.0,
+                79.3,
+                28.3
+              ],
+              "key": "nav-tasks",
+              "name": "My tasks",
+              "role": "button",
+              "states": [
+                "unchecked"
+              ]
+            }
+          ],
+          "key": "nav",
+          "name": "Main",
+          "role": "navigation"
+        },
+        {
+          "bounds": [
+            805.9,
+            18.0,
+            54.9,
+            16.3
+          ],
+          "key": "user-name",
+          "name": "Alex Doe",
+          "role": "label"
+        },
+        {
+          "actions": [
+            "click",
+            "focus"
+          ],
+          "bounds": [
+            876.8,
+            13.6,
+            67.2,
+            25.0
+          ],
+          "key": "sign-out",
+          "name": "Sign out",
+          "role": "button"
+        }
+      ],
+      "key": "header",
+      "role": "banner"
+    },
+    {
+      "actions": [
+        "scroll-up",
+        "scroll-down",
+        "set-scroll-offset"
+      ],
+      "bounds": [
+        0.0,
+        52.3,
+        960.0,
+        667.8
+      ],
+      "children": [
+        {
+          "actions": [
+            "scroll-into-view"
+          ],
+          "bounds": [
+            16.0,
+            68.3,
+            928.0,
+            186.3
+          ],
+          "children": [
+            {
+              "actions": [
+                "scroll-into-view"
+              ],
+              "bounds": [
+                16.0,
+                68.3,
+                928.0,
+                80.8
+              ],
+              "children": [
+                {
+                  "actions": [
+                    "scroll-into-view"
+                  ],
+                  "bounds": [
+                    16.0,
+                    68.3,
+                    928.0,
+                    16.3
+                  ],
+                  "key": "day-eyebrow",
+                  "name": "Today",
+                  "role": "label"
+                },
+                {
+                  "actions": [
+                    "scroll-into-view"
+                  ],
+                  "bounds": [
+                    16.0,
+                    90.5,
+                    928.0,
+                    27.5
+                  ],
+                  "key": "day-title",
+                  "level": 1,
+                  "name": "Friday 20 November",
+                  "role": "heading"
+                },
+                {
+                  "actions": [
+                    "scroll-into-view"
+                  ],
+                  "bounds": [
+                    16.0,
+                    124.0,
+                    928.0,
+                    25.0
+                  ],
+                  "children": [
+                    {
+                      "actions": [
+                        "click",
+                        "focus",
+                        "scroll-into-view"
+                      ],
+                      "bounds": [
+                        16.0,
+                        124.0,
+                        101.9,
+                        25.0
+                      ],
+                      "key": "day-previous",
+                      "name": "‹ Previous day",
+                      "role": "button"
+                    },
+                    {
+                      "actions": [
+                        "click",
+                        "focus",
+                        "scroll-into-view"
+                      ],
+                      "bounds": [
+                        123.9,
+                        124.0,
+                        79.0,
+                        25.0
+                      ],
+                      "key": "day-next",
+                      "name": "Next day ›",
+                      "role": "button"
+                    },
+                    {
+                      "actions": [
+                        "click",
+                        "focus",
+                        "scroll-into-view"
+                      ],
+                      "bounds": [
+                        208.9,
+                        124.0,
+                        109.2,
+                        25.0
+                      ],
+                      "key": "day-week",
+                      "name": "Week of 16 Nov",
+                      "role": "button"
+                    }
+                  ],
+                  "key": "day-nav",
+                  "name": "Day",
+                  "role": "navigation"
+                }
+              ],
+              "key": "day-header",
+              "role": "group"
+            },
+            {
+              "actions": [
+                "scroll-into-view"
+              ],
+              "bounds": [
+                16.0,
+                165.0,
+                928.0,
+                89.5
+              ],
+              "children": [
+                {
+                  "actions": [
+                    "scroll-into-view"
+                  ],
+                  "bounds": [
+                    28.0,
+                    175.0,
+                    904.0,
+                    16.3
+                  ],
+                  "name": "Couldn’t load today’s agenda.",
+                  "role": "label"
+                },
+                {
+                  "actions": [
+                    "scroll-into-view"
+                  ],
+                  "bounds": [
+                    28.0,
+                    197.3,
+                    904.0,
+                    16.3
+                  ],
+                  "name": "The server had a problem.",
+                  "role": "label"
+                },
+                {
+                  "actions": [
+                    "click",
+                    "focus",
+                    "scroll-into-view"
+                  ],
+                  "bounds": [
+                    28.0,
+                    219.5,
+                    904.0,
+                    25.0
+                  ],
+                  "key": "day-retry",
+                  "name": "Try again",
+                  "role": "button"
+                }
+              ],
+              "key": "day-error",
+              "name": "Couldn’t load today’s agenda. The server had a problem. Try again",
+              "role": "alert",
+              "states": [
+                "live-assertive"
+              ]
+            }
+          ],
+          "key": "day",
+          "role": "group"
+        }
+      ],
+      "key": "page",
+      "role": "main",
+      "scroll": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "states": [
+        "clips"
+      ]
+    },
+    {
+      "bounds": [
+        0.0,
+        0.0,
+        1.0,
+        1.0
+      ],
+      "role": "status",
+      "states": [
+        "live-polite"
+      ]
+    }
+  ],
+  "name": "Calendar",
+  "role": "window"
+}

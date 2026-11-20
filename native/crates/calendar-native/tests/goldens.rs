@@ -10,7 +10,17 @@
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
-const SCENES: [&str; 3] = ["today", "week", "tasks"];
+const SCENES: [&str; 7] = [
+  "today",
+  "today-empty",
+  "today-loading",
+  "today-error",
+  "week",
+  "tasks",
+  "signed-out",
+];
+/// The scenes with PNG snapshots (Linux).
+const SNAPSHOTS: [&str; 2] = ["today", "week"];
 const THEMES: [&str; 2] = ["light", "dark"];
 /// A channel may differ by this much (8-bit) before a pixel counts as different: rasterizers round differently.
 const CHANNEL_TOLERANCE: u8 = 8;
@@ -151,10 +161,10 @@ fn difference(a: &Path, b: &Path) -> f64 {
 #[test]
 fn snapshots_match_their_goldens_on_linux() {
   let mut failures = Vec::new();
-  for theme in THEMES {
-    let name = format!("today-{theme}.png");
+  for (scene, theme) in SNAPSHOTS.into_iter().flat_map(|s| THEMES.map(|t| (s, t))) {
+    let name = format!("{scene}-{theme}.png");
     let actual = actual_dir().join(&name);
-    if let Err(error) = try_render(&["--scene", "today", "--theme", theme, "--scale", "1", "--snap"], &actual) {
+    if let Err(error) = try_render(&["--scene", scene, "--theme", theme, "--scale", "1", "--snap"], &actual) {
       if let Err(error) = snapshot_render_failed(cfg!(target_os = "linux"), error) {
         failures.push(error);
       }

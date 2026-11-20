@@ -14,14 +14,29 @@ name = "calendar-native"
 path = "src/main.rs"
 
 [dependencies]
+calendar-client = { path = "../calendar-client" }
+chrono = "0.4"
+# The IANA time-zone database, embedded: event instants are shown in the user's zone on every target.
+chrono-tz = "0.10"
+# The user's IANA zone, from the OS or (wasm32) the browser.
+iana-time-zone = "0.1"
 rune = { workspace = true }
+serde = "1"
+serde_json = "1"
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
 wasm-bindgen = { workspace = true }
+wasm-bindgen-futures = "0.4"
+web-sys = { version = "0.3", features = ["Window", "Location"] }
+
+[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
+# One background thread runs the API calls (fetch.rs); reqwest needs tokio on the desktop.
+tokio = { version = "1", features = ["rt"] }
 
 [lints]
 workspace = true
 
 [dev-dependencies]
 png = "0.18"
-serde_json = "1"
+wiremock = "0.6"
+tokio = { version = "1", features = ["macros", "rt"] }

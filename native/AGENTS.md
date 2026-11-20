@@ -44,3 +44,11 @@ Rune has no releases: `native/Cargo.toml` pins an exact `rev` of its `dev` branc
   - `on_unauthorized` fires on a 401 from anything but `/api/auth/me`.
 - When a slice needs an operation the wrapper lacks, add a method to `Api` with a stub-server test in `tests/api.rs`, rather than calling `generated()` from a view.
 - The session layer (`calendar-native/src/session/`, #1008) owns the `reqwest::Client`: a cookie store on the desktop, the browser's cookies on the web.
+
+## State, loading and scenes
+
+- `App` holds everything: `route`, `session` (owned by #1008), `api`, `effects`, `clock`, and one `Remote<T>` per page (`data`, `loading`, `error`). `load::ensure` decides what to fetch: the session check first, then the current page when its key (route and today's date) changed or its data is five minutes old. `poll` runs it every 15 s, so pages roll over at the user's midnight.
+- API calls go through `effects.run(future, |app, output| …)`: a background tokio thread on the desktop, `spawn_local` in the browser. The result is applied before the next frame. Don't block in a handler.
+- **Flow tests** (`tests/flow.rs`) use `Effects::manual()`, a `wiremock` API and a fixed `Clock` that `set_now` moves. `settle` runs every queued request and applies the results.
+- **Scenes** (`spec()`) are offline: `App::offline()` is signed in, frozen at `fixtures::now()` in Europe/Madrid, and fed from `fixtures.rs`, which is shaped like the contract and checked by a decode test. Add a scene for each state a golden needs.
+- Formatting is English, in the web app's en-GB patterns (`format.rs`), with times in the user's IANA zone through `chrono-tz`.

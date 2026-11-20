@@ -2,66 +2,174 @@
 //!
 //! The app is one piece of state ([`App`]) and a view of it ([`view`]). The same code runs as a desktop window
 //! (`src/main.rs`), as WASM in the browser ([`start`]), and headless in tests, where Rune renders element trees and
-//! PNGs with no display.
+//! PNGs with no display. API calls run through [`fetch::Effects`] and land in the state before the next frame.
 
 #![forbid(unsafe_code)]
 
+pub mod clock;
+pub mod fetch;
+pub mod fixtures;
+pub mod format;
+pub mod load;
+pub mod route;
+pub mod session;
 pub mod theme;
+pub mod views;
 
+use calendar_client::Api;
+use calendar_client::generated::{DayAgendaResponse, WeekAgendaResponse};
+use clock::Clock;
+use fetch::{Effects, Remote};
+use route::{Route, TaskView};
 use rune::tok::type_;
-use rune::{AppSpec, Cx, El, col, el, row, text};
+use rune::{AppSpec, Cx, El, ScrollSpec, col, el, row, text};
+use session::Session;
+use views::tasks::TaskList;
 
-/// The views the shell switches between. Each arrives with its own slice (#1004).
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
-pub enum Page {
-  #[default]
+/// The shell's navigation, as the web app's "Main" nav.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Nav {
   Today,
   Week,
   Tasks,
 }
 
-impl Page {
-  pub const ALL: [Page; 3] = [Page::Today, Page::Week, Page::Tasks];
+impl Nav {
+  pub const ALL: [Nav; 3] = [Nav::Today, Nav::Week, Nav::Tasks];
 
-  /// The label the web app's navigation uses.
   #[must_use]
   pub fn label(self) -> &'static str {
     match self {
-      Page::Today => "Today",
-      Page::Week => "Week",
-      Page::Tasks => "My tasks",
+      Nav::Today => "Today",
+      Nav::Week => "Week",
+      Nav::Tasks => "My tasks",
     }
   }
 
-  /// The stable element key tests and scripts find the nav item by.
   #[must_use]
   pub fn key(self) -> &'static str {
     match self {
-      Page::Today => "nav-today",
-      Page::Week => "nav-week",
-      Page::Tasks => "nav-tasks",
+      Nav::Today => "nav-today",
+      Nav::Week => "nav-week",
+      Nav::Tasks => "nav-tasks",
+    }
+  }
+
+  /// Whether the route is this item's page (the web app marks it `aria-current="page"`; `/` matches exactly).
+  #[must_use]
+  pub fn is_current(self, route: Route) -> bool {
+    matches!(
+      (self, route),
+      (Nav::Today, Route::Today) | (Nav::Week, Route::Week(_)) | (Nav::Tasks, Route::Tasks(_))
+    )
+  }
+
+  fn target(self, app: &App) -> Route {
+    match self {
+      Nav::Today => Route::Today,
+      Nav::Week => Route::week_of(app.clock.today()),
+      Nav::Tasks => Route::Tasks(TaskView::default()),
     }
   }
 }
 
 /// The app's whole state.
-#[derive(Debug, Default)]
 pub struct App {
-  pub page: Page,
+  pub route: Route,
+  /// Owned by #1008 (S3): the signed-in session.
+  pub session: Session,
+  pub api: Api,
+  pub effects: Effects,
+  pub clock: Clock,
+  /// No API calls at all: named scenes and view tests set the data themselves.
+  pub offline: bool,
+  pub loads: load::Loads,
+  pub day: Remote<DayAgendaResponse>,
+  pub week: Remote<WeekAgendaResponse>,
+  pub tasks: Remote<TaskList>,
 }
 
-/// The window's content: the shell header and the current page.
+impl std::fmt::Debug for App {
+  fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    f.debug_struct("App")
+      .field("route", &self.route)
+      .field("session", &self.session)
+      .finish_non_exhaustive()
+  }
+}
+
+/// The API's origin: the page's own on the web; `CALENDAR_API_ORIGIN`, else the local API, on the desktop.
+#[must_use]
+pub fn api_origin() -> String {
+  #[cfg(target_arch = "wasm32")]
+  {
+    web_sys::window().and_then(|w| w.location().origin().ok()).unwrap_or_default()
+  }
+  #[cfg(not(target_arch = "wasm32"))]
+  {
+    std::env::var("CALENDAR_API_ORIGIN").unwrap_or_else(|_| "http://localhost:5041".to_owned())
+  }
+}
+
+impl App {
+  /// An app talking to the API at `origin` through `effects`.
+  #[must_use]
+  pub fn new(origin: &str, clock: Clock, effects: Effects) -> Self {
+    let poster = effects.poster();
+    let api = Api::new(origin, session::http_client(origin)).on_unauthorized(move || poster.post(load::unauthorized));
+    App {
+      route: Route::Today,
+      session: Session::Checking,
+      api,
+      effects,
+      clock,
+      offline: false,
+      loads: load::Loads::default(),
+      day: Remote::default(),
+      week: Remote::default(),
+      tasks: Remote::default(),
+    }
+  }
+
+  /// A signed-in app with no API, its clock stopped at the fixtures' instant: for scenes and view tests.
+  #[must_use]
+  pub fn offline() -> Self {
+    let mut app = App::new(
+      "http://127.0.0.1:9",
+      Clock::fixed(fixtures::ZONE, fixtures::now()),
+      Effects::manual(),
+    );
+    app.offline = true;
+    app.session = Session::SignedIn(fixtures::user());
+    app
+  }
+}
+
+impl Default for App {
+  fn default() -> Self {
+    App::new(&api_origin(), Clock::system(), Effects::background())
+  }
+}
+
+/// The window's content: the session's screens until signed in, then the shell and the current page.
 pub fn view(app: &App, cx: &mut Cx<App>) -> El {
+  match &app.session {
+    Session::SignedIn(user) => shell(app, &user.name, cx),
+    other => session::view(other, cx),
+  }
+}
+
+fn shell(app: &App, user: &str, cx: &mut Cx<App>) -> El {
   let t = theme::tokens(cx.system_dark());
-  let nav = Page::ALL
+  let nav = Nav::ALL
     .into_iter()
-    .fold(row().key("nav").role("navigation").label("Main").gap(4.0), |nav, page| {
-      let current = app.page == page;
+    .fold(row().key("nav").role("navigation").label("Main").gap(4.0), |nav, item| {
+      let current = item.is_current(app.route);
       nav.child(
         el()
-          .key(page.key())
+          .key(item.key())
           .role("button")
-          .label(page.label())
+          .label(item.label())
           // The current page reads as pressed, as `aria-current="page"` marks it in the web app.
           .checked(current)
           .focusable(true)
@@ -69,8 +177,11 @@ pub fn view(app: &App, cx: &mut Cx<App>) -> El {
           .py(6.0)
           .radius(6.0)
           .fill(if current { t.accent_soft } else { t.surface })
-          .on_press(move |app: &mut App| app.page = page)
-          .child(text(page.label()).color(if current { t.text } else { t.text_muted })),
+          .on_press(move |app: &mut App| {
+            let route = item.target(app);
+            load::go(app, route);
+          })
+          .child(text(item.label()).color(if current { t.text } else { t.text_muted })),
       )
     });
   let header = row()
@@ -83,29 +194,93 @@ pub fn view(app: &App, cx: &mut Cx<App>) -> El {
     .gap(16.0)
     .fill(t.surface)
     .child(text("Calendar").key("app-title").font(type_::TITLE).color(t.text))
-    .child(nav);
+    .child(nav)
+    .child(el().grow(1.0))
+    .child(text(user).key("user-name").font(type_::BODY).color(t.text_muted))
+    .child(views::button("sign-out", "Sign out", &t).on_press(session::sign_out));
+  let page = match app.route {
+    Route::Today | Route::Day(_) => views::day::view(app, &t),
+    Route::Week(start) => views::week::view(app, start, &t),
+    Route::Tasks(view) => views::tasks::view(app, view, &t),
+  };
   let body = col()
     .key("page")
     .role("main")
     .w_full()
     .grow(1.0)
     .padding(16.0)
-    .child(text(app.page.label()).key("page-title").font(type_::TITLE).color(t.text));
+    .scroll(ScrollSpec { stick_bottom: false })
+    .child(page);
   col().w_full().h_full().fill(t.bg).child(header).child(body)
+}
+
+fn setup(app: &mut App, waker: rune::Waker) {
+  app.effects.set_waker(waker);
+  load::ensure(app);
+}
+
+/// Applies finished API calls, then refreshes stale data or a new day; checks the clock every 15 s (the web app's
+/// `useToday`), so a page rolls over at the user's midnight.
+fn poll(app: &mut App, _now: f64, tx: &mut rune::Tx) -> bool {
+  let effects = app.effects.clone();
+  let changed = effects.drain(app);
+  load::ensure(app);
+  tx.wake_after(std::time::Duration::from_secs(15));
+  changed
+}
+
+/// A scene's starting state: offline, signed in, the fixtures' day loaded.
+fn scene(app: &mut App, route: Route) {
+  let fresh = App::offline();
+  let effects = app.effects.clone();
+  *app = App { effects, ..fresh };
+  app.offline = true;
+  app.route = route;
 }
 
 /// The window, its size and the named scenes headless runs render (`--scene week`).
 #[must_use]
 pub fn spec() -> AppSpec<App> {
   AppSpec {
+    setup: Some(setup),
+    poll: Some(poll),
     scenes: &[
-      ("today", |app| app.page = Page::Today),
-      ("week", |app| app.page = Page::Week),
+      ("today", |app| {
+        scene(app, Route::Today);
+        app.day.finish(Ok(fixtures::day()));
+      }),
+      ("today-empty", |app| {
+        scene(app, Route::Today);
+        app.day.finish(Ok(fixtures::empty_day()));
+      }),
+      ("today-loading", |app| {
+        scene(app, Route::Today);
+        app.day.start();
+      }),
+      ("today-error", |app| {
+        scene(app, Route::Today);
+        app.day.finish(Err(calendar_client::ApiError {
+          status: Some(500),
+          message: Some("The server had a problem.".to_owned()),
+        }));
+      }),
+      ("week", |app| {
+        scene(app, Route::week_of(app.clock.today()));
+        app.week.finish(Ok(fixtures::week()));
+      }),
       ("tasks", |app| {
-        app.page = Page::Tasks;
+        scene(app, Route::Tasks(TaskView::Upcoming));
+        app.tasks.finish(Ok(TaskList {
+          items: fixtures::tasks().items,
+          next_cursor: Some("page-2".to_owned()),
+        }));
+      }),
+      ("signed-out", |app| {
+        scene(app, Route::Today);
+        app.session = Session::SignedOut { error: None };
       }),
     ],
-    ..AppSpec::new("Calendar", (960.0, 640.0), App::default, view)
+    ..AppSpec::new("Calendar", (960.0, 720.0), App::default, view)
   }
 }
 

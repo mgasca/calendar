@@ -4,7 +4,9 @@ date: 2026-11-20
 issue: https://github.com/mgasca/calendar/issues/999
 pr:
   - https://github.com/mgasca/calendar/pull/1015
-adrs: ["0003", "0004", "0021", "0027", "0053", "0055", "0058", "0061", "0063", "0064", "0066"]
+  - https://github.com/mgasca/calendar/pull/1012
+  - https://github.com/mgasca/calendar/pull/1013
+adrs: ["0003", "0004", "0021", "0027", "0053", "0055", "0058", "0061", "0063", "0064", "0066", "0067", "0068"]
 ---
 
 # 0072 Use the calendar in a native desktop and browser app built with Rune
@@ -118,8 +120,8 @@ The maintainer agreed the decisions below on 2026-11-20, on the epic. Two ADRs r
 
 | ADR | Decision | Why it matters for this story |
 | --- | --- | --- |
-| ADR-0067 ([PR #1012](https://github.com/mgasca/calendar/pull/1012), proposed) | Rune at a pinned `dev` rev, the `native/` workspace, the generated client, CI and `/native/` hosting | The framework and every convention of the scaffold, client and platform slices |
-| ADR-0068 ([PR #1013](https://github.com/mgasca/calendar/pull/1013), proposed) | Desktop sign-in through the system browser and a loopback handover of the cookie session | The design of #1008 and its relation to the deferred bearer scheme |
+| [0067](../decisions/0067-second-ui-in-rune-with-a-native-workspace-and-generated-rust-client.md) | Rune at a pinned `dev` rev, the `native/` workspace, the generated client, CI and `/native/` hosting | The framework and every convention of the scaffold, client and platform slices |
+| [0068](../decisions/0068-native-sign-in-through-a-browser-loopback-with-the-cookie-session.md) | Desktop sign-in through the system browser and a loopback handover of the cookie session | The design of #1008 and its relation to the deferred bearer scheme |
 | [0003](../decisions/0003-react-vite-typescript-web-ui.md) | React, Vite and TypeScript for the web UI | The app whose behaviour is the parity bar, and whose dev server serves `/native/` locally |
 | [0004](../decisions/0004-openapi-contract-and-generated-client.md) | The OpenAPI document is the contract, with generated clients | The Rust client is generated from it, like the TypeScript one |
 | [0021](../decisions/0021-client-supplied-date-and-time-zone-define-the-day.md) | The client supplies `today` and the time zone | The app reads both from the device for every agenda request |

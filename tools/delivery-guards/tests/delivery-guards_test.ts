@@ -677,7 +677,7 @@ function cacheFailures(from: string, to: string): string[] {
 const cacheMutations: [string, string, string, string][] = [
   [
     "ARustAnalysisOfTheWholeRepository_Fails",
-    "          source-root: ${{ matrix.language == 'rust' && 'backend' || '.' }}\n",
+    "          config: ${{ matrix.language == 'rust' && '{\"paths\":[\"backend\"]}' || '' }}\n",
     "",
     "not scoped to backend/",
   ],

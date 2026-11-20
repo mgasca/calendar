@@ -362,8 +362,10 @@ function codeqlRustCaches(files: RepoFiles): string[] {
     targetDir = analyzeStep?.map("env")?.text("CODEQL_EXTRACTOR_RUST_OPTION_CARGO_TARGET_DIR");
   // The Rust row analyses the backend workspace only: from the repository root the extractor also loads native/ and
   // Rune's git dependencies (#1002; native/ gets its own row in #1019).
-  if (!/matrix\.language == 'rust' && 'backend'/.test(steps[init]?.map("with")?.text("source-root") ?? "")) {
-    errors.push("the rust analysis is not scoped to backend/ (`source-root` on `init`).");
+  if (
+    !/matrix\.language == 'rust' && '\{"paths":\["backend"\]\}'/.test(steps[init]?.map("with")?.text("config") ?? "")
+  ) {
+    errors.push("the rust analysis is not scoped to backend/ (a `paths` config on `init`).");
   }
   if (!target) errors.push("the Analyze job does not restore the extractor's target directory (step id `target`).");
   else {

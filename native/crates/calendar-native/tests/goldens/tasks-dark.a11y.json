@@ -153,13 +153,29 @@
               "bounds": [
                 16.0,
                 68.3,
-                928.0,
+                96.2,
                 27.5
               ],
               "key": "tasks-title",
               "level": 1,
               "name": "My tasks",
               "role": "heading"
+            },
+            {
+              "actions": [
+                "click",
+                "focus",
+                "scroll-into-view"
+              ],
+              "bounds": [
+                124.2,
+                69.5,
+                70.6,
+                25.0
+              ],
+              "key": "add-task",
+              "name": "Add task",
+              "role": "button"
             },
             {
               "actions": [
@@ -313,6 +329,8 @@
                 },
                 {
                   "actions": [
+                    "click",
+                    "focus",
                     "scroll-into-view"
                   ],
                   "bounds": [
@@ -321,8 +339,9 @@
                     725.7,
                     16.3
                   ],
+                  "key": "task-00000000-0000-4000-8000-000000000101-title",
                   "name": "Book flights",
-                  "role": "label"
+                  "role": "button"
                 },
                 {
                   "actions": [
@@ -403,6 +422,8 @@
                 },
                 {
                   "actions": [
+                    "click",
+                    "focus",
                     "scroll-into-view"
                   ],
                   "bounds": [
@@ -411,8 +432,9 @@
                     704.6,
                     16.3
                   ],
+                  "key": "task-00000000-0000-4000-8000-000000000102-title",
                   "name": "Call the bank",
-                  "role": "label"
+                  "role": "button"
                 },
                 {
                   "actions": [
@@ -493,6 +515,8 @@
                 },
                 {
                   "actions": [
+                    "click",
+                    "focus",
                     "scroll-into-view"
                   ],
                   "bounds": [
@@ -501,8 +525,9 @@
                     704.6,
                     16.3
                   ],
+                  "key": "task-00000000-0000-4000-8000-000000000103-title",
                   "name": "Plan the offsite",
-                  "role": "label"
+                  "role": "button"
                 },
                 {
                   "actions": [

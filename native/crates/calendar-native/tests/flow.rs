@@ -461,3 +461,295 @@ fn deleting_from_my_tasks_counts_the_task_and_keeps_quiet_on_failure() {
   let dialog = app.actions.delete.clone().expect("still open after the failure");
   assert_eq!((dialog.title, dialog.error, dialog.pending), (None, None, false));
 }
+
+// Add and edit dialogs (#1006).
+
+use calendar_native::dialogs::{self, Dialog, Load};
+use calendar_native::forms::{EventField, TaskField};
+use wiremock::matchers::body_partial_json;
+
+const DESIGN_REVIEW: &str = "20000000-0000-4000-8000-000000000002";
+
+fn stored_event(version: u32, title: &str) -> Value {
+  json!({ "id": DESIGN_REVIEW, "title": title, "allDay": false, "start": "2026-11-20T08:30:00Z",
+    "end": "2026-11-20T10:00:00Z", "timeZone": "Europe/Madrid", "startDate": null, "endDate": null,
+    "location": "Room 2", "notes": null, "version": version })
+}
+
+fn event_dialog(app: &App) -> &dialogs::EventDialog {
+  match &app.dialog {
+    Some(Dialog::Event(d)) => d,
+    other => panic!("no event dialog: {other:?}"),
+  }
+}
+
+fn task_dialog(app: &App) -> &dialogs::TaskDialog {
+  match &app.dialog {
+    Some(Dialog::Task(d)) => d,
+    other => panic!("no task dialog: {other:?}"),
+  }
+}
+
+#[test]
+fn adding_a_task_sends_the_day_and_says_where_it_went() {
+  let server = day_api();
+  mount(
+    &server,
+    Mock::given(method("POST"))
+      .and(path("/api/tasks"))
+      .and(body_partial_json(
+        json!({ "title": "Buy stamps", "priority": "medium", "dueDate": "2026-11-23" }),
+      ))
+      .respond_with(ResponseTemplate::new(201).set_body_json(task_response(false)))
+      .expect(1),
+  );
+  let mut app = started(&server);
+  dialogs::add_task(&mut app, Some(fixtures::now().date_naive()));
+  if let Some(Dialog::Task(d)) = &mut app.dialog {
+    d.title.replace_text("Buy stamps");
+    d.due_date.replace_text("2026-11-23");
+  }
+  dialogs::save_task(&mut app);
+  assert!(task_dialog(&app).saving, "Saving…");
+  settle(&mut app);
+  assert!(app.dialog.is_none());
+  let notice = app.notice.clone().unwrap();
+  assert_eq!(notice.text, "\u{201c}Buy stamps\u{201d} added for Mon 23 Nov.");
+  assert_eq!(notice.show_day, Some("2026-11-23".parse().unwrap()), "another day: Show day");
+  assert_eq!(requests(&server, "/api/agenda/day").len(), 2, "the agenda is fetched again");
+}
+
+#[test]
+fn a_task_form_that_is_not_valid_never_reaches_the_server() {
+  let server = day_api();
+  let mut app = started(&server);
+  dialogs::add_task(&mut app, None);
+  dialogs::save_task(&mut app);
+  assert_eq!(
+    task_dialog(&app).errors.get(&TaskField::Title).map(String::as_str),
+    Some("Enter a title.")
+  );
+  assert!(task_dialog(&app).title.focused, "focus goes to the first invalid field");
+  assert_eq!(app.effects.pending(), 0);
+}
+
+#[test]
+fn editing_an_event_loads_it_then_saves_with_its_version() {
+  let server = day_api();
+  mount(
+    &server,
+    Mock::given(method("GET"))
+      .and(path(format!("/api/events/{DESIGN_REVIEW}")))
+      .respond_with(ResponseTemplate::new(200).set_body_json(stored_event(4, "Design review"))),
+  );
+  mount(
+    &server,
+    Mock::given(method("PUT"))
+      .and(path(format!("/api/events/{DESIGN_REVIEW}")))
+      .and(body_partial_json(
+        json!({ "title": "Design review (moved)", "version": 4, "timeZone": "Europe/Madrid", "start": "2026-11-20T08:30:00Z" }),
+      ))
+      .respond_with(ResponseTemplate::new(200).set_body_json(stored_event(5, "Design review (moved)")))
+      .expect(1),
+  );
+  let mut app = started(&server);
+  dialogs::edit_event(&mut app, DESIGN_REVIEW.parse().unwrap());
+  assert_eq!(event_dialog(&app).load, Load::Loading);
+  settle(&mut app);
+  let dialog = event_dialog(&app);
+  assert_eq!(
+    (
+      dialog.title.text.as_str(),
+      dialog.start_time.text.as_str(),
+      dialog.end_time.text.as_str()
+    ),
+    ("Design review", "09:30", "11:00")
+  );
+  assert_eq!(dialog.location.text, "Room 2");
+  if let Some(Dialog::Event(d)) = &mut app.dialog {
+    d.title.replace_text("Design review (moved)");
+  }
+  dialogs::save_event(&mut app);
+  settle(&mut app);
+  assert!(app.dialog.is_none());
+  assert_eq!(app.notice.as_ref().map(|n| n.text.as_str()), Some("Design review (moved) saved."));
+}
+
+#[test]
+fn a_400_lands_on_its_field_and_a_409_reloads_the_latest_copy() {
+  let server = day_api();
+  mount(
+    &server,
+    Mock::given(method("GET"))
+      .and(path(format!("/api/events/{DESIGN_REVIEW}")))
+      .respond_with(ResponseTemplate::new(200).set_body_json(stored_event(4, "Design review")))
+      .up_to_n_times(1),
+  );
+  mount(
+    &server,
+    Mock::given(method("GET"))
+      .and(path(format!("/api/events/{DESIGN_REVIEW}")))
+      .respond_with(ResponseTemplate::new(200).set_body_json(stored_event(6, "Design review (theirs)"))),
+  );
+  mount(
+    &server,
+    Mock::given(method("PUT"))
+      .and(path(format!("/api/events/{DESIGN_REVIEW}")))
+      .respond_with(ResponseTemplate::new(400).set_body_raw(
+        r#"{"title":"Invalid","errors":{"Location":["Location is too long."]}}"#,
+        "application/problem+json",
+      ))
+      .up_to_n_times(1),
+  );
+  mount(
+    &server,
+    Mock::given(method("PUT"))
+      .and(path(format!("/api/events/{DESIGN_REVIEW}")))
+      .respond_with(ResponseTemplate::new(409)),
+  );
+  let mut app = started(&server);
+  dialogs::edit_event(&mut app, DESIGN_REVIEW.parse().unwrap());
+  settle(&mut app);
+  dialogs::save_event(&mut app);
+  settle(&mut app);
+  let dialog = event_dialog(&app);
+  assert_eq!(
+    dialog.errors.get(&EventField::Location).map(String::as_str),
+    Some("Location is too long.")
+  );
+  assert!(!dialog.saving && dialog.location.focused);
+  dialogs::save_event(&mut app);
+  settle(&mut app);
+  let dialog = event_dialog(&app);
+  assert_eq!(dialog.title.text, "Design review (theirs)", "the latest copy is shown");
+  assert_eq!(
+    dialog.errors.get(&EventField::Form).map(String::as_str),
+    Some("This event was changed elsewhere. The latest version is shown; check it and save again.")
+  );
+  assert!(matches!(
+    dialog.version,
+    Some(calendar_client::generated::UpdateEventRequestVersion::UnsignedInteger(6))
+  ));
+}
+
+#[test]
+fn an_event_that_no_longer_exists_disables_save() {
+  let server = day_api();
+  mount(
+    &server,
+    Mock::given(method("GET"))
+      .and(path(format!("/api/events/{DESIGN_REVIEW}")))
+      .respond_with(ResponseTemplate::new(404)),
+  );
+  let mut app = started(&server);
+  dialogs::edit_event(&mut app, DESIGN_REVIEW.parse().unwrap());
+  settle(&mut app);
+  let dialog = event_dialog(&app);
+  assert!(dialog.gone);
+  assert_eq!(
+    dialog.errors.get(&EventField::Form).map(String::as_str),
+    Some("This event no longer exists.")
+  );
+  dialogs::save_event(&mut app);
+  assert_eq!(app.effects.pending(), 0, "Save does nothing");
+}
+
+#[test]
+fn a_failed_load_offers_try_again() {
+  let server = day_api();
+  mount(
+    &server,
+    Mock::given(method("GET"))
+      .and(path(format!("/api/events/{DESIGN_REVIEW}")))
+      .respond_with(ResponseTemplate::new(500))
+      .up_to_n_times(1),
+  );
+  mount(
+    &server,
+    Mock::given(method("GET"))
+      .and(path(format!("/api/events/{DESIGN_REVIEW}")))
+      .respond_with(ResponseTemplate::new(200).set_body_json(stored_event(4, "Design review"))),
+  );
+  let mut app = started(&server);
+  dialogs::edit_event(&mut app, DESIGN_REVIEW.parse().unwrap());
+  settle(&mut app);
+  assert_eq!(event_dialog(&app).load, Load::Failed);
+  dialogs::retry_load(&mut app);
+  settle(&mut app);
+  assert_eq!(event_dialog(&app).load, Load::Ready);
+}
+
+#[test]
+fn an_event_is_deleted_from_its_dialog_after_asking() {
+  let server = day_api();
+  mount(
+    &server,
+    Mock::given(method("GET"))
+      .and(path(format!("/api/events/{DESIGN_REVIEW}")))
+      .respond_with(ResponseTemplate::new(200).set_body_json(stored_event(4, "Design review"))),
+  );
+  mount(
+    &server,
+    Mock::given(method("DELETE"))
+      .and(path(format!("/api/events/{DESIGN_REVIEW}")))
+      .respond_with(ResponseTemplate::new(500))
+      .up_to_n_times(1),
+  );
+  mount(
+    &server,
+    Mock::given(method("DELETE"))
+      .and(path(format!("/api/events/{DESIGN_REVIEW}")))
+      .respond_with(ResponseTemplate::new(204)),
+  );
+  let mut app = started(&server);
+  dialogs::edit_event(&mut app, DESIGN_REVIEW.parse().unwrap());
+  settle(&mut app);
+  dialogs::delete_event(&mut app);
+  assert_eq!(app.effects.pending(), 0, "nothing is deleted before asking");
+  dialogs::ask_delete_event(&mut app);
+  dialogs::keep_event(&mut app);
+  assert!(!event_dialog(&app).confirm_delete, "Keep event");
+  dialogs::ask_delete_event(&mut app);
+  dialogs::delete_event(&mut app);
+  settle(&mut app);
+  assert_eq!(
+    event_dialog(&app).errors.get(&EventField::Form).map(String::as_str),
+    Some("Couldn\u{2019}t delete the event. Try again.")
+  );
+  dialogs::ask_delete_event(&mut app);
+  dialogs::delete_event(&mut app);
+  settle(&mut app);
+  assert!(app.dialog.is_none());
+  assert_eq!(app.notice.as_ref().map(|n| n.text.as_str()), Some("Design review deleted."));
+}
+
+#[test]
+fn editing_the_start_keeps_the_length() {
+  let server = day_api();
+  let mut app = started(&server);
+  dialogs::add_event(&mut app, "2026-11-23".parse().unwrap());
+  if let Some(Dialog::Event(d)) = &mut app.dialog {
+    d.end_time.replace_text("11:30");
+    d.start_time.replace_text("14:00");
+  }
+  dialogs::follow_start(&mut app);
+  assert_eq!(event_dialog(&app).end_time.text, "16:30", "09:00–11:30 moved to 14:00 keeps 2 h 30");
+}
+
+#[test]
+fn a_fields_error_clears_when_that_field_is_edited() {
+  let server = day_api();
+  let mut app = started(&server);
+  dialogs::add_task(&mut app, None);
+  dialogs::save_task(&mut app);
+  dialogs::clear_edited_errors(&mut app);
+  assert!(
+    task_dialog(&app).errors.contains_key(&TaskField::Title),
+    "it stays until the field changes"
+  );
+  if let Some(Dialog::Task(d)) = &mut app.dialog {
+    d.title.replace_text("B");
+  }
+  dialogs::clear_edited_errors(&mut app);
+  assert!(!task_dialog(&app).errors.contains_key(&TaskField::Title));
+}

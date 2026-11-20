@@ -143,7 +143,12 @@ fn grid(app: &App, week: &WeekAgendaResponse, today: NaiveDate, t: &Tokens) -> E
           .child(
             text(label)
               .key(format!("band-{}", event.id))
-              .role("listitem")
+              .role("button")
+              .focusable(true)
+              .on_press({
+                let id = event.id;
+                move |app: &mut App| crate::dialogs::edit_event(app, id)
+              })
               .label(format!("{}, {}", event.title, band_dates(event.start_date, last)))
               .w(0.0)
               .grow(days as f32)
@@ -212,12 +217,21 @@ fn grid(app: &App, week: &WeekAgendaResponse, today: NaiveDate, t: &Tokens) -> E
             .radius(3.0)
             .border(1.5, t.border_strong),
           )
-          .child(
-            text(&task.title)
-              .font(type_::LABEL)
-              .color(if task.is_completed { t.completed_text } else { t.text })
-              .truncate(),
-          );
+          .child({
+            let id = task.id;
+            el()
+              .key(format!("week-task-{date}-{id}-title"))
+              .role("button")
+              .label(&task.title)
+              .focusable(true)
+              .on_press(move |app: &mut App| crate::dialogs::edit_task(app, id))
+              .child(
+                text(&task.title)
+                  .font(type_::LABEL)
+                  .color(if task.is_completed { t.completed_text } else { t.text })
+                  .truncate(),
+              )
+          });
         if overdue {
           item = item.child(text("Overdue").font(type_::LABEL).color(t.overdue_text));
         }
@@ -236,12 +250,16 @@ fn grid(app: &App, week: &WeekAgendaResponse, today: NaiveDate, t: &Tokens) -> E
       } else {
         minutes(event.end, zone).max(start + 15.0)
       };
+      let id = event.id;
       let times = format::event_times(event.start, event.end, event.starts_before_day, event.ends_after_day, false, zone);
       hours = hours.child(
         col()
           .key(format!("week-event-{date}-{}", event.id))
-          .role("listitem")
+          // The block is the title button: pressing it opens the event, as the web app's grid does.
+          .role("button")
           .label(format!("{}, {times}", event.title))
+          .focusable(true)
+          .on_press(move |app: &mut App| crate::dialogs::edit_event(app, id))
           .absolute(2.0, start / 60.0 * HOUR)
           .w_full()
           .h((end - start) / 60.0 * HOUR - 2.0)

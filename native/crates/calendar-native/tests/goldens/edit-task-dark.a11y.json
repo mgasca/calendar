@@ -1,0 +1,417 @@
+{
+  "bounds": [
+    0.0,
+    0.0,
+    960.0,
+    720.0
+  ],
+  "children": [
+    {
+      "bounds": [
+        0.0,
+        0.0,
+        960.0,
+        720.0
+      ],
+      "children": [
+        {
+          "actions": [
+            "scroll-up",
+            "scroll-down",
+            "set-scroll-offset"
+          ],
+          "bounds": [
+            220.0,
+            144.8,
+            520.0,
+            430.5
+          ],
+          "children": [
+            {
+              "actions": [
+                "scroll-into-view"
+              ],
+              "bounds": [
+                240.0,
+                164.8,
+                480.0,
+                20.0
+              ],
+              "key": "task-form-heading",
+              "level": 2,
+              "name": "Edit task",
+              "role": "heading"
+            },
+            {
+              "actions": [
+                "scroll-into-view"
+              ],
+              "bounds": [
+                240.0,
+                196.8,
+                480.0,
+                15.0
+              ],
+              "name": "Title",
+              "role": "label"
+            },
+            {
+              "actions": [
+                "click",
+                "focus",
+                "set-value",
+                "replace-selected-text",
+                "set-text-selection",
+                "scroll-into-view"
+              ],
+              "bounds": [
+                240.0,
+                215.8,
+                480.0,
+                28.3
+              ],
+              "key": "task-title",
+              "name": "Title",
+              "role": "text-input",
+              "selection": [
+                1,
+                16,
+                1,
+                16
+              ],
+              "states": [
+                "focused"
+              ],
+              "value": "Plan the offsite"
+            },
+            {
+              "actions": [
+                "scroll-into-view"
+              ],
+              "bounds": [
+                240.0,
+                256.0,
+                480.0,
+                15.0
+              ],
+              "name": "Deadline",
+              "role": "label"
+            },
+            {
+              "actions": [
+                "scroll-into-view"
+              ],
+              "bounds": [
+                240.0,
+                275.0,
+                480.0,
+                25.0
+              ],
+              "children": [
+                {
+                  "actions": [
+                    "click",
+                    "focus",
+                    "scroll-into-view"
+                  ],
+                  "bounds": [
+                    240.0,
+                    275.0,
+                    88.7,
+                    25.0
+                  ],
+                  "key": "deadline-none",
+                  "name": "No deadline",
+                  "role": "radio-button",
+                  "states": [
+                    "unchecked"
+                  ]
+                },
+                {
+                  "actions": [
+                    "click",
+                    "focus",
+                    "scroll-into-view"
+                  ],
+                  "bounds": [
+                    334.7,
+                    275.0,
+                    74.2,
+                    25.0
+                  ],
+                  "key": "deadline-date",
+                  "name": "Date only",
+                  "role": "radio-button",
+                  "states": [
+                    "checked"
+                  ]
+                },
+                {
+                  "actions": [
+                    "click",
+                    "focus",
+                    "scroll-into-view"
+                  ],
+                  "bounds": [
+                    414.8,
+                    275.0,
+                    132.9,
+                    25.0
+                  ],
+                  "key": "deadline-time",
+                  "name": "Exact date and time",
+                  "role": "radio-button",
+                  "states": [
+                    "unchecked"
+                  ]
+                }
+              ],
+              "key": "task-deadline",
+              "name": "Deadline",
+              "role": "radio-group"
+            },
+            {
+              "actions": [
+                "scroll-into-view"
+              ],
+              "bounds": [
+                240.0,
+                312.0,
+                480.0,
+                15.0
+              ],
+              "name": "Due date",
+              "role": "label"
+            },
+            {
+              "actions": [
+                "click",
+                "focus",
+                "set-value",
+                "replace-selected-text",
+                "set-text-selection",
+                "scroll-into-view"
+              ],
+              "bounds": [
+                240.0,
+                331.0,
+                480.0,
+                28.3
+              ],
+              "key": "task-due-date",
+              "name": "Due date",
+              "role": "text-input",
+              "selection": [
+                1,
+                10,
+                1,
+                10
+              ],
+              "value": "2026-12-01"
+            },
+            {
+              "actions": [
+                "scroll-into-view"
+              ],
+              "bounds": [
+                240.0,
+                371.3,
+                480.0,
+                15.0
+              ],
+              "name": "Priority",
+              "role": "label"
+            },
+            {
+              "actions": [
+                "scroll-into-view"
+              ],
+              "bounds": [
+                240.0,
+                390.3,
+                480.0,
+                25.0
+              ],
+              "children": [
+                {
+                  "actions": [
+                    "click",
+                    "focus",
+                    "scroll-into-view"
+                  ],
+                  "bounds": [
+                    240.0,
+                    390.3,
+                    43.8,
+                    25.0
+                  ],
+                  "key": "priority-low",
+                  "name": "Low",
+                  "role": "radio-button",
+                  "states": [
+                    "unchecked"
+                  ]
+                },
+                {
+                  "actions": [
+                    "click",
+                    "focus",
+                    "scroll-into-view"
+                  ],
+                  "bounds": [
+                    289.8,
+                    390.3,
+                    66.3,
+                    25.0
+                  ],
+                  "key": "priority-medium",
+                  "name": "Medium",
+                  "role": "radio-button",
+                  "states": [
+                    "checked"
+                  ]
+                },
+                {
+                  "actions": [
+                    "click",
+                    "focus",
+                    "scroll-into-view"
+                  ],
+                  "bounds": [
+                    362.1,
+                    390.3,
+                    46.6,
+                    25.0
+                  ],
+                  "key": "priority-high",
+                  "name": "High",
+                  "role": "radio-button",
+                  "states": [
+                    "unchecked"
+                  ]
+                }
+              ],
+              "key": "task-priority",
+              "name": "Priority",
+              "role": "radio-group"
+            },
+            {
+              "actions": [
+                "scroll-into-view"
+              ],
+              "bounds": [
+                240.0,
+                427.3,
+                480.0,
+                15.0
+              ],
+              "name": "Notes",
+              "role": "label"
+            },
+            {
+              "actions": [
+                "click",
+                "focus",
+                "set-value",
+                "replace-selected-text",
+                "set-text-selection",
+                "scroll-into-view"
+              ],
+              "bounds": [
+                240.0,
+                446.3,
+                480.0,
+                72.0
+              ],
+              "key": "task-notes",
+              "name": "Notes",
+              "role": "multiline-text-input",
+              "selection": [
+                1,
+                20,
+                1,
+                20
+              ],
+              "value": "Ask for budget first"
+            },
+            {
+              "actions": [
+                "scroll-into-view"
+              ],
+              "bounds": [
+                240.0,
+                530.3,
+                480.0,
+                25.0
+              ],
+              "children": [
+                {
+                  "actions": [
+                    "click",
+                    "focus",
+                    "scroll-into-view"
+                  ],
+                  "bounds": [
+                    240.0,
+                    530.3,
+                    75.4,
+                    25.0
+                  ],
+                  "key": "task-save",
+                  "name": "Save task",
+                  "role": "button"
+                },
+                {
+                  "actions": [
+                    "click",
+                    "focus",
+                    "scroll-into-view"
+                  ],
+                  "bounds": [
+                    323.4,
+                    530.3,
+                    59.8,
+                    25.0
+                  ],
+                  "key": "task-cancel",
+                  "name": "Cancel",
+                  "role": "button"
+                }
+              ],
+              "key": "task-actions",
+              "role": "group"
+            }
+          ],
+          "key": "task-form",
+          "name": "Edit task",
+          "role": "dialog",
+          "scroll": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "states": [
+            "modal",
+            "clips"
+          ]
+        }
+      ],
+      "key": "form-backdrop",
+      "role": "group"
+    },
+    {
+      "bounds": [
+        0.0,
+        0.0,
+        1.0,
+        1.0
+      ],
+      "role": "status",
+      "states": [
+        "live-polite"
+      ]
+    }
+  ],
+  "name": "Calendar",
+  "role": "window"
+}

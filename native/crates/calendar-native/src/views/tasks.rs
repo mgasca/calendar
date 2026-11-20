@@ -45,7 +45,13 @@ pub fn view(app: &App, view: TaskView, t: &Tokens) -> El {
     .key("tasks-page")
     .gap(14.0)
     .w_full()
-    .child(heading("tasks-title", "My tasks", 1, t))
+    .child(
+      row()
+        .gap(12.0)
+        .items_center()
+        .child(heading("tasks-title", "My tasks", 1, t))
+        .child(button("add-task", "Add task", t).on_press(|app: &mut App| crate::dialogs::add_task(app, None))),
+    )
     .child(tabs)
     .child(heading("tasks-view-title", view.label(), 2, t));
   if let Some(state) = remote_state(

@@ -52,3 +52,10 @@ Rune has no releases: `native/Cargo.toml` pins an exact `rev` of its `dev` branc
 - **Flow tests** (`tests/flow.rs`) use `Effects::manual()`, a `wiremock` API and a fixed `Clock` that `set_now` moves. `settle` runs every queued request and applies the results.
 - **Scenes** (`spec()`) are offline: `App::offline()` is signed in, frozen at `fixtures::now()` in Europe/Madrid, and fed from `fixtures.rs`, which is shaped like the contract and checked by a decode test. Add a scene for each state a golden needs.
 - Formatting is English, in the web app's en-GB patterns (`format.rs`), with times in the user's IANA zone through `chrono-tz`.
+
+## Dialogs and forms
+
+- A form's rules live in `forms.rs`, which has no UI and is unit-tested. Its state and its saves live in `dialogs.rs`, and its drawing in `views/dialogs.rs`.
+- Text fields are `rune::TextEdit` values in the dialog's state, drawn with `text_input(..).on_edit(accessor)`. Each accessor falls back to `App::scratch` once the dialog has closed.
+- Headless tests type with `rt.paste(..)` after pressing the field.
+- Saves return `calendar_client::SaveError`, whose `body` holds the 400 `errors` for the form's fields.

@@ -143,7 +143,7 @@
             16.0,
             68.3,
             928.0,
-            113.0
+            114.3
           ],
           "children": [
             {
@@ -154,7 +154,7 @@
                 16.0,
                 68.3,
                 928.0,
-                80.8
+                82.0
               ],
               "children": [
                 {
@@ -194,7 +194,7 @@
                     16.0,
                     124.0,
                     928.0,
-                    25.0
+                    26.3
                   ],
                   "children": [
                     {
@@ -207,7 +207,7 @@
                         16.0,
                         124.0,
                         101.9,
-                        25.0
+                        26.3
                       ],
                       "key": "day-previous",
                       "name": "‹ Previous day",
@@ -223,7 +223,7 @@
                         123.9,
                         124.0,
                         79.0,
-                        25.0
+                        26.3
                       ],
                       "key": "day-next",
                       "name": "Next day ›",
@@ -239,11 +239,79 @@
                         208.9,
                         124.0,
                         109.2,
-                        25.0
+                        26.3
                       ],
                       "key": "day-week",
                       "name": "Week of 16 Nov",
                       "role": "button"
+                    },
+                    {
+                      "actions": [
+                        "scroll-into-view"
+                      ],
+                      "bounds": [
+                        324.1,
+                        124.0,
+                        300.9,
+                        26.3
+                      ],
+                      "children": [
+                        {
+                          "actions": [
+                            "click",
+                            "focus",
+                            "scroll-into-view"
+                          ],
+                          "bounds": [
+                            324.1,
+                            124.6,
+                            70.6,
+                            25.0
+                          ],
+                          "key": "add-task",
+                          "name": "Add task",
+                          "role": "button"
+                        },
+                        {
+                          "actions": [
+                            "click",
+                            "focus",
+                            "scroll-into-view"
+                          ],
+                          "bounds": [
+                            400.7,
+                            124.6,
+                            78.3,
+                            25.0
+                          ],
+                          "key": "add-event",
+                          "name": "Add event",
+                          "role": "button"
+                        },
+                        {
+                          "actions": [
+                            "click",
+                            "focus",
+                            "set-value",
+                            "replace-selected-text",
+                            "set-text-selection",
+                            "scroll-into-view"
+                          ],
+                          "bounds": [
+                            485.0,
+                            124.0,
+                            140.0,
+                            26.3
+                          ],
+                          "key": "go-to-date",
+                          "name": "Go to date (YYYY-MM-DD)",
+                          "placeholder": "YYYY-MM-DD",
+                          "role": "text-input",
+                          "value": ""
+                        }
+                      ],
+                      "key": "day-adds",
+                      "role": "group"
                     }
                   ],
                   "key": "day-nav",
@@ -260,7 +328,7 @@
               ],
               "bounds": [
                 16.0,
-                165.0,
+                166.3,
                 928.0,
                 16.3
               ],

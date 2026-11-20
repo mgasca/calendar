@@ -212,6 +212,31 @@ No further ADR is expected. A slice that finds a decision ADR-0067 or ADR-0068 d
   * Goldens for `today-toggle-error` and `today-delete` (PNG too).
 * **Not ported:** the web app's toggle telemetry (`traceAction`). The native app has no telemetry yet.
 
+### Create and edit (#1006), delivered
+
+* **Entry points, as the web app:**
+  * The Day page has "Add task" (due that day) and "Add event", plus a "Go to date" field (`YYYY-MM-DD`, Enter), which stands in for #1004's missing date picker.
+  * My tasks has "Add task" (no deadline).
+  * Event and task titles on Day, Week (grid, all-day band, task strips) and My tasks open the edit dialog. Week has no Add, as in the web app.
+* **Form rules** (`forms.rs`, ports of `eventForm.ts`, `taskForm.ts` and `deadline.ts`):
+  * **Defaults:** today starts at the next :00/:30; another day starts at 09:00; one hour; editing Start keeps the length.
+  * **Daylight saving:** times are resolved in the user's zone. A gap is an error; a repeated time asks which occurrence (`UTC+…`).
+  * **Requests:** timed events send UTC instants and the zone. All-day events send an exclusive `endDate`. Tasks send `dueDate`, `dueAt` or neither. Edits send back the loaded `version`.
+  * **Validation:** the web app's messages, focus on the first invalid field, and a field's error clears when it's edited.
+* **Dialogs** (`dialogs.rs`, `views/dialogs.rs`):
+  * Edit loads first: "Loading event…"; on 404, "This event no longer exists." (Save disabled); otherwise "Couldn't load the event." with "Try again".
+  * A 400's `errors` map onto fields. A 409 reloads the latest copy with "This event was changed elsewhere. The latest version is shown; check it and save again.".
+  * Deleting an event happens in its dialog: "Delete {title}? This can't be undone." with "Keep event".
+  * After a save, a notice says "“{title}” added for {day}." with "Show day" when it went on another day, and the agenda refetches.
+* **Dates and times are text fields:** Rune has no date or time picker. They're validated, with "Enter a date as YYYY-MM-DD." / "Enter a time as HH:MM.". A picker would be a follow-up.
+* **Client:** `create_event`, `event`, `update_event`, `delete_event`, `create_task`, `task` and `update_task`. A save's error keeps the body for the 400 mapping (`SaveError`).
+* **Tests:**
+  * 9 form-model unit tests (DST gap and repeat, bodies, the 400 mapping, round trips).
+  * 9 flow tests against a stub API (add, edit with version, 400, 409 reload, 404, failed load and Try again, delete from the dialog, Start keeping the length, errors clearing).
+  * 4 element-tree tests (open, a pasted title saved, a title opens edit, All day hides the times).
+  * Goldens for `add-event`, `event-form-errors` and `edit-task`, the dialog PNGs reviewed.
+* **Not ported:** the notice's automatic timeout and focus returning to the opener. Rune's focus model differs; that would be a follow-up if needed.
+
 ### Where things live
 
 | Area | Location (forecast) |

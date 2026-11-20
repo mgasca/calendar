@@ -199,10 +199,20 @@ fn is_loopback_host(host: &str) -> bool {
   name.eq_ignore_ascii_case("localhost") || name == "127.0.0.1" || name == "[::1]"
 }
 
+/// Where the Rune UI's browser bundle is served, in the web root's `native/` directory (ADR-0067, #1009).
+pub const NATIVE_SEGMENT: &str = "/native";
+
+/// Whether `path` belongs to the Rune UI's browser bundle rather than to the React app.
+pub fn is_native_path(path: &str) -> bool {
+  starts_with_segment(path, NATIVE_SEGMENT)
+}
+
 /// The `Cache-Control` of a static file: the entry page is always revalidated, and a fingerprinted asset
-/// (`/assets/name-HASH8.ext`) never changes. Other files get none.
+/// (`/assets/name-HASH8.ext`) never changes. Every file of the Rune UI's bundle is revalidated, because
+/// `wasm-bindgen`'s output is not fingerprinted and a deploy must never pair new JavaScript glue with an old
+/// `.wasm`. Other files get none.
 pub fn static_cache_control(path: &str) -> Option<&'static str> {
-  if path.eq_ignore_ascii_case("/index.html") {
+  if path.eq_ignore_ascii_case("/index.html") || is_native_path(path) {
     Some("no-cache")
   } else if is_fingerprinted_asset(path) {
     Some("public, max-age=31536000, immutable")
@@ -355,6 +365,10 @@ mod tests {
     assert_eq!(static_cache_control("/assets/app-Abc123_X."), None);
     assert_eq!(static_cache_control("/assets/sub/app-Abc123_X.js"), None);
     assert_eq!(static_cache_control("/other/app-Abc123_X.js"), None);
+    for native in ["/native/index.html", "/native/app.js", "/native/app_bg.wasm", "/NATIVE/app.js"] {
+      assert_eq!(static_cache_control(native), Some("no-cache"), "{native}");
+    }
+    assert_eq!(static_cache_control("/nativeish/app.js"), None);
   }
 
   #[test]

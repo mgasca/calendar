@@ -412,6 +412,7 @@
         { "unique-id": "api-agenda", "path": "/api/agenda", "operations": ["GET /api/agenda/day?date=&timeZone=", "GET /api/agenda/week?date=&timeZone=&today="], "authentication": "session cookie" },
         { "unique-id": "api-openapi-document", "path": "/openapi/v1.json", "operations": ["GET /openapi/v1.json"], "authentication": "anonymous", "description": "Development only: the OpenAPI document with the request's origin as its server URL. The route is not registered outside Development; the committed contracts/openapi.json comes from calendar-api --openapi" },
         { "unique-id": "api-static-spa", "path": "/", "description": "Static files from wwwroot (the built SPA); unknown non-file, non-/api paths return index.html with 200 and Cache-Control: no-cache; unknown /api/* paths return 404", "authentication": "anonymous" },
+        { "unique-id": "api-static-native", "path": "/native/", "description": "The Rune UI's WASM bundle from wwwroot/native/ on the same origin (ADR-0067, #1009): every file with Cache-Control: no-cache (wasm-bindgen's names are not fingerprinted), .wasm as application/wasm; /native redirects to /native/, and unknown non-file paths under it return native/index.html, never the SPA's", "authentication": "anonymous" },
         { "unique-id": "api-container-image", "image": "crcalendar<suffix>.azurecr.io/calendar:<git-sha> (built from Dockerfile; gcr.io/distroless/cc-debian13 runtime, non-root user)" }
       ],
       "controls": {
@@ -886,7 +887,7 @@
       "unique-id": "calendar-container",
       "node-type": "container",
       "name": "Calendar container image",
-      "description": "One image built by the multi-stage Dockerfile: the pnpm build of the SPA is copied into the API's wwwroot beside the calendar-api and calendar-migrate binaries on a distroless base image, running as a non-root user on port 8080. The same SHA-tagged image is promoted from staging to production (ADR-0030, ADR-0034).",
+      "description": "One image built by the multi-stage Dockerfile: the pnpm build of the SPA is copied into the API's wwwroot, and the Rune UI's WASM bundle (cargo and wasm-bindgen on Rune's toolchain) into wwwroot/native/, beside the calendar-api and calendar-migrate binaries on a distroless base image, running as a non-root user on port 8080. The same SHA-tagged image is promoted from staging to production (ADR-0030, ADR-0034).",
       "interfaces": [
         { "unique-id": "container-port", "port": 8080 }
       ],
@@ -1124,6 +1125,18 @@
         }
       },
       "metadata": { "adrs": ["ADR-0003", "ADR-0004", "ADR-0020", "ADR-0027", "ADR-0030"], "client": "frontend/apps/web/src/api/client.ts (raises calendar:unauthorized on any 401 except /api/auth/me)" }
+    },
+    {
+      "unique-id": "api-serves-native-bundle",
+      "description": "Serves the native app's WASM bundle under /native/, on the origin of the API and the SPA so the session cookie works unchanged, to",
+      "relationship-type": {
+        "connects": {
+          "source": { "node": "calendar-api", "interfaces": ["api-static-native"] },
+          "destination": { "node": "native-app", "interfaces": ["native-app-web-bundle"] }
+        }
+      },
+      "protocol": "HTTPS",
+      "metadata": { "adrs": ["ADR-0030", "ADR-0067"], "delivery": "#1009", "local": "the web app's Vite dev and preview servers serve native/target/web/ under /native/ (frontend/apps/web/dev/nativeBundle.ts)" }
     },
     {
       "unique-id": "api-serves-spa",

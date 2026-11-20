@@ -181,6 +181,7 @@ fn agenda_body(app: &App, agenda: &DayAgendaResponse, date: NaiveDate, is_today:
 
 fn agenda_task(task: &AgendaTaskItem, meta_text: Option<String>, overdue: bool) -> TaskRow<'_> {
   TaskRow {
+    id: task.id,
     key: format!("task-{}", task.id),
     title: &task.title,
     done: task.is_completed,
@@ -210,7 +211,7 @@ fn tasks_section(app: &App, agenda: &DayAgendaResponse, is_today: bool, today: N
         } else {
           format::describe_overdue(task.due_date.flatten(), task.due_at.flatten(), today, zone)
         };
-        task_row(agenda_task(task, Some(described), true), t)
+        task_row(agenda_task(task, Some(described), true), app, t)
       })
       .collect();
     if total > 20 {
@@ -233,7 +234,7 @@ fn tasks_section(app: &App, agenda: &DayAgendaResponse, is_today: bool, today: N
           }
           s
         });
-        task_row(agenda_task(task, due, false), t)
+        task_row(agenda_task(task, due, false), app, t)
       })
       .collect();
     tasks = tasks.child(section("due", if is_today { "Due today" } else { "Due this day" }, 3, rows, t));

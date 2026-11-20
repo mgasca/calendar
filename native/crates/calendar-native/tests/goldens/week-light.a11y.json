@@ -600,6 +600,8 @@
                           "children": [
                             {
                               "actions": [
+                                "click",
+                                "focus",
                                 "scroll-into-view"
                               ],
                               "bounds": [
@@ -608,10 +610,10 @@
                                 12.0,
                                 12.0
                               ],
+                              "key": "week-check-2026-11-16-00000000-0000-4000-8000-000000000006",
                               "name": "Mark Write the brief as done",
                               "role": "check-box",
                               "states": [
-                                "disabled",
                                 "unchecked"
                               ]
                             },
@@ -717,6 +719,8 @@
                           "children": [
                             {
                               "actions": [
+                                "click",
+                                "focus",
                                 "scroll-into-view"
                               ],
                               "bounds": [
@@ -725,10 +729,10 @@
                                 12.0,
                                 12.0
                               ],
+                              "key": "week-check-2026-11-20-00000000-0000-4000-8000-000000000002",
                               "name": "Mark Call the bank as done",
                               "role": "check-box",
                               "states": [
-                                "disabled",
                                 "unchecked"
                               ]
                             },
@@ -1434,6 +1438,8 @@
                   "children": [
                     {
                       "actions": [
+                        "click",
+                        "focus",
                         "scroll-into-view"
                       ],
                       "bounds": [
@@ -1446,7 +1452,6 @@
                       "name": "Mark File expenses as done",
                       "role": "check-box",
                       "states": [
-                        "disabled",
                         "unchecked"
                       ]
                     },
@@ -1457,7 +1462,7 @@
                       "bounds": [
                         52.0,
                         889.5,
-                        733.5,
+                        815.2,
                         16.3
                       ],
                       "name": "File expenses",
@@ -1470,7 +1475,7 @@
                       "bounds": [
                         52.0,
                         907.8,
-                        733.5,
+                        815.2,
                         16.3
                       ],
                       "name": "Overdue by 8 days",
@@ -1478,20 +1483,19 @@
                     },
                     {
                       "actions": [
+                        "click",
+                        "focus",
                         "scroll-into-view"
                       ],
                       "bounds": [
-                        793.5,
+                        875.2,
                         894.3,
-                        138.5,
+                        56.8,
                         25.0
                       ],
                       "key": "overdue-00000000-0000-4000-8000-000000000005-delete",
                       "name": "Delete File expenses",
-                      "role": "button",
-                      "states": [
-                        "disabled"
-                      ]
+                      "role": "button"
                     }
                   ],
                   "key": "overdue-00000000-0000-4000-8000-000000000005",

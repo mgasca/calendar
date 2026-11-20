@@ -63,7 +63,7 @@ pub fn view(app: &App, view: TaskView, t: &Tokens) -> El {
   if list.items.is_empty() {
     return page.child(text("No tasks in this view.").key("tasks-empty").color(t.empty_text));
   }
-  let rows = list.items.iter().map(|task| task_row(row_for(task, view, app), t));
+  let rows = list.items.iter().map(|task| task_row(row_for(task, view, app), app, t));
   page = rows.fold(page.child(col().key("task-list").role("list").gap(6.0).w_full()), |page, r| {
     page.child(r)
   });
@@ -88,6 +88,7 @@ fn row_for<'a>(task: &'a TaskResponse, view: TaskView, app: &App) -> TaskRow<'a>
     due = format!("{due} — {notes}");
   }
   TaskRow {
+    id: task.id,
     key: format!("task-{}", task.id),
     title: &task.title,
     done: task.is_completed,

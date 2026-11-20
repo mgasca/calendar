@@ -40,6 +40,11 @@ pub fn meta(label: impl Into<String>, t: &Tokens) -> El {
 
 /// A focusable button; the caller adds `.on_press(…)`.
 pub fn button(key: &str, label: &str, t: &Tokens) -> El {
+  styled_button(key, label, t.surface_raised, t.text, t)
+}
+
+/// A button with its own fill and label colour: the danger button ("Delete" in the confirmation).
+pub fn styled_button(key: &str, label: &str, fill: rune::Color, color: rune::Color, t: &Tokens) -> El {
   el()
     .key(key)
     .role("button")
@@ -48,9 +53,9 @@ pub fn button(key: &str, label: &str, t: &Tokens) -> El {
     .py(5.0)
     .radius(6.0)
     .border(1.0, t.border)
-    .fill(t.surface_raised)
+    .fill(fill)
     .focusable(true)
-    .child(text(label).font(type_::LABEL).color(t.text))
+    .child(text(label).font(type_::LABEL).color(color))
 }
 
 /// A button drawn where a later slice makes it work (#1005, #1006): shown, but disabled.
@@ -93,6 +98,7 @@ pub fn item(key: &str, t: &Tokens) -> El {
 
 /// One task row: its checkbox (inert until #1005), title, priority badge and notes of its due state.
 pub struct TaskRow<'a> {
+  pub id: uuid::Uuid,
   pub key: String,
   pub title: &'a str,
   pub done: bool,
@@ -101,13 +107,8 @@ pub struct TaskRow<'a> {
   pub meta: Option<String>,
 }
 
-pub fn task_row(task: TaskRow<'_>, t: &Tokens) -> El {
-  let check = el()
-    .key(format!("{}-check", task.key))
-    .role("checkbox")
-    .label(format!("Mark {} as done", task.title))
-    .checked(task.done)
-    .disabled(true)
+pub fn task_row(task: TaskRow<'_>, app: &App, t: &Tokens) -> El {
+  let check = checkbox(&format!("{}-check", task.key), task.id, task.title, task.done, app)
     .size(16.0, 16.0)
     .radius(4.0)
     .border(1.5, t.border_strong)
@@ -127,7 +128,82 @@ pub fn task_row(task: TaskRow<'_>, t: &Tokens) -> El {
   if task.overdue {
     r = r.fill(t.overdue_bg);
   }
-  r.child(inert_button(&format!("{}-delete", task.key), &format!("Delete {}", task.title), t))
+  let (id, title) = (task.id, task.title.to_owned());
+  // "Delete" on screen, "Delete {title}" to assistive technology, as the web app's `aria-label`.
+  r.child(
+    button(&format!("{}-delete", task.key), "Delete", t)
+      .label(format!("Delete {}", task.title))
+      .on_press(move |app: &mut App| crate::actions::ask_delete(app, id, &title)),
+  )
+}
+
+/// A task's checkbox: pressing it completes or reopens the task; it is disabled while that request runs.
+pub fn checkbox(key: &str, id: uuid::Uuid, title: &str, done: bool, app: &App) -> El {
+  let pending = app.actions.pending.contains(&id);
+  let check = el().key(key).role("checkbox").label(format!("Mark {title} as done")).checked(done);
+  if pending {
+    check.disabled(true)
+  } else {
+    check
+      .focusable(true)
+      .on_press(move |app: &mut App| crate::actions::toggle(app, id, !done))
+  }
+}
+
+/// The last toggle failure, as the web app's `TaskToggleError`.
+pub fn toggle_error(app: &App, t: &Tokens) -> Option<El> {
+  let message = app.actions.toggle_error.as_deref()?;
+  Some(
+    col()
+      .key("toggle-error")
+      .role("alert")
+      .px(12.0)
+      .py(10.0)
+      .radius(8.0)
+      .fill(t.error_soft)
+      .child(text(message).color(t.error)),
+  )
+}
+
+/// The delete confirmation, over the page: "Confirm deletion", Delete and Cancel (the web app's `ConfirmDialog`).
+pub fn delete_dialog(app: &App, t: &Tokens) -> Option<El> {
+  let dialog = app.actions.delete.as_ref()?;
+  let mut buttons = row().gap(8.0);
+  let mut delete = styled_button("confirm-delete", "Delete", t.error, t.on_error, t);
+  let mut cancel = button("cancel-delete", "Cancel", t);
+  if dialog.pending {
+    delete = delete.focusable(false).disabled(true);
+    cancel = cancel.focusable(false).disabled(true);
+  } else {
+    delete = delete.on_press(crate::actions::confirm_delete);
+    cancel = cancel.on_press(crate::actions::cancel_delete);
+  }
+  buttons = buttons.child(delete).child(cancel);
+  let mut body = col()
+    .key("delete-dialog")
+    .role("dialog")
+    .label("Confirm deletion")
+    .modal(false, crate::actions::cancel_delete)
+    .gap(12.0)
+    .padding(20.0)
+    .radius(12.0)
+    .w(420.0)
+    .fill(t.surface_raised)
+    .child(heading("delete-heading", "Confirm deletion", 2, t))
+    .child(text(format!("Delete \u{201c}{}\u{201d}? This can\u{2019}t be undone.", dialog.title)).color(t.text));
+  if let Some(error) = &dialog.error {
+    body = body.child(text(error).key("delete-error").role("alert").color(t.error));
+  }
+  Some(
+    col()
+      .key("dialog-backdrop")
+      .absolute(0.0, 0.0)
+      .w_full()
+      .h_full()
+      .center()
+      .fill(t.backdrop)
+      .child(body.child(buttons)),
+  )
 }
 
 /// The states every page shares before or around its data: loading, the error with "Try again", the stale-data

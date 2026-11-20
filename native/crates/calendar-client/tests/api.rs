@@ -214,3 +214,65 @@ async fn a_success_that_does_not_match_the_contract_says_so() {
     "{error:?}"
   );
 }
+
+fn task_json(done: bool) -> serde_json::Value {
+  json!({ "id": "0b9f5d4e-3c1a-4f7e-9a2b-1c2d3e4f5a6b", "title": "Buy milk", "priority": null, "notes": null,
+    "dueDate": null, "dueAt": null, "completedAt": if done { json!("2026-11-20T09:00:00Z") } else { json!(null) },
+    "isCompleted": done, "version": 2 })
+}
+
+#[tokio::test]
+async fn completing_reopening_and_deleting_a_task_use_its_id() {
+  let server = MockServer::start().await;
+  let id: uuid::Uuid = "0b9f5d4e-3c1a-4f7e-9a2b-1c2d3e4f5a6b".parse().unwrap();
+  Mock::given(method("POST"))
+    .and(path(format!("/api/tasks/{id}/complete")))
+    .respond_with(ResponseTemplate::new(200).set_body_json(task_json(true)))
+    .expect(1)
+    .mount(&server)
+    .await;
+  Mock::given(method("POST"))
+    .and(path(format!("/api/tasks/{id}/reopen")))
+    .respond_with(ResponseTemplate::new(200).set_body_json(task_json(false)))
+    .expect(1)
+    .mount(&server)
+    .await;
+  Mock::given(method("DELETE"))
+    .and(path(format!("/api/tasks/{id}")))
+    .respond_with(ResponseTemplate::new(204))
+    .expect(1)
+    .mount(&server)
+    .await;
+  let api = api(&server);
+  assert!(api.complete_task(id).await.unwrap().is_completed);
+  assert!(!api.reopen_task(id).await.unwrap().is_completed);
+  api.delete_task(id).await.unwrap();
+}
+
+#[tokio::test]
+async fn a_changed_or_missing_task_is_an_error_with_its_status() {
+  let server = MockServer::start().await;
+  let id = uuid::Uuid::nil();
+  Mock::given(method("POST"))
+    .and(path(format!("/api/tasks/{id}/complete")))
+    .respond_with(ResponseTemplate::new(409).set_body_raw(
+      r#"{"title":"Conflict","detail":"The task changed.","status":409}"#,
+      "application/problem+json",
+    ))
+    .mount(&server)
+    .await;
+  Mock::given(method("DELETE"))
+    .and(path(format!("/api/tasks/{id}")))
+    .respond_with(ResponseTemplate::new(404))
+    .mount(&server)
+    .await;
+  let api = api(&server);
+  assert_eq!(
+    api.complete_task(id).await.unwrap_err(),
+    ApiError {
+      status: Some(409),
+      message: Some("The task changed.".to_owned())
+    }
+  );
+  assert_eq!(api.delete_task(id).await.unwrap_err().status, Some(404));
+}

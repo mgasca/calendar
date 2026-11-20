@@ -9,7 +9,8 @@ fn runtime(scene: &str, dark: bool) -> Runtime<App> {
   let mut rt = Runtime::new(
     state,
     view,
-    (960.0, 720.0),
+    // Tall enough that every row of the fixtures is on screen, so a press lands on it.
+    (960.0, 1600.0),
     Env {
       system_dark: dark,
       scale: 1.0,
@@ -101,4 +102,54 @@ fn a_task_view_tab_opens_that_view() {
   let mut rt = runtime("tasks", false);
   press(&mut rt, "view-no-deadline");
   assert_eq!(rt.state.route, Route::Tasks(TaskView::NoDeadline));
+}
+
+// Task actions (#1005): the real controls, in an offline app whose requests stay queued.
+
+const BOOK_FLIGHTS: &str = "00000000-0000-4000-8000-000000000003";
+
+#[test]
+fn pressing_a_checkbox_completes_the_task_and_disables_it_until_the_server_answers() {
+  let mut rt = runtime("today", false);
+  let key = format!("task-{BOOK_FLIGHTS}-check");
+  press(&mut rt, &key);
+  let id = BOOK_FLIGHTS.parse().unwrap();
+  let task = rt
+    .state
+    .day
+    .data
+    .as_ref()
+    .unwrap()
+    .tasks
+    .due_today
+    .iter()
+    .find(|t| t.id == id)
+    .unwrap();
+  assert!(task.is_completed, "optimistic");
+  assert!(rt.state.actions.pending.contains(&id));
+  assert_eq!(rt.state.effects.pending(), 1, "one request queued");
+  press(&mut rt, &key);
+  assert_eq!(rt.state.effects.pending(), 1, "the checkbox is disabled while it runs");
+}
+
+#[test]
+fn delete_opens_the_confirmation_and_cancel_closes_it() {
+  let mut rt = runtime("today", false);
+  press(&mut rt, &format!("task-{BOOK_FLIGHTS}-delete"));
+  assert_eq!(rt.state.actions.delete.as_ref().map(|d| d.title.as_str()), Some("Book flights"));
+  shows(&rt, &["delete-dialog", "confirm-delete", "cancel-delete"]);
+  press(&mut rt, "cancel-delete");
+  assert!(rt.state.actions.delete.is_none());
+  assert!(rt.find("delete-dialog").is_none());
+  press(&mut rt, &format!("task-{BOOK_FLIGHTS}-delete"));
+  press(&mut rt, "confirm-delete");
+  assert!(
+    rt.state.actions.delete.as_ref().is_some_and(|d| d.pending),
+    "Delete starts the request"
+  );
+}
+
+#[test]
+fn the_toggle_error_is_an_alert() {
+  shows(&runtime("today-toggle-error", false), &["toggle-error"]);
 }

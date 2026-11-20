@@ -681,6 +681,8 @@
                           "children": [
                             {
                               "actions": [
+                                "click",
+                                "focus",
                                 "scroll-into-view"
                               ],
                               "bounds": [
@@ -693,7 +695,6 @@
                               "name": "Mark Renew passport as done",
                               "role": "check-box",
                               "states": [
-                                "disabled",
                                 "unchecked"
                               ]
                             },
@@ -704,7 +705,7 @@
                               "bounds": [
                                 52.0,
                                 661.8,
-                                608.6,
+                                704.6,
                                 16.3
                               ],
                               "name": "Renew passport",
@@ -717,7 +718,7 @@
                               "bounds": [
                                 52.0,
                                 680.0,
-                                608.6,
+                                704.6,
                                 16.3
                               ],
                               "name": "Overdue since yesterday",
@@ -728,7 +729,7 @@
                                 "scroll-into-view"
                               ],
                               "bounds": [
-                                668.6,
+                                764.6,
                                 669.5,
                                 102.7,
                                 19.0
@@ -738,20 +739,19 @@
                             },
                             {
                               "actions": [
+                                "click",
+                                "focus",
                                 "scroll-into-view"
                               ],
                               "bounds": [
-                                779.3,
+                                875.2,
                                 666.5,
-                                152.8,
+                                56.8,
                                 25.0
                               ],
                               "key": "task-00000000-0000-4000-8000-000000000004-delete",
                               "name": "Delete Renew passport",
-                              "role": "button",
-                              "states": [
-                                "disabled"
-                              ]
+                              "role": "button"
                             }
                           ],
                           "key": "task-00000000-0000-4000-8000-000000000004",
@@ -771,6 +771,8 @@
                           "children": [
                             {
                               "actions": [
+                                "click",
+                                "focus",
                                 "scroll-into-view"
                               ],
                               "bounds": [
@@ -783,7 +785,6 @@
                               "name": "Mark File expenses as done",
                               "role": "check-box",
                               "states": [
-                                "disabled",
                                 "unchecked"
                               ]
                             },
@@ -794,7 +795,7 @@
                               "bounds": [
                                 52.0,
                                 720.3,
-                                733.5,
+                                815.2,
                                 16.3
                               ],
                               "name": "File expenses",
@@ -807,7 +808,7 @@
                               "bounds": [
                                 52.0,
                                 738.5,
-                                733.5,
+                                815.2,
                                 16.3
                               ],
                               "name": "Overdue by 8 days",
@@ -815,20 +816,19 @@
                             },
                             {
                               "actions": [
+                                "click",
+                                "focus",
                                 "scroll-into-view"
                               ],
                               "bounds": [
-                                793.5,
+                                875.2,
                                 725.0,
-                                138.5,
+                                56.8,
                                 25.0
                               ],
                               "key": "task-00000000-0000-4000-8000-000000000005-delete",
                               "name": "Delete File expenses",
-                              "role": "button",
-                              "states": [
-                                "disabled"
-                              ]
+                              "role": "button"
                             }
                           ],
                           "key": "task-00000000-0000-4000-8000-000000000005",
@@ -879,6 +879,8 @@
                           "children": [
                             {
                               "actions": [
+                                "click",
+                                "focus",
                                 "scroll-into-view"
                               ],
                               "bounds": [
@@ -891,7 +893,6 @@
                               "name": "Mark Call the bank as done",
                               "role": "check-box",
                               "states": [
-                                "disabled",
                                 "unchecked"
                               ]
                             },
@@ -902,7 +903,7 @@
                               "bounds": [
                                 52.0,
                                 808.3,
-                                647.8,
+                                725.7,
                                 16.3
                               ],
                               "name": "Call the bank",
@@ -915,7 +916,7 @@
                               "bounds": [
                                 52.0,
                                 826.5,
-                                647.8,
+                                725.7,
                                 16.3
                               ],
                               "name": "Due 09:00 · Past due",
@@ -926,7 +927,7 @@
                                 "scroll-into-view"
                               ],
                               "bounds": [
-                                707.8,
+                                785.7,
                                 816.0,
                                 81.5,
                                 19.0
@@ -936,20 +937,19 @@
                             },
                             {
                               "actions": [
+                                "click",
+                                "focus",
                                 "scroll-into-view"
                               ],
                               "bounds": [
-                                797.3,
+                                875.2,
                                 813.0,
-                                134.7,
+                                56.8,
                                 25.0
                               ],
                               "key": "task-00000000-0000-4000-8000-000000000002-delete",
                               "name": "Delete Call the bank",
-                              "role": "button",
-                              "states": [
-                                "disabled"
-                              ]
+                              "role": "button"
                             }
                           ],
                           "key": "task-00000000-0000-4000-8000-000000000002",
@@ -969,6 +969,8 @@
                           "children": [
                             {
                               "actions": [
+                                "click",
+                                "focus",
                                 "scroll-into-view"
                               ],
                               "bounds": [
@@ -981,7 +983,6 @@
                               "name": "Mark Book flights as done",
                               "role": "check-box",
                               "states": [
-                                "disabled",
                                 "unchecked"
                               ]
                             },
@@ -992,7 +993,7 @@
                               "bounds": [
                                 52.0,
                                 871.1,
-                                744.0,
+                                815.2,
                                 16.3
                               ],
                               "name": "Book flights",
@@ -1000,20 +1001,19 @@
                             },
                             {
                               "actions": [
+                                "click",
+                                "focus",
                                 "scroll-into-view"
                               ],
                               "bounds": [
-                                804.0,
+                                875.2,
                                 866.8,
-                                128.0,
+                                56.8,
                                 25.0
                               ],
                               "key": "task-00000000-0000-4000-8000-000000000003-delete",
                               "name": "Delete Book flights",
-                              "role": "button",
-                              "states": [
-                                "disabled"
-                              ]
+                              "role": "button"
                             }
                           ],
                           "key": "task-00000000-0000-4000-8000-000000000003",
@@ -1033,6 +1033,8 @@
                           "children": [
                             {
                               "actions": [
+                                "click",
+                                "focus",
                                 "scroll-into-view"
                               ],
                               "bounds": [
@@ -1045,7 +1047,6 @@
                               "name": "Mark Send the slides as done",
                               "role": "check-box",
                               "states": [
-                                "disabled",
                                 "checked"
                               ]
                             },
@@ -1056,7 +1057,7 @@
                               "bounds": [
                                 52.0,
                                 920.1,
-                                724.4,
+                                815.2,
                                 16.3
                               ],
                               "name": "Send the slides",
@@ -1064,20 +1065,19 @@
                             },
                             {
                               "actions": [
+                                "click",
+                                "focus",
                                 "scroll-into-view"
                               ],
                               "bounds": [
-                                784.4,
+                                875.2,
                                 915.8,
-                                147.7,
+                                56.8,
                                 25.0
                               ],
                               "key": "task-00000000-0000-4000-8000-000000000001-delete",
                               "name": "Delete Send the slides",
-                              "role": "button",
-                              "states": [
-                                "disabled"
-                              ]
+                              "role": "button"
                             }
                           ],
                           "key": "task-00000000-0000-4000-8000-000000000001",

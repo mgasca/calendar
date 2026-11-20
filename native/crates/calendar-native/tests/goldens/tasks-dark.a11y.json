@@ -294,6 +294,8 @@
               "children": [
                 {
                   "actions": [
+                    "click",
+                    "focus",
                     "scroll-into-view"
                   ],
                   "bounds": [
@@ -306,7 +308,6 @@
                   "name": "Mark Book flights as done",
                   "role": "check-box",
                   "states": [
-                    "disabled",
                     "unchecked"
                   ]
                 },
@@ -317,7 +318,7 @@
                   "bounds": [
                     52.0,
                     204.8,
-                    654.5,
+                    725.7,
                     16.3
                   ],
                   "name": "Book flights",
@@ -330,7 +331,7 @@
                   "bounds": [
                     52.0,
                     223.0,
-                    654.5,
+                    725.7,
                     16.3
                   ],
                   "name": "2026-11-20",
@@ -341,7 +342,7 @@
                     "scroll-into-view"
                   ],
                   "bounds": [
-                    714.5,
+                    785.7,
                     212.5,
                     81.5,
                     19.0
@@ -351,20 +352,19 @@
                 },
                 {
                   "actions": [
+                    "click",
+                    "focus",
                     "scroll-into-view"
                   ],
                   "bounds": [
-                    804.0,
+                    875.2,
                     209.5,
-                    128.0,
+                    56.8,
                     25.0
                   ],
                   "key": "task-00000000-0000-4000-8000-000000000101-delete",
                   "name": "Delete Book flights",
-                  "role": "button",
-                  "states": [
-                    "disabled"
-                  ]
+                  "role": "button"
                 }
               ],
               "key": "task-00000000-0000-4000-8000-000000000101",
@@ -384,6 +384,8 @@
               "children": [
                 {
                   "actions": [
+                    "click",
+                    "focus",
                     "scroll-into-view"
                   ],
                   "bounds": [
@@ -396,7 +398,6 @@
                   "name": "Mark Call the bank as done",
                   "role": "check-box",
                   "states": [
-                    "disabled",
                     "unchecked"
                   ]
                 },
@@ -407,7 +408,7 @@
                   "bounds": [
                     52.0,
                     269.3,
-                    626.7,
+                    704.6,
                     16.3
                   ],
                   "name": "Call the bank",
@@ -420,7 +421,7 @@
                   "bounds": [
                     52.0,
                     287.5,
-                    626.7,
+                    704.6,
                     16.3
                   ],
                   "name": "20/11/2026, 09:00:00 · Past due",
@@ -431,7 +432,7 @@
                     "scroll-into-view"
                   ],
                   "bounds": [
-                    686.7,
+                    764.6,
                     277.0,
                     102.7,
                     19.0
@@ -441,20 +442,19 @@
                 },
                 {
                   "actions": [
+                    "click",
+                    "focus",
                     "scroll-into-view"
                   ],
                   "bounds": [
-                    797.3,
+                    875.2,
                     274.0,
-                    134.7,
+                    56.8,
                     25.0
                   ],
                   "key": "task-00000000-0000-4000-8000-000000000102-delete",
                   "name": "Delete Call the bank",
-                  "role": "button",
-                  "states": [
-                    "disabled"
-                  ]
+                  "role": "button"
                 }
               ],
               "key": "task-00000000-0000-4000-8000-000000000102",
@@ -474,6 +474,8 @@
               "children": [
                 {
                   "actions": [
+                    "click",
+                    "focus",
                     "scroll-into-view"
                   ],
                   "bounds": [
@@ -486,7 +488,6 @@
                   "name": "Mark Plan the offsite as done",
                   "role": "check-box",
                   "states": [
-                    "disabled",
                     "unchecked"
                   ]
                 },
@@ -497,7 +498,7 @@
                   "bounds": [
                     52.0,
                     333.8,
-                    615.7,
+                    704.6,
                     16.3
                   ],
                   "name": "Plan the offsite",
@@ -510,7 +511,7 @@
                   "bounds": [
                     52.0,
                     352.0,
-                    615.7,
+                    704.6,
                     16.3
                   ],
                   "name": "2026-12-01 — Ask for budget first",
@@ -521,7 +522,7 @@
                     "scroll-into-view"
                   ],
                   "bounds": [
-                    675.7,
+                    764.6,
                     341.5,
                     102.7,
                     19.0
@@ -531,20 +532,19 @@
                 },
                 {
                   "actions": [
+                    "click",
+                    "focus",
                     "scroll-into-view"
                   ],
                   "bounds": [
-                    786.4,
+                    875.2,
                     338.5,
-                    145.7,
+                    56.8,
                     25.0
                   ],
                   "key": "task-00000000-0000-4000-8000-000000000103-delete",
                   "name": "Delete Plan the offsite",
-                  "role": "button",
-                  "states": [
-                    "disabled"
-                  ]
+                  "role": "button"
                 }
               ],
               "key": "task-00000000-0000-4000-8000-000000000103",

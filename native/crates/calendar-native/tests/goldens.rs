@@ -10,7 +10,7 @@
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
-const SCENES: [&str; 7] = [
+const SCENES: [&str; 9] = [
   "today",
   "today-empty",
   "today-loading",
@@ -18,9 +18,11 @@ const SCENES: [&str; 7] = [
   "week",
   "tasks",
   "signed-out",
+  "today-toggle-error",
+  "today-delete",
 ];
 /// The scenes with PNG snapshots (Linux).
-const SNAPSHOTS: [&str; 2] = ["today", "week"];
+const SNAPSHOTS: [&str; 3] = ["today", "week", "today-delete"];
 const THEMES: [&str; 2] = ["light", "dark"];
 /// A channel may differ by this much (8-bit) before a pixel counts as different: rasterizers round differently.
 const CHANNEL_TOLERANCE: u8 = 8;

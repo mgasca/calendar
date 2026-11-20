@@ -6,6 +6,7 @@
 
 #![forbid(unsafe_code)]
 
+pub mod actions;
 pub mod clock;
 pub mod fetch;
 pub mod fixtures;
@@ -87,6 +88,8 @@ pub struct App {
   pub day: Remote<DayAgendaResponse>,
   pub week: Remote<WeekAgendaResponse>,
   pub tasks: Remote<TaskList>,
+  /// Toggles in flight, the last toggle error and the delete confirmation (#1005).
+  pub actions: actions::Actions,
 }
 
 impl std::fmt::Debug for App {
@@ -128,6 +131,7 @@ impl App {
       day: Remote::default(),
       week: Remote::default(),
       tasks: Remote::default(),
+      actions: actions::Actions::default(),
     }
   }
 
@@ -203,15 +207,22 @@ fn shell(app: &App, user: &str, cx: &mut Cx<App>) -> El {
     Route::Week(start) => views::week::view(app, start, &t),
     Route::Tasks(view) => views::tasks::view(app, view, &t),
   };
-  let body = col()
+  let mut body = col()
     .key("page")
     .role("main")
     .w_full()
     .grow(1.0)
     .padding(16.0)
-    .scroll(ScrollSpec { stick_bottom: false })
-    .child(page);
-  col().w_full().h_full().fill(t.bg).child(header).child(body)
+    .gap(12.0)
+    .scroll(ScrollSpec { stick_bottom: false });
+  if let Some(alert) = views::toggle_error(app, &t) {
+    body = body.child(alert);
+  }
+  let mut root = col().w_full().h_full().fill(t.bg).child(header).child(body.child(page));
+  if let Some(dialog) = views::delete_dialog(app, &t) {
+    root = root.child(dialog);
+  }
+  root
 }
 
 fn setup(app: &mut App, waker: rune::Waker) {
@@ -231,10 +242,9 @@ fn poll(app: &mut App, _now: f64, tx: &mut rune::Tx) -> bool {
 
 /// A scene's starting state: offline, signed in, the fixtures' day loaded.
 fn scene(app: &mut App, route: Route) {
-  let fresh = App::offline();
-  let effects = app.effects.clone();
-  *app = App { effects, ..fresh };
-  app.offline = true;
+  // The whole offline app, its manual effects included: a press in a scene queues its request and never reaches
+  // the network.
+  *app = App::offline();
   app.route = route;
 }
 
@@ -278,6 +288,17 @@ pub fn spec() -> AppSpec<App> {
       ("signed-out", |app| {
         scene(app, Route::Today);
         app.session = Session::SignedOut { error: None };
+      }),
+      ("today-toggle-error", |app| {
+        scene(app, Route::Today);
+        app.day.finish(Ok(fixtures::day()));
+        app.actions.toggle_error = Some("Couldn\u{2019}t update the task. Your change was undone.".to_owned());
+      }),
+      ("today-delete", |app| {
+        scene(app, Route::Today);
+        app.day.finish(Ok(fixtures::day()));
+        let id = "00000000-0000-4000-8000-000000000003".parse().expect("a fixture id");
+        actions::ask_delete(app, id, "Book flights");
       }),
     ],
     ..AppSpec::new("Calendar", (960.0, 720.0), App::default, view)

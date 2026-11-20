@@ -33,6 +33,8 @@ pub struct Tokens {
   pub loading_text: Color,
   pub empty_text: Color,
   pub now_line: Color,
+  /// Behind a dialog: `--color-backdrop`, an `rgb(… / alpha)` in `tokens.css`, so not in the hex tables below.
+  pub backdrop: Color,
 }
 
 /// The light (`false`) or dark (`true`) theme.
@@ -68,8 +70,13 @@ pub fn tokens(dark: bool) -> Tokens {
     loading_text: c("loading-text"),
     empty_text: c("empty-text"),
     now_line: c("now-line"),
+    backdrop: rune::color::hex(if dark { BACKDROP_DARK } else { BACKDROP_LIGHT }).expect("a #rrggbbaa backdrop"),
   }
 }
+
+/// `--color-backdrop`: `rgb(31 42 34 / 0.45)` (light) and `rgb(4 6 14 / 0.7)` (dark), as `#rrggbbaa`.
+pub const BACKDROP_LIGHT: &str = "#1f2a2273";
+pub const BACKDROP_DARK: &str = "#04060eb3";
 
 /// Paper & Sage, `:root[data-theme='light']` in `tokens.css`.
 pub const LIGHT: &[(&str, &str)] = &[

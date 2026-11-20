@@ -72,6 +72,7 @@ pub fn view(app: &App, week_start: NaiveDate, t: &Tokens) -> El {
         let described = format::describe_overdue(task.due_date.flatten(), task.due_at.flatten(), today, app.clock.zone);
         task_row(
           TaskRow {
+            id: task.id,
             key: format!("overdue-{}", task.id),
             title: &task.title,
             done: task.is_completed,
@@ -79,6 +80,7 @@ pub fn view(app: &App, week_start: NaiveDate, t: &Tokens) -> El {
             priority: task.priority.as_deref(),
             meta: Some(described),
           },
+          app,
           t,
         )
       })
@@ -197,14 +199,16 @@ fn grid(app: &App, week: &WeekAgendaResponse, today: NaiveDate, t: &Tokens) -> E
           .radius(4.0)
           .fill(if overdue { t.overdue_bg } else { t.surface })
           .child(
-            el()
-              .role("checkbox")
-              .label(format!("Mark {} as done", task.title))
-              .checked(task.is_completed)
-              .disabled(true)
-              .size(12.0, 12.0)
-              .radius(3.0)
-              .border(1.5, t.border_strong),
+            super::checkbox(
+              &format!("week-check-{date}-{}", task.id),
+              task.id,
+              &task.title,
+              task.is_completed,
+              app,
+            )
+            .size(12.0, 12.0)
+            .radius(3.0)
+            .border(1.5, t.border_strong),
           )
           .child(
             text(&task.title)

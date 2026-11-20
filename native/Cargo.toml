@@ -16,6 +16,11 @@ rune = { git = "https://github.com/anomalyco/rune", rev = "9553c9a7d7d1e5e038d14
 # this crate, and `just native build-web` and `just doctor` read the version from native/Cargo.lock. Move it with Rune.
 wasm-bindgen = "=0.2.129"
 
+# File and line tables only, for panics and backtraces, as the Backend job does (#776): full debug info made every
+# test binary about half a gigabyte and the cached dependencies several times larger (pre-merge review of #1023).
+[profile.dev]
+debug = "line-tables-only"
+
 [workspace.lints.rust]
 unsafe_code = "forbid"
 warnings = "deny"

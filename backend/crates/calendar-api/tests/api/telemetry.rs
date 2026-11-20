@@ -464,3 +464,43 @@ async fn health_probes_are_counted_but_not_traced() {
   let points = capture.request_metrics();
   assert!(points.contains(&RequestPoint::get(Some("/api/health"), 200, 1)), "{points:#?}");
 }
+
+#[tokio::test]
+async fn no_span_or_log_carries_a_native_sign_in_challenge_state_code_or_verifier() {
+  const CHALLENGE: &str = "E9Melhoa2OwvFrEMTJguCHaoeK1t8URWbuGJSstw-cM";
+  const APP_STATE: &str = "planted-app-state";
+  const CODE: &str = "planted-handover-code";
+  const VERIFIER: &str = "planted-verifier-planted-verifier-planted-verifier";
+  let capture = Capture::start();
+  let app = TestApp::builder()
+    .real_authentication()
+    .setting("Auth__Google__ClientId", "test-client")
+    .setting("Auth__Google__ClientSecret", "test-secret")
+    .meter(capture.meter())
+    .start()
+    .await;
+
+  let login = app
+    .client()
+    .get(&format!(
+      "/api/auth/login?redirectUri=http%3A%2F%2F127.0.0.1%3A49152%2Fcallback&codeChallenge={CHALLENGE}\
+       &codeChallengeMethod=S256&appState={APP_STATE}"
+    ))
+    .await;
+  assert_eq!(login.status, StatusCode::FOUND, "{}", login.text());
+  let refused = app
+    .client()
+    .post_json(
+      "/api/auth/native/session",
+      &json!({"code": CODE, "codeVerifier": VERIFIER, "redirectUri": "http://127.0.0.1:49152/callback"}),
+    )
+    .await;
+  assert_eq!(refused.status, StatusCode::BAD_REQUEST);
+
+  let exported = capture.everything();
+  assert!(exported.contains("/api/auth/native/session"), "the scan reads the spans");
+  assert_eq!(
+    leaks(&exported, &[CHALLENGE, APP_STATE, CODE, VERIFIER, "49152"]),
+    Vec::<&str>::new()
+  );
+}

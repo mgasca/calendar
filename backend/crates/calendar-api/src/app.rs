@@ -32,6 +32,7 @@ pub fn router(state: AppState) -> Router {
     .route(google::CALLBACK_PATH, get(google::callback))
     .route("/api/auth/me", get(auth::me))
     .route("/api/auth/logout", post(auth::logout))
+    .route("/api/auth/native/session", post(auth::create_native_session))
     .route("/api/events", post(events::create))
     .route("/api/events/{id}", get(events::get).put(events::update).delete(events::delete))
     .route("/api/tasks", get(tasks::list).post(tasks::create))

@@ -7,6 +7,7 @@
 
 pub mod dev_seed;
 pub mod google;
+pub mod native;
 pub mod session;
 
 use axum::extract::FromRequestParts;

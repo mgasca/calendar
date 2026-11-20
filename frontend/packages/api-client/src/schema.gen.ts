@@ -52,6 +52,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/auth/native/session": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["CreateNativeSession"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/events": {
         parameters: {
             query?: never;
@@ -502,6 +518,15 @@ export interface components {
                 [key: string]: string[];
             };
         };
+        /** @description Redeem a native sign-in's handover code for a session (the desktop app's loopback sign-in). */
+        NativeSessionRequest: {
+            /** @description The `code` the API sent to the app's loopback redirect. */
+            code: string;
+            /** @description The PKCE code verifier whose S256 challenge the app sent to `GET /api/auth/login`. */
+            codeVerifier: string;
+            /** @description The loopback redirect URI the app sent to `GET /api/auth/login`. */
+            redirectUri: string;
+        };
         /** @description Guarded overdue query and the count the client observed. */
         OverdueTaskFilter: {
             /** @description The only supported filtered view. */
@@ -776,6 +801,37 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+        };
+    };
+    CreateNativeSession: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["NativeSessionRequest"];
+            };
+        };
+        responses: {
+            /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
             };
         };
     };

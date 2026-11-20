@@ -95,10 +95,21 @@ fn tree(scene: &str, theme: &str) -> serde_json::Value {
 
 #[test]
 fn accessibility_trees_match_their_goldens() {
+  // Each render is its own process; they run side by side (pre-merge review of #1023), then compare in order.
+  let trees: Vec<_> = std::thread::scope(|s| {
+    let renders: Vec<_> = SCENES
+      .into_iter()
+      .flat_map(|scene| THEMES.map(|theme| (scene, theme)))
+      .map(|(scene, theme)| (scene, theme, s.spawn(move || tree(scene, theme))))
+      .collect();
+    renders
+      .into_iter()
+      .map(|(scene, theme, render)| (scene, theme, render.join().expect("a render thread")))
+      .collect()
+  });
   let mut failures = Vec::new();
-  for scene in SCENES {
-    for theme in THEMES {
-      let actual = tree(scene, theme);
+  for (scene, theme, actual) in trees {
+    {
       let path = goldens().join(format!("{scene}-{theme}.a11y.json"));
       let pretty = serde_json::to_string_pretty(&sorted(actual)).expect("serializes") + "\n";
       if blessing() {
@@ -160,11 +171,25 @@ fn difference(a: &Path, b: &Path) -> f64 {
 
 #[test]
 fn snapshots_match_their_goldens_on_linux() {
+  let pairs: Vec<_> = SNAPSHOTS.into_iter().flat_map(|s| THEMES.map(|t| (s, t))).collect();
+  // The renders run side by side; the comparisons follow in order.
+  let rendered: Vec<_> = std::thread::scope(|s| {
+    let renders: Vec<_> = pairs
+      .iter()
+      .map(|&(scene, theme)| {
+        s.spawn(move || {
+          let actual = actual_dir().join(format!("{scene}-{theme}.png"));
+          try_render(&["--scene", scene, "--theme", theme, "--scale", "1", "--snap"], &actual)
+        })
+      })
+      .collect();
+    renders.into_iter().map(|r| r.join().expect("a render thread")).collect()
+  });
   let mut failures = Vec::new();
-  for (scene, theme) in SNAPSHOTS.into_iter().flat_map(|s| THEMES.map(|t| (s, t))) {
+  for (&(scene, theme), result) in pairs.iter().zip(rendered) {
     let name = format!("{scene}-{theme}.png");
     let actual = actual_dir().join(&name);
-    if let Err(error) = try_render(&["--scene", scene, "--theme", theme, "--scale", "1", "--snap"], &actual) {
+    if let Err(error) = result {
       if let Err(error) = snapshot_render_failed(cfg!(target_os = "linux"), error) {
         failures.push(error);
       }

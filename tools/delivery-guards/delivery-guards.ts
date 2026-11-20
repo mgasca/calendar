@@ -283,7 +283,7 @@ function codeqlRustGate(files: RepoFiles): string[] {
   if (analyze.body.text("if") !== null) {
     errors.push(`\`${analyze.name}\` must run on every event; only its rust entries choose analysis or reuse.`);
   }
-  // Each Rust entry analyses one Cargo workspace from its own source root, under a category of its own, and reads its
+  // Each Rust entry analyses one Cargo workspace through its own `paths` config, under a category of its own, and reads its
   // own output of the languages job (#1019).
   const matrix = analyze.body.map("strategy")?.map("matrix"),
     entries = (matrix?.list("include") ?? []).filter((n): n is YamlMapping => n instanceof YamlMapping),
@@ -492,7 +492,7 @@ export const guards: Guard[] = [
     fix: "#882",
     record: "0026",
     mechanism:
-      "A CodeQL languages job runs .github/ci-changes.jq and .github/codeql-languages.jq on every run, with one output per Rust workspace (backend, native); when it says an entry's inputs did not change, that rust entry looks up main's result for the same inputs with the same rules, uploads it under its own category and skips init and analyze. Each rust entry analyses one workspace from its own source root (#1019).",
+      "A CodeQL languages job runs .github/ci-changes.jq and .github/codeql-languages.jq on every run, with one output per Rust workspace (backend, native); when it says an entry's inputs did not change, that rust entry looks up main's result for the same inputs with the same rules, uploads it under its own category and skips init and analyze. Each rust entry analyses one workspace, scoped by its own paths config (#1019).",
     check: codeqlRustGate,
   },
   {

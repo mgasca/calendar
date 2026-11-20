@@ -1,0 +1,31 @@
+[package]
+name = "calendar-client"
+version = "0.1.0"
+description = "The Calendar API client for the Rune UI, generated from contracts/openapi.json, with a thin hand-written wrapper"
+edition.workspace = true
+license.workspace = true
+publish.workspace = true
+
+# The generated code's dependencies, as openapi-to-rust 0.24.0 lists them for this contract (its REQUIRED_DEPS.toml).
+[dependencies]
+chrono = { version = "0.4", features = ["serde"] }
+futures-util = "0.3"
+reqwest = { version = "0.13", default-features = false, features = ["query", "rustls", "stream"] }
+reqwest-middleware = { version = "0.5", features = ["query"] }
+serde = { version = "1", features = ["derive"] }
+# preserve_order: a problem's field errors keep the server's order, so the first is the web app's first (Object.values).
+serde_json = { version = "1", features = ["preserve_order"] }
+thiserror = "2"
+uuid = { version = "1", features = ["serde"] }
+
+# On the desktop the session layer (#1008) keeps the session cookie in reqwest's cookie store; in the browser the
+# fetch API sends the same-origin cookie itself.
+[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
+reqwest = { version = "0.13", default-features = false, features = ["cookies"] }
+
+[target.'cfg(not(target_arch = "wasm32"))'.dev-dependencies]
+tokio = { version = "1", features = ["macros", "rt"] }
+wiremock = "0.6"
+
+[lints]
+workspace = true

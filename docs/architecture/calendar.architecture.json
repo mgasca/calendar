@@ -371,6 +371,14 @@
       "metadata": { "adrs": ["ADR-0004", "ADR-0005"], "source": "frontend/packages/api-client" }
     },
     {
+      "unique-id": "native-client",
+      "node-type": "library",
+      "name": "calendar-client (Rust)",
+      "description": "Rust crate (native/crates/calendar-client) generated from contracts/openapi.json with openapi-to-rust 0.24.0, pinned as a library in native/Cargo.lock and run by calendar-client-gen (just contracts). src/generated/ is never hand-edited, and a test fails when it is stale. A thin wrapper takes the client's date and time zone for every day-dependent call (ADR-0021), maps problem details as the web app does, and signals a 401 for sign-out. Builds for the desktop and wasm32.",
+      "interfaces": [{ "unique-id": "native-client-crate", "package": "calendar-client", "exports": ["Api", "Day", "ApiError", "generated"] }],
+      "metadata": { "adrs": ["ADR-0067", "ADR-0021"], "source": "native/crates/calendar-client", "delivery": "#1003" }
+    },
+    {
       "unique-id": "theme-package",
       "node-type": "library",
       "name": "@calendar/theme",
@@ -990,7 +998,7 @@
       "relationship-type": {
         "composed-of": {
           "container": "calendar-system",
-          "nodes": ["web-app", "native-app", "api-client", "theme-package", "openapi-contract", "calendar-api", "calendar-db", "db-migrator", "infra-tool", "decision-log", "docs-site", "narrative-decks", "delivery-dashboard-tool", "dashboard-data-branch"]
+          "nodes": ["web-app", "native-app", "api-client", "native-client", "theme-package", "openapi-contract", "calendar-api", "calendar-db", "db-migrator", "infra-tool", "decision-log", "docs-site", "narrative-decks", "delivery-dashboard-tool", "dashboard-data-branch"]
         }
       },
       "metadata": { "adrs": ["ADR-0001"] }
@@ -1183,6 +1191,17 @@
         }
       },
       "metadata": { "adrs": ["ADR-0004"], "generator": "openapi-typescript" }
+    },
+    {
+      "unique-id": "native-client-generated-from-contract",
+      "description": "Is generated (src/generated/) from",
+      "relationship-type": {
+        "connects": {
+          "source": { "node": "native-client", "interfaces": ["native-client-crate"] },
+          "destination": { "node": "openapi-contract", "interfaces": ["openapi-document"] }
+        }
+      },
+      "metadata": { "adrs": ["ADR-0067"], "generator": "openapi-to-rust 0.24.0" }
     },
     {
       "unique-id": "api-emits-contract",

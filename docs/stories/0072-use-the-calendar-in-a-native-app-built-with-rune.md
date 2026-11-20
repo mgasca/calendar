@@ -171,13 +171,20 @@ No further ADR is expected. A slice that finds a decision ADR-0067 or ADR-0068 d
 * **Recipes and CI:** `native/mod.just` is in the root `build`, `test`, `lint`, `format` and `clean`, so `just check` includes it (criterion 3). The `Native` job in `ci.yml` is a matrix with `Linux` (lint and tests) and `WASM` (wasm32 lint and `build-web`) rows, is selected by `native/`, `contracts/` and `tokens.css`, and is part of `CI result` (criterion 4). `just doctor` checks the native Rust pin and wasm32 target, the xkbcommon and wayland development files, and `wasm-bindgen`.
 * **Window:** `just native dev` starts the desktop app under WSLg (criterion 2). The headless renders of both themes are `tests/goldens/today-light.png` and `today-dark.png`.
 
+### Generated client (#1003), delivered
+
+* **Generator:** `crates/calendar-client-gen` pins `openapi-to-rust` `=0.24.0` as a library (no global install), reads `contracts/openapi.json` and writes `crates/calendar-client/src/generated/` (tracing middleware off). `just contracts` runs it after the TS client (criterion 5). Its test `the_committed_client_is_the_generated_client` runs in `just native test` and CI and names the stale file (criterion 6; shown to fail on a hand edit). An agent hook refuses hand edits to the directory.
+* **Wrapper** (`calendar_client::Api`): `Day` carries the client's date and time zone into the day, week and task-list calls (ADR-0021); `ApiError { status, message }` takes the first field error, else `detail`, else `title`, as the web app's `problemMessage` does (serde_json keeps the server's field order for that); a 2xx body that does not match the contract says so; a 401 from anything but `/api/auth/me` calls `on_unauthorized`.
+* **Tests** (`tests/api.rs`, a `wiremock` stub server): the parameters each call sends, the session cookie sent back through a cookie-store client, every error case and the 401 signal, and a task read and its `version` sent back unchanged. The task samples follow the contract's shapes; they were not captured from a running API.
+* **WASM:** the client builds for `wasm32-unknown-unknown` (`just native lint-wasm`), with reqwest's `cookies` feature on the desktop only.
+
 ### Where things live
 
 | Area | Location (forecast) |
 | --- | --- |
 | Native workspace | `native/` (`Cargo.toml`, `Cargo.lock`, `rust-toolchain.toml`, `mod.just`) |
 | App | `native/crates/calendar-native` |
-| Generated client | `native/crates/calendar-client` |
+| Generated client | `native/crates/calendar-client` (`src/generated/` from `calendar-client-gen`) |
 | CI | `.github/workflows/ci.yml`, job `native` (matrix rows; macOS and Windows join as rows), a nightly workflow for macOS and Windows (#1009) |
 | Native sign-in | `backend/crates/calendar-api/src/auth/native.rs` and the `token` endpoint in `endpoints/auth.rs`; no migration, because the handover code is sealed and stateless (ADR-0068) (#1008) |
 | WASM hosting | the Vite config in `frontend/apps/web` and the container image's web root (#1009) |

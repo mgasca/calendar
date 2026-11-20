@@ -61,7 +61,7 @@ lint: backend::lint frontend::lint frontend::typecheck native::lint && tools::te
 format: backend::format tools::format frontend::format native::format
 
 # Regenerate OpenAPI contract and TypeScript client
-contracts: backend::contract frontend::generate
+contracts: backend::contract frontend::generate native::generate
 
 # Everything CI runs
 check: lint test

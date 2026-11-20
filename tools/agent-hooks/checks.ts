@@ -9,6 +9,13 @@ export function evaluateEdit(filePath: string): Verdict | null {
         "`deno install --frozen=false` with the owning deno.json configuration and commit the result instead of editing it.",
     };
   }
+  if (normalized.includes("native/crates/calendar-client/src/generated/")) {
+    return {
+      decision: "deny",
+      reason: `${basename(filePath)} is generated from contracts/openapi.json. Run ` +
+        "`just contracts` (or `just native generate`) and commit the result instead of editing it.",
+    };
+  }
   return [
       "contracts/openapi.json",
       "frontend/packages/api-client/src/schema.gen.ts",

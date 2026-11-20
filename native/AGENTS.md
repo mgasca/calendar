@@ -34,3 +34,13 @@ Rune has no releases: `native/Cargo.toml` pins an exact `rev` of its `dev` branc
 2. Move `rust-toolchain.toml` to the channel Rune's `rust-toolchain.toml` names at that revision.
 3. Set the `wasm-bindgen` pin in `native/Cargo.toml` to the version in Rune's `Cargo.lock` at the new revision. Run `cargo update -p rune -p wasm-bindgen` (never edit `Cargo.lock` by hand). Then run `just native run lint test build-web`, after installing the matching `wasm-bindgen-cli` if the pin moved.
 4. Read Rune's `CHANGELOG.md` between the two revisions for changes that move output without a code change. Re-bless goldens only with the diff reviewed.
+
+## The API client
+
+- `crates/calendar-client/src/generated/` is generated from `contracts/openapi.json` by `crates/calendar-client-gen`, which pins `openapi-to-rust` as a library. Run `just contracts` (or `just native generate`), and never edit the output by hand *(hook)*. `the_committed_client_is_the_generated_client` fails when the output is stale. `rustfmt` and the lints skip the generated module.
+- Views call the API through `calendar_client::Api`, not the generated client:
+  - Every call that depends on the day takes a `Day` (the client's date and IANA time zone, ADR-0021).
+  - Errors are `ApiError { status, message }`, with the message chosen as the web app's `problemMessage` chooses it.
+  - `on_unauthorized` fires on a 401 from anything but `/api/auth/me`.
+- When a slice needs an operation the wrapper lacks, add a method to `Api` with a stub-server test in `tests/api.rs`, rather than calling `generated()` from a view.
+- The session layer (`calendar-native/src/session/`, #1008) owns the `reqwest::Client`: a cookie store on the desktop, the browser's cookies on the web.

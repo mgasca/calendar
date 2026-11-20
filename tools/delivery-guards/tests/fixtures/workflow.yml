@@ -14,6 +14,7 @@ jobs:
       frontend: ${{ steps.decide.outputs.frontend }}
       docs: ${{ steps.decide.outputs.docs }}
       tooling: ${{ steps.decide.outputs.tooling }}
+      native: ${{ steps.decide.outputs.native }}
       skipped: ${{ steps.decide.outputs.skipped }}
     steps:
       - id: decide
@@ -54,6 +55,38 @@ jobs:
           cache: true
       - name: Test and lint tooling
         run: just tools test
+  native:
+    name: Native
+    needs: changes
+    if: needs.changes.outputs.native == 'true'
+    steps:
+      - name: Restore the dependency cache
+        id: cache
+        uses: actions/cache/restore@v6
+        with:
+          path: |
+            ~/.cargo/registry/index
+            native/target
+          key: native-x
+      - name: Lint and test the desktop app
+        if: matrix.kind == 'desktop'
+        run: just native run lint-desktop test
+      - name: Lint for wasm32 and build the browser bundle
+        if: matrix.kind == 'wasm'
+        run: just native run lint-wasm build-web
+      - name: Keep only the dependencies in the cache
+        if: steps.cache.outputs.cache-hit != 'true'
+        run: |
+          rm -rf target/goldens target/web
+          names=$(cargo metadata --no-deps --locked --format-version 1 | jq -r '.packages[].name')
+      - name: Save the dependency cache
+        if: steps.cache.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v6
+        with:
+          path: |
+            ~/.cargo/registry/index
+            native/target
+          key: ${{ steps.cache.outputs.cache-primary-key }}
   supersede:
     name: Cancel superseded runs
     if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository
@@ -67,7 +100,7 @@ jobs:
   result:
     name: CI result
     if: ${{ always() }}
-    needs: [changes, backend, frontend, docs, tooling]
+    needs: [changes, backend, frontend, docs, tooling, native]
     steps:
       - run: |
           jq -e '. as $needs | all(to_entries[]; .value.result == "success"

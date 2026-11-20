@@ -6,7 +6,7 @@ Practices for the second UI in `native/`, built with [Rune](https://github.com/a
 
 - `native/` is its own Cargo workspace with its own `rust-toolchain.toml` (Rune's Rust pin, not the backend's) and `Cargo.lock`. Every recipe and CI step runs `--locked`. Nothing here depends on `backend/`: the app talks to the API only through the contract.
 - `crates/calendar-native` is the app: `App` (all state), `view` (state to elements), `spec()` (window, size, named scenes), with a desktop `main.rs` and a wasm `start()`. It is a `cdylib` and `rlib`, so the same code builds the window, the browser bundle and the tests.
-- Lints are the backend's (`warnings` denied, Clippy `all` denied, `pedantic` warned and denied by `-D warnings`). `just native lint` runs Clippy for the desktop **and** `wasm32-unknown-unknown`, so code that only one target compiles is caught.
+- Lints are the backend's (`warnings` denied, Clippy `all` denied, `pedantic` warned and denied by `-D warnings`). `just native lint` runs Clippy for the desktop **and** `wasm32-unknown-unknown` (`lint-desktop` and `lint-wasm`, which CI runs one per matrix row), so code that only one target compiles is caught.
 - Linux builds need `libxkbcommon-dev` and `libwayland-dev` (`just doctor` checks them). Headless PNG renders without a GPU need `mesa-vulkan-drivers` (lavapipe).
 
 ## Commands

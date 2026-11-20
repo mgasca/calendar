@@ -26,10 +26,16 @@ test *args:
     cargo test --workspace --locked "$@"
 
 # Clippy with warnings as errors for the desktop and wasm32, and the formatting check
-lint:
+lint: lint-desktop lint-wasm
+
+# Clippy for the desktop (tests included) and the formatting check; CI's desktop rows run this half
+lint-desktop:
     cargo clippy --workspace --all-targets --locked -- -D warnings
-    cargo clippy --workspace --lib --locked --target wasm32-unknown-unknown -- -D warnings
     cargo fmt --all --check
+
+# Clippy for the browser build (wasm32); CI's WASM row runs this half
+lint-wasm:
+    cargo clippy --workspace --lib --locked --target wasm32-unknown-unknown -- -D warnings
 
 # Auto-format the workspace
 format:

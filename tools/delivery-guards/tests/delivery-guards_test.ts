@@ -145,8 +145,8 @@ const mutations: [string, string, string, string, string, boolean?][] = [
   [
     "AJobLeftOutOfNeeds_Fails",
     "ci-result-needs-all",
-    "[changes, backend, frontend, docs, tooling]",
-    "[changes, backend, frontend, docs]",
+    "[changes, backend, frontend, docs, tooling, native]",
+    "[changes, backend, frontend, docs, native]",
     "does not need `tooling` (Tooling)",
   ],
   [
@@ -156,7 +156,7 @@ const mutations: [string, string, string, string, string, boolean?][] = [
     "  gate:\n    name: Run-time gate\n    steps:\n      - run: echo\n  supersede:\n",
     "does not need `gate` (Run-time gate)",
   ],
-  ["NeedingTheOptionalCancelJob_Fails", "ci-result-needs-all", "tooling]", "tooling, supersede]", "needs `supersede`"],
+  ["NeedingTheOptionalCancelJob_Fails", "ci-result-needs-all", "native]", "native, supersede]", "needs `supersede`"],
   ["NotAlways_Fails", "ci-result-needs-all", "    if: ${{ always() }}\n", "", "always()"],
   [
     "ASkipThatChangesDidNotIntend_Fails",
@@ -291,7 +291,7 @@ Deno.test("ANewJobNeeded_Passes", () => {
   const w = workflow.replace(
     "  supersede:\n",
     "  gate:\n    name: Run-time gate\n    steps:\n      - run: echo\n  supersede:\n",
-  ).replace("tooling]", "tooling, gate]");
+  ).replace("native]", "native, gate]");
   assertEquals(
     runGuard(guards.find((g) => g.id === "ci-result-needs-all")!, { workflow: w, toolsJustfile, codeqlWorkflow }),
     [],
@@ -301,8 +301,8 @@ Deno.test("NeedsAsABlockList_IsRead", () =>
   assertEquals(
     failures(
       "ci-result-needs-all",
-      "needs: [changes, backend, frontend, docs, tooling]",
-      "needs:\n      - changes\n      - backend\n      - frontend\n      - docs\n      - tooling",
+      "needs: [changes, backend, frontend, docs, tooling, native]",
+      "needs:\n      - changes\n      - backend\n      - frontend\n      - docs\n      - tooling\n      - native",
     ),
     [],
   ));
@@ -717,3 +717,33 @@ Deno.test("TheCheckoutsJobsApiCheck_IsReadFromCiResultJq", () => {
   );
   assertEquals(runGuard(guard, { ...files, ciResultJq: undefined }).length > 0, true);
 });
+// The Native job's cache and lint split (#1020 review): each mutation undoes one part of the fix.
+for (
+  const [name, from, to, expected] of [
+    [
+      "AnUnprunedCache_Fails",
+      "uses: actions/cache/restore@v6\n        with:\n          path: |\n            ~/.cargo/registry/index\n            native/target",
+      "uses: actions/cache@v6\n        with:\n          path: |\n            ~/.cargo/registry/index\n            native/target",
+      "saves the workspace's own build unpruned",
+    ],
+    ["NoPrune_Fails", "--no-deps", "--all", "does not prune its own crates"],
+    ["APruneThatKeepsTheBundle_Fails", "rm -rf target/goldens target/web\n", "", "keeps target/goldens and target/web"],
+    [
+      "BothClippyHalvesInTheDesktopRow_Fails",
+      "just native run lint-desktop test",
+      "just native run lint test",
+      "runs `lint`",
+    ],
+    [
+      "BothClippyHalvesInTheWasmRow_Fails",
+      "just native run lint-wasm build-web",
+      "just native run lint build-web",
+      "runs `lint`",
+    ],
+  ] as const
+) {
+  Deno.test(`NativeCi_${name}`, () => {
+    const errors = failures("native-ci", from, to);
+    assert(errors.some((e) => e.includes(expected)), errors.join("\n") || "the guard passed");
+  });
+}

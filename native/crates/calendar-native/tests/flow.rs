@@ -753,3 +753,168 @@ fn a_fields_error_clears_when_that_field_is_edited() {
   dialogs::clear_edited_errors(&mut app);
   assert!(!task_dialog(&app).errors.contains_key(&TaskField::Title));
 }
+
+// Triage and bulk actions (#1007).
+
+use calendar_native::bulk::Action;
+use calendar_native::triage;
+
+fn bulk_ok(applied: u32, skipped: u32) -> ResponseTemplate {
+  ResponseTemplate::new(200).set_body_json(json!({ "results": [], "applied": applied, "skipped": skipped, "notFound": 0 }))
+}
+
+/// An app on the triage page with the overdue list loaded (its first page reports `total`).
+fn on_triage(server: &MockServer, total: u32) -> App {
+  let mut page = to_json(&fixtures::tasks());
+  page["total"] = json!(total);
+  mount(
+    server,
+    Mock::given(method("GET"))
+      .and(path("/api/tasks"))
+      .and(query_param("view", "overdue"))
+      .respond_with(ResponseTemplate::new(200).set_body_json(page)),
+  );
+  let mut app = started(server);
+  triage::open(&mut app);
+  settle(&mut app);
+  app
+}
+
+fn bulk_bodies(server: &MockServer) -> Vec<Value> {
+  requests(server, "/api/tasks/bulk")
+    .iter()
+    .map(|r| serde_json::from_slice(&r.body).unwrap())
+    .collect()
+}
+
+#[test]
+fn ticked_tasks_go_in_batches_of_five_hundred_and_the_page_refreshes() {
+  let server = day_api();
+  mount(
+    &server,
+    Mock::given(method("POST"))
+      .and(path("/api/tasks/bulk"))
+      .respond_with(bulk_ok(500, 0))
+      .up_to_n_times(1),
+  );
+  mount(
+    &server,
+    Mock::given(method("POST")).and(path("/api/tasks/bulk")).respond_with(bulk_ok(1, 0)),
+  );
+  let mut app = on_triage(&server, 3);
+  assert_eq!(triage::total(&app), 3);
+  app.triage.selected = (0..501u128).map(uuid::Uuid::from_u128).collect();
+  triage::act(&mut app, Action::Complete);
+  assert!(app.triage.pending);
+  settle(&mut app);
+  let bodies = bulk_bodies(&server);
+  assert_eq!(
+    bodies.iter().map(|b| b["ids"].as_array().unwrap().len()).collect::<Vec<_>>(),
+    [500, 1]
+  );
+  assert!(bodies.iter().all(|b| b["action"] == "complete"));
+  assert_eq!(app.triage.notice.as_deref(), Some("501 tasks updated"));
+  assert!(app.triage.selected.is_empty() && !app.triage.pending);
+  assert_eq!(requests(&server, "/api/tasks").len(), 2, "the list is fetched again");
+}
+
+#[test]
+fn select_all_sends_the_filter_with_the_total_seen() {
+  let server = day_api();
+  mount(
+    &server,
+    Mock::given(method("POST"))
+      .and(path("/api/tasks/bulk"))
+      .respond_with(bulk_ok(40, 2)),
+  );
+  let mut app = on_triage(&server, 42);
+  triage::select_all(&mut app);
+  assert_eq!(triage::count(&app), 42);
+  triage::act(&mut app, Action::ClearDeadline);
+  settle(&mut app);
+  let body = &bulk_bodies(&server)[0];
+  assert_eq!(
+    body["filter"],
+    json!({ "view": "overdue", "today": "2026-11-20", "timeZone": "Europe/Madrid", "expectedTotal": 42 })
+  );
+  assert!(body.get("ids").is_none_or(Value::is_null));
+  assert_eq!(app.triage.notice.as_deref(), Some("2 skipped"));
+}
+
+#[test]
+fn a_failure_after_progress_keeps_the_selection_and_says_how_far_it_got() {
+  let server = day_api();
+  mount(
+    &server,
+    Mock::given(method("POST"))
+      .and(path("/api/tasks/bulk"))
+      .respond_with(bulk_ok(500, 0))
+      .up_to_n_times(1),
+  );
+  mount(
+    &server,
+    Mock::given(method("POST"))
+      .and(path("/api/tasks/bulk"))
+      .respond_with(ResponseTemplate::new(500)),
+  );
+  let mut app = on_triage(&server, 3);
+  app.triage.selected = (0..700u128).map(uuid::Uuid::from_u128).collect();
+  triage::act(&mut app, Action::Complete);
+  settle(&mut app);
+  assert_eq!(
+    app.triage.notice.as_deref(),
+    Some("500 tasks applied before failure. Couldn\u{2019}t apply action.")
+  );
+  assert_eq!(app.triage.selected.len(), 700, "kept");
+}
+
+#[test]
+fn a_changed_overdue_count_clears_the_selection() {
+  let server = day_api();
+  mount(
+    &server,
+    Mock::given(method("POST"))
+      .and(path("/api/tasks/bulk"))
+      .respond_with(ResponseTemplate::new(409)),
+  );
+  let mut app = on_triage(&server, 42);
+  triage::select_all(&mut app);
+  triage::act(&mut app, Action::Complete);
+  settle(&mut app);
+  assert_eq!(
+    app.triage.notice.as_deref(),
+    Some("The overdue count changed. Review the updated list.")
+  );
+  assert!(!app.triage.all && app.triage.selected.is_empty());
+}
+
+#[test]
+fn reschedule_and_delete_send_their_actions() {
+  let server = day_api();
+  mount(
+    &server,
+    Mock::given(method("POST")).and(path("/api/tasks/bulk")).respond_with(bulk_ok(1, 0)),
+  );
+  let mut app = on_triage(&server, 3);
+  let id = uuid::Uuid::from_u128(7);
+  app.triage.selected = vec![id];
+  triage::open_reschedule(&mut app, true);
+  if let Some(r) = &mut app.triage.reschedule {
+    r.date.replace_text("2026-11-23");
+    r.time.replace_text("09:30");
+  }
+  triage::apply_reschedule(&mut app);
+  settle(&mut app);
+  assert!(app.triage.reschedule.is_none(), "closed after it applied");
+  app.triage.selected = vec![id];
+  triage::ask_delete(&mut app);
+  triage::act(&mut app, Action::Delete);
+  settle(&mut app);
+  let bodies = bulk_bodies(&server);
+  assert_eq!(
+    (bodies[0]["action"].as_str(), bodies[0]["dueAt"].as_str()),
+    (Some("setDueInstant"), Some("2026-11-23T08:30:00Z"))
+  );
+  assert_eq!(bodies[1]["action"], "delete");
+  assert!(!app.triage.confirm_delete);
+}

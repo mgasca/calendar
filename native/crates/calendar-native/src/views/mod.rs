@@ -3,6 +3,7 @@
 pub mod day;
 pub mod dialogs;
 pub mod tasks;
+pub mod triage;
 pub mod week;
 
 use crate::App;

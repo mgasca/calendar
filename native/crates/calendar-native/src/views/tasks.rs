@@ -15,6 +15,8 @@ use rune::{El, col, el, row, text};
 pub struct TaskList {
   pub items: Vec<TaskResponse>,
   pub next_cursor: Option<String>,
+  /// The first page's `total`: the overdue view gives it, for triage's "Select all {total} overdue".
+  pub total: Option<i64>,
 }
 
 pub fn view(app: &App, view: TaskView, t: &Tokens) -> El {
@@ -99,7 +101,7 @@ pub fn view(app: &App, view: TaskView, t: &Tokens) -> El {
   page = page.child(list_el);
   if list.next_cursor.is_some() {
     let label = if app.tasks.loading { "Loading…" } else { "Load more" };
-    page = page.child(button("tasks-more", label, t).on_press(load::more_tasks));
+    page = page.child(row().child(button("tasks-more", label, t).on_press(load::more_tasks)));
   }
   page
 }

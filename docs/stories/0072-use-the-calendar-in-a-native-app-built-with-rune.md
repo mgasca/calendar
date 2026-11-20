@@ -237,6 +237,38 @@ No further ADR is expected. A slice that finds a decision ADR-0067 or ADR-0068 d
   * Goldens for `add-event`, `event-form-errors` and `edit-task`, the dialog PNGs reviewed.
 * **Not ported:** the notice's automatic timeout and focus returning to the opener. Rune's focus model differs; that would be a follow-up if needed.
 
+### Triage and bulk (#1007), delivered
+
+* **Reaching it:** "View all {total} overdue" (shown above 20 on Day and in Week's Overdue panel) opens `Route::Triage`. It's not in the nav, as in the web app.
+* **The page** (`triage.rs`, `views/triage.rs`):
+  * "Overdue tasks", from the same `view=overdue` request as My tasks (virtualised rows, "Load more").
+  * Rows show "Select {title}", the due text, "{priority} priority", "{n} days overdue" and the notes.
+  * "Select all loaded", "Select all {total} overdue" (server-side, by filter) and "{n} selected".
+  * The toolbar "Selected task actions": Complete, Reschedule date, Reschedule exact time (with the gap and repeated-time handling), Clear deadline, and Delete ("Delete {n} tasks? This can't be undone.").
+* **Requests** (`bulk.rs`):
+  * Ticked ids go in batches of 500, sent one after another, and the first failure stops the rest. All mode sends one request with `filter: {view, today, timeZone, expectedTotal}`.
+  * Notices: "{applied} tasks updated" / "{n} skipped" / "{applied} tasks applied before failure. Couldn't apply action." / "The overdue count changed. Review the updated list.".
+  * There's no optimistic update; the page and agenda refetch.
+* **Tests:**
+  * Unit tests for the batching, request bodies, notices and the reschedule rules.
+  * 5 flow tests against a stub API: 501 ids in two batches, the filter with the total seen, a partial failure, the 409, and reschedule and delete bodies.
+  * 4 element-tree tests: the "View all" link, selection and the toolbar, Apply waiting for a valid date, and the delete question.
+  * Goldens for `triage` and `triage-selected` (PNG reviewed).
+
+### Parity with the web app (#1002 to #1007)
+
+| Web app | Rune app | Slice |
+| --- | --- | --- |
+| Today / Day: sections, badges, states, nav, date picker | Same, with a "Go to date" text field for the picker | #1004, #1006 |
+| Week: grid, all-day band, task strips, overdue panel | Same; no ← → `t` shortcuts, "+N more" or first scroll to 07:00 | #1004 |
+| My tasks: views, Load more, rows | Same, virtualised | #1004, #1025 review |
+| Complete / reopen / delete with rollback and confirm | Same | #1005 |
+| Add / edit events and tasks, 400/409/404, event delete in dialog | Same, with text date and time fields | #1006 |
+| Triage and bulk actions | Same | #1007 |
+| Sign-in | Session stub until #1008 (S3) | #1008 |
+
+**Known differences** (follow-ups if wanted): locale (fixed en-GB patterns), no telemetry, no notice timeout or focus return after dialogs, text fields instead of date/time pickers, and the Week shortcuts above.
+
 ### Where things live
 
 | Area | Location (forecast) |

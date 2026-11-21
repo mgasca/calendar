@@ -37,8 +37,7 @@ pub fn go(app: &mut App, route: Route) {
 
 /// "Try again": fetches the current page again.
 pub fn reload(app: &mut App) {
-  app.loads.key = Key::None;
-  ensure(app);
+  refetch(app);
 }
 
 /// The key of what the current route shows today.
@@ -182,4 +181,12 @@ pub fn more_tasks(app: &mut App) {
 /// The API's 401 hook: the session is over (#1008 owns what happens next).
 pub fn unauthorized(app: &mut App) {
   session::on_unauthorized(app);
+}
+
+/// After a change: fetches the current page again and marks the other pages' data stale (the web app invalidates
+/// its `agenda` and `tasks` queries).
+pub fn refetch(app: &mut App) {
+  // Stale, not forgotten: the data stays on screen ("Updating…") while it is fetched again.
+  app.loads.at = None;
+  ensure(app);
 }

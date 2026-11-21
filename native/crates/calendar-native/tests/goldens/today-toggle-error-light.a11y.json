@@ -1,0 +1,1164 @@
+{
+  "bounds": [
+    0.0,
+    0.0,
+    960.0,
+    720.0
+  ],
+  "children": [
+    {
+      "bounds": [
+        0.0,
+        0.0,
+        960.0,
+        52.3
+      ],
+      "children": [
+        {
+          "bounds": [
+            16.0,
+            18.0,
+            56.8,
+            16.3
+          ],
+          "key": "app-title",
+          "name": "Calendar",
+          "role": "label"
+        },
+        {
+          "bounds": [
+            88.8,
+            12.0,
+            207.3,
+            28.3
+          ],
+          "children": [
+            {
+              "actions": [
+                "click",
+                "focus"
+              ],
+              "bounds": [
+                88.8,
+                12.0,
+                61.6,
+                28.3
+              ],
+              "key": "nav-today",
+              "name": "Today",
+              "role": "button",
+              "states": [
+                "checked"
+              ]
+            },
+            {
+              "actions": [
+                "click",
+                "focus"
+              ],
+              "bounds": [
+                154.4,
+                12.0,
+                58.5,
+                28.3
+              ],
+              "key": "nav-week",
+              "name": "Week",
+              "role": "button",
+              "states": [
+                "unchecked"
+              ]
+            },
+            {
+              "actions": [
+                "click",
+                "focus"
+              ],
+              "bounds": [
+                216.8,
+                12.0,
+                79.3,
+                28.3
+              ],
+              "key": "nav-tasks",
+              "name": "My tasks",
+              "role": "button",
+              "states": [
+                "unchecked"
+              ]
+            }
+          ],
+          "key": "nav",
+          "name": "Main",
+          "role": "navigation"
+        },
+        {
+          "bounds": [
+            805.9,
+            18.0,
+            54.9,
+            16.3
+          ],
+          "key": "user-name",
+          "name": "Alex Doe",
+          "role": "label"
+        },
+        {
+          "actions": [
+            "click",
+            "focus"
+          ],
+          "bounds": [
+            876.8,
+            13.6,
+            67.2,
+            25.0
+          ],
+          "key": "sign-out",
+          "name": "Sign out",
+          "role": "button"
+        }
+      ],
+      "key": "header",
+      "role": "banner"
+    },
+    {
+      "actions": [
+        "scroll-up",
+        "scroll-down",
+        "set-scroll-offset"
+      ],
+      "bounds": [
+        0.0,
+        52.3,
+        960.0,
+        667.8
+      ],
+      "children": [
+        {
+          "actions": [
+            "scroll-into-view"
+          ],
+          "bounds": [
+            16.0,
+            68.3,
+            928.0,
+            36.3
+          ],
+          "children": [
+            {
+              "actions": [
+                "scroll-into-view"
+              ],
+              "bounds": [
+                28.0,
+                78.3,
+                904.0,
+                16.3
+              ],
+              "name": "Couldn’t update the task. Your change was undone.",
+              "role": "label"
+            }
+          ],
+          "key": "toggle-error",
+          "name": "Couldn’t update the task. Your change was undone.",
+          "role": "alert",
+          "states": [
+            "live-assertive"
+          ]
+        },
+        {
+          "actions": [
+            "scroll-into-view"
+          ],
+          "bounds": [
+            16.0,
+            116.5,
+            928.0,
+            880.5
+          ],
+          "children": [
+            {
+              "actions": [
+                "scroll-into-view"
+              ],
+              "bounds": [
+                16.0,
+                116.5,
+                928.0,
+                103.0
+              ],
+              "children": [
+                {
+                  "actions": [
+                    "scroll-into-view"
+                  ],
+                  "bounds": [
+                    16.0,
+                    116.5,
+                    928.0,
+                    16.3
+                  ],
+                  "key": "day-eyebrow",
+                  "name": "Today",
+                  "role": "label"
+                },
+                {
+                  "actions": [
+                    "scroll-into-view"
+                  ],
+                  "bounds": [
+                    16.0,
+                    138.8,
+                    928.0,
+                    27.5
+                  ],
+                  "key": "day-title",
+                  "level": 1,
+                  "name": "Friday 20 November",
+                  "role": "heading"
+                },
+                {
+                  "actions": [
+                    "scroll-into-view"
+                  ],
+                  "bounds": [
+                    16.0,
+                    172.3,
+                    928.0,
+                    25.0
+                  ],
+                  "children": [
+                    {
+                      "actions": [
+                        "click",
+                        "focus",
+                        "scroll-into-view"
+                      ],
+                      "bounds": [
+                        16.0,
+                        172.3,
+                        101.9,
+                        25.0
+                      ],
+                      "key": "day-previous",
+                      "name": "‹ Previous day",
+                      "role": "button"
+                    },
+                    {
+                      "actions": [
+                        "click",
+                        "focus",
+                        "scroll-into-view"
+                      ],
+                      "bounds": [
+                        123.9,
+                        172.3,
+                        79.0,
+                        25.0
+                      ],
+                      "key": "day-next",
+                      "name": "Next day ›",
+                      "role": "button"
+                    },
+                    {
+                      "actions": [
+                        "click",
+                        "focus",
+                        "scroll-into-view"
+                      ],
+                      "bounds": [
+                        208.9,
+                        172.3,
+                        109.2,
+                        25.0
+                      ],
+                      "key": "day-week",
+                      "name": "Week of 16 Nov",
+                      "role": "button"
+                    }
+                  ],
+                  "key": "day-nav",
+                  "name": "Day",
+                  "role": "navigation"
+                },
+                {
+                  "actions": [
+                    "scroll-into-view"
+                  ],
+                  "bounds": [
+                    16.0,
+                    203.3,
+                    928.0,
+                    16.3
+                  ],
+                  "key": "day-summary",
+                  "name": "1 all-day event · 4 events · 4 tasks to do · 2 overdue",
+                  "role": "label"
+                }
+              ],
+              "key": "day-header",
+              "role": "group"
+            },
+            {
+              "actions": [
+                "scroll-into-view"
+              ],
+              "bounds": [
+                16.0,
+                235.5,
+                928.0,
+                761.5
+              ],
+              "children": [
+                {
+                  "actions": [
+                    "scroll-into-view"
+                  ],
+                  "bounds": [
+                    16.0,
+                    235.5,
+                    928.0,
+                    96.8
+                  ],
+                  "children": [
+                    {
+                      "actions": [
+                        "scroll-into-view"
+                      ],
+                      "bounds": [
+                        16.0,
+                        235.5,
+                        928.0,
+                        20.0
+                      ],
+                      "key": "all-day-heading",
+                      "level": 2,
+                      "name": "All day",
+                      "role": "heading"
+                    },
+                    {
+                      "actions": [
+                        "scroll-into-view"
+                      ],
+                      "bounds": [
+                        16.0,
+                        263.5,
+                        928.0,
+                        68.8
+                      ],
+                      "children": [
+                        {
+                          "actions": [
+                            "scroll-into-view"
+                          ],
+                          "bounds": [
+                            28.0,
+                            271.5,
+                            904.0,
+                            16.3
+                          ],
+                          "name": "Conference",
+                          "role": "label"
+                        },
+                        {
+                          "actions": [
+                            "scroll-into-view"
+                          ],
+                          "bounds": [
+                            28.0,
+                            289.8,
+                            904.0,
+                            16.3
+                          ],
+                          "name": "Day 2 of 3",
+                          "role": "label"
+                        },
+                        {
+                          "actions": [
+                            "scroll-into-view"
+                          ],
+                          "bounds": [
+                            28.0,
+                            308.0,
+                            904.0,
+                            16.3
+                          ],
+                          "name": "Lisbon",
+                          "role": "label"
+                        }
+                      ],
+                      "key": "all-day-10000000-0000-4000-8000-000000000001",
+                      "name": "Conference Day 2 of 3 Lisbon",
+                      "role": "list-item"
+                    }
+                  ],
+                  "key": "all-day",
+                  "name": "All day",
+                  "role": "region"
+                },
+                {
+                  "actions": [
+                    "scroll-into-view"
+                  ],
+                  "bounds": [
+                    16.0,
+                    352.3,
+                    928.0,
+                    272.3
+                  ],
+                  "children": [
+                    {
+                      "actions": [
+                        "scroll-into-view"
+                      ],
+                      "bounds": [
+                        16.0,
+                        352.3,
+                        928.0,
+                        20.0
+                      ],
+                      "key": "schedule-heading",
+                      "level": 2,
+                      "name": "Schedule",
+                      "role": "heading"
+                    },
+                    {
+                      "actions": [
+                        "scroll-into-view"
+                      ],
+                      "bounds": [
+                        16.0,
+                        380.3,
+                        928.0,
+                        50.5
+                      ],
+                      "children": [
+                        {
+                          "actions": [
+                            "scroll-into-view"
+                          ],
+                          "bounds": [
+                            28.0,
+                            388.3,
+                            847.4,
+                            16.3
+                          ],
+                          "name": "Stand-up",
+                          "role": "label"
+                        },
+                        {
+                          "actions": [
+                            "scroll-into-view"
+                          ],
+                          "bounds": [
+                            28.0,
+                            406.5,
+                            847.4,
+                            16.3
+                          ],
+                          "name": "08:30 – 08:45",
+                          "role": "label"
+                        },
+                        {
+                          "actions": [
+                            "scroll-into-view"
+                          ],
+                          "bounds": [
+                            883.4,
+                            396.0,
+                            48.6,
+                            19.0
+                          ],
+                          "name": "Earlier",
+                          "role": "label"
+                        }
+                      ],
+                      "key": "event-20000000-0000-4000-8000-000000000001",
+                      "name": "Stand-up 08:30 – 08:45 Earlier",
+                      "role": "list-item"
+                    },
+                    {
+                      "actions": [
+                        "scroll-into-view"
+                      ],
+                      "bounds": [
+                        16.0,
+                        438.8,
+                        928.0,
+                        68.8
+                      ],
+                      "children": [
+                        {
+                          "actions": [
+                            "scroll-into-view"
+                          ],
+                          "bounds": [
+                            28.0,
+                            446.8,
+                            857.9,
+                            16.3
+                          ],
+                          "name": "Design review",
+                          "role": "label"
+                        },
+                        {
+                          "actions": [
+                            "scroll-into-view"
+                          ],
+                          "bounds": [
+                            28.0,
+                            465.0,
+                            857.9,
+                            16.3
+                          ],
+                          "name": "09:30 – 11:00",
+                          "role": "label"
+                        },
+                        {
+                          "actions": [
+                            "scroll-into-view"
+                          ],
+                          "bounds": [
+                            28.0,
+                            483.3,
+                            857.9,
+                            16.3
+                          ],
+                          "name": "Room 2",
+                          "role": "label"
+                        },
+                        {
+                          "actions": [
+                            "scroll-into-view"
+                          ],
+                          "bounds": [
+                            893.9,
+                            463.6,
+                            38.1,
+                            19.0
+                          ],
+                          "name": "Now",
+                          "role": "label"
+                        }
+                      ],
+                      "key": "event-20000000-0000-4000-8000-000000000002",
+                      "name": "Design review 09:30 – 11:00 Room 2 Now",
+                      "role": "list-item"
+                    },
+                    {
+                      "actions": [
+                        "scroll-into-view"
+                      ],
+                      "bounds": [
+                        16.0,
+                        515.5,
+                        928.0,
+                        50.5
+                      ],
+                      "children": [
+                        {
+                          "actions": [
+                            "scroll-into-view"
+                          ],
+                          "bounds": [
+                            28.0,
+                            523.5,
+                            857.2,
+                            16.3
+                          ],
+                          "name": "Lunch with Sam",
+                          "role": "label"
+                        },
+                        {
+                          "actions": [
+                            "scroll-into-view"
+                          ],
+                          "bounds": [
+                            28.0,
+                            541.8,
+                            857.2,
+                            16.3
+                          ],
+                          "name": "13:00 – 14:00",
+                          "role": "label"
+                        },
+                        {
+                          "actions": [
+                            "scroll-into-view"
+                          ],
+                          "bounds": [
+                            893.2,
+                            531.3,
+                            38.9,
+                            19.0
+                          ],
+                          "name": "Next",
+                          "role": "label"
+                        }
+                      ],
+                      "key": "event-20000000-0000-4000-8000-000000000003",
+                      "name": "Lunch with Sam 13:00 – 14:00 Next",
+                      "role": "list-item"
+                    },
+                    {
+                      "actions": [
+                        "scroll-into-view"
+                      ],
+                      "bounds": [
+                        16.0,
+                        574.0,
+                        928.0,
+                        50.5
+                      ],
+                      "children": [
+                        {
+                          "actions": [
+                            "scroll-into-view"
+                          ],
+                          "bounds": [
+                            28.0,
+                            582.0,
+                            904.0,
+                            16.3
+                          ],
+                          "name": "Train to Porto",
+                          "role": "label"
+                        },
+                        {
+                          "actions": [
+                            "scroll-into-view"
+                          ],
+                          "bounds": [
+                            28.0,
+                            600.3,
+                            904.0,
+                            16.3
+                          ],
+                          "name": "From 22:30, continues tomorrow",
+                          "role": "label"
+                        }
+                      ],
+                      "key": "event-20000000-0000-4000-8000-000000000004",
+                      "name": "Train to Porto From 22:30, continues tomorrow",
+                      "role": "list-item"
+                    }
+                  ],
+                  "key": "schedule",
+                  "name": "Schedule",
+                  "role": "region"
+                },
+                {
+                  "actions": [
+                    "scroll-into-view"
+                  ],
+                  "bounds": [
+                    16.0,
+                    644.5,
+                    928.0,
+                    352.5
+                  ],
+                  "children": [
+                    {
+                      "actions": [
+                        "scroll-into-view"
+                      ],
+                      "bounds": [
+                        16.0,
+                        644.5,
+                        928.0,
+                        20.0
+                      ],
+                      "key": "tasks-heading",
+                      "level": 2,
+                      "name": "Tasks",
+                      "role": "heading"
+                    },
+                    {
+                      "actions": [
+                        "scroll-into-view"
+                      ],
+                      "bounds": [
+                        16.0,
+                        676.5,
+                        928.0,
+                        134.5
+                      ],
+                      "children": [
+                        {
+                          "actions": [
+                            "scroll-into-view"
+                          ],
+                          "bounds": [
+                            16.0,
+                            676.5,
+                            928.0,
+                            17.5
+                          ],
+                          "key": "overdue-heading",
+                          "level": 3,
+                          "name": "Overdue",
+                          "role": "heading"
+                        },
+                        {
+                          "actions": [
+                            "scroll-into-view"
+                          ],
+                          "bounds": [
+                            16.0,
+                            702.0,
+                            928.0,
+                            50.5
+                          ],
+                          "children": [
+                            {
+                              "actions": [
+                                "click",
+                                "focus",
+                                "scroll-into-view"
+                              ],
+                              "bounds": [
+                                28.0,
+                                719.3,
+                                16.0,
+                                16.0
+                              ],
+                              "key": "task-00000000-0000-4000-8000-000000000004-check",
+                              "name": "Mark Renew passport as done",
+                              "role": "check-box",
+                              "states": [
+                                "unchecked"
+                              ]
+                            },
+                            {
+                              "actions": [
+                                "scroll-into-view"
+                              ],
+                              "bounds": [
+                                52.0,
+                                710.0,
+                                704.6,
+                                16.3
+                              ],
+                              "name": "Renew passport",
+                              "role": "label"
+                            },
+                            {
+                              "actions": [
+                                "scroll-into-view"
+                              ],
+                              "bounds": [
+                                52.0,
+                                728.3,
+                                704.6,
+                                16.3
+                              ],
+                              "name": "Overdue since yesterday",
+                              "role": "label"
+                            },
+                            {
+                              "actions": [
+                                "scroll-into-view"
+                              ],
+                              "bounds": [
+                                764.6,
+                                717.8,
+                                102.7,
+                                19.0
+                              ],
+                              "name": "medium priority",
+                              "role": "label"
+                            },
+                            {
+                              "actions": [
+                                "click",
+                                "focus",
+                                "scroll-into-view"
+                              ],
+                              "bounds": [
+                                875.2,
+                                714.8,
+                                56.8,
+                                25.0
+                              ],
+                              "key": "task-00000000-0000-4000-8000-000000000004-delete",
+                              "name": "Delete Renew passport",
+                              "role": "button"
+                            }
+                          ],
+                          "key": "task-00000000-0000-4000-8000-000000000004",
+                          "name": "Mark Renew passport as done Renew passport Overdue since yesterday medium priority Delete Renew passport",
+                          "role": "list-item"
+                        },
+                        {
+                          "actions": [
+                            "scroll-into-view"
+                          ],
+                          "bounds": [
+                            16.0,
+                            760.5,
+                            928.0,
+                            50.5
+                          ],
+                          "children": [
+                            {
+                              "actions": [
+                                "click",
+                                "focus",
+                                "scroll-into-view"
+                              ],
+                              "bounds": [
+                                28.0,
+                                777.8,
+                                16.0,
+                                16.0
+                              ],
+                              "key": "task-00000000-0000-4000-8000-000000000005-check",
+                              "name": "Mark File expenses as done",
+                              "role": "check-box",
+                              "states": [
+                                "unchecked"
+                              ]
+                            },
+                            {
+                              "actions": [
+                                "scroll-into-view"
+                              ],
+                              "bounds": [
+                                52.0,
+                                768.5,
+                                815.2,
+                                16.3
+                              ],
+                              "name": "File expenses",
+                              "role": "label"
+                            },
+                            {
+                              "actions": [
+                                "scroll-into-view"
+                              ],
+                              "bounds": [
+                                52.0,
+                                786.8,
+                                815.2,
+                                16.3
+                              ],
+                              "name": "Overdue by 8 days",
+                              "role": "label"
+                            },
+                            {
+                              "actions": [
+                                "click",
+                                "focus",
+                                "scroll-into-view"
+                              ],
+                              "bounds": [
+                                875.2,
+                                773.3,
+                                56.8,
+                                25.0
+                              ],
+                              "key": "task-00000000-0000-4000-8000-000000000005-delete",
+                              "name": "Delete File expenses",
+                              "role": "button"
+                            }
+                          ],
+                          "key": "task-00000000-0000-4000-8000-000000000005",
+                          "name": "Mark File expenses as done File expenses Overdue by 8 days Delete File expenses",
+                          "role": "list-item"
+                        }
+                      ],
+                      "key": "overdue",
+                      "name": "Overdue",
+                      "role": "region"
+                    },
+                    {
+                      "actions": [
+                        "scroll-into-view"
+                      ],
+                      "bounds": [
+                        16.0,
+                        823.0,
+                        928.0,
+                        174.0
+                      ],
+                      "children": [
+                        {
+                          "actions": [
+                            "scroll-into-view"
+                          ],
+                          "bounds": [
+                            16.0,
+                            823.0,
+                            928.0,
+                            17.5
+                          ],
+                          "key": "due-heading",
+                          "level": 3,
+                          "name": "Due today",
+                          "role": "heading"
+                        },
+                        {
+                          "actions": [
+                            "scroll-into-view"
+                          ],
+                          "bounds": [
+                            16.0,
+                            848.5,
+                            928.0,
+                            50.5
+                          ],
+                          "children": [
+                            {
+                              "actions": [
+                                "click",
+                                "focus",
+                                "scroll-into-view"
+                              ],
+                              "bounds": [
+                                28.0,
+                                865.8,
+                                16.0,
+                                16.0
+                              ],
+                              "key": "task-00000000-0000-4000-8000-000000000002-check",
+                              "name": "Mark Call the bank as done",
+                              "role": "check-box",
+                              "states": [
+                                "unchecked"
+                              ]
+                            },
+                            {
+                              "actions": [
+                                "scroll-into-view"
+                              ],
+                              "bounds": [
+                                52.0,
+                                856.5,
+                                725.7,
+                                16.3
+                              ],
+                              "name": "Call the bank",
+                              "role": "label"
+                            },
+                            {
+                              "actions": [
+                                "scroll-into-view"
+                              ],
+                              "bounds": [
+                                52.0,
+                                874.8,
+                                725.7,
+                                16.3
+                              ],
+                              "name": "Due 09:00 · Past due",
+                              "role": "label"
+                            },
+                            {
+                              "actions": [
+                                "scroll-into-view"
+                              ],
+                              "bounds": [
+                                785.7,
+                                864.3,
+                                81.5,
+                                19.0
+                              ],
+                              "name": "high priority",
+                              "role": "label"
+                            },
+                            {
+                              "actions": [
+                                "click",
+                                "focus",
+                                "scroll-into-view"
+                              ],
+                              "bounds": [
+                                875.2,
+                                861.3,
+                                56.8,
+                                25.0
+                              ],
+                              "key": "task-00000000-0000-4000-8000-000000000002-delete",
+                              "name": "Delete Call the bank",
+                              "role": "button"
+                            }
+                          ],
+                          "key": "task-00000000-0000-4000-8000-000000000002",
+                          "name": "Mark Call the bank as done Call the bank Due 09:00 · Past due high priority Delete Call the bank",
+                          "role": "list-item"
+                        },
+                        {
+                          "actions": [
+                            "scroll-into-view"
+                          ],
+                          "bounds": [
+                            16.0,
+                            907.0,
+                            928.0,
+                            41.0
+                          ],
+                          "children": [
+                            {
+                              "actions": [
+                                "click",
+                                "focus",
+                                "scroll-into-view"
+                              ],
+                              "bounds": [
+                                28.0,
+                                919.5,
+                                16.0,
+                                16.0
+                              ],
+                              "key": "task-00000000-0000-4000-8000-000000000003-check",
+                              "name": "Mark Book flights as done",
+                              "role": "check-box",
+                              "states": [
+                                "unchecked"
+                              ]
+                            },
+                            {
+                              "actions": [
+                                "scroll-into-view"
+                              ],
+                              "bounds": [
+                                52.0,
+                                919.4,
+                                815.2,
+                                16.3
+                              ],
+                              "name": "Book flights",
+                              "role": "label"
+                            },
+                            {
+                              "actions": [
+                                "click",
+                                "focus",
+                                "scroll-into-view"
+                              ],
+                              "bounds": [
+                                875.2,
+                                915.0,
+                                56.8,
+                                25.0
+                              ],
+                              "key": "task-00000000-0000-4000-8000-000000000003-delete",
+                              "name": "Delete Book flights",
+                              "role": "button"
+                            }
+                          ],
+                          "key": "task-00000000-0000-4000-8000-000000000003",
+                          "name": "Mark Book flights as done Book flights Delete Book flights",
+                          "role": "list-item"
+                        },
+                        {
+                          "actions": [
+                            "scroll-into-view"
+                          ],
+                          "bounds": [
+                            16.0,
+                            956.0,
+                            928.0,
+                            41.0
+                          ],
+                          "children": [
+                            {
+                              "actions": [
+                                "click",
+                                "focus",
+                                "scroll-into-view"
+                              ],
+                              "bounds": [
+                                28.0,
+                                968.5,
+                                16.0,
+                                16.0
+                              ],
+                              "key": "task-00000000-0000-4000-8000-000000000001-check",
+                              "name": "Mark Send the slides as done",
+                              "role": "check-box",
+                              "states": [
+                                "checked"
+                              ]
+                            },
+                            {
+                              "actions": [
+                                "scroll-into-view"
+                              ],
+                              "bounds": [
+                                52.0,
+                                968.4,
+                                815.2,
+                                16.3
+                              ],
+                              "name": "Send the slides",
+                              "role": "label"
+                            },
+                            {
+                              "actions": [
+                                "click",
+                                "focus",
+                                "scroll-into-view"
+                              ],
+                              "bounds": [
+                                875.2,
+                                964.0,
+                                56.8,
+                                25.0
+                              ],
+                              "key": "task-00000000-0000-4000-8000-000000000001-delete",
+                              "name": "Delete Send the slides",
+                              "role": "button"
+                            }
+                          ],
+                          "key": "task-00000000-0000-4000-8000-000000000001",
+                          "name": "Mark Send the slides as done Send the slides Delete Send the slides",
+                          "role": "list-item"
+                        }
+                      ],
+                      "key": "due",
+                      "name": "Due today",
+                      "role": "region"
+                    }
+                  ],
+                  "key": "tasks",
+                  "name": "Tasks",
+                  "role": "region"
+                }
+              ],
+              "key": "day-sections",
+              "role": "group"
+            }
+          ],
+          "key": "day",
+          "role": "group"
+        }
+      ],
+      "key": "page",
+      "role": "main",
+      "scroll": [
+        0.0,
+        0.0,
+        277.0
+      ],
+      "states": [
+        "clips"
+      ]
+    },
+    {
+      "bounds": [
+        0.0,
+        0.0,
+        1.0,
+        1.0
+      ],
+      "role": "status",
+      "states": [
+        "live-polite"
+      ]
+    }
+  ],
+  "name": "Calendar",
+  "role": "window"
+}

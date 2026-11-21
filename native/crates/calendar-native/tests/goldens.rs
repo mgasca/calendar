@@ -10,7 +10,7 @@
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
-const SCENES: [&str; 7] = [
+const SCENES: [&str; 9] = [
   "today",
   "today-empty",
   "today-loading",
@@ -18,9 +18,11 @@ const SCENES: [&str; 7] = [
   "week",
   "tasks",
   "signed-out",
+  "today-toggle-error",
+  "today-delete",
 ];
 /// The scenes with PNG snapshots (Linux).
-const SNAPSHOTS: [&str; 2] = ["today", "week"];
+const SNAPSHOTS: [&str; 3] = ["today", "week", "today-delete"];
 const THEMES: [&str; 2] = ["light", "dark"];
 /// A channel may differ by this much (8-bit) before a pixel counts as different: rasterizers round differently.
 const CHANNEL_TOLERANCE: u8 = 8;
@@ -96,17 +98,9 @@ fn tree(scene: &str, theme: &str) -> serde_json::Value {
 #[test]
 fn accessibility_trees_match_their_goldens() {
   // Each render is its own process; they run side by side (pre-merge review of #1023), then compare in order.
-  let trees: Vec<_> = std::thread::scope(|s| {
-    let renders: Vec<_> = SCENES
-      .into_iter()
-      .flat_map(|scene| THEMES.map(|theme| (scene, theme)))
-      .map(|(scene, theme)| (scene, theme, s.spawn(move || tree(scene, theme))))
-      .collect();
-    renders
-      .into_iter()
-      .map(|(scene, theme, render)| (scene, theme, render.join().expect("a render thread")))
-      .collect()
-  });
+  let pairs: Vec<_> = SCENES.into_iter().flat_map(|scene| THEMES.map(|theme| (scene, theme))).collect();
+  let rendered = in_parallel(&pairs, |&(scene, theme)| tree(scene, theme));
+  let trees = pairs.iter().zip(rendered).map(|(&(scene, theme), actual)| (scene, theme, actual));
   let mut failures = Vec::new();
   for (scene, theme, actual) in trees {
     {
@@ -173,17 +167,9 @@ fn difference(a: &Path, b: &Path) -> f64 {
 fn snapshots_match_their_goldens_on_linux() {
   let pairs: Vec<_> = SNAPSHOTS.into_iter().flat_map(|s| THEMES.map(|t| (s, t))).collect();
   // The renders run side by side; the comparisons follow in order.
-  let rendered: Vec<_> = std::thread::scope(|s| {
-    let renders: Vec<_> = pairs
-      .iter()
-      .map(|&(scene, theme)| {
-        s.spawn(move || {
-          let actual = actual_dir().join(format!("{scene}-{theme}.png"));
-          try_render(&["--scene", scene, "--theme", theme, "--scale", "1", "--snap"], &actual)
-        })
-      })
-      .collect();
-    renders.into_iter().map(|r| r.join().expect("a render thread")).collect()
+  let rendered = in_parallel(&pairs, |&(scene, theme)| {
+    let actual = actual_dir().join(format!("{scene}-{theme}.png"));
+    try_render(&["--scene", scene, "--theme", theme, "--scale", "1", "--snap"], &actual)
   });
   let mut failures = Vec::new();
   for (&(scene, theme), result) in pairs.iter().zip(rendered) {
@@ -206,4 +192,40 @@ fn snapshots_match_their_goldens_on_linux() {
     }
   }
   assert!(failures.is_empty(), "snapshots differ from tests/goldens: {failures:?}");
+}
+
+/// `render` for every job, at most as many at a time as the machine has cores (pre-merge review of #1024: each
+/// job is a process, and lavapipe renders on every core); results in the jobs' order.
+fn in_parallel<J: Sync, R: Send>(jobs: &[J], render: impl Fn(&J) -> R + Sync) -> Vec<R> {
+  let width = std::thread::available_parallelism().map_or(4, std::num::NonZero::get);
+  let mut results = Vec::with_capacity(jobs.len());
+  for chunk in jobs.chunks(width) {
+    let render = &render;
+    results.extend(std::thread::scope(|s| {
+      let handles: Vec<_> = chunk.iter().map(|job| s.spawn(move || render(job))).collect();
+      handles.into_iter().map(|h| h.join().expect("a render thread")).collect::<Vec<_>>()
+    }));
+  }
+  results
+}
+
+#[test]
+fn renders_run_at_most_a_core_count_at_a_time_and_keep_their_order() {
+  use std::sync::atomic::{AtomicUsize, Ordering};
+  let (running, peak) = (AtomicUsize::new(0), AtomicUsize::new(0));
+  let jobs: Vec<usize> = (0..64).collect();
+  let out = in_parallel(&jobs, |&n| {
+    let now = running.fetch_add(1, Ordering::SeqCst) + 1;
+    peak.fetch_max(now, Ordering::SeqCst);
+    std::thread::sleep(std::time::Duration::from_millis(2));
+    running.fetch_sub(1, Ordering::SeqCst);
+    n * 2
+  });
+  assert_eq!(out, jobs.iter().map(|n| n * 2).collect::<Vec<_>>());
+  let cores = std::thread::available_parallelism().map_or(4, std::num::NonZero::get);
+  assert!(
+    peak.load(Ordering::SeqCst) <= cores,
+    "{} at once on {cores} cores",
+    peak.load(Ordering::SeqCst)
+  );
 }

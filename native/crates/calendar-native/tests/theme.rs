@@ -37,3 +37,16 @@ fn every_token_parses() {
   let _ = tokens(false);
   let _ = tokens(true);
 }
+
+#[test]
+fn the_backdrop_matches_the_web_apps() {
+  use calendar_native::theme::{BACKDROP_DARK, BACKDROP_LIGHT};
+  let path = concat!(env!("CARGO_MANIFEST_DIR"), "/../../../frontend/packages/theme/src/tokens.css");
+  let css = std::fs::read_to_string(path).expect("tokens.css");
+  // #rrggbbaa from `rgb(r g b / a)`: the channels, and the alpha (given in percent) rounded to a byte.
+  let hex = |r: u8, g: u8, b: u8, percent: u32| format!("#{r:02x}{g:02x}{b:02x}{:02x}", (percent * 255 + 50) / 100);
+  assert!(css.contains("--color-backdrop: rgb(31 42 34 / 0.45);"));
+  assert!(css.contains("--color-backdrop: rgb(4 6 14 / 0.7);"));
+  assert_eq!(BACKDROP_LIGHT, hex(31, 42, 34, 45));
+  assert_eq!(BACKDROP_DARK, hex(4, 6, 14, 70));
+}

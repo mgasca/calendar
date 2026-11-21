@@ -197,6 +197,21 @@ No further ADR is expected. A slice that finds a decision ADR-0067 or ADR-0068 d
   * Nothing refetches on window focus.
   * Formatting is fixed English (en-GB patterns), not the system locale.
 
+### Task actions (#1005), delivered
+
+* **Complete and reopen** (`actions.rs`), as the web app's `useToggleTask`:
+  * Every loaded copy of the task (Day, Week strips and overdue panel, My tasks) flips at once. Its checkbox is disabled while the request runs.
+  * A failure rolls back that task alone, with the web app's message for the page. Day and Week: "That task was changed elsewhere. The list has been refreshed; please try again." on 409, otherwise "Couldn't update the task. Your change was undone.". My tasks has its own pair.
+  * The page is fetched again after the last toggle of a burst, or straight after a failure. The data stays on screen meanwhile.
+* **Delete:** the button shows "Delete" and is announced as "Delete {title}", which fixes #1004's inert label. A modal asks "Confirm deletion" / "Delete “{title}”? This can't be undone." with Delete and Cancel. It waits for the server, keeps "Couldn't delete the task. Try again, or cancel." open on failure, and refetches on success.
+* **Client:** `complete_task`, `reopen_task` and `delete_task`, each with stub-server tests.
+* **Tests:**
+  * 5 flow tests against a stub API, with negative controls: without the rollback, or with a refetch per toggle, they fail.
+  * 3 element-tree tests that press the real checkbox, Delete, Cancel and Delete in the dialog.
+  * A test pinning the dialog backdrop to `--color-backdrop`.
+  * Goldens for `today-toggle-error` and `today-delete` (PNG too).
+* **Not ported:** the web app's toggle telemetry (`traceAction`). The native app has no telemetry yet.
+
 ### Where things live
 
 | Area | Location (forecast) |

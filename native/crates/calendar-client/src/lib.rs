@@ -18,7 +18,7 @@ pub mod generated;
 use chrono::NaiveDate;
 use std::sync::Arc;
 
-pub use generated::{AuthUserResponse, DayAgendaResponse, TaskPage, WeekAgendaResponse};
+pub use generated::{AuthUserResponse, DayAgendaResponse, TaskPage, TaskResponse, WeekAgendaResponse};
 
 /// What day it is for the user, and where: the client's date and IANA time zone (ADR-0021).
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -168,6 +168,23 @@ impl Api {
         self.client.get_week_agenda(date.to_string(), &day.time_zone, day.today.to_string()),
       )
       .await
+  }
+
+  /// `POST /api/tasks/{id}/complete`: the task as completed.
+  pub async fn complete_task(&self, id: uuid::Uuid) -> Result<TaskResponse, ApiError> {
+    self
+      .run("/api/tasks/{id}/complete", self.client.complete_task(id.to_string()))
+      .await
+  }
+
+  /// `POST /api/tasks/{id}/reopen`: the task as open again.
+  pub async fn reopen_task(&self, id: uuid::Uuid) -> Result<TaskResponse, ApiError> {
+    self.run("/api/tasks/{id}/reopen", self.client.reopen_task(id.to_string())).await
+  }
+
+  /// `DELETE /api/tasks/{id}`.
+  pub async fn delete_task(&self, id: uuid::Uuid) -> Result<(), ApiError> {
+    self.run("/api/tasks/{id}", self.client.delete_task(id.to_string())).await
   }
 
   /// `GET /api/tasks` for `view`, a page of at most `limit` tasks after `cursor`.

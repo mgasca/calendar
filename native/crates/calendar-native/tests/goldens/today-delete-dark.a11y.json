@@ -1,0 +1,107 @@
+{
+  "bounds": [
+    0.0,
+    0.0,
+    960.0,
+    720.0
+  ],
+  "children": [
+    {
+      "bounds": [
+        0.0,
+        0.0,
+        960.0,
+        720.0
+      ],
+      "children": [
+        {
+          "bounds": [
+            270.0,
+            297.4,
+            420.0,
+            125.3
+          ],
+          "children": [
+            {
+              "bounds": [
+                290.0,
+                317.4,
+                380.0,
+                20.0
+              ],
+              "key": "delete-heading",
+              "level": 2,
+              "name": "Confirm deletion",
+              "role": "heading"
+            },
+            {
+              "bounds": [
+                290.0,
+                349.4,
+                380.0,
+                16.3
+              ],
+              "name": "Delete “Book flights”? This can’t be undone.",
+              "role": "label"
+            },
+            {
+              "actions": [
+                "click",
+                "focus"
+              ],
+              "bounds": [
+                290.0,
+                377.6,
+                56.8,
+                25.0
+              ],
+              "key": "confirm-delete",
+              "name": "Delete",
+              "role": "button",
+              "states": [
+                "focused"
+              ]
+            },
+            {
+              "actions": [
+                "click",
+                "focus"
+              ],
+              "bounds": [
+                354.8,
+                377.6,
+                59.8,
+                25.0
+              ],
+              "key": "cancel-delete",
+              "name": "Cancel",
+              "role": "button"
+            }
+          ],
+          "key": "delete-dialog",
+          "name": "Confirm deletion",
+          "role": "dialog",
+          "states": [
+            "modal"
+          ]
+        }
+      ],
+      "key": "dialog-backdrop",
+      "role": "group"
+    },
+    {
+      "bounds": [
+        0.0,
+        0.0,
+        1.0,
+        1.0
+      ],
+      "role": "status",
+      "states": [
+        "live-polite"
+      ]
+    }
+  ],
+  "name": "Calendar",
+  "role": "window"
+}

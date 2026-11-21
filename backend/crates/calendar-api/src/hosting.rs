@@ -256,8 +256,11 @@ fn static_probe(request: &Request) -> Option<Request> {
 /// Serves a file of the web root, or `None` when there is no such file, so that routing takes over.
 async fn static_file(web_root: &Path, probe: Request) -> Option<Response> {
   let cache_control = static_cache_control(probe.uri().path());
+  // A file with a `.gz` copy beside it goes out gzip-encoded to a client that accepts it, with the original
+  // type. Only the image writes such copies, for the Rune UI's wasm and glue (#1044).
   let response = ServeDir::new(web_root)
     .append_index_html_on_directories(false)
+    .precompressed_gzip()
     .oneshot(probe)
     .await
     .ok()?;

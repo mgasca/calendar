@@ -178,6 +178,25 @@ No further ADR is expected. A slice that finds a decision ADR-0067 or ADR-0068 d
 * **Tests** (`tests/api.rs`, a `wiremock` stub server): the parameters each call sends, the session cookie sent back through a cookie-store client, every error case and the 401 signal, and a task read and its `version` sent back unchanged. The task samples follow the contract's shapes; they were not captured from a running API.
 * **WASM:** the client builds for `wasm32-unknown-unknown` (`just native lint-wasm`), with reqwest's `cookies` feature on the desktop only.
 
+
+### Read-only views (#1004), delivered
+
+* **Today and Day:** the eyebrow, date heading and summary, then "‹ Previous day", "Today", "Next day ›" and "Week of …". The sections are All day ("Day X of N"), Schedule (EventTimes phrases; "Earlier", "Now" and "Next" on today) and Tasks ("Overdue", then "Due today" or "Due this day"; open tasks first; "Past due"). The web app's empty, loading, error and stale texts are used. `format.rs` ports `dayTime.ts`, `EventTimes.tsx` and `weekDates.ts`, tested against their strings.
+* **Week:** "16–22 Nov 2026", the eyebrow, summary and nav. The grid has the all-day band spanning its columns, headings that open the day, task strips ("Overdue" on past days), positioned events, the now-line, and the "Overdue (N)" panel.
+* **My tasks:** tabs "Upcoming", "Overdue", "Completed" and "No deadline", rows in server order with "{priority} priority", "Load more" from `nextCursor`, and "No tasks in this view."
+* **Loading:** `fetch.rs` (an effects thread) and `load.rs`. Each request names the client's date and zone (ADR-0021). Data refreshes every 5 minutes and at the user's midnight, and a 401 signs out through the session stub (#1008 owns `session/`).
+* **Tests:**
+  * 7 flow tests against a stub API (`tests/flow.rs`).
+  * 5 element-tree tests and 15 unit tests.
+  * Accessibility goldens for 7 scenes in both themes, and PNGs of Today and Week.
+  * The fixtures follow the contract; they were not captured from a running API.
+* **Not yet like the web app** (later slices):
+  * Checkboxes, Delete, event titles and "View all N overdue" are drawn but inert until #1005 to #1007.
+  * There's no date picker yet.
+  * Week has no arrow-key shortcuts, no "+N more", and no first scroll to 07:00.
+  * Nothing refetches on window focus.
+  * Formatting is fixed English (en-GB patterns), not the system locale.
+
 ### Where things live
 
 | Area | Location (forecast) |

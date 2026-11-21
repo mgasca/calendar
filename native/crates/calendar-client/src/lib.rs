@@ -191,3 +191,30 @@ impl From<generated::TaskResponseVersion> for generated::UpdateTaskRequestVersio
     }
   }
 }
+
+/// The HTTP client crate the session layer builds `Api` with.
+pub use reqwest;
+
+/// A count the contract types as `integer | string` (a large integer travels as a string): its value, or 0 when it
+/// is neither.
+#[must_use]
+pub fn as_count<T: serde::Serialize>(value: &T) -> i64 {
+  match serde_json::to_value(value) {
+    Ok(serde_json::Value::Number(n)) => n.as_i64().unwrap_or(0),
+    Ok(serde_json::Value::String(s)) => s.parse().unwrap_or(0),
+    _ => 0,
+  }
+}
+
+#[cfg(test)]
+mod tests {
+  use super::*;
+
+  #[test]
+  fn counts_read_from_either_form() {
+    use generated::AgendaTasksOverdueTotal as Total;
+    assert_eq!(as_count(&Total::Integer(3)), 3);
+    assert_eq!(as_count(&Total::String("21".into())), 21);
+    assert_eq!(as_count(&Total::String("x".into())), 0);
+  }
+}

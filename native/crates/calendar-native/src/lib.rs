@@ -15,6 +15,7 @@ pub mod fixtures;
 pub mod format;
 pub mod forms;
 pub mod load;
+pub mod locale;
 pub mod route;
 pub mod session;
 pub mod theme;
@@ -86,6 +87,8 @@ pub struct App {
   pub api: Api,
   pub effects: Effects,
   pub clock: Clock,
+  /// How dates and times read: the user's locale (#1032), `en-GB` in scenes and tests, as the web tests pin it.
+  pub locale: locale::Locale,
   /// No API calls at all: named scenes and view tests set the data themselves.
   pub offline: bool,
   pub loads: load::Loads,
@@ -140,6 +143,7 @@ impl App {
       api,
       effects,
       clock,
+      locale: locale::Locale::system(),
       offline: false,
       loads: load::Loads::default(),
       day: Remote::default(),
@@ -163,6 +167,7 @@ impl App {
       Effects::manual(),
     );
     app.offline = true;
+    app.locale = fixtures::locale();
     app.session = Session::SignedIn(fixtures::user());
     app
   }

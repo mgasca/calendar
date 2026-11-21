@@ -51,7 +51,7 @@ Rune has no releases: `native/Cargo.toml` pins an exact `rev` of its `dev` branc
 - API calls go through `effects.run(future, |app, output| …)`: a background tokio thread on the desktop, `spawn_local` in the browser. The result is applied before the next frame. Don't block in a handler.
 - **Flow tests** (`tests/flow.rs`) use `Effects::manual()`, a `wiremock` API and a fixed `Clock` that `set_now` moves. `settle` runs every queued request and applies the results.
 - **Scenes** (`spec()`) are offline: `App::offline()` is signed in, frozen at `fixtures::now()` in Europe/Madrid, and fed from `fixtures.rs`, which is shaped like the contract and checked by a decode test. Add a scene for each state a golden needs.
-- Formatting is English, in the web app's en-GB patterns (`format.rs`), with times in the user's IANA zone through `chrono-tz`.
+- Dates and times are formatted in the user's locale by `locale.rs` (ICU4X), with the web app's `Intl` options per call and times in the user's IANA zone through `chrono-tz`; the phrases around them (`format.rs`) are English, as the web app's are. `App::locale` is `en-GB` in scenes and tests (`fixtures::locale`), so goldens don't depend on the machine's language.
 
 ## Dialogs and forms
 

@@ -385,12 +385,6 @@ pub fn show_day(app: &mut App) {
   }
 }
 
-/// A short day for notices: "Mon 23 Nov".
-fn short_day(date: NaiveDate) -> String {
-  let (weekday, _) = crate::format::day_heading(date);
-  format!("{weekday} {}", crate::format::format_day_month(date))
-}
-
 /// Keeps the event's length when its start is edited (the web app's `moveStart`); called from `poll`.
 pub fn follow_start(app: &mut App) {
   let Some(dialog) = event(app) else { return };
@@ -457,7 +451,10 @@ pub fn save_event(app: &mut App) {
             show_day: None,
           },
           None => Notice {
-            text: format!("{title} added for {}.", start_day.map(short_day).unwrap_or_default()),
+            text: format!(
+              "{title} added for {}.",
+              start_day.map(|day| app.locale.short_day(day)).unwrap_or_default()
+            ),
             show_day: start_day.filter(|day| Some(*day) != shown_day),
           },
         });
@@ -603,7 +600,7 @@ pub fn save_task(app: &mut App) {
             show_day: None,
           },
           (None, Some(day)) if Some(day) != shown_day => Notice {
-            text: format!("\u{201c}{title}\u{201d} added for {}.", short_day(day)),
+            text: format!("\u{201c}{title}\u{201d} added for {}.", app.locale.short_day(day)),
             show_day: Some(day),
           },
           (None, _) => Notice {

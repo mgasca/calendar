@@ -54,6 +54,7 @@ fn api() -> MockServer {
 /// A signed-in app on `server`, its first page loaded.
 fn started(server: &MockServer) -> App {
   let mut app = App::new(&server.uri(), Clock::fixed(fixtures::ZONE, fixtures::now()), Effects::manual());
+  app.locale = fixtures::locale();
   load::ensure(&mut app);
   settle(&mut app);
   app

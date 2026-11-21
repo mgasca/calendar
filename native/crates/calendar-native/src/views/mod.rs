@@ -131,7 +131,10 @@ pub fn task_row(task: TaskRow<'_>, app: &App, t: &Tokens) -> El {
     .role("button")
     .label(task.title)
     .focusable(true)
-    .on_press(move |app: &mut App| crate::dialogs::edit_task(app, open))
+    .on_press_tx(move |app: &mut App, tx: &mut rune::Tx| {
+      crate::focus::opened(app, tx);
+      crate::dialogs::edit_task(app, open);
+    })
     .child(label);
   let mut body = col().gap(2.0).grow(1.0).child(title);
   if let Some(meta_text) = task.meta {
@@ -293,6 +296,10 @@ pub fn title_button(key: String, title: &str, color: rune::Color, open: impl Fn(
     .role("button")
     .label(title)
     .focusable(true)
-    .on_press(open)
+    // It opens a dialog: focus comes back to it when that closes (#1035).
+    .on_press_tx(move |app: &mut App, tx: &mut rune::Tx| {
+      crate::focus::opened(app, tx);
+      open(app);
+    })
     .child(text(title).color(color))
 }

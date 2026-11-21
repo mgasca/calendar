@@ -707,17 +707,17 @@ fn an_event_is_deleted_from_its_dialog_after_asking() {
   settle(&mut app);
   dialogs::delete_event(&mut app);
   assert_eq!(app.effects.pending(), 0, "nothing is deleted before asking");
-  dialogs::ask_delete_event(&mut app);
-  dialogs::keep_event(&mut app);
+  dialogs::ask_delete_event(&mut app, &mut rune::Tx::default());
+  dialogs::keep_event(&mut app, &mut rune::Tx::default());
   assert!(!event_dialog(&app).confirm_delete, "Keep event");
-  dialogs::ask_delete_event(&mut app);
+  dialogs::ask_delete_event(&mut app, &mut rune::Tx::default());
   dialogs::delete_event(&mut app);
   settle(&mut app);
   assert_eq!(
     event_dialog(&app).errors.get(&EventField::Form).map(String::as_str),
     Some("Couldn\u{2019}t delete the event. Try again.")
   );
-  dialogs::ask_delete_event(&mut app);
+  dialogs::ask_delete_event(&mut app, &mut rune::Tx::default());
   dialogs::delete_event(&mut app);
   settle(&mut app);
   assert!(app.dialog.is_none());

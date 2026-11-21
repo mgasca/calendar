@@ -63,8 +63,18 @@ fn header(app: &App, date: NaiveDate, today: NaiveDate, t: &Tokens) -> El {
     .key("day-adds")
     .gap(6.0)
     .items_center()
-    .child(button("add-task", "Add task", t).on_press(move |app: &mut App| crate::dialogs::add_task(app, Some(date))))
-    .child(button("add-event", "Add event", t).on_press(move |app: &mut App| crate::dialogs::add_event(app, date)))
+    .child(
+      button("add-task", "Add task", t).on_press_tx(move |app: &mut App, tx: &mut rune::Tx| {
+        crate::focus::opened(app, tx);
+        crate::dialogs::add_task(app, Some(date));
+      }),
+    )
+    .child(
+      button("add-event", "Add event", t).on_press_tx(move |app: &mut App, tx: &mut rune::Tx| {
+        crate::focus::opened(app, tx);
+        crate::dialogs::add_event(app, date);
+      }),
+    )
     .child(
       rune::text_input(&app.go_to_date, rune::tok::type_::BODY)
         .key("go-to-date")
@@ -88,7 +98,11 @@ fn header(app: &App, date: NaiveDate, today: NaiveDate, t: &Tokens) -> El {
     .key("day-header")
     .gap(6.0)
     .child(meta(format::relative_day(date, today), t).key("day-eyebrow"))
-    .child(heading("day-title", app.locale.date(date, date.year_ne(today)), 1, t))
+    .child(
+      heading("day-title", app.locale.date(date, date.year_ne(today)), 1, t)
+        .focusable(true)
+        .tab_index(-1),
+    )
     .child(nav);
   if let Some(grid) = go_to_grid {
     head = head.child(row().child(col().w(320.0).child(grid)));

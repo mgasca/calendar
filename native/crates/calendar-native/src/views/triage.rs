@@ -43,7 +43,7 @@ pub fn view(app: &App, t: &Tokens) -> El {
     .key("triage")
     .gap(12.0)
     .w_full()
-    .child(heading("triage-heading", "Overdue tasks", 1, t));
+    .child(heading("triage-heading", "Overdue tasks", 1, t).focusable(true).tab_index(-1));
   if let Some(notice) = &state.notice {
     page = page.child(text(notice).key("triage-notice").role("status").color(t.text));
   }

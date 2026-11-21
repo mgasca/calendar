@@ -18,6 +18,7 @@ pr:
   - https://github.com/mgasca/calendar/pull/1026
   - https://github.com/mgasca/calendar/pull/1047
   - https://github.com/mgasca/calendar/pull/1048
+  - https://github.com/mgasca/calendar/pull/1050
 adrs: ["0003", "0004", "0021", "0027", "0053", "0055", "0058", "0061", "0063", "0064", "0066", "0067", "0068"]
 ---
 
@@ -343,6 +344,13 @@ No further ADR is expected. A slice that finds a decision ADR-0067 or ADR-0068 d
 * **First scroll** (`views::week::scroll_on_open`, from `poll`): each week's grid opens at 07:00, or an hour before now in the current week (`initialScrollMinute`), once per week shown: on every visit to Week (leaving it forgets the week, as the web app's remounted grid does) and every change of week, never on a clock tick or a refetch. The scroll is sent again on the next poll, because a grid rebuilt for a week already loaded keeps its old offset in the first.
 * **Tests:** `tests/week.rs` runs the scenes with the app's own `poll` and `on_key` (7 tests: the arrows and `t`, modifiers and an open dialog with focus on a dialog button, the delete confirmation, the grid keeping the arrows, "+2 more" opening its day, the scroll this week, another week and after a refetch, and a return to the same week scrolling afresh). Each fails with its piece removed: no window `on_key`, no dialog or confirmation check, no scroll, no chips, no reset off Week (the last two from the pre-merge review of #1050). Unit tests port `gridLayout.test.ts`'s layout and scroll cases. New golden `week-busy` (tree and PNG, reviewed); `week`'s changed for the "Week grid" region.
 
+### Notice timeout and focus return (#1035), delivered
+
+* **The notice** (`focus.rs`, `views/dialogs.rs`), as the web app's `Notification.tsx`: one at a time, a new one replacing it, inside a "Notifications" region with the message as its `status`. It goes after six seconds on the window's clock (`NOTICE_SECONDS`, the web app's `NOTIFICATION_MS`), paused while the pointer is over it or focus is inside it, and the full six seconds start again after (WCAG 2.2.1). "Dismiss notification" closes it; "Show day" dismisses it, then goes there. It never takes focus, and dismissing it with focus inside hands focus back to where it came from. The web app's 200 ms fade isn't drawn: the notice goes at once.
+* **Focus after a dialog:** Rune's modal already hands focus back to the control focused when it opened, so Add event, Add task and an item's title got focus back before this slice. This slice adds what the web app does beyond that: after a delete, or when the opener is gone (an item moved off the view, gone after the save's refetch), focus goes to the page's heading (`day-title`, `week-title`, `tasks-title`, `triage-heading`), which takes focus without being a Tab stop, as the web app's `tabindex="-1"`. Inside the event dialog, "Delete event" moves focus to "Keep event", and "Keep event" back to "Delete event". A delete confirmation over a list restores nothing, as in the web app (maintainer's choice on #1035; #1040 tracks it for both apps).
+* **Found while testing:** an event dialog still loading its event couldn't be closed (Close and Escape did nothing), unlike the task dialog and the web app. It closes now.
+* **Tests:** `tests/focus.rs` (9 tests, with the app's own `poll`): six seconds; the pointer pausing and restarting the time; focus inside pausing it and Dismiss handing focus back; never taking focus and a new notice replacing the old; "Show day"; Cancel returning focus to Add event; closing a loading edit returning it to the title; the heading after a delete and for a missing opener; and Keep event. Five fail with their pieces disabled (the timer, the pauses, the hand-back, the heading fallback, the Keep event focus); the Add event and title cases pin what Rune already did, and the title case fails without the loading-dialog fix. New golden `today-notice` (tree and PNG, reviewed); the page headings' trees gained their focus action.
+
 ### Parity with the web app (#1002 to #1007, #1032 to #1035)
 
 | Web app | Rune app | Slice |
@@ -351,12 +359,13 @@ No further ADR is expected. A slice that finds a decision ADR-0067 or ADR-0068 d
 | Week: grid, all-day band, task strips, overdue panel, ← → `t`, "+N more", first scroll | Same; the chip shows "+N" and is named "+N more" | #1004, #1034 |
 | My tasks: views, Load more, rows | Same, virtualised | #1004, #1025 review |
 | Complete / reopen / delete with rollback and confirm | Same | #1005 |
+| Notices: six seconds, pause, Dismiss, focus after dialogs | Same, without the fade | #1006, #1035 |
 | Add / edit events and tasks, 400/409/404, event delete in dialog | Same, with date and time pickers (the typed date field stays) | #1006, #1033 |
 | Triage and bulk actions | Same | #1007 |
 | Sign-in | Session stub until #1008 (S3) | #1008 |
 | Dates and times in the browser's locale | Same: the OS's locale on the desktop, the browser's on the web. Where a locale's CLDR medium date is numeric (de, ja), the week range and band show numbers where `Intl`'s `month: 'short'` shows an abbreviated month | #1032 |
 
-**Known differences** (each now has an issue): no telemetry (#1010), no notice timeout or focus return after dialogs (#1035).
+**Known differences:** no telemetry yet (#1010); the notice has no fade; the Week chip shows "+N" (named "+N more"); and Triage's repeated-time choices carry their offsets, which the web app's don't.
 
 ### Where things live
 

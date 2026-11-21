@@ -12,6 +12,7 @@ pub mod clock;
 pub mod dialogs;
 pub mod fetch;
 pub mod fixtures;
+pub mod focus;
 pub mod format;
 pub mod forms;
 pub mod load;
@@ -111,6 +112,8 @@ pub struct App {
   pub scroll_armed: Option<chrono::NaiveDate>,
   /// The message after a save or delete, with "Show day" when it went on another day.
   pub notice: Option<dialogs::Notice>,
+  /// Where focus returns after a dialog, and the notice's focus (#1035).
+  pub focus: focus::Focus,
   /// Triage's selection and its last result (#1007).
   pub triage: triage::Triage,
   /// Where a text field's edits go when its dialog has already closed.
@@ -166,6 +169,7 @@ impl App {
       scrolled_week: None,
       scroll_armed: None,
       notice: None,
+      focus: focus::Focus::default(),
       triage: triage::Triage::default(),
       scratch: rune::TextEdit::default(),
       go_to_date: rune::TextEdit::default(),
@@ -280,13 +284,14 @@ fn setup(app: &mut App, waker: rune::Waker) {
 
 /// Applies finished API calls, then refreshes stale data or a new day; checks the clock every 15 s (the web app's
 /// `useToday`), so a page rolls over at the user's midnight.
-fn poll(app: &mut App, _now: f64, tx: &mut rune::Tx) -> bool {
+fn poll(app: &mut App, now: f64, tx: &mut rune::Tx) -> bool {
   let effects = app.effects.clone();
   let changed = effects.drain(app);
   dialogs::follow_start(app);
   dialogs::clear_edited_errors(app);
   load::ensure(app);
   views::week::scroll_on_open(app, tx);
+  focus::poll(app, now, tx);
   tx.wake_after(std::time::Duration::from_secs(15));
   changed
 }
@@ -314,6 +319,16 @@ pub fn spec() -> AppSpec<App> {
       ("today", |app| {
         scene(app, Route::Today);
         app.day.finish(Ok(fixtures::day()));
+      }),
+      ("today-notice", |app| {
+        // The notice after adding a task on another day, with "Show day" and "Dismiss" (#1035).
+        scene(app, Route::Today);
+        app.day.finish(Ok(fixtures::day()));
+        app.notice = Some(dialogs::Notice {
+          text: "\u{201c}Book flights\u{201d} added for Mon 23 Nov.".to_owned(),
+          show_day: chrono::NaiveDate::from_ymd_opt(2026, 11, 23),
+          ..dialogs::Notice::default()
+        });
       }),
       ("today-empty", |app| {
         scene(app, Route::Today);

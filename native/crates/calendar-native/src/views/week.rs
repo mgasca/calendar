@@ -36,7 +36,11 @@ pub fn view(app: &App, week_start: NaiveDate, t: &Tokens) -> El {
     .key("week-header")
     .gap(6.0)
     .child(meta(format::relative_week(week_start, this_week), t).key("week-eyebrow"))
-    .child(heading("week-title", app.locale.week_range(week_start), 1, t))
+    .child(
+      heading("week-title", app.locale.week_range(week_start), 1, t)
+        .focusable(true)
+        .tab_index(-1),
+    )
     .child(nav);
   if let Some(week) = app
     .week
@@ -142,9 +146,12 @@ fn grid(app: &App, week: &WeekAgendaResponse, today: NaiveDate, t: &Tokens) -> E
               .key(format!("band-{}", event.id))
               .role("button")
               .focusable(true)
-              .on_press({
+              .on_press_tx({
                 let id = event.id;
-                move |app: &mut App| crate::dialogs::edit_event(app, id)
+                move |app: &mut App, tx: &mut Tx| {
+                  crate::focus::opened(app, tx);
+                  crate::dialogs::edit_event(app, id);
+                }
               })
               .label(format!("{}, {}", event.title, app.locale.day_range(event.start_date, last)))
               .w(0.0)
@@ -222,7 +229,10 @@ fn grid(app: &App, week: &WeekAgendaResponse, today: NaiveDate, t: &Tokens) -> E
               .role("button")
               .label(&task.title)
               .focusable(true)
-              .on_press(move |app: &mut App| crate::dialogs::edit_task(app, id))
+              .on_press_tx(move |app: &mut App, tx: &mut Tx| {
+                crate::focus::opened(app, tx);
+                crate::dialogs::edit_task(app, id);
+              })
               .child(
                 text(&task.title)
                   .font(type_::LABEL)
@@ -265,7 +275,10 @@ fn grid(app: &App, week: &WeekAgendaResponse, today: NaiveDate, t: &Tokens) -> E
         .role("button")
         .label(format!("{}, {times}", event.title))
         .focusable(true)
-        .on_press(move |app: &mut App| crate::dialogs::edit_event(app, id));
+        .on_press_tx(move |app: &mut App, tx: &mut Tx| {
+          crate::focus::opened(app, tx);
+          crate::dialogs::edit_event(app, id);
+        });
       hours = hours.child(if place.hidden {
         // Counted in a "+N more" chip instead of drawn; still read and reachable, as the web app keeps it in the
         // day's list with `visually-hidden`.

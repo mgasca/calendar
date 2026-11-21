@@ -51,8 +51,11 @@ pub fn view(app: &App, view: TaskView, t: &Tokens) -> El {
       row()
         .gap(12.0)
         .items_center()
-        .child(heading("tasks-title", "My tasks", 1, t))
-        .child(button("add-task", "Add task", t).on_press(|app: &mut App| crate::dialogs::add_task(app, None))),
+        .child(heading("tasks-title", "My tasks", 1, t).focusable(true).tab_index(-1))
+        .child(button("add-task", "Add task", t).on_press_tx(|app: &mut App, tx: &mut rune::Tx| {
+          crate::focus::opened(app, tx);
+          crate::dialogs::add_task(app, None);
+        })),
     )
     .child(tabs)
     .child(heading("tasks-view-title", view.label(), 2, t));

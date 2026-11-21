@@ -21,7 +21,7 @@ Practices for the second UI in `native/`, built with [Rune](https://github.com/a
 
 ## Headless tests
 
-- **Element tree** (`tests/shell.rs`): `rune::Runtime::new(state, view, size, Env { system_dark, scale })`, then `rt.find(key)`, `rt.pointer_down/up`, `rt.frame(dt)` (virtual clock), and assertions on `rt.state`. No window and no GPU.
+- **Element tree** (`tests/shell.rs`): `rune::Runtime::new(state, view, size, Env { system_dark, scale })`, then `rt.find(key)`, `rt.pointer_down/up`, `rt.frame(dt)` (virtual clock), and assertions on `rt.state`. No window and no GPU. `Runtime::new` takes the view only: a test of the window's keys or of `poll` sets `rt.poll` and `rt.on_key` from `spec()` (`tests/week.rs`).
 - **Goldens** (`tests/goldens.rs`): the app's own binary runs with `--scene <name> --theme light|dark --tree` and `--snap`. Accessibility trees gate on every platform. PNGs gate on Linux only, with a small per-pixel tolerance, because GPU output differs between platforms. A failure leaves the actual output in `native/target/goldens/`, which CI uploads.
 - **Re-blessing**: run `BLESS=1 just native test`, look at every changed golden (open the PNGs), and say in the PR why it changed. Never re-bless to make an unexplained failure go away.
 - Add a named scene to `spec()` for each state a golden needs, rather than driving input in a golden test.

@@ -49,7 +49,8 @@ RUN touch crates/calendar-domain/src/lib.rs crates/calendar-infrastructure/src/l
 # image as `build`, and rustup installs the toolchain native/rust-toolchain.toml pins (Rune's, with the wasm32 target).
 # The steps are `just native build-web`'s, without just: cargo, then the wasm-bindgen CLI at the version of the
 # wasm-bindgen crate in native/Cargo.lock. Cold, compiling that CLI took about 2 minutes and the dependencies about
-# 3 (#1037), so each is a layer of its own that the Buildx cache keeps until its own input moves.
+# 3 (#1037), so each is a layer of its own that the Buildx cache keeps until its own input moves. The wasm and its glue
+# also get .gz copies, which calendar-api serves to a client that accepts gzip (#1044).
 FROM rust:1.100.0-slim-trixie@sha256:e9d95b74296f7126a83ae3d041aeaba1ff4c478f13abc5cc034fcf7c131c3d4a AS native-toolchain
 WORKDIR /src/native
 COPY native/rust-toolchain.toml ./
@@ -93,7 +94,8 @@ RUN touch crates/calendar-client/src/lib.rs crates/calendar-native/src/lib.rs \
     && cp web/index.html /out/ \
     && rune=$(cargo metadata --locked --format-version 1 --filter-platform wasm32-unknown-unknown \
       | sed -n 's/.*"manifest_path":"\([^"]*\/crates\/rune\/\)Cargo\.toml".*/\1/p') \
-    && cp "${rune}assets/web/"Inter-*.ttf /out/
+    && cp "${rune}assets/web/"Inter-*.ttf /out/ \
+    && gzip -9 --keep /out/app_bg.wasm /out/app.js
 
 # glibc, CA certificates (PostgreSQL and Google TLS verify against the system store) and a non-root user; no shell.
 FROM gcr.io/distroless/cc-debian13:nonroot@sha256:cb87acc574abe719b6e5c547384defa2f7b1f24af9605d3f618cf852495d8be2 AS runtime

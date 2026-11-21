@@ -57,3 +57,8 @@ smoke:
         esac
         echo "$route: $code ${type:-}"
     done
+    # The wasm goes out gzip-encoded to a client that accepts it, from the .gz copy the image holds (#1044).
+    plain=$(curl -sS -o /dev/null -w '%{size_download}' "$base/native/app_bg.wasm")
+    gzipped=$(curl -sS -o /dev/null -D "$tmp/headers" -w '%{size_download}' -H 'Accept-Encoding: gzip' "$base/native/app_bg.wasm")
+    grep -qi '^content-encoding: *gzip' "$tmp/headers" && [ "$gzipped" -lt "$plain" ] || exit 1
+    echo "/native/app_bg.wasm: $plain bytes, $gzipped gzip"

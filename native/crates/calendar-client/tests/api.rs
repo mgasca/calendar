@@ -276,3 +276,62 @@ async fn a_changed_or_missing_task_is_an_error_with_its_status() {
   );
   assert_eq!(api.delete_task(id).await.unwrap_err().status, Some(404));
 }
+
+#[tokio::test]
+async fn a_refused_save_keeps_the_body_for_the_form() {
+  let server = MockServer::start().await;
+  let problem = r#"{"title":"One or more validation errors occurred.","status":400,"errors":{"Title":["Title is required."]}}"#;
+  Mock::given(method("POST"))
+    .and(path("/api/tasks"))
+    .respond_with(ResponseTemplate::new(400).set_body_raw(problem, "application/problem+json"))
+    .mount(&server)
+    .await;
+  let error = api(&server)
+    .create_task(calendar_client::generated::CreateTaskRequest::new(String::new()))
+    .await
+    .unwrap_err();
+  assert_eq!(error.error.status, Some(400));
+  assert_eq!(error.body, problem);
+}
+
+#[tokio::test]
+async fn an_event_is_created_read_updated_and_deleted_by_id() {
+  let server = MockServer::start().await;
+  let id = uuid::Uuid::nil();
+  let event = json!({ "id": id, "title": "Planning", "allDay": false, "start": "2026-11-23T08:00:00Z",
+    "end": "2026-11-23T09:00:00Z", "timeZone": "Europe/Madrid", "startDate": null, "endDate": null,
+    "location": null, "notes": null, "version": 1 });
+  Mock::given(method("POST"))
+    .and(path("/api/events"))
+    .respond_with(ResponseTemplate::new(201).set_body_json(event.clone()))
+    .expect(1)
+    .mount(&server)
+    .await;
+  Mock::given(method("GET"))
+    .and(path(format!("/api/events/{id}")))
+    .respond_with(ResponseTemplate::new(200).set_body_json(event.clone()))
+    .expect(1)
+    .mount(&server)
+    .await;
+  Mock::given(method("PUT"))
+    .and(path(format!("/api/events/{id}")))
+    .respond_with(ResponseTemplate::new(200).set_body_json(event))
+    .expect(1)
+    .mount(&server)
+    .await;
+  Mock::given(method("DELETE"))
+    .and(path(format!("/api/events/{id}")))
+    .respond_with(ResponseTemplate::new(204))
+    .expect(1)
+    .mount(&server)
+    .await;
+  let api = api(&server);
+  let created = api
+    .create_event(calendar_client::generated::CreateEventRequest::new("Planning".into()))
+    .await
+    .unwrap();
+  let read = api.event(created.id).await.unwrap();
+  let update = calendar_client::generated::UpdateEventRequest::new(read.title.clone(), read.version.into());
+  api.update_event(id, update).await.unwrap();
+  api.delete_event(id).await.unwrap();
+}

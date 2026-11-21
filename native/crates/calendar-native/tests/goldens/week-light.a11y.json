@@ -295,6 +295,8 @@
                   "children": [
                     {
                       "actions": [
+                        "click",
+                        "focus",
                         "scroll-into-view"
                       ],
                       "bounds": [
@@ -305,7 +307,7 @@
                       ],
                       "key": "band-10000000-0000-4000-8000-000000000001",
                       "name": "Conference, 19–21 Nov",
-                      "role": "list-item"
+                      "role": "button"
                     }
                   ],
                   "key": "all-day-band",
@@ -619,6 +621,8 @@
                             },
                             {
                               "actions": [
+                                "click",
+                                "focus",
                                 "scroll-into-view"
                               ],
                               "bounds": [
@@ -627,8 +631,9 @@
                                 81.9,
                                 15.0
                               ],
+                              "key": "week-task-2026-11-16-00000000-0000-4000-8000-000000000006-title",
                               "name": "Write the brief",
-                              "role": "label"
+                              "role": "button"
                             },
                             {
                               "actions": [
@@ -738,6 +743,8 @@
                             },
                             {
                               "actions": [
+                                "click",
+                                "focus",
                                 "scroll-into-view"
                               ],
                               "bounds": [
@@ -746,8 +753,9 @@
                                 74.7,
                                 15.0
                               ],
+                              "key": "week-task-2026-11-20-00000000-0000-4000-8000-000000000002-title",
                               "name": "Call the bank",
-                              "role": "label"
+                              "role": "button"
                             }
                           ],
                           "key": "week-task-2026-11-20-00000000-0000-4000-8000-000000000002",
@@ -1156,6 +1164,8 @@
                           "children": [
                             {
                               "actions": [
+                                "click",
+                                "focus",
                                 "scroll-into-view"
                               ],
                               "bounds": [
@@ -1164,37 +1174,9 @@
                                 121.7,
                                 38.0
                               ],
-                              "children": [
-                                {
-                                  "actions": [
-                                    "scroll-into-view"
-                                  ],
-                                  "bounds": [
-                                    74.0,
-                                    641.5,
-                                    113.7,
-                                    15.0
-                                  ],
-                                  "name": "Planning",
-                                  "role": "label"
-                                },
-                                {
-                                  "actions": [
-                                    "scroll-into-view"
-                                  ],
-                                  "bounds": [
-                                    74.0,
-                                    656.5,
-                                    113.7,
-                                    15.0
-                                  ],
-                                  "name": "09:00 – 10:00",
-                                  "role": "label"
-                                }
-                              ],
                               "key": "week-event-2026-11-16-30000000-0000-4000-8000-000000000001",
                               "name": "Planning, 09:00 – 10:00",
-                              "role": "list-item"
+                              "role": "button"
                             }
                           ],
                           "key": "grid-2026-11-16",
@@ -1226,6 +1208,8 @@
                           "children": [
                             {
                               "actions": [
+                                "click",
+                                "focus",
                                 "scroll-into-view"
                               ],
                               "bounds": [
@@ -1234,37 +1218,9 @@
                                 121.7,
                                 28.0
                               ],
-                              "children": [
-                                {
-                                  "actions": [
-                                    "scroll-into-view"
-                                  ],
-                                  "bounds": [
-                                    325.4,
-                                    921.5,
-                                    113.7,
-                                    15.0
-                                  ],
-                                  "name": "Dentist",
-                                  "role": "label"
-                                },
-                                {
-                                  "actions": [
-                                    "scroll-into-view"
-                                  ],
-                                  "bounds": [
-                                    325.4,
-                                    936.5,
-                                    113.7,
-                                    15.0
-                                  ],
-                                  "name": "16:00 – 16:45",
-                                  "role": "label"
-                                }
-                              ],
                               "key": "week-event-2026-11-18-30000000-0000-4000-8000-000000000002",
                               "name": "Dentist, 16:00 – 16:45",
-                              "role": "list-item"
+                              "role": "button"
                             }
                           ],
                           "key": "grid-2026-11-18",
@@ -1296,6 +1252,8 @@
                           "children": [
                             {
                               "actions": [
+                                "click",
+                                "focus",
                                 "scroll-into-view"
                               ],
                               "bounds": [
@@ -1304,37 +1262,9 @@
                                 121.7,
                                 58.0
                               ],
-                              "children": [
-                                {
-                                  "actions": [
-                                    "scroll-into-view"
-                                  ],
-                                  "bounds": [
-                                    576.9,
-                                    661.5,
-                                    113.7,
-                                    15.0
-                                  ],
-                                  "name": "Design review",
-                                  "role": "label"
-                                },
-                                {
-                                  "actions": [
-                                    "scroll-into-view"
-                                  ],
-                                  "bounds": [
-                                    576.9,
-                                    676.5,
-                                    113.7,
-                                    15.0
-                                  ],
-                                  "name": "09:30 – 11:00",
-                                  "role": "label"
-                                }
-                              ],
                               "key": "week-event-2026-11-20-30000000-0000-4000-8000-000000000003",
                               "name": "Design review, 09:30 – 11:00",
-                              "role": "list-item"
+                              "role": "button"
                             },
                             {
                               "actions": [
@@ -1457,6 +1387,8 @@
                     },
                     {
                       "actions": [
+                        "click",
+                        "focus",
                         "scroll-into-view"
                       ],
                       "bounds": [
@@ -1465,8 +1397,9 @@
                         815.2,
                         16.3
                       ],
+                      "key": "overdue-00000000-0000-4000-8000-000000000005-title",
                       "name": "File expenses",
-                      "role": "label"
+                      "role": "button"
                     },
                     {
                       "actions": [

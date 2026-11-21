@@ -70,6 +70,14 @@ impl ApiError {
   }
 }
 
+/// A failed save: the error, and the response body for the form to read field errors from.
+#[derive(Clone, Debug, PartialEq, Eq, thiserror::Error)]
+#[error("{error}")]
+pub struct SaveError {
+  pub error: ApiError,
+  pub body: String,
+}
+
 /// The first field error, else `detail`, else `title`, of a problem-details body; `None` for any other body.
 #[must_use]
 pub fn problem_message(body: &str) -> Option<String> {
@@ -148,6 +156,64 @@ impl Api {
     Err(error)
   }
 
+  /// [`Api::run`] for a form's save: the error keeps the response body, whose 400 `errors` map onto the form's fields.
+  pub async fn run_save<T, E: std::fmt::Debug>(
+    &self,
+    path: &str,
+    call: impl Future<Output = Result<T, generated::ApiOpError<E>>>,
+  ) -> Result<T, SaveError> {
+    let mut body = String::new();
+    let result = self
+      .run(path, async {
+        call.await.inspect_err(|error| {
+          if let generated::ApiOpError::Api(api) = error {
+            body.clone_from(&api.body);
+          }
+        })
+      })
+      .await;
+    result.map_err(|error| SaveError { error, body })
+  }
+
+  /// `POST /api/events`.
+  pub async fn create_event(&self, request: generated::CreateEventRequest) -> Result<generated::EventResponse, SaveError> {
+    self.run_save("/api/events", self.client.create_event(request)).await
+  }
+
+  /// `GET /api/events/{id}`: the event as stored, with its version, for the edit form.
+  pub async fn event(&self, id: uuid::Uuid) -> Result<generated::EventResponse, ApiError> {
+    self.run("/api/events/{id}", self.client.get_event(id.to_string())).await
+  }
+
+  /// `PUT /api/events/{id}`.
+  pub async fn update_event(&self, id: uuid::Uuid, request: generated::UpdateEventRequest) -> Result<generated::EventResponse, SaveError> {
+    self
+      .run_save("/api/events/{id}", self.client.update_event(id.to_string(), request))
+      .await
+  }
+
+  /// `DELETE /api/events/{id}`.
+  pub async fn delete_event(&self, id: uuid::Uuid) -> Result<(), ApiError> {
+    self.run("/api/events/{id}", self.client.delete_event(id.to_string())).await
+  }
+
+  /// `POST /api/tasks`.
+  pub async fn create_task(&self, request: generated::CreateTaskRequest) -> Result<TaskResponse, SaveError> {
+    self.run_save("/api/tasks", self.client.create_task(request)).await
+  }
+
+  /// `GET /api/tasks/{id}`: the task as stored, with its version, for the edit form.
+  pub async fn task(&self, id: uuid::Uuid) -> Result<TaskResponse, ApiError> {
+    self.run("/api/tasks/{id}", self.client.get_task(id.to_string())).await
+  }
+
+  /// `PUT /api/tasks/{id}`.
+  pub async fn update_task(&self, id: uuid::Uuid, request: generated::UpdateTaskRequest) -> Result<TaskResponse, SaveError> {
+    self
+      .run_save("/api/tasks/{id}", self.client.update_task(id.to_string(), request))
+      .await
+  }
+
   /// `GET /api/auth/me`: the signed-in user. A 401 here means "signed out" and calls no hook.
   pub async fn me(&self) -> Result<AuthUserResponse, ApiError> {
     self.run("/api/auth/me", self.client.get_current_user()).await
@@ -220,6 +286,16 @@ pub fn as_count<T: serde::Serialize>(value: &T) -> i64 {
     Ok(serde_json::Value::Number(n)) => n.as_i64().unwrap_or(0),
     Ok(serde_json::Value::String(s)) => s.parse().unwrap_or(0),
     _ => 0,
+  }
+}
+
+/// An event's `version` as read goes back unchanged in an update.
+impl From<generated::EventResponseVersion> for generated::UpdateEventRequestVersion {
+  fn from(version: generated::EventResponseVersion) -> Self {
+    match version {
+      generated::EventResponseVersion::UnsignedInteger(n) => Self::UnsignedInteger(n),
+      generated::EventResponseVersion::String(s) => Self::String(s),
+    }
   }
 }
 

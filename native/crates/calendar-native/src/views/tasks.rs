@@ -45,7 +45,13 @@ pub fn view(app: &App, view: TaskView, t: &Tokens) -> El {
     .key("tasks-page")
     .gap(14.0)
     .w_full()
-    .child(heading("tasks-title", "My tasks", 1, t))
+    .child(
+      row()
+        .gap(12.0)
+        .items_center()
+        .child(heading("tasks-title", "My tasks", 1, t))
+        .child(button("add-task", "Add task", t).on_press(|app: &mut App| crate::dialogs::add_task(app, None))),
+    )
     .child(tabs)
     .child(heading("tasks-view-title", view.label(), 2, t));
   if let Some(state) = remote_state(
@@ -63,10 +69,34 @@ pub fn view(app: &App, view: TaskView, t: &Tokens) -> El {
   if list.items.is_empty() {
     return page.child(text("No tasks in this view.").key("tasks-empty").color(t.empty_text));
   }
-  let rows = list.items.iter().map(|task| task_row(row_for(task, view, app), app, t));
-  page = rows.fold(page.child(col().key("task-list").role("list").gap(6.0).w_full()), |page, r| {
-    page.child(r)
-  });
+  // Only the rows near the viewport are built (pre-merge review of #1025): "Load more" can load many pages, and every
+  // commit (a keystroke in a dialog over the list, say) would otherwise rebuild them all. Rows find their task by
+  // index at build time and act on it by id.
+  let tokens = *t;
+  let list_el = col()
+    .key("task-list")
+    .role("list")
+    .label(view.label())
+    .w_full()
+    .growth(rune::GrowthSpec::default())
+    .virtual_rows(
+      list.items.len(),
+      64.0,
+      |app: &App, i| {
+        app
+          .tasks
+          .data
+          .as_ref()
+          .and_then(|l| l.items.get(i))
+          .map_or_else(|| format!("row-{i}"), |task| task.id.to_string())
+          .into()
+      },
+      move |app: &App, i| match app.tasks.data.as_ref().and_then(|l| l.items.get(i)) {
+        Some(task) => col().py(3.0).child(task_row(row_for(task, view, app), app, &tokens)),
+        None => col(),
+      },
+    );
+  page = page.child(list_el);
   if list.next_cursor.is_some() {
     let label = if app.tasks.loading { "Loading…" } else { "Load more" };
     page = page.child(button("tasks-more", label, t).on_press(load::more_tasks));

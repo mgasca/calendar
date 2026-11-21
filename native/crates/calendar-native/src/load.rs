@@ -190,3 +190,11 @@ pub fn refetch(app: &mut App) {
   app.loads.at = None;
   ensure(app);
 }
+
+/// Enter in the Day page's "Go to date" field: opens that day when the field holds a date the app accepts.
+pub fn go_to_date(app: &mut App) {
+  if let Some(date) = crate::format::parse_iso_date(app.go_to_date.text.trim()) {
+    app.go_to_date.clear();
+    go(app, Route::Day(date));
+  }
+}

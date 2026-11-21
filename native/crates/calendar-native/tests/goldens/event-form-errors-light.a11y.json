@@ -1,0 +1,463 @@
+{
+  "bounds": [
+    0.0,
+    0.0,
+    960.0,
+    720.0
+  ],
+  "children": [
+    {
+      "bounds": [
+        0.0,
+        0.0,
+        960.0,
+        720.0
+      ],
+      "children": [
+        {
+          "actions": [
+            "scroll-up",
+            "scroll-down",
+            "set-scroll-offset"
+          ],
+          "bounds": [
+            220.0,
+            93.0,
+            520.0,
+            534.0
+          ],
+          "children": [
+            {
+              "actions": [
+                "scroll-into-view"
+              ],
+              "bounds": [
+                240.0,
+                113.0,
+                480.0,
+                20.0
+              ],
+              "key": "event-form-heading",
+              "level": 2,
+              "name": "Add event",
+              "role": "heading"
+            },
+            {
+              "actions": [
+                "scroll-into-view"
+              ],
+              "bounds": [
+                240.0,
+                145.0,
+                480.0,
+                15.0
+              ],
+              "name": "Title",
+              "role": "label"
+            },
+            {
+              "actions": [
+                "click",
+                "focus",
+                "set-value",
+                "replace-selected-text",
+                "set-text-selection",
+                "scroll-into-view"
+              ],
+              "bounds": [
+                240.0,
+                164.0,
+                480.0,
+                28.3
+              ],
+              "key": "event-title",
+              "name": "Title",
+              "role": "text-input",
+              "states": [
+                "focused"
+              ],
+              "value": ""
+            },
+            {
+              "actions": [
+                "scroll-into-view"
+              ],
+              "bounds": [
+                240.0,
+                196.3,
+                480.0,
+                16.3
+              ],
+              "key": "event-title-error",
+              "name": "Enter a title.",
+              "role": "alert",
+              "states": [
+                "live-assertive"
+              ]
+            },
+            {
+              "actions": [
+                "click",
+                "focus",
+                "scroll-into-view"
+              ],
+              "bounds": [
+                240.0,
+                224.6,
+                16.0,
+                16.0
+              ],
+              "key": "event-all-day",
+              "name": "All day",
+              "role": "check-box",
+              "states": [
+                "unchecked"
+              ]
+            },
+            {
+              "actions": [
+                "scroll-into-view"
+              ],
+              "bounds": [
+                264.0,
+                224.5,
+                41.3,
+                16.3
+              ],
+              "name": "All day",
+              "role": "label"
+            },
+            {
+              "actions": [
+                "scroll-into-view"
+              ],
+              "bounds": [
+                240.0,
+                252.8,
+                236.0,
+                15.0
+              ],
+              "name": "Start date",
+              "role": "label"
+            },
+            {
+              "actions": [
+                "click",
+                "focus",
+                "set-value",
+                "replace-selected-text",
+                "set-text-selection",
+                "scroll-into-view"
+              ],
+              "bounds": [
+                240.0,
+                271.8,
+                236.0,
+                28.3
+              ],
+              "key": "event-start-date",
+              "name": "Start date",
+              "role": "text-input",
+              "selection": [
+                1,
+                10,
+                1,
+                10
+              ],
+              "value": "2026-11-20"
+            },
+            {
+              "actions": [
+                "scroll-into-view"
+              ],
+              "bounds": [
+                484.0,
+                252.8,
+                236.0,
+                15.0
+              ],
+              "name": "Start time",
+              "role": "label"
+            },
+            {
+              "actions": [
+                "click",
+                "focus",
+                "set-value",
+                "replace-selected-text",
+                "set-text-selection",
+                "scroll-into-view"
+              ],
+              "bounds": [
+                484.0,
+                271.8,
+                236.0,
+                28.3
+              ],
+              "key": "event-start-time",
+              "name": "Start time",
+              "role": "text-input",
+              "selection": [
+                1,
+                5,
+                1,
+                5
+              ],
+              "value": "10:00"
+            },
+            {
+              "actions": [
+                "scroll-into-view"
+              ],
+              "bounds": [
+                240.0,
+                312.0,
+                236.0,
+                15.0
+              ],
+              "name": "End date",
+              "role": "label"
+            },
+            {
+              "actions": [
+                "click",
+                "focus",
+                "set-value",
+                "replace-selected-text",
+                "set-text-selection",
+                "scroll-into-view"
+              ],
+              "bounds": [
+                240.0,
+                331.0,
+                236.0,
+                28.3
+              ],
+              "key": "event-end-date",
+              "name": "End date",
+              "role": "text-input",
+              "selection": [
+                1,
+                10,
+                1,
+                10
+              ],
+              "value": "2026-11-20"
+            },
+            {
+              "actions": [
+                "scroll-into-view"
+              ],
+              "bounds": [
+                240.0,
+                363.3,
+                236.0,
+                16.3
+              ],
+              "key": "event-end-date-error",
+              "name": "End must be after the start.",
+              "role": "alert",
+              "states": [
+                "live-assertive"
+              ]
+            },
+            {
+              "actions": [
+                "scroll-into-view"
+              ],
+              "bounds": [
+                484.0,
+                312.0,
+                236.0,
+                15.0
+              ],
+              "name": "End time",
+              "role": "label"
+            },
+            {
+              "actions": [
+                "click",
+                "focus",
+                "set-value",
+                "replace-selected-text",
+                "set-text-selection",
+                "scroll-into-view"
+              ],
+              "bounds": [
+                484.0,
+                331.0,
+                236.0,
+                28.3
+              ],
+              "key": "event-end-time",
+              "name": "End time",
+              "role": "text-input",
+              "selection": [
+                1,
+                5,
+                1,
+                5
+              ],
+              "value": "08:00"
+            },
+            {
+              "actions": [
+                "scroll-into-view"
+              ],
+              "bounds": [
+                240.0,
+                391.5,
+                480.0,
+                16.3
+              ],
+              "key": "event-zone",
+              "name": "Time zone: Europe/Madrid",
+              "role": "label"
+            },
+            {
+              "actions": [
+                "scroll-into-view"
+              ],
+              "bounds": [
+                240.0,
+                419.8,
+                480.0,
+                15.0
+              ],
+              "name": "Location",
+              "role": "label"
+            },
+            {
+              "actions": [
+                "click",
+                "focus",
+                "set-value",
+                "replace-selected-text",
+                "set-text-selection",
+                "scroll-into-view"
+              ],
+              "bounds": [
+                240.0,
+                438.8,
+                480.0,
+                28.3
+              ],
+              "key": "event-location",
+              "name": "Location",
+              "role": "text-input",
+              "value": ""
+            },
+            {
+              "actions": [
+                "scroll-into-view"
+              ],
+              "bounds": [
+                240.0,
+                479.0,
+                480.0,
+                15.0
+              ],
+              "name": "Notes",
+              "role": "label"
+            },
+            {
+              "actions": [
+                "click",
+                "focus",
+                "set-value",
+                "replace-selected-text",
+                "set-text-selection",
+                "scroll-into-view"
+              ],
+              "bounds": [
+                240.0,
+                498.0,
+                480.0,
+                72.0
+              ],
+              "key": "event-notes",
+              "name": "Notes",
+              "role": "multiline-text-input",
+              "value": ""
+            },
+            {
+              "actions": [
+                "scroll-into-view"
+              ],
+              "bounds": [
+                240.0,
+                582.0,
+                480.0,
+                25.0
+              ],
+              "children": [
+                {
+                  "actions": [
+                    "click",
+                    "focus",
+                    "scroll-into-view"
+                  ],
+                  "bounds": [
+                    240.0,
+                    582.0,
+                    83.2,
+                    25.0
+                  ],
+                  "key": "event-save",
+                  "name": "Save event",
+                  "role": "button"
+                },
+                {
+                  "actions": [
+                    "click",
+                    "focus",
+                    "scroll-into-view"
+                  ],
+                  "bounds": [
+                    331.2,
+                    582.0,
+                    59.8,
+                    25.0
+                  ],
+                  "key": "event-cancel",
+                  "name": "Cancel",
+                  "role": "button"
+                }
+              ],
+              "key": "event-actions",
+              "role": "group"
+            }
+          ],
+          "key": "event-form",
+          "name": "Add event",
+          "role": "dialog",
+          "scroll": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "states": [
+            "modal",
+            "clips"
+          ]
+        }
+      ],
+      "key": "form-backdrop",
+      "role": "group"
+    },
+    {
+      "bounds": [
+        0.0,
+        0.0,
+        1.0,
+        1.0
+      ],
+      "role": "status",
+      "states": [
+        "live-polite"
+      ]
+    }
+  ],
+  "name": "Calendar",
+  "role": "window"
+}

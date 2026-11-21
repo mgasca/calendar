@@ -1,6 +1,7 @@
 //! The pages, and the pieces they share: headings, buttons, task rows, and the loading, error and empty states.
 
 pub mod day;
+pub mod dialogs;
 pub mod tasks;
 pub mod week;
 
@@ -118,10 +119,18 @@ pub fn task_row(task: TaskRow<'_>, app: &App, t: &Tokens) -> El {
     .radius(4.0)
     .border(1.5, t.border_strong)
     .fill(if task.done { t.accent } else { t.surface_raised });
-  let mut title = text(task.title).color(if task.done { t.completed_text } else { t.text });
+  let mut label = text(task.title).color(if task.done { t.completed_text } else { t.text });
   if task.done {
-    title = title.strike(0, task.title.len(), None);
+    label = label.strike(0, task.title.len(), None);
   }
+  let open = task.id;
+  let title = el()
+    .key(format!("{}-title", task.key))
+    .role("button")
+    .label(task.title)
+    .focusable(true)
+    .on_press(move |app: &mut App| crate::dialogs::edit_task(app, open))
+    .child(label);
   let mut body = col().gap(2.0).grow(1.0).child(title);
   if let Some(meta_text) = task.meta {
     body = body.child(meta(meta_text, t));
@@ -273,4 +282,15 @@ pub fn remote_state<T>(
     ),
     (Some(_), None) => None,
   }
+}
+
+/// An item's title that opens it to edit (the web app's `item-open` button, `aria-haspopup="dialog"`).
+pub fn title_button(key: String, title: &str, color: rune::Color, open: impl Fn(&mut App) + 'static) -> El {
+  el()
+    .key(key)
+    .role("button")
+    .label(title)
+    .focusable(true)
+    .on_press(open)
+    .child(text(title).color(color))
 }

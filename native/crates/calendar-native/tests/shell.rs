@@ -168,3 +168,86 @@ fn my_tasks_rows_say_delete_and_show_their_notes() {
     "\"1 task\", no title"
   );
 }
+
+// Add and edit dialogs (#1006).
+
+#[test]
+fn add_event_opens_the_form_and_saving_it_empty_says_what_is_missing() {
+  let mut rt = runtime("today", false);
+  press(&mut rt, "add-event");
+  shows(
+    &rt,
+    &[
+      "event-form",
+      "event-title",
+      "event-start-date",
+      "event-start-time",
+      "event-end-time",
+      "event-zone",
+      "event-save",
+      "event-cancel",
+    ],
+  );
+  assert!(rt.find("event-delete").is_none(), "no Delete while adding");
+  press(&mut rt, "event-save");
+  shows(&rt, &["event-title-error"]);
+  assert_eq!(rt.state.effects.pending(), 0);
+  press(&mut rt, "event-cancel");
+  assert!(rt.state.dialog.is_none());
+}
+
+#[test]
+fn a_typed_title_is_saved() {
+  let mut rt = runtime("today", false);
+  press(&mut rt, "add-task");
+  press(&mut rt, "task-title");
+  rt.paste("Buy stamps");
+  rt.frame(1.0 / 60.0);
+  match &rt.state.dialog {
+    Some(calendar_native::dialogs::Dialog::Task(d)) => assert_eq!(d.title.text, "Buy stamps"),
+    other => panic!("{other:?}"),
+  }
+  press(&mut rt, "task-save");
+  assert_eq!(rt.state.effects.pending(), 1, "the create request is queued");
+}
+
+#[test]
+fn an_event_title_opens_it_to_edit() {
+  let mut rt = runtime("today", false);
+  press(&mut rt, "event-20000000-0000-4000-8000-000000000002-title");
+  shows(&rt, &["event-form", "form-loading"]);
+  assert_eq!(rt.state.effects.pending(), 1, "it is fetched first");
+}
+
+#[test]
+fn the_all_day_box_hides_the_times() {
+  let mut rt = runtime("add-event", false);
+  press(&mut rt, "event-all-day");
+  assert!(rt.find("event-start-time").is_none() && rt.find("event-zone").is_none());
+  shows(&rt, &["event-start-date", "event-end-date"]);
+}
+
+#[test]
+fn a_long_task_list_builds_only_the_rows_near_the_viewport() {
+  // Pre-merge review of #1025: "Load more" can load many pages; each commit must not rebuild every row.
+  let mut rt = runtime("tasks", false);
+  rt.update(|app, _| {
+    let template = calendar_native::fixtures::tasks().items[0].clone();
+    let items = (0..500u128)
+      .map(|n| {
+        let mut task = template.clone();
+        task.id = uuid::Uuid::from_u128(n + 1);
+        task.title = format!("Task {n}");
+        task
+      })
+      .collect();
+    app.tasks.data = Some(calendar_native::views::tasks::TaskList { items, next_cursor: None });
+  });
+  rt.frame(1.0 / 60.0);
+  rt.settle_all();
+  rt.frame(1.0 / 60.0);
+  let first = format!("task-{}", uuid::Uuid::from_u128(1));
+  let last = format!("task-{}", uuid::Uuid::from_u128(500));
+  assert!(rt.find(&first).is_some(), "the first rows are built");
+  assert!(rt.find(&last).is_none(), "the 500th row is not built until it scrolls near");
+}

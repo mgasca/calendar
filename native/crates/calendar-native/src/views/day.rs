@@ -58,6 +58,30 @@ fn header(app: &App, date: NaiveDate, today: NaiveDate, t: &Tokens) -> El {
     button("day-week", &format!("Week of {}", format::format_day_month(monday)), t)
       .on_press(move |app: &mut App| load::go(app, Route::Week(monday))),
   );
+  // The web app's Day page: Add task and Add event beside the date, and a field to go to a date.
+  let adds = row()
+    .key("day-adds")
+    .gap(6.0)
+    .items_center()
+    .child(button("add-task", "Add task", t).on_press(move |app: &mut App| crate::dialogs::add_task(app, Some(date))))
+    .child(button("add-event", "Add event", t).on_press(move |app: &mut App| crate::dialogs::add_event(app, date)))
+    .child(
+      rune::text_input(&app.go_to_date, rune::tok::type_::BODY)
+        .key("go-to-date")
+        .label("Go to date (YYYY-MM-DD)")
+        .single_line()
+        .placeholder("YYYY-MM-DD", t.text_muted)
+        .w(140.0)
+        .px(8.0)
+        .py(5.0)
+        .radius(6.0)
+        .border(1.0, t.border_strong)
+        .fill(t.surface_sunken)
+        .color(t.text)
+        .on_edit(|app: &mut App| &mut app.go_to_date)
+        .on_submit(|app: &mut App, _tx: &mut rune::Tx| load::go_to_date(app)),
+    );
+  nav = nav.child(adds);
   let mut head = col()
     .key("day-header")
     .gap(6.0)
@@ -122,7 +146,11 @@ fn agenda_body(app: &App, agenda: &DayAgendaResponse, date: NaiveDate, is_today:
       .all_day_events
       .iter()
       .map(|event| {
-        let mut details = col().gap(2.0).grow(1.0).child(text(&event.title).color(t.text));
+        let id = event.id;
+        let open = super::title_button(format!("all-day-{id}-title"), &event.title, t.text, move |app: &mut App| {
+          crate::dialogs::edit_event(app, id);
+        });
+        let mut details = col().gap(2.0).grow(1.0).child(open);
         let length = format::days_between(event.start_date, event.end_date);
         if length > 1 {
           details = details.child(meta(
@@ -157,7 +185,12 @@ fn agenda_body(app: &App, agenda: &DayAgendaResponse, date: NaiveDate, is_today:
         let mut details = col()
           .gap(2.0)
           .grow(1.0)
-          .child(text(&event.title).color(t.text))
+          .child({
+            let id = event.id;
+            super::title_button(format!("event-{id}-title"), &event.title, t.text, move |app: &mut App| {
+              crate::dialogs::edit_event(app, id);
+            })
+          })
           .child(meta(times, t));
         if let Some(Some(location)) = &event.location {
           details = details.child(meta(location, t));

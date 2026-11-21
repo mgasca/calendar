@@ -143,7 +143,7 @@
             16.0,
             68.3,
             928.0,
-            365.3
+            341.3
           ],
           "children": [
             {
@@ -153,13 +153,29 @@
               "bounds": [
                 16.0,
                 68.3,
-                928.0,
+                96.2,
                 27.5
               ],
               "key": "tasks-title",
               "level": 1,
               "name": "My tasks",
               "role": "heading"
+            },
+            {
+              "actions": [
+                "click",
+                "focus",
+                "scroll-into-view"
+              ],
+              "bounds": [
+                124.2,
+                69.5,
+                70.6,
+                25.0
+              ],
+              "key": "add-task",
+              "name": "Add task",
+              "role": "button"
             },
             {
               "actions": [
@@ -276,294 +292,355 @@
                 16.0,
                 182.8,
                 928.0,
-                0.0
+                187.8
+              ],
+              "children": [
+                {
+                  "actions": [
+                    "scroll-into-view"
+                  ],
+                  "bounds": [
+                    16.0,
+                    182.8,
+                    928.0,
+                    56.5
+                  ],
+                  "children": [
+                    {
+                      "actions": [
+                        "scroll-into-view"
+                      ],
+                      "bounds": [
+                        16.0,
+                        185.8,
+                        928.0,
+                        50.5
+                      ],
+                      "children": [
+                        {
+                          "actions": [
+                            "click",
+                            "focus",
+                            "scroll-into-view"
+                          ],
+                          "bounds": [
+                            28.0,
+                            203.0,
+                            16.0,
+                            16.0
+                          ],
+                          "key": "task-00000000-0000-4000-8000-000000000101-check",
+                          "name": "Mark Book flights as done",
+                          "role": "check-box",
+                          "states": [
+                            "unchecked"
+                          ]
+                        },
+                        {
+                          "actions": [
+                            "click",
+                            "focus",
+                            "scroll-into-view"
+                          ],
+                          "bounds": [
+                            52.0,
+                            193.8,
+                            725.7,
+                            16.3
+                          ],
+                          "key": "task-00000000-0000-4000-8000-000000000101-title",
+                          "name": "Book flights",
+                          "role": "button"
+                        },
+                        {
+                          "actions": [
+                            "scroll-into-view"
+                          ],
+                          "bounds": [
+                            52.0,
+                            212.0,
+                            725.7,
+                            16.3
+                          ],
+                          "name": "2026-11-20",
+                          "role": "label"
+                        },
+                        {
+                          "actions": [
+                            "scroll-into-view"
+                          ],
+                          "bounds": [
+                            785.7,
+                            201.5,
+                            81.5,
+                            19.0
+                          ],
+                          "name": "high priority",
+                          "role": "label"
+                        },
+                        {
+                          "actions": [
+                            "click",
+                            "focus",
+                            "scroll-into-view"
+                          ],
+                          "bounds": [
+                            875.2,
+                            198.5,
+                            56.8,
+                            25.0
+                          ],
+                          "key": "task-00000000-0000-4000-8000-000000000101-delete",
+                          "name": "Delete",
+                          "role": "button"
+                        }
+                      ],
+                      "key": "task-00000000-0000-4000-8000-000000000101",
+                      "name": "Mark Book flights as done Book flights 2026-11-20 high priority Delete",
+                      "role": "list-item"
+                    }
+                  ],
+                  "key": "00000000-0000-4000-8000-000000000101",
+                  "position": 1,
+                  "role": "group"
+                },
+                {
+                  "actions": [
+                    "scroll-into-view"
+                  ],
+                  "bounds": [
+                    16.0,
+                    239.3,
+                    928.0,
+                    56.5
+                  ],
+                  "children": [
+                    {
+                      "actions": [
+                        "scroll-into-view"
+                      ],
+                      "bounds": [
+                        16.0,
+                        242.3,
+                        928.0,
+                        50.5
+                      ],
+                      "children": [
+                        {
+                          "actions": [
+                            "click",
+                            "focus",
+                            "scroll-into-view"
+                          ],
+                          "bounds": [
+                            28.0,
+                            259.5,
+                            16.0,
+                            16.0
+                          ],
+                          "key": "task-00000000-0000-4000-8000-000000000102-check",
+                          "name": "Mark Call the bank as done",
+                          "role": "check-box",
+                          "states": [
+                            "unchecked"
+                          ]
+                        },
+                        {
+                          "actions": [
+                            "click",
+                            "focus",
+                            "scroll-into-view"
+                          ],
+                          "bounds": [
+                            52.0,
+                            250.3,
+                            704.6,
+                            16.3
+                          ],
+                          "key": "task-00000000-0000-4000-8000-000000000102-title",
+                          "name": "Call the bank",
+                          "role": "button"
+                        },
+                        {
+                          "actions": [
+                            "scroll-into-view"
+                          ],
+                          "bounds": [
+                            52.0,
+                            268.5,
+                            704.6,
+                            16.3
+                          ],
+                          "name": "20/11/2026, 09:00:00 · Past due",
+                          "role": "label"
+                        },
+                        {
+                          "actions": [
+                            "scroll-into-view"
+                          ],
+                          "bounds": [
+                            764.6,
+                            258.0,
+                            102.7,
+                            19.0
+                          ],
+                          "name": "medium priority",
+                          "role": "label"
+                        },
+                        {
+                          "actions": [
+                            "click",
+                            "focus",
+                            "scroll-into-view"
+                          ],
+                          "bounds": [
+                            875.2,
+                            255.0,
+                            56.8,
+                            25.0
+                          ],
+                          "key": "task-00000000-0000-4000-8000-000000000102-delete",
+                          "name": "Delete",
+                          "role": "button"
+                        }
+                      ],
+                      "key": "task-00000000-0000-4000-8000-000000000102",
+                      "name": "Mark Call the bank as done Call the bank 20/11/2026, 09:00:00 · Past due medium priority Delete",
+                      "role": "list-item"
+                    }
+                  ],
+                  "key": "00000000-0000-4000-8000-000000000102",
+                  "position": 2,
+                  "role": "group"
+                },
+                {
+                  "actions": [
+                    "scroll-into-view"
+                  ],
+                  "bounds": [
+                    16.0,
+                    295.8,
+                    928.0,
+                    74.8
+                  ],
+                  "children": [
+                    {
+                      "actions": [
+                        "scroll-into-view"
+                      ],
+                      "bounds": [
+                        16.0,
+                        298.8,
+                        928.0,
+                        68.8
+                      ],
+                      "children": [
+                        {
+                          "actions": [
+                            "click",
+                            "focus",
+                            "scroll-into-view"
+                          ],
+                          "bounds": [
+                            28.0,
+                            325.1,
+                            16.0,
+                            16.0
+                          ],
+                          "key": "task-00000000-0000-4000-8000-000000000103-check",
+                          "name": "Mark Plan the offsite as done",
+                          "role": "check-box",
+                          "states": [
+                            "unchecked"
+                          ]
+                        },
+                        {
+                          "actions": [
+                            "click",
+                            "focus",
+                            "scroll-into-view"
+                          ],
+                          "bounds": [
+                            52.0,
+                            306.8,
+                            704.6,
+                            16.3
+                          ],
+                          "key": "task-00000000-0000-4000-8000-000000000103-title",
+                          "name": "Plan the offsite",
+                          "role": "button"
+                        },
+                        {
+                          "actions": [
+                            "scroll-into-view"
+                          ],
+                          "bounds": [
+                            52.0,
+                            325.0,
+                            704.6,
+                            16.3
+                          ],
+                          "name": "2026-12-01",
+                          "role": "label"
+                        },
+                        {
+                          "actions": [
+                            "scroll-into-view"
+                          ],
+                          "bounds": [
+                            52.0,
+                            343.3,
+                            704.6,
+                            16.3
+                          ],
+                          "key": "task-00000000-0000-4000-8000-000000000103-notes",
+                          "name": "Ask for budget first",
+                          "role": "label"
+                        },
+                        {
+                          "actions": [
+                            "scroll-into-view"
+                          ],
+                          "bounds": [
+                            764.6,
+                            323.6,
+                            102.7,
+                            19.0
+                          ],
+                          "name": "medium priority",
+                          "role": "label"
+                        },
+                        {
+                          "actions": [
+                            "click",
+                            "focus",
+                            "scroll-into-view"
+                          ],
+                          "bounds": [
+                            875.2,
+                            320.6,
+                            56.8,
+                            25.0
+                          ],
+                          "key": "task-00000000-0000-4000-8000-000000000103-delete",
+                          "name": "Delete",
+                          "role": "button"
+                        }
+                      ],
+                      "key": "task-00000000-0000-4000-8000-000000000103",
+                      "name": "Mark Plan the offsite as done Plan the offsite 2026-12-01 Ask for budget first medium priority Delete",
+                      "role": "list-item"
+                    }
+                  ],
+                  "key": "00000000-0000-4000-8000-000000000103",
+                  "position": 3,
+                  "role": "group"
+                }
               ],
               "key": "task-list",
-              "role": "list"
-            },
-            {
-              "actions": [
-                "scroll-into-view"
-              ],
-              "bounds": [
-                16.0,
-                196.8,
-                928.0,
-                50.5
-              ],
-              "children": [
-                {
-                  "actions": [
-                    "click",
-                    "focus",
-                    "scroll-into-view"
-                  ],
-                  "bounds": [
-                    28.0,
-                    214.0,
-                    16.0,
-                    16.0
-                  ],
-                  "key": "task-00000000-0000-4000-8000-000000000101-check",
-                  "name": "Mark Book flights as done",
-                  "role": "check-box",
-                  "states": [
-                    "unchecked"
-                  ]
-                },
-                {
-                  "actions": [
-                    "scroll-into-view"
-                  ],
-                  "bounds": [
-                    52.0,
-                    204.8,
-                    725.7,
-                    16.3
-                  ],
-                  "name": "Book flights",
-                  "role": "label"
-                },
-                {
-                  "actions": [
-                    "scroll-into-view"
-                  ],
-                  "bounds": [
-                    52.0,
-                    223.0,
-                    725.7,
-                    16.3
-                  ],
-                  "name": "2026-11-20",
-                  "role": "label"
-                },
-                {
-                  "actions": [
-                    "scroll-into-view"
-                  ],
-                  "bounds": [
-                    785.7,
-                    212.5,
-                    81.5,
-                    19.0
-                  ],
-                  "name": "high priority",
-                  "role": "label"
-                },
-                {
-                  "actions": [
-                    "click",
-                    "focus",
-                    "scroll-into-view"
-                  ],
-                  "bounds": [
-                    875.2,
-                    209.5,
-                    56.8,
-                    25.0
-                  ],
-                  "key": "task-00000000-0000-4000-8000-000000000101-delete",
-                  "name": "Delete",
-                  "role": "button"
-                }
-              ],
-              "key": "task-00000000-0000-4000-8000-000000000101",
-              "name": "Mark Book flights as done Book flights 2026-11-20 high priority Delete",
-              "role": "list-item"
-            },
-            {
-              "actions": [
-                "scroll-into-view"
-              ],
-              "bounds": [
-                16.0,
-                261.3,
-                928.0,
-                50.5
-              ],
-              "children": [
-                {
-                  "actions": [
-                    "click",
-                    "focus",
-                    "scroll-into-view"
-                  ],
-                  "bounds": [
-                    28.0,
-                    278.5,
-                    16.0,
-                    16.0
-                  ],
-                  "key": "task-00000000-0000-4000-8000-000000000102-check",
-                  "name": "Mark Call the bank as done",
-                  "role": "check-box",
-                  "states": [
-                    "unchecked"
-                  ]
-                },
-                {
-                  "actions": [
-                    "scroll-into-view"
-                  ],
-                  "bounds": [
-                    52.0,
-                    269.3,
-                    704.6,
-                    16.3
-                  ],
-                  "name": "Call the bank",
-                  "role": "label"
-                },
-                {
-                  "actions": [
-                    "scroll-into-view"
-                  ],
-                  "bounds": [
-                    52.0,
-                    287.5,
-                    704.6,
-                    16.3
-                  ],
-                  "name": "20/11/2026, 09:00:00 · Past due",
-                  "role": "label"
-                },
-                {
-                  "actions": [
-                    "scroll-into-view"
-                  ],
-                  "bounds": [
-                    764.6,
-                    277.0,
-                    102.7,
-                    19.0
-                  ],
-                  "name": "medium priority",
-                  "role": "label"
-                },
-                {
-                  "actions": [
-                    "click",
-                    "focus",
-                    "scroll-into-view"
-                  ],
-                  "bounds": [
-                    875.2,
-                    274.0,
-                    56.8,
-                    25.0
-                  ],
-                  "key": "task-00000000-0000-4000-8000-000000000102-delete",
-                  "name": "Delete",
-                  "role": "button"
-                }
-              ],
-              "key": "task-00000000-0000-4000-8000-000000000102",
-              "name": "Mark Call the bank as done Call the bank 20/11/2026, 09:00:00 · Past due medium priority Delete",
-              "role": "list-item"
-            },
-            {
-              "actions": [
-                "scroll-into-view"
-              ],
-              "bounds": [
-                16.0,
-                325.8,
-                928.0,
-                68.8
-              ],
-              "children": [
-                {
-                  "actions": [
-                    "click",
-                    "focus",
-                    "scroll-into-view"
-                  ],
-                  "bounds": [
-                    28.0,
-                    352.1,
-                    16.0,
-                    16.0
-                  ],
-                  "key": "task-00000000-0000-4000-8000-000000000103-check",
-                  "name": "Mark Plan the offsite as done",
-                  "role": "check-box",
-                  "states": [
-                    "unchecked"
-                  ]
-                },
-                {
-                  "actions": [
-                    "scroll-into-view"
-                  ],
-                  "bounds": [
-                    52.0,
-                    333.8,
-                    704.6,
-                    16.3
-                  ],
-                  "name": "Plan the offsite",
-                  "role": "label"
-                },
-                {
-                  "actions": [
-                    "scroll-into-view"
-                  ],
-                  "bounds": [
-                    52.0,
-                    352.0,
-                    704.6,
-                    16.3
-                  ],
-                  "name": "2026-12-01",
-                  "role": "label"
-                },
-                {
-                  "actions": [
-                    "scroll-into-view"
-                  ],
-                  "bounds": [
-                    52.0,
-                    370.3,
-                    704.6,
-                    16.3
-                  ],
-                  "key": "task-00000000-0000-4000-8000-000000000103-notes",
-                  "name": "Ask for budget first",
-                  "role": "label"
-                },
-                {
-                  "actions": [
-                    "scroll-into-view"
-                  ],
-                  "bounds": [
-                    764.6,
-                    350.6,
-                    102.7,
-                    19.0
-                  ],
-                  "name": "medium priority",
-                  "role": "label"
-                },
-                {
-                  "actions": [
-                    "click",
-                    "focus",
-                    "scroll-into-view"
-                  ],
-                  "bounds": [
-                    875.2,
-                    347.6,
-                    56.8,
-                    25.0
-                  ],
-                  "key": "task-00000000-0000-4000-8000-000000000103-delete",
-                  "name": "Delete",
-                  "role": "button"
-                }
-              ],
-              "key": "task-00000000-0000-4000-8000-000000000103",
-              "name": "Mark Plan the offsite as done Plan the offsite 2026-12-01 Ask for budget first medium priority Delete",
-              "role": "list-item"
+              "name": "Upcoming",
+              "role": "list",
+              "setSize": 3
             },
             {
               "actions": [
@@ -573,7 +650,7 @@
               ],
               "bounds": [
                 16.0,
-                408.5,
+                384.5,
                 928.0,
                 25.0
               ],

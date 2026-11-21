@@ -8,9 +8,11 @@
 
 pub mod actions;
 pub mod clock;
+pub mod dialogs;
 pub mod fetch;
 pub mod fixtures;
 pub mod format;
+pub mod forms;
 pub mod load;
 pub mod route;
 pub mod session;
@@ -90,6 +92,14 @@ pub struct App {
   pub tasks: Remote<TaskList>,
   /// Toggles in flight, the last toggle error and the delete confirmation (#1005).
   pub actions: actions::Actions,
+  /// The add or edit dialog on screen (#1006).
+  pub dialog: Option<dialogs::Dialog>,
+  /// The message after a save or delete, with "Show day" when it went on another day.
+  pub notice: Option<dialogs::Notice>,
+  /// Where a text field's edits go when its dialog has already closed.
+  pub scratch: rune::TextEdit,
+  /// The Day page's "Go to date" field.
+  pub go_to_date: rune::TextEdit,
 }
 
 impl std::fmt::Debug for App {
@@ -132,6 +142,10 @@ impl App {
       week: Remote::default(),
       tasks: Remote::default(),
       actions: actions::Actions::default(),
+      dialog: None,
+      notice: None,
+      scratch: rune::TextEdit::default(),
+      go_to_date: rune::TextEdit::default(),
     }
   }
 
@@ -218,9 +232,15 @@ fn shell(app: &App, user: &str, cx: &mut Cx<App>) -> El {
   if let Some(alert) = views::toggle_error(app, &t) {
     body = body.child(alert);
   }
+  if let Some(notice) = views::dialogs::notice(app, &t) {
+    body = body.child(notice);
+  }
   let mut root = col().w_full().h_full().fill(t.bg).child(header).child(body.child(page));
   if let Some(dialog) = views::delete_dialog(app, &t) {
     root = root.child(dialog);
+  }
+  if let Some(form) = views::dialogs::view(app, &t) {
+    root = root.child(form);
   }
   root
 }
@@ -235,6 +255,8 @@ fn setup(app: &mut App, waker: rune::Waker) {
 fn poll(app: &mut App, _now: f64, tx: &mut rune::Tx) -> bool {
   let effects = app.effects.clone();
   let changed = effects.drain(app);
+  dialogs::follow_start(app);
+  dialogs::clear_edited_errors(app);
   load::ensure(app);
   tx.wake_after(std::time::Duration::from_secs(15));
   changed
@@ -299,6 +321,40 @@ pub fn spec() -> AppSpec<App> {
         app.day.finish(Ok(fixtures::day()));
         let id = "00000000-0000-4000-8000-000000000003".parse().expect("a fixture id");
         actions::ask_delete(app, id, Some("Book flights"));
+      }),
+      ("add-event", |app| {
+        scene(app, Route::Today);
+        app.day.finish(Ok(fixtures::day()));
+        let today = app.clock.today();
+        dialogs::add_event(app, today);
+      }),
+      ("event-form-errors", |app| {
+        scene(app, Route::Today);
+        app.day.finish(Ok(fixtures::day()));
+        let today = app.clock.today();
+        dialogs::add_event(app, today);
+        if let Some(d) = dialogs::event(app) {
+          d.end_time.replace_text("08:00");
+        }
+        dialogs::save_event(app);
+      }),
+      ("edit-task", |app| {
+        scene(app, Route::Tasks(TaskView::Upcoming));
+        app.tasks.finish(Ok(TaskList {
+          items: fixtures::tasks().items,
+          next_cursor: None,
+        }));
+        let task = fixtures::tasks().items[2].clone();
+        let draft = forms::task_draft(&task, app.clock.zone);
+        dialogs::add_task(app, None);
+        if let Some(d) = dialogs::task(app) {
+          d.id = Some(task.id);
+          d.title.replace_text(&draft.title);
+          d.deadline = draft.deadline;
+          d.due_date.replace_text(&draft.due_date);
+          d.priority.clone_from(&draft.priority);
+          d.notes.replace_text(&draft.notes);
+        }
       }),
     ],
     ..AppSpec::new("Calendar", (960.0, 720.0), App::default, view)

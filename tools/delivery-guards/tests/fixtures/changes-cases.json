@@ -229,19 +229,19 @@
   ],
   [
     "native/crates/calendar-native/src/lib.rs",
-    "native"
+    "image native"
   ],
   [
     "native/Cargo.lock",
-    "native"
+    "image native"
   ],
   [
     "native/mod.just",
-    "tooling native"
+    "tooling image native"
   ],
   [
     "native/AGENTS.md",
-    "native"
+    "image native"
   ],
   [
     "nativeish/x.rs",

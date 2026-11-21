@@ -30,7 +30,7 @@ Practices for the second UI in `native/`, built with [Rune](https://github.com/a
 
 Rune has no releases: `native/Cargo.toml` pins an exact `rev` of its `dev` branch, which is never rewritten. A bump is its own PR, and it does all of these together:
 
-1. Move the `rev` of `rune` **and of every `[patch.crates-io]` entry** to the new revision. Then compare the patch list with Rune's root `Cargo.toml` at that revision, because Cargo does not inherit a dependency's patches.
+1. Move the `rev` of `rune`, of `rune-i18n` (`crates/calendar-native/Cargo.toml`, for the system languages, #1032) **and of every `[patch.crates-io]` entry** to the new revision. Then compare the patch list with Rune's root `Cargo.toml` at that revision, because Cargo does not inherit a dependency's patches.
 2. Move `rust-toolchain.toml` to the channel Rune's `rust-toolchain.toml` names at that revision.
 3. Set the `wasm-bindgen` pin in `native/Cargo.toml` to the version in Rune's `Cargo.lock` at the new revision. Run `cargo update -p rune -p wasm-bindgen` (never edit `Cargo.lock` by hand). Then run `just native run lint test build-web`, after installing the matching `wasm-bindgen-cli` if the pin moved.
 4. Read Rune's `CHANGELOG.md` between the two revisions for changes that move output without a code change. Re-bless goldens only with the diff reviewed.
@@ -51,7 +51,7 @@ Rune has no releases: `native/Cargo.toml` pins an exact `rev` of its `dev` branc
 - API calls go through `effects.run(future, |app, output| …)`: a background tokio thread on the desktop, `spawn_local` in the browser. The result is applied before the next frame. Don't block in a handler.
 - **Flow tests** (`tests/flow.rs`) use `Effects::manual()`, a `wiremock` API and a fixed `Clock` that `set_now` moves. `settle` runs every queued request and applies the results.
 - **Scenes** (`spec()`) are offline: `App::offline()` is signed in, frozen at `fixtures::now()` in Europe/Madrid, and fed from `fixtures.rs`, which is shaped like the contract and checked by a decode test. Add a scene for each state a golden needs.
-- Formatting is English, in the web app's en-GB patterns (`format.rs`), with times in the user's IANA zone through `chrono-tz`.
+- Dates and times are formatted in the user's locale by `locale.rs` (ICU4X), with the web app's `Intl` options per call and times in the user's IANA zone through `chrono-tz`; the phrases around them (`format.rs`) are English, as the web app's are. `App::locale` is `en-GB` in scenes and tests (`fixtures::locale`), so goldens don't depend on the machine's language.
 
 ## Dialogs and forms
 

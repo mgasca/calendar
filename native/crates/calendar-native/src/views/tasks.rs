@@ -110,7 +110,7 @@ fn row_for<'a>(task: &'a TaskResponse, view: TaskView, app: &App) -> TaskRow<'a>
   let zone = app.clock.zone;
   let mut due = match (task.due_date.flatten(), task.due_at.flatten()) {
     (Some(date), _) => date.to_string(),
-    (None, Some(at)) => format::format_date_time(at, zone),
+    (None, Some(at)) => app.locale.date_time(at, zone),
     (None, None) => "No deadline".to_owned(),
   };
   if view == TaskView::Upcoming && format::is_past_due(task.is_completed, task.due_at.flatten(), app.clock.now()) {

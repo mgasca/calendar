@@ -1,10 +1,11 @@
 //! Dates, times and the phrases the views show, ported from the web app's `features/agenda/dayTime.ts`,
 //! `EventTimes.tsx` and `features/week/weekDates.ts`, with its tests' expectations.
 //!
-//! Formatting is English with the web app's patterns as `en-GB` renders them ("Monday 26 October",
-//! "26 Oct – 1 Nov 2026", "09:30"); the web app follows the browser's locale, which Rust has no `Intl` for.
+//! The phrases are English, as the web app's are; the dates and times inside them come from [`Locale`], which
+//! formats them in the user's locale as the web app's `Intl` calls do (#1032).
 
-use chrono::{DateTime, Datelike, Days, NaiveDate, Utc, Weekday};
+use crate::locale::Locale;
+use chrono::{DateTime, Datelike, Days, NaiveDate, Utc};
 use chrono_tz::Tz;
 
 /// The years the app accepts, as the API's agenda endpoints do.
@@ -76,34 +77,6 @@ pub fn relative_week(week_start: NaiveDate, this_week: NaiveDate) -> String {
   }
 }
 
-/// "Monday 26 October", with the year when `with_year`.
-#[must_use]
-pub fn format_date(date: NaiveDate, with_year: bool) -> String {
-  if with_year {
-    date.format("%A %-d %B %Y").to_string()
-  } else {
-    date.format("%A %-d %B").to_string()
-  }
-}
-
-/// "26 Oct".
-#[must_use]
-pub fn format_day_month(date: NaiveDate) -> String {
-  date.format("%-d %b").to_string()
-}
-
-/// The wall-clock time of `instant` in `zone`, 24-hour: "09:30".
-#[must_use]
-pub fn format_time(instant: DateTime<Utc>, zone: Tz) -> String {
-  instant.with_timezone(&zone).format("%H:%M").to_string()
-}
-
-/// A due instant as the task list shows it: "20/11/2026, 09:30:00" (en-GB numeric date and time).
-#[must_use]
-pub fn format_date_time(instant: DateTime<Utc>, zone: Tz) -> String {
-  instant.with_timezone(&zone).format("%d/%m/%Y, %H:%M:%S").to_string()
-}
-
 /// The Monday of the ISO week holding `date`.
 #[must_use]
 pub fn iso_week_start(date: NaiveDate) -> NaiveDate {
@@ -114,34 +87,6 @@ pub fn iso_week_start(date: NaiveDate) -> NaiveDate {
 #[must_use]
 pub fn week_dates(week_start: NaiveDate) -> [NaiveDate; 7] {
   std::array::from_fn(|i| week_start + Days::new(i as u64))
-}
-
-/// The week as a range: "26 Oct – 1 Nov 2026", "2–8 Nov 2026" within a month, "28 Dec 2026 – 3 Jan 2027" across years.
-#[must_use]
-pub fn format_week_range(week_start: NaiveDate) -> String {
-  let end = week_start + Days::new(6);
-  if week_start.year() != end.year() {
-    format!("{} – {}", week_start.format("%-d %b %Y"), end.format("%-d %b %Y"))
-  } else if week_start.month() != end.month() {
-    format!("{} – {}", week_start.format("%-d %b"), end.format("%-d %b %Y"))
-  } else {
-    format!("{}–{}", week_start.format("%-d"), end.format("%-d %b %Y"))
-  }
-}
-
-/// A day column heading: short weekday and day of the month, ("Mon", "26").
-#[must_use]
-pub fn day_heading(date: NaiveDate) -> (String, String) {
-  let weekday = match date.weekday() {
-    Weekday::Mon => "Mon",
-    Weekday::Tue => "Tue",
-    Weekday::Wed => "Wed",
-    Weekday::Thu => "Thu",
-    Weekday::Fri => "Fri",
-    Weekday::Sat => "Sat",
-    Weekday::Sun => "Sun",
-  };
-  (weekday.to_owned(), date.day().to_string())
 }
 
 /// Where a timed event stands relative to now on today's agenda.
@@ -193,6 +138,7 @@ pub fn event_statuses(events: &[(DateTime<Utc>, DateTime<Utc>)], now: DateTime<U
 /// The time text of a timed event within one day; `relative` when the day shown is today.
 #[must_use]
 pub fn event_times(
+  locale: &Locale,
   start: DateTime<Utc>,
   end: DateTime<Utc>,
   starts_before_day: bool,
@@ -207,9 +153,9 @@ pub fn event_times(
   };
   match (starts_before_day, ends_after_day) {
     (true, true) => format!("Continues from {before} to {after}"),
-    (true, false) => format!("Continues from {before}, until {}", format_time(end, zone)),
-    (false, true) => format!("From {}, continues {after}", format_time(start, zone)),
-    (false, false) => format!("{} – {}", format_time(start, zone), format_time(end, zone)),
+    (true, false) => format!("Continues from {before}, until {}", locale.time(end, zone)),
+    (false, true) => format!("From {}, continues {after}", locale.time(start, zone)),
+    (false, false) => format!("{} – {}", locale.time(start, zone), locale.time(end, zone)),
   }
 }
 
@@ -297,17 +243,6 @@ mod tests {
   }
 
   #[test]
-  fn dates_read_as_en_gb() {
-    assert_eq!(format_date(d("2026-10-26"), false), "Monday 26 October");
-    assert_eq!(format_date(d("2027-01-04"), true), "Monday 4 January 2027");
-    assert_eq!(format_day_month(d("2026-10-26")), "26 Oct");
-    assert_eq!(format_week_range(d("2026-10-26")), "26 Oct – 1 Nov 2026");
-    assert_eq!(format_week_range(d("2026-11-02")), "2–8 Nov 2026");
-    assert_eq!(format_week_range(d("2026-12-28")), "28 Dec 2026 – 3 Jan 2027");
-    assert_eq!(day_heading(d("2026-10-26")), ("Mon".to_owned(), "26".to_owned()));
-  }
-
-  #[test]
   fn weeks_start_on_monday() {
     assert_eq!(iso_week_start(d("2026-11-01")), d("2026-10-26"));
     assert_eq!(iso_week_start(d("2026-10-26")), d("2026-10-26"));
@@ -317,21 +252,20 @@ mod tests {
   #[test]
   fn times_are_in_the_users_zone() {
     let madrid = chrono_tz::Europe::Madrid;
-    assert_eq!(format_time(t("2026-10-26T08:30:00Z"), madrid), "09:30");
     assert_eq!(local_date(t("2026-10-26T23:30:00Z"), madrid), d("2026-10-27"));
-    assert_eq!(format_date_time(t("2026-10-26T08:30:00Z"), madrid), "26/10/2026, 09:30:00");
   }
 
   #[test]
   fn event_times_say_how_an_event_crosses_the_day() {
     let (s, e, z) = (t("2026-10-26T08:00:00Z"), t("2026-10-26T09:00:00Z"), chrono_tz::UTC);
-    assert_eq!(event_times(s, e, false, false, true, z), "08:00 – 09:00");
-    assert_eq!(event_times(s, e, true, true, true, z), "Continues from yesterday to tomorrow");
+    let gb = &Locale::parse("en-GB").unwrap();
+    assert_eq!(event_times(gb, s, e, false, false, true, z), "08:00 – 09:00");
+    assert_eq!(event_times(gb, s, e, true, true, true, z), "Continues from yesterday to tomorrow");
     assert_eq!(
-      event_times(s, e, true, false, false, z),
+      event_times(gb, s, e, true, false, false, z),
       "Continues from the previous day, until 09:00"
     );
-    assert_eq!(event_times(s, e, false, true, false, z), "From 08:00, continues the next day");
+    assert_eq!(event_times(gb, s, e, false, true, false, z), "From 08:00, continues the next day");
   }
 
   #[test]

@@ -208,3 +208,24 @@ fn choosing_a_day_from_go_to_date_opens_it() {
   assert_eq!(rt.state.route, Route::Day("2026-11-21".parse().unwrap()));
   assert!(rt.state.calendar.is_none());
 }
+
+#[test]
+fn a_closed_form_leaves_no_grid_or_half_typed_time_behind() {
+  // Pre-merge review of #1048: every event form shares its keys, so a grid left open showed in the next one.
+  let mut rt = runtime("add-event");
+  press(&mut rt, "event-start-date-choose");
+  press(&mut rt, "event-end-time-hour");
+  key(&mut rt, Key::Text("1".into()));
+  assert!(rt.state.calendar.is_some() || rt.state.spin_typed.is_some());
+  press(&mut rt, "event-cancel");
+  assert!(rt.state.dialog.is_none());
+  press(&mut rt, "add-event");
+  assert!(
+    rt.find("event-start-date-calendar").is_none(),
+    "the new form opens with its grid closed"
+  );
+  assert!(rt.state.calendar.is_none() && rt.state.spin_typed.is_none());
+  press(&mut rt, "event-end-time-hour");
+  key(&mut rt, Key::Text("4".into()));
+  assert_eq!(event(&rt).end_time.text, "04:00", "a digit starts the hour afresh");
+}

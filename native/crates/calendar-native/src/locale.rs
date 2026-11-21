@@ -92,7 +92,7 @@ impl Locale {
   /// `formatDate`: weekday, day and month, long ("Monday 26 October"), with the year when `with_year`.
   #[must_use]
   pub fn date(&self, date: NaiveDate, with_year: bool) -> String {
-    let d = iso(date);
+    let Some(d) = iso(date) else { return date.to_string() };
     if with_year {
       let f = self.load(&self.cache.date_year, |p| {
         DateTimeFormatter::try_new(p, fieldsets::YMDE::long().with_year_style(YearStyle::Full)).ok()
@@ -110,7 +110,7 @@ impl Locale {
     let f = self.load(&self.cache.day_month, |p| {
       DateTimeFormatter::try_new(p, fieldsets::MD::medium()).ok()
     });
-    f.format(&iso(date)).to_string()
+    iso(date).map_or_else(|| date.to_string(), |d| f.format(&d).to_string())
   }
 
   /// `shortDay`: short weekday, day and short month ("Thu 29 Oct").
@@ -119,7 +119,7 @@ impl Locale {
     let f = self.load(&self.cache.short_day, |p| {
       DateTimeFormatter::try_new(p, fieldsets::MDE::medium()).ok()
     });
-    f.format(&iso(date)).to_string()
+    iso(date).map_or_else(|| date.to_string(), |d| f.format(&d).to_string())
   }
 
   /// `dayHeadingParts`: the short weekday and the day of the month, ("Mon", "26").
@@ -127,7 +127,9 @@ impl Locale {
   pub fn day_heading(&self, date: NaiveDate) -> (String, String) {
     let weekday = self.load(&self.cache.weekday, |p| DateTimeFormatter::try_new(p, fieldsets::E::short()).ok());
     let day = self.load(&self.cache.day, |p| DateTimeFormatter::try_new(p, fieldsets::D::short()).ok());
-    let d = iso(date);
+    let Some(d) = iso(date) else {
+      return (String::new(), date.day().to_string());
+    };
     (weekday.format(&d).to_string(), day.format(&d).to_string())
   }
 
@@ -171,7 +173,7 @@ impl Locale {
   #[must_use]
   pub fn date_time(&self, instant: DateTime<Utc>, zone: Tz) -> String {
     let local = instant.with_timezone(&zone).naive_local();
-    self.numeric_formatter().format(&date_time(local)).to_string()
+    date_time(local).map_or_else(|| iso_text(local), |at| self.numeric_formatter().format(&at).to_string())
   }
 
   /// `formatDateTime(v, { timeZoneName: 'shortOffset' })`: as [`Locale::date_time`] with the UTC offset, for the
@@ -198,7 +200,8 @@ impl Locale {
       )
       .ok()
     });
-    f.format(&date_time(instant.with_timezone(&zone).naive_local())).to_string()
+    let local = instant.with_timezone(&zone).naive_local();
+    date_time(local).map_or_else(|| iso_text(local), |at| f.format(&at).to_string())
   }
 
   /// `formatWeekRange`: Monday to Sunday as one range ("26 Oct – 1 Nov 2026").
@@ -208,7 +211,10 @@ impl Locale {
     let f = self.load(&self.cache.week, |p| {
       DateRangeFormatter::try_new(p, fieldsets::YMD::medium().with_year_style(YearStyle::Full)).ok()
     });
-    f.format(&iso(week_start), &iso(end)).to_string()
+    match (iso(week_start), iso(end)) {
+      (Some(a), Some(b)) => f.format(&a, &b).to_string(),
+      _ => format!("{week_start} – {end}"),
+    }
   }
 
   /// The all-day band's dates (`AllDayBand.tsx`): one day ("19 Nov") or a range of them ("19 – 22 Nov").
@@ -218,18 +224,23 @@ impl Locale {
       return self.day_month(first);
     }
     let f = self.load(&self.cache.band, |p| DateRangeFormatter::try_new(p, fieldsets::MD::medium()).ok());
-    f.format(&iso(first), &iso(last)).to_string()
+    match (iso(first), iso(last)) {
+      (Some(a), Some(b)) => f.format(&a, &b).to_string(),
+      _ => format!("{first} – {last}"),
+    }
   }
 }
 
-fn iso(date: NaiveDate) -> Date<icu_calendar::Iso> {
-  // The app's dates are within 1900..=2200 (`format::in_range`), well inside ICU4X's range.
-  Date::try_new_iso(
-    date.year(),
-    u8::try_from(date.month()).unwrap_or(1),
-    u8::try_from(date.day()).unwrap_or(1),
-  )
-  .expect("a valid calendar date")
+/// `date` for ICU4X, or `None` outside its years (-9999..=9999). The API accepts a task's `dueAt` up to year 9999 in
+/// UTC, so its local date can be in year 10000 east of UTC (pre-merge review of #1047): the callers then show the ISO
+/// text rather than panic.
+fn iso(date: NaiveDate) -> Option<Date<icu_calendar::Iso>> {
+  Date::try_new_iso(date.year(), u8::try_from(date.month()).ok()?, u8::try_from(date.day()).ok()?).ok()
+}
+
+/// The ISO text of a local date and time that ICU4X can't hold.
+fn iso_text(local: NaiveDateTime) -> String {
+  local.format("%Y-%m-%d %H:%M:%S").to_string()
 }
 
 fn time(local: NaiveDateTime) -> Time {
@@ -243,11 +254,11 @@ fn time(local: NaiveDateTime) -> Time {
   .expect("a valid time of day")
 }
 
-fn date_time(local: NaiveDateTime) -> icu_datetime::input::DateTime<icu_calendar::Iso> {
-  icu_datetime::input::DateTime {
-    date: iso(local.date()),
+fn date_time(local: NaiveDateTime) -> Option<icu_datetime::input::DateTime<icu_calendar::Iso>> {
+  Some(icu_datetime::input::DateTime {
+    date: iso(local.date())?,
     time: time(local),
-  }
+  })
 }
 
 #[cfg(test)]
@@ -328,6 +339,16 @@ mod tests {
       "25/10/2026, 02:30:00 GMT+1"
     );
     assert_eq!(gb.medium_date_time(t("2026-10-26T08:30:00Z"), MADRID), "26 Oct 2026, 09:30");
+  }
+
+  #[test]
+  fn an_instant_past_icus_years_shows_as_iso_text() {
+    // The API takes a `dueAt` up to 9999-12-31 in UTC: in Madrid that is already year 10000.
+    let gb = locale("en-GB");
+    assert_eq!(gb.date_time(t("9999-12-31T23:30:00Z"), MADRID), "+10000-01-01 00:30:00");
+    assert_eq!(gb.medium_date_time(t("9999-12-31T23:30:00Z"), MADRID), "+10000-01-01 00:30:00");
+    assert!(gb.date_time_with_offset(t("9999-12-31T23:30:00Z"), MADRID).ends_with("GMT+1"));
+    assert_eq!(gb.date(d("2026-10-26"), true), "Monday, 26 October 2026");
   }
 
   #[test]

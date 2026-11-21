@@ -334,7 +334,7 @@ fn reschedule_view(r: &Reschedule, app: &App, t: &Tokens) -> El {
         .label("Choose occurrence")
         .gap(6.0);
       for (n, at) in (0u8..).zip([earlier, later]) {
-        let label = app.locale.date_time(at, app.clock.zone);
+        let label = app.locale.date_time_with_offset(at, app.clock.zone);
         choices = choices.child(
           button(&format!("reschedule-occurrence-{n}"), &label, t)
             .checked(r.occurrence == Some(n))

@@ -264,6 +264,13 @@ No further ADR is expected. A slice that finds a decision ADR-0067 or ADR-0068 d
 * **Guards:** `codeql-rust-gate` and `codeql-rust-caches` in `tools/delivery-guards` fail when an entry loses its scope, category, gate or caches. The new tests fail against the previous workflow.
 * **Run time:** [record 0032](../benchmarks/0032-codeql-rust-analysis-of-the-native-workspace.md).
 
+### macOS and Windows CI (#1009), delivered
+
+* **Rows:** the `Native` job's matrix has `macOS` (`macos-latest`) and `Windows` (`windows-latest`, MSVC) desktop rows. They run `just native run lint-desktop test` under bash (Git Bash on Windows), alongside `Linux` and `WASM` (criterion 21).
+* **Goldens:** accessibility-tree goldens gate on every OS. PNG snapshots compare on Linux only. On macOS and Windows, `native/target/goldens/` is uploaded as `native-goldens-<row>` on every run, and a snapshot that can't render without a GPU adapter is skipped there (ADR-0067).
+* **When:** like every CI job, on PRs that touch the Native inputs (`native/`, `contracts/`, `tokens.css`) and on every push to `main`, plus a nightly `schedule` (`17 3 * * *`) on `ci.yml` (maintainer on #1009; ADR-0067 amended).
+* **Run time:** push runs on `main` put the rows on the delivery dashboard, which groups samples by job name (`tools/ci-timings` pins that). The four Native rows join the ADR-0045 baseline in one later PR, after 30 dispatch runs on `main` (approved on #1009).
+
 ### Parity with the web app (#1002 to #1007)
 
 | Web app | Rune app | Slice |

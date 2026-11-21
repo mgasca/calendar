@@ -947,6 +947,26 @@ describe('editing from the week (story 0047)', () => {
     ...rest,
   });
 
+  it('ignores the keys while a modal dialog is open', async () => {
+    server.use(
+      http.get('*/api/events/:id', ({ params }) =>
+        HttpResponse.json(stored(String(params.id), 'Design review')),
+      ),
+    );
+    serveBusyWeeks();
+    const { router } = renderApp('/week/2026-10-26');
+    const user = userEvent.setup();
+    await user.click(await screen.findByRole('button', { name: 'Design review' }));
+    const dialog = await screen.findByRole('dialog', { name: 'Edit event' });
+    expect(await within(dialog).findByLabelText('Title')).toHaveValue('Design review');
+
+    within(dialog).getByRole('button', { name: 'Cancel' }).focus();
+    await user.keyboard('{ArrowRight}');
+    await act(() => Promise.resolve());
+    expect(router.state.location.pathname).toBe('/week/2026-10-26');
+    expect(dialog).toBeInTheDocument();
+  });
+
   it('opens a timed event from its title and returns focus to that title on Cancel', async () => {
     server.use(
       http.get('*/api/events/:id', ({ params }) =>

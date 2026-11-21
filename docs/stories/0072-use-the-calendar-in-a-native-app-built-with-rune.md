@@ -271,6 +271,18 @@ No further ADR is expected. A slice that finds a decision ADR-0067 or ADR-0068 d
 * **When:** like every CI job, on PRs that touch the Native inputs (`native/`, `contracts/`, `tokens.css`) and on every push to `main`, plus a nightly `schedule` (`17 3 * * *`) on `ci.yml` (maintainer on #1009; ADR-0067 amended).
 * **Run time:** push runs on `main` put the rows on the delivery dashboard, which groups samples by job name (`tools/ci-timings` pins that). The four Native rows join the ADR-0045 baseline in one later PR, after 30 dispatch runs on `main` (approved on #1009).
 
+### WASM at `/native/` (#1009), delivered
+
+* **Same origin:** the bundle that `just native build-web` writes is served at `/native/` beside `/api`. Locally that's the Vite dev and preview servers (`frontend/apps/web/dev/nativeBundle.ts`). In deployment, the container image builds it in a `native-web` stage into `wwwroot/native/`, and `calendar-api` serves it.
+* **Rules, the same in both:** `/native` redirects to `/native/`. A path without an extension falls back to `native/index.html`, never to the React app's page. Every bundle file is `no-cache`, because `wasm-bindgen`'s names aren't fingerprinted. `.wasm` is `application/wasm`. A missing bundle is a 404 (locally, one that names `just native build-web`).
+* **The page** (`native/web/index.html`): it asks for a WebGPU adapter and loads `/native/app.js` only when it gets one. Otherwise it says the browser needs WebGPU and links to `/` (criterion 22).
+* **Tests:**
+  * `dev/nativeBundle.test.ts`: 23 tests, one against a real Vite server.
+  * `tests/api/hosting.rs`: `native_bundle_routing_and_cache_headers` and `native_paths_without_a_bundle_are_not_found`, both shown to fail without the change.
+  * `just image smoke` checks `/native`, `/native/`, `/native/week`, `app.js` and `app_bg.wasm` on the container's one origin.
+  * Locally, Vite served a real `build-web` bundle (`app.js`, a 13.6 MB `app_bg.wasm` and the `snippets/` import) with these types and headers.
+* **Not yet shown:** the bundle running signed in, in a browser with WebGPU. The cookie is the origin's, so nothing in the app changes for it.
+
 ### Parity with the web app (#1002 to #1007)
 
 | Web app | Rune app | Slice |

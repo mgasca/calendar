@@ -6,6 +6,10 @@ on:
   pull_request:
   merge_group:
   workflow_dispatch:
+  # Nightly on main, so the Native macOS and Windows rows also run on days without a merge, when a runner image moves
+  # (ADR-0067, #1009). Like a push, a scheduled run is unfiltered and the run-time gate only reports on it.
+  schedule:
+    - cron: '17 3 * * *'
 
 permissions:
   contents: read
@@ -545,10 +549,16 @@ jobs:
         include:
           - { row: Linux, os: ubuntu-24.04, kind: desktop }
           - { row: WASM, os: ubuntu-24.04, kind: wasm }
+          # The same headless suite on macOS and Windows (MSVC), ADR-0067 and #1009: tree and accessibility goldens gate;
+          # PNG snapshots are compared on Linux only, and here they are uploaded as artefacts on every run.
+          - { row: macOS, os: macos-latest, kind: desktop }
+          - { row: Windows, os: windows-latest, kind: desktop }
     runs-on: ${{ matrix.os }}
     timeout-minutes: 30
     defaults:
       run:
+        # Git Bash on Windows, so every row runs the same steps and native/mod.just's bash recipes.
+        shell: bash
         working-directory: native
     env:
       CARGO_TERM_COLOR: always
@@ -612,8 +622,10 @@ jobs:
       - name: Lint for wasm32 and build the browser bundle
         if: matrix.kind == 'wasm'
         run: just native run lint-wasm build-web
+      # On Linux only when a golden fails; on macOS and Windows on every run, because their PNGs are artefacts, not a gate,
+      # until they prove stable enough to compare (ADR-0067).
       - name: Upload golden differences
-        if: failure() && matrix.kind == 'desktop'
+        if: matrix.kind == 'desktop' && (failure() || (always() && runner.os != 'Linux'))
         uses: actions/upload-artifact@v7
         with:
           name: native-goldens-${{ matrix.row }}

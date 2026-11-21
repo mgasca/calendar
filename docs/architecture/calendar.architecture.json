@@ -358,7 +358,7 @@
         { "unique-id": "native-app-desktop", "description": "Desktop window, just native dev" },
         { "unique-id": "native-app-web-bundle", "description": "WASM bundle built by just native build-web into native/target/web/ (served under /native/ on the same origin, #1009)" }
       ],
-      "metadata": { "adrs": ["ADR-0067"], "delivery": "#1002", "source": "native/" }
+      "metadata": { "adrs": ["ADR-0067", "ADR-0068"], "delivery": "#1002, #1008", "source": "native/" }
     },
     {
       "unique-id": "api-client",
@@ -1169,6 +1169,18 @@
         }
       },
       "metadata": { "adrs": ["ADR-0047", "ADR-0067"], "binding": "values copied into native/crates/calendar-native/src/theme.rs; no package dependency" }
+    },
+    {
+      "unique-id": "native-app-calls-api",
+      "description": "Calls the API with the ordinary session cookie, through the generated Rust client. The desktop gets the cookie by the browser loopback handover (native start, confirm click, a 60-second PKCE-bound code redeemed at POST /api/auth/native/token) and keeps it in the OS credential store, or in memory when there is none; the WASM bundle is same-origin and uses the browser's cookie (calendar-native/src/session/)",
+      "relationship-type": {
+        "connects": {
+          "source": { "node": "native-app", "interfaces": ["native-app-desktop", "native-app-web-bundle"] },
+          "destination": { "node": "calendar-api", "interfaces": ["api-health", "api-auth", "api-events", "api-tasks", "api-agenda"] }
+        }
+      },
+      "protocol": "HTTPS",
+      "metadata": { "adrs": ["ADR-0027", "ADR-0067", "ADR-0068"], "delivery": "#1008" }
     },
     {
       "unique-id": "docs-site-uses-theme",

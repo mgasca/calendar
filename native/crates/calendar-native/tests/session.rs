@@ -49,6 +49,8 @@ fn settle(app: &mut App) {
 /// and logout answers 204.
 fn api(token: ResponseTemplate) -> MockServer {
   let server = block(MockServer::start());
+  // wiremock reuses servers from a pool, so an earlier test may have left a session for this origin.
+  Store::for_origin(&server.uri()).clear();
   block(
     Mock::given(method("GET"))
       .and(path("/api/auth/me"))

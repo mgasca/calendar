@@ -228,3 +228,21 @@ fn a_401_forgets_the_stored_session() {
   assert!(matches!(app.session, Session::SignedOut { error: None }));
   assert_eq!(Store::for_origin(&server.uri()).load(), None);
 }
+
+#[test]
+fn only_the_first_401_of_an_expired_session_touches_the_store() {
+  let _one = setup();
+  let server = api(issues_the_session());
+  Store::for_origin(&server.uri()).save("sealed");
+  let mut app = started(&server);
+  session::on_unauthorized(&mut app);
+  assert_eq!(Store::for_origin(&server.uri()).load(), None);
+
+  // The other page loads that were in flight answer 401 too. The app is already signed out, so they must not make
+  // another blocking keyring call on the UI thread: an entry put back here stands in for the keyring, and stays.
+  Store::for_origin(&server.uri()).save("untouched");
+  session::on_unauthorized(&mut app);
+  session::on_unauthorized(&mut app);
+  assert_eq!(Store::for_origin(&server.uri()).load().as_deref(), Some("untouched"));
+  Store::for_origin(&server.uri()).clear();
+}

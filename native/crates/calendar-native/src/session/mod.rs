@@ -283,8 +283,13 @@ pub fn sign_out(app: &mut App) {
   }
 }
 
-/// The API answered 401: the session is over, so the stored cookie goes too.
+/// The API answered 401: the session is over, so the stored cookie goes too. Only the first 401 does this: the other
+/// requests in flight when a session expires answer 401 as well, and each would repeat a blocking keyring call on the
+/// UI thread.
 pub fn on_unauthorized(app: &mut App) {
+  if matches!(app.session, Session::SignedOut { .. }) {
+    return;
+  }
   next_attempt();
   #[cfg(not(target_arch = "wasm32"))]
   if let Some((origin, jar)) = current() {

@@ -6,6 +6,7 @@ pr:
   - https://github.com/mgasca/calendar/pull/1015
   - https://github.com/mgasca/calendar/pull/1012
   - https://github.com/mgasca/calendar/pull/1013
+  - https://github.com/mgasca/calendar/pull/1018
 adrs: ["0003", "0004", "0021", "0027", "0053", "0055", "0058", "0061", "0063", "0064", "0066", "0067", "0068"]
 ---
 
@@ -96,9 +97,20 @@ The maintainer agreed the decisions below on 2026-11-20, on the epic. Two ADRs r
 **Native sign-in (#1008)**
 
 17. **Given** the desktop app signed out, **when** I choose **Sign in with Google**, **then** my system browser opens the Google flow, and after I confirm, the app is signed in without my typing anything into it.
+   * **App:** tested by "sign_in_redeems_the_loopback_code_and_a_restart_stays_signed_in" in [`tests/session.rs`](../../native/crates/calendar-native/tests/session.rs), against a stub API. The test plays the browser by calling the app's loopback.
+   * **API:** tested by "a_browser_without_a_session_signs_in_with_google_confirms_and_hands_the_session_to_the_app" in [`native_sign_in.rs`](../../backend/crates/calendar-api/tests/api/native_sign_in.rs) (#1018).
+   * **Not yet run:** against the stub provider in a real stack. #1010 runs it.
 18. **Given** an email that is not allow-listed, or a sign-in I abandon, **when** the flow ends, **then** the app stays signed out and says why, and no session is stored.
+   * **Tested by** "a_refused_code_leaves_the_app_signed_out_and_says_why" and "cancel_stops_waiting_for_the_browser_and_signs_nobody_in" in [`tests/session.rs`](../../native/crates/calendar-native/tests/session.rs), and by "a_browser_that_never_comes_back_times_out_and_a_browser_that_cannot_open_says_so" in `src/session/flow.rs`.
+   * **An email that is not allow-listed** never reaches the confirm page, so the loopback hears nothing. The app stops waiting after five minutes, or at **Cancel**, and says: "Sign-in did not finish in the browser. If your account is not allowed, the browser says so."
+   * **Not yet run:** the not-allow-listed case end to end. #1010 runs it.
 19. **Given** I am signed in on the desktop, **when** I restart the app within the session's lifetime, **then** I am still signed in; **when** I sign out, **then** the stored session is removed and the app shows the sign-in screen.
+   * **Tested by** "sign_in_redeems_the_loopback_code_and_a_restart_stays_signed_in" (the restart), "sign_out_calls_logout_with_the_session_and_forgets_it" and "a_401_forgets_the_stored_session" in [`tests/session.rs`](../../native/crates/calendar-native/tests/session.rs).
+   * **Not tested automatically:** the tests use the memory store, so that they never touch a keyring. The OS credential store is exercised only by hand.
 20. **Given** the handover, **when** any step is forged or out of bounds (an expired or forged code, a wrong verifier, a redirect URI that differs at redemption, a non-loopback redirect, a cross-origin or framed confirm), **then** the API refuses it, and the session cookie never appears in a URL. The code is stateless (ADR-0068): within its 60 seconds it can be redeemed again, but only with the app's verifier.
+   * **Tested by** [`native_sign_in.rs`](../../backend/crates/calendar-api/tests/api/native_sign_in.rs) (#1018): every refused start, the flow cookie, the confirm POST's origin and framing headers, the code's verifier, redirect and 60-second bound, and the app session never outliving the confirming session (security review of #1018).
+   * **Telemetry:** `telemetry.rs` checks that no span or log carries the challenge, state, code, verifier or session.
+   * **App side:** `src/session/loopback.rs` ignores stray and wrong-state callbacks, and the verifier never appears in a URL (`src/session/flow.rs`).
 
 **Platforms and hosting (#1009)**
 

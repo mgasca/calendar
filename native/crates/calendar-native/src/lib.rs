@@ -107,6 +107,8 @@ pub struct App {
   pub spin_typed: Option<(String, String)>,
   /// The week whose grid was last scrolled to its opening hour (#1034).
   pub scrolled_week: Option<chrono::NaiveDate>,
+  /// The week whose grid scrolls on the next poll, once it is on screen (#1034).
+  pub scroll_armed: Option<chrono::NaiveDate>,
   /// The message after a save or delete, with "Show day" when it went on another day.
   pub notice: Option<dialogs::Notice>,
   /// Triage's selection and its last result (#1007).
@@ -162,6 +164,7 @@ impl App {
       calendar: None,
       spin_typed: None,
       scrolled_week: None,
+      scroll_armed: None,
       notice: None,
       triage: triage::Triage::default(),
       scratch: rune::TextEdit::default(),

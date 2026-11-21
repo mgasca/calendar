@@ -175,3 +175,32 @@ fn the_grid_opens_an_hour_before_now_this_week_and_at_seven_otherwise() {
   load(&mut rt, d("2026-11-23"));
   assert!((top_hour(&rt) - 7.0).abs() < 0.05, "a refetch doesn't move it");
 }
+
+#[test]
+fn coming_back_to_the_same_week_opens_it_afresh() {
+  // Pre-merge review of #1050: the week was remembered as scrolled across a visit to another page.
+  let mut rt = runtime("week-busy");
+  press(&mut rt, "week-more-2026-11-18-975");
+  assert_eq!(rt.state.route, Route::Day(d("2026-11-18")));
+  rt.state.clock.set_now("2026-11-20T07:30:00Z".parse().unwrap());
+  calendar_native::load::go(&mut rt.state, Route::Week(d("2026-11-16")));
+  load(&mut rt, d("2026-11-16"));
+  // Now is 08:30 in Madrid: the grid opens at 07:30, not at 09:00 where it was left.
+  assert!(
+    (top_hour(&rt) - 7.5).abs() < 0.05,
+    "opens an hour before now again, not {}",
+    top_hour(&rt)
+  );
+}
+
+#[test]
+fn the_keys_are_ignored_under_the_delete_confirmation() {
+  let mut rt = runtime("week");
+  plain(&mut rt, Key::Right);
+  load(&mut rt, d("2026-11-23"));
+  let id = calendar_native::fixtures::week().days[0].tasks[0].id;
+  calendar_native::actions::ask_delete(&mut rt.state, id, Some("Write the brief"));
+  settle(&mut rt);
+  plain(&mut rt, Key::Text("t".into()));
+  assert_eq!(week(&rt), Some(d("2026-11-23")), "the confirmation keeps the week behind it");
+}

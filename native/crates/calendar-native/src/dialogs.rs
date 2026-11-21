@@ -83,10 +83,14 @@ pub enum Dialog {
 }
 
 /// A message after a save: "Planning added for Mon 23 Nov.", with "Show day" when it went on another day.
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, Default, PartialEq)]
 pub struct Notice {
   pub text: String,
   pub show_day: Option<NaiveDate>,
+  /// When it goes, on the window's clock; `None` until `focus::poll` starts its time, and while it is paused.
+  pub due: Option<f64>,
+  /// The pointer is over it: its time is paused (#1035).
+  pub hovered: bool,
 }
 
 fn edit(text: &str) -> TextEdit {
@@ -372,20 +376,23 @@ pub fn retry_load(app: &mut App) {
 /// "Cancel", "Close" or Escape: closes the dialog unless it is busy.
 pub fn close(app: &mut App) {
   let busy = match &app.dialog {
-    Some(Dialog::Event(d)) => d.busy(),
+    // A dialog still loading its item closes, as the web app's does (found with #1035).
+    Some(Dialog::Event(d)) => d.busy() && d.load != Load::Loading,
     Some(Dialog::Task(d)) => d.busy() && d.load != Load::Loading,
     None => false,
   };
   if !busy {
     app.dialog = None;
     crate::pickers::reset(app);
+    crate::focus::closed(app, false);
   }
 }
 
 /// "Show day" in a notice.
-pub fn show_day(app: &mut App) {
+pub fn show_day(app: &mut App, tx: &mut rune::Tx) {
   if let Some(date) = app.notice.as_ref().and_then(|n| n.show_day) {
-    app.notice = None;
+    // The action dismisses the notice first, as the web app's does.
+    crate::focus::dismiss(app, tx);
     load::go(app, crate::route::Route::Day(date));
   }
 }
@@ -451,10 +458,12 @@ pub fn save_event(app: &mut App) {
       Ok(_) => {
         app.dialog = None;
         crate::pickers::reset(app);
+        crate::focus::closed(app, false);
         app.notice = Some(match id {
           Some(_) => Notice {
             text: format!("{title} saved."),
             show_day: None,
+            ..Notice::default()
           },
           None => Notice {
             text: format!(
@@ -462,6 +471,7 @@ pub fn save_event(app: &mut App) {
               start_day.map(|day| app.locale.short_day(day)).unwrap_or_default()
             ),
             show_day: start_day.filter(|day| Some(*day) != shown_day),
+            ..Notice::default()
           },
         });
         load::refetch(app);
@@ -503,17 +513,19 @@ fn event_failed(app: &mut App, id: Option<Uuid>, error: &SaveError) {
   }
 }
 
-/// "Delete event" in the event dialog: asks within the dialog first.
-pub fn ask_delete_event(app: &mut App) {
+/// "Delete event" in the event dialog: asks within the dialog first, with focus on "Keep event".
+pub fn ask_delete_event(app: &mut App, tx: &mut rune::Tx) {
   if let Some(dialog) = event(app).filter(|d| !d.busy() && !d.gone) {
     dialog.confirm_delete = true;
+    tx.focus_when_shown("event-keep", true);
   }
 }
 
-/// "Keep event".
-pub fn keep_event(app: &mut App) {
+/// "Keep event": back to the form, with focus on "Delete event" (#1035).
+pub fn keep_event(app: &mut App, tx: &mut rune::Tx) {
   if let Some(dialog) = event(app).filter(|d| !d.deleting) {
     dialog.confirm_delete = false;
+    tx.focus_when_shown("event-delete", true);
   }
 }
 
@@ -532,9 +544,11 @@ pub fn delete_event(app: &mut App) {
       Ok(()) => {
         app.dialog = None;
         crate::pickers::reset(app);
+        crate::focus::closed(app, true);
         app.notice = Some(Notice {
           text: format!("{title} deleted."),
           show_day: None,
+          ..Notice::default()
         });
         load::refetch(app);
       }
@@ -602,18 +616,22 @@ pub fn save_task(app: &mut App) {
       Ok(_) => {
         app.dialog = None;
         crate::pickers::reset(app);
+        crate::focus::closed(app, false);
         app.notice = Some(match (id, due_day) {
           (Some(_), _) => Notice {
             text: "Task saved.".to_owned(),
             show_day: None,
+            ..Notice::default()
           },
           (None, Some(day)) if Some(day) != shown_day => Notice {
             text: format!("\u{201c}{title}\u{201d} added for {}.", app.locale.short_day(day)),
             show_day: Some(day),
+            ..Notice::default()
           },
           (None, _) => Notice {
             text: format!("\u{201c}{title}\u{201d} added."),
             show_day: None,
+            ..Notice::default()
           },
         });
         load::refetch(app);

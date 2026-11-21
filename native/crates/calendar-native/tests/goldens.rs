@@ -10,12 +10,13 @@
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
-const SCENES: [&str; 15] = [
+const SCENES: [&str; 16] = [
   "today",
   "today-empty",
   "today-loading",
   "today-error",
   "week",
+  "week-busy",
   "tasks",
   "signed-out",
   "today-toggle-error",
@@ -28,9 +29,10 @@ const SCENES: [&str; 15] = [
   "triage-selected",
 ];
 /// The scenes with PNG snapshots (Linux).
-const SNAPSHOTS: [&str; 7] = [
+const SNAPSHOTS: [&str; 8] = [
   "today",
   "week",
+  "week-busy",
   "today-delete",
   "add-event",
   "add-event-calendar",

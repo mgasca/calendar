@@ -79,8 +79,9 @@ def needs($job):
   elif $job == "narratives" then under(narrative_inputs) or . == ".deno-version"
   elif $job == "binding" then under(["frontend/apps/e2e/"]) or frontend_root or IN(binding_inputs[])
   elif $job == "native" then under(["native/", "contracts/"]) or IN(native_inputs[])
+  # The image also builds the Rune UI's browser bundle, served at /native/ (ADR-0067, #1009).
   elif $job == "image" then
-    under(["backend/", "frontend/apps/web/", "frontend/packages/", "contracts/", "docker/"]) or frontend_root
+    under(["backend/", "frontend/apps/web/", "frontend/packages/", "contracts/", "docker/", "native/"]) or frontend_root
       or IN("Dockerfile", ".dockerignore", "image.just")
   else error("ci-changes.jq: no rule for job \($job)")
   end;

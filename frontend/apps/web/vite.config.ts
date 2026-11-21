@@ -2,11 +2,13 @@ import react from '@vitejs/plugin-react';
 import { defineConfig } from 'vitest/config';
 
 import { apiProxy, devSignInHostGuard } from './dev/apiProxy.ts';
+import { nativeBundle } from './dev/nativeBundle.ts';
 import { OTLP_PROXY_KEY, otlpProxy } from './dev/otlpProxy.ts';
 
 export default defineConfig({
   // The guard refuses --host and other non-loopback hosts under `just frontend dev-signed-in` (#242).
-  plugins: [react(), devSignInHostGuard(process.env)],
+  // nativeBundle serves the Rune UI's browser bundle at /native/ beside /api, on this origin (ADR-0067, #1009).
+  plugins: [react(), devSignInHostGuard(process.env), nativeBundle()],
   server: {
     proxy: {
       // Adds the API's seed key only under `just frontend dev-signed-in` (story 0021).

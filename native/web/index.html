@@ -10,13 +10,16 @@
 </style>
 <div id="status" role="status">Loading…</div>
 <script type="module">
-  // The Rune web target needs WebGPU (ADR-0067). Without it, point to the web app on the same origin.
-  import init from './app.js';
+  // The Rune web target needs WebGPU (ADR-0067). Without it, point to the web app on the same origin. A browser can
+  // expose navigator.gpu and still have no adapter, so ask for one, and load the bundle only when it can run. The
+  // bundle's URL is absolute because a path under /native/ falls back to this page (#1009).
   const status = document.querySelector('#status');
   try {
-    if (!navigator.gpu) {
+    const adapter = navigator.gpu ? await navigator.gpu.requestAdapter() : null;
+    if (!adapter) {
       status.innerHTML = 'This version of Calendar needs a browser with WebGPU. <a href="/">Open the web app instead</a>.';
     } else {
+      const { default: init } = await import('/native/app.js');
       await init();
       status.remove();
     }

@@ -4,7 +4,7 @@ use std::net::SocketAddr;
 
 use axum::Router;
 use axum::extract::{Request, State};
-use axum::http::header::{CACHE_CONTROL, CONTENT_TYPE};
+use axum::http::header::{CACHE_CONTROL, CONTENT_TYPE, LOCATION};
 use axum::http::{HeaderValue, Method, StatusCode};
 use axum::middleware;
 use axum::response::{IntoResponse, Response};
@@ -71,15 +71,32 @@ async fn openapi_document(origin: RequestOrigin) -> Response {
   response
 }
 
-/// Everything no route matches. Under `/api` that is a `404` problem, whatever the method. Anywhere else it
-/// is the web app, whose client-side router owns the path: `index.html`, never cached, unless the path has a
-/// file extension or the web root holds no `index.html`.
+/// Everything no route matches. Under `/api` that is a `404` problem, whatever the method. Under `/native`
+/// it is the Rune UI's browser bundle (ADR-0067, #1009): `/native` itself redirects to `/native/`, so the
+/// page's relative URLs resolve under it, and any other path is `native/index.html`, never the React app's
+/// entry page. Anywhere else it is the web app, whose client-side router owns the path. Either entry page
+/// is never cached, and a path with a file extension, or a web root without that page, is a `404`.
 async fn fallback(State(state): State<AppState>, request: Request) -> Response {
   let path = request.uri().path();
   if hosting::is_api_path(path) || hosting::has_extension(path) {
     return Problem::not_found().into_response();
   }
-  match tokio::fs::read(state.settings().web_root.join("index.html")).await {
+  let entry = if hosting::is_native_path(path) {
+    if path.len() == hosting::NATIVE_SEGMENT.len() {
+      let location = match request.uri().query() {
+        Some(query) => format!("{}/?{query}", hosting::NATIVE_SEGMENT),
+        None => format!("{}/", hosting::NATIVE_SEGMENT),
+      };
+      return match HeaderValue::from_str(&location) {
+        Ok(location) => (StatusCode::MOVED_PERMANENTLY, [(LOCATION, location)]).into_response(),
+        Err(_) => Problem::not_found().into_response(),
+      };
+    }
+    state.settings().web_root.join("native").join("index.html")
+  } else {
+    state.settings().web_root.join("index.html")
+  };
+  match tokio::fs::read(entry).await {
     Ok(index) => {
       let body = if request.method() == Method::HEAD { Vec::new() } else { index };
       let mut response = (StatusCode::OK, body).into_response();

@@ -41,6 +41,10 @@ lint-wasm:
 format:
     cargo fmt --all
 
+# Regenerate the Rust API client from contracts/openapi.json (part of just contracts; never edit src/generated/ by hand)
+generate:
+    cargo run --locked -p calendar-client-gen
+
 # Open the app in a window (Linux/WSLg, macOS, Windows)
 dev:
     cargo run --locked -p calendar-native

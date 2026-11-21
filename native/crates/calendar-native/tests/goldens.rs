@@ -90,7 +90,7 @@ fn accessibility_trees_match_their_goldens() {
     for theme in THEMES {
       let actual = tree(scene, theme);
       let path = goldens().join(format!("{scene}-{theme}.a11y.json"));
-      let pretty = serde_json::to_string_pretty(&actual).expect("serializes") + "\n";
+      let pretty = serde_json::to_string_pretty(&sorted(actual)).expect("serializes") + "\n";
       if blessing() {
         std::fs::write(&path, &pretty).expect("the golden is writable");
         continue;
@@ -103,6 +103,20 @@ fn accessibility_trees_match_their_goldens() {
     }
   }
   assert!(failures.is_empty(), "accessibility trees differ from tests/goldens: {failures:?}");
+}
+
+/// `value` with every object's keys in sorted order. `serde_json` keeps insertion order when any crate in the workspace
+/// enables its `preserve_order` feature (`calendar-client` does), so the goldens fix the order themselves.
+fn sorted(value: serde_json::Value) -> serde_json::Value {
+  match value {
+    serde_json::Value::Object(map) => {
+      let mut entries: Vec<_> = map.into_iter().collect();
+      entries.sort_by(|(a, _), (b, _)| a.cmp(b));
+      serde_json::Value::Object(entries.into_iter().map(|(k, v)| (k, sorted(v))).collect())
+    }
+    serde_json::Value::Array(items) => serde_json::Value::Array(items.into_iter().map(sorted).collect()),
+    other => other,
+  }
 }
 
 fn decode(path: &Path) -> (u32, u32, Vec<u8>) {

@@ -1,7 +1,7 @@
 # The Rune second UI (ADR-0067): its own workspace, toolchain and lock file, with no dependency on backend/.
 [workspace]
 resolver = "3"
-members = ["crates/calendar-native"]
+members = ["crates/calendar-client", "crates/calendar-client-gen", "crates/calendar-native"]
 
 [workspace.package]
 edition = "2024"

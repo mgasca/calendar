@@ -97,6 +97,7 @@ Deno.test("Hook registrations switch atomically with frozen config and explicit 
     const pattern of [
       "Edit(**/openapi.json)",
       "Edit(**/schema.gen.ts)",
+      "Edit(**/calendar-client/src/generated/**)",
       "Edit(**/packages.lock.json)",
       "Edit(**/pnpm-lock.yaml)",
       "Edit(**/deno.lock)",
@@ -167,4 +168,16 @@ Deno.test("prototype-named commands do not hide a subsequent dirty restore", asy
     );
     assertEquals(JSON.parse(result.stdout!).hookSpecificOutput.permissionDecision, "deny");
   }
+});
+Deno.test("The generated Rust client is guarded like the TS client", () => {
+  for (
+    const path of [
+      "/repo/native/crates/calendar-client/src/generated/client.rs",
+      "C:\\repo\\native\\crates\\calendar-client\\src\\generated\\types.rs",
+    ]
+  ) {
+    assertEquals(evaluateEdit(path)?.decision, "deny");
+    assertStringIncludes(evaluateEdit(path)?.reason ?? "", "just contracts");
+  }
+  assertEquals(evaluateEdit("/repo/native/crates/calendar-client/src/lib.rs"), null);
 });

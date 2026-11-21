@@ -161,6 +161,7 @@ No further ADR is expected. A slice that finds a decision ADR-0067 or ADR-0068 d
 | [#1007](https://github.com/mgasca/calendar/issues/1007) | Triage and bulk (parity) | S2 | #1006 |
 | [#1008](https://github.com/mgasca/calendar/issues/1008) | Native sign-in (backend and app) | S3 | #999, #1001, #1003 |
 | [#1009](https://github.com/mgasca/calendar/issues/1009) | macOS and Windows CI, WASM at `/native/` | S4 | #1002 |
+| [#1019](https://github.com/mgasca/calendar/issues/1019) | CodeQL for `native/`, before #1008's app part | S4 | #1002 |
 | [#1010](https://github.com/mgasca/calendar/issues/1010) | End-to-end flows | S3 | #1008, #1007 |
 
 ### Scaffold (#1002), delivered
@@ -254,6 +255,14 @@ No further ADR is expected. A slice that finds a decision ADR-0067 or ADR-0068 d
   * 5 flow tests against a stub API: 501 ids in two batches, the filter with the total seen, a partial failure, the 409, and reschedule and delete bodies.
   * 4 element-tree tests: the "View all" link, selection and the toolbar, Apply waiting for a valid date, and the delete question.
   * Goldens for `triage` and `triage-selected` (PNG reviewed).
+
+### CodeQL for `native/` (#1019), delivered
+
+* **Two Rust analyses** (`.github/workflows/codeql.yml`): `Analyze (rust)` covers `backend/` under `/language:rust`, and `Analyze (rust-native)` covers `native/` under `/language:rust-native`. Each is scoped by a `paths` config; a `source-root` does not scope the Rust extractor (#1020).
+* **Only when needed:** `.github/codeql-languages.jq` answers per workspace from CI's Backend and Native sets. A PR that changes neither reuses main's result in that category, as record 0026 does for the backend.
+* **Caches:** each analysis has its own registry and extractor target directory, keyed on its own `Cargo.lock`. Both run on the runner's stable toolchain (`RUSTUP_TOOLCHAIN`), not on a workspace's pin.
+* **Guards:** `codeql-rust-gate` and `codeql-rust-caches` in `tools/delivery-guards` fail when an entry loses its scope, category, gate or caches. The new tests fail against the previous workflow.
+* **Run time:** [record 0032](../benchmarks/0032-codeql-rust-analysis-of-the-native-workspace.md).
 
 ### Parity with the web app (#1002 to #1007)
 

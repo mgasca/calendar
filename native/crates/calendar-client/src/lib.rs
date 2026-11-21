@@ -175,6 +175,11 @@ impl Api {
     result.map_err(|error| SaveError { error, body })
   }
 
+  /// `POST /api/tasks/bulk`: one action on the listed ids, or on every overdue task the filter names.
+  pub async fn bulk_tasks(&self, request: generated::BulkTaskRequest) -> Result<generated::BulkTaskResponse, ApiError> {
+    self.run("/api/tasks/bulk", self.client.bulk_tasks(request)).await
+  }
+
   /// `POST /api/events`.
   pub async fn create_event(&self, request: generated::CreateEventRequest) -> Result<generated::EventResponse, SaveError> {
     self.run_save("/api/events", self.client.create_event(request)).await

@@ -250,11 +250,7 @@ fn tasks_section(app: &App, agenda: &DayAgendaResponse, is_today: bool, today: N
       })
       .collect();
     if total > 20 {
-      rows.push(
-        button("overdue-all", &format!("View all {total} overdue"), t)
-          .focusable(false)
-          .disabled(true),
-      );
+      rows.push(button("overdue-all", &format!("View all {total} overdue"), t).on_press(crate::triage::open));
     }
     tasks = tasks.child(section("overdue", "Overdue", 3, rows, t));
   }

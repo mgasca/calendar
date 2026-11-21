@@ -241,7 +241,11 @@ fn a_long_task_list_builds_only_the_rows_near_the_viewport() {
         task
       })
       .collect();
-    app.tasks.data = Some(calendar_native::views::tasks::TaskList { items, next_cursor: None });
+    app.tasks.data = Some(calendar_native::views::tasks::TaskList {
+      items,
+      next_cursor: None,
+      total: None,
+    });
   });
   rt.frame(1.0 / 60.0);
   rt.settle_all();
@@ -250,4 +254,80 @@ fn a_long_task_list_builds_only_the_rows_near_the_viewport() {
   let last = format!("task-{}", uuid::Uuid::from_u128(500));
   assert!(rt.find(&first).is_some(), "the first rows are built");
   assert!(rt.find(&last).is_none(), "the 500th row is not built until it scrolls near");
+}
+
+// Triage (#1007).
+
+#[test]
+fn view_all_overdue_opens_triage_when_more_than_twenty_are_overdue() {
+  let mut rt = runtime("today", false);
+  assert!(rt.find("overdue-all").is_none(), "2 overdue: no link");
+  rt.update(|app, _| {
+    if let Some(day) = &mut app.day.data {
+      day.tasks.overdue_total = calendar_client::generated::AgendaTasksOverdueTotal::Integer(25);
+    }
+  });
+  rt.frame(1.0 / 60.0);
+  rt.settle_all();
+  rt.frame(1.0 / 60.0);
+  press(&mut rt, "overdue-all");
+  assert_eq!(rt.state.route, Route::Triage);
+}
+
+#[test]
+fn triage_selects_rows_then_offers_its_actions() {
+  let mut rt = runtime("triage", false);
+  shows(
+    &rt,
+    &[
+      "triage-heading",
+      "triage-select-all",
+      "triage-select-loaded",
+      "triage-list",
+      "triage-more",
+    ],
+  );
+  assert!(rt.find("triage-actions").is_none(), "nothing selected: no toolbar");
+  press(&mut rt, "triage-00000000-0000-4000-8000-000000000201-check");
+  shows(
+    &rt,
+    &[
+      "triage-actions",
+      "triage-count",
+      "triage-complete",
+      "triage-reschedule-date",
+      "triage-clear",
+      "triage-delete",
+    ],
+  );
+  press(&mut rt, "triage-select-loaded");
+  assert_eq!(rt.state.triage.selected.len(), 3, "every loaded row");
+  press(&mut rt, "triage-select-all");
+  assert!(rt.state.triage.all);
+  assert_eq!(calendar_native::triage::count(&rt.state), 42);
+}
+
+#[test]
+fn reschedule_applies_only_once_its_date_is_valid() {
+  let mut rt = runtime("triage-selected", false);
+  press(&mut rt, "triage-reschedule-date");
+  shows(&rt, &["reschedule-dialog", "reschedule-date", "reschedule-apply"]);
+  press(&mut rt, "reschedule-apply");
+  assert_eq!(rt.state.effects.pending(), 0, "Apply is disabled while the date is empty");
+  press(&mut rt, "reschedule-date");
+  rt.paste("2026-11-23");
+  rt.frame(1.0 / 60.0);
+  rt.settle_all();
+  rt.frame(1.0 / 60.0);
+  press(&mut rt, "reschedule-apply");
+  assert_eq!(rt.state.effects.pending(), 1, "the bulk request is queued");
+}
+
+#[test]
+fn delete_asks_with_the_count() {
+  let mut rt = runtime("triage-selected", false);
+  press(&mut rt, "triage-delete");
+  shows(&rt, &["triage-delete-dialog", "triage-delete-confirm", "triage-delete-cancel"]);
+  press(&mut rt, "triage-delete-cancel");
+  assert!(!rt.state.triage.confirm_delete);
 }

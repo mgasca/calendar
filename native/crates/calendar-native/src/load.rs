@@ -47,6 +47,8 @@ fn key_for(app: &App) -> Key {
     Route::Today | Route::Day(_) => Key::Day(app.route.day_date(today).unwrap_or(today)),
     Route::Week(start) => Key::Week(start, today),
     Route::Tasks(view) => Key::Tasks(view.api(), today),
+    // Triage lists what My tasks' Overdue view lists: the same request and data.
+    Route::Triage => Key::Tasks("overdue", today),
   }
 }
 
@@ -123,6 +125,7 @@ pub fn ensure(app: &mut App) {
         .run(async move { api.tasks(view, &day, None, None).await }, move |app, result| {
           if app.loads.key == Key::Tasks(view, today) {
             app.tasks.finish(result.map(|page| TaskList {
+              total: page.total.flatten().map(|t| calendar_client::as_count(&t)),
               items: page.items,
               next_cursor: page.next_cursor.flatten(),
             }));

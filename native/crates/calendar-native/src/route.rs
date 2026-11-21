@@ -51,6 +51,8 @@ pub enum Route {
   Week(NaiveDate),
   /// My tasks (`/tasks`).
   Tasks(TaskView),
+  /// Overdue tasks to act on in bulk (`/triage`), reached from "View all {total} overdue".
+  Triage,
 }
 
 impl Route {

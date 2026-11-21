@@ -142,10 +142,40 @@ pub fn tasks() -> TaskPage {
   }))
 }
 
+/// The first page of overdue tasks for triage: due before 2026-11-20, more to load.
+#[must_use]
+pub fn overdue_tasks() -> TaskPage {
+  let item = |id: u8, title: &str, extra: serde_json::Value| {
+    let mut t = json!({ "id": format!("00000000-0000-4000-8000-0000000002{id:02}"), "title": title,
+      "priority": null, "notes": null, "dueDate": null, "dueAt": null, "completedAt": null,
+      "isCompleted": false, "version": 1 });
+    t.as_object_mut()
+      .expect("an object")
+      .extend(extra.as_object().expect("an object").clone());
+    t
+  };
+  decode(json!({
+    "items": [
+      item(1, "File expenses", json!({ "dueDate": "2026-11-12", "priority": "high" })),
+      item(2, "Renew passport", json!({ "dueDate": "2026-11-19" })),
+      item(3, "Call the plumber", json!({ "dueAt": "2026-11-18T16:00:00Z", "notes": "Kitchen tap" }))
+    ],
+    "nextCursor": "page-2",
+    "total": 42
+  }))
+}
+
 #[cfg(test)]
 mod tests {
   #[test]
   fn every_fixture_decodes() {
-    let _ = (super::user(), super::day(), super::empty_day(), super::week(), super::tasks());
+    let _ = (
+      super::user(),
+      super::day(),
+      super::empty_day(),
+      super::week(),
+      super::tasks(),
+      super::overdue_tasks(),
+    );
   }
 }

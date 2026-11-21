@@ -88,11 +88,7 @@ pub fn view(app: &App, week_start: NaiveDate, t: &Tokens) -> El {
       })
       .collect();
     if total > 20 {
-      rows.push(
-        button("week-overdue-all", &format!("View all {total} overdue"), t)
-          .focusable(false)
-          .disabled(true),
-      );
+      rows.push(button("week-overdue-all", &format!("View all {total} overdue"), t).on_press(crate::triage::open));
     }
     page = page.child(section("week-overdue", &format!("Overdue ({total})"), 2, rows, t));
   }

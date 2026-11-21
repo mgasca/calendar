@@ -7,6 +7,7 @@
 #![forbid(unsafe_code)]
 
 pub mod actions;
+pub mod bulk;
 pub mod clock;
 pub mod dialogs;
 pub mod fetch;
@@ -17,6 +18,7 @@ pub mod load;
 pub mod route;
 pub mod session;
 pub mod theme;
+pub mod triage;
 pub mod views;
 
 use calendar_client::Api;
@@ -96,6 +98,8 @@ pub struct App {
   pub dialog: Option<dialogs::Dialog>,
   /// The message after a save or delete, with "Show day" when it went on another day.
   pub notice: Option<dialogs::Notice>,
+  /// Triage's selection and its last result (#1007).
+  pub triage: triage::Triage,
   /// Where a text field's edits go when its dialog has already closed.
   pub scratch: rune::TextEdit,
   /// The Day page's "Go to date" field.
@@ -144,6 +148,7 @@ impl App {
       actions: actions::Actions::default(),
       dialog: None,
       notice: None,
+      triage: triage::Triage::default(),
       scratch: rune::TextEdit::default(),
       go_to_date: rune::TextEdit::default(),
     }
@@ -220,6 +225,7 @@ fn shell(app: &App, user: &str, cx: &mut Cx<App>) -> El {
     Route::Today | Route::Day(_) => views::day::view(app, &t),
     Route::Week(start) => views::week::view(app, start, &t),
     Route::Tasks(view) => views::tasks::view(app, view, &t),
+    Route::Triage => views::triage::view(app, &t),
   };
   let mut body = col()
     .key("page")
@@ -241,6 +247,9 @@ fn shell(app: &App, user: &str, cx: &mut Cx<App>) -> El {
   }
   if let Some(form) = views::dialogs::view(app, &t) {
     root = root.child(form);
+  }
+  if let Some(dialog) = views::triage::dialog(app, &t) {
+    root = root.child(dialog);
   }
   root
 }
@@ -272,6 +281,8 @@ fn scene(app: &mut App, route: Route) {
 
 /// The window, its size and the named scenes headless runs render (`--scene week`).
 #[must_use]
+// A table of named scenes, one entry per state a golden needs.
+#[allow(clippy::too_many_lines)]
 pub fn spec() -> AppSpec<App> {
   AppSpec {
     setup: Some(setup),
@@ -305,6 +316,7 @@ pub fn spec() -> AppSpec<App> {
         app.tasks.finish(Ok(TaskList {
           items: fixtures::tasks().items,
           next_cursor: Some("page-2".to_owned()),
+          total: None,
         }));
       }),
       ("signed-out", |app| {
@@ -343,6 +355,7 @@ pub fn spec() -> AppSpec<App> {
         app.tasks.finish(Ok(TaskList {
           items: fixtures::tasks().items,
           next_cursor: None,
+          total: None,
         }));
         let task = fixtures::tasks().items[2].clone();
         let draft = forms::task_draft(&task, app.clock.zone);
@@ -355,6 +368,24 @@ pub fn spec() -> AppSpec<App> {
           d.priority.clone_from(&draft.priority);
           d.notes.replace_text(&draft.notes);
         }
+      }),
+      ("triage", |app| {
+        scene(app, Route::Triage);
+        app.tasks.finish(Ok(TaskList {
+          items: fixtures::overdue_tasks().items,
+          next_cursor: Some("page-2".to_owned()),
+          total: Some(42),
+        }));
+      }),
+      ("triage-selected", |app| {
+        scene(app, Route::Triage);
+        app.tasks.finish(Ok(TaskList {
+          items: fixtures::overdue_tasks().items,
+          next_cursor: Some("page-2".to_owned()),
+          total: Some(42),
+        }));
+        app.triage.selected = fixtures::overdue_tasks().items.iter().take(2).map(|t| t.id).collect();
+        app.triage.notice = Some("3 tasks updated".to_owned());
       }),
     ],
     ..AppSpec::new("Calendar", (960.0, 720.0), App::default, view)

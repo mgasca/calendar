@@ -22,6 +22,7 @@ pub mod session;
 pub mod theme;
 pub mod triage;
 pub mod views;
+pub mod week_layout;
 
 use calendar_client::Api;
 use calendar_client::generated::{DayAgendaResponse, WeekAgendaResponse};
@@ -104,6 +105,8 @@ pub struct App {
   pub calendar: Option<pickers::Calendar>,
   /// The digits typed so far into a time spin button: its key and the digits (#1033).
   pub spin_typed: Option<(String, String)>,
+  /// The week whose grid was last scrolled to its opening hour (#1034).
+  pub scrolled_week: Option<chrono::NaiveDate>,
   /// The message after a save or delete, with "Show day" when it went on another day.
   pub notice: Option<dialogs::Notice>,
   /// Triage's selection and its last result (#1007).
@@ -158,6 +161,7 @@ impl App {
       dialog: None,
       calendar: None,
       spin_typed: None,
+      scrolled_week: None,
       notice: None,
       triage: triage::Triage::default(),
       scratch: rune::TextEdit::default(),
@@ -279,6 +283,7 @@ fn poll(app: &mut App, _now: f64, tx: &mut rune::Tx) -> bool {
   dialogs::follow_start(app);
   dialogs::clear_edited_errors(app);
   load::ensure(app);
+  views::week::scroll_on_open(app, tx);
   tx.wake_after(std::time::Duration::from_secs(15));
   changed
 }
@@ -301,6 +306,7 @@ pub fn spec() -> AppSpec<App> {
   AppSpec {
     setup: Some(setup),
     poll: Some(poll),
+    on_key: Some(views::week::on_key),
     scenes: &[
       ("today", |app| {
         scene(app, Route::Today);
@@ -326,6 +332,11 @@ pub fn spec() -> AppSpec<App> {
         scene(app, Route::Today);
         app.route = Route::week_of(app.clock.today());
         app.week.finish(Ok(fixtures::week()));
+      }),
+      ("week-busy", |app| {
+        // Five overlapping events on Wednesday: three side by side and "+2 more" (#1034).
+        scene(app, Route::week_of(app.clock.today()));
+        app.week.finish(Ok(fixtures::busy_week()));
       }),
       ("tasks", |app| {
         scene(app, Route::Tasks(TaskView::Upcoming));

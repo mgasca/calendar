@@ -1,0 +1,1884 @@
+{
+  "bounds": [
+    0.0,
+    0.0,
+    960.0,
+    720.0
+  ],
+  "children": [
+    {
+      "bounds": [
+        0.0,
+        0.0,
+        960.0,
+        52.3
+      ],
+      "children": [
+        {
+          "bounds": [
+            16.0,
+            18.0,
+            56.8,
+            16.3
+          ],
+          "key": "app-title",
+          "name": "Calendar",
+          "role": "label"
+        },
+        {
+          "bounds": [
+            88.8,
+            12.0,
+            207.3,
+            28.3
+          ],
+          "children": [
+            {
+              "actions": [
+                "click",
+                "focus"
+              ],
+              "bounds": [
+                88.8,
+                12.0,
+                61.6,
+                28.3
+              ],
+              "key": "nav-today",
+              "name": "Today",
+              "role": "button",
+              "states": [
+                "unchecked"
+              ]
+            },
+            {
+              "actions": [
+                "click",
+                "focus"
+              ],
+              "bounds": [
+                154.4,
+                12.0,
+                58.5,
+                28.3
+              ],
+              "key": "nav-week",
+              "name": "Week",
+              "role": "button",
+              "states": [
+                "checked"
+              ]
+            },
+            {
+              "actions": [
+                "click",
+                "focus"
+              ],
+              "bounds": [
+                216.8,
+                12.0,
+                79.3,
+                28.3
+              ],
+              "key": "nav-tasks",
+              "name": "My tasks",
+              "role": "button",
+              "states": [
+                "unchecked"
+              ]
+            }
+          ],
+          "key": "nav",
+          "name": "Main",
+          "role": "navigation"
+        },
+        {
+          "bounds": [
+            805.9,
+            18.0,
+            54.9,
+            16.3
+          ],
+          "key": "user-name",
+          "name": "Alex Doe",
+          "role": "label"
+        },
+        {
+          "actions": [
+            "click",
+            "focus"
+          ],
+          "bounds": [
+            876.8,
+            13.6,
+            67.2,
+            25.0
+          ],
+          "key": "sign-out",
+          "name": "Sign out",
+          "role": "button"
+        }
+      ],
+      "key": "header",
+      "role": "banner"
+    },
+    {
+      "actions": [
+        "scroll-up",
+        "scroll-down",
+        "set-scroll-offset"
+      ],
+      "bounds": [
+        0.0,
+        52.3,
+        960.0,
+        667.8
+      ],
+      "children": [
+        {
+          "actions": [
+            "scroll-into-view"
+          ],
+          "bounds": [
+            16.0,
+            68.3,
+            928.0,
+            863.8
+          ],
+          "children": [
+            {
+              "actions": [
+                "scroll-into-view"
+              ],
+              "bounds": [
+                16.0,
+                68.3,
+                928.0,
+                103.0
+              ],
+              "children": [
+                {
+                  "actions": [
+                    "scroll-into-view"
+                  ],
+                  "bounds": [
+                    16.0,
+                    68.3,
+                    928.0,
+                    16.3
+                  ],
+                  "key": "week-eyebrow",
+                  "name": "This week",
+                  "role": "label"
+                },
+                {
+                  "actions": [
+                    "scroll-into-view"
+                  ],
+                  "bounds": [
+                    16.0,
+                    90.5,
+                    928.0,
+                    27.5
+                  ],
+                  "key": "week-title",
+                  "level": 1,
+                  "name": "16 – 22 Nov 2026",
+                  "role": "heading"
+                },
+                {
+                  "actions": [
+                    "scroll-into-view"
+                  ],
+                  "bounds": [
+                    16.0,
+                    124.0,
+                    928.0,
+                    25.0
+                  ],
+                  "children": [
+                    {
+                      "actions": [
+                        "click",
+                        "focus",
+                        "scroll-into-view"
+                      ],
+                      "bounds": [
+                        16.0,
+                        124.0,
+                        69.8,
+                        25.0
+                      ],
+                      "key": "week-previous",
+                      "name": "Previous",
+                      "role": "button"
+                    },
+                    {
+                      "actions": [
+                        "click",
+                        "focus",
+                        "scroll-into-view"
+                      ],
+                      "bounds": [
+                        91.8,
+                        124.0,
+                        78.3,
+                        25.0
+                      ],
+                      "key": "week-this",
+                      "name": "This week",
+                      "role": "button",
+                      "states": [
+                        "checked"
+                      ]
+                    },
+                    {
+                      "actions": [
+                        "click",
+                        "focus",
+                        "scroll-into-view"
+                      ],
+                      "bounds": [
+                        176.1,
+                        124.0,
+                        46.9,
+                        25.0
+                      ],
+                      "key": "week-next",
+                      "name": "Next",
+                      "role": "button"
+                    }
+                  ],
+                  "key": "week-nav",
+                  "name": "Weeks",
+                  "role": "navigation"
+                },
+                {
+                  "actions": [
+                    "scroll-into-view"
+                  ],
+                  "bounds": [
+                    16.0,
+                    155.0,
+                    928.0,
+                    16.3
+                  ],
+                  "key": "week-summary",
+                  "name": "8 events · 2 tasks (2 open)",
+                  "role": "label"
+                }
+              ],
+              "key": "week-header",
+              "role": "group"
+            },
+            {
+              "actions": [
+                "scroll-into-view"
+              ],
+              "bounds": [
+                16.0,
+                185.3,
+                928.0,
+                654.3
+              ],
+              "children": [
+                {
+                  "actions": [
+                    "scroll-into-view"
+                  ],
+                  "bounds": [
+                    16.0,
+                    185.3,
+                    928.0,
+                    22.3
+                  ],
+                  "children": [
+                    {
+                      "actions": [
+                        "click",
+                        "focus",
+                        "scroll-into-view"
+                      ],
+                      "bounds": [
+                        437.2,
+                        185.3,
+                        381.2,
+                        22.3
+                      ],
+                      "key": "band-10000000-0000-4000-8000-000000000001",
+                      "name": "Conference, 19 – 21 Nov",
+                      "role": "button"
+                    }
+                  ],
+                  "key": "all-day-band",
+                  "name": "All day",
+                  "role": "list"
+                },
+                {
+                  "actions": [
+                    "scroll-into-view"
+                  ],
+                  "bounds": [
+                    16.0,
+                    215.5,
+                    928.0,
+                    25.0
+                  ],
+                  "children": [
+                    {
+                      "actions": [
+                        "click",
+                        "focus",
+                        "scroll-into-view"
+                      ],
+                      "bounds": [
+                        68.0,
+                        215.5,
+                        61.2,
+                        25.0
+                      ],
+                      "children": [
+                        {
+                          "actions": [
+                            "scroll-into-view"
+                          ],
+                          "bounds": [
+                            78.0,
+                            220.5,
+                            41.2,
+                            15.0
+                          ],
+                          "name": "Mon 16",
+                          "role": "label"
+                        }
+                      ],
+                      "key": "day-2026-11-16",
+                      "name": "Monday 16 November",
+                      "role": "button",
+                      "states": [
+                        "unchecked"
+                      ]
+                    },
+                    {
+                      "actions": [
+                        "click",
+                        "focus",
+                        "scroll-into-view"
+                      ],
+                      "bounds": [
+                        193.7,
+                        215.5,
+                        56.3,
+                        25.0
+                      ],
+                      "children": [
+                        {
+                          "actions": [
+                            "scroll-into-view"
+                          ],
+                          "bounds": [
+                            203.7,
+                            220.5,
+                            36.3,
+                            15.0
+                          ],
+                          "name": "Tue 17",
+                          "role": "label"
+                        }
+                      ],
+                      "key": "day-2026-11-17",
+                      "name": "Tuesday 17 November",
+                      "role": "button",
+                      "states": [
+                        "unchecked"
+                      ]
+                    },
+                    {
+                      "actions": [
+                        "click",
+                        "focus",
+                        "scroll-into-view"
+                      ],
+                      "bounds": [
+                        319.4,
+                        215.5,
+                        61.7,
+                        25.0
+                      ],
+                      "children": [
+                        {
+                          "actions": [
+                            "scroll-into-view"
+                          ],
+                          "bounds": [
+                            329.4,
+                            220.5,
+                            41.7,
+                            15.0
+                          ],
+                          "name": "Wed 18",
+                          "role": "label"
+                        }
+                      ],
+                      "key": "day-2026-11-18",
+                      "name": "Wednesday 18 November",
+                      "role": "button",
+                      "states": [
+                        "unchecked"
+                      ]
+                    },
+                    {
+                      "actions": [
+                        "click",
+                        "focus",
+                        "scroll-into-view"
+                      ],
+                      "bounds": [
+                        445.2,
+                        215.5,
+                        58.0,
+                        25.0
+                      ],
+                      "children": [
+                        {
+                          "actions": [
+                            "scroll-into-view"
+                          ],
+                          "bounds": [
+                            455.2,
+                            220.5,
+                            38.0,
+                            15.0
+                          ],
+                          "name": "Thu 19",
+                          "role": "label"
+                        }
+                      ],
+                      "key": "day-2026-11-19",
+                      "name": "Thursday 19 November",
+                      "role": "button",
+                      "states": [
+                        "unchecked"
+                      ]
+                    },
+                    {
+                      "actions": [
+                        "click",
+                        "focus",
+                        "scroll-into-view"
+                      ],
+                      "bounds": [
+                        570.9,
+                        215.5,
+                        52.9,
+                        25.0
+                      ],
+                      "children": [
+                        {
+                          "actions": [
+                            "scroll-into-view"
+                          ],
+                          "bounds": [
+                            580.9,
+                            220.5,
+                            32.9,
+                            15.0
+                          ],
+                          "name": "Fri 20",
+                          "role": "label"
+                        }
+                      ],
+                      "key": "day-2026-11-20",
+                      "name": "Friday 20 November",
+                      "role": "button",
+                      "states": [
+                        "checked"
+                      ]
+                    },
+                    {
+                      "actions": [
+                        "click",
+                        "focus",
+                        "scroll-into-view"
+                      ],
+                      "bounds": [
+                        696.6,
+                        215.5,
+                        54.3,
+                        25.0
+                      ],
+                      "children": [
+                        {
+                          "actions": [
+                            "scroll-into-view"
+                          ],
+                          "bounds": [
+                            706.6,
+                            220.5,
+                            34.3,
+                            15.0
+                          ],
+                          "name": "Sat 21",
+                          "role": "label"
+                        }
+                      ],
+                      "key": "day-2026-11-21",
+                      "name": "Saturday 21 November",
+                      "role": "button",
+                      "states": [
+                        "unchecked"
+                      ]
+                    },
+                    {
+                      "actions": [
+                        "click",
+                        "focus",
+                        "scroll-into-view"
+                      ],
+                      "bounds": [
+                        822.3,
+                        215.5,
+                        60.2,
+                        25.0
+                      ],
+                      "children": [
+                        {
+                          "actions": [
+                            "scroll-into-view"
+                          ],
+                          "bounds": [
+                            832.3,
+                            220.5,
+                            40.2,
+                            15.0
+                          ],
+                          "name": "Sun 22",
+                          "role": "label"
+                        }
+                      ],
+                      "key": "day-2026-11-22",
+                      "name": "Sunday 22 November",
+                      "role": "button",
+                      "states": [
+                        "unchecked"
+                      ]
+                    }
+                  ],
+                  "key": "day-headings",
+                  "role": "group"
+                },
+                {
+                  "actions": [
+                    "scroll-into-view"
+                  ],
+                  "bounds": [
+                    16.0,
+                    248.5,
+                    928.0,
+                    23.0
+                  ],
+                  "children": [
+                    {
+                      "actions": [
+                        "scroll-into-view"
+                      ],
+                      "bounds": [
+                        68.0,
+                        248.5,
+                        167.0,
+                        23.0
+                      ],
+                      "children": [
+                        {
+                          "actions": [
+                            "scroll-into-view"
+                          ],
+                          "bounds": [
+                            68.0,
+                            248.5,
+                            167.0,
+                            23.0
+                          ],
+                          "children": [
+                            {
+                              "actions": [
+                                "click",
+                                "focus",
+                                "scroll-into-view"
+                              ],
+                              "bounds": [
+                                74.0,
+                                254.0,
+                                12.0,
+                                12.0
+                              ],
+                              "key": "week-check-2026-11-16-00000000-0000-4000-8000-000000000006",
+                              "name": "Mark Write the brief as done",
+                              "role": "check-box",
+                              "states": [
+                                "unchecked"
+                              ]
+                            },
+                            {
+                              "actions": [
+                                "click",
+                                "focus",
+                                "scroll-into-view"
+                              ],
+                              "bounds": [
+                                92.0,
+                                252.5,
+                                81.9,
+                                15.0
+                              ],
+                              "key": "week-task-2026-11-16-00000000-0000-4000-8000-000000000006-title",
+                              "name": "Write the brief",
+                              "role": "button"
+                            },
+                            {
+                              "actions": [
+                                "scroll-into-view"
+                              ],
+                              "bounds": [
+                                179.9,
+                                252.5,
+                                49.0,
+                                15.0
+                              ],
+                              "name": "Overdue",
+                              "role": "label"
+                            }
+                          ],
+                          "key": "week-task-2026-11-16-00000000-0000-4000-8000-000000000006",
+                          "name": "Mark Write the brief as done Write the brief Overdue",
+                          "role": "list-item"
+                        }
+                      ],
+                      "key": "tasks-2026-11-16",
+                      "name": "Tasks, Monday 16 November",
+                      "role": "list"
+                    },
+                    {
+                      "actions": [
+                        "scroll-into-view"
+                      ],
+                      "bounds": [
+                        193.7,
+                        248.5,
+                        0.0,
+                        23.0
+                      ],
+                      "key": "tasks-2026-11-17",
+                      "name": "Tasks, Tuesday 17 November",
+                      "role": "list"
+                    },
+                    {
+                      "actions": [
+                        "scroll-into-view"
+                      ],
+                      "bounds": [
+                        319.4,
+                        248.5,
+                        0.0,
+                        23.0
+                      ],
+                      "key": "tasks-2026-11-18",
+                      "name": "Tasks, Wednesday 18 November",
+                      "role": "list"
+                    },
+                    {
+                      "actions": [
+                        "scroll-into-view"
+                      ],
+                      "bounds": [
+                        445.2,
+                        248.5,
+                        0.0,
+                        23.0
+                      ],
+                      "key": "tasks-2026-11-19",
+                      "name": "Tasks, Thursday 19 November",
+                      "role": "list"
+                    },
+                    {
+                      "actions": [
+                        "scroll-into-view"
+                      ],
+                      "bounds": [
+                        570.9,
+                        248.5,
+                        104.7,
+                        23.0
+                      ],
+                      "children": [
+                        {
+                          "actions": [
+                            "scroll-into-view"
+                          ],
+                          "bounds": [
+                            570.9,
+                            248.5,
+                            104.7,
+                            23.0
+                          ],
+                          "children": [
+                            {
+                              "actions": [
+                                "click",
+                                "focus",
+                                "scroll-into-view"
+                              ],
+                              "bounds": [
+                                576.9,
+                                254.0,
+                                12.0,
+                                12.0
+                              ],
+                              "key": "week-check-2026-11-20-00000000-0000-4000-8000-000000000002",
+                              "name": "Mark Call the bank as done",
+                              "role": "check-box",
+                              "states": [
+                                "unchecked"
+                              ]
+                            },
+                            {
+                              "actions": [
+                                "click",
+                                "focus",
+                                "scroll-into-view"
+                              ],
+                              "bounds": [
+                                594.9,
+                                252.5,
+                                74.7,
+                                15.0
+                              ],
+                              "key": "week-task-2026-11-20-00000000-0000-4000-8000-000000000002-title",
+                              "name": "Call the bank",
+                              "role": "button"
+                            }
+                          ],
+                          "key": "week-task-2026-11-20-00000000-0000-4000-8000-000000000002",
+                          "name": "Mark Call the bank as done Call the bank",
+                          "role": "list-item"
+                        }
+                      ],
+                      "key": "tasks-2026-11-20",
+                      "name": "Tasks, Friday 20 November",
+                      "role": "list"
+                    },
+                    {
+                      "actions": [
+                        "scroll-into-view"
+                      ],
+                      "bounds": [
+                        696.6,
+                        248.5,
+                        0.0,
+                        23.0
+                      ],
+                      "key": "tasks-2026-11-21",
+                      "name": "Tasks, Saturday 21 November",
+                      "role": "list"
+                    },
+                    {
+                      "actions": [
+                        "scroll-into-view"
+                      ],
+                      "bounds": [
+                        822.3,
+                        248.5,
+                        0.0,
+                        23.0
+                      ],
+                      "key": "tasks-2026-11-22",
+                      "name": "Tasks, Sunday 22 November",
+                      "role": "list"
+                    }
+                  ],
+                  "key": "day-tasks",
+                  "role": "group"
+                },
+                {
+                  "actions": [
+                    "focus",
+                    "scroll-into-view",
+                    "scroll-up",
+                    "scroll-down",
+                    "set-scroll-offset"
+                  ],
+                  "bounds": [
+                    16.0,
+                    279.5,
+                    928.0,
+                    560.0
+                  ],
+                  "children": [
+                    {
+                      "actions": [
+                        "scroll-into-view"
+                      ],
+                      "bounds": [
+                        16.0,
+                        -80.5,
+                        928.0,
+                        960.0
+                      ],
+                      "children": [
+                        {
+                          "actions": [
+                            "scroll-into-view"
+                          ],
+                          "bounds": [
+                            16.0,
+                            -80.5,
+                            48.0,
+                            960.0
+                          ],
+                          "children": [
+                            {
+                              "actions": [
+                                "scroll-into-view"
+                              ],
+                              "bounds": [
+                                16.0,
+                                -80.5,
+                                48.0,
+                                40.0
+                              ],
+                              "children": [
+                                {
+                                  "actions": [
+                                    "scroll-into-view"
+                                  ],
+                                  "bounds": [
+                                    16.0,
+                                    -80.5,
+                                    34.6,
+                                    40.0
+                                  ],
+                                  "name": "00:00",
+                                  "role": "label"
+                                }
+                              ],
+                              "key": "hour-0",
+                              "role": "group"
+                            },
+                            {
+                              "actions": [
+                                "scroll-into-view"
+                              ],
+                              "bounds": [
+                                16.0,
+                                -40.5,
+                                48.0,
+                                40.0
+                              ],
+                              "children": [
+                                {
+                                  "actions": [
+                                    "scroll-into-view"
+                                  ],
+                                  "bounds": [
+                                    16.0,
+                                    -40.5,
+                                    31.9,
+                                    40.0
+                                  ],
+                                  "name": "01:00",
+                                  "role": "label"
+                                }
+                              ],
+                              "key": "hour-1",
+                              "role": "group"
+                            },
+                            {
+                              "actions": [
+                                "scroll-into-view"
+                              ],
+                              "bounds": [
+                                16.0,
+                                -0.5,
+                                48.0,
+                                40.0
+                              ],
+                              "children": [
+                                {
+                                  "actions": [
+                                    "scroll-into-view"
+                                  ],
+                                  "bounds": [
+                                    16.0,
+                                    -0.5,
+                                    34.3,
+                                    40.0
+                                  ],
+                                  "name": "02:00",
+                                  "role": "label"
+                                }
+                              ],
+                              "key": "hour-2",
+                              "role": "group"
+                            },
+                            {
+                              "actions": [
+                                "scroll-into-view"
+                              ],
+                              "bounds": [
+                                16.0,
+                                39.5,
+                                48.0,
+                                40.0
+                              ],
+                              "children": [
+                                {
+                                  "actions": [
+                                    "scroll-into-view"
+                                  ],
+                                  "bounds": [
+                                    16.0,
+                                    39.5,
+                                    34.4,
+                                    40.0
+                                  ],
+                                  "name": "03:00",
+                                  "role": "label"
+                                }
+                              ],
+                              "key": "hour-3",
+                              "role": "group"
+                            },
+                            {
+                              "actions": [
+                                "scroll-into-view"
+                              ],
+                              "bounds": [
+                                16.0,
+                                79.5,
+                                48.0,
+                                40.0
+                              ],
+                              "children": [
+                                {
+                                  "actions": [
+                                    "scroll-into-view"
+                                  ],
+                                  "bounds": [
+                                    16.0,
+                                    79.5,
+                                    34.8,
+                                    40.0
+                                  ],
+                                  "name": "04:00",
+                                  "role": "label"
+                                }
+                              ],
+                              "key": "hour-4",
+                              "role": "group"
+                            },
+                            {
+                              "actions": [
+                                "scroll-into-view"
+                              ],
+                              "bounds": [
+                                16.0,
+                                119.5,
+                                48.0,
+                                40.0
+                              ],
+                              "children": [
+                                {
+                                  "actions": [
+                                    "scroll-into-view"
+                                  ],
+                                  "bounds": [
+                                    16.0,
+                                    119.5,
+                                    34.1,
+                                    40.0
+                                  ],
+                                  "name": "05:00",
+                                  "role": "label"
+                                }
+                              ],
+                              "key": "hour-5",
+                              "role": "group"
+                            },
+                            {
+                              "actions": [
+                                "scroll-into-view"
+                              ],
+                              "bounds": [
+                                16.0,
+                                159.5,
+                                48.0,
+                                40.0
+                              ],
+                              "children": [
+                                {
+                                  "actions": [
+                                    "scroll-into-view"
+                                  ],
+                                  "bounds": [
+                                    16.0,
+                                    159.5,
+                                    34.4,
+                                    40.0
+                                  ],
+                                  "name": "06:00",
+                                  "role": "label"
+                                }
+                              ],
+                              "key": "hour-6",
+                              "role": "group"
+                            },
+                            {
+                              "actions": [
+                                "scroll-into-view"
+                              ],
+                              "bounds": [
+                                16.0,
+                                199.5,
+                                48.0,
+                                40.0
+                              ],
+                              "children": [
+                                {
+                                  "actions": [
+                                    "scroll-into-view"
+                                  ],
+                                  "bounds": [
+                                    16.0,
+                                    199.5,
+                                    33.1,
+                                    40.0
+                                  ],
+                                  "name": "07:00",
+                                  "role": "label"
+                                }
+                              ],
+                              "key": "hour-7",
+                              "role": "group"
+                            },
+                            {
+                              "actions": [
+                                "scroll-into-view"
+                              ],
+                              "bounds": [
+                                16.0,
+                                239.5,
+                                48.0,
+                                40.0
+                              ],
+                              "children": [
+                                {
+                                  "actions": [
+                                    "scroll-into-view"
+                                  ],
+                                  "bounds": [
+                                    16.0,
+                                    239.5,
+                                    34.4,
+                                    40.0
+                                  ],
+                                  "name": "08:00",
+                                  "role": "label"
+                                }
+                              ],
+                              "key": "hour-8",
+                              "role": "group"
+                            },
+                            {
+                              "actions": [
+                                "scroll-into-view"
+                              ],
+                              "bounds": [
+                                16.0,
+                                279.5,
+                                48.0,
+                                40.0
+                              ],
+                              "children": [
+                                {
+                                  "actions": [
+                                    "scroll-into-view"
+                                  ],
+                                  "bounds": [
+                                    16.0,
+                                    279.5,
+                                    34.4,
+                                    40.0
+                                  ],
+                                  "name": "09:00",
+                                  "role": "label"
+                                }
+                              ],
+                              "key": "hour-9",
+                              "role": "group"
+                            },
+                            {
+                              "actions": [
+                                "scroll-into-view"
+                              ],
+                              "bounds": [
+                                16.0,
+                                319.5,
+                                48.0,
+                                40.0
+                              ],
+                              "children": [
+                                {
+                                  "actions": [
+                                    "scroll-into-view"
+                                  ],
+                                  "bounds": [
+                                    16.0,
+                                    319.5,
+                                    31.9,
+                                    40.0
+                                  ],
+                                  "name": "10:00",
+                                  "role": "label"
+                                }
+                              ],
+                              "key": "hour-10",
+                              "role": "group"
+                            },
+                            {
+                              "actions": [
+                                "scroll-into-view"
+                              ],
+                              "bounds": [
+                                16.0,
+                                359.5,
+                                48.0,
+                                40.0
+                              ],
+                              "children": [
+                                {
+                                  "actions": [
+                                    "scroll-into-view"
+                                  ],
+                                  "bounds": [
+                                    16.0,
+                                    359.5,
+                                    29.1,
+                                    40.0
+                                  ],
+                                  "name": "11:00",
+                                  "role": "label"
+                                }
+                              ],
+                              "key": "hour-11",
+                              "role": "group"
+                            },
+                            {
+                              "actions": [
+                                "scroll-into-view"
+                              ],
+                              "bounds": [
+                                16.0,
+                                399.5,
+                                48.0,
+                                40.0
+                              ],
+                              "children": [
+                                {
+                                  "actions": [
+                                    "scroll-into-view"
+                                  ],
+                                  "bounds": [
+                                    16.0,
+                                    399.5,
+                                    31.5,
+                                    40.0
+                                  ],
+                                  "name": "12:00",
+                                  "role": "label"
+                                }
+                              ],
+                              "key": "hour-12",
+                              "role": "group"
+                            },
+                            {
+                              "actions": [
+                                "scroll-into-view"
+                              ],
+                              "bounds": [
+                                16.0,
+                                439.5,
+                                48.0,
+                                40.0
+                              ],
+                              "children": [
+                                {
+                                  "actions": [
+                                    "scroll-into-view"
+                                  ],
+                                  "bounds": [
+                                    16.0,
+                                    439.5,
+                                    31.7,
+                                    40.0
+                                  ],
+                                  "name": "13:00",
+                                  "role": "label"
+                                }
+                              ],
+                              "key": "hour-13",
+                              "role": "group"
+                            },
+                            {
+                              "actions": [
+                                "scroll-into-view"
+                              ],
+                              "bounds": [
+                                16.0,
+                                479.5,
+                                48.0,
+                                40.0
+                              ],
+                              "children": [
+                                {
+                                  "actions": [
+                                    "scroll-into-view"
+                                  ],
+                                  "bounds": [
+                                    16.0,
+                                    479.5,
+                                    32.0,
+                                    40.0
+                                  ],
+                                  "name": "14:00",
+                                  "role": "label"
+                                }
+                              ],
+                              "key": "hour-14",
+                              "role": "group"
+                            },
+                            {
+                              "actions": [
+                                "scroll-into-view"
+                              ],
+                              "bounds": [
+                                16.0,
+                                519.5,
+                                48.0,
+                                40.0
+                              ],
+                              "children": [
+                                {
+                                  "actions": [
+                                    "scroll-into-view"
+                                  ],
+                                  "bounds": [
+                                    16.0,
+                                    519.5,
+                                    31.4,
+                                    40.0
+                                  ],
+                                  "name": "15:00",
+                                  "role": "label"
+                                }
+                              ],
+                              "key": "hour-15",
+                              "role": "group"
+                            },
+                            {
+                              "actions": [
+                                "scroll-into-view"
+                              ],
+                              "bounds": [
+                                16.0,
+                                559.5,
+                                48.0,
+                                40.0
+                              ],
+                              "children": [
+                                {
+                                  "actions": [
+                                    "scroll-into-view"
+                                  ],
+                                  "bounds": [
+                                    16.0,
+                                    559.5,
+                                    31.7,
+                                    40.0
+                                  ],
+                                  "name": "16:00",
+                                  "role": "label"
+                                }
+                              ],
+                              "key": "hour-16",
+                              "role": "group"
+                            },
+                            {
+                              "actions": [
+                                "scroll-into-view"
+                              ],
+                              "bounds": [
+                                16.0,
+                                599.5,
+                                48.0,
+                                40.0
+                              ],
+                              "children": [
+                                {
+                                  "actions": [
+                                    "scroll-into-view"
+                                  ],
+                                  "bounds": [
+                                    16.0,
+                                    599.5,
+                                    30.6,
+                                    40.0
+                                  ],
+                                  "name": "17:00",
+                                  "role": "label"
+                                }
+                              ],
+                              "key": "hour-17",
+                              "role": "group"
+                            },
+                            {
+                              "actions": [
+                                "scroll-into-view"
+                              ],
+                              "bounds": [
+                                16.0,
+                                639.5,
+                                48.0,
+                                40.0
+                              ],
+                              "children": [
+                                {
+                                  "actions": [
+                                    "scroll-into-view"
+                                  ],
+                                  "bounds": [
+                                    16.0,
+                                    639.5,
+                                    31.7,
+                                    40.0
+                                  ],
+                                  "name": "18:00",
+                                  "role": "label"
+                                }
+                              ],
+                              "key": "hour-18",
+                              "role": "group"
+                            },
+                            {
+                              "actions": [
+                                "scroll-into-view"
+                              ],
+                              "bounds": [
+                                16.0,
+                                679.5,
+                                48.0,
+                                40.0
+                              ],
+                              "children": [
+                                {
+                                  "actions": [
+                                    "scroll-into-view"
+                                  ],
+                                  "bounds": [
+                                    16.0,
+                                    679.5,
+                                    31.7,
+                                    40.0
+                                  ],
+                                  "name": "19:00",
+                                  "role": "label"
+                                }
+                              ],
+                              "key": "hour-19",
+                              "role": "group"
+                            },
+                            {
+                              "actions": [
+                                "scroll-into-view"
+                              ],
+                              "bounds": [
+                                16.0,
+                                719.5,
+                                48.0,
+                                40.0
+                              ],
+                              "children": [
+                                {
+                                  "actions": [
+                                    "scroll-into-view"
+                                  ],
+                                  "bounds": [
+                                    16.0,
+                                    719.5,
+                                    34.3,
+                                    40.0
+                                  ],
+                                  "name": "20:00",
+                                  "role": "label"
+                                }
+                              ],
+                              "key": "hour-20",
+                              "role": "group"
+                            },
+                            {
+                              "actions": [
+                                "scroll-into-view"
+                              ],
+                              "bounds": [
+                                16.0,
+                                759.5,
+                                48.0,
+                                40.0
+                              ],
+                              "children": [
+                                {
+                                  "actions": [
+                                    "scroll-into-view"
+                                  ],
+                                  "bounds": [
+                                    16.0,
+                                    759.5,
+                                    31.5,
+                                    40.0
+                                  ],
+                                  "name": "21:00",
+                                  "role": "label"
+                                }
+                              ],
+                              "key": "hour-21",
+                              "role": "group"
+                            },
+                            {
+                              "actions": [
+                                "scroll-into-view"
+                              ],
+                              "bounds": [
+                                16.0,
+                                799.5,
+                                48.0,
+                                40.0
+                              ],
+                              "children": [
+                                {
+                                  "actions": [
+                                    "scroll-into-view"
+                                  ],
+                                  "bounds": [
+                                    16.0,
+                                    799.5,
+                                    33.9,
+                                    40.0
+                                  ],
+                                  "name": "22:00",
+                                  "role": "label"
+                                }
+                              ],
+                              "key": "hour-22",
+                              "role": "group"
+                            },
+                            {
+                              "actions": [
+                                "scroll-into-view"
+                              ],
+                              "bounds": [
+                                16.0,
+                                839.5,
+                                48.0,
+                                40.0
+                              ],
+                              "children": [
+                                {
+                                  "actions": [
+                                    "scroll-into-view"
+                                  ],
+                                  "bounds": [
+                                    16.0,
+                                    839.5,
+                                    34.1,
+                                    40.0
+                                  ],
+                                  "name": "23:00",
+                                  "role": "label"
+                                }
+                              ],
+                              "key": "hour-23",
+                              "role": "group"
+                            }
+                          ],
+                          "key": "hours",
+                          "role": "group"
+                        },
+                        {
+                          "actions": [
+                            "scroll-into-view"
+                          ],
+                          "bounds": [
+                            68.0,
+                            -80.5,
+                            121.7,
+                            960.0
+                          ],
+                          "children": [
+                            {
+                              "actions": [
+                                "click",
+                                "focus",
+                                "scroll-into-view"
+                              ],
+                              "bounds": [
+                                70.0,
+                                279.5,
+                                115.7,
+                                38.0
+                              ],
+                              "key": "week-event-2026-11-16-30000000-0000-4000-8000-000000000001",
+                              "name": "Planning, 09:00 – 10:00",
+                              "role": "button"
+                            }
+                          ],
+                          "key": "grid-2026-11-16",
+                          "role": "group"
+                        },
+                        {
+                          "actions": [
+                            "scroll-into-view"
+                          ],
+                          "bounds": [
+                            193.7,
+                            -80.5,
+                            121.7,
+                            960.0
+                          ],
+                          "key": "grid-2026-11-17",
+                          "role": "group"
+                        },
+                        {
+                          "actions": [
+                            "scroll-into-view"
+                          ],
+                          "bounds": [
+                            319.4,
+                            -80.5,
+                            121.7,
+                            960.0
+                          ],
+                          "children": [
+                            {
+                              "actions": [
+                                "click",
+                                "focus",
+                                "scroll-into-view"
+                              ],
+                              "bounds": [
+                                321.4,
+                                559.5,
+                                27.4,
+                                28.0
+                              ],
+                              "key": "week-event-2026-11-18-30000000-0000-4000-8000-000000000002",
+                              "name": "Dentist, 16:00 – 16:45",
+                              "role": "button"
+                            },
+                            {
+                              "actions": [
+                                "click",
+                                "focus",
+                                "scroll-into-view"
+                              ],
+                              "bounds": [
+                                350.9,
+                                562.8,
+                                27.4,
+                                24.7
+                              ],
+                              "key": "week-event-2026-11-18-30000000-0000-4000-8000-000000000011",
+                              "name": "Interview 1, 16:05 – 16:45",
+                              "role": "button"
+                            },
+                            {
+                              "actions": [
+                                "click",
+                                "focus",
+                                "scroll-into-view"
+                              ],
+                              "bounds": [
+                                380.3,
+                                566.2,
+                                27.4,
+                                21.3
+                              ],
+                              "key": "week-event-2026-11-18-30000000-0000-4000-8000-000000000012",
+                              "name": "Interview 2, 16:10 – 16:45",
+                              "role": "button"
+                            },
+                            {
+                              "actions": [
+                                "click",
+                                "focus",
+                                "scroll-into-view"
+                              ],
+                              "bounds": [
+                                409.7,
+                                569.5,
+                                27.4,
+                                18.0
+                              ],
+                              "key": "week-more-2026-11-18-975",
+                              "name": "+2 more",
+                              "role": "link"
+                            }
+                          ],
+                          "key": "grid-2026-11-18",
+                          "role": "group"
+                        },
+                        {
+                          "actions": [
+                            "scroll-into-view"
+                          ],
+                          "bounds": [
+                            445.2,
+                            -80.5,
+                            121.7,
+                            960.0
+                          ],
+                          "key": "grid-2026-11-19",
+                          "role": "group"
+                        },
+                        {
+                          "actions": [
+                            "scroll-into-view"
+                          ],
+                          "bounds": [
+                            570.9,
+                            -80.5,
+                            121.7,
+                            960.0
+                          ],
+                          "children": [
+                            {
+                              "actions": [
+                                "click",
+                                "focus",
+                                "scroll-into-view"
+                              ],
+                              "bounds": [
+                                572.9,
+                                299.5,
+                                115.7,
+                                58.0
+                              ],
+                              "key": "week-event-2026-11-20-30000000-0000-4000-8000-000000000003",
+                              "name": "Design review, 09:30 – 11:00",
+                              "role": "button"
+                            },
+                            {
+                              "actions": [
+                                "scroll-into-view"
+                              ],
+                              "bounds": [
+                                570.9,
+                                319.5,
+                                121.7,
+                                2.0
+                              ],
+                              "key": "now-line",
+                              "role": "group"
+                            }
+                          ],
+                          "key": "grid-2026-11-20",
+                          "role": "group"
+                        },
+                        {
+                          "actions": [
+                            "scroll-into-view"
+                          ],
+                          "bounds": [
+                            696.6,
+                            -80.5,
+                            121.7,
+                            960.0
+                          ],
+                          "key": "grid-2026-11-21",
+                          "role": "group"
+                        },
+                        {
+                          "actions": [
+                            "scroll-into-view"
+                          ],
+                          "bounds": [
+                            822.3,
+                            -80.5,
+                            121.7,
+                            960.0
+                          ],
+                          "key": "grid-2026-11-22",
+                          "role": "group"
+                        }
+                      ],
+                      "key": "days",
+                      "role": "group"
+                    }
+                  ],
+                  "key": "week-hours",
+                  "name": "Week grid",
+                  "role": "region",
+                  "scroll": [
+                    0.0,
+                    360.0,
+                    400.0
+                  ],
+                  "states": [
+                    "clips"
+                  ]
+                }
+              ],
+              "key": "week-grid",
+              "role": "group"
+            },
+            {
+              "actions": [
+                "scroll-into-view"
+              ],
+              "bounds": [
+                16.0,
+                853.5,
+                928.0,
+                78.5
+              ],
+              "children": [
+                {
+                  "actions": [
+                    "scroll-into-view"
+                  ],
+                  "bounds": [
+                    16.0,
+                    853.5,
+                    928.0,
+                    20.0
+                  ],
+                  "key": "week-overdue-heading",
+                  "level": 2,
+                  "name": "Overdue (1)",
+                  "role": "heading"
+                },
+                {
+                  "actions": [
+                    "scroll-into-view"
+                  ],
+                  "bounds": [
+                    16.0,
+                    881.5,
+                    928.0,
+                    50.5
+                  ],
+                  "children": [
+                    {
+                      "actions": [
+                        "click",
+                        "focus",
+                        "scroll-into-view"
+                      ],
+                      "bounds": [
+                        28.0,
+                        898.8,
+                        16.0,
+                        16.0
+                      ],
+                      "key": "overdue-00000000-0000-4000-8000-000000000005-check",
+                      "name": "Mark File expenses as done",
+                      "role": "check-box",
+                      "states": [
+                        "unchecked"
+                      ]
+                    },
+                    {
+                      "actions": [
+                        "click",
+                        "focus",
+                        "scroll-into-view"
+                      ],
+                      "bounds": [
+                        52.0,
+                        889.5,
+                        815.2,
+                        16.3
+                      ],
+                      "key": "overdue-00000000-0000-4000-8000-000000000005-title",
+                      "name": "File expenses",
+                      "role": "button"
+                    },
+                    {
+                      "actions": [
+                        "scroll-into-view"
+                      ],
+                      "bounds": [
+                        52.0,
+                        907.8,
+                        815.2,
+                        16.3
+                      ],
+                      "name": "Overdue by 8 days",
+                      "role": "label"
+                    },
+                    {
+                      "actions": [
+                        "click",
+                        "focus",
+                        "scroll-into-view"
+                      ],
+                      "bounds": [
+                        875.2,
+                        894.3,
+                        56.8,
+                        25.0
+                      ],
+                      "key": "overdue-00000000-0000-4000-8000-000000000005-delete",
+                      "name": "Delete File expenses",
+                      "role": "button"
+                    }
+                  ],
+                  "key": "overdue-00000000-0000-4000-8000-000000000005",
+                  "name": "Mark File expenses as done File expenses Overdue by 8 days Delete File expenses",
+                  "role": "list-item"
+                }
+              ],
+              "key": "week-overdue",
+              "name": "Overdue (1)",
+              "role": "region"
+            }
+          ],
+          "key": "week",
+          "role": "group"
+        }
+      ],
+      "key": "page",
+      "role": "main",
+      "scroll": [
+        0.0,
+        0.0,
+        212.0
+      ],
+      "states": [
+        "clips"
+      ]
+    },
+    {
+      "bounds": [
+        0.0,
+        0.0,
+        1.0,
+        1.0
+      ],
+      "role": "status",
+      "states": [
+        "live-polite"
+      ]
+    }
+  ],
+  "name": "Calendar",
+  "role": "window"
+}

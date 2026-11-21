@@ -171,6 +171,23 @@ pub fn overdue_tasks() -> TaskPage {
   }))
 }
 
+/// The week with five overlapping events on Wednesday 18 November, 16:00 to 17:00 in Madrid: three side by side and
+/// "+2 more" (#1034).
+#[must_use]
+pub fn busy_week() -> WeekAgendaResponse {
+  let mut week = week();
+  let wednesday = &mut week.days[2];
+  let first = wednesday.events[0].clone();
+  for n in 1..=4u8 {
+    let mut event = first.clone();
+    event.id = format!("30000000-0000-4000-8000-0000000000{:02}", 10 + n).parse().expect("a uuid");
+    event.title = format!("Interview {n}");
+    event.start = first.start + chrono::Duration::minutes(i64::from(n) * 5);
+    wednesday.events.push(event);
+  }
+  week
+}
+
 #[cfg(test)]
 mod tests {
   #[test]

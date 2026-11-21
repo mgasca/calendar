@@ -17,6 +17,7 @@ pr:
   - https://github.com/mgasca/calendar/pull/1025
   - https://github.com/mgasca/calendar/pull/1026
   - https://github.com/mgasca/calendar/pull/1047
+  - https://github.com/mgasca/calendar/pull/1048
 adrs: ["0003", "0004", "0021", "0027", "0053", "0055", "0058", "0061", "0063", "0064", "0066", "0067", "0068"]
 ---
 
@@ -334,12 +335,20 @@ No further ADR is expected. A slice that finds a decision ADR-0067 or ADR-0068 d
 * **Dialogs** now fit the window and scroll inside it: an open grid made the event form taller than the window.
 * **Tests:** `tests/pickers.rs` drives the grid and the spin buttons with the keyboard (9 tests: opening on the field's date, every key, Escape keeping the dialog, the month buttons, stepping and typed digits, the all-day box, a 12-hour locale, an empty due time, "Go to date", and a closed form leaving no grid or half-typed time behind); six of them fail with the grid's keys and the stepping switched off, and the last without `pickers::reset` (pre-merge review of #1048). Unit tests for the grid's days, the wrapping and the typed digits, and the locale's month and clock. Golden `add-event-calendar` (tree and PNG, reviewed); the other form goldens changed for the button and the spin buttons, and Today's for the "Choose date" button.
 
+### Week shortcuts, "+N more" and the first scroll (#1034), delivered
+
+* **Overlapping events** (`week_layout.rs`, a port of the web app's `gridLayout.ts`): sorted by start, longest first on ties; transitively overlapping events form a cluster and share the column side by side, each in the first free column. A cluster that needs more than four columns keeps three and shows "+N more" in the fourth, spanning the hidden events, which links to that day. Events are at least 20 minutes tall, and the repeated hour of a 25-hour day lays out by wall clock. Before this, overlapping events were drawn full width on top of each other.
+* **The chip** is named "+N more", as the web app's link reads; it shows "+N" because a quarter of a day column can't fit the words at the app's widths. Hidden events stay in the accessibility tree and focusable, as the web app keeps them in the day's list with `visually-hidden`.
+* **Shortcuts** (`views::week::on_key`, the window's `on_key`): ← the previous week, → the next, `t` (lower case only) this week, as `useWeekKeys.ts`. Ignored with a modifier held, in a text field, and while a dialog or the delete confirmation is open (maintainer's choice on #1034; the web app does the same since #1039). The hours are a focusable region named "Week grid", as the web app's `data-week-scroll`: while focus is in it, ← and → are the grid's and only `t` changes week.
+* **First scroll** (`views::week::scroll_on_open`, from `poll`): each week's grid opens at 07:00, or an hour before now in the current week (`initialScrollMinute`), once per week shown: on the first visit and every change of week, never on a clock tick or a refetch.
+* **Tests:** `tests/week.rs` runs the scenes with the app's own `poll` and `on_key` (5 tests: the arrows and `t`, modifiers and an open dialog with focus on a dialog button, the grid keeping the arrows, "+2 more" opening its day, and the scroll this week, another week and after a refetch). Each fails with its piece removed: no window `on_key`, no dialog check, no scroll, no chips. Unit tests port `gridLayout.test.ts`'s layout and scroll cases. New golden `week-busy` (tree and PNG, reviewed); `week`'s changed for the "Week grid" region.
+
 ### Parity with the web app (#1002 to #1007, #1032 to #1035)
 
 | Web app | Rune app | Slice |
 | --- | --- | --- |
 | Today / Day: sections, badges, states, nav, date picker | Same: "Go to date" with a month grid | #1004, #1006, #1033 |
-| Week: grid, all-day band, task strips, overdue panel | Same; no ← → `t` shortcuts, "+N more" or first scroll to 07:00 | #1004 |
+| Week: grid, all-day band, task strips, overdue panel, ← → `t`, "+N more", first scroll | Same; the chip shows "+N" and is named "+N more" | #1004, #1034 |
 | My tasks: views, Load more, rows | Same, virtualised | #1004, #1025 review |
 | Complete / reopen / delete with rollback and confirm | Same | #1005 |
 | Add / edit events and tasks, 400/409/404, event delete in dialog | Same, with date and time pickers (the typed date field stays) | #1006, #1033 |
@@ -347,7 +356,7 @@ No further ADR is expected. A slice that finds a decision ADR-0067 or ADR-0068 d
 | Sign-in | Session stub until #1008 (S3) | #1008 |
 | Dates and times in the browser's locale | Same: the OS's locale on the desktop, the browser's on the web. Where a locale's CLDR medium date is numeric (de, ja), the week range and band show numbers where `Intl`'s `month: 'short'` shows an abbreviated month | #1032 |
 
-**Known differences** (each now has an issue): no telemetry (#1010), no notice timeout or focus return after dialogs (#1035), and the Week shortcuts above (#1034).
+**Known differences** (each now has an issue): no telemetry (#1010), no notice timeout or focus return after dialogs (#1035).
 
 ### Where things live
 

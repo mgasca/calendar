@@ -65,6 +65,15 @@ build-web:
     wasm-bindgen --target web --no-typescript --out-dir target/web --out-name app \
         target/wasm32-unknown-unknown/release/calendar_native.wasm
     cp web/index.html target/web/
+    # Rune embeds Inter cut to Latin, Greek and Cyrillic and fetches the full faces from beside app.js once the first
+    # frame is up (#1043). Copy those of the Rune this build used, as Rune's own scripts/web-build.sh does. The
+    # Dockerfile's native-web stage repeats this.
+    rune=$(cargo metadata --locked --format-version 1 --filter-platform wasm32-unknown-unknown | sed -n 's/.*"manifest_path":"\([^"]*\/crates\/rune\/\)Cargo\.toml".*/\1/p')
+    if ! ls "${rune}assets/web/"Inter-*.ttf > /dev/null 2>&1; then
+        echo "No Inter faces in ${rune:-the Rune checkout}assets/web/; Rune's web font files moved (#1043)." >&2
+        exit 1
+    fi
+    cp "${rune}assets/web/"Inter-*.ttf target/web/
     echo "Built native/target/web/ ($(du -h target/web/app_bg.wasm | cut -f1) wasm)"
 
 # Remove Cargo build outputs

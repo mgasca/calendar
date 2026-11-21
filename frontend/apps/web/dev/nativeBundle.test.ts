@@ -22,6 +22,7 @@ beforeAll(() => {
   writeFileSync(join(bundle, 'app.js'), 'export default async function init() {}');
   writeFileSync(join(bundle, 'app_bg.wasm'), new Uint8Array([0, 97, 115, 109, 1, 0, 0, 0]));
   writeFileSync(join(bundle, 'assets', 'icon.svg'), '<svg/>');
+  writeFileSync(join(bundle, 'Inter-Regular.ttf'), new Uint8Array([0, 1, 0, 0]));
   writeFileSync(join(root, 'secret.txt'), 'outside the bundle');
 });
 
@@ -63,6 +64,7 @@ describe('resolveNativeRequest', () => {
   it.each([
     ['/native/app.js', 'app.js', 'text/javascript; charset=utf-8'],
     ['/native/app_bg.wasm', 'app_bg.wasm', 'application/wasm'],
+    ['/native/Inter-Regular.ttf', 'Inter-Regular.ttf', 'font/ttf'],
     ['/native/assets/icon.svg?v=2', 'assets/icon.svg', 'image/svg+xml'],
   ])('serves %s with its type', (url, file, contentType) => {
     expect(resolveNativeRequest(bundle, url)).toEqual({

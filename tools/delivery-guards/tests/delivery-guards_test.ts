@@ -145,8 +145,8 @@ const mutations: [string, string, string, string, string, boolean?][] = [
   [
     "AJobLeftOutOfNeeds_Fails",
     "ci-result-needs-all",
-    "[changes, backend, frontend, docs, tooling]",
-    "[changes, backend, frontend, docs]",
+    "[changes, backend, frontend, docs, tooling, native]",
+    "[changes, backend, frontend, docs, native]",
     "does not need `tooling` (Tooling)",
   ],
   [
@@ -156,7 +156,7 @@ const mutations: [string, string, string, string, string, boolean?][] = [
     "  gate:\n    name: Run-time gate\n    steps:\n      - run: echo\n  supersede:\n",
     "does not need `gate` (Run-time gate)",
   ],
-  ["NeedingTheOptionalCancelJob_Fails", "ci-result-needs-all", "tooling]", "tooling, supersede]", "needs `supersede`"],
+  ["NeedingTheOptionalCancelJob_Fails", "ci-result-needs-all", "native]", "native, supersede]", "needs `supersede`"],
   ["NotAlways_Fails", "ci-result-needs-all", "    if: ${{ always() }}\n", "", "always()"],
   [
     "ASkipThatChangesDidNotIntend_Fails",
@@ -291,7 +291,7 @@ Deno.test("ANewJobNeeded_Passes", () => {
   const w = workflow.replace(
     "  supersede:\n",
     "  gate:\n    name: Run-time gate\n    steps:\n      - run: echo\n  supersede:\n",
-  ).replace("tooling]", "tooling, gate]");
+  ).replace("native]", "native, gate]");
   assertEquals(
     runGuard(guards.find((g) => g.id === "ci-result-needs-all")!, { workflow: w, toolsJustfile, codeqlWorkflow }),
     [],
@@ -301,8 +301,8 @@ Deno.test("NeedsAsABlockList_IsRead", () =>
   assertEquals(
     failures(
       "ci-result-needs-all",
-      "needs: [changes, backend, frontend, docs, tooling]",
-      "needs:\n      - changes\n      - backend\n      - frontend\n      - docs\n      - tooling",
+      "needs: [changes, backend, frontend, docs, tooling, native]",
+      "needs:\n      - changes\n      - backend\n      - frontend\n      - docs\n      - tooling\n      - native",
     ),
     [],
   ));
@@ -352,7 +352,7 @@ for (const yaml of ["a: [1", "a:\n  b: 1\n c: 2", "a: 1\n---\nb: 2", ""]) {
     assertThrows(() => parseYaml(yaml));
   });
 }
-const allJobs = ["backend", "frontend", "docs", "tooling", "adr", "narratives", "binding", "image"];
+const allJobs = ["backend", "frontend", "docs", "tooling", "adr", "narratives", "binding", "image", "native"];
 async function runRules(event: string, complete: boolean, files: string[]): Promise<Record<string, unknown>> {
   const process = new Deno.Command("jq", {
     args: ["-c", "-f", join(root, changesRulesPath)],
@@ -382,7 +382,7 @@ for (const [file, jobs] of fileCases) {
 }
 for (const file of [".github/workflows/ci.yml", ".github/ci-changes.jq"]) {
   Deno.test(`AChangeToTheRules_RunsEverything: ${file}`, () =>
-    checkRules("pull_request", true, ["README.md", file], "backend frontend docs tooling image"));
+    checkRules("pull_request", true, ["README.md", file], "backend frontend docs tooling image native"));
 }
 const combinedCases: [string, string, boolean, string[], string][] = [
   [
@@ -397,7 +397,7 @@ const combinedCases: [string, string, boolean, string[], string][] = [
     "pull_request",
     true,
     ["frontend/packages/theme/src/tokens.css"],
-    "docs frontend image",
+    "docs frontend image native",
   ],
   ["ARenameOutOfTheThemePackage_RunsTheDocsSite", "pull_request", true, [
     "frontend/packages/theme/tokens.css",
@@ -411,7 +411,7 @@ const combinedCases: [string, string, boolean, string[], string][] = [
     "frontend/apps/web/src/main.tsx",
     "frontend/packages/api-client/src/index.ts",
     "contracts/openapi.json",
-  ], "backend frontend image"],
+  ], "backend frontend image native"],
   ["ACardWithAToolChange_RunsToolingInsteadOfTheAdrCheck", "pull_request", true, [
     "docs/stories/0038-x.md",
     "tools/ci-timings/CiTimings.cs",
@@ -454,13 +454,19 @@ const combinedCases: [string, string, boolean, string[], string][] = [
   ["AStitcherChange_RunsToolingWhichRunsTheCheck", "pull_request", true, [
     ".claude/skills/architecture-narrative-builder/scripts/stitch/stitch.ts",
   ], "tooling"],
-  ["AnIncompleteListing_RunsEverything", "pull_request", false, ["README.md"], "backend frontend docs tooling image"],
+  [
+    "AnIncompleteListing_RunsEverything",
+    "pull_request",
+    false,
+    ["README.md"],
+    "backend frontend docs tooling image native",
+  ],
   [
     "AnIncompleteMergeGroupListing_RunsEverythingButTheAdrCheck",
     "merge_group",
     false,
     ["docs/stories/0038-x.md"],
-    "backend frontend docs tooling image",
+    "backend frontend docs tooling image native",
   ],
   ["APushOrDispatch_RunsEverything: push", "push", true, [], allJobs.join(" ")],
   ["APushOrDispatch_RunsEverything: dispatch", "workflow_dispatch", true, [], allJobs.join(" ")],
@@ -545,6 +551,7 @@ Deno.test("SkippedNames_AreTheJobNamesInCi", async () => {
     "Narratives",
     "Flow binding",
     "Container image",
+    "Native",
   ]);
   const workflow = Workflow.parse(loadFiles(root).workflow);
   for (const id of allJobs) {
@@ -668,6 +675,12 @@ function cacheFailures(from: string, to: string): string[] {
   return runGuard(guards.find((g) => g.id === "codeql-rust-caches")!, files);
 }
 const cacheMutations: [string, string, string, string][] = [
+  [
+    "ARustAnalysisOfTheWholeRepository_Fails",
+    "          config: ${{ matrix.language == 'rust' && '{\"paths\":[\"backend\"]}' || '' }}\n",
+    "",
+    "not scoped to backend/",
+  ],
   ["NoTargetDirectoryRestore_Fails", "        id: target\n", "        id: elsewhere\n", "does not restore"],
   [
     "NoExtractorTargetDirectory_Fails",
@@ -710,3 +723,33 @@ Deno.test("TheCheckoutsJobsApiCheck_IsReadFromCiResultJq", () => {
   );
   assertEquals(runGuard(guard, { ...files, ciResultJq: undefined }).length > 0, true);
 });
+// The Native job's cache and lint split (#1020 review): each mutation undoes one part of the fix.
+for (
+  const [name, from, to, expected] of [
+    [
+      "AnUnprunedCache_Fails",
+      "uses: actions/cache/restore@v6\n        with:\n          path: |\n            ~/.cargo/registry/index\n            native/target",
+      "uses: actions/cache@v6\n        with:\n          path: |\n            ~/.cargo/registry/index\n            native/target",
+      "saves the workspace's own build unpruned",
+    ],
+    ["NoPrune_Fails", "--no-deps", "--all", "does not prune its own crates"],
+    ["APruneThatKeepsTheBundle_Fails", "rm -rf target/goldens target/web\n", "", "keeps target/goldens and target/web"],
+    [
+      "BothClippyHalvesInTheDesktopRow_Fails",
+      "just native run lint-desktop test",
+      "just native run lint test",
+      "runs `lint`",
+    ],
+    [
+      "BothClippyHalvesInTheWasmRow_Fails",
+      "just native run lint-wasm build-web",
+      "just native run lint build-web",
+      "runs `lint`",
+    ],
+  ] as const
+) {
+  Deno.test(`NativeCi_${name}`, () => {
+    const errors = failures("native-ci", from, to);
+    assert(errors.some((e) => e.includes(expected)), errors.join("\n") || "the guard passed");
+  });
+}

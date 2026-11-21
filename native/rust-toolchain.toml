@@ -1,0 +1,6 @@
+# Rune pins its own Rust (ADR-0067). Move this with the Rune `rev` in native/Cargo.toml, never alone.
+[toolchain]
+channel = "1.99.1"
+components = ["rustfmt", "clippy"]
+targets = ["wasm32-unknown-unknown"]
+profile = "minimal"

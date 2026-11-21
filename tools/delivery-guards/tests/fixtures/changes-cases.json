@@ -73,7 +73,7 @@
   ],
   [
     "contracts/openapi.json",
-    "backend frontend image"
+    "backend frontend image native"
   ],
   [
     "frontend/apps/web/src/main.tsx",
@@ -85,7 +85,7 @@
   ],
   [
     "frontend/packages/theme/src/tokens.css",
-    "docs frontend image"
+    "docs frontend image native"
   ],
   [
     "frontend/packages/theme/package.json",
@@ -225,6 +225,26 @@
   ],
   [
     ".env.example.bak",
+    ""
+  ],
+  [
+    "native/crates/calendar-native/src/lib.rs",
+    "native"
+  ],
+  [
+    "native/Cargo.lock",
+    "native"
+  ],
+  [
+    "native/mod.just",
+    "tooling native"
+  ],
+  [
+    "native/AGENTS.md",
+    "native"
+  ],
+  [
+    "nativeish/x.rs",
     ""
   ]
 ]

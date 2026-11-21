@@ -316,6 +316,39 @@ function codeqlRustGate(files: RepoFiles): string[] {
   }
   return errors;
 }
+function nativeCi(files: RepoFiles): string[] {
+  const native = Workflow.parse(files.workflow).jobNamed("Native");
+  if (!native) return ["no job is named `Native`."];
+  const steps = native.steps,
+    errors: string[] = [],
+    uses = (s: (typeof steps)[number]) => s.text("uses") ?? "",
+    caches = (s: (typeof steps)[number]) => (s.map("with")?.text("path") ?? "").includes("native/target"),
+    restore = steps.findIndex((s) => caches(s) && uses(s).startsWith("actions/cache/restore")),
+    prune = steps.findIndex((s) => /\bcargo metadata --no-deps\b/.test(Workflow.run(s))),
+    save = steps.findIndex((s) => caches(s) && uses(s).startsWith("actions/cache/save"));
+  if (steps.some((s) => caches(s) && /^actions\/cache@/.test(uses(s)))) {
+    errors.push(
+      "the Native job caches native/target with actions/cache, which saves the workspace's own build unpruned.",
+    );
+  }
+  if (restore < 0) errors.push("the Native job does not restore native/target with actions/cache/restore.");
+  if (save < 0) errors.push("the Native job does not save native/target with actions/cache/save.");
+  if (prune < 0 || (save >= 0 && prune > save)) {
+    errors.push("the Native job does not prune its own crates from native/target before saving it.");
+  } else if (!/rm -rf target\/goldens target\/web/.test(Workflow.run(steps[prune]!))) {
+    errors.push("the Native job's prune keeps target/goldens and target/web.");
+  }
+  for (const step of steps) {
+    if (/\bjust native\b.*\blint\b(?!-)/.test(Workflow.run(step))) {
+      errors.push(
+        `the Native step \`${
+          step.text("name") ?? Workflow.run(step)
+        }\` runs \`lint\`, both targets' Clippy; run the row's own half (lint-desktop or lint-wasm).`,
+      );
+    }
+  }
+  return errors;
+}
 function codeqlRustCaches(files: RepoFiles): string[] {
   const analyze = Workflow.parse(files.codeqlWorkflow).jobs.find((j) => j.name.startsWith("Analyze"));
   if (!analyze) return ["codeql.yml has no Analyze job."];
@@ -327,6 +360,13 @@ function codeqlRustCaches(files: RepoFiles): string[] {
     analyzeStep = steps.find((s) => uses(s, "github/codeql-action/analyze")),
     target = steps.find((s) => s.text("id") === "target" && uses(s, "actions/cache/restore")),
     targetDir = analyzeStep?.map("env")?.text("CODEQL_EXTRACTOR_RUST_OPTION_CARGO_TARGET_DIR");
+  // The Rust row analyses the backend workspace only: from the repository root the extractor also loads native/ and
+  // Rune's git dependencies (#1002; native/ gets its own row in #1019).
+  if (
+    !/matrix\.language == 'rust' && '\{"paths":\["backend"\]\}'/.test(steps[init]?.map("with")?.text("config") ?? "")
+  ) {
+    errors.push("the rust analysis is not scoped to backend/ (a `paths` config on `init`).");
+  }
   if (!target) errors.push("the Analyze job does not restore the extractor's target directory (step id `target`).");
   else {
     if (index((s) => s === target) > init) errors.push("the target directory is restored after `init`.");
@@ -411,6 +451,14 @@ export const guards: Guard[] = [
     mechanism:
       "The rust analysis restores a cached target directory before init and points the extractor's CODEQL_EXTRACTOR_RUST_OPTION_CARGO_TARGET_DIR at it; only runs that are not pull requests save the caches.",
     check: codeqlRustCaches,
+  },
+  {
+    id: "native-ci",
+    fix: "#1020",
+    record: "none",
+    mechanism:
+      "The Native job restores native/target with actions/cache/restore, prunes its own crates, golden differences and browser bundle, then saves with actions/cache/save; each matrix row runs only its own Clippy half (lint-desktop or lint-wasm).",
+    check: nativeCi,
   },
 ];
 export function runGuard(guard: Guard, files: RepoFiles): string[] {

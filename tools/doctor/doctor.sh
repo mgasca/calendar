@@ -32,6 +32,45 @@ else
   fail "no C compiler (cc, gcc or clang) found" "Install one, e.g. 'sudo apt install build-essential': the backend cannot link without it"
 fi
 
+# Rust for the Rune UI: native/ pins its own toolchain (Rune's, ADR-0067), with the wasm32 target for the browser build.
+want_native="$(sed -n 's/^channel *= *"\(.*\)"/\1/p' "$root/native/rust-toolchain.toml")"
+if command -v rustc >/dev/null 2>&1; then
+  have_native="$(cd "$root/native" && rustc --version 2>/dev/null | sed -n 's/^rustc \([^ ]*\).*/\1/p')"
+  if [ "$have_native" != "$want_native" ]; then
+    fail "Rust '${have_native:-unavailable}' in native/, but native/rust-toolchain.toml wants $want_native" \
+      "Run 'rustup toolchain install' in native/ (rustup reads rust-toolchain.toml, wasm32 target included)"
+  elif ! (cd "$root/native" && rustup target list --installed 2>/dev/null | grep -qx wasm32-unknown-unknown); then
+    fail "Rust $have_native in native/ lacks the wasm32-unknown-unknown target" \
+      "Run 'rustup target add wasm32-unknown-unknown' in native/"
+  else
+    ok "Rust $have_native with wasm32 (native/rust-toolchain.toml)"
+  fi
+fi
+
+# Rune links libxkbcommon and libwayland-client on Linux: their development packages, not only the runtime libraries.
+if [ "$(uname -s 2>/dev/null)" = Linux ]; then
+  if command -v pkg-config >/dev/null 2>&1 && pkg-config --exists xkbcommon wayland-client; then
+    ok "libxkbcommon and libwayland-client development files (native/)"
+  else
+    fail "pkg-config cannot find xkbcommon and wayland-client: the Rune UI in native/ cannot link" \
+      "Run 'sudo apt install pkg-config libxkbcommon-dev libwayland-dev' (and mesa-vulkan-drivers for headless PNG tests without a GPU)"
+  fi
+fi
+
+# wasm-bindgen: only `just native build-web` needs it, at the version of the wasm-bindgen crate in native/Cargo.lock.
+want_wbg="$(sed -n '/^name = "wasm-bindgen"$/{n;s/^version = "\(.*\)"/\1/p;}' "$root/native/Cargo.lock")"
+if command -v wasm-bindgen >/dev/null 2>&1; then
+  have_wbg="$(wasm-bindgen --version 2>/dev/null | sed -n 's/^wasm-bindgen \([^ ]*\).*/\1/p')"
+  if [ "$have_wbg" = "$want_wbg" ]; then
+    ok "wasm-bindgen $have_wbg (native/Cargo.lock)"
+  else
+    fail "wasm-bindgen '${have_wbg:-unavailable}', but native/Cargo.lock has $want_wbg" \
+      "Run 'cargo install wasm-bindgen-cli --version $want_wbg --locked'"
+  fi
+else
+  ok "wasm-bindgen not installed (only 'just native build-web' needs it: cargo install wasm-bindgen-cli --version $want_wbg --locked)"
+fi
+
 # Deno: exact version for the TypeScript repo tooling and scripted skills (ADR-0058).
 want_deno="$(tr -d '[:space:]v' < "$root/.deno-version")"
 if ! command -v deno >/dev/null 2>&1; then

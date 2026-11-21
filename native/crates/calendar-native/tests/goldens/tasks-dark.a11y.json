@@ -1,0 +1,137 @@
+{
+  "bounds": [
+    0.0,
+    0.0,
+    960.0,
+    640.0
+  ],
+  "children": [
+    {
+      "bounds": [
+        0.0,
+        0.0,
+        960.0,
+        52.3
+      ],
+      "children": [
+        {
+          "bounds": [
+            16.0,
+            18.0,
+            56.8,
+            16.3
+          ],
+          "key": "app-title",
+          "name": "Calendar",
+          "role": "label"
+        },
+        {
+          "bounds": [
+            88.8,
+            12.0,
+            207.3,
+            28.3
+          ],
+          "children": [
+            {
+              "actions": [
+                "click",
+                "focus"
+              ],
+              "bounds": [
+                88.8,
+                12.0,
+                61.6,
+                28.3
+              ],
+              "key": "nav-today",
+              "name": "Today",
+              "role": "button",
+              "states": [
+                "unchecked"
+              ]
+            },
+            {
+              "actions": [
+                "click",
+                "focus"
+              ],
+              "bounds": [
+                154.4,
+                12.0,
+                58.5,
+                28.3
+              ],
+              "key": "nav-week",
+              "name": "Week",
+              "role": "button",
+              "states": [
+                "unchecked"
+              ]
+            },
+            {
+              "actions": [
+                "click",
+                "focus"
+              ],
+              "bounds": [
+                216.8,
+                12.0,
+                79.3,
+                28.3
+              ],
+              "key": "nav-tasks",
+              "name": "My tasks",
+              "role": "button",
+              "states": [
+                "checked"
+              ]
+            }
+          ],
+          "key": "nav",
+          "name": "Main",
+          "role": "navigation"
+        }
+      ],
+      "key": "header",
+      "role": "banner"
+    },
+    {
+      "bounds": [
+        0.0,
+        52.3,
+        960.0,
+        587.8
+      ],
+      "children": [
+        {
+          "bounds": [
+            16.0,
+            68.3,
+            928.0,
+            16.3
+          ],
+          "key": "page-title",
+          "name": "My tasks",
+          "role": "label"
+        }
+      ],
+      "key": "page",
+      "role": "main"
+    },
+    {
+      "bounds": [
+        0.0,
+        0.0,
+        1.0,
+        1.0
+      ],
+      "role": "status",
+      "states": [
+        "live-polite"
+      ]
+    }
+  ],
+  "name": "Calendar",
+  "role": "window"
+}

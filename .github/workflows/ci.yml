@@ -43,6 +43,7 @@ jobs:
       narratives: ${{ steps.decide.outputs.narratives }}
       binding: ${{ steps.decide.outputs.binding }}
       image: ${{ steps.decide.outputs.image }}
+      native: ${{ steps.decide.outputs.native }}
       skipped: ${{ steps.decide.outputs.skipped }}
     steps:
       - uses: actions/checkout@v7
@@ -530,6 +531,125 @@ jobs:
         if: ${{ failure() }}
         run: docker logs calendar-smoke
 
+  # The Rune UI (ADR-0067): its own Cargo workspace in native/, with Rune's Rust pin. One matrix row per target, so
+  # macOS and Windows join as rows (#1009). `desktop` lints and runs the headless tests: element trees, accessibility
+  # goldens, and PNG snapshots on lavapipe (Linux only). `wasm` lints for wasm32 and builds the browser bundle. The job
+  # keeps its name when skipped, which is the name Changes lists; a row that runs is "Native (<row>)".
+  native:
+    name: Native
+    needs: changes
+    if: needs.changes.outputs.native == 'true'
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { row: Linux, os: ubuntu-24.04, kind: desktop }
+          - { row: WASM, os: ubuntu-24.04, kind: wasm }
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 30
+    defaults:
+      run:
+        working-directory: native
+    env:
+      CARGO_TERM_COLOR: always
+      CARGO_INCREMENTAL: 0
+    steps:
+      - uses: actions/checkout@v7
+      # Rune links libxkbcommon and libwayland-client; lavapipe renders the PNG snapshots without a GPU.
+      - name: Install the Linux build and render libraries
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update -q
+          sudo apt-get install -y -q --no-install-recommends libxkbcommon-dev libwayland-dev mesa-vulkan-drivers
+      - name: Install the pinned Rust toolchain
+        id: toolchain
+        run: |
+          channel=$(sed -n 's/^channel *= *"\(.*\)"/\1/p' rust-toolchain.toml)
+          rustup toolchain install "$channel" --profile minimal --component rustfmt,clippy --target wasm32-unknown-unknown --no-self-update
+          echo "channel=$channel" >> "$GITHUB_OUTPUT"
+          cargo --version
+      # Dependencies only, as in the Backend job (#776): the save below prunes this workspace's own crates, the golden
+      # differences and the browser bundle first, so a Rune or lock bump does not save a copy of the last cache plus its
+      # own build. Each matrix row has its own key, because each builds for its own target.
+      - name: Restore the dependency cache
+        id: cache
+        uses: actions/cache/restore@v6
+        with:
+          path: |
+            ~/.cargo/registry/index
+            ~/.cargo/registry/cache
+            ~/.cargo/git/db
+            native/target
+          key: >-
+            native-${{ matrix.kind }}-${{ runner.os }}-rust-${{ steps.toolchain.outputs.channel }}-${{
+            hashFiles('native/Cargo.toml', 'native/crates/*/Cargo.toml', 'native/Cargo.lock') }}
+          restore-keys: native-${{ matrix.kind }}-${{ runner.os }}-rust-${{ steps.toolchain.outputs.channel }}-
+      - name: Read the pinned just version
+        id: just-version
+        working-directory: .
+        run: echo "version=$(tr -d '[:space:]v' < .just-version)" >> "$GITHUB_OUTPUT"
+      - uses: extractions/setup-just@53165ef7e734c5c07cb06b3c8e7b647c5aa16db3 # v4.0.0
+        with:
+          just-version: ${{ steps.just-version.outputs.version }}
+      - name: Lint and test the desktop app
+        if: matrix.kind == 'desktop'
+        run: just native run lint-desktop test
+      # The wasm-bindgen CLI must be the version of the wasm-bindgen crate in native/Cargo.lock.
+      - name: Read the wasm-bindgen version
+        if: matrix.kind == 'wasm'
+        id: wasm-bindgen
+        run: echo "version=$(cargo pkgid -p wasm-bindgen | sed 's/.*@//')" >> "$GITHUB_OUTPUT"
+      - name: Restore wasm-bindgen
+        if: matrix.kind == 'wasm'
+        id: wasm-bindgen-cache
+        uses: actions/cache@v6
+        with:
+          path: ~/.cargo/bin/wasm-bindgen
+          key: wasm-bindgen-${{ runner.os }}-${{ steps.wasm-bindgen.outputs.version }}
+      - name: Install wasm-bindgen
+        if: matrix.kind == 'wasm' && steps.wasm-bindgen-cache.outputs.cache-hit != 'true'
+        run: cargo install wasm-bindgen-cli --version "${{ steps.wasm-bindgen.outputs.version }}" --locked --bin wasm-bindgen
+      - name: Lint for wasm32 and build the browser bundle
+        if: matrix.kind == 'wasm'
+        run: just native run lint-wasm build-web
+      - name: Upload golden differences
+        if: failure() && matrix.kind == 'desktop'
+        uses: actions/upload-artifact@v7
+        with:
+          name: native-goldens-${{ matrix.row }}
+          path: native/target/goldens/
+          if-no-files-found: ignore
+      - name: Keep only the dependencies in the cache
+        if: steps.cache.outputs.cache-hit != 'true'
+        run: |
+          rm -rf target/goldens target/web
+          du -sh target
+          names=$(cargo metadata --no-deps --locked --format-version 1 \
+            | jq -r '.packages[] | .name, (.name, .targets[].name | gsub("-"; "_"))' | sort -u)
+          # Cargo's 16-digit hash follows the name, so a file named like a dependency cannot also match its entries.
+          hash='[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]'
+          find target -mindepth 1 -maxdepth 3 -type d -name .fingerprint | while read -r fingerprint; do
+            profile=$(dirname "$fingerprint")
+            find "$profile" -maxdepth 1 -type f -delete
+            rm -rf "$profile/incremental" "$profile/examples"
+            for name in $names; do
+              # shellcheck disable=SC2086 # $hash is a glob on purpose
+              rm -rf "$profile/.fingerprint/$name-"$hash "$profile/build/$name-"$hash "$profile/deps/$name-"$hash* \
+                "$profile/deps/lib$name-"$hash*
+            done
+          done
+          du -sh target
+      - name: Save the dependency cache
+        if: steps.cache.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v6
+        with:
+          path: |
+            ~/.cargo/registry/index
+            ~/.cargo/registry/cache
+            ~/.cargo/git/db
+            native/target
+          key: ${{ steps.cache.outputs.cache-primary-key }}
+
   # Cancels this pull request's older runs, which no longer share a concurrency group with this one (see `concurrency`).
   # It is the only job with actions: write; it checks nothing out and runs no code from the pull request. `CI result`
   # does not wait for it: a cancel that fails costs runner time, not correctness.
@@ -561,7 +681,7 @@ jobs:
   result:
     name: CI result
     if: ${{ always() }}
-    needs: [changes, backend, frontend, docs, tooling, adr, narratives, binding, image]
+    needs: [changes, backend, frontend, docs, tooling, adr, narratives, binding, image, native]
     runs-on: ubuntu-latest
     # actions: read lets the steps below read this run's jobs from the API; contents: read checks out .github/ only,
     # for the run-time gate and its baseline from the commit under test.

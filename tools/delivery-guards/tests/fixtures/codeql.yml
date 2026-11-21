@@ -165,6 +165,7 @@ jobs:
         if: steps.reuse.outputs.found != 'true'
         with:
           languages: ${{ matrix.language }}
+          config: ${{ matrix.language == 'rust' && '{"paths":["backend"]}' || '' }}
           # No language here needs a build (ADR-0017, ADR-0051).
           build-mode: none
           queries: security-extended

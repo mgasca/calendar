@@ -1,0 +1,36 @@
+# Rune UI practices
+
+Practices for the second UI in `native/`, built with [Rune](https://github.com/anomalyco/rune), a pre-release GPU-rendered Rust UI framework ([ADR-0067](../docs/decisions/0067-second-ui-in-rune-with-a-native-workspace-and-generated-rust-client.md), epic [#998](https://github.com/mgasca/calendar/issues/998)). The root `AGENTS.md` still applies and nothing here overrides it. Rune's own guide is `crates/rune/README.md` in its repository, at the pinned revision.
+
+## Workspace
+
+- `native/` is its own Cargo workspace with its own `rust-toolchain.toml` (Rune's Rust pin, not the backend's) and `Cargo.lock`. Every recipe and CI step runs `--locked`. Nothing here depends on `backend/`: the app talks to the API only through the contract.
+- `crates/calendar-native` is the app: `App` (all state), `view` (state to elements), `spec()` (window, size, named scenes), with a desktop `main.rs` and a wasm `start()`. It is a `cdylib` and `rlib`, so the same code builds the window, the browser bundle and the tests.
+- Lints are the backend's (`warnings` denied, Clippy `all` denied, `pedantic` warned and denied by `-D warnings`). `just native lint` runs Clippy for the desktop **and** `wasm32-unknown-unknown` (`lint-desktop` and `lint-wasm`, which CI runs one per matrix row), so code that only one target compiles is caught.
+- Linux builds need `libxkbcommon-dev` and `libwayland-dev` (`just doctor` checks them). Headless PNG renders without a GPU need `mesa-vulkan-drivers` (lavapipe).
+
+## Commands
+
+`just native dev` opens the window (WSLg works). `just native test` runs the headless suite and `just native lint` the checks. `just native build-web` builds the browser bundle into `native/target/web/` with `wasm-bindgen` at the version of the `wasm-bindgen` crate in `native/Cargo.lock`, which `native/Cargo.toml` pins to exactly the version in Rune's own lock (ADR-0067). Don't use Rune's `scripts/web-build.sh`, which needs Python (ADR-0058).
+
+## Views
+
+- **Theme by token.** Colours come from `theme::tokens(cx.system_dark())`, whose values are the web app's `--color-*` tokens. `tests/theme.rs` fails when they drift from `frontend/packages/theme/src/tokens.css`. Pick a token by meaning, as the [theme guide](../docs/runbooks/web-theme-and-styling.md) says, and never add a literal colour to a view.
+- **Key and name what a test or a user reaches.** Every element a test finds or presses gets a stable `.key("…")`, and every control gets a `role` and a `label`, so the accessibility tree reads like the web app's. For example, the current page is marked `checked`, where the web app uses `aria-current`.
+- **Match the web app.** Labels, order and behaviour follow `frontend/apps/web`. When they differ on purpose, say so in the PR and on the story card.
+
+## Headless tests
+
+- **Element tree** (`tests/shell.rs`): `rune::Runtime::new(state, view, size, Env { system_dark, scale })`, then `rt.find(key)`, `rt.pointer_down/up`, `rt.frame(dt)` (virtual clock), and assertions on `rt.state`. No window and no GPU.
+- **Goldens** (`tests/goldens.rs`): the app's own binary runs with `--scene <name> --theme light|dark --tree` and `--snap`. Accessibility trees gate on every platform. PNGs gate on Linux only, with a small per-pixel tolerance, because GPU output differs between platforms. A failure leaves the actual output in `native/target/goldens/`, which CI uploads.
+- **Re-blessing**: run `BLESS=1 just native test`, look at every changed golden (open the PNGs), and say in the PR why it changed. Never re-bless to make an unexplained failure go away.
+- Add a named scene to `spec()` for each state a golden needs, rather than driving input in a golden test.
+
+## Bumping Rune
+
+Rune has no releases: `native/Cargo.toml` pins an exact `rev` of its `dev` branch, which is never rewritten. A bump is its own PR, and it does all of these together:
+
+1. Move the `rev` of `rune` **and of every `[patch.crates-io]` entry** to the new revision. Then compare the patch list with Rune's root `Cargo.toml` at that revision, because Cargo does not inherit a dependency's patches.
+2. Move `rust-toolchain.toml` to the channel Rune's `rust-toolchain.toml` names at that revision.
+3. Set the `wasm-bindgen` pin in `native/Cargo.toml` to the version in Rune's `Cargo.lock` at the new revision. Run `cargo update -p rune -p wasm-bindgen` (never edit `Cargo.lock` by hand). Then run `just native run lint test build-web`, after installing the matching `wasm-bindgen-cli` if the pin moved.
+4. Read Rune's `CHANGELOG.md` between the two revisions for changes that move output without a code change. Re-bless goldens only with the diff reviewed.

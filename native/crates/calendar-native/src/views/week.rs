@@ -403,18 +403,33 @@ pub fn on_key(app: &mut App, ev: &KeyEvent, tx: &mut Tx) -> bool {
 }
 
 /// Opens each week's grid at 07:00, or an hour before now in the current week (the web app's `initialScrollMinute`),
-/// once per week shown: on the first visit and on every change of week, never on a clock tick or a refetch. Called
+/// once per week shown: on every visit to Week and every change of week, never on a clock tick or a refetch. Called
 /// from `poll` once that week's data is on screen.
 pub fn scroll_on_open(app: &mut App, tx: &mut Tx) {
-  let Route::Week(week_start) = app.route else { return };
+  let Route::Week(week_start) = app.route else {
+    // Away from Week the grid is gone: coming back to the same week opens it afresh, as the web app's remounted
+    // grid does (pre-merge review of #1050).
+    app.scrolled_week = None;
+    app.scroll_armed = None;
+    return;
+  };
   let shown = app.week.data.as_ref().is_some_and(|w| w.week_start == week_start);
-  if !shown || app.scrolled_week == Some(week_start) {
+  let again = app.scroll_armed == Some(week_start);
+  if !shown || (app.scrolled_week == Some(week_start) && !again) {
     return;
   }
   let this_week = format::iso_week_start(app.clock.today()) == week_start;
   let now = this_week.then(|| week_layout::wall_clock_minutes(app.clock.now(), app.clock.zone));
   tx.scroll_to_y("week-hours", minute_y(week_layout::initial_scroll_minute(now)));
   app.scrolled_week = Some(week_start);
+  // A grid built in this frame takes the scroll; one that comes back to a week already loaded is built after this
+  // poll and keeps its old offset, so the scroll goes again on the next poll.
+  if again {
+    app.scroll_armed = None;
+  } else {
+    app.scroll_armed = Some(week_start);
+    tx.wake_after(std::time::Duration::ZERO);
+  }
 }
 
 #[cfg(test)]

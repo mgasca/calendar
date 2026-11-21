@@ -1,9 +1,11 @@
 //! The add and edit dialogs and the notice after a save, drawn from `crate::dialogs`' state.
 
+use super::pickers::{date_picker, time_picker};
 use super::{button, heading, meta, styled_button};
 use crate::App;
 use crate::dialogs::{self, Dialog, EventDialog, Load, TaskDialog};
 use crate::forms::{Deadline, EventField, Occurrence, PRIORITIES, TaskField};
+use crate::pickers::Field;
 use crate::theme::Tokens;
 use chrono::{DateTime, Utc};
 use rune::tok::type_;
@@ -32,6 +34,62 @@ accessor!(task_title, Task, title);
 accessor!(task_due_date, Task, due_date);
 accessor!(task_due_time, Task, due_time);
 accessor!(task_notes, Task, notes);
+
+/// `fn(&App) -> Option<&str>`: one field's text for a picker to draw, `None` once its dialog has closed.
+macro_rules! reader {
+  ($name:ident, $variant:ident, $field:ident) => {
+    fn $name(app: &App) -> Option<&str> {
+      match &app.dialog {
+        Some(Dialog::$variant(d)) => Some(d.$field.text.as_str()),
+        _ => None,
+      }
+    }
+  };
+}
+
+reader!(read_event_start_date, Event, start_date);
+reader!(read_event_start_time, Event, start_time);
+reader!(read_event_end_date, Event, end_date);
+reader!(read_event_end_time, Event, end_time);
+reader!(read_task_due_date, Task, due_date);
+reader!(read_task_due_time, Task, due_time);
+
+pub const START_DATE: Field = Field {
+  key: "event-start-date",
+  edit: event_start_date,
+  edit_text: read_event_start_date,
+  then: None,
+};
+pub const START_TIME: Field = Field {
+  key: "event-start-time",
+  edit: event_start_time,
+  edit_text: read_event_start_time,
+  then: None,
+};
+pub const END_DATE: Field = Field {
+  key: "event-end-date",
+  edit: event_end_date,
+  edit_text: read_event_end_date,
+  then: None,
+};
+pub const END_TIME: Field = Field {
+  key: "event-end-time",
+  edit: event_end_time,
+  edit_text: read_event_end_time,
+  then: None,
+};
+pub const DUE_DATE: Field = Field {
+  key: "task-due-date",
+  edit: task_due_date,
+  edit_text: read_task_due_date,
+  then: None,
+};
+pub const DUE_TIME: Field = Field {
+  key: "task-due-time",
+  edit: task_due_time,
+  edit_text: read_task_due_time,
+  then: None,
+};
 
 /// A labelled text field and its error, as the web app's `Field`.
 #[allow(clippy::too_many_arguments)]
@@ -125,6 +183,9 @@ fn panel(key: &str, title: &str, t: &Tokens) -> El {
     .padding(20.0)
     .radius(12.0)
     .w(520.0)
+    // At most the window's height, scrolling inside: an open month grid makes the event form taller than it (#1033).
+    .min_h(0.0)
+    .shrink()
     .fill(t.surface_raised)
     .scroll(rune::ScrollSpec { stick_bottom: false })
     .child(heading(&format!("{key}-heading"), title, 2, t))
@@ -136,6 +197,7 @@ fn backdrop(content: El, t: &Tokens) -> El {
     .absolute(0.0, 0.0)
     .w_full()
     .h_full()
+    .padding(16.0)
     .center()
     .fill(t.backdrop)
     .child(content)
@@ -253,29 +315,14 @@ fn event_view(d: &EventDialog, app: &App, t: &Tokens) -> El {
     busy,
     t,
   );
-  let mut start = row().gap(8.0).w_full().child(cell(start_date));
-  let mut end = row().gap(8.0).w_full().child(cell(end_date));
+  let start_date = date_picker(start_date, START_DATE, "Start date", busy, app, t);
+  let end_date = date_picker(end_date, END_DATE, "End date", busy, app, t);
+  let mut start = row().gap(8.0).w_full().items_start().child(cell(start_date));
+  let mut end = row().gap(8.0).w_full().items_start().child(cell(end_date));
   if !d.all_day {
-    start = start.child(cell(field(
-      "event-start-time",
-      "Start time",
-      &d.start_time,
-      event_start_time,
-      None,
-      false,
-      busy,
-      t,
-    )));
-    end = end.child(cell(field(
-      "event-end-time",
-      "End time",
-      &d.end_time,
-      event_end_time,
-      None,
-      false,
-      busy,
-      t,
-    )));
+    // The start and end errors show under their dates, as before.
+    start = start.child(cell(time_picker(START_TIME, "Start time", busy, None, app, t)));
+    end = end.child(cell(time_picker(END_TIME, "End time", busy, None, app, t)));
   }
   form = form.child(start);
   if let Some(times) = start_twice {
@@ -429,7 +476,7 @@ fn task_view(d: &TaskDialog, app: &App, t: &Tokens) -> El {
       .child(deadlines),
   );
   if d.deadline != Deadline::None {
-    form = form.child(field(
+    let due_date = field(
       "task-due-date",
       "Due date",
       &d.due_date,
@@ -438,20 +485,12 @@ fn task_view(d: &TaskDialog, app: &App, t: &Tokens) -> El {
       false,
       busy,
       t,
-    ));
+    );
+    form = form.child(date_picker(due_date, DUE_DATE, "Due date", busy, app, t));
   }
   if d.deadline == Deadline::Time {
     form = form
-      .child(field(
-        "task-due-time",
-        "Due time",
-        &d.due_time,
-        task_due_time,
-        e(TaskField::Time),
-        false,
-        busy,
-        t,
-      ))
+      .child(time_picker(DUE_TIME, "Due time", busy, e(TaskField::Time), app, t))
       .child(meta(format!("Time zone: {}", app.clock.zone.name()), t).key("task-zone"));
     if let Some(times) = repeated_due(d, app) {
       let error = e(TaskField::Occurrence);

@@ -128,6 +128,9 @@ pub fn act(app: &mut App, action: Action) {
           }
         }
       }
+      if app.triage.reschedule.is_none() {
+        crate::pickers::reset(app);
+      }
       load::refetch(app);
     });
 }
@@ -139,6 +142,7 @@ pub fn open_reschedule(app: &mut App, exact: bool) {
       exact,
       ..Reschedule::default()
     });
+    crate::pickers::reset(app);
   }
 }
 
@@ -146,6 +150,7 @@ pub fn open_reschedule(app: &mut App, exact: bool) {
 pub fn close_reschedule(app: &mut App) {
   if !app.triage.pending {
     app.triage.reschedule = None;
+    crate::pickers::reset(app);
   }
 }
 

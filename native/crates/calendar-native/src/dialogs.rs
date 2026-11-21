@@ -255,12 +255,14 @@ pub fn task(app: &mut App) -> Option<&mut TaskDialog> {
 pub fn add_event(app: &mut App, date: NaiveDate) {
   let draft = forms::new_event(date, app.clock.today(), app.clock.now(), app.clock.zone);
   app.dialog = Some(Dialog::Event(Box::new(EventDialog::with(&draft, None, Some(date)))));
+  crate::pickers::reset(app);
   app.notice = None;
 }
 
 /// "Add task" on the Day page (`Some(date)`) or My tasks (`None`).
 pub fn add_task(app: &mut App, date: Option<NaiveDate>) {
   app.dialog = Some(Dialog::Task(Box::new(TaskDialog::with(&forms::new_task(date), None, date))));
+  crate::pickers::reset(app);
   app.notice = None;
 }
 
@@ -273,6 +275,7 @@ pub fn edit_event(app: &mut App, id: Uuid) {
   );
   dialog.load = Load::Loading;
   app.dialog = Some(Dialog::Event(Box::new(dialog)));
+  crate::pickers::reset(app);
   app.notice = None;
   fetch_event(app, id, None);
 }
@@ -282,6 +285,7 @@ pub fn edit_task(app: &mut App, id: Uuid) {
   let mut dialog = TaskDialog::with(&forms::new_task(None), Some(id), None);
   dialog.load = Load::Loading;
   app.dialog = Some(Dialog::Task(Box::new(dialog)));
+  crate::pickers::reset(app);
   app.notice = None;
   fetch_task(app, id, None);
 }
@@ -374,6 +378,7 @@ pub fn close(app: &mut App) {
   };
   if !busy {
     app.dialog = None;
+    crate::pickers::reset(app);
   }
 }
 
@@ -445,6 +450,7 @@ pub fn save_event(app: &mut App) {
     move |app: &mut App, result| match result {
       Ok(_) => {
         app.dialog = None;
+        crate::pickers::reset(app);
         app.notice = Some(match id {
           Some(_) => Notice {
             text: format!("{title} saved."),
@@ -525,6 +531,7 @@ pub fn delete_event(app: &mut App) {
     move |app: &mut App, result| match result {
       Ok(()) => {
         app.dialog = None;
+        crate::pickers::reset(app);
         app.notice = Some(Notice {
           text: format!("{title} deleted."),
           show_day: None,
@@ -594,6 +601,7 @@ pub fn save_task(app: &mut App) {
     move |app: &mut App, result| match result {
       Ok(_) => {
         app.dialog = None;
+        crate::pickers::reset(app);
         app.notice = Some(match (id, due_day) {
           (Some(_), _) => Notice {
             text: "Task saved.".to_owned(),

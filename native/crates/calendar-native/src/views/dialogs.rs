@@ -587,9 +587,11 @@ pub fn notice(app: &App, t: &Tokens) -> Option<El> {
     .py(8.0)
     .radius(8.0)
     .fill(t.accent_soft)
-    .on_hover_change(|app: &mut App, hovered: bool, _tx: &mut rune::Tx| {
+    .on_hover_change(|app: &mut App, hovered: bool, tx: &mut rune::Tx| {
       if let Some(notice) = &mut app.notice {
         notice.hovered = hovered;
+        // The timer restarts on the next poll, not the next 15 s wake (pre-merge review of #1052).
+        tx.wake_after(std::time::Duration::ZERO);
       }
     })
     .child(text(&notice.text).key("notice-message").role("status").color(t.text).grow(1.0));

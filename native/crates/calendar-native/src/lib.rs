@@ -114,6 +114,8 @@ pub struct App {
   pub notice: Option<dialogs::Notice>,
   /// Where focus returns after a dialog, and the notice's focus (#1035).
   pub focus: focus::Focus,
+  /// Item fetches started by the dialogs, numbering their tickets.
+  pub fetches: u64,
   /// Triage's selection and its last result (#1007).
   pub triage: triage::Triage,
   /// Where a text field's edits go when its dialog has already closed.
@@ -170,6 +172,7 @@ impl App {
       scroll_armed: None,
       notice: None,
       focus: focus::Focus::default(),
+      fetches: 0,
       triage: triage::Triage::default(),
       scratch: rune::TextEdit::default(),
       go_to_date: rune::TextEdit::default(),
@@ -291,9 +294,9 @@ fn poll(app: &mut App, now: f64, tx: &mut rune::Tx) -> bool {
   dialogs::clear_edited_errors(app);
   load::ensure(app);
   views::week::scroll_on_open(app, tx);
-  focus::poll(app, now, tx);
+  let focus_changed = focus::poll(app, now, tx);
   tx.wake_after(std::time::Duration::from_secs(15));
-  changed
+  changed || focus_changed
 }
 
 /// A scene's starting state: offline, signed in, the fixtures' day loaded. Compute anything clock-dependent after

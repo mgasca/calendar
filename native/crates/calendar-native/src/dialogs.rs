@@ -29,6 +29,9 @@ pub enum Load {
 pub struct EventDialog {
   /// `None` while adding.
   pub id: Option<Uuid>,
+  /// The fetch this dialog is waiting for: a result for an older one (from a dialog closed while loading, then
+  /// opened again) is ignored (pre-merge review of #1052).
+  pub ticket: u64,
   pub version: Option<UpdateEventRequestVersion>,
   /// The day the dialog was opened from (Add on a Day page), for "Show day".
   pub shown_day: Option<NaiveDate>,
@@ -59,6 +62,8 @@ pub struct EventDialog {
 #[derive(Clone, Debug)]
 pub struct TaskDialog {
   pub id: Option<Uuid>,
+  /// As [`EventDialog::ticket`].
+  pub ticket: u64,
   pub version: Option<UpdateTaskRequestVersion>,
   pub shown_day: Option<NaiveDate>,
   pub load: Load,
@@ -100,6 +105,7 @@ fn edit(text: &str) -> TextEdit {
 impl EventDialog {
   fn with(draft: &EventDraft, id: Option<Uuid>, shown_day: Option<NaiveDate>) -> Self {
     let mut dialog = EventDialog {
+      ticket: 0,
       id,
       version: None,
       shown_day,
@@ -179,6 +185,7 @@ impl EventDialog {
 impl TaskDialog {
   fn with(draft: &TaskDraft, id: Option<Uuid>, shown_day: Option<NaiveDate>) -> Self {
     let mut dialog = TaskDialog {
+      ticket: 0,
       id,
       version: None,
       shown_day,
@@ -296,10 +303,15 @@ pub fn edit_task(app: &mut App, id: Uuid) {
 
 /// Fetches event `id` into its dialog; `after_conflict` is the message a 409 reload shows.
 fn fetch_event(app: &mut App, id: Uuid, after_conflict: Option<&'static str>) {
+  app.fetches += 1;
+  let ticket = app.fetches;
+  if let Some(dialog) = event(app) {
+    dialog.ticket = ticket;
+  }
   let api = app.api.clone();
   app.effects.run(async move { api.event(id).await }, move |app: &mut App, result| {
     let zone = app.clock.zone;
-    let Some(dialog) = event(app).filter(|d| d.id == Some(id)) else {
+    let Some(dialog) = event(app).filter(|d| d.id == Some(id) && d.ticket == ticket) else {
       return;
     };
     dialog.saving = false;
@@ -326,10 +338,15 @@ fn fetch_event(app: &mut App, id: Uuid, after_conflict: Option<&'static str>) {
 }
 
 fn fetch_task(app: &mut App, id: Uuid, after_conflict: Option<&'static str>) {
+  app.fetches += 1;
+  let ticket = app.fetches;
+  if let Some(dialog) = task(app) {
+    dialog.ticket = ticket;
+  }
   let api = app.api.clone();
   app.effects.run(async move { api.task(id).await }, move |app: &mut App, result| {
     let zone = app.clock.zone;
-    let Some(dialog) = task(app).filter(|d| d.id == Some(id)) else {
+    let Some(dialog) = task(app).filter(|d| d.id == Some(id) && d.ticket == ticket) else {
       return;
     };
     dialog.saving = false;
@@ -391,10 +408,21 @@ pub fn close(app: &mut App) {
 /// "Show day" in a notice.
 pub fn show_day(app: &mut App, tx: &mut rune::Tx) {
   if let Some(date) = app.notice.as_ref().and_then(|n| n.show_day) {
-    // The action dismisses the notice first, as the web app's does.
-    crate::focus::dismiss(app, tx);
-    load::go(app, crate::route::Route::Day(date));
+    // The action dismisses the notice first, as the web app's does. Focus can't go back to where it came from, on
+    // the page being left: it goes to the new day's heading (pre-merge review of #1052).
+    app.notice = None;
+    app.focus.before_notice = None;
+    let route = crate::route::Route::Day(date);
+    load::go(app, route);
+    tx.focus_when_shown(crate::focus::heading(route), true);
   }
+}
+
+/// Shows `notice` in place of any other. A notice replacing one under the pointer stays paused, as hover isn't heard
+/// again until the pointer moves (pre-merge review of #1052).
+fn notify(app: &mut App, notice: Notice) {
+  let hovered = app.notice.as_ref().is_some_and(|n| n.hovered);
+  app.notice = Some(Notice { hovered, ..notice });
 }
 
 /// Keeps the event's length when its start is edited (the web app's `moveStart`); called from `poll`.
@@ -459,21 +487,24 @@ pub fn save_event(app: &mut App) {
         app.dialog = None;
         crate::pickers::reset(app);
         crate::focus::closed(app, false);
-        app.notice = Some(match id {
-          Some(_) => Notice {
-            text: format!("{title} saved."),
-            show_day: None,
-            ..Notice::default()
+        notify(
+          app,
+          match id {
+            Some(_) => Notice {
+              text: format!("{title} saved."),
+              show_day: None,
+              ..Notice::default()
+            },
+            None => Notice {
+              text: format!(
+                "{title} added for {}.",
+                start_day.map(|day| app.locale.short_day(day)).unwrap_or_default()
+              ),
+              show_day: start_day.filter(|day| Some(*day) != shown_day),
+              ..Notice::default()
+            },
           },
-          None => Notice {
-            text: format!(
-              "{title} added for {}.",
-              start_day.map(|day| app.locale.short_day(day)).unwrap_or_default()
-            ),
-            show_day: start_day.filter(|day| Some(*day) != shown_day),
-            ..Notice::default()
-          },
-        });
+        );
         load::refetch(app);
       }
       Err(error) => event_failed(app, id, &error),
@@ -545,11 +576,14 @@ pub fn delete_event(app: &mut App) {
         app.dialog = None;
         crate::pickers::reset(app);
         crate::focus::closed(app, true);
-        app.notice = Some(Notice {
-          text: format!("{title} deleted."),
-          show_day: None,
-          ..Notice::default()
-        });
+        notify(
+          app,
+          Notice {
+            text: format!("{title} deleted."),
+            show_day: None,
+            ..Notice::default()
+          },
+        );
         load::refetch(app);
       }
       Err(error) => delete_failed(app, id, &error),
@@ -617,23 +651,26 @@ pub fn save_task(app: &mut App) {
         app.dialog = None;
         crate::pickers::reset(app);
         crate::focus::closed(app, false);
-        app.notice = Some(match (id, due_day) {
-          (Some(_), _) => Notice {
-            text: "Task saved.".to_owned(),
-            show_day: None,
-            ..Notice::default()
+        notify(
+          app,
+          match (id, due_day) {
+            (Some(_), _) => Notice {
+              text: "Task saved.".to_owned(),
+              show_day: None,
+              ..Notice::default()
+            },
+            (None, Some(day)) if Some(day) != shown_day => Notice {
+              text: format!("\u{201c}{title}\u{201d} added for {}.", app.locale.short_day(day)),
+              show_day: Some(day),
+              ..Notice::default()
+            },
+            (None, _) => Notice {
+              text: format!("\u{201c}{title}\u{201d} added."),
+              show_day: None,
+              ..Notice::default()
+            },
           },
-          (None, Some(day)) if Some(day) != shown_day => Notice {
-            text: format!("\u{201c}{title}\u{201d} added for {}.", app.locale.short_day(day)),
-            show_day: Some(day),
-            ..Notice::default()
-          },
-          (None, _) => Notice {
-            text: format!("\u{201c}{title}\u{201d} added."),
-            show_day: None,
-            ..Notice::default()
-          },
-        });
+        );
         load::refetch(app);
       }
       Err(error) => task_failed(app, id, &error),

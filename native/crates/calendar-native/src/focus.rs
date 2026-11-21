@@ -72,27 +72,30 @@ fn in_notice(key: &str) -> bool {
 }
 
 /// Run from `poll`: settles focus after a dialog closed, and runs the notice's timer. `now` is the window's clock.
-pub fn poll(app: &mut App, now: f64, tx: &mut Tx) {
+/// True when it changed what is drawn, so `poll` asks for a new view (pre-merge review of #1052: a notice that timed
+/// out on an idle window stayed drawn).
+pub fn poll(app: &mut App, now: f64, tx: &mut Tx) -> bool {
   let focused = tx.focused().map(str::to_owned);
-  settle(app, focused.as_deref(), tx);
-  notice(app, now, focused.as_deref(), tx);
+  let asked = settle(app, focused.as_deref(), tx);
+  let removed = notice(app, now, focused.as_deref(), tx);
   if let Some(key) = focused.filter(|k| !in_notice(k)) {
     app.focus.last_outside = Some(key);
   }
+  asked || removed
 }
 
-fn settle(app: &mut App, focused: Option<&str>, tx: &mut Tx) {
+fn settle(app: &mut App, focused: Option<&str>, tx: &mut Tx) -> bool {
   if app.dialog.is_some() {
     // Another dialog opened before focus settled: it owns focus now.
     app.focus.returning = None;
-    return;
+    return false;
   }
-  let Some(returning) = &mut app.focus.returning else { return };
+  let Some(returning) = &mut app.focus.returning else { return false };
   if !returning.asked {
     returning.asked = true;
     tx.focus(returning.target.clone(), true);
     tx.wake_after(std::time::Duration::ZERO);
-    return;
+    return true;
   }
   match focused {
     // Landed. It stays watched until the save's refetch has come back: an item moved off the view disappears then.
@@ -107,8 +110,10 @@ fn settle(app: &mut App, focused: Option<&str>, tx: &mut Tx) {
     None => {
       tx.focus(returning.fallback, true);
       app.focus.returning = None;
+      return true;
     }
   }
+  false
 }
 
 fn page_loading(app: &App) -> bool {
@@ -119,41 +124,48 @@ fn page_loading(app: &App) -> bool {
   }
 }
 
-fn notice(app: &mut App, now: f64, focused: Option<&str>, tx: &mut Tx) {
+fn notice(app: &mut App, now: f64, focused: Option<&str>, tx: &mut Tx) -> bool {
   let Some(notice) = &mut app.notice else {
     app.focus.before_notice = None;
-    return;
+    return false;
   };
   let focus_inside = focused.is_some_and(in_notice);
   if focus_inside && app.focus.before_notice.is_none() {
     app.focus.before_notice = app.focus.last_outside.clone();
   }
   if notice.hovered || focus_inside {
-    // Paused: the full time starts again once the pointer and focus leave (WCAG 2.2.1).
+    // Paused: the full time starts again once the pointer and focus leave (WCAG 2.2.1). Focus leaving is only seen
+    // here, so a paused notice looks again shortly (pre-merge review of #1052).
     notice.due = None;
-    return;
+    tx.wake_after(std::time::Duration::from_millis(250));
+    return false;
   }
   match notice.due {
     None => {
       let due = now + NOTICE_SECONDS;
       notice.due = Some(due);
       tx.wake_at(due);
+      false
     }
     Some(due) if now >= due => {
       app.notice = None;
       app.focus.before_notice = None;
+      true
     }
-    Some(due) => tx.wake_at(due),
+    Some(due) => {
+      tx.wake_at(due);
+      false
+    }
   }
 }
 
 /// "Dismiss notification", and "Show day" before it acts: the notice goes, and focus inside it goes back to where it
-/// came from (or nowhere, when that is gone).
+/// came from, or to the page's heading.
 pub fn dismiss(app: &mut App, tx: &mut Tx) {
   app.notice = None;
-  if tx.focused().is_some_and(in_notice)
-    && let Some(key) = app.focus.before_notice.take()
-  {
+  if tx.focused().is_some_and(in_notice) {
+    // Back where it came from, or the page's heading when that was never seen (pre-merge review of #1052).
+    let key = app.focus.before_notice.take().unwrap_or_else(|| heading(app.route).to_owned());
     tx.focus(key, true);
   }
   app.focus.before_notice = None;

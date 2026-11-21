@@ -196,3 +196,37 @@ fn keep_event_returns_focus_to_delete_event() {
   press(&mut rt, "event-keep");
   assert_eq!(focused(&rt).as_deref(), Some("event-delete"));
 }
+
+#[test]
+fn a_notice_goes_on_an_idle_window_and_after_the_pointer_leaves() {
+  // Pre-merge review of #1052: a timed-out notice stayed drawn until the next input, and the timer restarted only at
+  // the next 15 s wake after the pointer left. Frames only here: no forced commit.
+  let mut rt = runtime("today");
+  show_notice(&mut rt, "Task saved.");
+  for _ in 0..7 {
+    rt.frame(1.0);
+  }
+  assert!(rt.find("notice").is_none(), "gone from the screen, not just from the state");
+  show_notice(&mut rt, "Task saved.");
+  let (x, y) = rt.find("notice-message").unwrap();
+  rt.pointer_move(x, y);
+  rt.frame(1.0 / 60.0);
+  rt.pointer_leave();
+  // The leave is heard after that frame's poll, so the six seconds start on the next frame. A headless frame always
+  // polls, so this can't show the wake the hover handler now asks for; it pins the timing once the leave is seen.
+  for _ in 0..8 {
+    rt.frame(1.0);
+  }
+  assert!(rt.find("notice").is_none(), "six seconds after the pointer left");
+}
+
+#[test]
+fn show_day_from_inside_the_notice_focuses_the_days_heading() {
+  let mut rt = runtime("today");
+  focus_on(&mut rt, "day-week");
+  show_notice(&mut rt, "Planning added for Mon 23 Nov.");
+  focus_on(&mut rt, "notice-show-day");
+  press(&mut rt, "notice-show-day");
+  settle(&mut rt);
+  assert_eq!(focused(&rt).as_deref(), Some("day-title"), "not the old page's control");
+}

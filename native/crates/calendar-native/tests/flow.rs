@@ -919,3 +919,41 @@ fn reschedule_and_delete_send_their_actions() {
   assert_eq!(bodies[1]["action"], "delete");
   assert!(!app.triage.confirm_delete);
 }
+
+#[test]
+fn a_fetch_from_a_closed_dialog_leaves_the_reopened_one_alone() {
+  // Pre-merge review of #1052: closing an event dialog while it loads, then opening the event again, let the first
+  // fetch's result (here a failure) land in the new dialog.
+  let server = day_api();
+  mount(
+    &server,
+    Mock::given(method("GET"))
+      .and(path(format!("/api/events/{DESIGN_REVIEW}")))
+      .respond_with(ResponseTemplate::new(500))
+      .up_to_n_times(1),
+  );
+  mount(
+    &server,
+    Mock::given(method("GET"))
+      .and(path(format!("/api/events/{DESIGN_REVIEW}")))
+      .respond_with(ResponseTemplate::new(200).set_body_json(stored_event(3, "Design review"))),
+  );
+  let mut app = started(&server);
+  let id = DESIGN_REVIEW.parse().unwrap();
+  dialogs::edit_event(&mut app, id);
+  app.effects.run_pending();
+  dialogs::close(&mut app);
+  assert!(app.dialog.is_none(), "a loading dialog closes");
+  dialogs::edit_event(&mut app, id);
+  // Only the first fetch's result is queued: it arrives while the second dialog loads.
+  let effects = app.effects.clone();
+  effects.drain(&mut app);
+  assert_eq!(
+    event_dialog(&app).load,
+    Load::Loading,
+    "the old failure doesn't reach the new dialog"
+  );
+  settle(&mut app);
+  assert_eq!(event_dialog(&app).load, Load::Ready);
+  assert_eq!(event_dialog(&app).title.text, "Design review");
+}

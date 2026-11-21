@@ -183,7 +183,7 @@ fn triage_row(task: &TaskResponse, app: &App, t: &Tokens) -> El {
     .map(|at| at.with_timezone(&zone).date_naive())
     .or(task.due_date.flatten());
   let due_text = match (task.due_at.flatten(), task.due_date.flatten()) {
-    (Some(at), _) => at.with_timezone(&zone).format("%-d %b %Y, %H:%M").to_string(),
+    (Some(at), _) => app.locale.medium_date_time(at, zone),
     (None, Some(date)) => date.to_string(),
     (None, None) => String::new(),
   };
@@ -334,7 +334,7 @@ fn reschedule_view(r: &Reschedule, app: &App, t: &Tokens) -> El {
         .label("Choose occurrence")
         .gap(6.0);
       for (n, at) in (0u8..).zip([earlier, later]) {
-        let label = at.with_timezone(&app.clock.zone).format("%H:%M (UTC%:z)").to_string();
+        let label = app.locale.date_time(at, app.clock.zone);
         choices = choices.child(
           button(&format!("reschedule-occurrence-{n}"), &label, t)
             .checked(r.occurrence == Some(n))

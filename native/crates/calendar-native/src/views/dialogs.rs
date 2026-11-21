@@ -105,7 +105,7 @@ fn occurrence(
   let label = format!("{which} occurs twice. Choose an occurrence");
   let mut choices = row().key(key).role("radiogroup").label(&label).gap(6.0);
   for (n, at) in (0u8..).zip(times) {
-    let local = at.with_timezone(&app.clock.zone).format("%H:%M (UTC%:z)").to_string();
+    let local = app.locale.date_time_with_offset(at, app.clock.zone);
     choices = choices.child(option(&format!("{key}-{n}"), &local, chosen == Some(n), t).on_press(move |app: &mut App| pick(app, n)));
   }
   let mut out = col().gap(4.0).child(text(label).font(type_::LABEL).color(t.text)).child(choices);

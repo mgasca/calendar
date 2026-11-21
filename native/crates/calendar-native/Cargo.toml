@@ -20,7 +20,13 @@ chrono = "0.4"
 chrono-tz = "0.10"
 # The user's IANA zone, from the OS or (wasm32) the browser.
 iana-time-zone = "0.1"
+# Dates and times in the user's locale (#1032). `unstable` is for its range formatter (the web app's `formatRange`), so the
+# version is exact: unstable APIs may change in a minor release.
+icu_datetime = { version = "=2.4.0", features = ["unstable"] }
+icu_calendar = "2.4.0"
+icu_locale_core = "2.4.0"
 rune = { workspace = true }
+rune-i18n = { git = "https://github.com/anomalyco/rune", rev = "9553c9a7d7d1e5e038d14e0b313513e95b4fb8bb", version = "0.1.0" }
 serde = "1"
 serde_json = "1"
 uuid = "1"

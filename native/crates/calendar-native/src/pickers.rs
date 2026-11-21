@@ -62,6 +62,13 @@ pub fn grid_dates(month: NaiveDate) -> [NaiveDate; 42] {
   std::array::from_fn(|i| start + Days::new(i as u64))
 }
 
+/// Forgets an open grid and half-typed digits. Every form and the reschedule panel call it as they open and close,
+/// so neither outlives its form: all event forms share their keys (pre-merge review of #1048).
+pub fn reset(app: &mut App) {
+  app.calendar = None;
+  app.spin_typed = None;
+}
+
 /// Opens `field`'s grid on its date (today when it has none) and focuses that day.
 pub fn open(app: &mut App, field: Field, tx: &mut Tx) {
   let typed = format::parse_iso_date((field.edit)(app).text.trim());

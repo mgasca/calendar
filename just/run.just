@@ -20,7 +20,8 @@ run +words:
         exit 2
     fi
     if [[ $# -gt 0 && $1 == -- ]]; then shift; fi
-    run() { {{ quote(just_executable()) }} --justfile {{ quote(justfile()) }} "${options[@]}" "$@"; }
+    # macOS bash 3.2 treats an empty array as unset under set -u, so expand options only when it has words.
+    run() { {{ quote(just_executable()) }} --justfile {{ quote(justfile()) }} ${options[@]+"${options[@]}"} "$@"; }
     # Each recipe runs in its own just call, so one that takes *args cannot swallow the names after
     # it. Check every name first, as a native multi-recipe call does, so a typo runs nothing.
     for name in "${names[@]}"; do

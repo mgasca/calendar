@@ -252,7 +252,7 @@
                       "bounds": [
                         324.1,
                         124.0,
-                        300.9,
+                        399.4,
                         26.3
                       ],
                       "children": [
@@ -308,6 +308,26 @@
                           "placeholder": "YYYY-MM-DD",
                           "role": "text-input",
                           "value": ""
+                        },
+                        {
+                          "actions": [
+                            "click",
+                            "focus",
+                            "expand",
+                            "scroll-into-view"
+                          ],
+                          "bounds": [
+                            631.0,
+                            124.6,
+                            92.5,
+                            25.0
+                          ],
+                          "key": "go-to-date-choose",
+                          "name": "Choose date to go to",
+                          "role": "button",
+                          "states": [
+                            "collapsed"
+                          ]
                         }
                       ],
                       "key": "day-adds",

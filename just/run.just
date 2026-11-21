@@ -20,11 +20,12 @@ run +words:
         exit 2
     fi
     if [[ $# -gt 0 && $1 == -- ]]; then shift; fi
-    # macOS bash 3.2 treats an empty array as unset under set -u, so expand options only when it has words.
+    # macOS bash 3.2 treats an empty array as unset under set -u, so each array expands only when it has words
+    # (tools/delivery-guards/tests/macos-bash_test.ts).
     run() { {{ quote(just_executable()) }} --justfile {{ quote(justfile()) }} ${options[@]+"${options[@]}"} "$@"; }
     # Each recipe runs in its own just call, so one that takes *args cannot swallow the names after
     # it. Check every name first, as a native multi-recipe call does, so a typo runs nothing.
-    for name in "${names[@]}"; do
+    for name in ${names[@]+"${names[@]}"}; do
         if ! run --show "$name" > /dev/null; then
             echo "hint: put an argument that does not start with - after --: just {{ module_path() }} run <recipe>... -- <argument>" >&2
             exit 1

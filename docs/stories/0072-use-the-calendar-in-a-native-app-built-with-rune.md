@@ -12,6 +12,7 @@ pr:
   - https://github.com/mgasca/calendar/pull/1024
   - https://github.com/mgasca/calendar/pull/1025
   - https://github.com/mgasca/calendar/pull/1026
+  - https://github.com/mgasca/calendar/pull/1047
 adrs: ["0003", "0004", "0021", "0027", "0053", "0055", "0058", "0061", "0063", "0064", "0066", "0067", "0068"]
 ---
 
@@ -303,20 +304,30 @@ No further ADR is expected. A slice that finds a decision ADR-0067 or ADR-0068 d
 * **Robustness:** a `dueAt` the API accepts can fall in year 10000 locally, past ICU4X's years; it shows as ISO text instead of crashing the app (pre-merge review of #1047).
 * **Tests:** unit tests for en-GB (the web tests' strings), en-US ("Monday, October 26", "09:30 AM", "Oct 26 – Nov 1, 2026"), de-DE, fr-FR, a `-u-hc-h12` locale, a repeated time's "GMT+2" and "GMT+1", and the language choice from POSIX variables. Forcing every locale to en-GB makes the en-US and other-locale tests fail.
 
+### Date and time pickers (#1033), delivered
+
+* **Dates** (`pickers.rs`, `views/pickers.rs`): the typed `YYYY-MM-DD` field stays (maintainer's choice on #1033), with a "Choose date" button beside it (named "Choose start date" and so on, `expanded` while open). It opens a month grid under the field: the month and year in the user's locale between "Previous month" and "Next month", the locale's short weekday names from Monday, and six weeks of days, each a `gridcell` named by its full date, the chosen one marked and today outlined.
+  * Keys, as the ARIA date-picker pattern and the browsers' calendars: ← → a day, ↑ ↓ a week, Home and End the week's Monday and Sunday, Page Up and Page Down a month, Return or Space choose, Escape closes. Only the focused day is a Tab stop. Focus returns to the button when the grid closes; Escape closes the grid, not the dialog.
+  * Used by the event form's start and end dates, the task form's due date, Triage's reschedule date and Day's "Go to date", where choosing a day goes there, as the web app's date input does on a change.
+* **Times:** hour and minute spin buttons, plus AM/PM in a 12-hour locale (`Locale::twelve_hour`, the names from the locale's own times). ↑ ↓ step by one and Page Up/Down by ten, each part wrapping on its own as the browsers' do; digits type straight in, and focus moves to the next part once a part is complete; A or P set the half of the day. An empty field shows "--" and steps from 00:00.
+* **Unchanged:** both write the same `YYYY-MM-DD` and `HH:MM` text the forms validate, so every message, the occurrence choice for a repeated time, the gap message, the inclusive all-day end and focus on the first invalid field are as before. The all-day box hides the time and keeps it.
+* **Dialogs** now fit the window and scroll inside it: an open grid made the event form taller than the window.
+* **Tests:** `tests/pickers.rs` drives the grid and the spin buttons with the keyboard (8 tests: opening on the field's date, every key, Escape keeping the dialog, the month buttons, stepping and typed digits, the all-day box, a 12-hour locale, an empty due time, and "Go to date"); six of them fail with the grid's keys and the stepping switched off. Unit tests for the grid's days, the wrapping and the typed digits, and the locale's month and clock. Golden `add-event-calendar` (tree and PNG, reviewed); the other form goldens changed for the button and the spin buttons, and Today's for the "Choose date" button.
+
 ### Parity with the web app (#1002 to #1007, #1032 to #1035)
 
 | Web app | Rune app | Slice |
 | --- | --- | --- |
-| Today / Day: sections, badges, states, nav, date picker | Same, with a "Go to date" text field for the picker | #1004, #1006 |
+| Today / Day: sections, badges, states, nav, date picker | Same: "Go to date" with a month grid | #1004, #1006, #1033 |
 | Week: grid, all-day band, task strips, overdue panel | Same; no ← → `t` shortcuts, "+N more" or first scroll to 07:00 | #1004 |
 | My tasks: views, Load more, rows | Same, virtualised | #1004, #1025 review |
 | Complete / reopen / delete with rollback and confirm | Same | #1005 |
-| Add / edit events and tasks, 400/409/404, event delete in dialog | Same, with text date and time fields | #1006 |
+| Add / edit events and tasks, 400/409/404, event delete in dialog | Same, with date and time pickers (the typed date field stays) | #1006, #1033 |
 | Triage and bulk actions | Same | #1007 |
 | Sign-in | Session stub until #1008 (S3) | #1008 |
 | Dates and times in the browser's locale | Same: the OS's locale on the desktop, the browser's on the web. Where a locale's CLDR medium date is numeric (de, ja), the week range and band show numbers where `Intl`'s `month: 'short'` shows an abbreviated month | #1032 |
 
-**Known differences** (each now has an issue): no telemetry (#1010), no notice timeout or focus return after dialogs (#1035), text fields instead of date/time pickers (#1033), and the Week shortcuts above (#1034).
+**Known differences** (each now has an issue): no telemetry (#1010), no notice timeout or focus return after dialogs (#1035), and the Week shortcuts above (#1034).
 
 ### Where things live
 

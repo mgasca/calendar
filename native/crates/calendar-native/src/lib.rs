@@ -16,6 +16,7 @@ pub mod format;
 pub mod forms;
 pub mod load;
 pub mod locale;
+pub mod pickers;
 pub mod route;
 pub mod session;
 pub mod theme;
@@ -99,6 +100,10 @@ pub struct App {
   pub actions: actions::Actions,
   /// The add or edit dialog on screen (#1006).
   pub dialog: Option<dialogs::Dialog>,
+  /// The month grid open under a date field (#1033).
+  pub calendar: Option<pickers::Calendar>,
+  /// The digits typed so far into a time spin button: its key and the digits (#1033).
+  pub spin_typed: Option<(String, String)>,
   /// The message after a save or delete, with "Show day" when it went on another day.
   pub notice: Option<dialogs::Notice>,
   /// Triage's selection and its last result (#1007).
@@ -151,6 +156,8 @@ impl App {
       tasks: Remote::default(),
       actions: actions::Actions::default(),
       dialog: None,
+      calendar: None,
+      spin_typed: None,
       notice: None,
       triage: triage::Triage::default(),
       scratch: rune::TextEdit::default(),
@@ -344,6 +351,17 @@ pub fn spec() -> AppSpec<App> {
         app.day.finish(Ok(fixtures::day()));
         let today = app.clock.today();
         dialogs::add_event(app, today);
+      }),
+      ("add-event-calendar", |app| {
+        // The start date's month grid open (#1033).
+        scene(app, Route::Today);
+        app.day.finish(Ok(fixtures::day()));
+        let today = app.clock.today();
+        dialogs::add_event(app, today);
+        app.calendar = Some(pickers::Calendar {
+          field: views::dialogs::START_DATE,
+          focus: today,
+        });
       }),
       ("event-form-errors", |app| {
         scene(app, Route::Today);

@@ -134,7 +134,7 @@
               "bounds": [
                 240.0,
                 252.8,
-                236.0,
+                137.5,
                 15.0
               ],
               "name": "Start date",
@@ -152,7 +152,7 @@
               "bounds": [
                 240.0,
                 271.8,
-                236.0,
+                137.5,
                 28.3
               ],
               "key": "event-start-date",
@@ -165,6 +165,41 @@
                 10
               ],
               "value": "2026-11-20"
+            },
+            {
+              "actions": [
+                "click",
+                "focus",
+                "expand",
+                "scroll-into-view"
+              ],
+              "bounds": [
+                383.5,
+                275.0,
+                92.5,
+                25.0
+              ],
+              "children": [
+                {
+                  "actions": [
+                    "scroll-into-view"
+                  ],
+                  "bounds": [
+                    393.5,
+                    280.0,
+                    72.5,
+                    15.0
+                  ],
+                  "name": "Choose date",
+                  "role": "label"
+                }
+              ],
+              "key": "event-start-date-choose",
+              "name": "Choose start date",
+              "role": "button",
+              "states": [
+                "collapsed"
+              ]
             },
             {
               "actions": [
@@ -181,11 +216,6 @@
             },
             {
               "actions": [
-                "click",
-                "focus",
-                "set-value",
-                "replace-selected-text",
-                "set-text-selection",
                 "scroll-into-view"
               ],
               "bounds": [
@@ -194,16 +224,102 @@
                 236.0,
                 28.3
               ],
+              "children": [
+                {
+                  "actions": [
+                    "focus",
+                    "increment",
+                    "decrement",
+                    "scroll-into-view"
+                  ],
+                  "bounds": [
+                    490.0,
+                    275.8,
+                    21.5,
+                    20.3
+                  ],
+                  "children": [
+                    {
+                      "actions": [
+                        "scroll-into-view"
+                      ],
+                      "bounds": [
+                        494.0,
+                        277.8,
+                        13.5,
+                        16.3
+                      ],
+                      "name": "10",
+                      "role": "label"
+                    }
+                  ],
+                  "key": "event-start-time-hour",
+                  "name": "Start time, hour",
+                  "range": [
+                    10.0,
+                    0.0,
+                    23.0,
+                    null
+                  ],
+                  "role": "spin-button",
+                  "value": "10"
+                },
+                {
+                  "actions": [
+                    "scroll-into-view"
+                  ],
+                  "bounds": [
+                    513.5,
+                    277.8,
+                    3.8,
+                    16.3
+                  ],
+                  "name": ":",
+                  "role": "label"
+                },
+                {
+                  "actions": [
+                    "focus",
+                    "increment",
+                    "decrement",
+                    "scroll-into-view"
+                  ],
+                  "bounds": [
+                    519.3,
+                    275.8,
+                    24.4,
+                    20.3
+                  ],
+                  "children": [
+                    {
+                      "actions": [
+                        "scroll-into-view"
+                      ],
+                      "bounds": [
+                        523.3,
+                        277.8,
+                        16.4,
+                        16.3
+                      ],
+                      "name": "00",
+                      "role": "label"
+                    }
+                  ],
+                  "key": "event-start-time-minute",
+                  "name": "Start time, minute",
+                  "range": [
+                    0.0,
+                    0.0,
+                    59.0,
+                    null
+                  ],
+                  "role": "spin-button",
+                  "value": "00"
+                }
+              ],
               "key": "event-start-time",
               "name": "Start time",
-              "role": "text-input",
-              "selection": [
-                1,
-                5,
-                1,
-                5
-              ],
-              "value": "10:00"
+              "role": "group"
             },
             {
               "actions": [
@@ -212,7 +328,7 @@
               "bounds": [
                 240.0,
                 312.0,
-                236.0,
+                137.5,
                 15.0
               ],
               "name": "End date",
@@ -230,7 +346,7 @@
               "bounds": [
                 240.0,
                 331.0,
-                236.0,
+                137.5,
                 28.3
               ],
               "key": "event-end-date",
@@ -251,7 +367,7 @@
               "bounds": [
                 240.0,
                 363.3,
-                236.0,
+                137.5,
                 16.3
               ],
               "key": "event-end-date-error",
@@ -259,6 +375,41 @@
               "role": "alert",
               "states": [
                 "live-assertive"
+              ]
+            },
+            {
+              "actions": [
+                "click",
+                "focus",
+                "expand",
+                "scroll-into-view"
+              ],
+              "bounds": [
+                383.5,
+                354.5,
+                92.5,
+                25.0
+              ],
+              "children": [
+                {
+                  "actions": [
+                    "scroll-into-view"
+                  ],
+                  "bounds": [
+                    393.5,
+                    359.5,
+                    72.5,
+                    15.0
+                  ],
+                  "name": "Choose date",
+                  "role": "label"
+                }
+              ],
+              "key": "event-end-date-choose",
+              "name": "Choose end date",
+              "role": "button",
+              "states": [
+                "collapsed"
               ]
             },
             {
@@ -276,11 +427,6 @@
             },
             {
               "actions": [
-                "click",
-                "focus",
-                "set-value",
-                "replace-selected-text",
-                "set-text-selection",
                 "scroll-into-view"
               ],
               "bounds": [
@@ -289,16 +435,102 @@
                 236.0,
                 28.3
               ],
+              "children": [
+                {
+                  "actions": [
+                    "focus",
+                    "increment",
+                    "decrement",
+                    "scroll-into-view"
+                  ],
+                  "bounds": [
+                    490.0,
+                    335.0,
+                    24.3,
+                    20.3
+                  ],
+                  "children": [
+                    {
+                      "actions": [
+                        "scroll-into-view"
+                      ],
+                      "bounds": [
+                        494.0,
+                        337.0,
+                        16.3,
+                        16.3
+                      ],
+                      "name": "08",
+                      "role": "label"
+                    }
+                  ],
+                  "key": "event-end-time-hour",
+                  "name": "End time, hour",
+                  "range": [
+                    8.0,
+                    0.0,
+                    23.0,
+                    null
+                  ],
+                  "role": "spin-button",
+                  "value": "08"
+                },
+                {
+                  "actions": [
+                    "scroll-into-view"
+                  ],
+                  "bounds": [
+                    516.3,
+                    337.0,
+                    3.8,
+                    16.3
+                  ],
+                  "name": ":",
+                  "role": "label"
+                },
+                {
+                  "actions": [
+                    "focus",
+                    "increment",
+                    "decrement",
+                    "scroll-into-view"
+                  ],
+                  "bounds": [
+                    522.0,
+                    335.0,
+                    24.4,
+                    20.3
+                  ],
+                  "children": [
+                    {
+                      "actions": [
+                        "scroll-into-view"
+                      ],
+                      "bounds": [
+                        526.0,
+                        337.0,
+                        16.4,
+                        16.3
+                      ],
+                      "name": "00",
+                      "role": "label"
+                    }
+                  ],
+                  "key": "event-end-time-minute",
+                  "name": "End time, minute",
+                  "range": [
+                    0.0,
+                    0.0,
+                    59.0,
+                    null
+                  ],
+                  "role": "spin-button",
+                  "value": "00"
+                }
+              ],
               "key": "event-end-time",
               "name": "End time",
-              "role": "text-input",
-              "selection": [
-                1,
-                5,
-                1,
-                5
-              ],
-              "value": "08:00"
+              "role": "group"
             },
             {
               "actions": [

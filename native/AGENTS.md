@@ -58,4 +58,5 @@ Rune has no releases: `native/Cargo.toml` pins an exact `rev` of its `dev` branc
 - A form's rules live in `forms.rs`, which has no UI and is unit-tested. Its state and its saves live in `dialogs.rs`, and its drawing in `views/dialogs.rs`.
 - Text fields are `rune::TextEdit` values in the dialog's state, drawn with `text_input(..).on_edit(accessor)`. Each accessor falls back to `App::scratch` once the dialog has closed.
 - Headless tests type with `rt.paste(..)` after pressing the field.
+- Dates and times use the pickers (`pickers.rs`, `views/pickers.rs`, #1033): a `pickers::Field` names the field's key and its accessors, `date_picker` adds the "Choose date" button and month grid beside a typed field, and `time_picker` draws spin buttons. Both write the same `YYYY-MM-DD` and `HH:MM` text, so `forms.rs` is unchanged. Tests drive them with `rt.key(KeyEvent::from(Key::…))` (`tests/pickers.rs`).
 - Saves return `calendar_client::SaveError`, whose `body` holds the 400 `errors` for the form's fields.

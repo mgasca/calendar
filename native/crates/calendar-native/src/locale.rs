@@ -38,6 +38,7 @@ struct Cache {
   offset: OnceLock<NoCalendarFormatter<LocalizedOffsetShort>>,
   week: OnceLock<DateRangeFormatter<fieldsets::YMD>>,
   band: OnceLock<DateRangeFormatter<fieldsets::MD>>,
+  month: OnceLock<DateTimeFormatter<fieldsets::YM>>,
 }
 
 impl std::fmt::Debug for Locale {
@@ -204,6 +205,32 @@ impl Locale {
     date_time(local).map_or_else(|| iso_text(local), |at| f.format(&at).to_string())
   }
 
+  /// A date picker's heading: the month and year, long ("November 2026"), as the browser's calendar shows it.
+  #[must_use]
+  pub fn month_year(&self, date: NaiveDate) -> String {
+    let f = self.load(&self.cache.month, |p| {
+      DateTimeFormatter::try_new(p, fieldsets::YM::long().with_year_style(YearStyle::Full)).ok()
+    });
+    iso(date).map_or_else(|| date.format("%Y-%m").to_string(), |d| f.format(&d).to_string())
+  }
+
+  /// Whether the locale's clock has 12 hours, as its `formatTime` shows (`en-US`, or a `-u-hc-h12` keyword).
+  #[must_use]
+  pub fn twelve_hour(&self) -> bool {
+    !self.hour_label(13).contains("13")
+  }
+
+  /// The locale's names for the two halves of a 12-hour day ("AM", "PM"), from its own times.
+  #[must_use]
+  pub fn periods(&self) -> (String, String) {
+    let name = |hour| {
+      let label = self.hour_label(hour);
+      let kept: String = label.chars().filter(|c| !c.is_ascii_digit() && *c != ':').collect();
+      kept.trim_matches(|c: char| c.is_whitespace()).to_owned()
+    };
+    (name(0), name(12))
+  }
+
   /// `formatWeekRange`: Monday to Sunday as one range ("26 Oct – 1 Nov 2026").
   #[must_use]
   pub fn week_range(&self, week_start: NaiveDate) -> String {
@@ -349,6 +376,16 @@ mod tests {
     assert_eq!(gb.medium_date_time(t("9999-12-31T23:30:00Z"), MADRID), "+10000-01-01 00:30:00");
     assert!(gb.date_time_with_offset(t("9999-12-31T23:30:00Z"), MADRID).ends_with("GMT+1"));
     assert_eq!(gb.date(d("2026-10-26"), true), "Monday, 26 October 2026");
+  }
+
+  #[test]
+  fn pickers_get_the_month_and_the_clock_from_the_locale() {
+    let (gb, us) = (locale("en-GB"), locale("en-US"));
+    assert_eq!(gb.month_year(d("2026-11-20")), "November 2026");
+    assert_eq!(locale("de-DE").month_year(d("2026-11-20")), "November 2026");
+    assert_eq!(locale("fr-FR").month_year(d("2026-11-20")), "novembre 2026");
+    assert!(!gb.twelve_hour() && us.twelve_hour());
+    assert_eq!(us.periods(), ("AM".to_owned(), "PM".to_owned()));
   }
 
   #[test]

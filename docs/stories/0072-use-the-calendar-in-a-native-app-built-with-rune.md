@@ -173,6 +173,7 @@ No further ADR is expected. A slice that finds a decision ADR-0067 or ADR-0068 d
 | [#1007](https://github.com/mgasca/calendar/issues/1007) | Triage and bulk (parity) | S2 | #1006 |
 | [#1008](https://github.com/mgasca/calendar/issues/1008) | Native sign-in (backend and app) | S3 | #999, #1001, #1003 |
 | [#1009](https://github.com/mgasca/calendar/issues/1009) | macOS and Windows CI, WASM at `/native/` | S4 | #1002 |
+| [#1019](https://github.com/mgasca/calendar/issues/1019) | CodeQL for `native/`, before #1008's app part | S4 | #1002 |
 | [#1010](https://github.com/mgasca/calendar/issues/1010) | End-to-end flows | S3 | #1008, #1007 |
 
 ### Scaffold (#1002), delivered
@@ -266,6 +267,33 @@ No further ADR is expected. A slice that finds a decision ADR-0067 or ADR-0068 d
   * 5 flow tests against a stub API: 501 ids in two batches, the filter with the total seen, a partial failure, the 409, and reschedule and delete bodies.
   * 4 element-tree tests: the "View all" link, selection and the toolbar, Apply waiting for a valid date, and the delete question.
   * Goldens for `triage` and `triage-selected` (PNG reviewed).
+
+### CodeQL for `native/` (#1019), delivered
+
+* **Two Rust analyses** (`.github/workflows/codeql.yml`): `Analyze (rust)` covers `backend/` under `/language:rust`, and `Analyze (rust-native)` covers `native/` under `/language:rust-native`. Each is scoped by a `paths` config; a `source-root` does not scope the Rust extractor (#1020).
+* **Only when needed:** `.github/codeql-languages.jq` answers per workspace from CI's Backend and Native sets. A PR that changes neither reuses main's result in that category, as record 0026 does for the backend.
+* **Caches:** each analysis has its own registry and extractor target directory, keyed on its own `Cargo.lock`. Both run on the runner's stable toolchain (`RUSTUP_TOOLCHAIN`), not on a workspace's pin.
+* **Guards:** `codeql-rust-gate` and `codeql-rust-caches` in `tools/delivery-guards` fail when an entry loses its scope, category, gate or caches. The new tests fail against the previous workflow.
+* **Run time:** [record 0032](../benchmarks/0032-codeql-rust-analysis-of-the-native-workspace.md).
+
+### macOS and Windows CI (#1009), delivered
+
+* **Rows:** the `Native` job's matrix has `macOS` (`macos-latest`) and `Windows` (`windows-latest`, MSVC) desktop rows. They run `just native run lint-desktop test` under bash (Git Bash on Windows), alongside `Linux` and `WASM` (criterion 21).
+* **Goldens:** accessibility-tree goldens gate on every OS. PNG snapshots compare on Linux only. On macOS and Windows, `native/target/goldens/` is uploaded as `native-goldens-<row>` on every run, and a snapshot that can't render without a GPU adapter is skipped there (ADR-0067).
+* **When:** like every CI job, on PRs that touch the Native inputs (`native/`, `contracts/`, `tokens.css`) and on every push to `main`, plus a nightly `schedule` (`17 3 * * *`) on `ci.yml` (maintainer on #1009; ADR-0067 amended).
+* **Run time:** push runs on `main` put the rows on the delivery dashboard, which groups samples by job name (`tools/ci-timings` pins that). The four Native rows join the ADR-0045 baseline in one later PR, after 30 dispatch runs on `main` (approved on #1009).
+
+### WASM at `/native/` (#1009), delivered
+
+* **Same origin:** the bundle that `just native build-web` writes is served at `/native/` beside `/api`. Locally that's the Vite dev and preview servers (`frontend/apps/web/dev/nativeBundle.ts`). In deployment, the container image builds it in a `native-web` stage into `wwwroot/native/`, and `calendar-api` serves it.
+* **Rules, the same in both:** `/native` redirects to `/native/`. A path without an extension falls back to `native/index.html`, never to the React app's page. Every bundle file is `no-cache`, because `wasm-bindgen`'s names aren't fingerprinted. `.wasm` is `application/wasm`. A missing bundle is a 404 (locally, one that names `just native build-web`).
+* **The page** (`native/web/index.html`): it asks for a WebGPU adapter and loads `/native/app.js` only when it gets one. Otherwise it says the browser needs WebGPU and links to `/` (criterion 22).
+* **Tests:**
+  * `dev/nativeBundle.test.ts`: 23 tests, one against a real Vite server.
+  * `tests/api/hosting.rs`: `native_bundle_routing_and_cache_headers` and `native_paths_without_a_bundle_are_not_found`, both shown to fail without the change.
+  * `just image smoke` checks `/native`, `/native/`, `/native/week`, `app.js` and `app_bg.wasm` on the container's one origin.
+  * Locally, Vite served a real `build-web` bundle (`app.js`, a 13.6 MB `app_bg.wasm` and the `snippets/` import) with these types and headers.
+* **Not yet shown:** the bundle running signed in, in a browser with WebGPU. The cookie is the origin's, so nothing in the app changes for it.
 
 ### Parity with the web app (#1002 to #1007)
 

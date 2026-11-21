@@ -52,6 +52,82 @@ async fn spa_routing_and_cache_headers() {
   assert_eq!(protected_route.status, StatusCode::UNAUTHORIZED);
 }
 
+/// The Rune UI's browser bundle at `/native/` on the same origin (ADR-0067, #1009): its own entry page as
+/// the fallback, never the React app's, its files with their types and revalidated, and the React app and
+/// the API unchanged beside it.
+#[tokio::test]
+async fn native_bundle_routing_and_cache_headers() {
+  let root = spa_root();
+  let native = root.path().join("native");
+  std::fs::create_dir(&native).unwrap();
+  std::fs::write(native.join("index.html"), "NATIVE").unwrap();
+  std::fs::write(native.join("app.js"), "glue").unwrap();
+  std::fs::write(native.join("app_bg.wasm"), b"\0asm\x01\0\0\0").unwrap();
+  let app = TestApp::builder()
+    .without_database()
+    .real_authentication()
+    .web_root(root.path())
+    .start()
+    .await;
+  let client = app.client();
+
+  for path in [
+    "/native/",
+    "/native/week",
+    "/native/tasks/123",
+    "/native/index.html",
+    "/NATIVE/week",
+  ] {
+    let response = client.get(path).await;
+    assert_eq!(response.status, StatusCode::OK, "{path}");
+    assert_eq!(response.text(), "NATIVE", "{path}");
+    assert_eq!(response.header("cache-control"), Some("no-cache"), "{path}");
+  }
+
+  let wasm = client.get("/native/app_bg.wasm").await;
+  assert_eq!(wasm.status, StatusCode::OK);
+  assert_eq!(wasm.media_type(), Some("application/wasm"));
+  assert_eq!(wasm.header("cache-control"), Some("no-cache"));
+
+  let glue = client.get("/native/app.js").await;
+  assert_eq!(glue.status, StatusCode::OK);
+  assert_eq!(glue.text(), "glue");
+  assert_eq!(glue.media_type(), Some("text/javascript"));
+  assert_eq!(glue.header("cache-control"), Some("no-cache"));
+
+  for (path, location) in [("/native", "/native/"), ("/native?from=menu", "/native/?from=menu")] {
+    let response = client.get(path).await;
+    assert_eq!(response.status, StatusCode::MOVED_PERMANENTLY, "{path}");
+    assert_eq!(response.header("location"), Some(location), "{path}");
+  }
+
+  let missing = client.get("/native/missing.js").await;
+  assert_eq!(missing.status, StatusCode::NOT_FOUND);
+
+  // The React app keeps its own routes and entry page, including a look-alike prefix.
+  for path in ["/", "/week", "/nativeish"] {
+    let response = client.get(path).await;
+    assert_eq!(response.status, StatusCode::OK, "{path}");
+    assert_eq!(response.text(), "SPA", "{path}");
+  }
+  assert_eq!(client.get("/api/auth/me").await.status, StatusCode::UNAUTHORIZED);
+}
+
+/// Without a built bundle, `/native/` is a `404`, not the React app.
+#[tokio::test]
+async fn native_paths_without_a_bundle_are_not_found() {
+  let root = spa_root();
+  let app = TestApp::builder()
+    .without_database()
+    .real_authentication()
+    .web_root(root.path())
+    .start()
+    .await;
+  let response = app.client().get("/native/week").await;
+  assert_eq!(response.status, StatusCode::NOT_FOUND);
+  assert_ne!(response.text(), "SPA");
+}
+
 #[tokio::test]
 async fn forwarded_https_sets_google_redirect_and_secure_cookie() {
   let app = TestApp::builder()

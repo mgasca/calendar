@@ -45,6 +45,24 @@ RUN touch crates/calendar-domain/src/lib.rs crates/calendar-infrastructure/src/l
     && mkdir /out \
     && cp target/release/calendar-api target/release/calendar-migrate /out/
 
+# The Rune UI's browser bundle (ADR-0067, #1009), served at /native/ from the web root. It starts from the same pinned
+# image as `build`, and rustup installs the toolchain native/rust-toolchain.toml pins (Rune's, with the wasm32 target).
+# The steps are `just native build-web`'s, without just: the wasm-bindgen CLI at the version of the wasm-bindgen crate
+# in native/Cargo.lock (its own layer, rebuilt only when that version moves), then cargo and wasm-bindgen.
+FROM rust:1.100.0-slim-trixie@sha256:e9d95b74296f7126a83ae3d041aeaba1ff4c478f13abc5cc034fcf7c131c3d4a AS native-web
+WORKDIR /src/native
+COPY native/rust-toolchain.toml ./
+RUN rustup toolchain install
+COPY native/Cargo.lock ./
+RUN version=$(awk '$0 == "name = \"wasm-bindgen\"" { getline; gsub(/"/, "", $3); print $3 }' Cargo.lock) \
+    && test -n "$version" \
+    && cargo install wasm-bindgen-cli --version "$version" --locked --bin wasm-bindgen
+COPY native/ ./
+RUN cargo build --release --locked --target wasm32-unknown-unknown -p calendar-native --lib \
+    && wasm-bindgen --target web --no-typescript --out-dir /out --out-name app \
+      target/wasm32-unknown-unknown/release/calendar_native.wasm \
+    && cp web/index.html /out/
+
 # glibc, CA certificates (PostgreSQL and Google TLS verify against the system store) and a non-root user; no shell.
 FROM gcr.io/distroless/cc-debian13:nonroot@sha256:cb87acc574abe719b6e5c547384defa2f7b1f24af9605d3f618cf852495d8be2 AS runtime
 WORKDIR /app
@@ -52,5 +70,6 @@ ENV ASPNETCORE_URLS=http://+:8080
 EXPOSE 8080
 COPY --from=build /out/ ./
 COPY --from=web /src/frontend/apps/web/dist/ ./wwwroot/
+COPY --from=native-web /out/ ./wwwroot/native/
 USER nonroot
 ENTRYPOINT ["/app/calendar-api"]

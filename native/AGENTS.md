@@ -11,7 +11,7 @@ Practices for the second UI in `native/`, built with [Rune](https://github.com/a
 
 ## Commands
 
-`just native dev` opens the window (WSLg works). `just native test` runs the headless suite and `just native lint` the checks. `just native build-web` builds the browser bundle into `native/target/web/` with `wasm-bindgen` at the version of the `wasm-bindgen` crate in `native/Cargo.lock`, which `native/Cargo.toml` pins to exactly the version in Rune's own lock (ADR-0067). Don't use Rune's `scripts/web-build.sh`, which needs Python (ADR-0058).
+`just native dev` opens the window (WSLg works). `just native test` runs the headless suite and `just native lint` the checks. `just native build-web` builds the browser bundle into `native/target/web/` with `wasm-bindgen` at the version of the `wasm-bindgen` crate in `native/Cargo.lock`, which `native/Cargo.toml` pins to exactly the version in Rune's own lock (ADR-0067). `just frontend dev` then serves it at http://localhost:5173/native/ beside `/api`, on the web app's origin, and the container image builds it into `wwwroot/native/`, which the API serves at `/native/` (#1009). Without WebGPU the page links to the React app. The Dockerfile repeats this recipe's cargo and `wasm-bindgen` steps, so change both together. Don't use Rune's `scripts/web-build.sh`, which needs Python (ADR-0058).
 
 ## Views
 

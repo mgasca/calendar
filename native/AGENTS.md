@@ -42,6 +42,7 @@ Rune has no releases: `native/Cargo.toml` pins an exact `rev` of its `dev` branc
   - Every call that depends on the day takes a `Day` (the client's date and IANA time zone, ADR-0021).
   - Errors are `ApiError { status, message }`, with the message chosen as the web app's `problemMessage` chooses it.
   - `on_unauthorized` fires on a 401 from anything but `/api/auth/me`.
+  - `api.traced(&parent)` sends a W3C `traceparent` on every call it makes. Use one `TraceParent` per user action, so that action's server spans, logs and metrics share its trace id (#1010). The app exports no telemetry of its own.
 - When a slice needs an operation the wrapper lacks, add a method to `Api` with a stub-server test in `tests/api.rs`, rather than calling `generated()` from a view.
 - The session layer (`calendar-native/src/session/`, #1008) owns the `reqwest::Client`: a cookie store on the desktop, the browser's cookies on the web.
 

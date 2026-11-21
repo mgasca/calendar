@@ -201,11 +201,11 @@ mod tests {
 
     let waiting = tokio::spawn(async move { loopback.wait("the-state", Duration::from_secs(10)).await });
     let favicon = send(&address, "GET /favicon.ico HTTP/1.1\r\n\r\n").await;
-    assert!(favicon.starts_with("HTTP/1.1 404"), "{favicon}");
+    assert!(favicon.starts_with("HTTP/1.1 404"), "a stray path is not found");
     let forged = send(&address, "GET /callback?code=forged&state=wrong HTTP/1.1\r\n\r\n").await;
-    assert!(forged.starts_with("HTTP/1.1 400"), "{forged}");
+    assert!(forged.starts_with("HTTP/1.1 400"), "a wrong state is refused");
     let callback = send(&address, "GET /callback?code=the-code&state=the-state HTTP/1.1\r\n\r\n").await;
-    assert!(callback.starts_with("HTTP/1.1 200"), "{callback}");
+    assert!(callback.starts_with("HTTP/1.1 200"), "the callback is answered");
     assert!(callback.contains("You are signed in") && callback.contains("Cache-Control: no-store"));
 
     assert_eq!(waiting.await.unwrap().unwrap(), "the-code");

@@ -7,6 +7,9 @@ pr:
   - https://github.com/mgasca/calendar/pull/1012
   - https://github.com/mgasca/calendar/pull/1013
   - https://github.com/mgasca/calendar/pull/1018
+  - https://github.com/mgasca/calendar/pull/1027
+  - https://github.com/mgasca/calendar/pull/1028
+  - https://github.com/mgasca/calendar/pull/1029
 adrs: ["0003", "0004", "0021", "0027", "0053", "0055", "0058", "0061", "0063", "0064", "0066", "0067", "0068"]
 ---
 
@@ -274,14 +277,17 @@ No further ADR is expected. A slice that finds a decision ADR-0067 or ADR-0068 d
 * **Only when needed:** `.github/codeql-languages.jq` answers per workspace from CI's Backend and Native sets. A PR that changes neither reuses main's result in that category, as record 0026 does for the backend.
 * **Caches:** each analysis has its own registry and extractor target directory, keyed on its own `Cargo.lock`. Both run on the runner's stable toolchain (`RUSTUP_TOOLCHAIN`), not on a workspace's pin.
 * **Guards:** `codeql-rust-gate` and `codeql-rust-caches` in `tools/delivery-guards` fail when an entry loses its scope, category, gate or caches. The new tests fail against the previous workflow.
-* **Run time:** [record 0032](../benchmarks/0032-codeql-rust-analysis-of-the-native-workspace.md).
+* **Run time:** [record 0032](../benchmarks/0032-codeql-rust-analysis-of-the-native-workspace.md). On #1027's runs each entry loaded only its own `Cargo.toml` (LoadManifest 1.6 to 2.4 s for the backend, 31 to 44 s for `native/`, cold), and the cold native entry took 6:49 to 8:24 beside the backend's 6:25 to 6:41. The warm runs on `main` are still to be recorded.
+* **Delivered by** #1027 (`Closes #1019`).
 
 ### macOS and Windows CI (#1009), delivered
 
 * **Rows:** the `Native` job's matrix has `macOS` (`macos-latest`) and `Windows` (`windows-latest`, MSVC) desktop rows. They run `just native run lint-desktop test` under bash (Git Bash on Windows), alongside `Linux` and `WASM` (criterion 21).
 * **Goldens:** accessibility-tree goldens gate on every OS. PNG snapshots compare on Linux only. On macOS and Windows, `native/target/goldens/` is uploaded as `native-goldens-<row>` on every run, and a snapshot that can't render without a GPU adapter is skipped there (ADR-0067).
 * **When:** like every CI job, on PRs that touch the Native inputs (`native/`, `contracts/`, `tokens.css`) and on every push to `main`, plus a nightly `schedule` (`17 3 * * *`) on `ci.yml` (maintainer on #1009; ADR-0067 amended).
-* **Run time:** push runs on `main` put the rows on the delivery dashboard, which groups samples by job name (`tools/ci-timings` pins that). The four Native rows join the ADR-0045 baseline in one later PR, after 30 dispatch runs on `main` (approved on #1009).
+* **macOS's bash 3.2:** the first macOS run failed before any test, because that bash treats an empty array as unset under `set -u` and `just/run.just` expanded one. It now expands arrays only when they have words, and `tools/delivery-guards/tests/macos-bash_test.ts` fails on the bare form in the recipes the macOS row runs. bash 5 can't reproduce it, so the guard reads the text.
+* **Run time:** push runs on `main` put the rows on the delivery dashboard, which groups samples by job name (`tools/ci-timings` pins that). On the merged head (#1028 `5456e6d6f7`): macOS 5:30, Windows 2:21, Linux 1:31, WASM 1:20. The four Native rows join the ADR-0045 baseline in one later PR, after 30 dispatch runs on `main` (approved on #1009). They start once the Container image fix (#1037) is on `main`, so the rebuilt check path doesn't take in that job's slow stage.
+* **Delivered by** #1028 (`Refs #1009`).
 
 ### WASM at `/native/` (#1009), delivered
 
@@ -293,7 +299,9 @@ No further ADR is expected. A slice that finds a decision ADR-0067 or ADR-0068 d
   * `tests/api/hosting.rs`: `native_bundle_routing_and_cache_headers` and `native_paths_without_a_bundle_are_not_found`, both shown to fail without the change.
   * `just image smoke` checks `/native`, `/native/`, `/native/week`, `app.js` and `app_bg.wasm` on the container's one origin.
   * Locally, Vite served a real `build-web` bundle (`app.js`, a 13.6 MB `app_bg.wasm` and the `snippets/` import) with these types and headers.
+* **Image build time:** cold, the `native-web` stage took the Container image job from 1:22 to 7:06 (128 s compiling `wasm-bindgen-cli`, 174 s for the release WASM build), against a baseline median of 83 s and a threshold of 130 s. With every layer cached it took 1:56 to 2:05. The cache fix is #1037, and no baseline change happens without the maintainer's decision.
 * **Not yet shown:** the bundle running signed in, in a browser with WebGPU. The cookie is the origin's, so nothing in the app changes for it.
+* **Delivered by** #1029 (`Closes #1009`).
 
 ### Parity with the web app (#1002 to #1007)
 
@@ -316,9 +324,9 @@ No further ADR is expected. A slice that finds a decision ADR-0067 or ADR-0068 d
 | Native workspace | `native/` (`Cargo.toml`, `Cargo.lock`, `rust-toolchain.toml`, `mod.just`) |
 | App | `native/crates/calendar-native` |
 | Generated client | `native/crates/calendar-client` (`src/generated/` from `calendar-client-gen`) |
-| CI | `.github/workflows/ci.yml`, job `native` (matrix rows; macOS and Windows join as rows), a nightly workflow for macOS and Windows (#1009) |
+| CI | `.github/workflows/ci.yml`, job `native` (matrix rows `Linux`, `macOS`, `Windows` and `WASM`), and its nightly `schedule` (#1009); `.github/workflows/codeql.yml`, entry `rust-native` (#1019) |
 | Native sign-in | `backend/crates/calendar-api/src/auth/native.rs` and the `token` endpoint in `endpoints/auth.rs`; no migration, because the handover code is sealed and stateless (ADR-0068) (#1008) |
-| WASM hosting | the Vite config in `frontend/apps/web` and the container image's web root (#1009) |
+| WASM hosting | `frontend/apps/web/dev/nativeBundle.ts` (Vite), the `Dockerfile`'s `native-web` stage, and `calendar-api`'s `hosting.rs` and fallback (#1009) |
 
 ### API
 

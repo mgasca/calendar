@@ -90,7 +90,10 @@ RUN touch crates/calendar-client/src/lib.rs crates/calendar-native/src/lib.rs \
     && cargo build --release --locked --target wasm32-unknown-unknown -p calendar-native --lib \
     && wasm-bindgen --target web --no-typescript --out-dir /out --out-name app \
       target/wasm32-unknown-unknown/release/calendar_native.wasm \
-    && cp web/index.html /out/
+    && cp web/index.html /out/ \
+    && rune=$(cargo metadata --locked --format-version 1 --filter-platform wasm32-unknown-unknown \
+      | sed -n 's/.*"manifest_path":"\([^"]*\/crates\/rune\/\)Cargo\.toml".*/\1/p') \
+    && cp "${rune}assets/web/"Inter-*.ttf /out/
 
 # glibc, CA certificates (PostgreSQL and Google TLS verify against the system store) and a non-root user; no shell.
 FROM gcr.io/distroless/cc-debian13:nonroot@sha256:cb87acc574abe719b6e5c547384defa2f7b1f24af9605d3f618cf852495d8be2 AS runtime

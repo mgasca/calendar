@@ -40,8 +40,10 @@ smoke:
         echo "$route: $code"
     done
     # The Rune UI's bundle on the same origin (ADR-0067, #1009): its own entry page, never the React app's, a
-    # redirect from /native, and the wasm with the type WebAssembly.instantiateStreaming needs.
-    for route in /native /native/ /native/week /native/app.js /native/app_bg.wasm; do
+    # redirect from /native, the wasm with the type WebAssembly.instantiateStreaming needs, and Rune's full Inter faces,
+    # which the bundle fetches beside app.js (#1043).
+    for route in /native /native/ /native/week /native/app.js /native/app_bg.wasm /native/Inter-Regular.ttf \
+        /native/Inter-Medium.ttf /native/Inter-SemiBold.ttf; do
         code=$(curl -sS -o "$tmp/body" -D "$tmp/headers" -w '%{http_code}' "$base$route")
         type=$(sed -n 's/^content-type: *\([^;[:space:]]*\).*/\1/Ip' "$tmp/headers" | tail -n 1)
         case "$route:$code" in
@@ -50,6 +52,7 @@ smoke:
             /native/week:200) cmp -s "$tmp/native" "$tmp/body" || exit 1 ;;
             /native/app.js:200) [ "$type" = text/javascript ] || exit 1 ;;
             /native/app_bg.wasm:200) [ "$type" = application/wasm ] || exit 1 ;;
+            /native/Inter-*.ttf:200) [ "$type" = font/ttf ] || exit 1 ;;
             *) echo "Unexpected response $code for $route" >&2; exit 1 ;;
         esac
         echo "$route: $code ${type:-}"

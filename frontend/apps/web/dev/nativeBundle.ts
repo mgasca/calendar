@@ -22,6 +22,8 @@ const CONTENT_TYPES: Readonly<Record<string, string>> = {
   '.css': 'text/css; charset=utf-8',
   '.json': 'application/json',
   '.png': 'image/png',
+  // Rune's full Inter faces, fetched beside app.js after the first frame (#1043).
+  '.ttf': 'font/ttf',
   '.svg': 'image/svg+xml',
 };
 

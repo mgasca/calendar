@@ -21,12 +21,38 @@
             912.0,
             16.3
           ],
+          "key": "sign-in-heading",
+          "name": "Sign in",
+          "role": "heading"
+        },
+        {
+          "bounds": [
+            24.0,
+            52.3,
+            912.0,
+            16.3
+          ],
           "key": "session-message",
-          "name": "You are signed out.",
+          "name": "Sign in with your Google account to see your calendar.",
           "role": "status",
           "states": [
             "live-polite"
           ]
+        },
+        {
+          "actions": [
+            "click",
+            "focus"
+          ],
+          "bounds": [
+            24.0,
+            80.5,
+            912.0,
+            25.0
+          ],
+          "key": "sign-in",
+          "name": "Sign in with Google",
+          "role": "button"
         }
       ],
       "key": "session",

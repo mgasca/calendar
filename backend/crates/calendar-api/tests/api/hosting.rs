@@ -113,6 +113,37 @@ async fn native_bundle_routing_and_cache_headers() {
   assert_eq!(client.get("/api/auth/me").await.status, StatusCode::UNAUTHORIZED);
 }
 
+/// The bundle's large files go out gzip-encoded to a client that accepts it, from the `.gz` copies the image
+/// writes beside them, with the original type and cache header; a client that does not gets the file itself
+/// (#1044: the wasm is 13.6 MB, 4.2 MB gzipped).
+#[tokio::test]
+async fn native_bundle_files_are_served_precompressed() {
+  let root = spa_root();
+  let native = root.path().join("native");
+  std::fs::create_dir(&native).unwrap();
+  std::fs::write(native.join("index.html"), "NATIVE").unwrap();
+  std::fs::write(native.join("app_bg.wasm"), b"\0asm\x01\0\0\0").unwrap();
+  std::fs::write(native.join("app_bg.wasm.gz"), "GZIPPED").unwrap();
+  let app = TestApp::builder()
+    .without_database()
+    .real_authentication()
+    .web_root(root.path())
+    .start()
+    .await;
+
+  let gzipped = app.client().header("accept-encoding", "gzip, br").get("/native/app_bg.wasm").await;
+  assert_eq!(gzipped.status, StatusCode::OK);
+  assert_eq!(gzipped.header("content-encoding"), Some("gzip"));
+  assert_eq!(gzipped.media_type(), Some("application/wasm"));
+  assert_eq!(gzipped.header("cache-control"), Some("no-cache"));
+  assert_eq!(gzipped.body, b"GZIPPED");
+
+  let plain = app.client().get("/native/app_bg.wasm").await;
+  assert_eq!(plain.status, StatusCode::OK);
+  assert_eq!(plain.header("content-encoding"), None);
+  assert_eq!(plain.body, b"\0asm\x01\0\0\0");
+}
+
 /// Without a built bundle, `/native/` is a `404`, not the React app.
 #[tokio::test]
 async fn native_paths_without_a_bundle_are_not_found() {

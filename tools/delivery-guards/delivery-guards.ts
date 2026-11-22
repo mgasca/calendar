@@ -391,6 +391,41 @@ function nativeCi(files: RepoFiles): string[] {
   }
   return errors;
 }
+// The Container image job's Buildx cache holds every stage's layers, about 1.7 GB once the native bundle's dependencies
+// are in it; saved by every pull request, its entries filled the repository's 10 GB and evicted every other cache
+// (#1037). Only runs that are not pull requests export and save it.
+function imageCache(files: RepoFiles): string[] {
+  const image = Workflow.parse(files.workflow).jobNamed("Container image");
+  if (!image) return ["no job is named `Container image`."];
+  const steps = image.steps,
+    errors: string[] = [],
+    uses = (s: (typeof steps)[number]) => s.text("uses") ?? "",
+    buildx = (s: (typeof steps)[number]) => (s.map("with")?.text("path") ?? "").includes("calendar-buildx-cache"),
+    build = steps.find((s) => /docker buildx build/.test(Workflow.run(s)));
+  if (steps.some((s) => buildx(s) && /^actions\/cache@/.test(uses(s)))) {
+    errors.push(
+      "the Container image job caches Buildx with actions/cache, which saves an entry for every pull request.",
+    );
+  }
+  if (!steps.some((s) => buildx(s) && uses(s).startsWith("actions/cache/restore"))) {
+    errors.push("the Container image job does not restore the Buildx cache with actions/cache/restore.");
+  }
+  const save = steps.find((s) => buildx(s) && uses(s).startsWith("actions/cache/save"));
+  if (!save) errors.push("the Container image job does not save the Buildx cache with actions/cache/save.");
+  else if (!(save.text("if") ?? "").includes("github.event_name != 'pull_request'")) {
+    errors.push("the Container image job saves the Buildx cache on pull requests.");
+  }
+  if (!build) errors.push("the Container image job has no `docker buildx build` step.");
+  else {
+    const line = Workflow.run(build).split("\n").find((l) => l.includes("docker buildx build")) ?? "";
+    if (
+      /--cache-to\b/.test(line) || build.map("env")?.text("EXPORT") !== "${{ github.event_name != 'pull_request' }}"
+    ) {
+      errors.push("the Container image job exports the Buildx cache on pull requests, which never save it.");
+    }
+  }
+  return errors;
+}
 function codeqlRustCaches(files: RepoFiles): string[] {
   const analyze = Workflow.parse(files.codeqlWorkflow).jobs.find((j) => j.name.startsWith("Analyze"));
   if (!analyze) return ["codeql.yml has no Analyze job."];
@@ -510,6 +545,14 @@ export const guards: Guard[] = [
     mechanism:
       "The Native job restores native/target with actions/cache/restore, prunes its own crates, golden differences and browser bundle, then saves with actions/cache/save; each matrix row runs only its own Clippy half (lint-desktop or lint-wasm).",
     check: nativeCi,
+  },
+  {
+    id: "image-cache-main-only",
+    fix: "#1037",
+    record: "none",
+    mechanism:
+      "The Container image job restores the Buildx cache with actions/cache/restore, and only runs that are not pull requests export it (--cache-to) and save it with actions/cache/save.",
+    check: imageCache,
   },
 ];
 export function runGuard(guard: Guard, files: RepoFiles): string[] {

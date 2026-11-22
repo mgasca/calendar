@@ -9,6 +9,9 @@
 //! - A 401 from any endpoint but `/api/auth/me` calls the `on_unauthorized` hook, as the web app raises
 //!   `calendar:unauthorized`, so the shell can sign out.
 //!
+//! - [`Api::traced`] sends a W3C `traceparent` ([`TraceParent`]) on every call of one user action, so the API's spans,
+//!   logs and metrics for that action share the app's trace id (#1010). The app exports no telemetry of its own.
+//!
 //! Cookies are the supplied `reqwest::Client`'s: a cookie store on the desktop, the browser's on the web.
 
 #[rustfmt::skip]
@@ -101,6 +104,34 @@ pub fn problem_message(body: &str) -> Option<String> {
 
 type Hook = Arc<dyn Fn() + Send + Sync>;
 
+/// A W3C Trace Context parent (`traceparent`, version `00`, sampled): the trace of one user action, and the app's span
+/// within it. The caller picks the ids, so this crate needs no randomness.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct TraceParent {
+  trace_id: u128,
+  span_id: u64,
+}
+
+impl TraceParent {
+  /// The parent for `trace_id` and `span_id`, or `None` when either is zero, which W3C Trace Context makes invalid.
+  #[must_use]
+  pub fn new(trace_id: u128, span_id: u64) -> Option<Self> {
+    (trace_id != 0 && span_id != 0).then_some(TraceParent { trace_id, span_id })
+  }
+
+  /// The trace id as 32 lowercase hex digits, as the API's telemetry records it.
+  #[must_use]
+  pub fn trace_id(&self) -> String {
+    format!("{:032x}", self.trace_id)
+  }
+
+  /// The `traceparent` header value.
+  #[must_use]
+  pub fn header(&self) -> String {
+    format!("00-{:032x}-{:016x}-01", self.trace_id, self.span_id)
+  }
+}
+
 /// The API, with the session cookie of the `reqwest::Client` it was made with.
 #[derive(Clone)]
 pub struct Api {
@@ -129,6 +160,16 @@ impl Api {
   pub fn on_unauthorized(mut self, hook: impl Fn() + Send + Sync + 'static) -> Self {
     self.on_unauthorized = Some(Arc::new(hook));
     self
+  }
+
+  /// This API with `parent` as the `traceparent` of every call made through it: one user action's requests. The
+  /// 401 signal and the cookies are the same as this one's.
+  #[must_use]
+  pub fn traced(&self, parent: &TraceParent) -> Self {
+    Api {
+      client: self.client.clone().with_header("traceparent", parent.header()),
+      on_unauthorized: self.on_unauthorized.clone(),
+    }
   }
 
   /// The generated client, for operations this wrapper does not cover yet.

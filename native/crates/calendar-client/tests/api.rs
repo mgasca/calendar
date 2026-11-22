@@ -3,7 +3,7 @@
 #![cfg(not(target_arch = "wasm32"))]
 
 use calendar_client::generated::{TaskResponse, TaskResponseVersion, UpdateTaskRequest, UpdateTaskRequestVersion};
-use calendar_client::{Api, ApiError, Day, problem_message};
+use calendar_client::{Api, ApiError, Day, TraceParent, problem_message};
 use chrono::NaiveDate;
 use serde_json::json;
 use std::sync::Arc;
@@ -334,4 +334,43 @@ async fn an_event_is_created_read_updated_and_deleted_by_id() {
   let update = calendar_client::generated::UpdateEventRequest::new(read.title.clone(), read.version.into());
   api.update_event(id, update).await.unwrap();
   api.delete_event(id).await.unwrap();
+}
+
+#[test]
+fn a_trace_parent_is_the_w3c_header_and_refuses_all_zero_ids() {
+  let parent = TraceParent::new(0x4bf9_2f35_77b3_4da6_a3ce_929d_0e0e_4736, 0x00f0_67aa_0ba9_02b7).unwrap();
+  assert_eq!(parent.header(), "00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-01");
+  assert_eq!(parent.trace_id(), "4bf92f3577b34da6a3ce929d0e0e4736");
+  // W3C Trace Context: an all-zero trace id or parent id is invalid, and the server would start a new trace.
+  assert!(TraceParent::new(0, 1).is_none());
+  assert!(TraceParent::new(1, 0).is_none());
+}
+
+#[tokio::test]
+async fn a_traced_api_sends_traceparent_on_every_call_and_the_untraced_one_none() {
+  let server = MockServer::start().await;
+  Mock::given(method("GET"))
+    .respond_with(ResponseTemplate::new(401))
+    .mount(&server)
+    .await;
+  let signals = Arc::new(AtomicUsize::new(0));
+  let counter = Arc::clone(&signals);
+  let plain = api(&server).on_unauthorized(move || {
+    counter.fetch_add(1, Ordering::SeqCst);
+  });
+  let parent = TraceParent::new(0x4bf9_2f35_77b3_4da6_a3ce_929d_0e0e_4736, 0x00f0_67aa_0ba9_02b7).unwrap();
+  let traced = plain.traced(&parent);
+
+  let _ = traced.me().await;
+  let _ = traced.day_agenda(day().today, &day()).await;
+  let _ = plain.me().await;
+
+  let requests = server.received_requests().await.unwrap();
+  let sent: Vec<Option<&str>> = requests
+    .iter()
+    .map(|request| request.headers.get("traceparent").and_then(|value| value.to_str().ok()))
+    .collect();
+  let header = parent.header();
+  assert_eq!(sent, [Some(header.as_str()), Some(header.as_str()), None]);
+  assert_eq!(signals.load(Ordering::SeqCst), 1, "the traced API keeps the 401 signal");
 }

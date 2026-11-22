@@ -21,11 +21,16 @@ export function isTypingTarget(target: EventTarget | null): boolean {
   );
 }
 
+/** Whether a modal dialog is open: the shortcuts would otherwise move the week behind it (#1039). */
+export function isModalOpen(): boolean {
+  return document.querySelector('dialog[open], [aria-modal="true"]') !== null;
+}
+
 /**
  * Week shortcuts: `←` previous week, `→` next week, `t` this week. They are ignored while focus is
  * in a form field or editable text, and when a modifier key is held, so browser and assistive
  * technology shortcuts keep working. The arrows are also ignored inside the week grid, where they
- * scroll it sideways.
+ * scroll it sideways, and while a modal dialog is open.
  */
 export function useWeekKeys(handlers: WeekKeyHandlers) {
   const latest = useRef(handlers);
@@ -41,7 +46,8 @@ export function useWeekKeys(handlers: WeekKeyHandlers) {
         event.ctrlKey ||
         event.metaKey ||
         event.shiftKey ||
-        isTypingTarget(event.target)
+        isTypingTarget(event.target) ||
+        isModalOpen()
       ) {
         return;
       }

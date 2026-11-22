@@ -15,6 +15,7 @@ jobs:
       docs: ${{ steps.decide.outputs.docs }}
       tooling: ${{ steps.decide.outputs.tooling }}
       native: ${{ steps.decide.outputs.native }}
+      image: ${{ steps.decide.outputs.image }}
       skipped: ${{ steps.decide.outputs.skipped }}
     steps:
       - id: decide
@@ -55,6 +56,32 @@ jobs:
           cache: true
       - name: Test and lint tooling
         run: just tools test
+  image:
+    name: Container image
+    needs: changes
+    if: needs.changes.outputs.image == 'true'
+    steps:
+      - uses: actions/checkout@v7
+      - name: Restore the Buildx cache
+        uses: actions/cache/restore@v6
+        with:
+          path: /tmp/calendar-buildx-cache
+          key: image-${{ runner.os }}-${{ github.sha }}
+          restore-keys: image-${{ runner.os }}-
+      - name: Build image with Buildx cache
+        env:
+          EXPORT: ${{ github.event_name != 'pull_request' }}
+        run: |
+          export_to=()
+          if [ "$EXPORT" = true ]; then export_to=(--cache-to type=local,dest=/tmp/calendar-buildx-cache-new,mode=max); fi
+          docker buildx build --load --cache-from type=local,src=/tmp/calendar-buildx-cache ${export_to[@]+"${export_to[@]}"} -t calendar:local .
+      - run: just image smoke
+      - name: Save the Buildx cache
+        if: github.event_name != 'pull_request'
+        uses: actions/cache/save@v6
+        with:
+          path: /tmp/calendar-buildx-cache
+          key: image-${{ runner.os }}-${{ github.sha }}
   native:
     name: Native
     needs: changes
@@ -100,7 +127,7 @@ jobs:
   result:
     name: CI result
     if: ${{ always() }}
-    needs: [changes, backend, frontend, docs, tooling, native]
+    needs: [changes, backend, frontend, docs, tooling, image, native]
     steps:
       - run: |
           jq -e '. as $needs | all(to_entries[]; .value.result == "success"

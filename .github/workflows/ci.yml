@@ -503,18 +503,28 @@ jobs:
           --health-retries 10
     steps:
       - uses: actions/checkout@v7
-      - uses: actions/cache@v6
+      # The Buildx cache holds every stage's layers (mode=max), about 1.7 GB once the native bundle's dependencies are
+      # in it. Saved by every pull request, its entries filled the repository's 10 GB and evicted every other cache
+      # (#1037). So only runs that are not pull requests export and save it; a pull request restores main's.
+      - name: Restore the Buildx cache
+        uses: actions/cache/restore@v6
         with:
           path: /tmp/calendar-buildx-cache
           key: image-${{ runner.os }}-${{ github.sha }}
           restore-keys: image-${{ runner.os }}-
       - name: Build image with Buildx cache
+        env:
+          EXPORT: ${{ github.event_name != 'pull_request' }}
         run: |
           docker buildx create --use
-          docker buildx build --load --cache-from type=local,src=/tmp/calendar-buildx-cache --cache-to type=local,dest=/tmp/calendar-buildx-cache-new,mode=max \
+          export_to=()
+          if [ "$EXPORT" = true ]; then export_to=(--cache-to type=local,dest=/tmp/calendar-buildx-cache-new,mode=max); fi
+          docker buildx build --load --cache-from type=local,src=/tmp/calendar-buildx-cache ${export_to[@]+"${export_to[@]}"} \
             --build-arg NODE_VERSION="$(cat frontend/.node-version)" -t calendar:local .
-          rm -rf /tmp/calendar-buildx-cache
-          mv /tmp/calendar-buildx-cache-new /tmp/calendar-buildx-cache
+          if [ "$EXPORT" = true ]; then
+            rm -rf /tmp/calendar-buildx-cache
+            mv /tmp/calendar-buildx-cache-new /tmp/calendar-buildx-cache
+          fi
       - name: Read the pinned just version
         id: just-version
         run: echo "version=$(tr -d '[:space:]v' < .just-version)" >> "$GITHUB_OUTPUT"
@@ -531,6 +541,12 @@ jobs:
             sleep 1
           done
           just image smoke
+      - name: Save the Buildx cache
+        if: github.event_name != 'pull_request'
+        uses: actions/cache/save@v6
+        with:
+          path: /tmp/calendar-buildx-cache
+          key: image-${{ runner.os }}-${{ github.sha }}
       - name: Container logs
         if: ${{ failure() }}
         run: docker logs calendar-smoke

@@ -47,18 +47,47 @@ RUN touch crates/calendar-domain/src/lib.rs crates/calendar-infrastructure/src/l
 
 # The Rune UI's browser bundle (ADR-0067, #1009), served at /native/ from the web root. It starts from the same pinned
 # image as `build`, and rustup installs the toolchain native/rust-toolchain.toml pins (Rune's, with the wasm32 target).
-# The steps are `just native build-web`'s, without just: the wasm-bindgen CLI at the version of the wasm-bindgen crate
-# in native/Cargo.lock (its own layer, rebuilt only when that version moves), then cargo and wasm-bindgen.
-FROM rust:1.100.0-slim-trixie@sha256:e9d95b74296f7126a83ae3d041aeaba1ff4c478f13abc5cc034fcf7c131c3d4a AS native-web
+# The steps are `just native build-web`'s, without just: cargo, then the wasm-bindgen CLI at the version of the
+# wasm-bindgen crate in native/Cargo.lock. Cold, compiling that CLI took about 2 minutes and the dependencies about
+# 3 (#1037), so each is a layer of its own that the Buildx cache keeps until its own input moves.
+FROM rust:1.100.0-slim-trixie@sha256:e9d95b74296f7126a83ae3d041aeaba1ff4c478f13abc5cc034fcf7c131c3d4a AS native-toolchain
 WORKDIR /src/native
 COPY native/rust-toolchain.toml ./
 RUN rustup toolchain install
+
+# Only the version string reaches the CLI's stage, so a Cargo.lock change that keeps it reuses the compiled CLI.
+FROM native-toolchain AS native-bindgen-version
 COPY native/Cargo.lock ./
-RUN version=$(awk '$0 == "name = \"wasm-bindgen\"" { getline; gsub(/"/, "", $3); print $3 }' Cargo.lock) \
-    && test -n "$version" \
-    && cargo install wasm-bindgen-cli --version "$version" --locked --bin wasm-bindgen
-COPY native/ ./
-RUN cargo build --release --locked --target wasm32-unknown-unknown -p calendar-native --lib \
+RUN awk '$0 == "name = \"wasm-bindgen\"" { getline; gsub(/"/, "", $3); print $3 }' Cargo.lock > /wasm-bindgen-version \
+    && test -s /wasm-bindgen-version
+
+FROM native-toolchain AS native-bindgen
+COPY --from=native-bindgen-version /wasm-bindgen-version /tmp/
+RUN cargo install wasm-bindgen-cli --version "$(cat /tmp/wasm-bindgen-version)" --locked --bin wasm-bindgen \
+      --root /opt/wasm-bindgen
+
+FROM native-toolchain AS native-web
+# Dependency layer, as in `build`: the manifests and the lock file with stand-in sources, so Rune and the crates.io
+# dependencies compile once and are reused until a manifest or Cargo.lock changes. Every workspace member needs its
+# manifest, or --locked would refuse the lock file.
+COPY native/Cargo.toml native/Cargo.lock ./
+COPY native/crates/calendar-client/Cargo.toml crates/calendar-client/
+COPY native/crates/calendar-client-gen/Cargo.toml crates/calendar-client-gen/
+COPY native/crates/calendar-native/Cargo.toml crates/calendar-native/
+RUN for crate in client client-gen native; do mkdir -p "crates/calendar-$crate/src" || exit 1; done \
+    && : > crates/calendar-client/src/lib.rs \
+    && : > crates/calendar-native/src/lib.rs \
+    && echo 'fn main() {}' > crates/calendar-native/src/main.rs \
+    && echo 'fn main() {}' > crates/calendar-client-gen/src/main.rs \
+    && cargo build --release --locked --target wasm32-unknown-unknown -p calendar-native --lib
+# The real sources of the two crates the bundle is built from, then a touch of their roots, as in `build`, so Cargo
+# rebuilds them and keeps the compiled dependencies.
+COPY native/crates/calendar-client/src/ crates/calendar-client/src/
+COPY native/crates/calendar-native/src/ crates/calendar-native/src/
+COPY native/web/index.html web/
+COPY --from=native-bindgen /opt/wasm-bindgen/bin/wasm-bindgen /usr/local/bin/
+RUN touch crates/calendar-client/src/lib.rs crates/calendar-native/src/lib.rs \
+    && cargo build --release --locked --target wasm32-unknown-unknown -p calendar-native --lib \
     && wasm-bindgen --target web --no-typescript --out-dir /out --out-name app \
       target/wasm32-unknown-unknown/release/calendar_native.wasm \
     && cp web/index.html /out/

@@ -1,1 +1,0 @@
-export{b as createArchitectureServices}from"./chunk-E5HCKRCG-f1KN_fi2.js";

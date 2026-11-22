@@ -42,7 +42,25 @@ In `Analyze (rust)`, `github/codeql-action/analyze` took a median of 387 s (231â
 
 ## After
 
-Pending: the pull request's runs (cold native caches, then a run without native input that reuses main's result) and the first 10 push runs on `main` after the merge. They're added to this record before it merges, or in a records-only follow-up if the post-merge sample isn't ready in time, as stated on #1019.
+### Pull request runs (measured)
+
+The three heads of the stack that delivered it (#1027 `dbc2eabb7f`, #1028 `5456e6d6f7`, #1029 `f181456409`). The caches save only on runs that aren't pull requests, so every native run here was cold: `Cache not found` for both `codeql-rust-native-*` keys.
+
+| Head | Entry | Job | Analyze step | LoadManifest | Manifests found |
+| --- | --- | --: | --: | --: | --- |
+| `dbc2eabb7f` | `rust` | 6:41 | 373 s | 1.6 s | `backend/Cargo.toml` |
+| `dbc2eabb7f` | `rust-native` | 7:55 | 445 s | 39.1 s | `native/Cargo.toml` |
+| `5456e6d6f7` | `rust` | 6:30 | 364 s | 2.4 s | `backend/Cargo.toml` |
+| `5456e6d6f7` | `rust-native` | 8:24 | 473 s | 43.6 s | `native/Cargo.toml` |
+| `f181456409` | `rust` | 6:25 | 360 s | 2.4 s | `backend/Cargo.toml` |
+| `f181456409` | `rust-native` | 6:49 | 361 s | 31.1 s | `native/Cargo.toml` |
+
+- **Backend entry:** its analyze step (360 to 373 s) is in line with the before median of 387 s. Each entry loads only its own workspace: LoadManifest is 1.6 to 2.4 s, against 28.7 s unscoped on #1020.
+- **Native entry:** it runs beside the backend entry, not after it, so the workflow's wall time is the slower of the two: 6:49 to 8:24 cold.
+
+### Push runs on `main` (pending)
+
+The first 10 push runs on `main` from the merge (`7c57f6c485`) on, warm native caches included, and the first run without native input that reuses main's `/language:rust-native` result. They go in a records-only follow-up, as stated on #1019.
 
 ## Reconsideration
 

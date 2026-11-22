@@ -145,8 +145,8 @@ const mutations: [string, string, string, string, string, boolean?][] = [
   [
     "AJobLeftOutOfNeeds_Fails",
     "ci-result-needs-all",
-    "[changes, backend, frontend, docs, tooling, native]",
-    "[changes, backend, frontend, docs, native]",
+    "[changes, backend, frontend, docs, tooling, image, native]",
+    "[changes, backend, frontend, docs, image, native]",
     "does not need `tooling` (Tooling)",
   ],
   [
@@ -301,8 +301,8 @@ Deno.test("NeedsAsABlockList_IsRead", () =>
   assertEquals(
     failures(
       "ci-result-needs-all",
-      "needs: [changes, backend, frontend, docs, tooling, native]",
-      "needs:\n      - changes\n      - backend\n      - frontend\n      - docs\n      - tooling\n      - native",
+      "needs: [changes, backend, frontend, docs, tooling, image, native]",
+      "needs:\n      - changes\n      - backend\n      - frontend\n      - docs\n      - tooling\n      - image\n      - native",
     ),
     [],
   ));
@@ -833,6 +833,40 @@ Deno.test("TheCheckoutsJobsApiCheck_IsReadFromCiResultJq", () => {
   );
   assertEquals(runGuard(guard, { ...files, ciResultJq: undefined }).length > 0, true);
 });
+// The Container image job's Buildx cache (#1037): each mutation undoes one part of the fix.
+for (
+  const [name, from, to, expected] of [
+    [
+      "ACacheSavedByEveryRun_Fails",
+      "uses: actions/cache/restore@v6\n        with:\n          path: /tmp/calendar-buildx-cache",
+      "uses: actions/cache@v6\n        with:\n          path: /tmp/calendar-buildx-cache",
+      "saves an entry for every pull request",
+    ],
+    [
+      "ASaveOnPullRequests_Fails",
+      "        if: github.event_name != 'pull_request'\n        uses: actions/cache/save@v6",
+      "        uses: actions/cache/save@v6",
+      "saves the Buildx cache on pull requests",
+    ],
+    [
+      "AnExportOnPullRequests_Fails",
+      "--cache-from type=local,src=/tmp/calendar-buildx-cache ${export_to",
+      "--cache-from type=local,src=/tmp/calendar-buildx-cache --cache-to type=local,dest=/tmp/x,mode=max ${export_to",
+      "exports the Buildx cache on pull requests",
+    ],
+    [
+      "NoSave_Fails",
+      "uses: actions/cache/save@v6\n        with:\n          path: /tmp/calendar-buildx-cache",
+      "uses: actions/upload-artifact@v6\n        with:\n          path: /tmp/calendar-buildx-cache",
+      "does not save the Buildx cache",
+    ],
+  ] as const
+) {
+  Deno.test(`ImageCache_${name}`, () => {
+    const errors = failures("image-cache-main-only", from, to);
+    assert(errors.some((e) => e.includes(expected)), errors.join("\n") || "the guard passed");
+  });
+}
 // The Native job's cache and lint split (#1020 review): each mutation undoes one part of the fix.
 for (
   const [name, from, to, expected] of [

@@ -283,7 +283,7 @@
 <li><strong>Placement:</strong> <code>gridLayout.ts</code> places events by local wall-clock minutes in the viewer’s zone, from <code>Intl.DateTimeFormat</code> parts, clipped to the day’s window. On a day whose local midnight was skipped (such as America/Santiago on 6 September 2026, which starts at 01:00), the top is clipped to the window start’s wall clock, not to 00:00. Very short events are at least 20 minutes tall. Overlapping events are clustered transitively and get greedy columns; a cluster that needs more than four columns shows three and a “+N more” chip linking to the day.</li>
 <li><strong>All-day band:</strong> bars are clipped to the week, marked when they continue before Monday or after Sunday, and stacked into the fewest lanes.</li>
 <li><strong>Initial scroll:</strong> each week opens at 07:00, or an hour before now in the current week, by setting <code>scrollTop</code> on the grid’s container. One hour is a fixed 48 px, so the offset is exact.</li>
-<li><strong>Keyboard:</strong> <code>←</code>, <code>→</code> and <code>t</code> are handled on the document and ignored in form fields, in editable text and with a modifier held. The grid’s scroll container is a focusable region named “Week grid”, so it can be scrolled from the keyboard; while focus is inside it, <code>←</code> and <code>→</code> scroll it instead of changing week.</li>
+<li><strong>Keyboard:</strong> <code>←</code>, <code>→</code> and <code>t</code> are handled on the document and ignored in form fields, in editable text, with a modifier held and while a modal dialog is open (#1039). The grid’s scroll container is a focusable region named “Week grid”, so it can be scrolled from the keyboard; while focus is inside it, <code>←</code> and <code>→</code> scroll it instead of changing week.</li>
 </ul>
 <h3 id="testing">Testing</h3>
 <ul>
@@ -352,7 +352,7 @@
 </ul>
 <h3 id="moving-around">Moving around</h3>
 <ul>
-<li><strong>Previous</strong>, <strong>This week</strong> and <strong>Next</strong> move between weeks. You can also press <code>←</code> and <code>→</code>, and <code>t</code> for this week. The keys don’t work while you’re typing in a field or holding a modifier key. While the week grid has focus, <code>←</code> and <code>→</code> scroll it sideways instead.</li>
+<li><strong>Previous</strong>, <strong>This week</strong> and <strong>Next</strong> move between weeks. You can also press <code>←</code> and <code>→</code>, and <code>t</code> for this week. The keys don’t work while you’re typing in a field, holding a modifier key or have a dialog open. While the week grid has focus, <code>←</code> and <code>→</code> scroll it sideways instead.</li>
 <li>Each week has its own address, for example <code>/week/2026-10-26</code>, so you can bookmark it or share it, and the browser’s back and forward buttons work. Any date opens its week: <code>/week/2026-10-28</code> shows the week starting on Monday 26 October.</li>
 <li>Select a day’s heading to open that day. The day view has a <strong>Week of …</strong> link back to its week.</li>
 </ul>

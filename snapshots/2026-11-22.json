@@ -1,0 +1,881 @@
+{
+  "version": 4,
+  "date": "2026-11-22",
+  "generatedAt": "2026-11-22T14:55:41Z",
+  "repository": "mgasca/calendar",
+  "ci": {
+    "workflow": "ci.yml",
+    "basis": "measured",
+    "runs": 30,
+    "window": {
+      "from": "2026-11-16T09:53:40Z",
+      "to": "2026-11-22T12:23:37Z"
+    },
+    "trend": {
+      "runs": 20,
+      "required": 20,
+      "window": {
+        "from": "2026-11-16T14:45:06Z",
+        "to": "2026-11-22T12:23:37Z"
+      }
+    },
+    "queue": {
+      "runs": 30,
+      "medianSeconds": 3,
+      "p90Seconds": 5,
+      "maxSeconds": 166
+    },
+    "jobs": [
+      {
+        "job": "ADR conventions",
+        "path": "publication",
+        "count": 30,
+        "minSeconds": 6,
+        "medianSeconds": 9,
+        "p90Seconds": 14,
+        "maxSeconds": 16,
+        "baseline": {
+          "count": 31,
+          "medianSeconds": 8,
+          "thresholdSeconds": 23
+        },
+        "trend": {
+          "verdict": "noShift",
+          "recentRuns": 20,
+          "shiftSeconds": 1,
+          "lowSeconds": 0,
+          "highSeconds": 2,
+          "minEffectSeconds": 10
+        }
+      },
+      {
+        "job": "Backend",
+        "path": "publication",
+        "count": 30,
+        "minSeconds": 96,
+        "medianSeconds": 123,
+        "p90Seconds": 219,
+        "maxSeconds": 277,
+        "baseline": {
+          "count": 31,
+          "medianSeconds": 112,
+          "thresholdSeconds": 196
+        },
+        "trend": {
+          "verdict": "slower",
+          "recentRuns": 20,
+          "shiftSeconds": 14,
+          "lowSeconds": 4,
+          "highSeconds": 26,
+          "minEffectSeconds": 10
+        }
+      },
+      {
+        "job": "Changes",
+        "path": "publication",
+        "count": 30,
+        "minSeconds": 3,
+        "medianSeconds": 6,
+        "p90Seconds": 11,
+        "maxSeconds": 12,
+        "baseline": {
+          "count": 31,
+          "medianSeconds": 4,
+          "thresholdSeconds": 19
+        },
+        "trend": {
+          "verdict": "noShift",
+          "recentRuns": 20,
+          "shiftSeconds": 0,
+          "lowSeconds": 0,
+          "highSeconds": 1,
+          "minEffectSeconds": 10
+        }
+      },
+      {
+        "job": "Container image",
+        "path": "publication",
+        "count": 30,
+        "minSeconds": 64,
+        "medianSeconds": 93,
+        "p90Seconds": 291,
+        "maxSeconds": 570,
+        "baseline": {
+          "count": 31,
+          "medianSeconds": 92,
+          "thresholdSeconds": 198
+        },
+        "trend": {
+          "verdict": "noShift",
+          "recentRuns": 20,
+          "shiftSeconds": 11,
+          "lowSeconds": -4,
+          "highSeconds": 36,
+          "minEffectSeconds": 10
+        }
+      },
+      {
+        "job": "Docs site",
+        "path": "publication",
+        "count": 30,
+        "minSeconds": 66,
+        "medianSeconds": 89,
+        "p90Seconds": 102,
+        "maxSeconds": 109,
+        "baseline": {
+          "count": 31,
+          "medianSeconds": 87,
+          "thresholdSeconds": 167
+        },
+        "trend": {
+          "verdict": "noShift",
+          "recentRuns": 20,
+          "shiftSeconds": 2,
+          "lowSeconds": -5,
+          "highSeconds": 11,
+          "minEffectSeconds": 10
+        }
+      },
+      {
+        "job": "Flow binding",
+        "path": "publication",
+        "count": 30,
+        "minSeconds": 13,
+        "medianSeconds": 18,
+        "p90Seconds": 26,
+        "maxSeconds": 30,
+        "baseline": {
+          "count": 31,
+          "medianSeconds": 18,
+          "thresholdSeconds": 33
+        },
+        "trend": {
+          "verdict": "noShift",
+          "recentRuns": 20,
+          "shiftSeconds": -1,
+          "lowSeconds": -2,
+          "highSeconds": 1,
+          "minEffectSeconds": 10
+        }
+      },
+      {
+        "job": "Frontend",
+        "path": "publication",
+        "count": 30,
+        "minSeconds": 48,
+        "medianSeconds": 70,
+        "p90Seconds": 76,
+        "maxSeconds": 87,
+        "baseline": {
+          "count": 31,
+          "medianSeconds": 64,
+          "thresholdSeconds": 121
+        },
+        "trend": {
+          "verdict": "noShift",
+          "recentRuns": 20,
+          "shiftSeconds": 4,
+          "lowSeconds": 0,
+          "highSeconds": 9,
+          "minEffectSeconds": 10
+        }
+      },
+      {
+        "job": "Narratives",
+        "path": "publication",
+        "count": 30,
+        "minSeconds": 6,
+        "medianSeconds": 9,
+        "p90Seconds": 11,
+        "maxSeconds": 12,
+        "baseline": {
+          "count": 31,
+          "medianSeconds": 8,
+          "thresholdSeconds": 23
+        },
+        "trend": {
+          "verdict": "noShift",
+          "recentRuns": 20,
+          "shiftSeconds": 0,
+          "lowSeconds": -1,
+          "highSeconds": 2,
+          "minEffectSeconds": 10
+        }
+      },
+      {
+        "job": "Native (Linux, ubuntu-24.04, desktop)",
+        "path": "publication",
+        "count": 8,
+        "minSeconds": 76,
+        "medianSeconds": 109,
+        "p90Seconds": 336,
+        "maxSeconds": 336,
+        "baseline": null,
+        "trend": null
+      },
+      {
+        "job": "Native (WASM, ubuntu-24.04, wasm)",
+        "path": "publication",
+        "count": 8,
+        "minSeconds": 60,
+        "medianSeconds": 66,
+        "p90Seconds": 363,
+        "maxSeconds": 363,
+        "baseline": null,
+        "trend": null
+      },
+      {
+        "job": "Native (Windows, windows-latest, desktop)",
+        "path": "publication",
+        "count": 7,
+        "minSeconds": 127,
+        "medianSeconds": 154,
+        "p90Seconds": 554,
+        "maxSeconds": 554,
+        "baseline": null,
+        "trend": null
+      },
+      {
+        "job": "Native (macOS, macos-latest, desktop)",
+        "path": "publication",
+        "count": 7,
+        "minSeconds": 51,
+        "medianSeconds": 107,
+        "p90Seconds": 464,
+        "maxSeconds": 464,
+        "baseline": null,
+        "trend": null
+      },
+      {
+        "job": "Tooling",
+        "path": "publication",
+        "count": 30,
+        "minSeconds": 37,
+        "medianSeconds": 40,
+        "p90Seconds": 45,
+        "maxSeconds": 46,
+        "baseline": {
+          "count": 31,
+          "medianSeconds": 41,
+          "thresholdSeconds": 56
+        },
+        "trend": {
+          "verdict": "noShift",
+          "recentRuns": 20,
+          "shiftSeconds": 0,
+          "lowSeconds": -2,
+          "highSeconds": 2,
+          "minEffectSeconds": 10
+        }
+      }
+    ]
+  },
+  "quality": {
+    "workflow": "ci.yml",
+    "basis": {
+      "runs": "measured",
+      "superseded": "inferred",
+      "jobs": "measured",
+      "guards": "inferred"
+    },
+    "sample": {
+      "runs": 96,
+      "ignoredRuns": 4,
+      "window": {
+        "from": "2026-11-20T10:35:18Z",
+        "to": "2026-11-22T12:29:54Z"
+      }
+    },
+    "rule": {
+      "confidence": 0.95,
+      "minTrials": 20
+    },
+    "guard": {
+      "job": "Tooling",
+      "step": "Test and lint tooling"
+    },
+    "scopes": [
+      {
+        "scope": "main",
+        "listQuery": "branch:main event:push",
+        "runs": {
+          "total": 11,
+          "passed": 11,
+          "passedAfterRerun": 0,
+          "failed": 0,
+          "cancelled": 0,
+          "superseded": 0,
+          "other": 0,
+          "reruns": 0
+        },
+        "failedRunIds": [],
+        "rerunRunIds": [],
+        "jobs": [
+          {
+            "job": "ADR conventions",
+            "required": false,
+            "trials": 11,
+            "failures": 0,
+            "verdict": "inconclusive",
+            "rate": null,
+            "low": null,
+            "high": null
+          },
+          {
+            "job": "Backend",
+            "required": false,
+            "trials": 11,
+            "failures": 0,
+            "verdict": "inconclusive",
+            "rate": null,
+            "low": null,
+            "high": null
+          },
+          {
+            "job": "CI result",
+            "required": true,
+            "trials": 11,
+            "failures": 0,
+            "verdict": "inconclusive",
+            "rate": null,
+            "low": null,
+            "high": null
+          },
+          {
+            "job": "Changes",
+            "required": false,
+            "trials": 11,
+            "failures": 0,
+            "verdict": "inconclusive",
+            "rate": null,
+            "low": null,
+            "high": null
+          },
+          {
+            "job": "Container image",
+            "required": false,
+            "trials": 11,
+            "failures": 0,
+            "verdict": "inconclusive",
+            "rate": null,
+            "low": null,
+            "high": null
+          },
+          {
+            "job": "Docs site",
+            "required": false,
+            "trials": 11,
+            "failures": 0,
+            "verdict": "inconclusive",
+            "rate": null,
+            "low": null,
+            "high": null
+          },
+          {
+            "job": "Flow binding",
+            "required": false,
+            "trials": 11,
+            "failures": 0,
+            "verdict": "inconclusive",
+            "rate": null,
+            "low": null,
+            "high": null
+          },
+          {
+            "job": "Frontend",
+            "required": false,
+            "trials": 11,
+            "failures": 0,
+            "verdict": "inconclusive",
+            "rate": null,
+            "low": null,
+            "high": null
+          },
+          {
+            "job": "Narratives",
+            "required": false,
+            "trials": 11,
+            "failures": 0,
+            "verdict": "inconclusive",
+            "rate": null,
+            "low": null,
+            "high": null
+          },
+          {
+            "job": "Native (Linux, ubuntu-24.04, desktop)",
+            "required": false,
+            "trials": 8,
+            "failures": 0,
+            "verdict": "inconclusive",
+            "rate": null,
+            "low": null,
+            "high": null
+          },
+          {
+            "job": "Native (WASM, ubuntu-24.04, wasm)",
+            "required": false,
+            "trials": 8,
+            "failures": 0,
+            "verdict": "inconclusive",
+            "rate": null,
+            "low": null,
+            "high": null
+          },
+          {
+            "job": "Native (Windows, windows-latest, desktop)",
+            "required": false,
+            "trials": 7,
+            "failures": 0,
+            "verdict": "inconclusive",
+            "rate": null,
+            "low": null,
+            "high": null
+          },
+          {
+            "job": "Native (macOS, macos-latest, desktop)",
+            "required": false,
+            "trials": 7,
+            "failures": 0,
+            "verdict": "inconclusive",
+            "rate": null,
+            "low": null,
+            "high": null
+          },
+          {
+            "job": "Tooling",
+            "required": false,
+            "trials": 11,
+            "failures": 0,
+            "verdict": "inconclusive",
+            "rate": null,
+            "low": null,
+            "high": null
+          }
+        ],
+        "guardDays": [
+          {
+            "date": "2026-11-20",
+            "trials": 3,
+            "failures": 0
+          },
+          {
+            "date": "2026-11-21",
+            "trials": 2,
+            "failures": 0
+          },
+          {
+            "date": "2026-11-22",
+            "trials": 6,
+            "failures": 0
+          }
+        ]
+      },
+      {
+        "scope": "pullRequest",
+        "listQuery": "event:pull_request",
+        "runs": {
+          "total": 85,
+          "passed": 36,
+          "passedAfterRerun": 4,
+          "failed": 32,
+          "cancelled": 0,
+          "superseded": 13,
+          "other": 0,
+          "reruns": 11
+        },
+        "failedRunIds": [
+          45022565136,
+          45022564989,
+          45022564685,
+          45022564902,
+          45019821060,
+          45019787470,
+          45019787526,
+          45019787079,
+          45018699218,
+          45018699906,
+          45018698710,
+          45018698788,
+          45015403437,
+          45015401769,
+          45015401677,
+          45015314472,
+          45014078056,
+          44917067202,
+          44914881301,
+          44914214578,
+          44911897403,
+          44911864812,
+          44910560027,
+          44909604176,
+          44904451694,
+          44903047992,
+          44902512380,
+          44901765087,
+          44901657139,
+          44899544886,
+          44899539808,
+          44722154283
+        ],
+        "rerunRunIds": [
+          45017597735,
+          45015420716,
+          45015403437,
+          45015401769,
+          45015401677,
+          45015314472,
+          45014078056,
+          45013180384,
+          45013180508,
+          44903016908,
+          44901612234
+        ],
+        "jobs": [
+          {
+            "job": "ADR conventions",
+            "required": false,
+            "trials": 46,
+            "failures": 0,
+            "verdict": "conclusive",
+            "rate": 0,
+            "low": 0,
+            "high": 0.0771
+          },
+          {
+            "job": "Backend",
+            "required": false,
+            "trials": 22,
+            "failures": 1,
+            "verdict": "conclusive",
+            "rate": 0.0455,
+            "low": 0.0012,
+            "high": 0.2284
+          },
+          {
+            "job": "CI result",
+            "required": true,
+            "trials": 81,
+            "failures": 41,
+            "verdict": "conclusive",
+            "rate": 0.5062,
+            "low": 0.3927,
+            "high": 0.6192
+          },
+          {
+            "job": "Cancel superseded runs",
+            "required": false,
+            "trials": 81,
+            "failures": 0,
+            "verdict": "conclusive",
+            "rate": 0,
+            "low": 0,
+            "high": 0.0445
+          },
+          {
+            "job": "Changes",
+            "required": false,
+            "trials": 81,
+            "failures": 0,
+            "verdict": "conclusive",
+            "rate": 0,
+            "low": 0,
+            "high": 0.0445
+          },
+          {
+            "job": "Container image",
+            "required": false,
+            "trials": 63,
+            "failures": 0,
+            "verdict": "conclusive",
+            "rate": 0,
+            "low": 0,
+            "high": 0.0569
+          },
+          {
+            "job": "Docs site",
+            "required": false,
+            "trials": 69,
+            "failures": 0,
+            "verdict": "conclusive",
+            "rate": 0,
+            "low": 0,
+            "high": 0.0521
+          },
+          {
+            "job": "Flow binding",
+            "required": false,
+            "trials": 13,
+            "failures": 0,
+            "verdict": "inconclusive",
+            "rate": null,
+            "low": null,
+            "high": null
+          },
+          {
+            "job": "Frontend",
+            "required": false,
+            "trials": 25,
+            "failures": 0,
+            "verdict": "conclusive",
+            "rate": 0,
+            "low": 0,
+            "high": 0.1372
+          },
+          {
+            "job": "Native (Linux, ubuntu-24.04, desktop)",
+            "required": false,
+            "trials": 64,
+            "failures": 0,
+            "verdict": "conclusive",
+            "rate": 0,
+            "low": 0,
+            "high": 0.056
+          },
+          {
+            "job": "Native (WASM, ubuntu-24.04, wasm)",
+            "required": false,
+            "trials": 64,
+            "failures": 0,
+            "verdict": "conclusive",
+            "rate": 0,
+            "low": 0,
+            "high": 0.056
+          },
+          {
+            "job": "Native (Windows, windows-latest, desktop)",
+            "required": false,
+            "trials": 46,
+            "failures": 0,
+            "verdict": "conclusive",
+            "rate": 0,
+            "low": 0,
+            "high": 0.0771
+          },
+          {
+            "job": "Native (macOS, macos-latest, desktop)",
+            "required": false,
+            "trials": 46,
+            "failures": 2,
+            "verdict": "conclusive",
+            "rate": 0.0435,
+            "low": 0.0053,
+            "high": 0.1484
+          },
+          {
+            "job": "Tooling",
+            "required": false,
+            "trials": 29,
+            "failures": 0,
+            "verdict": "conclusive",
+            "rate": 0,
+            "low": 0,
+            "high": 0.1194
+          }
+        ],
+        "guardDays": [
+          {
+            "date": "2026-11-20",
+            "trials": 13,
+            "failures": 0
+          },
+          {
+            "date": "2026-11-21",
+            "trials": 12,
+            "failures": 0
+          },
+          {
+            "date": "2026-11-22",
+            "trials": 4,
+            "failures": 0
+          }
+        ]
+      }
+    ]
+  },
+  "flow": {
+    "basis": "measured",
+    "minSample": 5,
+    "window": {
+      "from": "2026-11-14T11:36:12Z",
+      "to": "2026-11-22T14:55:41Z"
+    },
+    "openPullRequests": {
+      "count": 7,
+      "drafts": 0,
+      "age": {
+        "count": 7,
+        "medianSeconds": 95265,
+        "p90Seconds": 2061674,
+        "maxSeconds": 2061674
+      }
+    },
+    "waitingForReview": {
+      "count": 6,
+      "oldestSeconds": 2006922
+    },
+    "leadTime": {
+      "sample": 73,
+      "stat": {
+        "count": 73,
+        "medianSeconds": 2632,
+        "p90Seconds": 86712,
+        "maxSeconds": 175404
+      }
+    },
+    "issueToMerge": {
+      "sample": 52,
+      "stat": {
+        "count": 52,
+        "medianSeconds": 88834,
+        "p90Seconds": 181265,
+        "maxSeconds": 33803890
+      }
+    },
+    "stacks": {
+      "mergedIntoBase": 27,
+      "open": [
+        {
+          "depth": 4,
+          "pullRequests": [
+            1047,
+            1048,
+            1050,
+            1052
+          ]
+        }
+      ]
+    },
+    "epics": [
+      {
+        "issue": 998,
+        "total": 0,
+        "done": 0
+      }
+    ]
+  },
+  "superseded": {
+    "basis": {
+      "detection": "inferred",
+      "timing": "measured"
+    },
+    "sample": {
+      "pairs": 30,
+      "ignored": 1,
+      "controlRuns": 30,
+      "cap": 30,
+      "minPairs": 3,
+      "window": {
+        "from": "2026-11-15T14:31:01Z",
+        "to": "2026-11-22T11:57:28Z"
+      }
+    },
+    "weeks": [
+      {
+        "week": "2026-11-09",
+        "pairs": 10,
+        "waitRuns": 10,
+        "waitMedianSeconds": 2,
+        "waitP90Seconds": 3,
+        "waitMaxSeconds": 3,
+        "pushGapMedianSeconds": 24,
+        "controlRuns": 0,
+        "controlWaitMedianSeconds": null
+      },
+      {
+        "week": "2026-11-16",
+        "pairs": 20,
+        "waitRuns": 20,
+        "waitMedianSeconds": 2,
+        "waitP90Seconds": 3,
+        "waitMaxSeconds": 127,
+        "pushGapMedianSeconds": 87,
+        "controlRuns": 30,
+        "controlWaitMedianSeconds": 2
+      }
+    ]
+  },
+  "e2e": {
+    "workflow": "e2e.yml",
+    "basis": "measured",
+    "sample": {
+      "runs": 10,
+      "cap": 30,
+      "window": {
+        "from": "2026-11-14T18:22:14Z",
+        "to": "2026-11-22T11:31:22Z"
+      }
+    },
+    "runs": [
+      {
+        "id": 45017736817,
+        "event": "schedule",
+        "createdAt": "2026-11-22T11:31:22Z",
+        "conclusion": "success",
+        "runSeconds": 312
+      },
+      {
+        "id": 44897963778,
+        "event": "schedule",
+        "createdAt": "2026-11-21T11:12:06Z",
+        "conclusion": "success",
+        "runSeconds": 381
+      },
+      {
+        "id": 44730308289,
+        "event": "schedule",
+        "createdAt": "2026-11-20T11:46:23Z",
+        "conclusion": "success",
+        "runSeconds": 340
+      },
+      {
+        "id": 44517823659,
+        "event": "schedule",
+        "createdAt": "2026-11-19T11:46:39Z",
+        "conclusion": "success",
+        "runSeconds": 331
+      },
+      {
+        "id": 44298204814,
+        "event": "schedule",
+        "createdAt": "2026-11-18T11:49:45Z",
+        "conclusion": "success",
+        "runSeconds": 223
+      },
+      {
+        "id": 44078675177,
+        "event": "schedule",
+        "createdAt": "2026-11-17T11:57:35Z",
+        "conclusion": "success",
+        "runSeconds": 325
+      },
+      {
+        "id": 43858340775,
+        "event": "schedule",
+        "createdAt": "2026-11-16T11:30:20Z",
+        "conclusion": "failure",
+        "runSeconds": 72
+      },
+      {
+        "id": 43706879458,
+        "event": "schedule",
+        "createdAt": "2026-11-15T11:01:28Z",
+        "conclusion": "success",
+        "runSeconds": 235
+      },
+      {
+        "id": 43705021443,
+        "event": "workflow_dispatch",
+        "createdAt": "2026-11-15T10:38:01Z",
+        "conclusion": "success",
+        "runSeconds": 325
+      },
+      {
+        "id": 43626219006,
+        "event": "workflow_dispatch",
+        "createdAt": "2026-11-14T18:22:14Z",
+        "conclusion": "success",
+        "runSeconds": 220
+      }
+    ]
+  }
+}

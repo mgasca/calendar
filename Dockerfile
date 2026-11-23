@@ -13,7 +13,7 @@ RUN pnpm --filter @calendar/web build
 
 # The Rust toolchain is the one backend/rust-toolchain.toml pins: rustup reads the file, so when this image is
 # behind or ahead of the pin it installs the pinned toolchain instead of building with its own.
-FROM rust:1.100.0-slim-trixie@sha256:e9d95b74296f7126a83ae3d041aeaba1ff4c478f13abc5cc034fcf7c131c3d4a AS build
+FROM rust:1.100.0-slim-trixie@sha256:6f14b2b4b278ec0d50aa1d69541c304ce0f95e0f6268487aa9924af1c2e9aebe AS build
 WORKDIR /src/backend
 COPY backend/rust-toolchain.toml ./
 RUN rustup toolchain install
@@ -51,7 +51,7 @@ RUN touch crates/calendar-domain/src/lib.rs crates/calendar-infrastructure/src/l
 # wasm-bindgen crate in native/Cargo.lock. Cold, compiling that CLI took about 2 minutes and the dependencies about
 # 3 (#1037), so each is a layer of its own that the Buildx cache keeps until its own input moves. The wasm and its glue
 # also get .gz copies, which calendar-api serves to a client that accepts gzip (#1044).
-FROM rust:1.100.0-slim-trixie@sha256:e9d95b74296f7126a83ae3d041aeaba1ff4c478f13abc5cc034fcf7c131c3d4a AS native-toolchain
+FROM rust:1.100.0-slim-trixie@sha256:6f14b2b4b278ec0d50aa1d69541c304ce0f95e0f6268487aa9924af1c2e9aebe AS native-toolchain
 WORKDIR /src/native
 COPY native/rust-toolchain.toml ./
 RUN rustup toolchain install

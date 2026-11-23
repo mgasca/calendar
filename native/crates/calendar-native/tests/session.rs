@@ -114,6 +114,19 @@ fn browser_confirms() {
   });
 }
 
+/// A W3C `traceparent`: version 00, a 32-digit trace id and a 16-digit parent id, neither all zero, sampled.
+fn is_traceparent(value: &str) -> bool {
+  let parts: Vec<&str> = value.split('-').collect();
+  let hex = |part: &str, len: usize| part.len() == len && part.bytes().all(|b| b.is_ascii_hexdigit() && !b.is_ascii_uppercase());
+  parts.len() == 4
+    && parts[0] == "00"
+    && hex(parts[1], 32)
+    && hex(parts[2], 16)
+    && parts[3] == "01"
+    && parts[1].bytes().any(|b| b != b'0')
+    && parts[2].bytes().any(|b| b != b'0')
+}
+
 fn signed_in_email(app: &App) -> Option<String> {
   match &app.session {
     Session::SignedIn(user) => Some(user.email.clone()),
@@ -149,6 +162,23 @@ fn sign_in_redeems_the_loopback_code_and_a_restart_stays_signed_in() {
   let body: Value = serde_json::from_slice(&token.body).unwrap();
   assert_eq!(body["code"], "the-code");
   assert_eq!(body["codeVerifier"].as_str().map(str::len), Some(43));
+
+  // The sign-in is one user action, so the code's redemption and the session check after it share one trace (#1010).
+  let traceparent = |path: &str| {
+    block(server.received_requests())
+      .unwrap()
+      .into_iter()
+      .filter(|request| request.url.path() == path)
+      .filter_map(|request| request.headers.get("traceparent").and_then(|v| v.to_str().ok()).map(str::to_owned))
+      .last()
+  };
+  let redeemed = traceparent("/api/auth/native/token").expect("the redemption carries a traceparent");
+  assert!(is_traceparent(&redeemed), "{redeemed}");
+  assert_eq!(
+    traceparent("/api/auth/me").as_deref(),
+    Some(redeemed.as_str()),
+    "the session check joins the trace"
+  );
 
   // A restart loads the stored session: `/api/auth/me` signs it straight back in.
   assert_eq!(Store::for_origin(&server.uri()).load().as_deref(), Some("sealed"));

@@ -28,15 +28,15 @@
   },
   "devDependencies": {
     "@astrojs/check": "^0.9.12",
-    "@finos/calm-cli": "^1.70.0",
+    "@finos/calm-cli": "^1.74.0",
     "@types/mdast": "^4.0.4",
     "@types/node": "^26.6.6",
-    "@vitest/coverage-istanbul": "^5.1.0",
+    "@vitest/coverage-istanbul": "^5.1.1",
     "astro-mermaid": "^2.2.0",
     "jsdom": "^31.0.1",
     "mermaid": "^12.3.0",
-    "tinybench": "^6.2.3",
+    "tinybench": "^6.2.4",
     "typescript": "~6.0.3",
-    "vitest": "^5.1.0"
+    "vitest": "^5.1.1"
   }
 }

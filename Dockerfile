@@ -98,7 +98,7 @@ RUN touch crates/calendar-client/src/lib.rs crates/calendar-native/src/lib.rs \
     && gzip -9 --keep /out/app_bg.wasm /out/app.js
 
 # glibc, CA certificates (PostgreSQL and Google TLS verify against the system store) and a non-root user; no shell.
-FROM gcr.io/distroless/cc-debian13:nonroot@sha256:cb87acc574abe719b6e5c547384defa2f7b1f24af9605d3f618cf852495d8be2 AS runtime
+FROM gcr.io/distroless/cc-debian13:nonroot@sha256:532c7a94f9e96ba9db75eb9388f4227751131c7cb0a411d1a8521af4096135de AS runtime
 WORKDIR /app
 ENV ASPNETCORE_URLS=http://+:8080
 EXPOSE 8080

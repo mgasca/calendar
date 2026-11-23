@@ -25,6 +25,11 @@ Practices for the second UI in `native/`, built with [Rune](https://github.com/a
 - **Goldens** (`tests/goldens.rs`): the app's own binary runs with `--scene <name> --theme light|dark --tree` and `--snap`. Accessibility trees gate on every platform. PNGs gate on Linux only, with a small per-pixel tolerance, because GPU output differs between platforms. A failure leaves the actual output in `native/target/goldens/`, which CI uploads.
 - **Re-blessing**: run `BLESS=1 just native test`, look at every changed golden (open the PNGs), and say in the PR why it changed. Never re-bless to make an unexplained failure go away.
 - Add a named scene to `spec()` for each state a golden needs, rather than driving input in a golden test.
+- **End-to-end flows** (`tests/e2e.rs`, #1010) run the real app (`App::new` with background effects) headless against `just e2e native`'s stack.
+  - Each test is `#[ignore]`d and tagged `// @flow:<id>` above its `#[test]`, and the flow's model entry links the file with `metadata["native-e2e-test"]`. A flow without a native test sits on `tests/e2e/pending-flows.json`.
+  - The test plays the browser over HTTP (`tests/e2e/browser.rs`, installed with `session::open_with`).
+  - It checks the flow's telemetry with `tests/e2e/telemetry.rs`, a port of the Playwright suite's checks. Every user action must send its own `traceparent` (`api.traced(..)`), and the test finds that trace by the API span it holds.
+  - Register every value the flow types or seeds with `PersonalData`.
 
 ## Bumping Rune
 

@@ -271,7 +271,9 @@ fn poll(app: &mut App, _now: f64, tx: &mut rune::Tx) -> bool {
   changed
 }
 
-/// A scene's starting state: offline, signed in, the fixtures' day loaded.
+/// A scene's starting state: offline, signed in, the fixtures' day loaded. Compute anything clock-dependent after
+/// this call, from the offline clock, never from `app` before it: until then `app` is the harness's, on the system
+/// clock (#1059).
 fn scene(app: &mut App, route: Route) {
   // The whole offline app, its manual effects included: a press in a scene queues its request and never reaches
   // the network.
@@ -308,7 +310,9 @@ pub fn spec() -> AppSpec<App> {
         }));
       }),
       ("week", |app| {
-        scene(app, Route::week_of(app.clock.today()));
+        // The week of the offline clock that `scene` installs: `app` is the harness's until then (#1059).
+        scene(app, Route::Today);
+        app.route = Route::week_of(app.clock.today());
         app.week.finish(Ok(fixtures::week()));
       }),
       ("tasks", |app| {

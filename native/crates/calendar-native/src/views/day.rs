@@ -55,7 +55,7 @@ fn header(app: &App, date: NaiveDate, today: NaiveDate, t: &Tokens) -> El {
   }
   let monday = format::iso_week_start(date);
   nav = nav.child(
-    button("day-week", &format!("Week of {}", format::format_day_month(monday)), t)
+    button("day-week", &format!("Week of {}", app.locale.day_month(monday)), t)
       .on_press(move |app: &mut App| load::go(app, Route::Week(monday))),
   );
   // The web app's Day page: Add task and Add event beside the date, and a field to go to a date.
@@ -63,8 +63,18 @@ fn header(app: &App, date: NaiveDate, today: NaiveDate, t: &Tokens) -> El {
     .key("day-adds")
     .gap(6.0)
     .items_center()
-    .child(button("add-task", "Add task", t).on_press(move |app: &mut App| crate::dialogs::add_task(app, Some(date))))
-    .child(button("add-event", "Add event", t).on_press(move |app: &mut App| crate::dialogs::add_event(app, date)))
+    .child(
+      button("add-task", "Add task", t).on_press_tx(move |app: &mut App, tx: &mut rune::Tx| {
+        crate::focus::opened(app, tx);
+        crate::dialogs::add_task(app, Some(date));
+      }),
+    )
+    .child(
+      button("add-event", "Add event", t).on_press_tx(move |app: &mut App, tx: &mut rune::Tx| {
+        crate::focus::opened(app, tx);
+        crate::dialogs::add_event(app, date);
+      }),
+    )
     .child(
       rune::text_input(&app.go_to_date, rune::tok::type_::BODY)
         .key("go-to-date")
@@ -80,14 +90,23 @@ fn header(app: &App, date: NaiveDate, today: NaiveDate, t: &Tokens) -> El {
         .color(t.text)
         .on_edit(|app: &mut App| &mut app.go_to_date)
         .on_submit(|app: &mut App, _tx: &mut rune::Tx| load::go_to_date(app)),
-    );
+    )
+    .child(super::pickers::choose_button(GO_TO_DATE, "Date to go to", false, app, t));
   nav = nav.child(adds);
+  let go_to_grid = super::pickers::calendar(GO_TO_DATE, app, t);
   let mut head = col()
     .key("day-header")
     .gap(6.0)
     .child(meta(format::relative_day(date, today), t).key("day-eyebrow"))
-    .child(heading("day-title", format::format_date(date, date.year_ne(today)), 1, t))
+    .child(
+      heading("day-title", app.locale.date(date, date.year_ne(today)), 1, t)
+        .focusable(true)
+        .tab_index(-1),
+    )
     .child(nav);
+  if let Some(grid) = go_to_grid {
+    head = head.child(row().child(col().w(320.0).child(grid)));
+  }
   if let Some(agenda) = &app.day.data {
     head = head.child(meta(summary(agenda).join(" · "), t).key("day-summary"));
   }
@@ -175,6 +194,7 @@ fn agenda_body(app: &App, agenda: &DayAgendaResponse, date: NaiveDate, is_today:
       .zip(statuses)
       .map(|(event, status)| {
         let times = format::event_times(
+          &app.locale,
           event.start,
           event.end,
           event.starts_before_day,
@@ -259,7 +279,7 @@ fn tasks_section(app: &App, agenda: &DayAgendaResponse, is_today: bool, today: N
       .iter()
       .map(|task| {
         let due = task.due_at.flatten().map(|at| {
-          let mut s = format!("Due {}", format::format_time(at, zone));
+          let mut s = format!("Due {}", app.locale.time(at, zone));
           if is_today && format::is_past_due(task.is_completed, Some(at), now) {
             s.push_str(" · Past due");
           }
@@ -272,6 +292,20 @@ fn tasks_section(app: &App, agenda: &DayAgendaResponse, is_today: bool, today: N
   }
   tasks
 }
+
+// A `pickers::Field` reader: the other fields' text is gone once their form closes; this one's never is.
+#[allow(clippy::unnecessary_wraps)]
+fn read_go_to_date(app: &App) -> Option<&str> {
+  Some(app.go_to_date.text.as_str())
+}
+
+/// The "Go to date" field's picker (#1033): choosing a day goes there.
+const GO_TO_DATE: crate::pickers::Field = crate::pickers::Field {
+  key: "go-to-date",
+  edit: |app| &mut app.go_to_date,
+  edit_text: read_go_to_date,
+  then: Some(load::go_to_date),
+};
 
 #[cfg(test)]
 mod tests {

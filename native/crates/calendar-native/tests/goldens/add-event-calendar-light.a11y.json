@@ -1,0 +1,2441 @@
+{
+  "bounds": [
+    0.0,
+    0.0,
+    960.0,
+    720.0
+  ],
+  "children": [
+    {
+      "bounds": [
+        0.0,
+        0.0,
+        960.0,
+        720.0
+      ],
+      "children": [
+        {
+          "actions": [
+            "scroll-up",
+            "scroll-down",
+            "set-scroll-offset"
+          ],
+          "bounds": [
+            220.0,
+            16.0,
+            520.0,
+            688.0
+          ],
+          "children": [
+            {
+              "actions": [
+                "scroll-into-view"
+              ],
+              "bounds": [
+                240.0,
+                36.0,
+                480.0,
+                20.0
+              ],
+              "key": "event-form-heading",
+              "level": 2,
+              "name": "Add event",
+              "role": "heading"
+            },
+            {
+              "actions": [
+                "scroll-into-view"
+              ],
+              "bounds": [
+                240.0,
+                68.0,
+                480.0,
+                15.0
+              ],
+              "name": "Title",
+              "role": "label"
+            },
+            {
+              "actions": [
+                "click",
+                "focus",
+                "set-value",
+                "replace-selected-text",
+                "set-text-selection",
+                "scroll-into-view"
+              ],
+              "bounds": [
+                240.0,
+                87.0,
+                480.0,
+                28.3
+              ],
+              "key": "event-title",
+              "name": "Title",
+              "role": "text-input",
+              "states": [
+                "focused"
+              ],
+              "value": ""
+            },
+            {
+              "actions": [
+                "click",
+                "focus",
+                "scroll-into-view"
+              ],
+              "bounds": [
+                240.0,
+                127.4,
+                16.0,
+                16.0
+              ],
+              "key": "event-all-day",
+              "name": "All day",
+              "role": "check-box",
+              "states": [
+                "unchecked"
+              ]
+            },
+            {
+              "actions": [
+                "scroll-into-view"
+              ],
+              "bounds": [
+                264.0,
+                127.3,
+                41.3,
+                16.3
+              ],
+              "name": "All day",
+              "role": "label"
+            },
+            {
+              "actions": [
+                "scroll-into-view"
+              ],
+              "bounds": [
+                240.0,
+                155.5,
+                137.5,
+                15.0
+              ],
+              "name": "Start date",
+              "role": "label"
+            },
+            {
+              "actions": [
+                "click",
+                "focus",
+                "set-value",
+                "replace-selected-text",
+                "set-text-selection",
+                "scroll-into-view"
+              ],
+              "bounds": [
+                240.0,
+                174.5,
+                137.5,
+                28.3
+              ],
+              "key": "event-start-date",
+              "name": "Start date",
+              "role": "text-input",
+              "selection": [
+                1,
+                10,
+                1,
+                10
+              ],
+              "value": "2026-11-20"
+            },
+            {
+              "actions": [
+                "click",
+                "focus",
+                "collapse",
+                "scroll-into-view"
+              ],
+              "bounds": [
+                383.5,
+                177.8,
+                92.5,
+                25.0
+              ],
+              "children": [
+                {
+                  "actions": [
+                    "scroll-into-view"
+                  ],
+                  "bounds": [
+                    393.5,
+                    182.8,
+                    72.5,
+                    15.0
+                  ],
+                  "name": "Choose date",
+                  "role": "label"
+                }
+              ],
+              "key": "event-start-date-choose",
+              "name": "Choose start date",
+              "role": "button",
+              "states": [
+                "expanded"
+              ]
+            },
+            {
+              "actions": [
+                "scroll-into-view"
+              ],
+              "bounds": [
+                240.0,
+                208.8,
+                236.0,
+                255.0
+              ],
+              "children": [
+                {
+                  "actions": [
+                    "click",
+                    "focus",
+                    "scroll-into-view"
+                  ],
+                  "bounds": [
+                    248.0,
+                    216.8,
+                    24.8,
+                    25.0
+                  ],
+                  "children": [
+                    {
+                      "actions": [
+                        "scroll-into-view"
+                      ],
+                      "bounds": [
+                        258.0,
+                        221.8,
+                        4.8,
+                        15.0
+                      ],
+                      "name": "‹",
+                      "role": "label"
+                    }
+                  ],
+                  "key": "event-start-date-previous-month",
+                  "name": "Previous month",
+                  "role": "button"
+                },
+                {
+                  "actions": [
+                    "scroll-into-view"
+                  ],
+                  "bounds": [
+                    278.8,
+                    221.8,
+                    158.4,
+                    15.0
+                  ],
+                  "key": "event-start-date-month",
+                  "name": "November 2026",
+                  "role": "label"
+                },
+                {
+                  "actions": [
+                    "click",
+                    "focus",
+                    "scroll-into-view"
+                  ],
+                  "bounds": [
+                    443.2,
+                    216.8,
+                    24.8,
+                    25.0
+                  ],
+                  "children": [
+                    {
+                      "actions": [
+                        "scroll-into-view"
+                      ],
+                      "bounds": [
+                        453.2,
+                        221.8,
+                        4.8,
+                        15.0
+                      ],
+                      "name": "›",
+                      "role": "label"
+                    }
+                  ],
+                  "key": "event-start-date-next-month",
+                  "name": "Next month",
+                  "role": "button"
+                },
+                {
+                  "actions": [
+                    "scroll-into-view"
+                  ],
+                  "bounds": [
+                    248.0,
+                    247.8,
+                    220.0,
+                    208.0
+                  ],
+                  "children": [
+                    {
+                      "actions": [
+                        "scroll-into-view"
+                      ],
+                      "bounds": [
+                        248.0,
+                        247.8,
+                        29.7,
+                        28.0
+                      ],
+                      "children": [
+                        {
+                          "actions": [
+                            "scroll-into-view"
+                          ],
+                          "bounds": [
+                            250.2,
+                            254.3,
+                            25.4,
+                            15.0
+                          ],
+                          "name": "Mon",
+                          "role": "label"
+                        }
+                      ],
+                      "name": "Mon",
+                      "role": "column-header"
+                    },
+                    {
+                      "actions": [
+                        "scroll-into-view"
+                      ],
+                      "bounds": [
+                        279.7,
+                        247.8,
+                        29.7,
+                        28.0
+                      ],
+                      "children": [
+                        {
+                          "actions": [
+                            "scroll-into-view"
+                          ],
+                          "bounds": [
+                            284.0,
+                            254.3,
+                            21.2,
+                            15.0
+                          ],
+                          "name": "Tue",
+                          "role": "label"
+                        }
+                      ],
+                      "name": "Tue",
+                      "role": "column-header"
+                    },
+                    {
+                      "actions": [
+                        "scroll-into-view"
+                      ],
+                      "bounds": [
+                        311.4,
+                        247.8,
+                        29.7,
+                        28.0
+                      ],
+                      "children": [
+                        {
+                          "actions": [
+                            "scroll-into-view"
+                          ],
+                          "bounds": [
+                            313.3,
+                            254.3,
+                            25.9,
+                            15.0
+                          ],
+                          "name": "Wed",
+                          "role": "label"
+                        }
+                      ],
+                      "name": "Wed",
+                      "role": "column-header"
+                    },
+                    {
+                      "actions": [
+                        "scroll-into-view"
+                      ],
+                      "bounds": [
+                        343.2,
+                        247.8,
+                        29.7,
+                        28.0
+                      ],
+                      "children": [
+                        {
+                          "actions": [
+                            "scroll-into-view"
+                          ],
+                          "bounds": [
+                            346.9,
+                            254.3,
+                            22.3,
+                            15.0
+                          ],
+                          "name": "Thu",
+                          "role": "label"
+                        }
+                      ],
+                      "name": "Thu",
+                      "role": "column-header"
+                    },
+                    {
+                      "actions": [
+                        "scroll-into-view"
+                      ],
+                      "bounds": [
+                        374.9,
+                        247.8,
+                        29.7,
+                        28.0
+                      ],
+                      "children": [
+                        {
+                          "actions": [
+                            "scroll-into-view"
+                          ],
+                          "bounds": [
+                            382.5,
+                            254.3,
+                            14.5,
+                            15.0
+                          ],
+                          "name": "Fri",
+                          "role": "label"
+                        }
+                      ],
+                      "name": "Fri",
+                      "role": "column-header"
+                    },
+                    {
+                      "actions": [
+                        "scroll-into-view"
+                      ],
+                      "bounds": [
+                        406.6,
+                        247.8,
+                        29.7,
+                        28.0
+                      ],
+                      "children": [
+                        {
+                          "actions": [
+                            "scroll-into-view"
+                          ],
+                          "bounds": [
+                            412.1,
+                            254.3,
+                            18.7,
+                            15.0
+                          ],
+                          "name": "Sat",
+                          "role": "label"
+                        }
+                      ],
+                      "name": "Sat",
+                      "role": "column-header"
+                    },
+                    {
+                      "actions": [
+                        "scroll-into-view"
+                      ],
+                      "bounds": [
+                        438.3,
+                        247.8,
+                        29.7,
+                        28.0
+                      ],
+                      "children": [
+                        {
+                          "actions": [
+                            "scroll-into-view"
+                          ],
+                          "bounds": [
+                            442.1,
+                            254.3,
+                            22.2,
+                            15.0
+                          ],
+                          "name": "Sun",
+                          "role": "label"
+                        }
+                      ],
+                      "name": "Sun",
+                      "role": "column-header"
+                    },
+                    {
+                      "actions": [
+                        "scroll-into-view"
+                      ],
+                      "bounds": [
+                        248.0,
+                        277.8,
+                        220.0,
+                        28.0
+                      ],
+                      "children": [
+                        {
+                          "actions": [
+                            "click",
+                            "scroll-into-view"
+                          ],
+                          "bounds": [
+                            248.0,
+                            277.8,
+                            29.7,
+                            28.0
+                          ],
+                          "children": [
+                            {
+                              "actions": [
+                                "scroll-into-view"
+                              ],
+                              "bounds": [
+                                255.4,
+                                284.3,
+                                15.0,
+                                15.0
+                              ],
+                              "name": "26",
+                              "role": "label"
+                            }
+                          ],
+                          "key": "event-start-date-day-2026-10-26",
+                          "name": "Monday, 26 October 2026",
+                          "role": "grid-cell",
+                          "states": [
+                            "unchecked"
+                          ]
+                        },
+                        {
+                          "actions": [
+                            "click",
+                            "scroll-into-view"
+                          ],
+                          "bounds": [
+                            279.7,
+                            277.8,
+                            29.7,
+                            28.0
+                          ],
+                          "children": [
+                            {
+                              "actions": [
+                                "scroll-into-view"
+                              ],
+                              "bounds": [
+                                287.5,
+                                284.3,
+                                14.3,
+                                15.0
+                              ],
+                              "name": "27",
+                              "role": "label"
+                            }
+                          ],
+                          "key": "event-start-date-day-2026-10-27",
+                          "name": "Tuesday, 27 October 2026",
+                          "role": "grid-cell",
+                          "states": [
+                            "unchecked"
+                          ]
+                        },
+                        {
+                          "actions": [
+                            "click",
+                            "scroll-into-view"
+                          ],
+                          "bounds": [
+                            311.4,
+                            277.8,
+                            29.7,
+                            28.0
+                          ],
+                          "children": [
+                            {
+                              "actions": [
+                                "scroll-into-view"
+                              ],
+                              "bounds": [
+                                318.8,
+                                284.3,
+                                15.0,
+                                15.0
+                              ],
+                              "name": "28",
+                              "role": "label"
+                            }
+                          ],
+                          "key": "event-start-date-day-2026-10-28",
+                          "name": "Wednesday, 28 October 2026",
+                          "role": "grid-cell",
+                          "states": [
+                            "unchecked"
+                          ]
+                        },
+                        {
+                          "actions": [
+                            "click",
+                            "scroll-into-view"
+                          ],
+                          "bounds": [
+                            343.2,
+                            277.8,
+                            29.7,
+                            28.0
+                          ],
+                          "children": [
+                            {
+                              "actions": [
+                                "scroll-into-view"
+                              ],
+                              "bounds": [
+                                350.5,
+                                284.3,
+                                15.0,
+                                15.0
+                              ],
+                              "name": "29",
+                              "role": "label"
+                            }
+                          ],
+                          "key": "event-start-date-day-2026-10-29",
+                          "name": "Thursday, 29 October 2026",
+                          "role": "grid-cell",
+                          "states": [
+                            "unchecked"
+                          ]
+                        },
+                        {
+                          "actions": [
+                            "click",
+                            "scroll-into-view"
+                          ],
+                          "bounds": [
+                            374.9,
+                            277.8,
+                            29.7,
+                            28.0
+                          ],
+                          "children": [
+                            {
+                              "actions": [
+                                "scroll-into-view"
+                              ],
+                              "bounds": [
+                                382.1,
+                                284.3,
+                                15.3,
+                                15.0
+                              ],
+                              "name": "30",
+                              "role": "label"
+                            }
+                          ],
+                          "key": "event-start-date-day-2026-10-30",
+                          "name": "Friday, 30 October 2026",
+                          "role": "grid-cell",
+                          "states": [
+                            "unchecked"
+                          ]
+                        },
+                        {
+                          "actions": [
+                            "click",
+                            "scroll-into-view"
+                          ],
+                          "bounds": [
+                            406.6,
+                            277.8,
+                            29.7,
+                            28.0
+                          ],
+                          "children": [
+                            {
+                              "actions": [
+                                "scroll-into-view"
+                              ],
+                              "bounds": [
+                                415.2,
+                                284.3,
+                                12.5,
+                                15.0
+                              ],
+                              "name": "31",
+                              "role": "label"
+                            }
+                          ],
+                          "key": "event-start-date-day-2026-10-31",
+                          "name": "Saturday, 31 October 2026",
+                          "role": "grid-cell",
+                          "states": [
+                            "unchecked"
+                          ]
+                        },
+                        {
+                          "actions": [
+                            "click",
+                            "scroll-into-view"
+                          ],
+                          "bounds": [
+                            438.3,
+                            277.8,
+                            29.7,
+                            28.0
+                          ],
+                          "children": [
+                            {
+                              "actions": [
+                                "scroll-into-view"
+                              ],
+                              "bounds": [
+                                450.7,
+                                284.3,
+                                5.0,
+                                15.0
+                              ],
+                              "name": "1",
+                              "role": "label"
+                            }
+                          ],
+                          "key": "event-start-date-day-2026-11-01",
+                          "name": "Sunday, 1 November 2026",
+                          "role": "grid-cell",
+                          "states": [
+                            "unchecked"
+                          ]
+                        }
+                      ],
+                      "name": "Monday, 26 October 2026 Tuesday, 27 October 2026 Wednesday, 28 October 2026 Thursday, 29 October 2026 Friday, 30 October 2026 Saturday, 31 October 2026 Sunday, 1 November 2026",
+                      "role": "row"
+                    },
+                    {
+                      "actions": [
+                        "scroll-into-view"
+                      ],
+                      "bounds": [
+                        248.0,
+                        307.8,
+                        220.0,
+                        28.0
+                      ],
+                      "children": [
+                        {
+                          "actions": [
+                            "click",
+                            "scroll-into-view"
+                          ],
+                          "bounds": [
+                            248.0,
+                            307.8,
+                            29.7,
+                            28.0
+                          ],
+                          "children": [
+                            {
+                              "actions": [
+                                "scroll-into-view"
+                              ],
+                              "bounds": [
+                                259.2,
+                                314.3,
+                                7.4,
+                                15.0
+                              ],
+                              "name": "2",
+                              "role": "label"
+                            }
+                          ],
+                          "key": "event-start-date-day-2026-11-02",
+                          "name": "Monday, 2 November 2026",
+                          "role": "grid-cell",
+                          "states": [
+                            "unchecked"
+                          ]
+                        },
+                        {
+                          "actions": [
+                            "click",
+                            "scroll-into-view"
+                          ],
+                          "bounds": [
+                            279.7,
+                            307.8,
+                            29.7,
+                            28.0
+                          ],
+                          "children": [
+                            {
+                              "actions": [
+                                "scroll-into-view"
+                              ],
+                              "bounds": [
+                                290.8,
+                                314.3,
+                                7.5,
+                                15.0
+                              ],
+                              "name": "3",
+                              "role": "label"
+                            }
+                          ],
+                          "key": "event-start-date-day-2026-11-03",
+                          "name": "Tuesday, 3 November 2026",
+                          "role": "grid-cell",
+                          "states": [
+                            "unchecked"
+                          ]
+                        },
+                        {
+                          "actions": [
+                            "click",
+                            "scroll-into-view"
+                          ],
+                          "bounds": [
+                            311.4,
+                            307.8,
+                            29.7,
+                            28.0
+                          ],
+                          "children": [
+                            {
+                              "actions": [
+                                "scroll-into-view"
+                              ],
+                              "bounds": [
+                                322.3,
+                                314.3,
+                                7.9,
+                                15.0
+                              ],
+                              "name": "4",
+                              "role": "label"
+                            }
+                          ],
+                          "key": "event-start-date-day-2026-11-04",
+                          "name": "Wednesday, 4 November 2026",
+                          "role": "grid-cell",
+                          "states": [
+                            "unchecked"
+                          ]
+                        },
+                        {
+                          "actions": [
+                            "click",
+                            "scroll-into-view"
+                          ],
+                          "bounds": [
+                            343.2,
+                            307.8,
+                            29.7,
+                            28.0
+                          ],
+                          "children": [
+                            {
+                              "actions": [
+                                "scroll-into-view"
+                              ],
+                              "bounds": [
+                                354.4,
+                                314.3,
+                                7.3,
+                                15.0
+                              ],
+                              "name": "5",
+                              "role": "label"
+                            }
+                          ],
+                          "key": "event-start-date-day-2026-11-05",
+                          "name": "Thursday, 5 November 2026",
+                          "role": "grid-cell",
+                          "states": [
+                            "unchecked"
+                          ]
+                        },
+                        {
+                          "actions": [
+                            "click",
+                            "scroll-into-view"
+                          ],
+                          "bounds": [
+                            374.9,
+                            307.8,
+                            29.7,
+                            28.0
+                          ],
+                          "children": [
+                            {
+                              "actions": [
+                                "scroll-into-view"
+                              ],
+                              "bounds": [
+                                385.9,
+                                314.3,
+                                7.6,
+                                15.0
+                              ],
+                              "name": "6",
+                              "role": "label"
+                            }
+                          ],
+                          "key": "event-start-date-day-2026-11-06",
+                          "name": "Friday, 6 November 2026",
+                          "role": "grid-cell",
+                          "states": [
+                            "unchecked"
+                          ]
+                        },
+                        {
+                          "actions": [
+                            "click",
+                            "scroll-into-view"
+                          ],
+                          "bounds": [
+                            406.6,
+                            307.8,
+                            29.7,
+                            28.0
+                          ],
+                          "children": [
+                            {
+                              "actions": [
+                                "scroll-into-view"
+                              ],
+                              "bounds": [
+                                418.0,
+                                314.3,
+                                6.9,
+                                15.0
+                              ],
+                              "name": "7",
+                              "role": "label"
+                            }
+                          ],
+                          "key": "event-start-date-day-2026-11-07",
+                          "name": "Saturday, 7 November 2026",
+                          "role": "grid-cell",
+                          "states": [
+                            "unchecked"
+                          ]
+                        },
+                        {
+                          "actions": [
+                            "click",
+                            "scroll-into-view"
+                          ],
+                          "bounds": [
+                            438.3,
+                            307.8,
+                            29.7,
+                            28.0
+                          ],
+                          "children": [
+                            {
+                              "actions": [
+                                "scroll-into-view"
+                              ],
+                              "bounds": [
+                                449.4,
+                                314.3,
+                                7.6,
+                                15.0
+                              ],
+                              "name": "8",
+                              "role": "label"
+                            }
+                          ],
+                          "key": "event-start-date-day-2026-11-08",
+                          "name": "Sunday, 8 November 2026",
+                          "role": "grid-cell",
+                          "states": [
+                            "unchecked"
+                          ]
+                        }
+                      ],
+                      "name": "Monday, 2 November 2026 Tuesday, 3 November 2026 Wednesday, 4 November 2026 Thursday, 5 November 2026 Friday, 6 November 2026 Saturday, 7 November 2026 Sunday, 8 November 2026",
+                      "role": "row"
+                    },
+                    {
+                      "actions": [
+                        "scroll-into-view"
+                      ],
+                      "bounds": [
+                        248.0,
+                        337.8,
+                        220.0,
+                        28.0
+                      ],
+                      "children": [
+                        {
+                          "actions": [
+                            "click",
+                            "scroll-into-view"
+                          ],
+                          "bounds": [
+                            248.0,
+                            337.8,
+                            29.7,
+                            28.0
+                          ],
+                          "children": [
+                            {
+                              "actions": [
+                                "scroll-into-view"
+                              ],
+                              "bounds": [
+                                259.1,
+                                344.3,
+                                7.6,
+                                15.0
+                              ],
+                              "name": "9",
+                              "role": "label"
+                            }
+                          ],
+                          "key": "event-start-date-day-2026-11-09",
+                          "name": "Monday, 9 November 2026",
+                          "role": "grid-cell",
+                          "states": [
+                            "unchecked"
+                          ]
+                        },
+                        {
+                          "actions": [
+                            "click",
+                            "scroll-into-view"
+                          ],
+                          "bounds": [
+                            279.7,
+                            337.8,
+                            29.7,
+                            28.0
+                          ],
+                          "children": [
+                            {
+                              "actions": [
+                                "scroll-into-view"
+                              ],
+                              "bounds": [
+                                288.2,
+                                344.3,
+                                12.8,
+                                15.0
+                              ],
+                              "name": "10",
+                              "role": "label"
+                            }
+                          ],
+                          "key": "event-start-date-day-2026-11-10",
+                          "name": "Tuesday, 10 November 2026",
+                          "role": "grid-cell",
+                          "states": [
+                            "unchecked"
+                          ]
+                        },
+                        {
+                          "actions": [
+                            "click",
+                            "scroll-into-view"
+                          ],
+                          "bounds": [
+                            311.4,
+                            337.8,
+                            29.7,
+                            28.0
+                          ],
+                          "children": [
+                            {
+                              "actions": [
+                                "scroll-into-view"
+                              ],
+                              "bounds": [
+                                321.3,
+                                344.3,
+                                10.0,
+                                15.0
+                              ],
+                              "name": "11",
+                              "role": "label"
+                            }
+                          ],
+                          "key": "event-start-date-day-2026-11-11",
+                          "name": "Wednesday, 11 November 2026",
+                          "role": "grid-cell",
+                          "states": [
+                            "unchecked"
+                          ]
+                        },
+                        {
+                          "actions": [
+                            "click",
+                            "scroll-into-view"
+                          ],
+                          "bounds": [
+                            343.2,
+                            337.8,
+                            29.7,
+                            28.0
+                          ],
+                          "children": [
+                            {
+                              "actions": [
+                                "scroll-into-view"
+                              ],
+                              "bounds": [
+                                351.8,
+                                344.3,
+                                12.4,
+                                15.0
+                              ],
+                              "name": "12",
+                              "role": "label"
+                            }
+                          ],
+                          "key": "event-start-date-day-2026-11-12",
+                          "name": "Thursday, 12 November 2026",
+                          "role": "grid-cell",
+                          "states": [
+                            "unchecked"
+                          ]
+                        },
+                        {
+                          "actions": [
+                            "click",
+                            "scroll-into-view"
+                          ],
+                          "bounds": [
+                            374.9,
+                            337.8,
+                            29.7,
+                            28.0
+                          ],
+                          "children": [
+                            {
+                              "actions": [
+                                "scroll-into-view"
+                              ],
+                              "bounds": [
+                                383.5,
+                                344.3,
+                                12.5,
+                                15.0
+                              ],
+                              "name": "13",
+                              "role": "label"
+                            }
+                          ],
+                          "key": "event-start-date-day-2026-11-13",
+                          "name": "Friday, 13 November 2026",
+                          "role": "grid-cell",
+                          "states": [
+                            "unchecked"
+                          ]
+                        },
+                        {
+                          "actions": [
+                            "click",
+                            "scroll-into-view"
+                          ],
+                          "bounds": [
+                            406.6,
+                            337.8,
+                            29.7,
+                            28.0
+                          ],
+                          "children": [
+                            {
+                              "actions": [
+                                "scroll-into-view"
+                              ],
+                              "bounds": [
+                                415.0,
+                                344.3,
+                                12.9,
+                                15.0
+                              ],
+                              "name": "14",
+                              "role": "label"
+                            }
+                          ],
+                          "key": "event-start-date-day-2026-11-14",
+                          "name": "Saturday, 14 November 2026",
+                          "role": "grid-cell",
+                          "states": [
+                            "unchecked"
+                          ]
+                        },
+                        {
+                          "actions": [
+                            "click",
+                            "scroll-into-view"
+                          ],
+                          "bounds": [
+                            438.3,
+                            337.8,
+                            29.7,
+                            28.0
+                          ],
+                          "children": [
+                            {
+                              "actions": [
+                                "scroll-into-view"
+                              ],
+                              "bounds": [
+                                447.0,
+                                344.3,
+                                12.2,
+                                15.0
+                              ],
+                              "name": "15",
+                              "role": "label"
+                            }
+                          ],
+                          "key": "event-start-date-day-2026-11-15",
+                          "name": "Sunday, 15 November 2026",
+                          "role": "grid-cell",
+                          "states": [
+                            "unchecked"
+                          ]
+                        }
+                      ],
+                      "name": "Monday, 9 November 2026 Tuesday, 10 November 2026 Wednesday, 11 November 2026 Thursday, 12 November 2026 Friday, 13 November 2026 Saturday, 14 November 2026 Sunday, 15 November 2026",
+                      "role": "row"
+                    },
+                    {
+                      "actions": [
+                        "scroll-into-view"
+                      ],
+                      "bounds": [
+                        248.0,
+                        367.8,
+                        220.0,
+                        28.0
+                      ],
+                      "children": [
+                        {
+                          "actions": [
+                            "click",
+                            "scroll-into-view"
+                          ],
+                          "bounds": [
+                            248.0,
+                            367.8,
+                            29.7,
+                            28.0
+                          ],
+                          "children": [
+                            {
+                              "actions": [
+                                "scroll-into-view"
+                              ],
+                              "bounds": [
+                                256.6,
+                                374.3,
+                                12.6,
+                                15.0
+                              ],
+                              "name": "16",
+                              "role": "label"
+                            }
+                          ],
+                          "key": "event-start-date-day-2026-11-16",
+                          "name": "Monday, 16 November 2026",
+                          "role": "grid-cell",
+                          "states": [
+                            "unchecked"
+                          ]
+                        },
+                        {
+                          "actions": [
+                            "click",
+                            "scroll-into-view"
+                          ],
+                          "bounds": [
+                            279.7,
+                            367.8,
+                            29.7,
+                            28.0
+                          ],
+                          "children": [
+                            {
+                              "actions": [
+                                "scroll-into-view"
+                              ],
+                              "bounds": [
+                                288.7,
+                                374.3,
+                                11.8,
+                                15.0
+                              ],
+                              "name": "17",
+                              "role": "label"
+                            }
+                          ],
+                          "key": "event-start-date-day-2026-11-17",
+                          "name": "Tuesday, 17 November 2026",
+                          "role": "grid-cell",
+                          "states": [
+                            "unchecked"
+                          ]
+                        },
+                        {
+                          "actions": [
+                            "click",
+                            "scroll-into-view"
+                          ],
+                          "bounds": [
+                            311.4,
+                            367.8,
+                            29.7,
+                            28.0
+                          ],
+                          "children": [
+                            {
+                              "actions": [
+                                "scroll-into-view"
+                              ],
+                              "bounds": [
+                                320.0,
+                                374.3,
+                                12.6,
+                                15.0
+                              ],
+                              "name": "18",
+                              "role": "label"
+                            }
+                          ],
+                          "key": "event-start-date-day-2026-11-18",
+                          "name": "Wednesday, 18 November 2026",
+                          "role": "grid-cell",
+                          "states": [
+                            "unchecked"
+                          ]
+                        },
+                        {
+                          "actions": [
+                            "click",
+                            "scroll-into-view"
+                          ],
+                          "bounds": [
+                            343.2,
+                            367.8,
+                            29.7,
+                            28.0
+                          ],
+                          "children": [
+                            {
+                              "actions": [
+                                "scroll-into-view"
+                              ],
+                              "bounds": [
+                                351.8,
+                                374.3,
+                                12.6,
+                                15.0
+                              ],
+                              "name": "19",
+                              "role": "label"
+                            }
+                          ],
+                          "key": "event-start-date-day-2026-11-19",
+                          "name": "Thursday, 19 November 2026",
+                          "role": "grid-cell",
+                          "states": [
+                            "unchecked"
+                          ]
+                        },
+                        {
+                          "actions": [
+                            "click",
+                            "focus",
+                            "scroll-into-view"
+                          ],
+                          "bounds": [
+                            374.9,
+                            367.8,
+                            29.7,
+                            28.0
+                          ],
+                          "children": [
+                            {
+                              "actions": [
+                                "scroll-into-view"
+                              ],
+                              "bounds": [
+                                382.2,
+                                374.3,
+                                15.2,
+                                15.0
+                              ],
+                              "name": "20",
+                              "role": "label"
+                            }
+                          ],
+                          "key": "event-start-date-day-2026-11-20",
+                          "name": "Friday, 20 November 2026",
+                          "role": "grid-cell",
+                          "states": [
+                            "checked"
+                          ]
+                        },
+                        {
+                          "actions": [
+                            "click",
+                            "scroll-into-view"
+                          ],
+                          "bounds": [
+                            406.6,
+                            367.8,
+                            29.7,
+                            28.0
+                          ],
+                          "children": [
+                            {
+                              "actions": [
+                                "scroll-into-view"
+                              ],
+                              "bounds": [
+                                415.3,
+                                374.3,
+                                12.4,
+                                15.0
+                              ],
+                              "name": "21",
+                              "role": "label"
+                            }
+                          ],
+                          "key": "event-start-date-day-2026-11-21",
+                          "name": "Saturday, 21 November 2026",
+                          "role": "grid-cell",
+                          "states": [
+                            "unchecked"
+                          ]
+                        },
+                        {
+                          "actions": [
+                            "click",
+                            "scroll-into-view"
+                          ],
+                          "bounds": [
+                            438.3,
+                            367.8,
+                            29.7,
+                            28.0
+                          ],
+                          "children": [
+                            {
+                              "actions": [
+                                "scroll-into-view"
+                              ],
+                              "bounds": [
+                                445.8,
+                                374.3,
+                                14.8,
+                                15.0
+                              ],
+                              "name": "22",
+                              "role": "label"
+                            }
+                          ],
+                          "key": "event-start-date-day-2026-11-22",
+                          "name": "Sunday, 22 November 2026",
+                          "role": "grid-cell",
+                          "states": [
+                            "unchecked"
+                          ]
+                        }
+                      ],
+                      "name": "Monday, 16 November 2026 Tuesday, 17 November 2026 Wednesday, 18 November 2026 Thursday, 19 November 2026 Friday, 20 November 2026 Saturday, 21 November 2026 Sunday, 22 November 2026",
+                      "role": "row"
+                    },
+                    {
+                      "actions": [
+                        "scroll-into-view"
+                      ],
+                      "bounds": [
+                        248.0,
+                        397.8,
+                        220.0,
+                        28.0
+                      ],
+                      "children": [
+                        {
+                          "actions": [
+                            "click",
+                            "scroll-into-view"
+                          ],
+                          "bounds": [
+                            248.0,
+                            397.8,
+                            29.7,
+                            28.0
+                          ],
+                          "children": [
+                            {
+                              "actions": [
+                                "scroll-into-view"
+                              ],
+                              "bounds": [
+                                255.4,
+                                404.3,
+                                14.9,
+                                15.0
+                              ],
+                              "name": "23",
+                              "role": "label"
+                            }
+                          ],
+                          "key": "event-start-date-day-2026-11-23",
+                          "name": "Monday, 23 November 2026",
+                          "role": "grid-cell",
+                          "states": [
+                            "unchecked"
+                          ]
+                        },
+                        {
+                          "actions": [
+                            "click",
+                            "scroll-into-view"
+                          ],
+                          "bounds": [
+                            279.7,
+                            397.8,
+                            29.7,
+                            28.0
+                          ],
+                          "children": [
+                            {
+                              "actions": [
+                                "scroll-into-view"
+                              ],
+                              "bounds": [
+                                287.0,
+                                404.3,
+                                15.1,
+                                15.0
+                              ],
+                              "name": "24",
+                              "role": "label"
+                            }
+                          ],
+                          "key": "event-start-date-day-2026-11-24",
+                          "name": "Tuesday, 24 November 2026",
+                          "role": "grid-cell",
+                          "states": [
+                            "unchecked"
+                          ]
+                        },
+                        {
+                          "actions": [
+                            "click",
+                            "scroll-into-view"
+                          ],
+                          "bounds": [
+                            311.4,
+                            397.8,
+                            29.7,
+                            28.0
+                          ],
+                          "children": [
+                            {
+                              "actions": [
+                                "scroll-into-view"
+                              ],
+                              "bounds": [
+                                319.0,
+                                404.3,
+                                14.7,
+                                15.0
+                              ],
+                              "name": "25",
+                              "role": "label"
+                            }
+                          ],
+                          "key": "event-start-date-day-2026-11-25",
+                          "name": "Wednesday, 25 November 2026",
+                          "role": "grid-cell",
+                          "states": [
+                            "unchecked"
+                          ]
+                        },
+                        {
+                          "actions": [
+                            "click",
+                            "scroll-into-view"
+                          ],
+                          "bounds": [
+                            343.2,
+                            397.8,
+                            29.7,
+                            28.0
+                          ],
+                          "children": [
+                            {
+                              "actions": [
+                                "scroll-into-view"
+                              ],
+                              "bounds": [
+                                350.5,
+                                404.3,
+                                15.0,
+                                15.0
+                              ],
+                              "name": "26",
+                              "role": "label"
+                            }
+                          ],
+                          "key": "event-start-date-day-2026-11-26",
+                          "name": "Thursday, 26 November 2026",
+                          "role": "grid-cell",
+                          "states": [
+                            "unchecked"
+                          ]
+                        },
+                        {
+                          "actions": [
+                            "click",
+                            "scroll-into-view"
+                          ],
+                          "bounds": [
+                            374.9,
+                            397.8,
+                            29.7,
+                            28.0
+                          ],
+                          "children": [
+                            {
+                              "actions": [
+                                "scroll-into-view"
+                              ],
+                              "bounds": [
+                                382.6,
+                                404.3,
+                                14.3,
+                                15.0
+                              ],
+                              "name": "27",
+                              "role": "label"
+                            }
+                          ],
+                          "key": "event-start-date-day-2026-11-27",
+                          "name": "Friday, 27 November 2026",
+                          "role": "grid-cell",
+                          "states": [
+                            "unchecked"
+                          ]
+                        },
+                        {
+                          "actions": [
+                            "click",
+                            "scroll-into-view"
+                          ],
+                          "bounds": [
+                            406.6,
+                            397.8,
+                            29.7,
+                            28.0
+                          ],
+                          "children": [
+                            {
+                              "actions": [
+                                "scroll-into-view"
+                              ],
+                              "bounds": [
+                                414.0,
+                                404.3,
+                                15.0,
+                                15.0
+                              ],
+                              "name": "28",
+                              "role": "label"
+                            }
+                          ],
+                          "key": "event-start-date-day-2026-11-28",
+                          "name": "Saturday, 28 November 2026",
+                          "role": "grid-cell",
+                          "states": [
+                            "unchecked"
+                          ]
+                        },
+                        {
+                          "actions": [
+                            "click",
+                            "scroll-into-view"
+                          ],
+                          "bounds": [
+                            438.3,
+                            397.8,
+                            29.7,
+                            28.0
+                          ],
+                          "children": [
+                            {
+                              "actions": [
+                                "scroll-into-view"
+                              ],
+                              "bounds": [
+                                445.7,
+                                404.3,
+                                15.0,
+                                15.0
+                              ],
+                              "name": "29",
+                              "role": "label"
+                            }
+                          ],
+                          "key": "event-start-date-day-2026-11-29",
+                          "name": "Sunday, 29 November 2026",
+                          "role": "grid-cell",
+                          "states": [
+                            "unchecked"
+                          ]
+                        }
+                      ],
+                      "name": "Monday, 23 November 2026 Tuesday, 24 November 2026 Wednesday, 25 November 2026 Thursday, 26 November 2026 Friday, 27 November 2026 Saturday, 28 November 2026 Sunday, 29 November 2026",
+                      "role": "row"
+                    },
+                    {
+                      "actions": [
+                        "scroll-into-view"
+                      ],
+                      "bounds": [
+                        248.0,
+                        427.8,
+                        220.0,
+                        28.0
+                      ],
+                      "children": [
+                        {
+                          "actions": [
+                            "click",
+                            "scroll-into-view"
+                          ],
+                          "bounds": [
+                            248.0,
+                            427.8,
+                            29.7,
+                            28.0
+                          ],
+                          "children": [
+                            {
+                              "actions": [
+                                "scroll-into-view"
+                              ],
+                              "bounds": [
+                                255.2,
+                                434.3,
+                                15.3,
+                                15.0
+                              ],
+                              "name": "30",
+                              "role": "label"
+                            }
+                          ],
+                          "key": "event-start-date-day-2026-11-30",
+                          "name": "Monday, 30 November 2026",
+                          "role": "grid-cell",
+                          "states": [
+                            "unchecked"
+                          ]
+                        },
+                        {
+                          "actions": [
+                            "click",
+                            "scroll-into-view"
+                          ],
+                          "bounds": [
+                            279.7,
+                            427.8,
+                            29.7,
+                            28.0
+                          ],
+                          "children": [
+                            {
+                              "actions": [
+                                "scroll-into-view"
+                              ],
+                              "bounds": [
+                                292.1,
+                                434.3,
+                                5.0,
+                                15.0
+                              ],
+                              "name": "1",
+                              "role": "label"
+                            }
+                          ],
+                          "key": "event-start-date-day-2026-12-01",
+                          "name": "Tuesday, 1 December 2026",
+                          "role": "grid-cell",
+                          "states": [
+                            "unchecked"
+                          ]
+                        },
+                        {
+                          "actions": [
+                            "click",
+                            "scroll-into-view"
+                          ],
+                          "bounds": [
+                            311.4,
+                            427.8,
+                            29.7,
+                            28.0
+                          ],
+                          "children": [
+                            {
+                              "actions": [
+                                "scroll-into-view"
+                              ],
+                              "bounds": [
+                                322.6,
+                                434.3,
+                                7.4,
+                                15.0
+                              ],
+                              "name": "2",
+                              "role": "label"
+                            }
+                          ],
+                          "key": "event-start-date-day-2026-12-02",
+                          "name": "Wednesday, 2 December 2026",
+                          "role": "grid-cell",
+                          "states": [
+                            "unchecked"
+                          ]
+                        },
+                        {
+                          "actions": [
+                            "click",
+                            "scroll-into-view"
+                          ],
+                          "bounds": [
+                            343.2,
+                            427.8,
+                            29.7,
+                            28.0
+                          ],
+                          "children": [
+                            {
+                              "actions": [
+                                "scroll-into-view"
+                              ],
+                              "bounds": [
+                                354.3,
+                                434.3,
+                                7.5,
+                                15.0
+                              ],
+                              "name": "3",
+                              "role": "label"
+                            }
+                          ],
+                          "key": "event-start-date-day-2026-12-03",
+                          "name": "Thursday, 3 December 2026",
+                          "role": "grid-cell",
+                          "states": [
+                            "unchecked"
+                          ]
+                        },
+                        {
+                          "actions": [
+                            "click",
+                            "scroll-into-view"
+                          ],
+                          "bounds": [
+                            374.9,
+                            427.8,
+                            29.7,
+                            28.0
+                          ],
+                          "children": [
+                            {
+                              "actions": [
+                                "scroll-into-view"
+                              ],
+                              "bounds": [
+                                385.8,
+                                434.3,
+                                7.9,
+                                15.0
+                              ],
+                              "name": "4",
+                              "role": "label"
+                            }
+                          ],
+                          "key": "event-start-date-day-2026-12-04",
+                          "name": "Friday, 4 December 2026",
+                          "role": "grid-cell",
+                          "states": [
+                            "unchecked"
+                          ]
+                        },
+                        {
+                          "actions": [
+                            "click",
+                            "scroll-into-view"
+                          ],
+                          "bounds": [
+                            406.6,
+                            427.8,
+                            29.7,
+                            28.0
+                          ],
+                          "children": [
+                            {
+                              "actions": [
+                                "scroll-into-view"
+                              ],
+                              "bounds": [
+                                417.8,
+                                434.3,
+                                7.3,
+                                15.0
+                              ],
+                              "name": "5",
+                              "role": "label"
+                            }
+                          ],
+                          "key": "event-start-date-day-2026-12-05",
+                          "name": "Saturday, 5 December 2026",
+                          "role": "grid-cell",
+                          "states": [
+                            "unchecked"
+                          ]
+                        },
+                        {
+                          "actions": [
+                            "click",
+                            "scroll-into-view"
+                          ],
+                          "bounds": [
+                            438.3,
+                            427.8,
+                            29.7,
+                            28.0
+                          ],
+                          "children": [
+                            {
+                              "actions": [
+                                "scroll-into-view"
+                              ],
+                              "bounds": [
+                                449.4,
+                                434.3,
+                                7.6,
+                                15.0
+                              ],
+                              "name": "6",
+                              "role": "label"
+                            }
+                          ],
+                          "key": "event-start-date-day-2026-12-06",
+                          "name": "Sunday, 6 December 2026",
+                          "role": "grid-cell",
+                          "states": [
+                            "unchecked"
+                          ]
+                        }
+                      ],
+                      "name": "Monday, 30 November 2026 Tuesday, 1 December 2026 Wednesday, 2 December 2026 Thursday, 3 December 2026 Friday, 4 December 2026 Saturday, 5 December 2026 Sunday, 6 December 2026",
+                      "role": "row"
+                    }
+                  ],
+                  "key": "event-start-date-grid",
+                  "name": "November 2026",
+                  "role": "grid"
+                }
+              ],
+              "key": "event-start-date-calendar",
+              "role": "group"
+            },
+            {
+              "actions": [
+                "scroll-into-view"
+              ],
+              "bounds": [
+                484.0,
+                155.5,
+                236.0,
+                15.0
+              ],
+              "name": "Start time",
+              "role": "label"
+            },
+            {
+              "actions": [
+                "scroll-into-view"
+              ],
+              "bounds": [
+                484.0,
+                174.5,
+                236.0,
+                28.3
+              ],
+              "children": [
+                {
+                  "actions": [
+                    "focus",
+                    "increment",
+                    "decrement",
+                    "scroll-into-view"
+                  ],
+                  "bounds": [
+                    490.0,
+                    178.5,
+                    21.5,
+                    20.3
+                  ],
+                  "children": [
+                    {
+                      "actions": [
+                        "scroll-into-view"
+                      ],
+                      "bounds": [
+                        494.0,
+                        180.5,
+                        13.5,
+                        16.3
+                      ],
+                      "name": "10",
+                      "role": "label"
+                    }
+                  ],
+                  "key": "event-start-time-hour",
+                  "name": "Start time, hour",
+                  "range": [
+                    10.0,
+                    0.0,
+                    23.0,
+                    null
+                  ],
+                  "role": "spin-button",
+                  "value": "10"
+                },
+                {
+                  "actions": [
+                    "scroll-into-view"
+                  ],
+                  "bounds": [
+                    513.5,
+                    180.5,
+                    3.8,
+                    16.3
+                  ],
+                  "name": ":",
+                  "role": "label"
+                },
+                {
+                  "actions": [
+                    "focus",
+                    "increment",
+                    "decrement",
+                    "scroll-into-view"
+                  ],
+                  "bounds": [
+                    519.3,
+                    178.5,
+                    24.4,
+                    20.3
+                  ],
+                  "children": [
+                    {
+                      "actions": [
+                        "scroll-into-view"
+                      ],
+                      "bounds": [
+                        523.3,
+                        180.5,
+                        16.4,
+                        16.3
+                      ],
+                      "name": "00",
+                      "role": "label"
+                    }
+                  ],
+                  "key": "event-start-time-minute",
+                  "name": "Start time, minute",
+                  "range": [
+                    0.0,
+                    0.0,
+                    59.0,
+                    null
+                  ],
+                  "role": "spin-button",
+                  "value": "00"
+                }
+              ],
+              "key": "event-start-time",
+              "name": "Start time",
+              "role": "group"
+            },
+            {
+              "actions": [
+                "scroll-into-view"
+              ],
+              "bounds": [
+                240.0,
+                475.8,
+                137.5,
+                15.0
+              ],
+              "name": "End date",
+              "role": "label"
+            },
+            {
+              "actions": [
+                "click",
+                "focus",
+                "set-value",
+                "replace-selected-text",
+                "set-text-selection",
+                "scroll-into-view"
+              ],
+              "bounds": [
+                240.0,
+                494.8,
+                137.5,
+                28.3
+              ],
+              "key": "event-end-date",
+              "name": "End date",
+              "role": "text-input",
+              "selection": [
+                1,
+                10,
+                1,
+                10
+              ],
+              "value": "2026-11-20"
+            },
+            {
+              "actions": [
+                "click",
+                "focus",
+                "expand",
+                "scroll-into-view"
+              ],
+              "bounds": [
+                383.5,
+                498.0,
+                92.5,
+                25.0
+              ],
+              "children": [
+                {
+                  "actions": [
+                    "scroll-into-view"
+                  ],
+                  "bounds": [
+                    393.5,
+                    503.0,
+                    72.5,
+                    15.0
+                  ],
+                  "name": "Choose date",
+                  "role": "label"
+                }
+              ],
+              "key": "event-end-date-choose",
+              "name": "Choose end date",
+              "role": "button",
+              "states": [
+                "collapsed"
+              ]
+            },
+            {
+              "actions": [
+                "scroll-into-view"
+              ],
+              "bounds": [
+                484.0,
+                475.8,
+                236.0,
+                15.0
+              ],
+              "name": "End time",
+              "role": "label"
+            },
+            {
+              "actions": [
+                "scroll-into-view"
+              ],
+              "bounds": [
+                484.0,
+                494.8,
+                236.0,
+                28.3
+              ],
+              "children": [
+                {
+                  "actions": [
+                    "focus",
+                    "increment",
+                    "decrement",
+                    "scroll-into-view"
+                  ],
+                  "bounds": [
+                    490.0,
+                    498.8,
+                    18.6,
+                    20.3
+                  ],
+                  "children": [
+                    {
+                      "actions": [
+                        "scroll-into-view"
+                      ],
+                      "bounds": [
+                        494.0,
+                        500.8,
+                        10.6,
+                        16.3
+                      ],
+                      "name": "11",
+                      "role": "label"
+                    }
+                  ],
+                  "key": "event-end-time-hour",
+                  "name": "End time, hour",
+                  "range": [
+                    11.0,
+                    0.0,
+                    23.0,
+                    null
+                  ],
+                  "role": "spin-button",
+                  "value": "11"
+                },
+                {
+                  "actions": [
+                    "scroll-into-view"
+                  ],
+                  "bounds": [
+                    510.6,
+                    500.8,
+                    3.8,
+                    16.3
+                  ],
+                  "name": ":",
+                  "role": "label"
+                },
+                {
+                  "actions": [
+                    "focus",
+                    "increment",
+                    "decrement",
+                    "scroll-into-view"
+                  ],
+                  "bounds": [
+                    516.3,
+                    498.8,
+                    24.4,
+                    20.3
+                  ],
+                  "children": [
+                    {
+                      "actions": [
+                        "scroll-into-view"
+                      ],
+                      "bounds": [
+                        520.3,
+                        500.8,
+                        16.4,
+                        16.3
+                      ],
+                      "name": "00",
+                      "role": "label"
+                    }
+                  ],
+                  "key": "event-end-time-minute",
+                  "name": "End time, minute",
+                  "range": [
+                    0.0,
+                    0.0,
+                    59.0,
+                    null
+                  ],
+                  "role": "spin-button",
+                  "value": "00"
+                }
+              ],
+              "key": "event-end-time",
+              "name": "End time",
+              "role": "group"
+            },
+            {
+              "actions": [
+                "scroll-into-view"
+              ],
+              "bounds": [
+                240.0,
+                535.0,
+                480.0,
+                16.3
+              ],
+              "key": "event-zone",
+              "name": "Time zone: Europe/Madrid",
+              "role": "label"
+            },
+            {
+              "actions": [
+                "scroll-into-view"
+              ],
+              "bounds": [
+                240.0,
+                563.3,
+                480.0,
+                15.0
+              ],
+              "name": "Location",
+              "role": "label"
+            },
+            {
+              "actions": [
+                "click",
+                "focus",
+                "set-value",
+                "replace-selected-text",
+                "set-text-selection",
+                "scroll-into-view"
+              ],
+              "bounds": [
+                240.0,
+                582.3,
+                480.0,
+                28.3
+              ],
+              "key": "event-location",
+              "name": "Location",
+              "role": "text-input",
+              "value": ""
+            },
+            {
+              "actions": [
+                "scroll-into-view"
+              ],
+              "bounds": [
+                240.0,
+                622.5,
+                480.0,
+                15.0
+              ],
+              "name": "Notes",
+              "role": "label"
+            },
+            {
+              "actions": [
+                "click",
+                "focus",
+                "set-value",
+                "replace-selected-text",
+                "set-text-selection",
+                "scroll-into-view"
+              ],
+              "bounds": [
+                240.0,
+                641.5,
+                480.0,
+                72.0
+              ],
+              "key": "event-notes",
+              "name": "Notes",
+              "role": "multiline-text-input",
+              "value": ""
+            },
+            {
+              "actions": [
+                "scroll-into-view"
+              ],
+              "bounds": [
+                240.0,
+                725.5,
+                480.0,
+                25.0
+              ],
+              "children": [
+                {
+                  "actions": [
+                    "click",
+                    "focus",
+                    "scroll-into-view"
+                  ],
+                  "bounds": [
+                    240.0,
+                    725.5,
+                    83.2,
+                    25.0
+                  ],
+                  "key": "event-save",
+                  "name": "Save event",
+                  "role": "button"
+                },
+                {
+                  "actions": [
+                    "click",
+                    "focus",
+                    "scroll-into-view"
+                  ],
+                  "bounds": [
+                    331.2,
+                    725.5,
+                    59.8,
+                    25.0
+                  ],
+                  "key": "event-cancel",
+                  "name": "Cancel",
+                  "role": "button"
+                }
+              ],
+              "key": "event-actions",
+              "role": "group"
+            }
+          ],
+          "key": "event-form",
+          "name": "Add event",
+          "role": "dialog",
+          "scroll": [
+            0.0,
+            0.0,
+            46.5
+          ],
+          "states": [
+            "modal",
+            "clips"
+          ]
+        }
+      ],
+      "key": "form-backdrop",
+      "role": "group"
+    },
+    {
+      "bounds": [
+        0.0,
+        0.0,
+        1.0,
+        1.0
+      ],
+      "role": "status",
+      "states": [
+        "live-polite"
+      ]
+    }
+  ],
+  "name": "Calendar",
+  "role": "window"
+}

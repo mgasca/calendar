@@ -173,6 +173,7 @@
                 },
                 {
                   "actions": [
+                    "focus",
                     "scroll-into-view"
                   ],
                   "bounds": [
@@ -183,7 +184,7 @@
                   ],
                   "key": "week-title",
                   "level": 1,
-                  "name": "16–22 Nov 2026",
+                  "name": "16 – 22 Nov 2026",
                   "role": "heading"
                 },
                 {
@@ -306,7 +307,7 @@
                         22.3
                       ],
                       "key": "band-10000000-0000-4000-8000-000000000001",
-                      "name": "Conference, 19–21 Nov",
+                      "name": "Conference, 19 – 21 Nov",
                       "role": "button"
                     }
                   ],
@@ -801,6 +802,7 @@
                 },
                 {
                   "actions": [
+                    "focus",
                     "scroll-into-view",
                     "scroll-up",
                     "scroll-down",
@@ -819,7 +821,7 @@
                       ],
                       "bounds": [
                         16.0,
-                        279.5,
+                        -80.5,
                         928.0,
                         960.0
                       ],
@@ -830,7 +832,7 @@
                           ],
                           "bounds": [
                             16.0,
-                            279.5,
+                            -80.5,
                             48.0,
                             960.0
                           ],
@@ -841,12 +843,279 @@
                               ],
                               "bounds": [
                                 16.0,
-                                279.5,
-                                34.6,
+                                -80.5,
+                                48.0,
                                 40.0
                               ],
-                              "name": "00:00",
-                              "role": "label"
+                              "children": [
+                                {
+                                  "actions": [
+                                    "scroll-into-view"
+                                  ],
+                                  "bounds": [
+                                    16.0,
+                                    -80.5,
+                                    34.6,
+                                    40.0
+                                  ],
+                                  "name": "00:00",
+                                  "role": "label"
+                                }
+                              ],
+                              "key": "hour-0",
+                              "role": "group"
+                            },
+                            {
+                              "actions": [
+                                "scroll-into-view"
+                              ],
+                              "bounds": [
+                                16.0,
+                                -40.5,
+                                48.0,
+                                40.0
+                              ],
+                              "children": [
+                                {
+                                  "actions": [
+                                    "scroll-into-view"
+                                  ],
+                                  "bounds": [
+                                    16.0,
+                                    -40.5,
+                                    31.9,
+                                    40.0
+                                  ],
+                                  "name": "01:00",
+                                  "role": "label"
+                                }
+                              ],
+                              "key": "hour-1",
+                              "role": "group"
+                            },
+                            {
+                              "actions": [
+                                "scroll-into-view"
+                              ],
+                              "bounds": [
+                                16.0,
+                                -0.5,
+                                48.0,
+                                40.0
+                              ],
+                              "children": [
+                                {
+                                  "actions": [
+                                    "scroll-into-view"
+                                  ],
+                                  "bounds": [
+                                    16.0,
+                                    -0.5,
+                                    34.3,
+                                    40.0
+                                  ],
+                                  "name": "02:00",
+                                  "role": "label"
+                                }
+                              ],
+                              "key": "hour-2",
+                              "role": "group"
+                            },
+                            {
+                              "actions": [
+                                "scroll-into-view"
+                              ],
+                              "bounds": [
+                                16.0,
+                                39.5,
+                                48.0,
+                                40.0
+                              ],
+                              "children": [
+                                {
+                                  "actions": [
+                                    "scroll-into-view"
+                                  ],
+                                  "bounds": [
+                                    16.0,
+                                    39.5,
+                                    34.4,
+                                    40.0
+                                  ],
+                                  "name": "03:00",
+                                  "role": "label"
+                                }
+                              ],
+                              "key": "hour-3",
+                              "role": "group"
+                            },
+                            {
+                              "actions": [
+                                "scroll-into-view"
+                              ],
+                              "bounds": [
+                                16.0,
+                                79.5,
+                                48.0,
+                                40.0
+                              ],
+                              "children": [
+                                {
+                                  "actions": [
+                                    "scroll-into-view"
+                                  ],
+                                  "bounds": [
+                                    16.0,
+                                    79.5,
+                                    34.8,
+                                    40.0
+                                  ],
+                                  "name": "04:00",
+                                  "role": "label"
+                                }
+                              ],
+                              "key": "hour-4",
+                              "role": "group"
+                            },
+                            {
+                              "actions": [
+                                "scroll-into-view"
+                              ],
+                              "bounds": [
+                                16.0,
+                                119.5,
+                                48.0,
+                                40.0
+                              ],
+                              "children": [
+                                {
+                                  "actions": [
+                                    "scroll-into-view"
+                                  ],
+                                  "bounds": [
+                                    16.0,
+                                    119.5,
+                                    34.1,
+                                    40.0
+                                  ],
+                                  "name": "05:00",
+                                  "role": "label"
+                                }
+                              ],
+                              "key": "hour-5",
+                              "role": "group"
+                            },
+                            {
+                              "actions": [
+                                "scroll-into-view"
+                              ],
+                              "bounds": [
+                                16.0,
+                                159.5,
+                                48.0,
+                                40.0
+                              ],
+                              "children": [
+                                {
+                                  "actions": [
+                                    "scroll-into-view"
+                                  ],
+                                  "bounds": [
+                                    16.0,
+                                    159.5,
+                                    34.4,
+                                    40.0
+                                  ],
+                                  "name": "06:00",
+                                  "role": "label"
+                                }
+                              ],
+                              "key": "hour-6",
+                              "role": "group"
+                            },
+                            {
+                              "actions": [
+                                "scroll-into-view"
+                              ],
+                              "bounds": [
+                                16.0,
+                                199.5,
+                                48.0,
+                                40.0
+                              ],
+                              "children": [
+                                {
+                                  "actions": [
+                                    "scroll-into-view"
+                                  ],
+                                  "bounds": [
+                                    16.0,
+                                    199.5,
+                                    33.1,
+                                    40.0
+                                  ],
+                                  "name": "07:00",
+                                  "role": "label"
+                                }
+                              ],
+                              "key": "hour-7",
+                              "role": "group"
+                            },
+                            {
+                              "actions": [
+                                "scroll-into-view"
+                              ],
+                              "bounds": [
+                                16.0,
+                                239.5,
+                                48.0,
+                                40.0
+                              ],
+                              "children": [
+                                {
+                                  "actions": [
+                                    "scroll-into-view"
+                                  ],
+                                  "bounds": [
+                                    16.0,
+                                    239.5,
+                                    34.4,
+                                    40.0
+                                  ],
+                                  "name": "08:00",
+                                  "role": "label"
+                                }
+                              ],
+                              "key": "hour-8",
+                              "role": "group"
+                            },
+                            {
+                              "actions": [
+                                "scroll-into-view"
+                              ],
+                              "bounds": [
+                                16.0,
+                                279.5,
+                                48.0,
+                                40.0
+                              ],
+                              "children": [
+                                {
+                                  "actions": [
+                                    "scroll-into-view"
+                                  ],
+                                  "bounds": [
+                                    16.0,
+                                    279.5,
+                                    34.4,
+                                    40.0
+                                  ],
+                                  "name": "09:00",
+                                  "role": "label"
+                                }
+                              ],
+                              "key": "hour-9",
+                              "role": "group"
                             },
                             {
                               "actions": [
@@ -855,11 +1124,26 @@
                               "bounds": [
                                 16.0,
                                 319.5,
-                                31.9,
+                                48.0,
                                 40.0
                               ],
-                              "name": "01:00",
-                              "role": "label"
+                              "children": [
+                                {
+                                  "actions": [
+                                    "scroll-into-view"
+                                  ],
+                                  "bounds": [
+                                    16.0,
+                                    319.5,
+                                    31.9,
+                                    40.0
+                                  ],
+                                  "name": "10:00",
+                                  "role": "label"
+                                }
+                              ],
+                              "key": "hour-10",
+                              "role": "group"
                             },
                             {
                               "actions": [
@@ -868,11 +1152,26 @@
                               "bounds": [
                                 16.0,
                                 359.5,
-                                34.3,
+                                48.0,
                                 40.0
                               ],
-                              "name": "02:00",
-                              "role": "label"
+                              "children": [
+                                {
+                                  "actions": [
+                                    "scroll-into-view"
+                                  ],
+                                  "bounds": [
+                                    16.0,
+                                    359.5,
+                                    29.1,
+                                    40.0
+                                  ],
+                                  "name": "11:00",
+                                  "role": "label"
+                                }
+                              ],
+                              "key": "hour-11",
+                              "role": "group"
                             },
                             {
                               "actions": [
@@ -881,11 +1180,26 @@
                               "bounds": [
                                 16.0,
                                 399.5,
-                                34.4,
+                                48.0,
                                 40.0
                               ],
-                              "name": "03:00",
-                              "role": "label"
+                              "children": [
+                                {
+                                  "actions": [
+                                    "scroll-into-view"
+                                  ],
+                                  "bounds": [
+                                    16.0,
+                                    399.5,
+                                    31.5,
+                                    40.0
+                                  ],
+                                  "name": "12:00",
+                                  "role": "label"
+                                }
+                              ],
+                              "key": "hour-12",
+                              "role": "group"
                             },
                             {
                               "actions": [
@@ -894,11 +1208,26 @@
                               "bounds": [
                                 16.0,
                                 439.5,
-                                34.8,
+                                48.0,
                                 40.0
                               ],
-                              "name": "04:00",
-                              "role": "label"
+                              "children": [
+                                {
+                                  "actions": [
+                                    "scroll-into-view"
+                                  ],
+                                  "bounds": [
+                                    16.0,
+                                    439.5,
+                                    31.7,
+                                    40.0
+                                  ],
+                                  "name": "13:00",
+                                  "role": "label"
+                                }
+                              ],
+                              "key": "hour-13",
+                              "role": "group"
                             },
                             {
                               "actions": [
@@ -907,11 +1236,26 @@
                               "bounds": [
                                 16.0,
                                 479.5,
-                                34.1,
+                                48.0,
                                 40.0
                               ],
-                              "name": "05:00",
-                              "role": "label"
+                              "children": [
+                                {
+                                  "actions": [
+                                    "scroll-into-view"
+                                  ],
+                                  "bounds": [
+                                    16.0,
+                                    479.5,
+                                    32.0,
+                                    40.0
+                                  ],
+                                  "name": "14:00",
+                                  "role": "label"
+                                }
+                              ],
+                              "key": "hour-14",
+                              "role": "group"
                             },
                             {
                               "actions": [
@@ -920,11 +1264,26 @@
                               "bounds": [
                                 16.0,
                                 519.5,
-                                34.4,
+                                48.0,
                                 40.0
                               ],
-                              "name": "06:00",
-                              "role": "label"
+                              "children": [
+                                {
+                                  "actions": [
+                                    "scroll-into-view"
+                                  ],
+                                  "bounds": [
+                                    16.0,
+                                    519.5,
+                                    31.4,
+                                    40.0
+                                  ],
+                                  "name": "15:00",
+                                  "role": "label"
+                                }
+                              ],
+                              "key": "hour-15",
+                              "role": "group"
                             },
                             {
                               "actions": [
@@ -933,11 +1292,26 @@
                               "bounds": [
                                 16.0,
                                 559.5,
-                                33.1,
+                                48.0,
                                 40.0
                               ],
-                              "name": "07:00",
-                              "role": "label"
+                              "children": [
+                                {
+                                  "actions": [
+                                    "scroll-into-view"
+                                  ],
+                                  "bounds": [
+                                    16.0,
+                                    559.5,
+                                    31.7,
+                                    40.0
+                                  ],
+                                  "name": "16:00",
+                                  "role": "label"
+                                }
+                              ],
+                              "key": "hour-16",
+                              "role": "group"
                             },
                             {
                               "actions": [
@@ -946,11 +1320,26 @@
                               "bounds": [
                                 16.0,
                                 599.5,
-                                34.4,
+                                48.0,
                                 40.0
                               ],
-                              "name": "08:00",
-                              "role": "label"
+                              "children": [
+                                {
+                                  "actions": [
+                                    "scroll-into-view"
+                                  ],
+                                  "bounds": [
+                                    16.0,
+                                    599.5,
+                                    30.6,
+                                    40.0
+                                  ],
+                                  "name": "17:00",
+                                  "role": "label"
+                                }
+                              ],
+                              "key": "hour-17",
+                              "role": "group"
                             },
                             {
                               "actions": [
@@ -959,11 +1348,26 @@
                               "bounds": [
                                 16.0,
                                 639.5,
-                                34.4,
+                                48.0,
                                 40.0
                               ],
-                              "name": "09:00",
-                              "role": "label"
+                              "children": [
+                                {
+                                  "actions": [
+                                    "scroll-into-view"
+                                  ],
+                                  "bounds": [
+                                    16.0,
+                                    639.5,
+                                    31.7,
+                                    40.0
+                                  ],
+                                  "name": "18:00",
+                                  "role": "label"
+                                }
+                              ],
+                              "key": "hour-18",
+                              "role": "group"
                             },
                             {
                               "actions": [
@@ -972,11 +1376,26 @@
                               "bounds": [
                                 16.0,
                                 679.5,
-                                31.9,
+                                48.0,
                                 40.0
                               ],
-                              "name": "10:00",
-                              "role": "label"
+                              "children": [
+                                {
+                                  "actions": [
+                                    "scroll-into-view"
+                                  ],
+                                  "bounds": [
+                                    16.0,
+                                    679.5,
+                                    31.7,
+                                    40.0
+                                  ],
+                                  "name": "19:00",
+                                  "role": "label"
+                                }
+                              ],
+                              "key": "hour-19",
+                              "role": "group"
                             },
                             {
                               "actions": [
@@ -985,11 +1404,26 @@
                               "bounds": [
                                 16.0,
                                 719.5,
-                                29.1,
+                                48.0,
                                 40.0
                               ],
-                              "name": "11:00",
-                              "role": "label"
+                              "children": [
+                                {
+                                  "actions": [
+                                    "scroll-into-view"
+                                  ],
+                                  "bounds": [
+                                    16.0,
+                                    719.5,
+                                    34.3,
+                                    40.0
+                                  ],
+                                  "name": "20:00",
+                                  "role": "label"
+                                }
+                              ],
+                              "key": "hour-20",
+                              "role": "group"
                             },
                             {
                               "actions": [
@@ -998,11 +1432,26 @@
                               "bounds": [
                                 16.0,
                                 759.5,
-                                31.5,
+                                48.0,
                                 40.0
                               ],
-                              "name": "12:00",
-                              "role": "label"
+                              "children": [
+                                {
+                                  "actions": [
+                                    "scroll-into-view"
+                                  ],
+                                  "bounds": [
+                                    16.0,
+                                    759.5,
+                                    31.5,
+                                    40.0
+                                  ],
+                                  "name": "21:00",
+                                  "role": "label"
+                                }
+                              ],
+                              "key": "hour-21",
+                              "role": "group"
                             },
                             {
                               "actions": [
@@ -1011,11 +1460,26 @@
                               "bounds": [
                                 16.0,
                                 799.5,
-                                31.7,
+                                48.0,
                                 40.0
                               ],
-                              "name": "13:00",
-                              "role": "label"
+                              "children": [
+                                {
+                                  "actions": [
+                                    "scroll-into-view"
+                                  ],
+                                  "bounds": [
+                                    16.0,
+                                    799.5,
+                                    33.9,
+                                    40.0
+                                  ],
+                                  "name": "22:00",
+                                  "role": "label"
+                                }
+                              ],
+                              "key": "hour-22",
+                              "role": "group"
                             },
                             {
                               "actions": [
@@ -1024,128 +1488,26 @@
                               "bounds": [
                                 16.0,
                                 839.5,
-                                32.0,
+                                48.0,
                                 40.0
                               ],
-                              "name": "14:00",
-                              "role": "label"
-                            },
-                            {
-                              "actions": [
-                                "scroll-into-view"
+                              "children": [
+                                {
+                                  "actions": [
+                                    "scroll-into-view"
+                                  ],
+                                  "bounds": [
+                                    16.0,
+                                    839.5,
+                                    34.1,
+                                    40.0
+                                  ],
+                                  "name": "23:00",
+                                  "role": "label"
+                                }
                               ],
-                              "bounds": [
-                                16.0,
-                                879.5,
-                                31.4,
-                                40.0
-                              ],
-                              "name": "15:00",
-                              "role": "label"
-                            },
-                            {
-                              "actions": [
-                                "scroll-into-view"
-                              ],
-                              "bounds": [
-                                16.0,
-                                919.5,
-                                31.7,
-                                40.0
-                              ],
-                              "name": "16:00",
-                              "role": "label"
-                            },
-                            {
-                              "actions": [
-                                "scroll-into-view"
-                              ],
-                              "bounds": [
-                                16.0,
-                                959.5,
-                                30.6,
-                                40.0
-                              ],
-                              "name": "17:00",
-                              "role": "label"
-                            },
-                            {
-                              "actions": [
-                                "scroll-into-view"
-                              ],
-                              "bounds": [
-                                16.0,
-                                999.5,
-                                31.7,
-                                40.0
-                              ],
-                              "name": "18:00",
-                              "role": "label"
-                            },
-                            {
-                              "actions": [
-                                "scroll-into-view"
-                              ],
-                              "bounds": [
-                                16.0,
-                                1039.5,
-                                31.7,
-                                40.0
-                              ],
-                              "name": "19:00",
-                              "role": "label"
-                            },
-                            {
-                              "actions": [
-                                "scroll-into-view"
-                              ],
-                              "bounds": [
-                                16.0,
-                                1079.5,
-                                34.3,
-                                40.0
-                              ],
-                              "name": "20:00",
-                              "role": "label"
-                            },
-                            {
-                              "actions": [
-                                "scroll-into-view"
-                              ],
-                              "bounds": [
-                                16.0,
-                                1119.5,
-                                31.5,
-                                40.0
-                              ],
-                              "name": "21:00",
-                              "role": "label"
-                            },
-                            {
-                              "actions": [
-                                "scroll-into-view"
-                              ],
-                              "bounds": [
-                                16.0,
-                                1159.5,
-                                33.9,
-                                40.0
-                              ],
-                              "name": "22:00",
-                              "role": "label"
-                            },
-                            {
-                              "actions": [
-                                "scroll-into-view"
-                              ],
-                              "bounds": [
-                                16.0,
-                                1199.5,
-                                34.1,
-                                40.0
-                              ],
-                              "name": "23:00",
-                              "role": "label"
+                              "key": "hour-23",
+                              "role": "group"
                             }
                           ],
                           "key": "hours",
@@ -1157,7 +1519,7 @@
                           ],
                           "bounds": [
                             68.0,
-                            279.5,
+                            -80.5,
                             121.7,
                             960.0
                           ],
@@ -1170,8 +1532,8 @@
                               ],
                               "bounds": [
                                 70.0,
-                                639.5,
-                                121.7,
+                                279.5,
+                                115.7,
                                 38.0
                               ],
                               "key": "week-event-2026-11-16-30000000-0000-4000-8000-000000000001",
@@ -1188,7 +1550,7 @@
                           ],
                           "bounds": [
                             193.7,
-                            279.5,
+                            -80.5,
                             121.7,
                             960.0
                           ],
@@ -1201,7 +1563,7 @@
                           ],
                           "bounds": [
                             319.4,
-                            279.5,
+                            -80.5,
                             121.7,
                             960.0
                           ],
@@ -1214,8 +1576,8 @@
                               ],
                               "bounds": [
                                 321.4,
-                                919.5,
-                                121.7,
+                                559.5,
+                                115.7,
                                 28.0
                               ],
                               "key": "week-event-2026-11-18-30000000-0000-4000-8000-000000000002",
@@ -1232,7 +1594,7 @@
                           ],
                           "bounds": [
                             445.2,
-                            279.5,
+                            -80.5,
                             121.7,
                             960.0
                           ],
@@ -1245,7 +1607,7 @@
                           ],
                           "bounds": [
                             570.9,
-                            279.5,
+                            -80.5,
                             121.7,
                             960.0
                           ],
@@ -1258,8 +1620,8 @@
                               ],
                               "bounds": [
                                 572.9,
-                                659.5,
-                                121.7,
+                                299.5,
+                                115.7,
                                 58.0
                               ],
                               "key": "week-event-2026-11-20-30000000-0000-4000-8000-000000000003",
@@ -1272,7 +1634,7 @@
                               ],
                               "bounds": [
                                 570.9,
-                                679.5,
+                                319.5,
                                 121.7,
                                 2.0
                               ],
@@ -1289,7 +1651,7 @@
                           ],
                           "bounds": [
                             696.6,
-                            279.5,
+                            -80.5,
                             121.7,
                             960.0
                           ],
@@ -1302,7 +1664,7 @@
                           ],
                           "bounds": [
                             822.3,
-                            279.5,
+                            -80.5,
                             121.7,
                             960.0
                           ],
@@ -1315,10 +1677,11 @@
                     }
                   ],
                   "key": "week-hours",
-                  "role": "scroll-view",
+                  "name": "Week grid",
+                  "role": "region",
                   "scroll": [
                     0.0,
-                    0.0,
+                    360.0,
                     400.0
                   ],
                   "states": [

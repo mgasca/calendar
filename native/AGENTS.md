@@ -21,7 +21,7 @@ Practices for the second UI in `native/`, built with [Rune](https://github.com/a
 
 ## Headless tests
 
-- **Element tree** (`tests/shell.rs`): `rune::Runtime::new(state, view, size, Env { system_dark, scale })`, then `rt.find(key)`, `rt.pointer_down/up`, `rt.frame(dt)` (virtual clock), and assertions on `rt.state`. No window and no GPU.
+- **Element tree** (`tests/shell.rs`): `rune::Runtime::new(state, view, size, Env { system_dark, scale })`, then `rt.find(key)`, `rt.pointer_down/up`, `rt.frame(dt)` (virtual clock), and assertions on `rt.state`. No window and no GPU. `Runtime::new` takes the view only: a test of the window's keys or of `poll` sets `rt.poll` and `rt.on_key` from `spec()` (`tests/week.rs`).
 - **Goldens** (`tests/goldens.rs`): the app's own binary runs with `--scene <name> --theme light|dark --tree` and `--snap`. Accessibility trees gate on every platform. PNGs gate on Linux only, with a small per-pixel tolerance, because GPU output differs between platforms. A failure leaves the actual output in `native/target/goldens/`, which CI uploads.
 - **Re-blessing**: run `BLESS=1 just native test`, look at every changed golden (open the PNGs), and say in the PR why it changed. Never re-bless to make an unexplained failure go away.
 - Add a named scene to `spec()` for each state a golden needs, rather than driving input in a golden test.
@@ -35,7 +35,7 @@ Practices for the second UI in `native/`, built with [Rune](https://github.com/a
 
 Rune has no releases: `native/Cargo.toml` pins an exact `rev` of its `dev` branch, which is never rewritten. A bump is its own PR, and it does all of these together:
 
-1. Move the `rev` of `rune` **and of every `[patch.crates-io]` entry** to the new revision. Then compare the patch list with Rune's root `Cargo.toml` at that revision, because Cargo does not inherit a dependency's patches.
+1. Move the `rev` of `rune`, of `rune-i18n` (`crates/calendar-native/Cargo.toml`, for the system languages, #1032) **and of every `[patch.crates-io]` entry** to the new revision. Then compare the patch list with Rune's root `Cargo.toml` at that revision, because Cargo does not inherit a dependency's patches.
 2. Move `rust-toolchain.toml` to the channel Rune's `rust-toolchain.toml` names at that revision.
 3. Set the `wasm-bindgen` pin in `native/Cargo.toml` to the version in Rune's `Cargo.lock` at the new revision. Run `cargo update -p rune -p wasm-bindgen` (never edit `Cargo.lock` by hand). Then run `just native run lint test build-web`, after installing the matching `wasm-bindgen-cli` if the pin moved.
 4. Read Rune's `CHANGELOG.md` between the two revisions for changes that move output without a code change. Re-bless goldens only with the diff reviewed.
@@ -57,11 +57,13 @@ Rune has no releases: `native/Cargo.toml` pins an exact `rev` of its `dev` branc
 - API calls go through `effects.run(future, |app, output| …)`: a background tokio thread on the desktop, `spawn_local` in the browser. The result is applied before the next frame. Don't block in a handler.
 - **Flow tests** (`tests/flow.rs`) use `Effects::manual()`, a `wiremock` API and a fixed `Clock` that `set_now` moves. `settle` runs every queued request and applies the results.
 - **Scenes** (`spec()`) are offline: `App::offline()` is signed in, frozen at `fixtures::now()` in Europe/Madrid, and fed from `fixtures.rs`, which is shaped like the contract and checked by a decode test. Add a scene for each state a golden needs.
-- Formatting is English, in the web app's en-GB patterns (`format.rs`), with times in the user's IANA zone through `chrono-tz`.
+- Dates and times are formatted in the user's locale by `locale.rs` (ICU4X), with the web app's `Intl` options per call and times in the user's IANA zone through `chrono-tz`; the phrases around them (`format.rs`) are English, as the web app's are. `App::locale` is `en-GB` in scenes and tests (`fixtures::locale`), so goldens don't depend on the machine's language.
 
 ## Dialogs and forms
 
 - A form's rules live in `forms.rs`, which has no UI and is unit-tested. Its state and its saves live in `dialogs.rs`, and its drawing in `views/dialogs.rs`.
 - Text fields are `rune::TextEdit` values in the dialog's state, drawn with `text_input(..).on_edit(accessor)`. Each accessor falls back to `App::scratch` once the dialog has closed.
 - Headless tests type with `rt.paste(..)` after pressing the field.
+- Dates and times use the pickers (`pickers.rs`, `views/pickers.rs`, #1033): a `pickers::Field` names the field's key and its accessors, `date_picker` adds the "Choose date" button and month grid beside a typed field, and `time_picker` draws spin buttons. Both write the same `YYYY-MM-DD` and `HH:MM` text, so `forms.rs` is unchanged. Tests drive them with `rt.key(KeyEvent::from(Key::…))` (`tests/pickers.rs`).
 - Saves return `calendar_client::SaveError`, whose `body` holds the 400 `errors` for the form's fields.
+- Focus after a dialog (`focus.rs`, #1035): a control that opens one calls `focus::opened(app, tx)` from `on_press_tx`, and every close calls `focus::closed(app, deleted)`; `poll` then focuses the opener, or the page's heading after a delete or when the opener is gone. Page headings are `focusable(true).tab_index(-1)`. Notices time out in `focus::poll`, on the window's clock.

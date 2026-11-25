@@ -1,8 +1,10 @@
 //! The triage page, as the web app's `features/triage/Triage.tsx`.
 
+use super::pickers::{date_picker, time_picker};
 use super::{badge, button, heading, meta, remote_state, styled_button};
 use crate::bulk::Action;
 use crate::format;
+use crate::pickers::Field;
 use crate::theme::Tokens;
 use crate::triage::{self, Reschedule};
 use crate::{App, load};
@@ -41,7 +43,7 @@ pub fn view(app: &App, t: &Tokens) -> El {
     .key("triage")
     .gap(12.0)
     .w_full()
-    .child(heading("triage-heading", "Overdue tasks", 1, t));
+    .child(heading("triage-heading", "Overdue tasks", 1, t).focusable(true).tab_index(-1));
   if let Some(notice) = &state.notice {
     page = page.child(text(notice).key("triage-notice").role("status").color(t.text));
   }
@@ -183,7 +185,7 @@ fn triage_row(task: &TaskResponse, app: &App, t: &Tokens) -> El {
     .map(|at| at.with_timezone(&zone).date_naive())
     .or(task.due_date.flatten());
   let due_text = match (task.due_at.flatten(), task.due_date.flatten()) {
-    (Some(at), _) => at.with_timezone(&zone).format("%-d %b %Y, %H:%M").to_string(),
+    (Some(at), _) => app.locale.medium_date_time(at, zone),
     (None, Some(date)) => date.to_string(),
     (None, None) => String::new(),
   };
@@ -236,6 +238,27 @@ fn reschedule_time(app: &mut App) -> &mut TextEdit {
     None => &mut app.scratch,
   }
 }
+
+fn read_reschedule_date(app: &App) -> Option<&str> {
+  app.triage.reschedule.as_ref().map(|r| r.date.text.as_str())
+}
+
+fn read_reschedule_time(app: &App) -> Option<&str> {
+  app.triage.reschedule.as_ref().map(|r| r.time.text.as_str())
+}
+
+const RESCHEDULE_DATE: Field = Field {
+  key: "reschedule-date",
+  edit: reschedule_date,
+  edit_text: read_reschedule_date,
+  then: None,
+};
+const RESCHEDULE_TIME: Field = Field {
+  key: "reschedule-time",
+  edit: reschedule_time,
+  edit_text: read_reschedule_time,
+  then: None,
+};
 
 fn input(key: &str, label: &str, edit: &TextEdit, on_edit: fn(&mut App) -> &mut TextEdit, t: &Tokens) -> El {
   col().gap(4.0).w_full().child(text(label).font(type_::LABEL).color(t.text)).child(
@@ -320,9 +343,16 @@ fn reschedule_view(r: &Reschedule, app: &App, t: &Tokens) -> El {
     .w(420.0)
     .fill(t.surface_raised)
     .child(heading("reschedule-heading", title, 2, t))
-    .child(input("reschedule-date", "Due date", &r.date, reschedule_date, t));
+    .child(date_picker(
+      input("reschedule-date", "Due date", &r.date, reschedule_date, t),
+      RESCHEDULE_DATE,
+      "Due date",
+      false,
+      app,
+      t,
+    ));
   if r.exact {
-    panel = panel.child(input("reschedule-time", "Due time", &r.time, reschedule_time, t));
+    panel = panel.child(time_picker(RESCHEDULE_TIME, "Due time", false, None, app, t));
     if let (Some(date), Ok(time)) = (
       format::parse_iso_date(r.date.text.trim()),
       chrono::NaiveTime::parse_from_str(r.time.text.trim(), "%H:%M"),
@@ -334,7 +364,7 @@ fn reschedule_view(r: &Reschedule, app: &App, t: &Tokens) -> El {
         .label("Choose occurrence")
         .gap(6.0);
       for (n, at) in (0u8..).zip([earlier, later]) {
-        let label = at.with_timezone(&app.clock.zone).format("%H:%M (UTC%:z)").to_string();
+        let label = app.locale.date_time_with_offset(at, app.clock.zone);
         choices = choices.child(
           button(&format!("reschedule-occurrence-{n}"), &label, t)
             .checked(r.occurrence == Some(n))

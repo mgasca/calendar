@@ -14,6 +14,12 @@ pub fn now() -> DateTime<Utc> {
 /// The time zone scenes and tests use.
 pub const ZONE: chrono_tz::Tz = chrono_tz::Europe::Madrid;
 
+/// The locale scenes and tests format in: `en-GB`, as the web app's tests pin it (`test/render.tsx`).
+#[must_use]
+pub fn locale() -> crate::locale::Locale {
+  crate::locale::Locale::parse("en-GB").expect("en-GB parses")
+}
+
 fn decode<T: serde::de::DeserializeOwned>(value: serde_json::Value) -> T {
   serde_json::from_value(value).expect("fixtures follow the contract")
 }
@@ -163,6 +169,23 @@ pub fn overdue_tasks() -> TaskPage {
     "nextCursor": "page-2",
     "total": 42
   }))
+}
+
+/// The week with five overlapping events on Wednesday 18 November, 16:00 to 17:00 in Madrid: three side by side and
+/// "+2 more" (#1034).
+#[must_use]
+pub fn busy_week() -> WeekAgendaResponse {
+  let mut week = week();
+  let wednesday = &mut week.days[2];
+  let first = wednesday.events[0].clone();
+  for n in 1..=4u8 {
+    let mut event = first.clone();
+    event.id = format!("30000000-0000-4000-8000-0000000000{:02}", 10 + n).parse().expect("a uuid");
+    event.title = format!("Interview {n}");
+    event.start = first.start + chrono::Duration::minutes(i64::from(n) * 5);
+    wednesday.events.push(event);
+  }
+  week
 }
 
 #[cfg(test)]

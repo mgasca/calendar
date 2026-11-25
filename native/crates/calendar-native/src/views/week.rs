@@ -5,12 +5,13 @@ use super::{TaskRow, button, heading, meta, remote_state, section, task_row};
 use crate::format;
 use crate::route::Route;
 use crate::theme::Tokens;
+use crate::week_layout;
 use crate::{App, load};
 use calendar_client::as_count;
 use calendar_client::generated::WeekAgendaResponse;
 use chrono::{NaiveDate, Timelike};
 use rune::tok::type_;
-use rune::{El, ScrollSpec, col, el, row, text};
+use rune::{El, Key, KeyEvent, ScrollSpec, Tx, col, el, row, text};
 
 /// Points per hour in the time grid.
 pub const HOUR: f32 = 40.0;
@@ -35,7 +36,11 @@ pub fn view(app: &App, week_start: NaiveDate, t: &Tokens) -> El {
     .key("week-header")
     .gap(6.0)
     .child(meta(format::relative_week(week_start, this_week), t).key("week-eyebrow"))
-    .child(heading("week-title", format::format_week_range(week_start), 1, t))
+    .child(
+      heading("week-title", app.locale.week_range(week_start), 1, t)
+        .focusable(true)
+        .tab_index(-1),
+    )
     .child(nav);
   if let Some(week) = app
     .week
@@ -141,11 +146,14 @@ fn grid(app: &App, week: &WeekAgendaResponse, today: NaiveDate, t: &Tokens) -> E
               .key(format!("band-{}", event.id))
               .role("button")
               .focusable(true)
-              .on_press({
+              .on_press_tx({
                 let id = event.id;
-                move |app: &mut App| crate::dialogs::edit_event(app, id)
+                move |app: &mut App, tx: &mut Tx| {
+                  crate::focus::opened(app, tx);
+                  crate::dialogs::edit_event(app, id);
+                }
               })
-              .label(format!("{}, {}", event.title, band_dates(event.start_date, last)))
+              .label(format!("{}, {}", event.title, app.locale.day_range(event.start_date, last)))
               .w(0.0)
               .grow(days as f32)
               .fill(t.accent_soft)
@@ -166,19 +174,20 @@ fn grid(app: &App, week: &WeekAgendaResponse, today: NaiveDate, t: &Tokens) -> E
   let gutter = (0..24).fold(col().key("hours").w(GUTTER), |g, hour| {
     g.child(
       el()
+        .key(format!("hour-{hour}"))
         .h(HOUR)
-        .child(text(format!("{hour:02}:00")).font(type_::LABEL).color(t.text_muted)),
+        .child(text(app.locale.hour_label(hour)).font(type_::LABEL).color(t.text_muted)),
     )
   });
   let mut hours_row = row().key("days").w_full().gap(4.0).child(gutter);
   for day in &week.days {
     let is_today = day.date == today;
-    let (weekday, number) = format::day_heading(day.date);
+    let (weekday, number) = app.locale.day_heading(day.date);
     let date = day.date;
     headings = headings.child(
       column().child(
         button(&format!("day-{date}"), &format!("{weekday} {number}"), t)
-          .label(format::format_date(date, false))
+          .label(app.locale.date(date, false))
           .checked(is_today)
           .fill(if is_today { t.current_bg } else { t.surface_raised })
           .on_press(move |app: &mut App| load::go(app, Route::Day(date))),
@@ -188,7 +197,7 @@ fn grid(app: &App, week: &WeekAgendaResponse, today: NaiveDate, t: &Tokens) -> E
       col()
         .key(format!("tasks-{date}"))
         .role("list")
-        .label(format!("Tasks, {}", format::format_date(date, false)))
+        .label(format!("Tasks, {}", app.locale.date(date, false)))
         .gap(4.0),
       |list, task| {
         let overdue = this_week && day.date < today && !task.is_completed;
@@ -220,7 +229,10 @@ fn grid(app: &App, week: &WeekAgendaResponse, today: NaiveDate, t: &Tokens) -> E
               .role("button")
               .label(&task.title)
               .focusable(true)
-              .on_press(move |app: &mut App| crate::dialogs::edit_task(app, id))
+              .on_press_tx(move |app: &mut App, tx: &mut Tx| {
+                crate::focus::opened(app, tx);
+                crate::dialogs::edit_task(app, id);
+              })
               .child(
                 text(&task.title)
                   .font(type_::LABEL)
@@ -239,33 +251,77 @@ fn grid(app: &App, week: &WeekAgendaResponse, today: NaiveDate, t: &Tokens) -> E
       .key(format!("grid-{date}"))
       .h(24.0 * HOUR)
       .fill(if is_today { t.current_bg } else { t.surface });
-    for event in &day.events {
-      let start = if event.starts_before_day { 0.0 } else { minutes(event.start, zone) };
-      let end = if event.ends_after_day {
-        24.0 * 60.0
-      } else {
-        minutes(event.end, zone).max(start + 15.0)
-      };
+    // Overlapping events share the column side by side, as the web app's `layoutDay` places them (#1034).
+    let spans: Vec<_> = day
+      .events
+      .iter()
+      .map(|e| week_layout::event_span(e.start, e.end, e.starts_before_day, e.ends_after_day, zone))
+      .collect();
+    let (placed, chips) = week_layout::layout_day(&spans);
+    for (event, place) in day.events.iter().zip(placed) {
       let id = event.id;
-      let times = format::event_times(event.start, event.end, event.starts_before_day, event.ends_after_day, false, zone);
-      hours = hours.child(
-        col()
-          .key(format!("week-event-{date}-{}", event.id))
-          // The block is the title button: pressing it opens the event, as the web app's grid does.
-          .role("button")
-          .label(format!("{}, {times}", event.title))
+      let times = format::event_times(
+        &app.locale,
+        event.start,
+        event.end,
+        event.starts_before_day,
+        event.ends_after_day,
+        false,
+        zone,
+      );
+      let block = col()
+        .key(format!("week-event-{date}-{}", event.id))
+        // The block is the title button: pressing it opens the event, as the web app's grid does.
+        .role("button")
+        .label(format!("{}, {times}", event.title))
+        .focusable(true)
+        .on_press_tx(move |app: &mut App, tx: &mut Tx| {
+          crate::focus::opened(app, tx);
+          crate::dialogs::edit_event(app, id);
+        });
+      hours = hours.child(if place.hidden {
+        // Counted in a "+N more" chip instead of drawn; still read and reachable, as the web app keeps it in the
+        // day's list with `visually-hidden`.
+        block.absolute(0.0, minute_y(place.span.start)).size(1.0, 1.0).opacity(0.0)
+      } else {
+        placed_at(
+          place.span,
+          place.column,
+          place.columns,
+          block
+            .w_full()
+            .h_full()
+            .px(4.0)
+            .py(2.0)
+            .radius(4.0)
+            .fill(t.accent_soft)
+            .child(text(&event.title).font(type_::LABEL).color(t.text).truncate())
+            .child(text(times).font(type_::LABEL).color(t.text_muted).truncate()),
+        )
+      });
+    }
+    for chip in chips {
+      let label = format!("+{} more", chip.count);
+      hours = hours.child(placed_at(
+        chip.span,
+        chip.column,
+        chip.columns,
+        el()
+          .key(format!("week-more-{date}-{}", chip.span.start))
+          .role("link")
+          .label(&label)
           .focusable(true)
-          .on_press(move |app: &mut App| crate::dialogs::edit_event(app, id))
-          .absolute(2.0, start / 60.0 * HOUR)
+          .on_press(move |app: &mut App| load::go(app, Route::Day(date)))
           .w_full()
-          .h((end - start) / 60.0 * HOUR - 2.0)
-          .px(4.0)
+          .h_full()
+          .px(3.0)
           .py(2.0)
           .radius(4.0)
-          .fill(t.accent_soft)
-          .child(text(&event.title).font(type_::LABEL).color(t.text).truncate())
-          .child(text(times).font(type_::LABEL).color(t.text_muted).truncate()),
-      );
+          .border(1.0, t.border_strong)
+          .fill(t.surface_raised)
+          // The column is a quarter of a day: the count shows, and "+N more" is its name (the web app's text).
+          .child(text(format!("+{}", chip.count)).font(type_::LABEL).color(t.text).truncate()),
+      ));
     }
     if is_today {
       hours = hours.child(
@@ -289,11 +345,39 @@ fn grid(app: &App, week: &WeekAgendaResponse, today: NaiveDate, t: &Tokens) -> E
     .child(
       col()
         .key("week-hours")
+        // A focusable region, as the web app's `data-week-scroll`: the arrows scroll it while it has focus.
+        .role("region")
+        .label("Week grid")
+        .focusable(true)
         .w_full()
         .h(560.0)
         .scroll(ScrollSpec { stick_bottom: false })
         .child(hours_row),
     )
+}
+
+/// The y of a minute of the day in the time grid.
+// Minutes in a day (at most 1,440) are exact in an f32.
+#[allow(clippy::cast_precision_loss)]
+fn minute_y(minute: i32) -> f32 {
+  minute as f32 / 60.0 * HOUR
+}
+
+/// `content` over `span`, in column `column` of `columns` (the web app's `spanStyle`): a full-width row at the span,
+/// with a spacer before the content. Neither the row nor the spacer takes presses, so the events under them keep
+/// theirs.
+// Columns are at most `MAX_COLUMNS`.
+#[allow(clippy::cast_precision_loss)]
+fn placed_at(span: week_layout::Span, column: usize, columns: usize, content: El) -> El {
+  let width = 1.0 / columns.max(1) as f32;
+  row()
+    .absolute(0.0, minute_y(span.start))
+    .w_full()
+    .h(minute_y(span.end) - minute_y(span.start) - 2.0)
+    .px(2.0)
+    .gap(0.0)
+    .child(el().w_frac(width * column as f32))
+    .child(col().w_frac(width).h_full().pr(2.0).child(content))
 }
 
 // Minutes in a day (at most 1,439) are exact in an f32.
@@ -303,15 +387,61 @@ fn minutes(instant: chrono::DateTime<chrono::Utc>, zone: chrono_tz::Tz) -> f32 {
   (local.hour() * 60 + local.minute()) as f32
 }
 
-/// An all-day event's dates as the web app's band says them: "19 Nov" or "19–22 Nov" (`AllDayBand.tsx`).
-fn band_dates(first: NaiveDate, last: NaiveDate) -> String {
-  use chrono::Datelike;
-  if first == last {
-    format::format_day_month(first)
-  } else if first.month() == last.month() && first.year() == last.year() {
-    format!("{}–{}", first.format("%-d"), format::format_day_month(last))
+/// Whether `key` is the scrolling hours or something inside them, where ← and → scroll rather than change week.
+fn in_grid(key: &str) -> bool {
+  key == "week-hours" || key.starts_with("week-event-") || key.starts_with("week-more-")
+}
+
+/// The Week shortcuts (`AppSpec::on_key`, #1034), as the web app's `useWeekKeys.ts`: ← the previous week, → the next,
+/// `t` this week. Ignored with a modifier held, in a text field (Rune keeps those keys the field's), and while a modal
+/// is open (maintainer's choice on #1034; the web app does the same since #1039). While focus is in the grid only `t`
+/// works, and the arrows scroll it.
+pub fn on_key(app: &mut App, ev: &KeyEvent, tx: &mut Tx) -> bool {
+  let Route::Week(week_start) = app.route else { return false };
+  let m = ev.mods;
+  if m.shift || m.cmd || m.ctrl || m.alt || m.logo || app.dialog.is_some() || app.actions.delete.is_some() {
+    return false;
+  }
+  let grid = tx.focused().is_some_and(in_grid);
+  let target = match &ev.key {
+    Key::Left if !grid => format::add_days(week_start, -7),
+    Key::Right if !grid => format::add_days(week_start, 7),
+    Key::Text(typed) if typed == "t" => Some(format::iso_week_start(app.clock.today())),
+    _ => return false,
+  };
+  if let Some(target) = target {
+    load::go(app, Route::Week(target));
+  }
+  true
+}
+
+/// Opens each week's grid at 07:00, or an hour before now in the current week (the web app's `initialScrollMinute`),
+/// once per week shown: on every visit to Week and every change of week, never on a clock tick or a refetch. Called
+/// from `poll` once that week's data is on screen.
+pub fn scroll_on_open(app: &mut App, tx: &mut Tx) {
+  let Route::Week(week_start) = app.route else {
+    // Away from Week the grid is gone: coming back to the same week opens it afresh, as the web app's remounted
+    // grid does (pre-merge review of #1050).
+    app.scrolled_week = None;
+    app.scroll_armed = None;
+    return;
+  };
+  let shown = app.week.data.as_ref().is_some_and(|w| w.week_start == week_start);
+  let again = app.scroll_armed == Some(week_start);
+  if !shown || (app.scrolled_week == Some(week_start) && !again) {
+    return;
+  }
+  let this_week = format::iso_week_start(app.clock.today()) == week_start;
+  let now = this_week.then(|| week_layout::wall_clock_minutes(app.clock.now(), app.clock.zone));
+  tx.scroll_to_y("week-hours", minute_y(week_layout::initial_scroll_minute(now)));
+  app.scrolled_week = Some(week_start);
+  // A grid built in this frame takes the scroll; one that comes back to a week already loaded is built after this
+  // poll and keeps its old offset, so the scroll goes again on the next poll.
+  if again {
+    app.scroll_armed = None;
   } else {
-    format!("{} – {}", format::format_day_month(first), format::format_day_month(last))
+    app.scroll_armed = Some(week_start);
+    tx.wake_after(std::time::Duration::ZERO);
   }
 }
 

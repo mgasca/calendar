@@ -12,14 +12,18 @@ pub mod clock;
 pub mod dialogs;
 pub mod fetch;
 pub mod fixtures;
+pub mod focus;
 pub mod format;
 pub mod forms;
 pub mod load;
+pub mod locale;
+pub mod pickers;
 pub mod route;
 pub mod session;
 pub mod theme;
 pub mod triage;
 pub mod views;
+pub mod week_layout;
 
 use calendar_client::Api;
 use calendar_client::generated::{DayAgendaResponse, WeekAgendaResponse};
@@ -86,6 +90,8 @@ pub struct App {
   pub api: Api,
   pub effects: Effects,
   pub clock: Clock,
+  /// How dates and times read: the user's locale (#1032), `en-GB` in scenes and tests, as the web tests pin it.
+  pub locale: locale::Locale,
   /// No API calls at all: named scenes and view tests set the data themselves.
   pub offline: bool,
   pub loads: load::Loads,
@@ -96,8 +102,20 @@ pub struct App {
   pub actions: actions::Actions,
   /// The add or edit dialog on screen (#1006).
   pub dialog: Option<dialogs::Dialog>,
+  /// The month grid open under a date field (#1033).
+  pub calendar: Option<pickers::Calendar>,
+  /// The digits typed so far into a time spin button: its key and the digits (#1033).
+  pub spin_typed: Option<(String, String)>,
+  /// The week whose grid was last scrolled to its opening hour (#1034).
+  pub scrolled_week: Option<chrono::NaiveDate>,
+  /// The week whose grid scrolls on the next poll, once it is on screen (#1034).
+  pub scroll_armed: Option<chrono::NaiveDate>,
   /// The message after a save or delete, with "Show day" when it went on another day.
   pub notice: Option<dialogs::Notice>,
+  /// Where focus returns after a dialog, and the notice's focus (#1035).
+  pub focus: focus::Focus,
+  /// Item fetches started by the dialogs, numbering their tickets.
+  pub fetches: u64,
   /// Triage's selection and its last result (#1007).
   pub triage: triage::Triage,
   /// Where a text field's edits go when its dialog has already closed.
@@ -140,6 +158,7 @@ impl App {
       api,
       effects,
       clock,
+      locale: locale::Locale::system(),
       offline: false,
       loads: load::Loads::default(),
       day: Remote::default(),
@@ -147,7 +166,13 @@ impl App {
       tasks: Remote::default(),
       actions: actions::Actions::default(),
       dialog: None,
+      calendar: None,
+      spin_typed: None,
+      scrolled_week: None,
+      scroll_armed: None,
       notice: None,
+      focus: focus::Focus::default(),
+      fetches: 0,
       triage: triage::Triage::default(),
       scratch: rune::TextEdit::default(),
       go_to_date: rune::TextEdit::default(),
@@ -163,6 +188,7 @@ impl App {
       Effects::manual(),
     );
     app.offline = true;
+    app.locale = fixtures::locale();
     app.session = Session::SignedIn(fixtures::user());
     app
   }
@@ -261,14 +287,16 @@ fn setup(app: &mut App, waker: rune::Waker) {
 
 /// Applies finished API calls, then refreshes stale data or a new day; checks the clock every 15 s (the web app's
 /// `useToday`), so a page rolls over at the user's midnight.
-fn poll(app: &mut App, _now: f64, tx: &mut rune::Tx) -> bool {
+fn poll(app: &mut App, now: f64, tx: &mut rune::Tx) -> bool {
   let effects = app.effects.clone();
   let changed = effects.drain(app);
   dialogs::follow_start(app);
   dialogs::clear_edited_errors(app);
   load::ensure(app);
+  views::week::scroll_on_open(app, tx);
+  let focus_changed = focus::poll(app, now, tx);
   tx.wake_after(std::time::Duration::from_secs(15));
-  changed
+  changed || focus_changed
 }
 
 /// A scene's starting state: offline, signed in, the fixtures' day loaded. Compute anything clock-dependent after
@@ -289,10 +317,21 @@ pub fn spec() -> AppSpec<App> {
   AppSpec {
     setup: Some(setup),
     poll: Some(poll),
+    on_key: Some(views::week::on_key),
     scenes: &[
       ("today", |app| {
         scene(app, Route::Today);
         app.day.finish(Ok(fixtures::day()));
+      }),
+      ("today-notice", |app| {
+        // The notice after adding a task on another day, with "Show day" and "Dismiss" (#1035).
+        scene(app, Route::Today);
+        app.day.finish(Ok(fixtures::day()));
+        app.notice = Some(dialogs::Notice {
+          text: "\u{201c}Book flights\u{201d} added for Mon 23 Nov.".to_owned(),
+          show_day: chrono::NaiveDate::from_ymd_opt(2026, 11, 23),
+          ..dialogs::Notice::default()
+        });
       }),
       ("today-empty", |app| {
         scene(app, Route::Today);
@@ -314,6 +353,13 @@ pub fn spec() -> AppSpec<App> {
         scene(app, Route::Today);
         app.route = Route::week_of(app.clock.today());
         app.week.finish(Ok(fixtures::week()));
+      }),
+      ("week-busy", |app| {
+        // Five overlapping events on Wednesday: three side by side and "+2 more" (#1034). The week is the offline
+        // clock's, set after `scene` (#1059).
+        scene(app, Route::Today);
+        app.route = Route::week_of(app.clock.today());
+        app.week.finish(Ok(fixtures::busy_week()));
       }),
       ("tasks", |app| {
         scene(app, Route::Tasks(TaskView::Upcoming));
@@ -343,6 +389,17 @@ pub fn spec() -> AppSpec<App> {
         app.day.finish(Ok(fixtures::day()));
         let today = app.clock.today();
         dialogs::add_event(app, today);
+      }),
+      ("add-event-calendar", |app| {
+        // The start date's month grid open (#1033).
+        scene(app, Route::Today);
+        app.day.finish(Ok(fixtures::day()));
+        let today = app.clock.today();
+        dialogs::add_event(app, today);
+        app.calendar = Some(pickers::Calendar {
+          field: views::dialogs::START_DATE,
+          focus: today,
+        });
       }),
       ("event-form-errors", |app| {
         scene(app, Route::Today);

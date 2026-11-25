@@ -51,8 +51,11 @@ pub fn view(app: &App, view: TaskView, t: &Tokens) -> El {
       row()
         .gap(12.0)
         .items_center()
-        .child(heading("tasks-title", "My tasks", 1, t))
-        .child(button("add-task", "Add task", t).on_press(|app: &mut App| crate::dialogs::add_task(app, None))),
+        .child(heading("tasks-title", "My tasks", 1, t).focusable(true).tab_index(-1))
+        .child(button("add-task", "Add task", t).on_press_tx(|app: &mut App, tx: &mut rune::Tx| {
+          crate::focus::opened(app, tx);
+          crate::dialogs::add_task(app, None);
+        })),
     )
     .child(tabs)
     .child(heading("tasks-view-title", view.label(), 2, t));
@@ -110,7 +113,7 @@ fn row_for<'a>(task: &'a TaskResponse, view: TaskView, app: &App) -> TaskRow<'a>
   let zone = app.clock.zone;
   let mut due = match (task.due_date.flatten(), task.due_at.flatten()) {
     (Some(date), _) => date.to_string(),
-    (None, Some(at)) => format::format_date_time(at, zone),
+    (None, Some(at)) => app.locale.date_time(at, zone),
     (None, None) => "No deadline".to_owned(),
   };
   if view == TaskView::Upcoming && format::is_past_due(task.is_completed, task.due_at.flatten(), app.clock.now()) {

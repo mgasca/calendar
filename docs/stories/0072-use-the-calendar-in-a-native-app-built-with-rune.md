@@ -10,6 +10,15 @@ pr:
   - https://github.com/mgasca/calendar/pull/1027
   - https://github.com/mgasca/calendar/pull/1028
   - https://github.com/mgasca/calendar/pull/1029
+  - https://github.com/mgasca/calendar/pull/1020
+  - https://github.com/mgasca/calendar/pull/1021
+  - https://github.com/mgasca/calendar/pull/1023
+  - https://github.com/mgasca/calendar/pull/1024
+  - https://github.com/mgasca/calendar/pull/1025
+  - https://github.com/mgasca/calendar/pull/1026
+  - https://github.com/mgasca/calendar/pull/1047
+  - https://github.com/mgasca/calendar/pull/1048
+  - https://github.com/mgasca/calendar/pull/1050
 adrs: ["0003", "0004", "0021", "0027", "0053", "0055", "0058", "0061", "0063", "0064", "0066", "0067", "0068"]
 ---
 
@@ -178,6 +187,10 @@ No further ADR is expected. A slice that finds a decision ADR-0067 or ADR-0068 d
 | [#1009](https://github.com/mgasca/calendar/issues/1009) | macOS and Windows CI, WASM at `/native/` | S4 | #1002 |
 | [#1019](https://github.com/mgasca/calendar/issues/1019) | CodeQL for `native/`, before #1008's app part | S4 | #1002 |
 | [#1010](https://github.com/mgasca/calendar/issues/1010) | End-to-end flows | S3 | #1008, #1007 |
+| [#1032](https://github.com/mgasca/calendar/issues/1032) | Dates and times in the system locale | S2 | #1007 |
+| [#1033](https://github.com/mgasca/calendar/issues/1033) | Date and time pickers | S2 | #1032 |
+| [#1034](https://github.com/mgasca/calendar/issues/1034) | Week shortcuts, "+N more", first scroll | S2 | #1033 |
+| [#1035](https://github.com/mgasca/calendar/issues/1035) | Notice timeout and focus return | S2 | #1034 |
 
 ### Scaffold (#1002), delivered
 
@@ -303,19 +316,57 @@ No further ADR is expected. A slice that finds a decision ADR-0067 or ADR-0068 d
 * **Not yet shown:** the bundle running signed in, in a browser with WebGPU. The cookie is the origin's, so nothing in the app changes for it.
 * **Delivered by** #1029 (`Closes #1009`).
 
-### Parity with the web app (#1002 to #1007)
+### System locale (#1032), delivered
+
+* **Which locale:** the first of the OS's preferred languages that parses, read by `rune_i18n::system_languages`: POSIX `LANGUAGE`, `LC_ALL`, `LC_MESSAGES` and `LANG` on Linux (`C` and `POSIX` skipped), `NSLocale.preferredLanguages` on macOS, the user UI languages on Windows, `navigator.languages` on the web. With none, `en-US`, which is what a browser's `Intl` falls back to (maintainer's choice on #1032). A `-u-hc-` keyword picks the clock, as it does for `Intl`.
+* **Formatting** (`locale.rs`): ICU4X `icu_datetime` with compiled CLDR data for every locale (maintainer's choice on #1032). Each method names the web call it matches and keeps its options: `formatDate`, `formatTime` (2-digit hour), `formatDateTime` (and with `shortOffset` for a repeated local time), `formatDayMonth`, `shortDay`, `dayHeadingParts`, `hourLabel`, `formatWeekRange` and the all-day band (`formatRange`), and Triage's medium date and short time. Formatters are built once per locale, like the web app's cache. The range formatter is behind ICU4X's `unstable` feature, so `icu_datetime` is pinned exactly.
+* **Unchanged:** the English phrases around the dates ("Today", "Overdue by 3 days"), weeks starting on Monday (the web app's `weekDates.ts` ignores the locale's week start), the user's IANA zone, and the API's `YYYY-MM-DD` values.
+* **Scenes and tests** format in `en-GB`, as the web tests do (`fixtures::locale`). The only golden change is the week range, now "16 – 22 Nov 2026" with thin spaces around the dash, as the web app's own test expects ("2 – 8 Nov 2026"); the old fixed pattern wrote "16–22".
+* **On purpose, unlike the web app:** Triage's choice between the two occurrences of a repeated local time shows each with its UTC offset ("… GMT+2", "… GMT+1"), as the event and task forms do. The web app's Triage shows `formatDateTime` without one, so its two options read the same (pre-merge review of #1047).
+* **Robustness:** a `dueAt` the API accepts can fall in year 10000 locally, past ICU4X's years; it shows as ISO text instead of crashing the app (pre-merge review of #1047).
+* **Tests:** unit tests for en-GB (the web tests' strings), en-US ("Monday, October 26", "09:30 AM", "Oct 26 – Nov 1, 2026"), de-DE, fr-FR, a `-u-hc-h12` locale, a repeated time's "GMT+2" and "GMT+1", and the language choice from POSIX variables. Forcing every locale to en-GB makes the en-US and other-locale tests fail.
+
+### Date and time pickers (#1033), delivered
+
+* **Dates** (`pickers.rs`, `views/pickers.rs`): the typed `YYYY-MM-DD` field stays (maintainer's choice on #1033), with a "Choose date" button beside it (named "Choose start date" and so on, `expanded` while open). It opens a month grid under the field: the month and year in the user's locale between "Previous month" and "Next month", the locale's short weekday names from Monday, and six weeks of days, each a `gridcell` named by its full date, the chosen one marked and today outlined.
+  * Keys, as the ARIA date-picker pattern and the browsers' calendars: ← → a day, ↑ ↓ a week, Home and End the week's Monday and Sunday, Page Up and Page Down a month, Return or Space choose, Escape closes. Only the focused day is a Tab stop. Focus returns to the button when the grid closes; Escape closes the grid, not the dialog.
+  * Used by the event form's start and end dates, the task form's due date, Triage's reschedule date and Day's "Go to date", where choosing a day goes there, as the web app's date input does on a change.
+* **Times:** hour and minute spin buttons, plus AM/PM in a 12-hour locale (`Locale::twelve_hour`, the names from the locale's own times). ↑ ↓ step by one and Page Up/Down by ten, each part wrapping on its own as the browsers' do; digits type straight in, and focus moves to the next part once a part is complete; A or P set the half of the day. An empty field shows "--" and steps from 00:00.
+* **Unchanged:** both write the same `YYYY-MM-DD` and `HH:MM` text the forms validate, so every message, the occurrence choice for a repeated time, the gap message, the inclusive all-day end and focus on the first invalid field are as before. The all-day box hides the time and keeps it.
+* **Dialogs** now fit the window and scroll inside it: an open grid made the event form taller than the window.
+* **Tests:** `tests/pickers.rs` drives the grid and the spin buttons with the keyboard (9 tests: opening on the field's date, every key, Escape keeping the dialog, the month buttons, stepping and typed digits, the all-day box, a 12-hour locale, an empty due time, "Go to date", and a closed form leaving no grid or half-typed time behind); six of them fail with the grid's keys and the stepping switched off, and the last without `pickers::reset` (pre-merge review of #1048). Unit tests for the grid's days, the wrapping and the typed digits, and the locale's month and clock. Golden `add-event-calendar` (tree and PNG, reviewed); the other form goldens changed for the button and the spin buttons, and Today's for the "Choose date" button.
+
+### Week shortcuts, "+N more" and the first scroll (#1034), delivered
+
+* **Overlapping events** (`week_layout.rs`, a port of the web app's `gridLayout.ts`): sorted by start, longest first on ties; transitively overlapping events form a cluster and share the column side by side, each in the first free column. A cluster that needs more than four columns keeps three and shows "+N more" in the fourth, spanning the hidden events, which links to that day. Events are at least 20 minutes tall, and the repeated hour of a 25-hour day lays out by wall clock. Before this, overlapping events were drawn full width on top of each other.
+* **The chip** is named "+N more", as the web app's link reads; it shows "+N" because a quarter of a day column can't fit the words at the app's widths. Hidden events stay in the accessibility tree and focusable, as the web app keeps them in the day's list with `visually-hidden`.
+* **Shortcuts** (`views::week::on_key`, the window's `on_key`): ← the previous week, → the next, `t` (lower case only) this week, as `useWeekKeys.ts`. Ignored with a modifier held, in a text field, and while a dialog or the delete confirmation is open (maintainer's choice on #1034; the web app does the same since #1039). The hours are a focusable region named "Week grid", as the web app's `data-week-scroll`: while focus is in it, ← and → are the grid's and only `t` changes week.
+* **First scroll** (`views::week::scroll_on_open`, from `poll`): each week's grid opens at 07:00, or an hour before now in the current week (`initialScrollMinute`), once per week shown: on every visit to Week (leaving it forgets the week, as the web app's remounted grid does) and every change of week, never on a clock tick or a refetch. The scroll is sent again on the next poll, because a grid rebuilt for a week already loaded keeps its old offset in the first.
+* **Tests:** `tests/week.rs` runs the scenes with the app's own `poll` and `on_key` (7 tests: the arrows and `t`, modifiers and an open dialog with focus on a dialog button, the delete confirmation, the grid keeping the arrows, "+2 more" opening its day, the scroll this week, another week and after a refetch, and a return to the same week scrolling afresh). Each fails with its piece removed: no window `on_key`, no dialog or confirmation check, no scroll, no chips, no reset off Week (the last two from the pre-merge review of #1050). Unit tests port `gridLayout.test.ts`'s layout and scroll cases. New golden `week-busy` (tree and PNG, reviewed); `week`'s changed for the "Week grid" region.
+
+### Notice timeout and focus return (#1035), delivered
+
+* **The notice** (`focus.rs`, `views/dialogs.rs`), as the web app's `Notification.tsx`: one at a time, a new one replacing it, inside a "Notifications" region with the message as its `status`. It goes after six seconds on the window's clock (`NOTICE_SECONDS`, the web app's `NOTIFICATION_MS`), paused while the pointer is over it or focus is inside it, and the full six seconds start again after (WCAG 2.2.1). "Dismiss notification" closes it; "Show day" dismisses it, then goes there. It never takes focus, and dismissing it with focus inside hands focus back to where it came from. The web app's 200 ms fade isn't drawn: the notice goes at once.
+* **Focus after a dialog:** Rune's modal already hands focus back to the control focused when it opened, so Add event, Add task and an item's title got focus back before this slice. This slice adds what the web app does beyond that: after a delete, or when the opener is gone (an item moved off the view, gone after the save's refetch), focus goes to the page's heading (`day-title`, `week-title`, `tasks-title`, `triage-heading`), which takes focus without being a Tab stop, as the web app's `tabindex="-1"`. Inside the event dialog, "Delete event" moves focus to "Keep event", and "Keep event" back to "Delete event". A delete confirmation over a list restores nothing, as in the web app (maintainer's choice on #1035; #1040 tracks it for both apps).
+* **Found while testing:** an event dialog still loading its event couldn't be closed (Close and Escape did nothing), unlike the task dialog and the web app. It closes now, and each dialog fetch carries a ticket, so a result for a dialog closed while loading can't fill or fail one opened again (pre-merge review of #1052; task dialogs had the same exposure).
+* **From the pre-merge review of #1052:** `poll` asks for a new view when the notice times out (an idle window kept drawing it) or focus is asked for; the hover handler and a paused notice wake the poll promptly, so the timer restarts six seconds after the pointer or focus leaves; "Show day" focuses the new day's heading rather than a control of the page it left; Dismiss falls back to the heading when focus came into the notice from nowhere; and a notice replacing one under the pointer stays paused.
+* **Tests:** `tests/focus.rs` (11 tests, with the app's own `poll`; the last two from the review: a notice going on an idle window and after the pointer leaves, and "Show day" focusing the heading) and `a_fetch_from_a_closed_dialog_leaves_the_reopened_one_alone` in `tests/flow.rs`; each review test fails without its fix: six seconds; the pointer pausing and restarting the time; focus inside pausing it and Dismiss handing focus back; never taking focus and a new notice replacing the old; "Show day"; Cancel returning focus to Add event; closing a loading edit returning it to the title; the heading after a delete and for a missing opener; and Keep event. Five fail with their pieces disabled (the timer, the pauses, the hand-back, the heading fallback, the Keep event focus); the Add event and title cases pin what Rune already did, and the title case fails without the loading-dialog fix. New golden `today-notice` (tree and PNG, reviewed); the page headings' trees gained their focus action.
+
+### Parity with the web app (#1002 to #1007, #1032 to #1035)
 
 | Web app | Rune app | Slice |
 | --- | --- | --- |
-| Today / Day: sections, badges, states, nav, date picker | Same, with a "Go to date" text field for the picker | #1004, #1006 |
-| Week: grid, all-day band, task strips, overdue panel | Same; no ← → `t` shortcuts, "+N more" or first scroll to 07:00 | #1004 |
+| Today / Day: sections, badges, states, nav, date picker | Same: "Go to date" with a month grid | #1004, #1006, #1033 |
+| Week: grid, all-day band, task strips, overdue panel, ← → `t`, "+N more", first scroll | Same; the chip shows "+N" and is named "+N more" | #1004, #1034 |
 | My tasks: views, Load more, rows | Same, virtualised | #1004, #1025 review |
 | Complete / reopen / delete with rollback and confirm | Same | #1005 |
-| Add / edit events and tasks, 400/409/404, event delete in dialog | Same, with text date and time fields | #1006 |
+| Notices: six seconds, pause, Dismiss, focus after dialogs | Same, without the fade | #1006, #1035 |
+| Add / edit events and tasks, 400/409/404, event delete in dialog | Same, with date and time pickers (the typed date field stays) | #1006, #1033 |
 | Triage and bulk actions | Same | #1007 |
 | Sign-in | Session stub until #1008 (S3) | #1008 |
+| Dates and times in the browser's locale | Same: the OS's locale on the desktop, the browser's on the web. Where a locale's CLDR medium date is numeric (de, ja), the week range and band show numbers where `Intl`'s `month: 'short'` shows an abbreviated month | #1032 |
 
-**Known differences** (follow-ups if wanted): locale (fixed en-GB patterns), no telemetry, no notice timeout or focus return after dialogs, text fields instead of date/time pickers, and the Week shortcuts above.
+**Known differences:** no telemetry yet (#1010); the notice has no fade; the Week chip shows "+N" (named "+N more"); and Triage's repeated-time choices carry their offsets, which the web app's don't.
 
 ### Where things live
 

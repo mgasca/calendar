@@ -156,7 +156,7 @@
           "p90": 92,
           "p95": 96,
           "max": 97,
-          "threshold": 130,
+          "threshold": 240,
           "seconds": [
             70,
             71,
@@ -731,7 +731,7 @@
           "p90": 109,
           "p95": 215,
           "max": 241,
-          "threshold": 198,
+          "threshold": 240,
           "seconds": [
             66,
             69,

@@ -337,8 +337,10 @@ pub fn spec() -> AppSpec<App> {
         app.week.finish(Ok(fixtures::week()));
       }),
       ("week-busy", |app| {
-        // Five overlapping events on Wednesday: three side by side and "+2 more" (#1034).
-        scene(app, Route::week_of(app.clock.today()));
+        // Five overlapping events on Wednesday: three side by side and "+2 more" (#1034). The week is the offline
+        // clock's, set after `scene` (#1059).
+        scene(app, Route::Today);
+        app.route = Route::week_of(app.clock.today());
         app.week.finish(Ok(fixtures::busy_week()));
       }),
       ("tasks", |app| {

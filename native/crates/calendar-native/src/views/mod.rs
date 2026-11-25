@@ -2,6 +2,7 @@
 
 pub mod day;
 pub mod dialogs;
+pub mod pickers;
 pub mod tasks;
 pub mod triage;
 pub mod week;

@@ -80,14 +80,19 @@ fn header(app: &App, date: NaiveDate, today: NaiveDate, t: &Tokens) -> El {
         .color(t.text)
         .on_edit(|app: &mut App| &mut app.go_to_date)
         .on_submit(|app: &mut App, _tx: &mut rune::Tx| load::go_to_date(app)),
-    );
+    )
+    .child(super::pickers::choose_button(GO_TO_DATE, "Date to go to", false, app, t));
   nav = nav.child(adds);
+  let go_to_grid = super::pickers::calendar(GO_TO_DATE, app, t);
   let mut head = col()
     .key("day-header")
     .gap(6.0)
     .child(meta(format::relative_day(date, today), t).key("day-eyebrow"))
     .child(heading("day-title", app.locale.date(date, date.year_ne(today)), 1, t))
     .child(nav);
+  if let Some(grid) = go_to_grid {
+    head = head.child(row().child(col().w(320.0).child(grid)));
+  }
   if let Some(agenda) = &app.day.data {
     head = head.child(meta(summary(agenda).join(" · "), t).key("day-summary"));
   }
@@ -273,6 +278,20 @@ fn tasks_section(app: &App, agenda: &DayAgendaResponse, is_today: bool, today: N
   }
   tasks
 }
+
+// A `pickers::Field` reader: the other fields' text is gone once their form closes; this one's never is.
+#[allow(clippy::unnecessary_wraps)]
+fn read_go_to_date(app: &App) -> Option<&str> {
+  Some(app.go_to_date.text.as_str())
+}
+
+/// The "Go to date" field's picker (#1033): choosing a day goes there.
+const GO_TO_DATE: crate::pickers::Field = crate::pickers::Field {
+  key: "go-to-date",
+  edit: |app| &mut app.go_to_date,
+  edit_text: read_go_to_date,
+  then: Some(load::go_to_date),
+};
 
 #[cfg(test)]
 mod tests {

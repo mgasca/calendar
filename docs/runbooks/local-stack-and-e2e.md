@@ -103,6 +103,17 @@ If Chromium fails with `error while loading shared libraries` and you have no su
 
 The flow binding needs no stack. `just frontend test` runs it on every pull request. It fails when a user-facing flow has no test tagged `@flow:<unique-id>` and is not on the pending list (`frontend/apps/e2e/pending-flows.json`), when a tag names a flow the model does not define, when a pending flow already has a test, or when a covered flow's model entry does not link its test file (`metadata["e2e-test"]`). To add a flow test, see `frontend/apps/e2e/README.md`.
 
+### The Rune app's flow tests
+
+The native app has its own flow tests in `native/crates/calendar-native/tests/e2e.rs` (#1010). They drive the real app headlessly through Rune's `Runtime`, with no window and no GPU, against the same kind of stack. The test plays the system browser over HTTP: it signs in at the stub and clicks the confirm page, and the app redeems the code from its loopback, as on the desktop. They check the same telemetry as the Playwright tests: a trace per user action, its API logs, its request metrics and no personal data. The app sends `traceparent` and exports no telemetry of its own.
+
+1. Run `just e2e native`. It starts a new run, runs every native flow test one at a time, and removes the run whatever the result. Arguments go to the test binary: `just e2e native an_unverified_email` runs one test.
+2. To iterate, run `just e2e up`, then `just e2e native-on <project>`, then `just e2e down <project>`.
+
+The tests are `#[ignore]`d, so `just native test` skips them, and they keep the session in memory, never in your keyring. Linux builds need `libxkbcommon-dev` and `libwayland-dev`, as for `just native test`. The whole run takes about two minutes, most of it waiting for the API's metrics.
+
+The binding check holds the native tests to the same rules: each test carries a `// @flow:<unique-id>` comment above its `#[test]`, and each covered flow links the file with `metadata["native-e2e-test"]`. A flow without a native test sits on `native/crates/calendar-native/tests/e2e/pending-flows.json`.
+
 ## What a run never touches
 
 - The shared project: a run uses its own project name, so its containers, network and volume are separate, and no port is 5432.

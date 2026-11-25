@@ -9,7 +9,7 @@ Playwright Test, Chromium only ([ADR-0061](../../../docs/decisions/0061-end-to-e
 | `src/requests.ts`         | `flowRequest(page, method, routeTemplate)`: the page's next request to a route, with its trace id                 |
 | `src/requests.ts`         | `holdRequests(page, method, routeTemplate)`: holds matching requests until `release()` (optimistic state, bursts) |
 | `src/telemetry/`          | Tempo, Loki and Prometheus queries, the trace assertion, the personal-data scanner, and `Observer.expectFlow`     |
-| `src/binding/`            | The flow binding check (Vitest, in `just frontend test`)                                                          |
+| `src/binding/`            | The flow binding check (Vitest, in `just frontend test`), for these tests and the Rune app's (`native-e2e-test`)  |
 | `pending-flows.json`      | User-facing flows without a test yet, each with its issue                                                         |
 
 ## Add a flow test

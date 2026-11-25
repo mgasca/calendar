@@ -212,12 +212,14 @@ pub fn start(app: &mut App) {
     };
     let attempt = next_attempt();
     app.session = Session::SigningIn;
-    let api = app.api.clone();
+    // Signing in is one user action, so its redemption and the session check after it share one trace (#1010).
+    let parent = trace_parent();
+    let api = app.api.traced(&parent);
     app.effects.run(
       async move {
         // The code is redeemed through a client of its own: the session reaches the shared jar only while this
         // attempt is still the current one, so a sign-in finished in the browser after Cancel signs nobody in.
-        let client = flow::http_client(&origin, None).ok()?;
+        let client = flow::traced_client(&origin, &parent).ok()?;
         let signed_in = tokio::select! {
           signed_in = flow::sign_in(&origin, &client, open, loopback::TIMEOUT) => signed_in,
           () = superseded(attempt) => return None,
@@ -245,6 +247,16 @@ pub fn start(app: &mut App) {
         }
       },
     );
+  }
+}
+
+/// A new trace for one user action: random ids, never the all-zero ones W3C Trace Context makes invalid.
+#[cfg(not(target_arch = "wasm32"))]
+fn trace_parent() -> calendar_client::TraceParent {
+  loop {
+    if let Some(parent) = calendar_client::TraceParent::new(rand::random(), rand::random()) {
+      return parent;
+    }
   }
 }
 

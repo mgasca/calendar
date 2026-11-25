@@ -73,6 +73,24 @@ pub fn http_client(origin: &str, cookie: Option<&str>) -> Result<reqwest::Client
     .map_err(|_| SignInError::Origin)
 }
 
+/// [`http_client`] with no session, whose every request carries `parent` as its `traceparent`: the sign-in's own
+/// requests, so the API's spans for the redemption join the sign-in's trace (#1010).
+///
+/// # Errors
+///
+/// [`SignInError::Origin`] when `origin` is not a URL.
+pub fn traced_client(origin: &str, parent: &calendar_client::TraceParent) -> Result<reqwest::Client, SignInError> {
+  Url::parse(origin).map_err(|_| SignInError::Origin)?;
+  let mut headers = reqwest::header::HeaderMap::new();
+  let value = reqwest::header::HeaderValue::from_str(&parent.header()).map_err(|_| SignInError::Origin)?;
+  headers.insert("traceparent", value);
+  reqwest::Client::builder()
+    .cookie_provider(Arc::new(Jar::default()))
+    .default_headers(headers)
+    .build()
+    .map_err(|_| SignInError::Origin)
+}
+
 /// The URL that starts a native sign-in for `attempt`, redirecting to `redirect_uri`.
 ///
 /// # Errors

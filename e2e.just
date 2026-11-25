@@ -255,3 +255,29 @@ test-on project *args:
     corepack pnpm exec playwright test "$@" || status=$?
     echo "Report: frontend/apps/e2e/playwright-report/index.html (open it with 'corepack pnpm --dir frontend/apps/e2e exec playwright show-report')."
     exit $status
+
+# Run the Rune app's end-to-end flow tests (native/crates/calendar-native/tests/e2e.rs, #1010) on a new stack, then remove it whatever the result; arguments go to the test binary (e.g. a test name)
+[positional-arguments]
+native *args:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    just=({{ quote(just_executable()) }} --justfile {{ quote(justfile()) }})
+    log=$(mktemp); trap 'rm -f "$log"' EXIT
+    "${just[@]}" "{{ module_path() }}::up" 2>&1 | tee "$log"
+    project=$(grep -oP '^Starting \Kcalendar-e2e-[0-9a-z-]+' "$log" | head -n 1)
+    [[ -n $project ]] || { echo "Could not tell which run 'up' started." >&2; exit 1; }
+    trap 'rm -f "$log"; "${just[@]}" "{{ module_path() }}::down" "$project"' EXIT
+    "${just[@]}" "{{ module_path() }}::native-on" "$project" "$@"
+
+# Run the Rune app's end-to-end flow tests against a stack that is already up, without starting or stopping anything; arguments after the project go to the test binary
+[positional-arguments]
+native-on project *args:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    settings=$({{ quote(just_executable()) }} --justfile {{ quote(justfile()) }} "{{ module_path() }}::env" "$1")
+    shift
+    eval "$(sed 's/^/export /' <<<"$settings")"
+    # The real app, headless, signs in through the stub as the stack's allow-listed person. The tests are ignored in
+    # `just native test`, and share the app's process-wide session, so they run here one at a time.
+    cd native
+    cargo test --locked -p calendar-native --test e2e -- --ignored --test-threads=1 "$@"

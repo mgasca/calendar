@@ -394,7 +394,9 @@ describe('tasks', () => {
     expect(notification()).toHaveTextContent(/^“Pack bag” added\.$/);
     expect(screen.queryByRole('button', { name: 'Show day' })).not.toBeInTheDocument();
     expect(await screen.findByRole('checkbox', { name: 'Pack bag' })).toBeInTheDocument();
-    await waitFor(() => expect(screen.getByRole('button', { name: 'Add task' })).toHaveFocus());
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: 'Add task' })).toHaveFocus();
+    });
 
     const nav = screen.getByRole('navigation', { name: 'Main' });
     await user.click(within(nav).getByRole('link', { name: 'My tasks' }));
@@ -458,7 +460,9 @@ describe('tasks', () => {
     await waitFor(() => {
       expect(notification()).toHaveTextContent(/^“Pack bag” added for Fri,? (30 Oct|Oct 30)\.$/);
     });
-    await waitFor(() => expect(screen.getByRole('button', { name: 'Add task' })).toHaveFocus());
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: 'Add task' })).toHaveFocus();
+    });
     await user.click(screen.getByRole('button', { name: 'Show day' }));
     await waitFor(() => {
       expect(router.state.location.pathname).toBe('/day/2099-10-30');
@@ -486,14 +490,18 @@ describe('tasks', () => {
     // jsdom doesn't turn Escape into the dialog's cancelable "cancel" event, so fire it.
     fireEvent(screen.getByRole('dialog'), new Event('cancel', { cancelable: true }));
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
-    await waitFor(() => expect(add).toHaveFocus());
+    await waitFor(() => {
+      expect(add).toHaveFocus();
+    });
     expect(saved).toHaveLength(0);
     await user.click(add);
     expect(screen.getByLabelText('Title')).toHaveValue('');
     await user.type(screen.getByLabelText('Title'), 'Cancel me');
     await user.click(screen.getByRole('button', { name: 'Cancel' }));
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
-    await waitFor(() => expect(add).toHaveFocus());
+    await waitFor(() => {
+      expect(add).toHaveFocus();
+    });
     expect(saved).toHaveLength(0);
   });
 
@@ -521,7 +529,9 @@ describe('tasks', () => {
     act(() => {
       finish?.();
     });
-    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
+    await waitFor(() => {
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    });
   });
 
   it('prefills today on / and nothing on /tasks', async () => {

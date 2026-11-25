@@ -157,7 +157,9 @@ describe('clock rendering', () => {
         <WeekView weekStart="2026-10-19" timeZone={ZONE} locale="en-GB" />
       </Profiler>,
     );
-    await eventually(() => expect(screen.getByText('Review on 2026-10-19')).toBeInTheDocument());
+    await eventually(() => {
+      expect(screen.getByText('Review on 2026-10-19')).toBeInTheDocument();
+    });
     await settle(queryClient);
     onRender.mockClear();
     act(() => {
@@ -173,7 +175,9 @@ describe('clock rendering', () => {
     const { queryClient } = await renderInRouter(
       <WeekView weekStart={THIS_WEEK} timeZone={ZONE} locale="en-GB" />,
     );
-    await eventually(() => expect(screen.getByText('Design review')).toBeInTheDocument());
+    await eventually(() => {
+      expect(screen.getByText('Design review')).toBeInTheDocument();
+    });
     await settle(queryClient);
     const line = document.querySelector('.week-now');
     expect(line).toHaveStyle({ top: `${String(minuteToPx(630))}px` });
@@ -983,10 +987,12 @@ describe('editing from the week (story 0047)', () => {
     expect(await within(dialog).findByLabelText('Title')).toHaveValue('Design review');
     await user.click(within(dialog).getByRole('button', { name: 'Cancel' }));
 
-    await waitFor(() =>
-      expect(screen.queryByRole('dialog', { name: 'Edit event' })).not.toBeInTheDocument(),
-    );
-    await waitFor(() => expect(title).toHaveFocus());
+    await waitFor(() => {
+      expect(screen.queryByRole('dialog', { name: 'Edit event' })).not.toBeInTheDocument();
+    });
+    await waitFor(() => {
+      expect(title).toHaveFocus();
+    });
   });
 
   it('opens an all-day event from the band with All day checked', async () => {
@@ -1042,10 +1048,12 @@ describe('editing from the week (story 0047)', () => {
     await user.click(within(dialog).getByRole('button', { name: 'Delete' }));
 
     expect(await screen.findByText('Design review deleted.')).toBeInTheDocument();
-    await waitFor(() =>
-      expect(screen.queryByRole('button', { name: 'Design review' })).not.toBeInTheDocument(),
-    );
-    await waitFor(() => expect(weekHeading()).toHaveFocus());
+    await waitFor(() => {
+      expect(screen.queryByRole('button', { name: 'Design review' })).not.toBeInTheDocument();
+    });
+    await waitFor(() => {
+      expect(weekHeading()).toHaveFocus();
+    });
   });
 
   // #698: a frame that came before the refetched week rendered found the old title still
@@ -1089,11 +1097,16 @@ describe('editing from the week (story 0047)', () => {
     await user.click(within(dialog).getByRole('button', { name: 'Save event' }));
 
     expect(await screen.findByText('Design review saved.')).toBeInTheDocument();
-    await waitFor(() =>
-      expect(screen.queryByRole('button', { name: 'Design review' })).not.toBeInTheDocument(),
-    );
+    await waitFor(() => {
+      expect(screen.queryByRole('button', { name: 'Design review' })).not.toBeInTheDocument();
+    });
     // Shorter than the test timeout, so a regression reports where focus went.
-    await waitFor(() => expect(weekHeading()).toHaveFocus(), { timeout: 2000 });
+    await waitFor(
+      () => {
+        expect(weekHeading()).toHaveFocus();
+      },
+      { timeout: 2000 },
+    );
   });
 });
 
@@ -1128,7 +1141,9 @@ describe('editing a task from the week (story 0048)', () => {
     expect(await within(dialog).findByLabelText('Title')).toHaveValue('Call bank');
     expect(completed).toBe(false);
     await user.click(within(dialog).getByRole('button', { name: 'Cancel' }));
-    await waitFor(() => expect(title).toHaveFocus());
+    await waitFor(() => {
+      expect(title).toHaveFocus();
+    });
 
     await user.click(screen.getByRole('checkbox', { name: 'Call bank' }));
     await waitFor(() => {
@@ -1193,10 +1208,15 @@ describe('editing a task from the week (story 0048)', () => {
     await user.click(within(dialog).getByRole('button', { name: 'Save task' }));
 
     expect(await screen.findByText('Task saved.')).toBeInTheDocument();
-    await waitFor(() =>
-      expect(screen.queryByRole('button', { name: 'Call bank' })).not.toBeInTheDocument(),
-    );
+    await waitFor(() => {
+      expect(screen.queryByRole('button', { name: 'Call bank' })).not.toBeInTheDocument();
+    });
     // Shorter than the test timeout, so a regression reports where focus went.
-    await waitFor(() => expect(weekHeading()).toHaveFocus(), { timeout: 2000 });
+    await waitFor(
+      () => {
+        expect(weekHeading()).toHaveFocus();
+      },
+      { timeout: 2000 },
+    );
   });
 });

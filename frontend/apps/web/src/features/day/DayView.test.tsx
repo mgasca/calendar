@@ -612,7 +612,9 @@ describe('DayView', () => {
           <DayView date="2026-10-26" timeZone={ZONE} locale="en-GB" />
         </Profiler>,
       );
-      await eventually(() => expect(screen.getByText('Design review')).toBeInTheDocument());
+      await eventually(() => {
+        expect(screen.getByText('Design review')).toBeInTheDocument();
+      });
       await settle(queryClient);
       onRender.mockClear();
       act(() => {
@@ -861,7 +863,9 @@ describe('DayView', () => {
       const firstCheckbox = await screen.findByRole('checkbox', { name: 'Book flights' });
       const secondCheckbox = screen.getByRole('checkbox', { name: 'Send report' });
       await userEvent.click(firstCheckbox);
-      await eventually(() => expect(firstCheckbox).toBeDisabled());
+      await eventually(() => {
+        expect(firstCheckbox).toBeDisabled();
+      });
       expect(secondCheckbox).toBeEnabled();
       await userEvent.click(secondCheckbox);
       await eventually(() => {

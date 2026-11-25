@@ -76,7 +76,9 @@ describe('createQueryClient', () => {
     await act(async () => {
       await queryClient.invalidateQueries({ queryKey: ['freshness-check'] });
     });
-    await waitFor(() => expect(screen.getByText('2')).toBeInTheDocument());
+    await waitFor(() => {
+      expect(screen.getByText('2')).toBeInTheDocument();
+    });
     expect(requestCount).toBe(2);
 
     queryClient.clear();

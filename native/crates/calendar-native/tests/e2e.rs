@@ -12,6 +12,8 @@
 
 #[path = "e2e/browser.rs"]
 mod browser;
+#[path = "e2e/seed.rs"]
+mod seed;
 #[path = "e2e/telemetry.rs"]
 mod telemetry;
 
@@ -25,6 +27,9 @@ use calendar_native::{App, load, view};
 use rune::{Env, Runtime};
 
 use browser::Person;
+use chrono::{DateTime, Utc};
+use seed::{Run, Seed};
+use serde_json::json;
 use telemetry::{Action, Backends, Expect, Flow, Http, PersonalData, api, route};
 
 /// The app's statics (its origin, cookie jar and browser opener) are per process, and each flow test owns the
@@ -34,6 +39,8 @@ static ONE_AT_A_TIME: Mutex<()> = Mutex::new(());
 /// The settings `just e2e up` writes to the run's `stack.env`.
 struct Stack {
   web_url: String,
+  api_url: String,
+  seed_key: String,
   email: String,
   backends: Backends,
 }
@@ -49,6 +56,8 @@ fn stack() -> Stack {
   };
   Stack {
     web_url: read("CALENDAR_E2E_WEB_URL"),
+    api_url: read("CALENDAR_E2E_API_URL"),
+    seed_key: read("CALENDAR_E2E_SEED_KEY"),
     email: read("CALENDAR_E2E_ALLOWED_EMAIL"),
     backends: Backends {
       tempo: read("CALENDAR_E2E_TEMPO_URL"),
@@ -58,12 +67,12 @@ fn stack() -> Stack {
   }
 }
 
-/// The real app on the stack's origin, as the desktop build runs it (background effects, the system clock), but
-/// headless and with its session in memory, starting signed out.
-fn app(stack: &Stack) -> Runtime<App> {
+/// The real app on the stack's origin, as the desktop build runs it (background effects), but headless, on `clock`,
+/// and with its session in memory, starting signed out.
+fn app_on(stack: &Stack, clock: Clock) -> Runtime<App> {
   session::store::use_memory_store();
   Store::for_origin(&stack.web_url).clear();
-  let app = App::new(&stack.web_url, Clock::system(), Effects::background());
+  let app = App::new(&stack.web_url, clock, Effects::background());
   let mut rt = Runtime::new(
     app,
     view,
@@ -79,6 +88,10 @@ fn app(stack: &Stack) -> Runtime<App> {
 
 /// Runs the app's poll (finished requests applied, then whatever the page needs fetched) and draws frames until
 /// `done`, as the window's event loop would.
+fn app(stack: &Stack) -> Runtime<App> {
+  app_on(stack, Clock::system())
+}
+
 fn run_until(rt: &mut Runtime<App>, what: &str, timeout: Duration, done: impl Fn(&App) -> bool) {
   let deadline = Instant::now() + timeout;
   loop {
@@ -108,6 +121,61 @@ fn press(rt: &mut Runtime<App>, key: &str) {
   rt.frame(1.0 / 60.0);
   rt.settle_all();
   rt.frame(1.0 / 60.0);
+}
+
+/// The zone the flow tests pin, as the web suite's `timezoneId`.
+const ZONE: chrono_tz::Tz = chrono_tz::Europe::Madrid;
+
+fn instant(at: &str) -> DateTime<Utc> {
+  DateTime::parse_from_rfc3339(at).expect("an instant").with_timezone(&Utc)
+}
+
+/// A flow test's start: the app on a clock pinned to `now` in [`ZONE`], signed in through the stub as the
+/// allow-listed person, with its first page loaded. `personal` gains the person's email, name, session cookie, the
+/// seed key and every secret of the sign-in.
+fn signed_in(stack: &Stack, now: &str, personal: &mut PersonalData) -> Runtime<App> {
+  personal.add("the signed-in email", &stack.email);
+  personal.add("the development seed key", &stack.seed_key);
+  let visits = browser::install(
+    &stack.web_url,
+    Person {
+      email: stack.email.clone(),
+      email_verified: true,
+    },
+  );
+  let mut rt = app_on(stack, Clock::fixed(ZONE, instant(now)));
+  run_until(&mut rt, "the session check", Duration::from_secs(30), signed_out);
+  press(&mut rt, "sign-in");
+  run_until(&mut rt, "signed in", Duration::from_secs(60), |app| {
+    matches!(app.session, Session::SignedIn(_))
+  });
+  let visit = visits.recv_timeout(Duration::from_secs(5)).expect("the browser finished");
+  assert_eq!(visit.error, None);
+  for (description, value) in &visit.secrets {
+    personal.add(description, value);
+  }
+  if let Session::SignedIn(user) = &rt.state.session {
+    personal.add("the user's name", &user.name);
+  }
+  personal.add(
+    "the app's session cookie",
+    &Store::for_origin(&stack.web_url).load().expect("the session is stored"),
+  );
+  rt
+}
+
+/// The one trace since `since` holding the API's server span `name`: a user action's, which the app started with
+/// its own `traceparent`.
+fn action(http: &Http, stack: &Stack, since: SystemTime, name: &str, expect: Expect) -> Action {
+  Action {
+    trace_id: telemetry::trace_with_span(http, &stack.backends, name, since),
+    expect,
+    logs: &[],
+  }
+}
+
+fn id_of(value: &serde_json::Value) -> String {
+  value["id"].as_str().expect("an id").to_owned()
 }
 
 fn signed_out(app: &App) -> bool {
@@ -356,5 +424,114 @@ fn an_unverified_email_never_reaches_the_app_and_cancel_leaves_it_signed_out() {
       email_verified: false,
     },
     &["request finished", "Google sign-in failed"],
+  );
+}
+
+// @flow:view-today-flow
+#[test]
+#[ignore = "needs an end-to-end stack: just e2e native"]
+fn today_shows_the_events_and_tasks_seeded_for_it_and_its_load_is_traced_logged_and_measured_without_personal_data() {
+  let _one = ONE_AT_A_TIME.lock().unwrap_or_else(std::sync::PoisonError::into_inner);
+  let stack = stack();
+  let (http, seed, run) = (Http::new(), Seed::new(&stack.api_url, &stack.seed_key), Run::new());
+  let mut personal = PersonalData::default();
+  // This flow's own day, which no other flow test seeds (the seed scheme acts as the same person).
+  let event = seed.event(
+    &mut personal,
+    &json!({ "title": run.label("Planning with Marta"), "location": run.label("Room 4"),
+      "start": "2026-06-02T11:00:00+02:00", "end": "2026-06-02T11:30:00+02:00", "timeZone": "Europe/Madrid" }),
+  );
+  let task = seed.task(
+    &mut personal,
+    &json!({ "title": run.label("Send the minutes"), "dueDate": "2026-06-02", "priority": "high" }),
+  );
+  let since = SystemTime::now();
+  let routes = [route("GET", "/api/agenda/day", 1)];
+  let before = telemetry::request_counts(&http, &stack.backends, &routes);
+
+  let mut rt = signed_in(&stack, "2026-06-02T09:00:00+02:00", &mut personal);
+  run_until(&mut rt, "today's agenda", Duration::from_secs(30), |app| app.day.data.is_some());
+  for key in [format!("event-{}-title", id_of(&event)), format!("task-{}-title", id_of(&task))] {
+    assert!(rt.find(&key).is_some(), "today shows {key}");
+  }
+
+  // Opening today is one action: the day's read, one snapshot of events and tasks.
+  telemetry::expect_flow(
+    &http,
+    &stack.backends,
+    &Flow {
+      since,
+      personal: &personal,
+      actions: vec![action(
+        &http,
+        &stack,
+        since,
+        "GET /api/agenda/day",
+        Expect {
+          chain: vec![api(&["GET /api/agenda/day"]), api(&["SELECT events"])],
+          spans: vec![api(&["SELECT tasks"]), api(&["BEGIN"]), api(&["COMMIT"])],
+        },
+      )],
+      routes: &routes,
+      before: &before,
+    },
+  );
+}
+
+// @flow:toggle-task-flow
+#[test]
+#[ignore = "needs an end-to-end stack: just e2e native"]
+fn completing_and_reopening_a_task_shows_at_once_refetches_the_day_and_each_toggle_is_its_own_trace() {
+  let _one = ONE_AT_A_TIME.lock().unwrap_or_else(std::sync::PoisonError::into_inner);
+  let stack = stack();
+  let (http, seed, run) = (Http::new(), Seed::new(&stack.api_url, &stack.seed_key), Run::new());
+  let mut personal = PersonalData::default();
+  let task = seed.task(&mut personal, &json!({ "title": run.label("Water the plants"), "dueDate": "2026-06-03" }));
+  let id = id_of(&task);
+  let done = |app: &App| {
+    app.day.data.as_ref().is_some_and(|day| {
+      day.tasks.due_today.iter().any(|task| task.id.to_string() == id && task.is_completed)
+    })
+  };
+  let since = SystemTime::now();
+  let routes = [
+    route("POST", "/api/tasks/{id}/complete", 1),
+    route("POST", "/api/tasks/{id}/reopen", 1),
+    // The first load, then one refetch after each toggle.
+    route("GET", "/api/agenda/day", 3),
+  ];
+  let before = telemetry::request_counts(&http, &stack.backends, &routes);
+
+  let mut rt = signed_in(&stack, "2026-06-03T09:00:00+02:00", &mut personal);
+  run_until(&mut rt, "today's agenda", Duration::from_secs(30), |app| app.day.data.is_some());
+  let check = format!("task-{id}-check");
+  press(&mut rt, &check);
+  assert!(done(&rt.state), "optimistic: done before the API answers");
+  run_until(&mut rt, "the completion settled", Duration::from_secs(30), |app| {
+    app.actions.pending.is_empty() && !app.day.loading && done(app)
+  });
+  press(&mut rt, &check);
+  run_until(&mut rt, "the reopening settled", Duration::from_secs(30), |app| {
+    app.actions.pending.is_empty() && !app.day.loading && !done(app)
+  });
+  assert!(rt.state.actions.toggle_error.is_none(), "{:?}", rt.state.actions.toggle_error);
+
+  let toggle = |name| Expect {
+    chain: vec![api(name), api(&["UPDATE tasks"])],
+    spans: vec![],
+  };
+  telemetry::expect_flow(
+    &http,
+    &stack.backends,
+    &Flow {
+      since,
+      personal: &personal,
+      actions: vec![
+        action(&http, &stack, since, "POST /api/tasks/{id}/complete", toggle(&["POST /api/tasks/{id}/complete"])),
+        action(&http, &stack, since, "POST /api/tasks/{id}/reopen", toggle(&["POST /api/tasks/{id}/reopen"])),
+      ],
+      routes: &routes,
+      before: &before,
+    },
   );
 }

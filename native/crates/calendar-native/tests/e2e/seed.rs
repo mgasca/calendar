@@ -49,7 +49,7 @@ impl Seed {
     }
   }
 
-  fn send(&self, method: reqwest::Method, path: &str, body: Option<&Value>) -> Value {
+  fn send(&self, method: &reqwest::Method, path: &str, body: Option<&Value>) -> Value {
     self.runtime.block_on(async {
       let mut request = self
         .client
@@ -83,26 +83,12 @@ impl Seed {
   /// `POST /api/events` with `body`; answers the created event.
   pub fn event(&self, personal: &mut PersonalData, body: &Value) -> Value {
     Self::remember(personal, "event", body);
-    self.send(reqwest::Method::POST, "/api/events", Some(body))
+    self.send(&reqwest::Method::POST, "/api/events", Some(body))
   }
 
   /// `POST /api/tasks` with `body`; answers the created task.
   pub fn task(&self, personal: &mut PersonalData, body: &Value) -> Value {
     Self::remember(personal, "task", body);
-    self.send(reqwest::Method::POST, "/api/tasks", Some(body))
-  }
-
-  /// `PUT /api/events/{id}`: the same person editing "elsewhere", for a version conflict.
-  #[allow(dead_code)] // TODO(#1010): the edit flows
-  pub fn update_event(&self, personal: &mut PersonalData, id: &str, body: &Value) -> Value {
-    Self::remember(personal, "event", body);
-    self.send(reqwest::Method::PUT, &format!("/api/events/{id}"), Some(body))
-  }
-
-  /// `PUT /api/tasks/{id}`: the same person editing "elsewhere".
-  #[allow(dead_code)] // TODO(#1010): the edit flows
-  pub fn update_task(&self, personal: &mut PersonalData, id: &str, body: &Value) -> Value {
-    Self::remember(personal, "task", body);
-    self.send(reqwest::Method::PUT, &format!("/api/tasks/{id}"), Some(body))
+    self.send(&reqwest::Method::POST, "/api/tasks", Some(body))
   }
 }

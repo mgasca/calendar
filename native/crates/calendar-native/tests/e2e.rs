@@ -76,7 +76,8 @@ fn app_on(stack: &Stack, clock: Clock) -> Runtime<App> {
   let mut rt = Runtime::new(
     app,
     view,
-    (960.0, 1200.0),
+    // Tall enough that every row a flow presses is built (long lists build only the rows near the viewport).
+    (960.0, 2400.0),
     Env {
       system_dark: false,
       scale: 1.0,
@@ -171,6 +172,7 @@ fn action(http: &Http, stack: &Stack, since: SystemTime, name: &str, expect: Exp
     trace_id: telemetry::trace_with_span(http, &stack.backends, name, since),
     expect,
     logs: &[],
+    from_app: true,
   }
 }
 
@@ -196,6 +198,7 @@ fn root(http: &Http, stack: &Stack, since: SystemTime, name: &str, expect: Expec
     trace_id: telemetry::root_trace(http, &stack.backends, name, since),
     expect,
     logs: &[],
+    from_app: false,
   }
 }
 
@@ -206,6 +209,8 @@ fn chain(chain: Vec<telemetry::Matcher>) -> Expect {
 // @flow:sign-in-flow
 #[test]
 #[ignore = "needs an end-to-end stack: just e2e native"]
+// One flow, read top to bottom: the sign-in, then its five traces.
+#[allow(clippy::too_many_lines)]
 fn an_allow_listed_person_signs_in_through_the_browser_and_the_round_trip_is_traced_logged_and_measured_without_personal_data() {
   let _one = ONE_AT_A_TIME.lock().unwrap_or_else(std::sync::PoisonError::into_inner);
   let stack = stack();
@@ -303,6 +308,7 @@ fn an_allow_listed_person_signs_in_through_the_browser_and_the_round_trip_is_tra
           chain(vec![api(&["POST /api/auth/native/confirm"])]),
         ),
         Action {
+          from_app: true,
           trace_id: sign_in,
           expect: Expect {
             // The redemption checks that the person still exists.
@@ -383,6 +389,7 @@ fn refused_sign_in(person: Person, logs: &'static [&'static str]) {
           trace_id: telemetry::root_trace(&http, &stack.backends, "GET /api/auth/callback/google", since),
           expect: chain(vec![api(&["GET /api/auth/callback/google"])]),
           logs,
+          from_app: false,
         },
       ],
       routes: &UP_TO_THE_CALLBACK,
@@ -486,11 +493,18 @@ fn completing_and_reopening_a_task_shows_at_once_refetches_the_day_and_each_togg
   let stack = stack();
   let (http, seed, run) = (Http::new(), Seed::new(&stack.api_url, &stack.seed_key), Run::new());
   let mut personal = PersonalData::default();
-  let task = seed.task(&mut personal, &json!({ "title": run.label("Water the plants"), "dueDate": "2026-06-03" }));
+  let task = seed.task(
+    &mut personal,
+    &json!({ "title": run.label("Water the plants"), "dueDate": "2026-06-03" }),
+  );
   let id = id_of(&task);
   let done = |app: &App| {
     app.day.data.as_ref().is_some_and(|day| {
-      day.tasks.due_today.iter().any(|task| task.id.to_string() == id && task.is_completed)
+      day
+        .tasks
+        .due_today
+        .iter()
+        .any(|task| task.id.to_string() == id && task.is_completed)
     })
   };
   let since = SystemTime::now();
@@ -527,11 +541,380 @@ fn completing_and_reopening_a_task_shows_at_once_refetches_the_day_and_each_togg
       since,
       personal: &personal,
       actions: vec![
-        action(&http, &stack, since, "POST /api/tasks/{id}/complete", toggle(&["POST /api/tasks/{id}/complete"])),
-        action(&http, &stack, since, "POST /api/tasks/{id}/reopen", toggle(&["POST /api/tasks/{id}/reopen"])),
+        action(
+          &http,
+          &stack,
+          since,
+          "POST /api/tasks/{id}/complete",
+          toggle(&["POST /api/tasks/{id}/complete"]),
+        ),
+        action(
+          &http,
+          &stack,
+          since,
+          "POST /api/tasks/{id}/reopen",
+          toggle(&["POST /api/tasks/{id}/reopen"]),
+        ),
       ],
       routes: &routes,
       before: &before,
     },
+  );
+}
+
+/// Types `text` into the form field `key`, after what it holds.
+fn type_into(rt: &mut Runtime<App>, key: &str, text: &str) {
+  press(rt, key);
+  rt.paste(text);
+  rt.frame(1.0 / 60.0);
+}
+
+fn dialog_closed(app: &App) -> bool {
+  app.dialog.is_none() && !app.day.loading
+}
+
+fn on_day(app: &App, id: &str) -> bool {
+  app.day.data.as_ref().is_some_and(|day| {
+    day.events.iter().any(|event| event.id.to_string() == id) || day.all_day_events.iter().any(|event| event.id.to_string() == id)
+  })
+}
+
+// @flow:add-event-flow
+#[test]
+#[ignore = "needs an end-to-end stack: just e2e native"]
+fn adding_an_event_saves_it_and_it_shows_on_the_day_and_the_save_is_traced_down_to_its_insert() {
+  let _one = ONE_AT_A_TIME.lock().unwrap_or_else(std::sync::PoisonError::into_inner);
+  let stack = stack();
+  let (http, run) = (Http::new(), Run::new());
+  let mut personal = PersonalData::default();
+  let title = run.label("Dentist with Ana");
+  personal.add("the typed event title", &title);
+  let since = SystemTime::now();
+  let routes = [route("POST", "/api/events", 1), route("GET", "/api/agenda/day", 2)];
+  let before = telemetry::request_counts(&http, &stack.backends, &routes);
+
+  let mut rt = signed_in(&stack, "2026-06-15T09:00:00+02:00", &mut personal);
+  run_until(&mut rt, "today's agenda", Duration::from_secs(30), |app| app.day.data.is_some());
+  press(&mut rt, "add-event");
+  type_into(&mut rt, "event-title", &title);
+  press(&mut rt, "event-save");
+  run_until(&mut rt, "the event saved and the day refetched", Duration::from_secs(30), |app| {
+    dialog_closed(app)
+      && app
+        .day
+        .data
+        .as_ref()
+        .is_some_and(|day| day.events.iter().any(|event| event.title == title))
+  });
+
+  telemetry::expect_flow(
+    &http,
+    &stack.backends,
+    &Flow {
+      since,
+      personal: &personal,
+      actions: vec![action(
+        &http,
+        &stack,
+        since,
+        "POST /api/events",
+        Expect {
+          chain: vec![api(&["POST /api/events"]), api(&["INSERT events"])],
+          spans: vec![],
+        },
+      )],
+      routes: &routes,
+      before: &before,
+    },
+  );
+}
+
+// @flow:edit-event-flow
+#[test]
+#[ignore = "needs an end-to-end stack: just e2e native"]
+fn opening_an_event_loads_it_saving_an_edit_updates_it_and_deleting_removes_it_each_its_own_trace() {
+  let _one = ONE_AT_A_TIME.lock().unwrap_or_else(std::sync::PoisonError::into_inner);
+  let stack = stack();
+  let (http, seed, run) = (Http::new(), Seed::new(&stack.api_url, &stack.seed_key), Run::new());
+  let mut personal = PersonalData::default();
+  let event = seed.event(
+    &mut personal,
+    &json!({ "title": run.label("Quarterly review"), "notes": run.label("Bring the figures"),
+      "start": "2026-06-16T15:00:00+02:00", "end": "2026-06-16T16:00:00+02:00", "timeZone": "Europe/Madrid" }),
+  );
+  let id = id_of(&event);
+  let edited = format!("{} (moved)", event["title"].as_str().unwrap_or_default());
+  personal.add("the edited event title", &edited);
+  let since = SystemTime::now();
+  let routes = [
+    // Opened to edit, then again to delete.
+    route("GET", "/api/events/{id}", 2),
+    route("PUT", "/api/events/{id}", 1),
+    route("DELETE", "/api/events/{id}", 1),
+    route("GET", "/api/agenda/day", 3),
+  ];
+  let before = telemetry::request_counts(&http, &stack.backends, &routes);
+
+  let mut rt = signed_in(&stack, "2026-06-16T09:00:00+02:00", &mut personal);
+  run_until(&mut rt, "today's agenda", Duration::from_secs(30), |app| app.day.data.is_some());
+  let open = format!("event-{id}-title");
+  press(&mut rt, &open);
+  run_until(&mut rt, "the event loaded into the form", Duration::from_secs(30), |_| true);
+  let loaded = |rt: &Runtime<App>| rt.find("event-title").is_some() && rt.find("form-loading").is_none();
+  let deadline = Instant::now() + Duration::from_secs(30);
+  while !loaded(&rt) {
+    assert!(Instant::now() < deadline, "the event did not load into the form");
+    run_until(&mut rt, "a frame", Duration::from_secs(1), |_| true);
+    std::thread::sleep(Duration::from_millis(50));
+  }
+  type_into(&mut rt, "event-title", " (moved)");
+  press(&mut rt, "event-save");
+  run_until(&mut rt, "the edit saved", Duration::from_secs(30), |app| {
+    dialog_closed(app)
+      && app
+        .day
+        .data
+        .as_ref()
+        .is_some_and(|day| day.events.iter().any(|event| event.title == edited))
+  });
+
+  press(&mut rt, &open);
+  let deadline = Instant::now() + Duration::from_secs(30);
+  while rt.find("event-delete").is_none() {
+    assert!(Instant::now() < deadline, "the event did not load for Delete");
+    run_until(&mut rt, "a frame", Duration::from_secs(1), |_| true);
+    std::thread::sleep(Duration::from_millis(50));
+  }
+  press(&mut rt, "event-delete");
+  press(&mut rt, "event-delete-confirm");
+  run_until(&mut rt, "the event deleted", Duration::from_secs(30), |app| {
+    dialog_closed(app) && app.day.data.is_some() && !on_day(app, &id)
+  });
+
+  let spans = telemetry::expect_flow(
+    &http,
+    &stack.backends,
+    &Flow {
+      since,
+      personal: &personal,
+      actions: vec![
+        action(
+          &http,
+          &stack,
+          since,
+          "PUT /api/events/{id}",
+          Expect {
+            chain: vec![api(&["PUT /api/events/{id}"]), api(&["UPDATE events"])],
+            spans: vec![],
+          },
+        ),
+        action(
+          &http,
+          &stack,
+          since,
+          "DELETE /api/events/{id}",
+          Expect {
+            chain: vec![api(&["DELETE /api/events/{id}"]), api(&["DELETE events"])],
+            spans: vec![],
+          },
+        ),
+      ],
+      routes: &routes,
+      before: &before,
+    },
+  );
+  assert_eq!(spans.len(), 2);
+  // Each opening is a trace of its own, reading the event.
+  telemetry::poll(
+    "Two traces opening the event in Tempo",
+    Duration::from_secs(90),
+    || match telemetry::traces_with_span(&http, &stack.backends, "GET /api/events/{id}", since)?.len() {
+      2 => Ok(()),
+      n => Err(telemetry::Wait::Retry(format!("{n} so far"))),
+    },
+  );
+}
+
+// @flow:edit-task-flow
+#[test]
+#[ignore = "needs an end-to-end stack: just e2e native"]
+fn opening_a_task_loads_it_and_saving_an_edit_updates_it_each_its_own_trace() {
+  let _one = ONE_AT_A_TIME.lock().unwrap_or_else(std::sync::PoisonError::into_inner);
+  let stack = stack();
+  let (http, seed, run) = (Http::new(), Seed::new(&stack.api_url, &stack.seed_key), Run::new());
+  let mut personal = PersonalData::default();
+  let task = seed.task(
+    &mut personal,
+    &json!({ "title": run.label("Renew the passport"), "notes": run.label("Photos first"), "dueDate": "2026-06-17" }),
+  );
+  let id = id_of(&task);
+  let edited = format!("{} today", task["title"].as_str().unwrap_or_default());
+  personal.add("the edited task title", &edited);
+  let since = SystemTime::now();
+  let routes = [
+    route("GET", "/api/tasks/{id}", 1),
+    route("PUT", "/api/tasks/{id}", 1),
+    route("GET", "/api/agenda/day", 2),
+  ];
+  let before = telemetry::request_counts(&http, &stack.backends, &routes);
+
+  let mut rt = signed_in(&stack, "2026-06-17T09:00:00+02:00", &mut personal);
+  run_until(&mut rt, "today's agenda", Duration::from_secs(30), |app| app.day.data.is_some());
+  press(&mut rt, &format!("task-{id}-title"));
+  let deadline = Instant::now() + Duration::from_secs(30);
+  while rt.find("task-title").is_none() || rt.find("form-loading").is_some() {
+    assert!(Instant::now() < deadline, "the task did not load into the form");
+    run_until(&mut rt, "a frame", Duration::from_secs(1), |_| true);
+    std::thread::sleep(Duration::from_millis(50));
+  }
+  type_into(&mut rt, "task-title", " today");
+  press(&mut rt, "task-save");
+  run_until(&mut rt, "the edit saved", Duration::from_secs(30), |app| {
+    dialog_closed(app)
+      && app
+        .day
+        .data
+        .as_ref()
+        .is_some_and(|day| day.tasks.due_today.iter().any(|task| task.title == edited))
+  });
+
+  telemetry::expect_flow(
+    &http,
+    &stack.backends,
+    &Flow {
+      since,
+      personal: &personal,
+      actions: vec![
+        action(
+          &http,
+          &stack,
+          since,
+          "GET /api/tasks/{id}",
+          Expect {
+            chain: vec![api(&["GET /api/tasks/{id}"]), api(&["SELECT tasks"])],
+            spans: vec![],
+          },
+        ),
+        action(
+          &http,
+          &stack,
+          since,
+          "PUT /api/tasks/{id}",
+          Expect {
+            chain: vec![api(&["PUT /api/tasks/{id}"]), api(&["UPDATE tasks"])],
+            spans: vec![],
+          },
+        ),
+      ],
+      routes: &routes,
+      before: &before,
+    },
+  );
+}
+
+// @flow:overdue-triage-flow
+#[test]
+#[ignore = "needs an end-to-end stack: just e2e native"]
+fn triage_lists_the_overdue_tasks_completes_and_deletes_a_selection_and_each_bulk_action_is_its_own_trace() {
+  let _one = ONE_AT_A_TIME.lock().unwrap_or_else(std::sync::PoisonError::into_inner);
+  let stack = stack();
+  let (http, seed, run) = (Http::new(), Seed::new(&stack.api_url, &stack.seed_key), Run::new());
+  let mut personal = PersonalData::default();
+  personal.add("the triage date", "2026-06-12");
+  // More than twenty overdue, so the day links to triage, due on days of June before the triage date.
+  let tasks: Vec<String> = (0..21)
+    .map(|n| {
+      let due = format!("2026-06-{:02}", 4 + n % 8);
+      id_of(&seed.task(
+        &mut personal,
+        &json!({ "title": run.label(&format!("Overdue errand {}", n + 1)), "dueDate": due }),
+      ))
+    })
+    .collect();
+  let listed = |app: &App, id: &str| {
+    app
+      .tasks
+      .data
+      .as_ref()
+      .is_some_and(|list| list.items.iter().any(|task| task.id.to_string() == id))
+  };
+  let since = SystemTime::now();
+  let routes = [route("GET", "/api/tasks", 2), route("POST", "/api/tasks/bulk", 2)];
+  let before = telemetry::request_counts(&http, &stack.backends, &routes);
+
+  let mut rt = signed_in(&stack, "2026-06-12T10:00:00+02:00", &mut personal);
+  run_until(&mut rt, "today's agenda", Duration::from_secs(30), |app| app.day.data.is_some());
+  press(&mut rt, "overdue-all");
+  run_until(&mut rt, "the overdue tasks", Duration::from_secs(30), |app| {
+    !app.tasks.loading && listed(app, &tasks[0]) && listed(app, &tasks[1]) && listed(app, &tasks[2])
+  });
+
+  // Complete two of this run's tasks in one bulk request, then delete a third.
+  press(&mut rt, &format!("triage-{}-check", tasks[0]));
+  press(&mut rt, &format!("triage-{}-check", tasks[1]));
+  press(&mut rt, "triage-complete");
+  run_until(&mut rt, "the bulk completion", Duration::from_secs(30), |app| {
+    !app.triage.pending && !app.tasks.loading && !listed(app, &tasks[0]) && !listed(app, &tasks[1])
+  });
+  press(&mut rt, &format!("triage-{}-check", tasks[2]));
+  press(&mut rt, "triage-delete");
+  press(&mut rt, "triage-delete-confirm");
+  run_until(&mut rt, "the bulk delete", Duration::from_secs(30), |app| {
+    !app.triage.pending && !app.tasks.loading && !listed(app, &tasks[2])
+  });
+
+  let bulk = telemetry::poll("Two bulk traces in Tempo", Duration::from_secs(90), || {
+    let found = telemetry::traces_with_span(&http, &stack.backends, "POST /api/tasks/bulk", since)?;
+    if found.len() == 2 {
+      Ok(found)
+    } else {
+      Err(telemetry::Wait::Retry(format!("{} so far", found.len())))
+    }
+  });
+  let either = || Expect {
+    chain: vec![api(&["POST /api/tasks/bulk"]), api(&["UPDATE tasks", "DELETE tasks"])],
+    spans: vec![],
+  };
+  let load = telemetry::traces_with_span(&http, &stack.backends, "GET /api/tasks", since).expect("Tempo");
+  let observed = telemetry::expect_flow(
+    &http,
+    &stack.backends,
+    &Flow {
+      since,
+      personal: &personal,
+      actions: vec![
+        Action {
+          trace_id: load.first().cloned().expect("the triage load's trace"),
+          expect: Expect {
+            chain: vec![api(&["GET /api/tasks"]), api(&["SELECT tasks"])],
+            spans: vec![],
+          },
+          logs: &[],
+          from_app: true,
+        },
+        Action {
+          trace_id: bulk[0].clone(),
+          expect: either(),
+          logs: &[],
+          from_app: true,
+        },
+        Action {
+          trace_id: bulk[1].clone(),
+          expect: either(),
+          logs: &[],
+          from_app: true,
+        },
+      ],
+      routes: &routes,
+      before: &before,
+    },
+  );
+  let names: Vec<bool> = observed[1..]
+    .iter()
+    .map(|spans| spans.iter().any(|span| span.name == "UPDATE tasks"))
+    .collect();
+  assert!(
+    names.contains(&true) && names.contains(&false),
+    "one bulk completion, one bulk delete: {names:?}"
   );
 }

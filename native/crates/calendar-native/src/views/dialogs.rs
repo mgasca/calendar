@@ -389,7 +389,7 @@ fn event_view(d: &EventDialog, app: &App, t: &Tokens) -> El {
     let (delete, keep) = if d.deleting {
       (delete.focusable(false).disabled(true), keep.focusable(false).disabled(true))
     } else {
-      (delete.on_press(dialogs::delete_event), keep.on_press(dialogs::keep_event))
+      (delete.on_press(dialogs::delete_event), keep.on_press_tx(dialogs::keep_event))
     };
     let question = format!("Delete {}? This can\u{2019}t be undone.", d.title.text);
     return form
@@ -408,7 +408,7 @@ fn event_view(d: &EventDialog, app: &App, t: &Tokens) -> El {
     actions = actions.child(if busy || d.gone {
       delete.focusable(false).disabled(true)
     } else {
-      delete.on_press(dialogs::ask_delete_event)
+      delete.on_press_tx(dialogs::ask_delete_event)
     });
   }
   let cancel = button("event-cancel", "Cancel", t);
@@ -575,18 +575,33 @@ fn pick_due(app: &mut App, n: u8) {
 /// The message after a save or delete (`role="status"`), with "Show day" when the item went on another day.
 pub fn notice(app: &App, t: &Tokens) -> Option<El> {
   let notice = app.notice.as_ref()?;
+  // The web app's toast: a "Notifications" region whose message is a status, read once; it pauses its six seconds
+  // while the pointer is over it (#1035; focus inside pauses it too, in `focus::poll`).
   let mut bar = row()
     .key("notice")
-    .role("status")
+    .role("region")
+    .label("Notifications")
     .gap(10.0)
     .items_center()
     .px(12.0)
     .py(8.0)
     .radius(8.0)
     .fill(t.accent_soft)
-    .child(text(&notice.text).color(t.text));
+    .on_hover_change(|app: &mut App, hovered: bool, tx: &mut rune::Tx| {
+      if let Some(notice) = &mut app.notice {
+        notice.hovered = hovered;
+        // The timer restarts on the next poll, not the next 15 s wake (pre-merge review of #1052).
+        tx.wake_after(std::time::Duration::ZERO);
+      }
+    })
+    .child(text(&notice.text).key("notice-message").role("status").color(t.text).grow(1.0));
   if notice.show_day.is_some() {
-    bar = bar.child(button("notice-show-day", "Show day", t).on_press(dialogs::show_day));
+    bar = bar.child(button("notice-show-day", "Show day", t).on_press_tx(dialogs::show_day));
   }
+  bar = bar.child(
+    button("notice-dismiss", "Dismiss", t)
+      .label("Dismiss notification")
+      .on_press_tx(crate::focus::dismiss),
+  );
   Some(bar)
 }

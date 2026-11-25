@@ -205,6 +205,7 @@
                 },
                 {
                   "actions": [
+                    "focus",
                     "scroll-into-view"
                   ],
                   "bounds": [

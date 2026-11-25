@@ -35,7 +35,7 @@ pub fn view(app: &App, week_start: NaiveDate, t: &Tokens) -> El {
     .key("week-header")
     .gap(6.0)
     .child(meta(format::relative_week(week_start, this_week), t).key("week-eyebrow"))
-    .child(heading("week-title", format::format_week_range(week_start), 1, t))
+    .child(heading("week-title", app.locale.week_range(week_start), 1, t))
     .child(nav);
   if let Some(week) = app
     .week
@@ -145,7 +145,7 @@ fn grid(app: &App, week: &WeekAgendaResponse, today: NaiveDate, t: &Tokens) -> E
                 let id = event.id;
                 move |app: &mut App| crate::dialogs::edit_event(app, id)
               })
-              .label(format!("{}, {}", event.title, band_dates(event.start_date, last)))
+              .label(format!("{}, {}", event.title, app.locale.day_range(event.start_date, last)))
               .w(0.0)
               .grow(days as f32)
               .fill(t.accent_soft)
@@ -167,18 +167,18 @@ fn grid(app: &App, week: &WeekAgendaResponse, today: NaiveDate, t: &Tokens) -> E
     g.child(
       el()
         .h(HOUR)
-        .child(text(format!("{hour:02}:00")).font(type_::LABEL).color(t.text_muted)),
+        .child(text(app.locale.hour_label(hour)).font(type_::LABEL).color(t.text_muted)),
     )
   });
   let mut hours_row = row().key("days").w_full().gap(4.0).child(gutter);
   for day in &week.days {
     let is_today = day.date == today;
-    let (weekday, number) = format::day_heading(day.date);
+    let (weekday, number) = app.locale.day_heading(day.date);
     let date = day.date;
     headings = headings.child(
       column().child(
         button(&format!("day-{date}"), &format!("{weekday} {number}"), t)
-          .label(format::format_date(date, false))
+          .label(app.locale.date(date, false))
           .checked(is_today)
           .fill(if is_today { t.current_bg } else { t.surface_raised })
           .on_press(move |app: &mut App| load::go(app, Route::Day(date))),
@@ -188,7 +188,7 @@ fn grid(app: &App, week: &WeekAgendaResponse, today: NaiveDate, t: &Tokens) -> E
       col()
         .key(format!("tasks-{date}"))
         .role("list")
-        .label(format!("Tasks, {}", format::format_date(date, false)))
+        .label(format!("Tasks, {}", app.locale.date(date, false)))
         .gap(4.0),
       |list, task| {
         let overdue = this_week && day.date < today && !task.is_completed;
@@ -247,7 +247,15 @@ fn grid(app: &App, week: &WeekAgendaResponse, today: NaiveDate, t: &Tokens) -> E
         minutes(event.end, zone).max(start + 15.0)
       };
       let id = event.id;
-      let times = format::event_times(event.start, event.end, event.starts_before_day, event.ends_after_day, false, zone);
+      let times = format::event_times(
+        &app.locale,
+        event.start,
+        event.end,
+        event.starts_before_day,
+        event.ends_after_day,
+        false,
+        zone,
+      );
       hours = hours.child(
         col()
           .key(format!("week-event-{date}-{}", event.id))
@@ -301,18 +309,6 @@ fn grid(app: &App, week: &WeekAgendaResponse, today: NaiveDate, t: &Tokens) -> E
 fn minutes(instant: chrono::DateTime<chrono::Utc>, zone: chrono_tz::Tz) -> f32 {
   let local = instant.with_timezone(&zone);
   (local.hour() * 60 + local.minute()) as f32
-}
-
-/// An all-day event's dates as the web app's band says them: "19 Nov" or "19–22 Nov" (`AllDayBand.tsx`).
-fn band_dates(first: NaiveDate, last: NaiveDate) -> String {
-  use chrono::Datelike;
-  if first == last {
-    format::format_day_month(first)
-  } else if first.month() == last.month() && first.year() == last.year() {
-    format!("{}–{}", first.format("%-d"), format::format_day_month(last))
-  } else {
-    format!("{} – {}", format::format_day_month(first), format::format_day_month(last))
-  }
 }
 
 #[cfg(test)]

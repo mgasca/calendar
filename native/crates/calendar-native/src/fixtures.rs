@@ -14,6 +14,12 @@ pub fn now() -> DateTime<Utc> {
 /// The time zone scenes and tests use.
 pub const ZONE: chrono_tz::Tz = chrono_tz::Europe::Madrid;
 
+/// The locale scenes and tests format in: `en-GB`, as the web app's tests pin it (`test/render.tsx`).
+#[must_use]
+pub fn locale() -> crate::locale::Locale {
+  crate::locale::Locale::parse("en-GB").expect("en-GB parses")
+}
+
 fn decode<T: serde::de::DeserializeOwned>(value: serde_json::Value) -> T {
   serde_json::from_value(value).expect("fixtures follow the contract")
 }

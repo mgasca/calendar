@@ -331,3 +331,40 @@ fn delete_asks_with_the_count() {
   press(&mut rt, "triage-delete-cancel");
   assert!(!rt.state.triage.confirm_delete);
 }
+
+/// The accessible name of the element keyed `key`, from the accessibility tree.
+fn name_of(rt: &Runtime<App>, key: &str) -> Option<String> {
+  fn find(node: &serde_json::Value, key: &str) -> Option<String> {
+    if node["key"] == key {
+      return node["name"].as_str().map(str::to_owned);
+    }
+    node.as_object()?.values().find_map(|v| match v {
+      serde_json::Value::Array(items) => items.iter().find_map(|n| find(n, key)),
+      serde_json::Value::Object(_) => find(v, key),
+      _ => None,
+    })
+  }
+  find(&rt.accessibility_json(), key)
+}
+
+#[test]
+fn a_repeated_time_offers_its_two_occurrences_by_offset() {
+  // 02:30 on 25 October 2026 happens twice in Madrid (pre-merge review of #1047: the labels read the same without
+  // their offsets).
+  let mut rt = runtime("triage-selected", false);
+  press(&mut rt, "triage-reschedule-time");
+  let r = rt.state.triage.reschedule.as_mut().expect("the reschedule dialog is open");
+  r.date.replace_text("2026-10-25");
+  r.time.replace_text("02:30");
+  rt.frame(1.0 / 60.0);
+  rt.settle_all();
+  rt.frame(1.0 / 60.0);
+  assert_eq!(
+    name_of(&rt, "reschedule-occurrence-0").as_deref(),
+    Some("25/10/2026, 02:30:00 GMT+2")
+  );
+  assert_eq!(
+    name_of(&rt, "reschedule-occurrence-1").as_deref(),
+    Some("25/10/2026, 02:30:00 GMT+1")
+  );
+}

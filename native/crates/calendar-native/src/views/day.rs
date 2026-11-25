@@ -55,7 +55,7 @@ fn header(app: &App, date: NaiveDate, today: NaiveDate, t: &Tokens) -> El {
   }
   let monday = format::iso_week_start(date);
   nav = nav.child(
-    button("day-week", &format!("Week of {}", format::format_day_month(monday)), t)
+    button("day-week", &format!("Week of {}", app.locale.day_month(monday)), t)
       .on_press(move |app: &mut App| load::go(app, Route::Week(monday))),
   );
   // The web app's Day page: Add task and Add event beside the date, and a field to go to a date.
@@ -86,7 +86,7 @@ fn header(app: &App, date: NaiveDate, today: NaiveDate, t: &Tokens) -> El {
     .key("day-header")
     .gap(6.0)
     .child(meta(format::relative_day(date, today), t).key("day-eyebrow"))
-    .child(heading("day-title", format::format_date(date, date.year_ne(today)), 1, t))
+    .child(heading("day-title", app.locale.date(date, date.year_ne(today)), 1, t))
     .child(nav);
   if let Some(agenda) = &app.day.data {
     head = head.child(meta(summary(agenda).join(" · "), t).key("day-summary"));
@@ -175,6 +175,7 @@ fn agenda_body(app: &App, agenda: &DayAgendaResponse, date: NaiveDate, is_today:
       .zip(statuses)
       .map(|(event, status)| {
         let times = format::event_times(
+          &app.locale,
           event.start,
           event.end,
           event.starts_before_day,
@@ -259,7 +260,7 @@ fn tasks_section(app: &App, agenda: &DayAgendaResponse, is_today: bool, today: N
       .iter()
       .map(|task| {
         let due = task.due_at.flatten().map(|at| {
-          let mut s = format!("Due {}", format::format_time(at, zone));
+          let mut s = format!("Due {}", app.locale.time(at, zone));
           if is_today && format::is_past_due(task.is_completed, Some(at), now) {
             s.push_str(" · Past due");
           }

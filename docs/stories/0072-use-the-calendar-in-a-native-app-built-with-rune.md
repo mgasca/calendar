@@ -10,6 +10,12 @@ pr:
   - https://github.com/mgasca/calendar/pull/1027
   - https://github.com/mgasca/calendar/pull/1028
   - https://github.com/mgasca/calendar/pull/1029
+  - https://github.com/mgasca/calendar/pull/1020
+  - https://github.com/mgasca/calendar/pull/1021
+  - https://github.com/mgasca/calendar/pull/1023
+  - https://github.com/mgasca/calendar/pull/1024
+  - https://github.com/mgasca/calendar/pull/1025
+  - https://github.com/mgasca/calendar/pull/1026
 adrs: ["0003", "0004", "0021", "0027", "0053", "0055", "0058", "0061", "0063", "0064", "0066", "0067", "0068"]
 ---
 
@@ -178,6 +184,10 @@ No further ADR is expected. A slice that finds a decision ADR-0067 or ADR-0068 d
 | [#1009](https://github.com/mgasca/calendar/issues/1009) | macOS and Windows CI, WASM at `/native/` | S4 | #1002 |
 | [#1019](https://github.com/mgasca/calendar/issues/1019) | CodeQL for `native/`, before #1008's app part | S4 | #1002 |
 | [#1010](https://github.com/mgasca/calendar/issues/1010) | End-to-end flows | S3 | #1008, #1007 |
+| [#1032](https://github.com/mgasca/calendar/issues/1032) | Dates and times in the system locale | S2 | #1007 |
+| [#1033](https://github.com/mgasca/calendar/issues/1033) | Date and time pickers | S2 | #1032 |
+| [#1034](https://github.com/mgasca/calendar/issues/1034) | Week shortcuts, "+N more", first scroll | S2 | #1033 |
+| [#1035](https://github.com/mgasca/calendar/issues/1035) | Notice timeout and focus return | S2 | #1034 |
 
 ### Scaffold (#1002), delivered
 
@@ -303,7 +313,17 @@ No further ADR is expected. A slice that finds a decision ADR-0067 or ADR-0068 d
 * **Not yet shown:** the bundle running signed in, in a browser with WebGPU. The cookie is the origin's, so nothing in the app changes for it.
 * **Delivered by** #1029 (`Closes #1009`).
 
-### Parity with the web app (#1002 to #1007)
+### System locale (#1032), delivered
+
+* **Which locale:** the first of the OS's preferred languages that parses, read by `rune_i18n::system_languages`: POSIX `LANGUAGE`, `LC_ALL`, `LC_MESSAGES` and `LANG` on Linux (`C` and `POSIX` skipped), `NSLocale.preferredLanguages` on macOS, the user UI languages on Windows, `navigator.languages` on the web. With none, `en-US`, which is what a browser's `Intl` falls back to (maintainer's choice on #1032). A `-u-hc-` keyword picks the clock, as it does for `Intl`.
+* **Formatting** (`locale.rs`): ICU4X `icu_datetime` with compiled CLDR data for every locale (maintainer's choice on #1032). Each method names the web call it matches and keeps its options: `formatDate`, `formatTime` (2-digit hour), `formatDateTime` (and with `shortOffset` for a repeated local time), `formatDayMonth`, `shortDay`, `dayHeadingParts`, `hourLabel`, `formatWeekRange` and the all-day band (`formatRange`), and Triage's medium date and short time. Formatters are built once per locale, like the web app's cache. The range formatter is behind ICU4X's `unstable` feature, so `icu_datetime` is pinned exactly.
+* **Unchanged:** the English phrases around the dates ("Today", "Overdue by 3 days"), weeks starting on Monday (the web app's `weekDates.ts` ignores the locale's week start), the user's IANA zone, and the API's `YYYY-MM-DD` values.
+* **Scenes and tests** format in `en-GB`, as the web tests do (`fixtures::locale`). The only golden change is the week range, now "16 – 22 Nov 2026" with thin spaces around the dash, as the web app's own test expects ("2 – 8 Nov 2026"); the old fixed pattern wrote "16–22".
+* **On purpose, unlike the web app:** Triage's choice between the two occurrences of a repeated local time shows each with its UTC offset ("… GMT+2", "… GMT+1"), as the event and task forms do. The web app's Triage shows `formatDateTime` without one, so its two options read the same (pre-merge review of #1047).
+* **Robustness:** a `dueAt` the API accepts can fall in year 10000 locally, past ICU4X's years; it shows as ISO text instead of crashing the app (pre-merge review of #1047).
+* **Tests:** unit tests for en-GB (the web tests' strings), en-US ("Monday, October 26", "09:30 AM", "Oct 26 – Nov 1, 2026"), de-DE, fr-FR, a `-u-hc-h12` locale, a repeated time's "GMT+2" and "GMT+1", and the language choice from POSIX variables. Forcing every locale to en-GB makes the en-US and other-locale tests fail.
+
+### Parity with the web app (#1002 to #1007, #1032 to #1035)
 
 | Web app | Rune app | Slice |
 | --- | --- | --- |
@@ -314,8 +334,9 @@ No further ADR is expected. A slice that finds a decision ADR-0067 or ADR-0068 d
 | Add / edit events and tasks, 400/409/404, event delete in dialog | Same, with text date and time fields | #1006 |
 | Triage and bulk actions | Same | #1007 |
 | Sign-in | Session stub until #1008 (S3) | #1008 |
+| Dates and times in the browser's locale | Same: the OS's locale on the desktop, the browser's on the web. Where a locale's CLDR medium date is numeric (de, ja), the week range and band show numbers where `Intl`'s `month: 'short'` shows an abbreviated month | #1032 |
 
-**Known differences** (follow-ups if wanted): locale (fixed en-GB patterns), no telemetry, no notice timeout or focus return after dialogs, text fields instead of date/time pickers, and the Week shortcuts above.
+**Known differences** (each now has an issue): no telemetry (#1010), no notice timeout or focus return after dialogs (#1035), text fields instead of date/time pickers (#1033), and the Week shortcuts above (#1034).
 
 ### Where things live
 

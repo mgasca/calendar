@@ -46,12 +46,12 @@ describe('sign in', () => {
   it('redirects on an expired session with the current URL', async () => {
     server.use(http.get('*/api/agenda/day', () => new HttpResponse(null, { status: 401 })));
     renderApp('/day/2026-10-29');
-    await waitFor(() =>
+    await waitFor(() => {
       expect(screen.getByRole('link', { name: 'Sign in with Google' })).toHaveAttribute(
         'href',
         '/api/auth/login?returnUrl=%2Fday%2F2026-10-29',
-      ),
-    );
+      );
+    });
   });
 
   it('shows access denied', async () => {

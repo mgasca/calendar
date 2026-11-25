@@ -294,7 +294,9 @@ describe('overdue triage', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Complete' }));
     expect(calls).toBe(1);
     release();
-    await waitFor(() => expect(screen.getByText('1 tasks updated')).toBeInTheDocument());
+    await waitFor(() => {
+      expect(screen.getByText('1 tasks updated')).toBeInTheDocument();
+    });
   });
 
   it('clears deadline modal values when switching reschedule modes', async () => {

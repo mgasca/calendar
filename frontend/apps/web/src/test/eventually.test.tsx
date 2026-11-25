@@ -28,14 +28,18 @@ describe('eventually', () => {
   it('awaits an update that lands while polling without an act warning', async () => {
     const error = vi.spyOn(console, 'error').mockImplementation(() => undefined);
     render(<Later />);
-    await eventually(() => expect(screen.getByText('done')).toBeInTheDocument());
+    await eventually(() => {
+      expect(screen.getByText('done')).toBeInTheDocument();
+    });
     expect(actWarning(error.mock.calls)).toEqual([]);
   });
 
   it('is needed: the same wait with vi.waitFor warns', async () => {
     const error = vi.spyOn(console, 'error').mockImplementation(() => undefined);
     render(<Later />);
-    await vi.waitFor(() => expect(screen.getByText('done')).toBeInTheDocument());
+    await vi.waitFor(() => {
+      expect(screen.getByText('done')).toBeInTheDocument();
+    });
     expect(actWarning(error.mock.calls)).toHaveLength(1);
   });
 });

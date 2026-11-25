@@ -147,6 +147,21 @@ pub fn api_origin() -> String {
 }
 
 impl App {
+  /// The API for one user action or page load: on the desktop, every request made through it carries one new
+  /// `traceparent`, so the API's spans, logs and metrics for that action share one trace (#1010). The native app
+  /// exports no telemetry of its own. On wasm32 the plain API: the browser build has no random source here.
+  #[must_use]
+  pub fn action_api(&self) -> Api {
+    #[cfg(not(target_arch = "wasm32"))]
+    {
+      self.api.traced(&session::trace_parent())
+    }
+    #[cfg(target_arch = "wasm32")]
+    {
+      self.api.clone()
+    }
+  }
+
   /// An app talking to the API at `origin` through `effects`.
   #[must_use]
   pub fn new(origin: &str, clock: Clock, effects: Effects) -> Self {

@@ -89,7 +89,7 @@ pub fn toggle(app: &mut App, id: Uuid, complete: bool) {
   app.actions.pending.insert(id);
   app.actions.in_flight += 1;
   app.actions.toggle_error = None;
-  let api = app.api.clone();
+  let api = app.action_api();
   app.effects.run(
     async move {
       if complete {
@@ -141,7 +141,7 @@ pub fn confirm_delete(app: &mut App) {
   dialog.pending = true;
   dialog.error = None;
   let id = dialog.id;
-  let api = app.api.clone();
+  let api = app.action_api();
   app.effects.run(
     async move { api.delete_task(id).await },
     move |app: &mut App, result| match result {

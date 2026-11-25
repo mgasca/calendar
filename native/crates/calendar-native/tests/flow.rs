@@ -957,3 +957,46 @@ fn a_fetch_from_a_closed_dialog_leaves_the_reopened_one_alone() {
   assert_eq!(event_dialog(&app).load, Load::Ready);
   assert_eq!(event_dialog(&app).title.text, "Design review");
 }
+
+/// The trace id in a W3C `traceparent` (`00-<32 hex>-<16 hex>-01`), or `None` when the request sent none or an
+/// invalid one.
+fn trace_of(request: &wiremock::Request) -> Option<String> {
+  let value = request.headers.get("traceparent")?.to_str().ok()?;
+  let parts: Vec<&str> = value.split('-').collect();
+  let hex = |part: &str, len: usize| part.len() == len && part.bytes().all(|b| b.is_ascii_digit() || (b'a'..=b'f').contains(&b));
+  (parts.len() == 4 && parts[0] == "00" && hex(parts[1], 32) && hex(parts[2], 16) && parts[3] == "01").then(|| parts[1].to_owned())
+}
+
+#[test]
+fn each_user_action_and_page_load_is_a_trace_of_its_own_and_the_start_up_check_is_none() {
+  let server = day_api();
+  for (verb, done) in [("complete", true), ("reopen", false)] {
+    mount(
+      &server,
+      Mock::given(method("POST"))
+        .and(path(format!("/api/tasks/{CALL_THE_BANK}/{verb}")))
+        .respond_with(ResponseTemplate::new(200).set_body_json(task_response(done))),
+    );
+  }
+  let mut app = started(&server);
+  calendar_native::actions::toggle(&mut app, CALL_THE_BANK.parse().unwrap(), true);
+  settle(&mut app);
+  calendar_native::actions::toggle(&mut app, CALL_THE_BANK.parse().unwrap(), false);
+  settle(&mut app);
+
+  let me = requests(&server, "/api/auth/me");
+  assert!(
+    me.iter().all(|request| trace_of(request).is_none()),
+    "the start-up session check is no user action"
+  );
+  let loads: Vec<Option<String>> = requests(&server, "/api/agenda/day").iter().map(trace_of).collect();
+  assert!(
+    loads.len() >= 2 && loads.iter().all(Option::is_some),
+    "every page load is traced: {loads:?}"
+  );
+  let complete = trace_of(&requests(&server, &format!("/api/tasks/{CALL_THE_BANK}/complete"))[0]);
+  let reopen = trace_of(&requests(&server, &format!("/api/tasks/{CALL_THE_BANK}/reopen"))[0]);
+  assert!(complete.is_some() && reopen.is_some(), "both toggles carry a traceparent");
+  assert_ne!(complete, reopen, "two actions, two traces");
+  assert!(!loads.contains(&complete), "a toggle is not the page load's trace");
+}

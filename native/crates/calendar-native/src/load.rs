@@ -95,7 +95,7 @@ pub fn ensure(app: &mut App) {
   }
   app.loads.key = key.clone();
   app.loads.at = Some(app.clock.now());
-  let api = app.api.clone();
+  let api = app.action_api();
   let day = app.clock.day();
   match key {
     Key::Day(date) => {
@@ -158,7 +158,7 @@ pub fn more_tasks(app: &mut App) {
     return;
   }
   app.tasks.start();
-  let api = app.api.clone();
+  let api = app.action_api();
   let day = app.clock.day();
   app.effects.run(
     async move { api.tasks(view, &day, None, Some(&cursor)).await },

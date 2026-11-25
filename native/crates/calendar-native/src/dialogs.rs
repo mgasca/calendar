@@ -308,7 +308,7 @@ fn fetch_event(app: &mut App, id: Uuid, after_conflict: Option<&'static str>) {
   if let Some(dialog) = event(app) {
     dialog.ticket = ticket;
   }
-  let api = app.api.clone();
+  let api = app.action_api();
   app.effects.run(async move { api.event(id).await }, move |app: &mut App, result| {
     let zone = app.clock.zone;
     let Some(dialog) = event(app).filter(|d| d.id == Some(id) && d.ticket == ticket) else {
@@ -343,7 +343,7 @@ fn fetch_task(app: &mut App, id: Uuid, after_conflict: Option<&'static str>) {
   if let Some(dialog) = task(app) {
     dialog.ticket = ticket;
   }
-  let api = app.api.clone();
+  let api = app.action_api();
   app.effects.run(async move { api.task(id).await }, move |app: &mut App, result| {
     let zone = app.clock.zone;
     let Some(dialog) = task(app).filter(|d| d.id == Some(id) && d.ticket == ticket) else {
@@ -474,7 +474,7 @@ pub fn save_event(app: &mut App) {
     .start_date
     .flatten()
     .or_else(|| body.0.start.flatten().map(|at| crate::format::local_date(at, zone)));
-  let api = app.api.clone();
+  let api = app.action_api();
   app.effects.run(
     async move {
       match (id, version) {
@@ -568,7 +568,7 @@ pub fn delete_event(app: &mut App) {
   let Some(id) = dialog.id else { return };
   dialog.deleting = true;
   let title = dialog.title.text.clone();
-  let api = app.api.clone();
+  let api = app.action_api();
   app.effects.run(
     async move { api.delete_event(id).await },
     move |app: &mut App, result| match result {
@@ -638,7 +638,7 @@ pub fn save_task(app: &mut App) {
     .due_date
     .flatten()
     .or_else(|| body.due_at.flatten().map(|at| crate::format::local_date(at, zone)));
-  let api = app.api.clone();
+  let api = app.action_api();
   app.effects.run(
     async move {
       match (id, version) {

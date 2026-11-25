@@ -1,5 +1,5 @@
 ---
-status: planned
+status: implemented
 date: 2026-11-20
 issue: https://github.com/mgasca/calendar/issues/999
 pr:
@@ -19,6 +19,11 @@ pr:
   - https://github.com/mgasca/calendar/pull/1047
   - https://github.com/mgasca/calendar/pull/1048
   - https://github.com/mgasca/calendar/pull/1050
+  - https://github.com/mgasca/calendar/pull/1052
+  - https://github.com/mgasca/calendar/pull/1031
+  - https://github.com/mgasca/calendar/pull/1036
+  - https://github.com/mgasca/calendar/pull/1060
+  - https://github.com/mgasca/calendar/pull/1064
 adrs: ["0003", "0004", "0021", "0027", "0053", "0055", "0058", "0061", "0063", "0064", "0066", "0067", "0068"]
 ---
 
@@ -111,11 +116,11 @@ The maintainer agreed the decisions below on 2026-11-20, on the epic. Two ADRs r
 17. **Given** the desktop app signed out, **when** I choose **Sign in with Google**, **then** my system browser opens the Google flow, and after I confirm, the app is signed in without my typing anything into it.
    * **App:** tested by "sign_in_redeems_the_loopback_code_and_a_restart_stays_signed_in" in [`tests/session.rs`](../../native/crates/calendar-native/tests/session.rs), against a stub API. The test plays the browser by calling the app's loopback.
    * **API:** tested by "a_browser_without_a_session_signs_in_with_google_confirms_and_hands_the_session_to_the_app" in [`native_sign_in.rs`](../../backend/crates/calendar-api/tests/api/native_sign_in.rs) (#1018).
-   * **Not yet run:** against the stub provider in a real stack. #1010 runs it.
+   * **End to end:** "an_allow_listed_person_signs_in_through_the_browser_and_the_round_trip_is_traced_logged_and_measured_without_personal_data" in [`tests/e2e.rs`](../../native/crates/calendar-native/tests/e2e.rs) (#1060). It runs the real app headless against a `just e2e` stack, with the stub provider standing in for Google.
 18. **Given** an email that is not allow-listed, or a sign-in I abandon, **when** the flow ends, **then** the app stays signed out and says why, and no session is stored.
    * **Tested by** "a_refused_code_leaves_the_app_signed_out_and_says_why" and "cancel_stops_waiting_for_the_browser_and_signs_nobody_in" in [`tests/session.rs`](../../native/crates/calendar-native/tests/session.rs), and by "a_browser_that_never_comes_back_times_out_and_a_browser_that_cannot_open_says_so" in `src/session/flow.rs`.
    * **An email that is not allow-listed** never reaches the confirm page, so the loopback hears nothing. The app stops waiting after five minutes, or at **Cancel**, and says: "Sign-in did not finish in the browser. If your account is not allowed, the browser says so."
-   * **Not yet run:** the not-allow-listed case end to end. #1010 runs it.
+   * **End to end:** "a_person_whose_email_is_not_allow_listed_never_reaches_the_app_and_cancel_leaves_it_signed_out" and "an_unverified_email_never_reaches_the_app_and_cancel_leaves_it_signed_out" in [`tests/e2e.rs`](../../native/crates/calendar-native/tests/e2e.rs) (#1060). The browser lands on the web app's access-denied page and no code is redeemed. The app keeps waiting until **Cancel**, then is signed out with nothing stored.
 19. **Given** I am signed in on the desktop, **when** I restart the app within the session's lifetime, **then** I am still signed in; **when** I sign out, **then** the stored session is removed and the app shows the sign-in screen.
    * **Tested by** "sign_in_redeems_the_loopback_code_and_a_restart_stays_signed_in" (the restart), "sign_out_calls_logout_with_the_session_and_forgets_it" and "a_401_forgets_the_stored_session" in [`tests/session.rs`](../../native/crates/calendar-native/tests/session.rs).
    * **Not tested automatically:** the tests use the memory store, so that they never touch a keyring. The OS credential store is exercised only by hand.
@@ -132,6 +137,14 @@ The maintainer agreed the decisions below on 2026-11-20, on the epic. Two ADRs r
 **End to end (#1010)**
 
 23. **Given** the `just e2e` stack, **when** the Rune app's flows run headlessly (sign-in through the stub provider, the views, task actions, create and edit, triage), **then** they pass, and the architecture model's flows name their tests.
+   * **Tested by** [`tests/e2e.rs`](../../native/crates/calendar-native/tests/e2e.rs), with one test or more per user-facing flow of the model, each tagged `// @flow:<id>`: `sign-in-flow` (3 tests), `view-today-flow`, `toggle-task-flow`, `add-event-flow`, `edit-event-flow`, `edit-task-flow` and `overdue-triage-flow`. `just e2e native` runs them, and so does the nightly `E2E native flows` job in `e2e.yml`.
+   * **Each test** signs in through the stub, seeds its own data and drives the app by its element keys. It then checks the flow in otel-stack, as the web app's flow tests do:
+     * a trace per user action that the app started with its own `traceparent`, down to the database span;
+     * the API's log records carrying that trace id;
+     * the routes' request metrics;
+     * no personal data in any span, log or metric label. Telemetry checks are in `tests/e2e/telemetry.rs`.
+   * **The flow binding** in `frontend/apps/e2e/src/binding` requires every user-facing flow to link its native test through `metadata["native-e2e-test"]`. The native pending list, `tests/e2e/pending-flows.json`, is empty.
+   * **Not covered:** macOS, Windows and the WASM build end to end, and the real OS keyring. The e2e job is Linux only, and the tests keep the session in memory.
 
 **Delivery**
 
@@ -239,7 +252,7 @@ No further ADR is expected. A slice that finds a decision ADR-0067 or ADR-0068 d
   * 3 element-tree tests that press the real checkbox, Delete, Cancel and Delete in the dialog.
   * A test pinning the dialog backdrop to `--color-backdrop`.
   * Goldens for `today-toggle-error` and `today-delete` (PNG too).
-* **Not ported:** the web app's toggle telemetry (`traceAction`). The native app has no telemetry yet.
+* **Telemetry, by the maintainer's decision on #1010:** each toggle, like every user action and page load, sends its own `traceparent` (`App::action_api`), so the API's spans, logs and metrics for it share one trace. The native app exports no spans of its own and has no OTLP configuration, so the web app's `ui.task.complete` span has no native counterpart.
 
 ### Create and edit (#1006), delivered
 
@@ -363,10 +376,10 @@ No further ADR is expected. A slice that finds a decision ADR-0067 or ADR-0068 d
 | Notices: six seconds, pause, Dismiss, focus after dialogs | Same, without the fade | #1006, #1035 |
 | Add / edit events and tasks, 400/409/404, event delete in dialog | Same, with date and time pickers (the typed date field stays) | #1006, #1033 |
 | Triage and bulk actions | Same | #1007 |
-| Sign-in | Session stub until #1008 (S3) | #1008 |
+| Sign-in | Through the system browser and a loopback (ADR-0068) on the desktop; the web sign-in at `/native/` | #1008 |
 | Dates and times in the browser's locale | Same: the OS's locale on the desktop, the browser's on the web. Where a locale's CLDR medium date is numeric (de, ja), the week range and band show numbers where `Intl`'s `month: 'short'` shows an abbreviated month | #1032 |
 
-**Known differences:** no telemetry yet (#1010); the notice has no fade; the Week chip shows "+N" (named "+N more"); and Triage's repeated-time choices carry their offsets, which the web app's don't.
+**Known differences:** the native app sends a `traceparent` per user action and page load but exports no telemetry of its own, with no OTLP export, by the maintainer's decision on #1010; the notice has no fade; the Week chip shows "+N" (named "+N more"); and Triage's repeated-time choices carry their offsets, which the web app's don't.
 
 ### Where things live
 
@@ -388,7 +401,7 @@ No changes for the views, actions, create and edit, or triage slices: they use t
 * Headless Rune tests in `native/`: element-tree and accessibility-tree goldens for each view and dialog, PNG snapshots, and scripted input for the actions.
 * The generated client is tested against recorded contract responses, and its staleness is checked in CI.
 * API tests with Testcontainers for the native sign-in endpoints and every refusal (#1008).
-* End-to-end flows against the `just e2e` stack with the stub provider (#1010).
+* End-to-end flows against the `just e2e` stack with the stub provider (#1010): `native/crates/calendar-native/tests/e2e.rs`, run by `just e2e native` and nightly in `e2e.yml`.
 
 ### Lessons learned, known issues and follow-ups
 

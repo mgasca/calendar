@@ -252,7 +252,7 @@ pub fn start(app: &mut App) {
 
 /// A new trace for one user action: random ids, never the all-zero ones W3C Trace Context makes invalid.
 #[cfg(not(target_arch = "wasm32"))]
-fn trace_parent() -> calendar_client::TraceParent {
+pub(crate) fn trace_parent() -> calendar_client::TraceParent {
   loop {
     if let Some(parent) = calendar_client::TraceParent::new(rand::random(), rand::random()) {
       return parent;

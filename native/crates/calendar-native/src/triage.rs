@@ -105,7 +105,7 @@ pub fn act(app: &mut App, action: Action) {
   };
   let requests = bulk::requests(action, &target, &app.clock.day());
   app.triage.pending = true;
-  let api = app.api.clone();
+  let api = app.action_api();
   app
     .effects
     .run(async move { bulk::send(&api, requests).await }, |app: &mut App, result| {

@@ -737,6 +737,19 @@ pub struct Action {
   pub trace_id: String,
   pub expect: Expect,
   pub logs: &'static [&'static str],
+  /// The app started this trace with its own `traceparent`: the chain's first span must have a parent outside the
+  /// trace (the app's span, which it never exports), not be a root the API started itself.
+  pub from_app: bool,
+}
+
+/// Why `spans` is not a trace the app started at `first`, or `None` when it is: the API's span `first` has a parent,
+/// the app's span from its `traceparent`, rather than being a root the API started itself.
+pub fn started_by_the_app(spans: &[Span], first: Matcher) -> Option<String> {
+  let server = spans.iter().find(|span| first.matches(span))?;
+  server
+    .parent_id
+    .is_empty()
+    .then(|| format!("{} is the trace's root: the app sent no traceparent", first.describe()))
 }
 
 /// What a flow's telemetry must prove.
@@ -755,7 +768,14 @@ pub struct Flow<'a> {
 pub fn expect_flow(http: &Http, backends: &Backends, flow: &Flow<'_>) -> Vec<Vec<Span>> {
   let mut traces = Vec::new();
   for action in &flow.actions {
-    traces.push(wait_for_trace(http, backends, &action.trace_id, &action.expect));
+    let spans = wait_for_trace(http, backends, &action.trace_id, &action.expect);
+    if action.from_app
+      && let Some(first) = action.expect.chain.first()
+      && let Some(problem) = started_by_the_app(&spans, *first)
+    {
+      panic!("Trace {}: {problem}", action.trace_id);
+    }
+    traces.push(spans);
     wait_for_trace_logs(http, backends, &action.trace_id, flow.since, action.logs);
   }
   wait_for_request_metrics(http, backends, flow.routes, flow.before);

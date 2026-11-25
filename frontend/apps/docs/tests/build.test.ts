@@ -58,10 +58,16 @@ function builtFile(href: string): string | undefined {
   return join('dist', path.endsWith('/') || path === '' ? join(path, 'index.html') : path);
 }
 
+/**
+ * A sidebar group's label span. Starlight 0.43 adds a `data-astro-cid-*` attribute after the class,
+ * so the pattern accepts further attributes.
+ */
+const groupLabel = String.raw`<span class="large[^"]*"[^>]*>([^<]*)<\/span>`;
+
 /** The labels of the sidebar's groups, nested ones included, in page order. */
 function sidebarGroups(html: string) {
   const sidebar = /<sl-sidebar-pane\b[^>]*>([\s\S]*?)<\/sl-sidebar-pane>/.exec(html)?.[1] ?? '';
-  return [...sidebar.matchAll(/<span class="large[^"]*">([^<]*)<\/span>/g)].map((m) => m[1] ?? '');
+  return [...sidebar.matchAll(new RegExp(groupLabel, 'g'))].map((m) => m[1] ?? '');
 }
 
 /** The labels of the sidebar groups that render open, nested ones included, in page order. */
@@ -69,7 +75,7 @@ function openSidebarGroups(html: string) {
   const sidebar = /<sl-sidebar-pane\b[^>]*>([\s\S]*?)<\/sl-sidebar-pane>/.exec(html)?.[1] ?? '';
   return [
     ...sidebar.matchAll(
-      /<details\b([^>]*)>\s*<summary[\s\S]*?<span class="large[^"]*">([^<]*)<\/span>/g,
+      new RegExp(String.raw`<details\b([^>]*)>\s*<summary[\s\S]*?` + groupLabel, 'g'),
     ),
   ]
     .filter((m) => /\bopen\b/.test(m[1] ?? ''))

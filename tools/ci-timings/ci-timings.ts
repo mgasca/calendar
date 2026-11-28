@@ -72,7 +72,7 @@ export function parseOptions(
     issue: false,
     tunedConstants: false,
     output: ".github/ci-baseline.json",
-    record: "docs/benchmarks/0030-ci-baseline-nine-jobs.md",
+    record: "docs/benchmarks/0034-native-ci-baseline.md",
     minRuns: 30,
     constants: { ...gateDefaults },
     jobNames: [],

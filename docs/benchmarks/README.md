@@ -4,7 +4,7 @@ Reference measurements for performance work. A benchmark here is a repeatable ha
 
 ## The pinned CI baseline
 
-Delivered in epic #380 (story [0034](../stories/0034-gate-ci-job-run-times-against-a-pinned-baseline.md)); the first version of the file is record [0014](0014-ci-job-baseline.md), record [0017](0017-ci-baseline-with-changes.md) gated `Changes` and pinned both paths, and the current one, after the first gated week, is record [0030](0030-ci-baseline-nine-jobs.md). A path that the file marks `provisional` (fewer than 30 runs) only reports, and the gate fails a pull request only on a `pinned` path.
+Delivered in epic #380 (story [0034](../stories/0034-gate-ci-job-run-times-against-a-pinned-baseline.md)); the first version of the file is record [0014](0014-ci-job-baseline.md), record [0017](0017-ci-baseline-with-changes.md) gated `Changes` and pinned both paths, record [0030](0030-ci-baseline-nine-jobs.md) re-pinned nine jobs after the first gated week, and record [0034](0034-native-ci-baseline.md) re-pinned the check path with the four Native jobs; its publication path is still record 0030's (#1065). A path that the file marks `provisional` (fewer than 30 runs) only reports, and the gate fails a pull request only on a `pinned` path.
 
 `.github/ci-baseline.json` is the one timing a check asserts. It holds, per CI job and path (publication, when the run built the docs publication artifact, or check), the statistics of at least 30 successful runs on `main` and the threshold derived from them; `CI result` fails a pull request whose job takes longer than its threshold, and a scheduled trend check on `main` reports smaller slowdowns as an issue. The method, the paths and the constants are in ADR-0045; the measurement and the back-test of each version of the file are in a benchmark record.
 
@@ -17,7 +17,7 @@ Delivered in epic #380 (story [0034](../stories/0034-gate-ci-job-run-times-again
 
 A record's gain is kept in two ways.
 
-- **The run-time gate** fails when a job is slower than its baseline. It covers every gated job: ADR conventions, Backend, Changes, Container image, Docs site, Flow binding, Frontend, Narratives and Tooling. Queue time is not gated, so a record about a wait (0008) relies on its guard alone.
+- **The run-time gate** fails when a job is slower than its baseline. It covers every gated job: ADR conventions, Backend, Changes, Container image, Docs site, Flow binding, Frontend, Narratives and Tooling, plus the four Native jobs on the check path (record 0034). Queue time is not gated, so a record about a wait (0008) relies on its guard alone.
 - **A mechanism guard** fails when the cause of a fixed slowdown comes back, so its failure says why. Guards live in `tools/delivery-guards` (`just tools test`), or in the suite of the code they guard.
 
 The `delivery-performance` control on `github-actions` in `docs/architecture/calendar.architecture.json` is the map: each guard names the issue it protects, its record and its test. A record about local tooling with no CI job (0001, 0013) has neither, and its reconsideration condition is the only check.

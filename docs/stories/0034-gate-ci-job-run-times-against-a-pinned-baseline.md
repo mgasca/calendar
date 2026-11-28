@@ -108,7 +108,7 @@ Delivered in three stacks, one per session. PR 0, #391, carried the card and ADR
 | Sampling, threshold, baseline file and back-test | `tools/ci-timings/Baseline.cs` (`--baseline`, `--holdout`) |
 | Trend test, issue decision | `tools/ci-timings/Trend.cs` (`--trend`, `--issue`) |
 | Pinned baseline | `.github/ci-baseline.json`: check path `pinned` (n = 30 dispatches), publication path `pinned` (n = 48 pushes), six jobs each, from the window after #422 (#420) |
-| Baseline records | [0014](../benchmarks/0014-ci-job-baseline.md) (first pin, check path), [0017](../benchmarks/0017-ci-baseline-with-changes.md) (six jobs, both paths), [0030](../benchmarks/0030-ci-baseline-nine-jobs.md) (nine jobs, after the first gated week) |
+| Baseline records | [0014](../benchmarks/0014-ci-job-baseline.md) (first pin, check path), [0017](../benchmarks/0017-ci-baseline-with-changes.md) (six jobs, both paths), [0030](../benchmarks/0030-ci-baseline-nine-jobs.md) (nine jobs, after the first gated week), [0034](../benchmarks/0034-native-ci-baseline.md) (check path with the four Native jobs, #1065) |
 | Trend findings | [0021](../benchmarks/0021-docs-site-trend-runner-mix.md) (Docs site slower on `main` from runner mix and corpus growth, no re-pin, #639) |
 | PR gate | step "Job run times are within the baseline (ADR 0045)" of `CI result` in `.github/workflows/ci.yml`, running `.github/ci-gate.jq` on the saved jobs API response |
 | Trend check | `.github/workflows/ci-trend.yml`, daily at 06:23 UTC and on demand |

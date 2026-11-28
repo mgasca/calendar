@@ -714,7 +714,7 @@
             {
               "requirement-url": "https://raw.githubusercontent.com/mgasca/calendar/main/docs/architecture/controls/delivery-performance.requirement.json",
               "config": {
-                "gated-jobs": ["ADR conventions", "Backend", "Changes", "Container image", "Docs site", "Flow binding", "Frontend", "Narratives", "Tooling"],
+                "gated-jobs": ["ADR conventions", "Backend", "Changes", "Container image", "Docs site", "Flow binding", "Frontend", "Narratives", "Tooling", "Native (Linux, ubuntu-24.04, desktop)", "Native (WASM, ubuntu-24.04, wasm)", "Native (Windows, windows-latest, desktop)", "Native (macOS, macos-latest, desktop)"],
                 "quantity": "Each job's started_at to completed_at from the jobs API; queue time, skipped jobs, CI result and Cancel superseded runs are not gated",
                 "paths": {
                   "publication": "The Docs site step 'Build and verify publication artifact' succeeded: pushes to main and same-repository pull requests that run Docs site, i.e. that change the docs (ADR-0046)",
@@ -723,19 +723,19 @@
                 "threshold": {
                   "formula": "ceil(max(exp(m + z * 1.4826 * MAD), M + max(floor, r * M))), m and MAD of ln(seconds), M = exp(m), z = Phi^-1(1 - alpha / J)",
                   "alpha": 0.001,
-                  "jobs": 9,
+                  "jobs": 13,
                   "floor-seconds": 15,
                   "relative-margin": 0.1,
                   "provisional": false
                 },
-                "false-failure-budget": "About 1 % of pull request runs with no regression, across all gated jobs (alpha / J per job, Bonferroni); back-tested on held-out runs with the observed rate and its one-sided 95 % upper bound in each baseline record. At the first pin (record 0014, 2026-11-07) 4 of 73 distinct runs, 5.5 %, would have failed with alpha = 1 %, accepted by the maintainer. Record 0017 (2026-11-08) recalibrated alpha to 0.1 % with Changes gated (J = 6): 0 of 136 held-out pull request runs fail (one-sided 95 % upper bound 2.2 %, still above the 1 % budget); a week of gated PR runs is reviewed in #421; Record 0030 (2026-11-16) re-pinned nine jobs after the first gated week (22 false failures in 761 finished PR runs, 2.9 %, upper bound 4.1 %): the back-test fails 6 of 83 held-out runs (7.2 %, upper bound 13.8 %), five of them Container image, accepted as it is by the maintainer on #421",
+                "false-failure-budget": "About 1 % of pull request runs with no regression, across all gated jobs (alpha / J per job, Bonferroni); back-tested on held-out runs with the observed rate and its one-sided 95 % upper bound in each baseline record. At the first pin (record 0014, 2026-11-07) 4 of 73 distinct runs, 5.5 %, would have failed with alpha = 1 %, accepted by the maintainer. Record 0017 (2026-11-08) recalibrated alpha to 0.1 % with Changes gated (J = 6): 0 of 136 held-out pull request runs fail (one-sided 95 % upper bound 2.2 %, still above the 1 % budget); a week of gated PR runs is reviewed in #421; Record 0030 (2026-11-16) re-pinned nine jobs after the first gated week (22 false failures in 761 finished PR runs, 2.9 %, upper bound 4.1 %): the back-test fails 6 of 83 held-out runs (7.2 %, upper bound 13.8 %), five of them Container image, accepted as it is by the maintainer on #421. Record 0034 (2026-11-28) re-pinned the check path with the four Native jobs (J = 13; the publication path, copied unchanged from record 0030, keeps J = 9 and #1061's hand-set 4:00 until #1065 rebuilds it) from 30 dispatches and 3 nightly runs, replacing #1061's hand-set 4:00 for Container image on that path with 3:01; every held-out run in its window was on the publication path, so it has no check-path back-test",
                 "baseline": {
                   "file": ".github/ci-baseline.json",
-                  "record": "docs/benchmarks/0030-ci-baseline-nine-jobs.md",
-                  "earlier-records": ["docs/benchmarks/0014-ci-job-baseline.md", "docs/benchmarks/0017-ci-baseline-with-changes.md"],
+                  "record": "docs/benchmarks/0034-native-ci-baseline.md",
+                  "earlier-records": ["docs/benchmarks/0014-ci-job-baseline.md", "docs/benchmarks/0017-ci-baseline-with-changes.md", "docs/benchmarks/0030-ci-baseline-nine-jobs.md"],
                   "min-runs": 30,
                   "paths": {
-                    "check": { "status": "pinned", "n": 30 },
+                    "check": { "status": "pinned", "n": 33 },
                     "publication": { "status": "pinned", "n": 31 }
                   },
                   "update": "Only by a deliberate pull request: regenerate the file with ci-timings --baseline and add a benchmark record in the same PR; runs on main never move it (docs/benchmarks/README.md, 'The pinned CI baseline')"
